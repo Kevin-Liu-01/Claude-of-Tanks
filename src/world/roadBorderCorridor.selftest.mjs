@@ -6,6 +6,11 @@ import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades, minimumRoa
 import { createLayout, createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
+// The extracted terrain source calls the authority's deterministic math through terrain.ts's module-level import
+// (src/sim/detMath.ts, the 2026-10-25 pinned-math ruling); a receipt that evaluates that text outside the module lends
+// the same import to its scope.
+import * as detMath from '../sim/detMath.ts';
+globalThis.detMath ??= detMath;
 
 const boundedMaps = ['alpine', 'reservoir', 'monsoon', 'blackglass', 'titan_gorge', 'skybridge', 'badlands'];
 const borderURL = new URL('./maps/roadBorderCorridor.ts', import.meta.url);

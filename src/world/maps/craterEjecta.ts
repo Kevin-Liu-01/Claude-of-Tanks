@@ -43,12 +43,23 @@ export function ejectaClimateOf(mapId: string): EjectaClimate {
   return CLIMATE[mapId] ?? 'turf';
 }
 
+/** The welded unit icosahedron of each detail, built once (battle-spikes-253: a map's scars build hundreds of lumps). */
+const welded = new Map<number, THREE.BufferGeometry>();
+function weldedIcosahedron(detail: number): THREE.BufferGeometry {
+  let g = welded.get(detail);
+  if (!g) {
+    const raw = new THREE.IcosahedronGeometry(1, detail);
+    raw.deleteAttribute('normal'); raw.deleteAttribute('uv');
+    g = mergeVertices(raw);
+    raw.dispose();
+    welded.set(detail, g);
+  }
+  return g;
+}
+
 /** A lumpy body (an icosahedron welded, pushed in and out by its seed), `sx` x `sy` x `sz` half extents, its foot at y 0. */
 function lump(detail: number, sx: number, sy: number, sz: number, seed: number, rough: number): THREE.BufferGeometry {
-  const raw = new THREE.IcosahedronGeometry(1, detail);
-  raw.deleteAttribute('normal'); raw.deleteAttribute('uv');
-  const g = mergeVertices(raw);
-  raw.dispose();
+  const g = weldedIcosahedron(detail).clone();
   const p = g.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < p.count; i++) {
     const k = 1 - rough / 2 + rough * hash(i, 17, seed);

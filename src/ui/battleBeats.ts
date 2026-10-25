@@ -35,6 +35,8 @@ export interface PlacedBeat extends BattleBeat {
   /** Position on the line, 0 (the start) to 1 (the result). */
   readonly x: number;
   readonly labelled: boolean;
+  /** A labelled beat's room: the share of the line its label may span, to its nearest labelled neighbour or edge. */
+  readonly room: number;
 }
 
 export interface BattleBeatLog {
@@ -158,8 +160,15 @@ export function layoutBeats(beats: readonly BattleBeat[], durationS: number, bat
     const x = Math.min(0.96, Math.max(0.02, beat.t / durationS));
     const labelled = placed.every((other) => Math.abs(other - x) >= LABEL_GAP);
     if (labelled) placed.push(x);
-    return { ...beat, x, labelled };
+    return { ...beat, x, labelled, room: 0 };
   });
+  // each label may run to its nearest neighbour's (or the line's end), centred on its mark (gauntlet r1: a fixed 180 px
+  // cut names to "Commander_..." with the line free on both sides)
+  for (const beat of out) {
+    if (!beat.labelled) continue;
+    const neighbour = Math.min(...placed.filter((other) => other !== beat.x).map((other) => Math.abs(other - beat.x)));
+    (beat as { room: number }).room = Math.max(LABEL_GAP, Math.min(neighbour, 2 * beat.x, 2 * (1 - beat.x)));
+  }
   return out.sort((a, b) => a.t - b.t);
 }
 

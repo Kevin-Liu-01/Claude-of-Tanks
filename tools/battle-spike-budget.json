@@ -1,0 +1,34 @@
+{
+  "note": "The spike-budget receipt (tools/battle-spike-budget.mjs; docs/PERF-SPIKES.md 'The budget'). Watched battles on a fresh profile with a pinned roster: the same battle tick for tick on every run of a build. links (programs linked in live combat) and allocMBPerS (the trace's scavenges) are judged under any load. Every limit was calibrated 2026-10-25 on the lane's head (b373239d01 runtime) at load 10-12 on 18 cores with other sessions' GPU processes at ~86 % CPU, with headroom: links verdant 18/14 and urban 16/12 (cold/warm; the warm count carries the watched battle's thermal relink, docs/PERF-SPIKES.md 'Follow-ups'), 259-361 MB/s, long tasks 47-241, hitches 18-88 a minute, frames past 33 ms 430-962 a minute. The time limits are judged only at load1 <= loadPerCore x cores and catch a regression of today's state; the reference machine tightens them (TESTS-OWED).",
+  "scenarios": [
+    "verdant:standard",
+    "urban:zone_control"
+  ],
+  "sizes": [
+    14
+  ],
+  "passes": [
+    "cold",
+    "warm"
+  ],
+  "seconds": 40,
+  "driver": "watch",
+  "port": 5397,
+  "loadPerCore": 0.75,
+  "limits": {
+    "cold": {
+      "links": 20,
+      "allocMBPerS": 400,
+      "longTasks": 300,
+      "hitchesPerMin": 110,
+      "over33PerMin": 1100
+    },
+    "warm": {
+      "links": 16,
+      "allocMBPerS": 400,
+      "longTasks": 130,
+      "hitchesPerMin": 95,
+      "over33PerMin": 650
+    }
+  }
+}

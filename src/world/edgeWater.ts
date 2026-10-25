@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** A sea-level aperture in the horizon ring. Azimuth 90° is +x (east), 0° is +z (north). */
 export interface SeaOpening {
   azimuthDeg: number;
@@ -66,7 +67,7 @@ export function ringAngleToAzimuthDeg(angle: number): number {
 
 function openingWeight(angle: number, opening: SeaOpening): number {
   const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-  const distance = Math.abs(Math.atan2(Math.sin(angle - direction), Math.cos(angle - direction)));
+  const distance = Math.abs(detMath.atan2(detMath.sin(angle - direction), detMath.cos(angle - direction)));
   const halfWidth = Math.min(175, Math.max(10, opening.widthDeg)) * Math.PI / 360;
   return 1 - smoothstep(halfWidth * (opening.shoulder ?? DEFAULT_SHOULDER), halfWidth, distance);
 }
@@ -83,7 +84,7 @@ export function seaOpeningWeight(angle: number, openings: readonly SeaOpening[] 
  * offshore, with long bends and small bank recesses in world metres. */
 export function seaSectorWeightAt(x: number, z: number, opening: SeaOpening, halfSize = 512): number {
   const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-  const dx = Math.cos(direction), dz = Math.sin(direction);
+  const dx = detMath.cos(direction), dz = detMath.sin(direction);
   const along = x * dx + z * dz - halfSize / Math.max(Math.abs(dx), Math.abs(dz));
   const length = Math.max(240, Math.min(480, (opening.coastReachM ?? 0) * 1.5 + 80));
   const mouth = opening.bankProfile ? 1 - smoothstep(0, length, along) : 0;
@@ -97,24 +98,24 @@ export function seaSectorWeightAt(x: number, z: number, opening: SeaOpening, hal
 /** Signed metres across the offshore bank; also grades its dry headland. */
 export function seaCoastDistanceAt(x: number, z: number, opening: SeaOpening, halfSize = 512): number {
   const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-  const dx = Math.cos(direction), dz = Math.sin(direction);
+  const dx = detMath.cos(direction), dz = detMath.sin(direction);
   const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
   const px = x - dx * edge, pz = z - dz * edge;
   const along = px * dx + pz * dz, across = -px * dz + pz * dx;
   const angle = Math.min(175, Math.max(10, opening.widthDeg)) * Math.PI / 360;
   const banks = (at: number): readonly [number, number] => {
-    const width = halfSize * Math.tan(angle * (opening.shoulder ?? DEFAULT_SHOULDER)) + Math.max(0, at) * Math.tan(angle * 0.72);
+    const width = halfSize * detMath.tan(angle * (opening.shoulder ?? DEFAULT_SHOULDER)) + Math.max(0, at) * detMath.tan(angle * 0.72);
     const grow = smoothstep(0, 160, at);
-    const bend = Math.sin(at * 0.004 + direction * 3) * Math.min(90, width * 0.12) * grow;
-    const recess = (Math.sin(at * 0.012 + direction) * 0.7 + Math.sin(at * 0.031 - direction) * 0.3)
+    const bend = detMath.sin(at * 0.004 + direction * 3) * Math.min(90, width * 0.12) * grow;
+    const recess = (detMath.sin(at * 0.012 + direction) * 0.7 + detMath.sin(at * 0.031 - direction) * 0.3)
       * Math.min(28, width * 0.05) * grow;
     // the map-borders lane (2026-10-03): far out each shore has its own headlands and bays (three octaves, 3 km to
     // 420 m, up to 30 % of the half-width), so the two coasts stop running as straight lines out of the mouth's fan
     const far = smoothstep(150, 700, at) * Math.min(260, width * 0.3);
-    const lowCoast = (Math.sin(at * 0.0021 + direction * 5 + 1.3) * 0.55 + Math.sin(at * 0.0057 - direction * 2) * 0.3
-      + Math.sin(at * 0.0149 + direction * 7) * 0.15) * far;
-    const highCoast = (Math.sin(at * 0.0019 - direction * 4 + 0.4) * 0.55 + Math.sin(at * 0.0063 + direction * 3) * 0.3
-      + Math.sin(at * 0.0137 - direction * 6) * 0.15) * far;
+    const lowCoast = (detMath.sin(at * 0.0021 + direction * 5 + 1.3) * 0.55 + detMath.sin(at * 0.0057 - direction * 2) * 0.3
+      + detMath.sin(at * 0.0149 + direction * 7) * 0.15) * far;
+    const highCoast = (detMath.sin(at * 0.0019 - direction * 4 + 0.4) * 0.55 + detMath.sin(at * 0.0063 + direction * 3) * 0.3
+      + detMath.sin(at * 0.0137 - direction * 6) * 0.15) * far;
     return [bend - width - recess + lowCoast, bend + width + recess + highCoast];
   };
   let [low, high] = banks(along);
@@ -172,7 +173,7 @@ export function seaHeadlandWeight(angle: number, openings: readonly SeaOpening[]
   let weight = 0;
   for (const opening of asList(openings)) {
     const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-    const distance = Math.abs(Math.atan2(Math.sin(angle - direction), Math.cos(angle - direction)));
+    const distance = Math.abs(detMath.atan2(detMath.sin(angle - direction), detMath.cos(angle - direction)));
     const halfWidth = Math.min(175, Math.max(10, opening.widthDeg)) * Math.PI / 360;
     weight = Math.max(weight, 1 - smoothstep(halfWidth + bandRad * 0.35, halfWidth + bandRad, distance));
   }
@@ -212,7 +213,7 @@ export function scanEdgeWater(
   // the flattened lake FLOOR: the ring continues the bed, the sheet apron floats the map's depth above it
   const surface = (x: number, z: number): number => field.getHeightAt(x, z);
   const angleOf = (x: number, z: number, previous: number | null): number => {
-    let angle = Math.atan2(z, x);
+    let angle = detMath.atan2(z, x);
     if (previous !== null) { while (angle < previous - Math.PI) angle += TAU; while (angle > previous + Math.PI) angle -= TAU; }
     return angle;
   };
@@ -283,7 +284,7 @@ export function seaBankUniforms(openings: readonly SeaOpening[]): THREE.Vector4[
 /** Continue the bay's actual bank position and tangent. Joining two unrelated
  * masks with max() left a pointed spit at each bay/sea intersection. */
 function measureMouthBanks(opening: SeaOpening, waterAt: OutlandWaterQuery, halfSize: number): SeaOpening['bankProfile'] {
-  const angle = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180, dx = Math.cos(angle), dz = Math.sin(angle);
+  const angle = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180, dx = detMath.cos(angle), dz = detMath.sin(angle);
   const edge = halfSize / Math.max(Math.abs(dx), Math.abs(dz));
   const banksAt = (along: number): readonly [number, number] | null => {
     const wet = (across: number): boolean => (waterAt(dx * (edge + along) - dz * across, dz * (edge + along) + dx * across)?.wetness ?? 0) >= 0.5;
@@ -350,7 +351,7 @@ export function seaSectorBlend(coastReachM: number | undefined, bankProfile?: Se
 export function coastReachAlong(opening: SeaOpening, waterAt: OutlandWaterQuery | null | undefined, halfSize = 512): number {
   if (!waterAt) return 0;
   const direction = Math.PI / 2 - opening.azimuthDeg * Math.PI / 180;
-  const cosine = Math.cos(direction), sine = Math.sin(direction);
+  const cosine = detMath.cos(direction), sine = detMath.sin(direction);
   const edge = halfSize / Math.max(Math.abs(cosine), Math.abs(sine));
   let reach = 0;
   for (let step = 4; step <= 900; step += 4) {
@@ -433,7 +434,7 @@ export function buildOutlandWaterGeometry(
     for (let iz = -outer; iz < outer; iz += stride) for (let ix = -outer; ix < outer; ix += stride) {
       const cx = (ix + stride * 0.5) * cellM, cz = (iz + stride * 0.5) * cellM;
       if (Math.max(Math.abs(cx), Math.abs(cz)) < Math.max(halfSize, inner * cellM)) continue;
-      if (Math.hypot(cx, cz) > outerRadius) continue;
+      if (detMath.hypot(cx, cz) > outerRadius) continue;
       const level = levelAt(cx, cz, stride * cellM);
       if (level === null) continue;
       const corners = [[ix, iz], [ix, iz + stride], [ix + stride, iz + stride], [ix + stride, iz]];
@@ -483,7 +484,7 @@ export function buildSeaApronGeometry(
     const base = positions.length / 3;
     for (let s = 0; s <= steps; s++) {
       const angle = direction - reach + (reach * 2) * (s / steps);
-      const cosine = Math.cos(angle), sine = Math.sin(angle);
+      const cosine = detMath.cos(angle), sine = detMath.sin(angle);
       // the apron starts 12 m inside the square edge: the sheet admits whole 8 m cells, so the last strip before the
       // red line can be uncovered water floor (Saltwind showed it as a pale line); over land the apron is buried
       const inner = (halfSize - SEA_APRON_OVERLAP_M) / Math.max(Math.abs(cosine), Math.abs(sine));

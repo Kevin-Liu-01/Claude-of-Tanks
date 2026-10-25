@@ -295,16 +295,16 @@
       "id": "cn_t72b3_modern",
       "ring": [
         0,
-        1.513100315,
+        1.497100315,
         0.065591405
       ],
       "gunLocal": [
         0,
-        0.38,
-        0.78
+        0.2602,
+        1.75
       ],
-      "barrelLengthM": 6.42,
-      "barrelRadiusM": 0.088,
+      "barrelLengthM": 4.92211,
+      "barrelRadiusM": 0.071,
       "pitchDeg": [
         -6,
         14
@@ -314,17 +314,17 @@
       "hullLengthM": 6.8784,
       "hullWidthM": 4.363,
       "widthM": 4.363,
-      "overallLengthM": 10.8464,
-      "tallestM": 3.2129,
+      "overallLengthM": 10.3066,
+      "tallestM": 3.0975,
       "specDimensions": {
         "hullLengthM": 6.8784,
-        "overallLengthM": 10.704791405,
+        "overallLengthM": 10.176901405,
         "widthM": 4.363,
-        "heightM": 3.213
+        "heightM": 3.097
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Chinese T-72B3 field modernization carrying the production ZTZ-99A2 turret with its bustle shortened by a tenth and wrapped in the Qilin's own add-ons: one welded flank sleeve a side from the rear armour box to a triangular brow on the side cassette, carrying four chevron ERA cassettes, the side rail and three flat tiles, a bustle roof plate with a small rack and roll, a flat eye, a split-panel sensor on the crown's centre, round guarded lamps, a side camera, field-service boxes and a carrier, a welded floor under the cut bustle, a full-width rear stowage rack loaded with a net roll, a tarpaulin, ammunition and spare-parts cases and a kit bag, a rear camera, and a QJC-88 12.7 mm machine gun on an open pintle at the commander's cupola behind its shield. The original low T-72B3 hull keeps five ribbed layered skirt modules, a glacis ERA course and two individually cradled rear fuel drums."
+      "silhouette": "Chinese T-72B3 field modernization carrying the Type 96B turret wrapped in the Qilin's own fit: one welded sleeve a side from the bustle corner along the 96B wall, stepping out into a heavier brow over the cheek whose two front facets carry four chevron ERA cassettes, three flat tiles on the flank housing behind the step, a welded bustle module closing the rear and carrying a full-width stowage rack loaded with a net roll, a tarpaulin, ammunition and spare-parts cases and a kit bag, a rear camera, a roll on the rear roof framed by a small rack, a flat eye and a side camera on the brows, a split-panel sensor on the crown's centre, round guarded lamps on the brows' front shelves, field-service boxes, two four-tube smoke cradles on the flank housings, and a QJC-88 12.7 mm machine gun on an open pintle in the rim socket of the 96B commander's cupola behind its shield. The original low T-72B3 hull keeps five ribbed layered skirt modules, a glacis ERA course and two individually cradled rear fuel drums."
     },
     "ru_t80u_modern": {
       "id": "ru_t80u_modern",

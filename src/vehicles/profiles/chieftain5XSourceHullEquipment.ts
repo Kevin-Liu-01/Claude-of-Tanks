@@ -43,7 +43,9 @@ function foreFlap(P: TankBuilderPort, side: number): void {
 }
 
 function upperBins(P: TankBuilderPort, side: number): void {
-  for (const [back, front, a, b] of [[.467, 1.6797, 1.566, 1.518],
+  // (release 240, the owner's Chieftain lift regression: the forward bins' lids 4 cm lower, under the turret's lower body
+  // seated at 1.566 over them, 1.0-1.55 m off the ring's axis)
+  for (const [back, front, a, b] of [[.467, 1.6797, 1.526, 1.478],
     [1.7819, 2.4120, 1.5184, 1.3983]]) {
     P.addEquipment('hullDetail', slope(side, [[back, 1.023, 1.588, 1.30594, a],
       [front, 1.023, 1.588, 1.30594, b]]));
@@ -56,8 +58,9 @@ function upperBins(P: TankBuilderPort, side: number): void {
   // 5.5 cm, under the turret's bustle bins, 1.692 and 2.13 m off the ring's axis, which swept through them)
   P.addEquipment('hullDetail', slope(side, [[-3.2725, 1.378, 1.612, 1.355, 1.6838],
     [-1.0344, 1.378, 1.612, 1.355, 1.664]]));
-  P.addEquipment('hullDetail', KIT.box(.037, .047, 1.755), side * 1.351, 1.661, -1.506);
-  for (const [z, y] of [[-2.9431, 1.667], [-.8708, 1.647]]) {
+  // (the rail from -1.05 and the forward cap at -1.30, behind the engine deck's new step and out of the turret's reach)
+  P.addEquipment('hullDetail', KIT.box(.037, .047, 1.3335), side * 1.351, 1.661, -1.71675);
+  for (const [z, y] of [[-2.9431, 1.667], [-1.30, 1.647]]) {
     P.addEquipment('hullDetail', KIT.cylY(.143, .143, .029, 24), side * 1.118, y, z);
     P.addEquipment('hullDetail', KIT.box(.066, .027, .034), side * 1.118, y + .023, z);
   }
@@ -85,13 +88,16 @@ function bowLamps(P: TankBuilderPort): void {
 }
 
 function driver(P: TankBuilderPort): void {
-  const hatch = KIT.cylY(.513, .513, .018, 16).scale(1, 1, 1.42).rotateX(.216);
+  // (release 240: the oval 1.05 long, not 1.42: its rear edge stood 1.58 high over the hump's back slope at z 1.37,
+  // under the turret's front casting; it now ends 1.539 on the hump, z 1.55)
+  const hatch = KIT.cylY(.513, .513, .018, 16).scale(1, 1, 1.05).rotateX(.216);
   P.addHatch('hullDetail', hatch, 0, 1.415, 2.085);
+  // (release 240: the periscope head 1 cm lower, under the turret's front casting seated at 1.566 over it)
   boxSpan(P, -.166, .168, 1.441, 1.468, 1.785, 1.945);
-  for (const x of [-.153, .155]) boxSpan(P, x - .012, x + .012, 1.460, 1.555, 1.785, 1.945);
-  boxSpan(P, -.166, .168, 1.542, 1.555, 1.785, 1.945);
-  boxSpan(P, -.092, .093, 1.474, 1.5345, 1.932, 1.938, 'hullGlass');
-  boxSpan(P, -.102, .103, 1.466, 1.541, 1.923, 1.931, 'hullDark');
+  for (const x of [-.153, .155]) boxSpan(P, x - .012, x + .012, 1.460, 1.545, 1.785, 1.945);
+  boxSpan(P, -.166, .168, 1.532, 1.545, 1.785, 1.945);
+  boxSpan(P, -.092, .093, 1.474, 1.5245, 1.932, 1.938, 'hullGlass');
+  boxSpan(P, -.102, .103, 1.466, 1.531, 1.923, 1.931, 'hullDark');
 }
 
 function engineDeck(P: TankBuilderPort): void {
@@ -101,11 +107,12 @@ function engineDeck(P: TankBuilderPort): void {
   }
   // (release 240: the forward deck's panels 1 cm thinner from the top, under the turret's bustle bins, 1.692, which sat
   // 2 mm over them)
-  boxSpan(P, -.8564, .8573, 1.6618, 1.6778, -2.4792, -1.0335);
+  // (release 240: the forward panels start behind the deck's new step at -1.45, past the turret's sweep)
+  boxSpan(P, -.8564, .8573, 1.6618, 1.6778, -2.4792, -1.45);
   for (const side of [-1, 1]) {
     const a = side < 0 ? -.8923 : .213, b = side < 0 ? -.2120 : .8932;
-    boxSpan(P, a, b, 1.663, 1.6796, -2.136, -.989);
-    for (const z of [-1.9858, -1.7805, -1.4588, -1.2535]) {
+    boxSpan(P, a, b, 1.663, 1.6796, -2.136, -1.45);
+    for (const z of [-2.04, -1.85, -1.66, -1.52]) {
       P.addEquipment('hullDetail', KIT.box(.0618, .0099, .1156), side * .1806, 1.6728, z);
     }
   }

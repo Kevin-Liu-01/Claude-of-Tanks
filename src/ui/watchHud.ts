@@ -66,10 +66,10 @@ const STYLE = `
 .cot-watch{position:absolute;left:50%;bottom:max(var(--inset-bottom),var(--hud-watch-lift,0px));transform:translateX(-50%);z-index:var(--z-hud-controls);
  display:flex;align-items:stretch;gap:var(--s1);pointer-events:none;font-family:var(--font-ui);color:var(--ink-1)}
 .cot-watch[hidden]{display:none}
-html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
+html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch,html[data-watch=drone] body[data-watch-top] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
 .cot-watch .who{--tone:var(--accent);display:grid;grid-template-columns:auto 56px minmax(0,1fr);align-items:center;gap:var(--s2);
  width:300px;height:48px;padding:0 var(--s3);background:var(--hud-plate);border-radius:var(--r1);
- border-left:3px solid var(--tone);box-shadow:var(--ring-1);pointer-events:auto}
+ box-shadow:var(--ring-1);pointer-events:auto}
 .cot-watch .who[data-side=own]{--tone:var(--team-own)}.cot-watch .who[data-side=enemy]{--tone:var(--team-enemy)}
 .cot-watch .who .cot-c-flag{width:24px;height:16px}
 .cot-watch .who .cot-c-sil{width:56px;height:20px;color:var(--tone)}
@@ -81,32 +81,42 @@ html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;t
 .cot-watch .wb{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-width:48px;height:48px;
  padding:0 var(--s3);border:0;border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-1);
  font:600 var(--fs-14)/1 var(--font-display);cursor:pointer;pointer-events:auto;transition:opacity var(--dur-fast) var(--ease-enter)}
-.cot-watch .wb .cot-c-kbd{position:absolute;right:3px;bottom:2px;font-size:var(--fs-11)}
+.cot-watch .wb .cot-c-kbd{font-size:var(--battle-fs-fig-11)}
 .cot-watch .wb.seat{min-width:132px;background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-watch .wb.seat .cot-c-kbd{position:static;color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 .cot-watch .wb:disabled{opacity:.34;cursor:default}
 .cot-watch .wb:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media(hover:hover){.cot-watch .wb:not(:disabled):hover{box-shadow:var(--ring-3)}.cot-watch .wb.seat:not(:disabled):hover{background:var(--btn-primary-hover)}}
 .cot-watch .wb:not(:disabled):active{transform:translateY(var(--btn-press-drop))}
-.cot-watch-rail{position:absolute;right:calc(var(--inset-right) + 4px);top:50%;transform:translateY(-50%);z-index:var(--z-hud-controls);
+/* (on the touch layout's right column, the tray's and the consumables' 14 px: further in, it stood off them, gauntlet r6) */
+.cot-watch-rail{position:absolute;right:max(14px,env(safe-area-inset-right));top:50%;transform:translateY(-50%);z-index:var(--z-hud-controls);
  display:none;flex-direction:column;gap:var(--s2);pointer-events:none}
 body.cot-touch-layout .cot-watch-rail{display:flex}
 html:not([data-watch=drone]) .cot-watch-rail{display:none}
 .cot-watch-rail .wb{position:relative;display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:var(--r1);
  background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-2);pointer-events:auto;touch-action:none}
-.cot-watch-rail .wb.on,.cot-watch .wb.lock.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
+/* (on: the selected slot's look, the accent's ring on its wash, gauntlet r5: a ring alone was a fourth selected state) */
+.cot-watch-rail .wb.on,.cot-watch .wb.lock.on{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);
+ box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
 html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none}
 html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 @media(max-width:600px){
  .cot-watch{left:var(--inset-left);right:var(--inset-right);transform:none;justify-content:center;flex-wrap:wrap}
- .cot-watch .who{width:auto;flex:1 1 180px;grid-template-columns:auto 44px minmax(0,1fr)}
+ .cot-watch .who{width:auto;flex:1 1 100%;grid-template-columns:auto 44px minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
 }
-/* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear */
+/* (the seat's word stays on one line: zh's 驾驶 broke a character a line at 1440, gauntlet r3) */
+.cot-watch .wb.seat .label{white-space:nowrap}
+/* (riding, the ridden tank's controls row shows its state without its key caps: the watcher's own Q and E sat in the bar
+   above it beside the row's Q, gauntlet r4) */
+html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
+/* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear; flying, the
+   climb rail stands in the bottom-right corner, under the right kill lane (battleHudLayout.ts ends the lane above it) */
 @media(max-height:500px){
+ .cot-watch-rail{top:auto;bottom:calc(var(--inset-bottom) + 12px);transform:none}
  html:is([data-watch=ride],[data-watch=drive]) .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px))}
  .cot-watch .who,.cot-watch .wb{height:38px}.cot-watch .wb{min-width:38px;padding:0 var(--s2)}
  .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}
@@ -134,7 +144,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
     + `<button type="button" class="wb next" data-tip data-ui-sound="tick" aria-label="${t('watch.next')}">${icon('chevronRight', { size: 20 })}${keycap('E')}</button>`
     + `<button type="button" class="wb drone" data-tip data-ui-sound="back" aria-label="${t('watch.drone')}">${icon('modeDrone', { size: 20 })}${keycap('V')}</button>`
     + `<button type="button" class="wb lock" data-tip data-ui-sound="tick" aria-pressed="false" aria-label="${t('watch.lock')}">${icon('autoAim', { size: 20 })}${keycap('T')}</button>`
-    + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('Enter')}</button>`;
+    + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('ENTER')}</button>`;
   const rail = document.createElement('div');
   rail.className = 'cot-watch-rail';
   rail.innerHTML =

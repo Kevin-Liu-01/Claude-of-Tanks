@@ -56,7 +56,7 @@ import {
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
-import { tankTier, tierNumeral } from '../vehicles/tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
@@ -494,7 +494,7 @@ const NATION_RANK = new Map([
   ['Israel', 12], ['Ukraine', 13],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
-  return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
+  return compareCountryThenTierThenName(a, b, NATION_RANK, displayTier);
 }
 const countryCodeOf = (spec: GarageTankSpec): string => flagIconCode(spec.nation);
 
@@ -643,6 +643,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('deploy', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.battle')}</span>${keycap('B')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" data-tip="${t('garage.nav.gallery')} (V)">` +
     `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.gallery')}</span>${keycap('V')}</button>` +
+    `<button class="nv cot-nav-desktop cot-techtree-trigger" data-nav="techTree" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="${t('techTree.open')}" data-tip="${t('techTree.open')} (T)">` +
+    `${uiIconSVG('techTree', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('techTree.open')}</span>${keycap('T')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" data-tip="${t('garage.nav.studio')} (F8)">` +
     `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.studio')}</span>${keycap('F8')}</button>` +
     `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" data-tip="${t('garage.nav.record')} (R)" ` +
@@ -686,6 +688,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="gallery">` +
     `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.gallery')}</strong></span></button>` +
+    `<button type="button" data-mobile-nav="techTree" aria-haspopup="dialog">` +
+    `${uiIconSVG('techTree', 20)}<span class="cot-mobile-nav-copy">` +
+    `<strong>${t('techTree.open')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
     `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong></span></button>` +
@@ -4048,7 +4053,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const deployCampaignCount = requiredElement<HTMLElement>(battleMenu, '[data-deploy-campaign-count]');
   const deployTabs = requiredElement<HTMLElement>(battleMenu, '.cot-deploy-tablist');
   const deployPanels = [...battleMenu.querySelectorAll<HTMLElement>('[data-deploy-panel]')];
-  const clockText = (seconds: number | null): string => seconds == null ? '∞'
+  const clockText = (seconds: number | null): string => seconds == null ? t('garage.deploy.none')
     : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
   function deployFacts(mode: GameModeId) {
     const ruleset = matchRulesetFor(mode, null, readTeamArrangement(mode));
@@ -4061,8 +4066,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
       victory: target == null ? null : String(target),
       gravity: ruleset.gravityScale === 1 ? null : `${Math.round(ruleset.gravityScale * 100) / 100} g`,
-      speed: ruleset.speedMultiplier === 1 ? null : `×${Math.round(ruleset.speedMultiplier * 100) / 100}`,
-      boss: ruleset.juggernaut ? `×${ruleset.juggernaut.hpScale}` : null,
+      speed: ruleset.speedMultiplier === 1 ? null : t('garage.deploy.times', { value: String(Math.round(ruleset.speedMultiplier * 100) / 100) }),
+      boss: ruleset.juggernaut ? t('garage.deploy.times', { value: String(ruleset.juggernaut.hpScale) }) : null,
       equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
       ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
     };
@@ -4147,7 +4152,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           ladder.map((step) => `<i class="${step.status === 'cleared' ? 'd' : step === next ? 'c' : ''}"></i>`).join('')}</div>` +
         `<b>${t(`campaign.op.${operation.id}.title`)}</b>${rules([['map', t(`map.${operation.mapId}`)]])}` +
         `<button type="button" class="cot-c-btn cot-c-btn--36" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}"` +
-        `${status === 'locked' ? ' disabled' : ''}>${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}${uiIconSVG('chevronRight', 16)}</button></div></article>`);
+        `${status === 'locked' ? ' disabled' : ''}>${uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button></div></article>`);
     }
     deployLower.innerHTML = parts.join('');
     for (const battle of getRecentBattles()) {
@@ -4169,7 +4174,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const action = status === 'locked'
         ? `<span class="cot-deploy-op-lock" data-tip="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
         : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
-          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+          uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
       // the operation's battlefield, as the Garage's map cards show it
       const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
       return `<article class="cot-deploy-op ${status}" role="listitem" aria-label="${escapeHtmlAttribute(title)}">` +
@@ -4438,6 +4443,40 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     studioIntent.addEventListener('focusin', signalStudioIntent);
     studioIntent.addEventListener('touchstart', signalStudioIntent, { passive: true });
   }
+  // The tech tree (252): every national tree over the Garage, read-only. The screen, its sheet, its strings and the tree
+  // data load on the first open (no boot cost); Select takes the node's build into the Garage.
+  const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
+  let techTreeOpening = false;
+  const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
+    if (techTreeOpening) return;
+    emit('ui:click', {});
+    techTreeOpening = true;
+    closeMobileNavigation();
+    setGaragePanel('');
+    try {
+      const [{ createTechTreeScreen }] = await Promise.all([
+        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
+      ]);
+      const screen = createTechTreeScreen({
+        vehicles: specById,
+        selectedId,
+        onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
+        onClose: () => {
+          techTreeTrigger.setAttribute('aria-expanded', 'false');
+          screen.dispose();
+        },
+      });
+      screen.open(opener);
+      techTreeTrigger.setAttribute('aria-expanded', 'true');
+    } catch (err) {
+      // a failed chunk fetch: the next press retries
+      console.error('[garage] tech tree failed to open:', err);
+    } finally {
+      techTreeOpening = false;
+    }
+  };
+  techTreeTrigger.addEventListener('click', () => { void openTechTree(techTreeTrigger); });
   for (const item of root.querySelectorAll<HTMLElement>('[data-mobile-nav]')) {
     item.addEventListener('click', () => {
       const destination = item.dataset.mobileNav;
@@ -4446,6 +4485,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else if (destination === 'garage') emit('ui:click', {});
       else if (destination === 'studio') openStudio();
       else if (destination === 'gallery') openSelectedInGallery();
+      else if (destination === 'techTree') void openTechTree(mobileNavTrigger);
       else if (destination === 'docs') openDocs();
       else if (destination === 'locale') switchLocale();
       else if (destination === 'record') {
@@ -4497,6 +4537,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
       if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {

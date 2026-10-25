@@ -12,11 +12,13 @@ export interface StaticDrawRun {
 let frameDepth = 0;
 const pending: StaticDrawRange[] = [];
 
+// hot-path: every post transaction
 export function beginStaticDrawRangeFrame(): number {
   frameDepth++;
   return pending.length;
 }
 
+// hot-path: every post transaction
 export function endStaticDrawRangeFrame(marker: number): void {
   try {
     while (pending.length > marker) pending.pop()?.restore();
@@ -53,6 +55,7 @@ class StaticDrawRange {
     this.instanceVersion = instances?.instanceMatrix.version ?? 0;
   }
 
+  // hot-path: every draw of a static range
   private select(camera: Camera): void {
     // Test owner-local boxes directly against owner-local clip planes. This
     // covers root re-seating/rotation/non-uniform scale without transforming
@@ -80,6 +83,7 @@ class StaticDrawRange {
     this.count = Math.max(0, last - this.start);
   }
 
+  // hot-path: every draw of a static range
   before(camera: Camera): void {
     // A nested draw of this same mesh must not inherit its outer camera's
     // trimmed range. Restore and use the full range for that nested draw.
@@ -100,6 +104,7 @@ class StaticDrawRange {
     else this.geometry.setDrawRange(this.start, this.count);
   }
 
+  // hot-path: every draw of a static range
   restore(): void {
     if (!this.active) return;
     if (this.instances) this.instances.count = this.savedCount;
@@ -107,6 +112,7 @@ class StaticDrawRange {
     this.active = false;
   }
 
+  // hot-path: every draw of a static range
   after(): void {
     this.restore();
     if (pending[pending.length - 1] === this) pending.pop();

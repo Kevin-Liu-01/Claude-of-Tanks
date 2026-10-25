@@ -2,7 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
-import { getLocale } from '../ui/i18n.ts';
+import { getLocale, t } from '../ui/i18n.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
@@ -405,6 +405,8 @@ export function getStoredDifficulty() {
   return typeof d === 'string' && isAiDifficulty(d) ? d : 'normal';
 }
 
+/** The mouse's three buttons' catalog keys (the catalog's en reads LMB, MMB and RMB). */
+const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right' };
 const LABEL_SPECIAL: Record<string, string> = {
   Space: 'SPACE', Escape: 'ESC', Tab: 'TAB', CapsLock: 'CAPS',
   Enter: 'ENTER', NumpadEnter: 'NUM ENTER', Backspace: 'BKSP',
@@ -426,6 +428,9 @@ const LABEL_SPECIAL: Record<string, string> = {
  */
 export function labelForCode(code: string | null) {
   if (!code) return '—';
+  // (the mouse's buttons in the player's language: zh's hints read "LMB" beside 射击, gauntlet r4)
+  const mouse = MOUSE_LABELS[code];
+  if (mouse) return t(mouse);
   if (LABEL_SPECIAL[code]) return LABEL_SPECIAL[code];
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);

@@ -4,6 +4,7 @@ import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts'; // the shared acti
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { SMOKE_COOLDOWN_S, type AuxiliaryState } from '../sim/auxiliarySystems.ts';
 
+import * as detMath from '../sim/detMath.ts';
 interface AbilityEntity {
   modeActive?: boolean;
   modeJumpMps?: number | null;
@@ -68,8 +69,8 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     if (kit && endangered && recentHit) {
       for (const mount of kit.smoke) {
         const yaw = entity.state.yaw + (mount.owner === 'turret' ? entity.state.turretYaw : 0)
-          + Math.atan2(mount.direction[0], mount.direction[2]);
-        if (Math.cos(context.hitBearing - yaw) > 0.5) { screensThreat = true; break; }
+          + detMath.atan2(mount.direction[0], mount.direction[2]);
+        if (detMath.cos(context.hitBearing - yaw) > 0.5) { screensThreat = true; break; }
       }
     }
     if (screensThreat && entity.state.grounded && (aux?.smokeCharges ?? 3) > 0

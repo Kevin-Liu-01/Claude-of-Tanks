@@ -7,7 +7,6 @@ import { shellTypeLabel } from './shellLabels.ts';
 import { getLocale, setLocale } from './i18n.ts';
 
 const mutations = [];
-const colors = { APFSDS: '#aabbcc', HE: '#ddeeff' };
 const underlines = { APFSDS: 'silver', HE: 'olive' };
 
 function element(name) {
@@ -69,7 +68,6 @@ function fixture(index) {
     typeLabel(type) { localizationCalls.type++; return shellTypeLabel(type); },
     count: shell => ammunitionSlotViewState(shell).count,
     selectionLabel(...args) { localizationCalls.selection++; return ammunitionSelectionLabel(...args); },
-    typeColors: colors,
     underlineColors: underlines,
   });
   return { slot, elements, icons, localizationCalls };
@@ -97,7 +95,8 @@ function assertCard(index, selected, pending = false) {
   const type = card.type || '';
   const view = ammunitionSlotViewState(card, selected);
   assert.equal(elements.type.textContent, shellTypeLabel(type));
-  assert.equal(elements.type.style.color, colors[type] || '#9fb0bf');
+  // (the code's ink is the slot's CSS, neutral or the selection's accent: gauntlet r3 found a salmon HEAT of its own)
+  assert.equal(elements.type.style.color ?? '', '');
   assert.equal(elements.underline.style.background, underlines[type] || 'rgba(146,164,180,.4)');
   assert.equal(elements.name.textContent, card.name || '—');
   assert.equal(elements.penetration.textContent, card.penLabel == null ? '—' : String(card.penLabel));

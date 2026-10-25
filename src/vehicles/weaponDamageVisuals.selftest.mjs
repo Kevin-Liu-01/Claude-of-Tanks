@@ -13,5 +13,12 @@ assert.deepEqual(attr.array.slice(split),original.slice(split),'adjacent armor r
 const version=attr.version;paint.set('missileRack','red');assert.equal(attr.version,version,'duplicate snapshots do not re-upload');
 paint.set('missileRack','yellow');assert(attr.array[0]>.3,'repair removes severe damage');
 paint.reset();assert.deepEqual(attr.array,original,'reset restores exact original colors');
-for(const g of [weapon,armor,merged])g.dispose();
-console.log('weaponDamageVisuals: localized damage, idempotent updates and exact repair passed');
+// 251: the turret seat draws a mesh on its own copy of its geometry (turretSeatRace.ts onSeated): scorch follows the copy
+const seated=merged.clone();paint.follow(merged,seated);
+assert.equal(paint.ownsGeometry(seated),true,'the seated copy is the scorched buffer');
+paint.set('missileRack','red');
+assert(seated.attributes.color.array.slice(0,split).every(v=>v<.2),'the drawn (seated) stock scorches');
+assert.deepEqual(attr.array,original,'the detached built buffer stays as built');
+paint.reset();assert.deepEqual(seated.attributes.color.array,original,'reset restores the seated copy');
+for(const g of [weapon,armor,merged,seated])g.dispose();
+console.log('weaponDamageVisuals: localized damage, idempotent updates, exact repair and seat hand-over passed');

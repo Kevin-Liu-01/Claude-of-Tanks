@@ -42,6 +42,7 @@
  */
 import * as THREE from 'three';
 
+import * as detMath from '../sim/detMath.ts';
 /** Fraction of the physical bounce the legacy rig applies (its hemisphere / fill were tuned without it); the grounded
  * model (lightModel.ts) passes 1 through GroundBounceRigInput.gain. */
 export const GROUND_BOUNCE_GAIN = 0.6;
@@ -74,7 +75,7 @@ export function groundBounceViewFactor(normalY: number): number {
 
 /** The share of the ground a face looks at that is sunlit (the object's own shadow and the low sun). */
 export function groundBounceGroundLit(normal: Vec3Like, sunDir: Vec3Like): number {
-  const h = Math.hypot(sunDir.x, sunDir.z);
+  const h = detMath.hypot(sunDir.x, sunDir.z);
   const sunHx = h > 1e-3 ? sunDir.x / h : 0, sunHz = h > 1e-3 ? sunDir.z / h : 0;
   const away = Math.max(-(normal.x * sunHx + normal.z * sunHz), 0);
   const low = THREE.MathUtils.clamp(1 - sunDir.y, 0, 1);

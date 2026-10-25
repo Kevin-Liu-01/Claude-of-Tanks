@@ -5,6 +5,7 @@
 // Everything here is pure arithmetic over two team centres so the terrain
 // build, which runs before any match state exists, and the match state, which
 // runs after the terrain, agree on the same lines to the millimetre.
+import * as detMath from './detMath.ts';
 
 export const ASSAULT_LINE_FRACTIONS = [0.25, 0.55, 0.85] as const;
 
@@ -76,7 +77,7 @@ export function assaultTeamCenters(
 
 export function planAssaultTrenchLines(alpha: AssaultPoint, bravo: AssaultPoint): AssaultTrenchPlan {
   const dx = bravo.x - alpha.x, dz = bravo.z - alpha.z;
-  const axisLength = Math.hypot(dx, dz);
+  const axisLength = detMath.hypot(dx, dz);
   if (!(axisLength >= ASSAULT_TRENCH.minAxisM)) return { lines: [], connector: null };
   const ax = dx / axisLength, az = dz / axisLength;
   const lines = ASSAULT_LINE_FRACTIONS.map((fraction) => ({
@@ -109,7 +110,7 @@ export const FIELD_TRENCH = Object.freeze({
 
 export function planFieldTrenchLines(alpha: AssaultPoint, bravo: AssaultPoint): AssaultTrenchPlan {
   const dx = bravo.x - alpha.x, dz = bravo.z - alpha.z;
-  const axisLength = Math.hypot(dx, dz);
+  const axisLength = detMath.hypot(dx, dz);
   if (!(axisLength >= FIELD_TRENCH.minAxisM)) return { lines: [], connector: null };
   const ax = dx / axisLength, az = dz / axisLength;
   const lx = -az, lz = ax;
@@ -159,7 +160,7 @@ export function assaultTrenchCarveDepth(x: number, z: number, plan: AssaultTrenc
       const t = ((x - c.x0) * sx + (z - c.z0) * sz) / len2;
       if (t >= 0 && t <= 1) {
         const px = c.x0 + sx * t - x, pz = c.z0 + sz * t - z;
-        const across = Math.hypot(px, pz);
+        const across = detMath.hypot(px, pz);
         depth = Math.max(depth, ASSAULT_TRENCH.connectorDepthM
           * trenchProfile(across, ASSAULT_TRENCH.connectorHalfWidthM, ASSAULT_TRENCH.connectorWallRunM));
       }

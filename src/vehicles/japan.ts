@@ -97,6 +97,8 @@ function variant(
 // Type 90 is the mobile Tier IX three-round autoloader. Type 10 is the Tier X
 // single-shot vehicle with stronger fire control, ammunition and protection.
 const type90_kyumaru = registries.tankSpecs.type90_kyumaru;
+// owner 2026-10-25: the first TK-X prototype (tankLabels.ts); its builder marks it from this number
+type90_kyumaru.visual.number = 'STC-1';
 Object.assign(type90_kyumaru, {
   hp: 2250,
   enginePowerHp: 1500,
@@ -147,7 +149,7 @@ const JAPAN_SPECS = {
     reloadS: 7.2, shellName: 'Type 93 APFSDS', armorFactor: 1.03,
   }),
   type90a: variant('type90a', 'type90_kyumaru', {
-    name: 'Type 90A', number: '90-A', scheme: 'stripes',
+    name: 'STC-2', number: 'STC-2', scheme: 'stripes',
     base: '#3f4c39', weather: '#5c624d', patches: ['#253127', '#6b5d3c', '#807458'],
     camoScale: 0.44,
     dims: { hullLengthM: 7.55, overallLengthM: 9.80, widthM: 3.43, heightM: 2.34 },

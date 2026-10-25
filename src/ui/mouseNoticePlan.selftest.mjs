@@ -128,7 +128,8 @@ const pins = [
   [/const sideX = draw\.cx - draw\.magazineHalfW - 7 - textW - unitW;/, R.besideCountdownPx >= 19 + 7 + 50],
   // the chip: under the marker and the column's marks, or over the sight
   [/const AIM_WARNING_CHIP_ABOVE = 14;/, R.chipAbovePx === 14], [/const AIM_WARNING_CHIP_BELOW = 10;/, R.chipBelowPx === 10],
-  [/draw\.warningW = ctx\.measureText\(warning\.text\)\.width \+ 50;/, R.chipHalfWidthPx === 92],
+  [/draw\.warningW = Math\.ceil\(ctx\.measureText\(warning\.text\)\.width \+ warning\.text\.length \* AIM_WARNING_TRACK_PX\) \+ 62;/,
+    R.chipHalfWidthPx === 122],
   [/let y = Math\.max\(draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\),/, R.chipMinPx === 62 && R.chipRingPx === 24],
   [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
   [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],
@@ -141,7 +142,8 @@ const pins = [
   [new RegExp(String.raw`const SNIPER_ROW_PLACES: readonly \(readonly \[SniperRowMode, boolean, boolean, boolean\]\)\[\] = \[\s+\['stack', false, false, false\], \['zoomBeside', false, false, false\], \['chipBeside', false, false, true\],\s+\['stack', true, false, true\], \['zoomBeside', true, false, true\], \['rowBeside', false, false, false\],\s+\['rowAbove', false, false, false\], \['rowAbove', true, false, true\], \['stack', false, true, false\], \['stack', true, true, true\],\s+\['rowAbove', false, true, false\], \['rowAbove', true, true, true\],\s+\];`), true],
   // the range tag at the 4:30, past a rack, or at the 1:30
   [/const offset = 0\.7071 \* \(draw\.radius \+ 9\);/, true], [/const rackClear = draw\.magazine \? draw\.magazineHalfW \+ 10 - 4 : 0;/, true],
-  [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],
+  [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear, HIT_SHARD_CLEAR\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],
+  [/const HIT_SHARD_CLEAR = Math\.ceil\(0\.7071 \* \(18\.5 \+ 13\) \+ 3\.5\);/, R.rangeShardPx === Math.ceil(0.7071 * (18.5 + 13) + 3.5)],
   [/const y = draw\.cy - offset - 3\.5 - 11\.5 \* 0\.08;/, R.rangeOverPx === 3.5],
 ];
 for (const [pattern, restated] of pins) {

@@ -175,9 +175,10 @@ try {
   assert.equal(writes,beforePinch,'a resting page scale is not a pinch either');
   Object.assign(viewport,{scale:1,width:1366,height:768});
   assert.equal(listeners.has('viewport:resize'),false,'no direct visual viewport listener: cot:layoutchange carries real changes');
-  const before=properties.get('--hud-right-height');
+  // (the right column's report dock is held only while a report shows: the left lane's height carries the change)
+  const before=properties.get('--hud-left-height');
   viewport.height=420;listeners.get('cot:layoutchange')();flush();
-  assert.notEqual(properties.get('--hud-right-height'),before,'virtual keyboard changes available space');
+  assert.notEqual(properties.get('--hud-left-height'),before,'virtual keyboard changes available space');
   const late=node({class:'cot-room-chat quiet'});visibleNodes.push(late);
   callbacks.mutation([{type:'childList',target:body}]);
   assert.equal(frames.size,1,'late-added chat/panels still trigger discovery');flush();
@@ -201,13 +202,16 @@ try {
   const stripButton=node({class:'cot-mp-strip good'});stripButton.getBoundingClientRect=()=>rect(8,36,1210,1356);
   const plate=node({class:'cot-net'});const score=node({class:'cot-top'});score.getBoundingClientRect=()=>rect(0,64,511,855);
   let stripMounted=true;let plateShown=false;
-  const mounted={'.cot-ear.r':()=>earRight,'.cot-mp-status.battle':()=>stripMounted?strip:null,
+  // (a report shows: the dock is held only while one does)
+  const cards=node({class:'cot-si-cardhost'});cards.childElementCount=1;cards.getBoundingClientRect=()=>rect(106,366,1050,1350);
+  const mounted={'.cot-si-cardhost':()=>cards,'.cot-ear.r':()=>earRight,'.cot-mp-status.battle':()=>stripMounted?strip:null,
     '.cot-mp-status.battle .cot-mp-strip':()=>stripMounted?stripButton:null,'.cot-net':()=>plateShown?plate:null,'.cot-top':()=>score};
   globalThis.document.querySelector=selector=>mounted[selector]?.()??null;
   assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
   listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the corner-row strip leaves the enemies roster on its own lane');
-  assert.equal(properties.get('--hud-right-top'),'106px','the report budget keeps the default roster start');
+  // (the report leaves the feed one row under the roster: REPORT_FEED_ROOM, gauntlet r3)
+  assert.equal(properties.get('--hud-right-top'),'116px','the report budget keeps the default roster start');
   assert.equal(properties.get('--hud-network-corner-right'),'10px','without the fps/ping plate the strip takes the corner itself');
   plateShown=true;plate.getBoundingClientRect=()=>rect(8,36,1248,1356);
   callbacks.resize();flush();
@@ -230,7 +234,7 @@ try {
   strip.getBoundingClientRect=()=>rect(140,168,20,180);
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
-  assert.equal(properties.get('--hud-right-top'),'106px','the report budget returns to the default roster start');
+  assert.equal(properties.get('--hud-right-top'),'116px','the report budget returns to the default roster start');
   // A phone-width mouse window has no roster: the folded strip takes the right lane under the objective, and the
   // right kill feed starts below it.
   body.dataset.cotWidth='phone';mounted['.cot-ear.r']=()=>null;
@@ -342,7 +346,7 @@ try {
         ears=[ear('l'),ear('r')];
         return {'.cot-ear.l':ears[0],'.cot-ear.r':ears[1],'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
           '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
-          '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
+          '.cot-si-cardhost':Object.assign(node([],rect(1050,260,300,260)),{childElementCount:1}),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
       run.settle();return run;};
     const placed=h=>['revive-top','revive-scale','notice-top','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
     const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
@@ -366,7 +370,7 @@ try {
     {
       const run=harness({extra:node=>({'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
         '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
-        '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
+        '.cot-si-cardhost':Object.assign(node([],rect(1050,260,300,260)),{childElementCount:1}),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
       for(const name of ['notice-x','alert-x','alert-shift','banner-x','revive-x','countdown-x'])
         assert.equal(run.properties.has(`--hud-${name}`),false,`1366 x 768 writes no --hud-${name}`);
       assert.ok(run.properties.has('--hud-notice-top')&&run.properties.has('--hud-alert-top'),'and writes the notices\' tops');
@@ -378,7 +382,7 @@ try {
       let banner;
       const run=harness({width:1000,height:551,extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),
         '.cot-mode-status.show':node([],rect(370,62,260,41)),'.cot-dp':node([],rect(12,356,160,183)),'.cot-drive':node([],rect(184,431,108,108)),
-        '.cot-vehicle-controls':node([],rect(308,431,382,32)),'.cot-shells':node([],rect(284,471,433,64)),'.cot-si-cardhost':node([],rect(684,196,300,151)),
+        '.cot-vehicle-controls':node([],rect(308,431,382,32)),'.cot-shells':node([],rect(284,471,433,64)),'.cot-si-cardhost':Object.assign(node([],rect(684,196,300,151)),{childElementCount:1}),
         '.cot-net':node([],rect(863,8,127,28)),'.cot-minimap':node([],rect(808,359,176,176))})});
       assert.match(run.body.dataset.hudNoticeTiers,/ m[01]/,'the card here clears less than the whole reticle');
       assert.equal(banner.dataset.placement,'ready','and shows with the scope down');
@@ -402,7 +406,7 @@ try {
           inRoot:{'.cot-kill-lane.l':()=>lane(left),'.cot-kill-lane.r':()=>lane(right),'.cot-sixth.on':()=>detected?{}:null},
           extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),'.cot-mode-status.show':node([],rect(77,61,236,41)),
             '.cot-dp':node([],rect(8,579,120,137)),'.cot-drive':node([],rect(140,635,81,81)),'.cot-vehicle-controls':node([],rect(12,744,366,32)),
-            '.cot-shells':node([],rect(12,500,366,332)),'.cot-si-cardhost':node([],rect(203,375,175,260)),'.cot-net':node([],rect(120,109,88,20)),
+            '.cot-shells':node([],rect(12,500,366,332)),'.cot-si-cardhost':Object.assign(node([],rect(203,375,175,260)),{childElementCount:1}),'.cot-net':node([],rect(120,109,88,20)),
             '.cot-minimap':node([],rect(8,109,104,104))})});
         return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement,run.properties,banner.dataset.size];
       };
@@ -497,9 +501,12 @@ try {
     }, 366);
     const centre = 844 / 2;
     assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
-    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [12, 366], '390x844: whole, where it was across');
+    // (on the window's centre line by its rendered width, 364 px: gauntlet r5 found it pressed to the right edge)
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [13, 366], '390x844: whole, on the centre line');
     // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
-    assert.equal(phone.px('kill-left-top'), 211, 'the left lane starts under the map');
+    // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
+    // gauntlet r5)
+    assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
     assert.equal(phone.px('kill-right-height'), 5 * 29 - 3, '390x844: the right kill lane stops above the moved row');
@@ -515,8 +522,9 @@ try {
     assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
     assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
       'tall: level with the tray, the row sits left of it, whole within the space');
-    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408
-    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 408], 'tall: under the map and the chrome');
+    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408, the
+    // right lane's moved 3 px down onto the left's row (one pitch: their rows sat 3 px apart, gauntlet r5)
+    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
     assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
   } finally {
@@ -671,7 +679,7 @@ assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'
 assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
 assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');
 assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
-assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,calc\(var\(--hud-band-h\) \+ 8px\)\);\}/,'the right roster reads its lane from the layout, with its own lane (under the corner plate) as the fallback');
+assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,var\(--hud-ears-top,calc\(var\(--hud-band-h\) \+ 8px\)\)\);\}/,'the right roster reads its lane from the layout, with its own lane (under the corner plate) as the fallback');
 assert.match(hud,/installBattleHudLayout\(root\)/);
 const shot=readFileSync(new URL('./shotInfo.ts',import.meta.url),'utf8');
 assert.doesNotMatch(shot,/t\('shotInfo\.(yourShots|yourShotsLast|damageReceived)'/,'log headings use existing GT catalog entries');

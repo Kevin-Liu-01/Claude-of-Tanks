@@ -1,0 +1,24 @@
+[package]
+name = "cot-sim"
+description = "Claude of Tanks deterministic simulation core — the Rust port of src/sim (see docs/PORT-BEVY.md)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Pure-Rust libm: the same transcendental bits on the native server and in
+# the browser bundle. std's f64 methods call the platform's libm and differ
+# per target, which would break the one-simulation-everywhere rule.
+libm = "0.2"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: the golden vectors' doubles parse to the exact bits JSON.stringify wrote (the default parser is
+# not correctly rounded: it read mulberry32's exact u32 / 2^32 draws 1 ulp off)
+serde_json = { version = "1", features = ["float_roundtrip"] }

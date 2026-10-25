@@ -33,6 +33,7 @@
  */
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
 
+import * as detMath from './detMath.ts';
 export const RIGID_STEP_S = 1 / 60;
 
 /** Penetration the split impulse leaves alone (m) and the share of the rest it removes a step. */
@@ -362,7 +363,7 @@ function cylinderSpheres(build: ShapeBuild, part: Extract<RigidPartSpec, { kind:
     for (let k = 0; k < segments; k++) {
       // the ring's directions from a rotation recurrence (no trigonometry per point beyond the first)
       const angle = (2 * Math.PI * k) / segments;
-      rotateBy(part.rotation, (r - e) * Math.cos(angle), cap * (h - e), (r - e) * Math.sin(angle), v);
+      rotateBy(part.rotation, (r - e) * detMath.cos(angle), cap * (h - e), (r - e) * detMath.sin(angle), v);
       pushSphere(build, part.center[0] + v[0], part.center[1] + v[1], part.center[2] + v[2], e);
     }
   }
@@ -472,7 +473,7 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
   for (let i = 0; i < build.spheres.length; i += 4) {
     spheres[i] = build.spheres[i] - cx; spheres[i + 1] = build.spheres[i + 1] - cy; spheres[i + 2] = build.spheres[i + 2] - cz;
     spheres[i + 3] = build.spheres[i + 3];
-    radius = Math.max(radius, Math.hypot(spheres[i], spheres[i + 1], spheres[i + 2]) + spheres[i + 3]);
+    radius = Math.max(radius, detMath.hypot(spheres[i], spheres[i + 1], spheres[i + 2]) + spheres[i + 3]);
   }
   const solids = new Float64Array(build.solids.length);
   for (let i = 0; i < build.solids.length; i += SOLID_STRIDE) {
@@ -484,13 +485,13 @@ export function createRigidShape(parts: readonly RigidPartSpec[], options: Rigid
       const v: number[] = [0, 0, 0];
       for (let corner = 0; corner < 8; corner++) {
         rotateBy(q, (corner & 1 ? 1 : -1) * solids[i + 8], (corner & 2 ? 1 : -1) * solids[i + 9], (corner & 4 ? 1 : -1) * solids[i + 10], v);
-        radius = Math.max(radius, Math.hypot(solids[i + 1] + v[0], solids[i + 2] + v[1], solids[i + 3] + v[2]));
+        radius = Math.max(radius, detMath.hypot(solids[i + 1] + v[0], solids[i + 2] + v[1], solids[i + 3] + v[2]));
       }
     } else {
       solids[i + 1] -= cx; solids[i + 2] -= cy; solids[i + 3] -= cz;
       solids[i + 4] -= cx; solids[i + 5] -= cy; solids[i + 6] -= cz;
-      radius = Math.max(radius, Math.hypot(solids[i + 1], solids[i + 2], solids[i + 3]) + solids[i + 7],
-        Math.hypot(solids[i + 4], solids[i + 5], solids[i + 6]) + solids[i + 7]);
+      radius = Math.max(radius, detMath.hypot(solids[i + 1], solids[i + 2], solids[i + 3]) + solids[i + 7],
+        detMath.hypot(solids[i + 4], solids[i + 5], solids[i + 6]) + solids[i + 7]);
     }
   }
   return Object.freeze({
@@ -781,7 +782,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         lx = x - ox; lz = z - oz;
       } else {
         ox = part.cx; oz = part.cz; hw = part.hw; hl = part.hl;
-        fx = Math.sin(part.yaw); fz = Math.cos(part.yaw); rx = fz; rz = -fx;
+        fx = detMath.sin(part.yaw); fz = detMath.cos(part.yaw); rx = fz; rz = -fx;
         const dx = x - ox, dz = z - oz;
         lx = dx * rx + dz * rz; lz = dx * fx + dz * fz;
       }
@@ -863,7 +864,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   function footprintBox(part: SimpleCollisionShape | null, record: CollisionRecord): void {
     if (part === null) { fbS[0] = record.min[0]; fbS[1] = record.min[2]; fbS[2] = record.max[0]; fbS[3] = record.max[2]; return; }
     if (part.kind === 'obb') {
-      const sn = Math.abs(Math.sin(part.yaw)), cs = Math.abs(Math.cos(part.yaw));
+      const sn = Math.abs(detMath.sin(part.yaw)), cs = Math.abs(detMath.cos(part.yaw));
       const ex = cs * part.hw + sn * part.hl, ez = sn * part.hw + cs * part.hl;
       fbS[0] = part.cx - ex; fbS[1] = part.cz - ez; fbS[2] = part.cx + ex; fbS[3] = part.cz + ez;
       return;
@@ -951,7 +952,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         if (y0 > bminY[i]) { qS[0] = p[a]; qS[1] = y0; qS[2] = p[a + 1]; featureIntoBody(i, -2); }
       }
     } else if (part !== null && part.kind === 'obb') {
-      const fx = Math.sin(part.yaw), fz = Math.cos(part.yaw), rx = fz, rz = -fx;
+      const fx = detMath.sin(part.yaw), fz = detMath.cos(part.yaw), rx = fz, rz = -fx;
       for (let corner = 0; corner < 4; corner++) {
         const sw = corner & 1 ? part.hw : -part.hw, sl = corner & 2 ? part.hl : -part.hl;
         const x = part.cx + rx * sw + fx * sl, z = part.cz + rz * sw + fz * sl;

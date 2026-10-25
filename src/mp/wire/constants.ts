@@ -17,7 +17,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // 9,119 crushable props; now any legal set fits (at most 8 KB).
 // 7 (the MP stream, 2026-10-15): a delta's viewer names only the movement checkpoint values that changed since its
 // baseline's (a mask and those values; the version byte's high bit marks it): 253 -> ~152 bytes a snapshot while driving.
-export const WIRE_VERSION = 7;
+// 8 (mp-scale-251, 2026-10-24): an event's payload is a tagged binary value instead of JSON (eventPayload.ts: keys from a
+// fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
+export const WIRE_VERSION = 8;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -28,7 +30,10 @@ export const WIRE_VERSION = 7;
 // 7 (2026-10-13, SSOT 2.19): tank id schema 2 (src/vehicles/tankIdAliases.ts). Builds of two id schemas never share a
 // match: a swapped id would name another vehicle on the other side.
 // 8 (ID.04/05, SSOT 2.19): tank id schema 3, the bulk rename (130 ids, 27 swaps).
-export const PROTOCOL_VERSION = 8; // aerial supply actions and expanded mode checkpoints; tank id schema 3
+// 9 (release 252, 2026-10-25): wire 8 (mp-scale-251's binary event payloads, per-viewer keyframe slots and budgets),
+// rooms sized by each mode's ruleset, the authority's equipment validation (equipment-249) and detMath in the authority:
+// a 251 tab and a 252 tab never share a match (the joining side reads "Refresh to join this match").
+export const PROTOCOL_VERSION = 9; // wire 8, ruleset room sizes, equipment validation, pinned math
 
 export const TICK_HZ = 60;
 /**

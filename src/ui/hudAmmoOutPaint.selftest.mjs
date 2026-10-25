@@ -794,16 +794,18 @@ for (const [id, label] of [['m1a1_abrams_hc', 'struck round'], ['m1a3', 'struck 
         const at = `${id}, a ${Math.round(ring.r)} px ring, ${kind}`;
         const warning = aimWarningState(warn);
         assert.equal(warning.kind, kind);
-        const text = ops.find((op) => op.op === 'fillText' && op.text === warning.text);
-        assert.ok(text, `${at}: the canvas paints the warning`);
-        const chip = ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, text.box));
-        assert.ok(chip, `${at}: the warning's chip`);
+        // (the chip is the DOM plate the reticle seats in every layout, its words inside it: gauntlet r3 retired the
+        // mouse layout's canvas hex, so the canvas paints no warning and the plate keeps off the marks)
+        assert.ok(!ops.some((op) => op.op === 'fillText' && op.text === warning.text), `${at}: the canvas paints no warning`);
+        const dom = created.find((element) => element.classes.has('cot-aim-warning'));
+        assert.ok(dom && !dom.hidden && dom.dataset.seat === 'sight', `${at}: the warning's chip is seated by the sight`);
+        const px = (name) => parseFloat(dom.style.getPropertyValue(name));
+        const chip = { box: { x0: px('--hud-aim-warning-x'), y0: px('--hud-aim-warning-y'),
+          x1: px('--hud-aim-warning-x') + px('--hud-aim-warning-w'), y1: px('--hud-aim-warning-y') + 24 } };
         const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
         assert.ok(marks.length && Math.min(...marks.map((op) => op.box.y0)) > ring.y + ring.r, `${at}: the ${label} sits below the ring`);
         for (const mark of marks) {
           const what = mark.lineWidth === 1.5 ? 'strike' : label;
-          assert.ok(apart(text.box, mark.box) >= 3,
-            `${at}: the warning text keeps ${apart(text.box, mark.box).toFixed(2)} px from the ${what}`);
           assert.ok(apart(chip.box, mark.box) > 0, `${at}: the warning chip covers the ${what}`);
         }
       }
@@ -1047,7 +1049,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
   // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape and a
   // portrait phone 340 px wide or less park it in the left lane, with the furniture: r10g)
-  const seated = touch ? seatedChipBox() : null;
+  const seated = seatedChipBox();
   // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
     : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
@@ -1055,13 +1057,13 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550)
     || (touch && windowStub.innerHeight >= windowStub.innerWidth && windowStub.innerWidth <= 340)
     || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
-  assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
+  assert.ok(!warningText, `${at}: the canvas paints no warning (the DOM chip is every layout's, gauntlet r3)`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
   const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
   const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
   const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
   const zoom = ops.find((op) => op.op === 'fillText' && /^×/.test(op.text));
-  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(170,240,178,0.5)');
+  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(126,232,126,0.5)');
   const line = ops.filter((op) => op.op === 'fillText' && op.style !== INK.reload
     && (/^(\d+|∞) $/.test(op.text) || (/^[A-Z]+$/.test(op.text) && op !== warningText)));
   // (the zoom plate is left out only where the screen leaves it no room clear of the furniture)
@@ -1247,6 +1249,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         }
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
+        // (the touch detection's 180 px: the stacked notices are one column, gauntlet r4)
         assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
         if (chip.box.y1 < ring.y - ring.r) over++;
         assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);

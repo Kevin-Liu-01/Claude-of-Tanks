@@ -17,6 +17,7 @@ import type {
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import { warmDepthProgramSteps } from '../engine/depthProgramWarm.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import {
   captureNewProgramUniformSteps,
   ProgramUniformPreparationError,
@@ -594,6 +595,24 @@ interface StudioFxPort extends BattleFxPort {
 
 interface BattlePostPort {
   prepareSoftParticles(): void;
+  /** The late pass's own draw of the late layer (post.ts LateFxPass.warmDraw): its single-sample, depth-texture target. */
+  warmLateFxDraw?(): void;
+}
+
+/**
+ * (battle-spikes-253; the GPU-pipelines-per-target lesson) the volley's late-layer effects drawn again through the late
+ * pass's own target, two at a time, after the forward warm drew them into its multisampled one: a GPU pipeline is made
+ * per program and attachment set, so the late pass's single-sample, depth-texture draws otherwise made theirs at the
+ * battle's first late frame that drew each effect (the cold battles' "gpu busy" hitches). As the deployment's
+ * (soloBattleDeploymentRuntime.ts); no draws without the post's late warm.
+ */
+function* lateFxWarmBatches(context: CombatWarmRuntimeContext): Generator<DeploymentForwardWarmBatch, void, void> {
+  const post = context.post;
+  if (!post.warmLateFxDraw) return;
+  yield* context.createIsolatedForwardWarmBatches({
+    scene: context.scene, root: context.fx.group, warmRender: () => post.warmLateFxDraw!(), cohortSize: 2,
+    select: (object) => object.layers.isEnabled(LATE_FX_LAYER),
+  });
 }
 
 export interface OpeningEffectsWarmOptions {
@@ -1453,7 +1472,8 @@ function* compileHiddenVariantsSteps(
  * effect root's programs are compiled in place instead (forwardProgramWarm.initializeSteps: no spawn, no visibility).
  */
 function warmsBetweenLiveFrames(context: CombatWarmRuntimeContext, execution?: CombatWarmExecution): boolean {
-  return execution?.cooperative === true && (context.game as { phase?: string }).phase === 'battle';
+  // (battle-spikes-253) a cooperative job behind the entry veil (a session's first battle) warms as a covered load
+  return execution?.cooperative === true && execution.covered !== true && (context.game as { phase?: string }).phase === 'battle';
 }
 
 function noteRareWarmStep(step: string | null): void {
@@ -1552,6 +1572,10 @@ export function* createCombatOpeningWarmSteps(
         };
         effectDetail.warmRenderBatches = batches;
         effectDetail.warmRender = batches.reduce((sum, batch) => sum + batch.ms, 0);
+        let lateMs = 0, late = 0;
+        for (const batch of lateFxWarmBatches(context)) { late++; lateMs += batch.ms; yield; }
+        effectDetail.lateFxBatches = late;
+        effectDetail.lateFxMs = Math.round(lateMs);
       } finally {
         camera.layers.mask = warmLayerMask;
       }
@@ -1630,6 +1654,11 @@ function* warmCombatDestructionEffectSteps(
       for (const batch of context.createIsolatedForwardWarmBatches({
         scene, root: fx.group, warmRender: context.warmRender, cohortSize: 1,
       })) {
+        batches += 1;
+        maxBatchMs = Math.max(maxBatchMs, batch.ms);
+        yield batch;
+      }
+      for (const batch of lateFxWarmBatches(context)) {
         batches += 1;
         maxBatchMs = Math.max(maxBatchMs, batch.ms);
         yield batch;

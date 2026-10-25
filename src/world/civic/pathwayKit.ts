@@ -162,8 +162,11 @@ interface Sample {
   past?: boolean;
 }
 
-/** The pathway architecture of a town from its plan. */
-export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle, ctx: PathwayContext): PathwayBuild {
+/**
+ * The pathway architecture of a town from its plan, a street at a time (battle-spikes-253: the props build yields between
+ * the streets' corners, runs and laying; Steinburg's network was one 296 ms task).
+ */
+export function* buildPathwayNetworkSteps(plan: PathwayPlan, style: RegionalCivicStyle, ctx: PathwayContext): Generator<void, PathwayBuild, void> {
   const census: Record<string, number> = { legacyPieces: burnLegacyKerbDraws(ctx) };
   const debug: PathwayBuild['debug'] = [];
   const footprints: PathwayFootprint[] = [];
@@ -196,6 +199,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   const dot2 = (p: readonly number[], q: readonly number[]) => p[0] * q[0] + p[1] * q[1];
   const corners: Corner[] = [];
   for (const ri of kerbed) {
+    yield;
     const A = ctx.roads[ri];
     for (let rj = 0; rj < ctx.roads.length; rj++) {
       if (rj === ri || classOf(rj) === 'none') continue;
@@ -266,6 +270,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   // ---------------------------------------------------------------------------------------------- the runs
   const runsByRoad: Array<{ ri: number; side: number; samples: Sample[]; from: number; to: number }> = [];
   for (const ri of kerbed) {
+    yield;
     const road = ctx.roads[ri], rs = resample(road, step), pr = prof(ri);
     for (const side of [-1, 1]) {
       const samples: Sample[] = rs.p.map(([x, z], i) => {
@@ -385,6 +390,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   // and the flags meet the return; a house at the kerb, a junction's mouth or the square on the way stops it
   const metA = new Set<Corner>(), metB = new Set<Corner>();
   for (const run of runsByRoad) {
+    yield;
     const S = run.samples;
     for (const dir of [1, -1] as const) {
       const end = dir === 1 ? run.to : run.from, e = S[end];
@@ -426,6 +432,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     return f;
   };
   for (const run of runsByRoad) {
+    yield;
     const S = run.samples;
     // its kerb units and its flags, sample to sample
     const n = run.to - run.from;
@@ -493,6 +500,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
 
   // ------------------------------------------------------------------------------------- the returns at the lanes
   for (const c of corners) {
+    yield;
     const R = plan.returnR, O = c.O, TA = c.TA, TB = c.TB;
     // only where the street's run comes up to the corner (carried on to its tangent point above, on this side)
     if (!metA.has(c)) continue;

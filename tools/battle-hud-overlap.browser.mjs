@@ -20,7 +20,9 @@ const out = resolve(arg('out', 'outputs/battle-hud-overlap'));
 await mkdir(out, { recursive: true });
 
 /** [name, width, height, touch] */
-export const CASES = [['1440x900', 1440, 900, false], ['1280x720', 1280, 720, false], ['1024x600', 1024, 600, false],
+/** The UI gauntlet's eight sizes (owner 2026-10-25: every surface at 2560 to the phones; 900x700 caught what 1024 did not). */
+export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
+  ['1280x720', 1280, 720, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
 export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
@@ -30,7 +32,7 @@ export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
   '.cot-medal-toasts', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
   '.cot-si-toasthost', '.cot-si-log.open', '.cot-si-cardhost:not(:empty)', '.cot-room-chat:not([hidden])', '.cot-spec.show',
-  '.cot-watch', '.cot-hints.show', '.cot-drive', '.cot-dp', '.cot-minimap', '.cot-shell', '.cot-con', '.cot-vehicle-controls',
+  '.cot-watch', '.cot-watch-rail', '.cot-hints.show', '.cot-drive', '.cot-dp', '.cot-minimap', '.cot-shell', '.cot-con', '.cot-vehicle-controls',
   '.cot-flight-hud .flight-console', '.cot-flight-hud .gunship-solution', '.cot-scope-vision',
   '.cot-touch.on .joy', '.cot-touch.on .round', '.cot-touch.on .mobile-chrome', '.cot-touch.on .quick'];
 /** Deliberate layerings: [selector a, selector b, why]. A pair matches in either order. */

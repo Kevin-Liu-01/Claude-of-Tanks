@@ -10,7 +10,7 @@ assert.deepEqual([...source.matchAll(/class="mode" data-mode="([^"]+)"/g)].map(m
 assert.doesNotMatch(source, /rankedServiceClient|rankedQueueLifecycle|onRankedStart|data-ranked|data-mode="ranked"/,
   'the removed mode cannot warm, queue, or render through the Play menu');
 assert.match(source, /showRoomFailure\(reason: string, mode\?: PlayMode\): void/);
-assert.match(source, /class="room-failure" hidden role="alert" aria-atomic="true" tabindex="-1"/);
+assert.match(source, /class="room-failure cot-c-notice" data-severity="error" hidden role="alert" aria-atomic="true" tabindex="-1"/);
 assert.match(source, /aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail"/);
 for (const action of ['retry', 'code', 'garage']) {
   assert.match(source, new RegExp(`<button[^>]+data-room-failure="${action}"[^>]+type="button"`));
@@ -74,7 +74,8 @@ assert.match(source, /!handedOff && !activeRoom && hasMatchStart\(session\);/,
 assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);
-assert.match(source, /\.room-failure:focus-visible\{outline:2px/);
+// (2026-10-25 gauntlet r3) a focused failure wears the kit's one focus ring
+assert.match(source, /:is\(\.version-refusal,\.room-failure\):focus-visible\{outline:none;box-shadow:var\(--focus-ring\)\}/);
 assert.match(responsive, /body\[data-cot-width='compact'\] \.cot-play \.room-failure-actions,\s*body\[data-cot-width='phone'\] \.cot-play \.room-failure-actions\{display:grid;grid-template-columns:1fr\}/,
   'room recovery actions use the shared compact and phone viewport policy');
 assert.match(source, /readyBtn\.disabled = spectator \|\| !player\.connected \|\| !player\.specId \|\| next\.phase !== 'waiting'/,
@@ -201,7 +202,7 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
 {
   const { readFile: read } = await import('node:fs/promises');
   assert.match(source, /const VERSION_REFUSAL_CODES: ReadonlySet<string> = new Set\(\['build_mismatch', 'build_host_older', 'build_host_newer'\]\);/);
-  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
+  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal cot-c-notice" data-severity="info" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
     'the banner lives inside the menu header, above every room section');
   assert.match(source, /\.cot-play \.play-head\{position:sticky;/, 'which stays in view while the panel scrolls (nothing can cover its Refresh)');
   const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));

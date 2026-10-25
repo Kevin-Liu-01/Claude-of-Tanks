@@ -20,6 +20,7 @@
  * inside the tile (the x axis wraps through the sampler, the y axis through the pad).
  */
 
+import * as detMath from '../sim/detMath.ts';
 type OceanKind = 'coast' | 'lake' | 'river' | 'marsh';
 
 /** A map's authored sea state (the `ocean` block of its config); every field is optional and defaults per water kind. */
@@ -135,22 +136,22 @@ export function resolveOceanState(kind: OceanKind, authored: OceanConfig | null 
 const LANCZOS = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
   12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
 function logGamma(x: number): number {
-  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+  if (x < 0.5) return detMath.log(Math.PI / detMath.sin(Math.PI * x)) - logGamma(1 - x);
   x -= 1;
   let a = LANCZOS[0];
   const t = x + 7.5;
   for (let i = 1; i < 9; i++) a += LANCZOS[i] / (x + i);
-  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  return 0.5 * detMath.log(2 * Math.PI) + (x + 0.5) * detMath.log(t) - t + detMath.log(a);
 }
 
 /** ω(k) for depth d: ω² = g k tanh(k d). */
 function dispersion(k: number, depthM: number): number {
-  return Math.sqrt(OCEAN_GRAVITY * k * Math.tanh(Math.min(k * depthM, 20)));
+  return Math.sqrt(OCEAN_GRAVITY * k * detMath.tanh(Math.min(k * depthM, 20)));
 }
 /** dω/dk for the same relation (the change of variables from S(ω) to Ψ(k)). */
 function dispersionDerivative(k: number, depthM: number): number {
   const kd = Math.min(k * depthM, 20);
-  const th = Math.tanh(kd), ch = Math.cosh(kd);
+  const th = detMath.tanh(kd), ch = detMath.cosh(kd);
   return OCEAN_GRAVITY * (th + kd / (ch * ch)) / (2 * dispersion(k, depthM));
 }
 /** TMA finite-depth factor (Kitaigorodskii form): waves that would not fit the depth lose their energy. */
@@ -179,8 +180,8 @@ function waveSystem(windSpeed: number, fetchKm: number, dirDeg: number, scale: n
   return {
     scale, dirRad: dirDeg * Math.PI / 180, spread, swell,
     // JONSWAP fetch laws (Hasselmann et al. 1973): the Phillips constant and the peak frequency of a fetch-limited sea
-    alpha: 0.076 * Math.pow(U * U / (F * OCEAN_GRAVITY), 0.22),
-    peakOmega: 22 * Math.pow(OCEAN_GRAVITY * OCEAN_GRAVITY / (U * F), 1 / 3),
+    alpha: 0.076 * detMath.pow(U * U / (F * OCEAN_GRAVITY), 0.22),
+    peakOmega: 22 * detMath.pow(OCEAN_GRAVITY * OCEAN_GRAVITY / (U * F), 1 / 3),
     gamma: 3.3,
     fadeM,
   };
@@ -188,10 +189,10 @@ function waveSystem(windSpeed: number, fetchKm: number, dirDeg: number, scale: n
 
 /** ∫ S(ω) dω of a system (its variance m0, the directional factor integrating to one): log-spaced quadrature. */
 function systemEnergy(s: WaveSystem, depthM: number): number {
-  const lo = Math.log(s.peakOmega * 0.2), hi = Math.log(s.peakOmega * 16), steps = 400;
+  const lo = detMath.log(s.peakOmega * 0.2), hi = detMath.log(s.peakOmega * 16), steps = 400;
   let m0 = 0;
   for (let i = 0; i < steps; i++) {
-    const a = lo + (hi - lo) * (i + 0.5) / steps, omega = Math.exp(a);
+    const a = lo + (hi - lo) * (i + 0.5) / steps, omega = detMath.exp(a);
     m0 += jonswap(omega, s, depthM) * omega * (hi - lo) / steps; // dω = ω d(ln ω)
   }
   return m0;
@@ -201,21 +202,21 @@ function systemEnergy(s: WaveSystem, depthM: number): number {
 function jonswap(omega: number, s: WaveSystem, depthM: number): number {
   const sigma = omega <= s.peakOmega ? 0.07 : 0.09;
   const d = omega - s.peakOmega;
-  const r = Math.exp(-d * d / (2 * sigma * sigma * s.peakOmega * s.peakOmega));
+  const r = detMath.exp(-d * d / (2 * sigma * sigma * s.peakOmega * s.peakOmega));
   const inv = 1 / omega, po = s.peakOmega * inv;
-  return s.scale * tmaFactor(omega, depthM) * s.alpha * OCEAN_GRAVITY * OCEAN_GRAVITY * Math.pow(inv, 5)
-    * Math.exp(-1.25 * po * po * po * po) * Math.pow(s.gamma, r);
+  return s.scale * tmaFactor(omega, depthM) * s.alpha * OCEAN_GRAVITY * OCEAN_GRAVITY * detMath.pow(inv, 5)
+    * detMath.exp(-1.25 * po * po * po * po) * detMath.pow(s.gamma, r);
 }
 
 /** Hasselmann (1980) cos^{2s} spreading, blended with a plain positive cos² (Horvath's construction); integrates to 1 over θ. */
 function directionalSpread(theta: number, omega: number, s: WaveSystem): number {
   const ratio = omega / s.peakOmega;
-  const power = omega > s.peakOmega ? 9.77 * Math.pow(ratio, -2.5) : 6.97 * Math.pow(ratio, 5);
-  const sp = power + 16 * Math.tanh(Math.min(ratio, 20)) * s.swell * s.swell;
+  const power = omega > s.peakOmega ? 9.77 * detMath.pow(ratio, -2.5) : 6.97 * detMath.pow(ratio, 5);
+  const sp = power + 16 * detMath.tanh(Math.min(ratio, 20)) * s.swell * s.swell;
   const dTheta = theta - s.dirRad;
-  const norm = Math.exp(logGamma(sp + 1) - logGamma(sp + 0.5)) / (2 * Math.sqrt(Math.PI));
-  const cos2s = norm * Math.pow(Math.abs(Math.cos(dTheta * 0.5)), 2 * sp);
-  const c = Math.cos(dTheta);
+  const norm = detMath.exp(logGamma(sp + 1) - logGamma(sp + 0.5)) / (2 * Math.sqrt(Math.PI));
+  const cos2s = norm * detMath.pow(Math.abs(detMath.cos(dTheta * 0.5)), 2 * sp);
+  const c = detMath.cos(dTheta);
   const base = c > 0 ? c * c * (2 / Math.PI) : 0;
   return base + (cos2s - base) * s.spread;
 }
@@ -289,14 +290,14 @@ export function* oceanSpectrumSteps(state: OceanState, n = OCEAN_FFT_SIZE, seed 
     for (let j = 0; j < n; j++) {
       for (let i = 0; i < n; i++) {
         if (i === 0 || j === 0) continue; // the Nyquist line has no mirror texel
-        const kx = (i - half) * dk, kz = (j - half) * dk, k = Math.hypot(kx, kz);
+        const kx = (i - half) * dk, kz = (j - half) * dk, k = detMath.hypot(kx, kz);
         if (k < low || k >= high || k < 1e-6) continue;
         const omega = dispersion(k, state.depthM), dOmega = dispersionDerivative(k, state.depthM);
-        const theta = Math.atan2(kz, kx);
+        const theta = detMath.atan2(kz, kx);
         let psi = 0;
         for (const s of systems) {
           const S = jonswap(omega, s, state.depthM) * directionalSpread(theta, omega, s)
-            * Math.exp(-s.fadeM * s.fadeM * k * k);
+            * detMath.exp(-s.fadeM * s.fadeM * k * k);
           psi += S;
         }
         psi *= Math.abs(dOmega) / k * amp2;
@@ -306,10 +307,10 @@ export function* oceanSpectrumSteps(state: OceanState, n = OCEAN_FFT_SIZE, seed 
         const amp = 0.5 * Math.sqrt(variance);
         const base = ((seed * 7919 + c * 1000003 + j * 4099 + i) * 2) >>> 0;
         const u1 = hashUnit(base), u2 = hashUnit(base + 1);
-        const rad = Math.sqrt(-2 * Math.log(u1));
+        const rad = Math.sqrt(-2 * detMath.log(u1));
         const o = (j * n + i) * 2;
-        h0[o] = rad * Math.cos(u2 * TWO_PI) * amp;
-        h0[o + 1] = rad * Math.sin(u2 * TWO_PI) * amp;
+        h0[o] = rad * detMath.cos(u2 * TWO_PI) * amp;
+        h0[o + 1] = rad * detMath.sin(u2 * TWO_PI) * amp;
       }
     }
     m0 += m0c;
@@ -361,9 +362,9 @@ function stockhamStage(src: ArrayLike<number>, dst: Float64Array, n: number, ns:
     for (let rr = 0; rr < radix; rr++) {
       const idx = j + rr * stride;
       const ar = src[idx * 2], ai = src[idx * 2 + 1];
-      const tw = rr * ang, wr = Math.cos(tw), wi = Math.sin(tw);
+      const tw = rr * ang, wr = detMath.cos(tw), wi = detMath.sin(tw);
       const tr = ar * wr - ai * wi, ti = ar * wi + ai * wr;
-      const da = TWO_PI * ((r * rr) % radix) / radix, dr = Math.cos(da), di = Math.sin(da);
+      const da = TWO_PI * ((r * rr) % radix) / radix, dr = detMath.cos(da), di = detMath.sin(da);
       re += tr * dr - ti * di;
       im += tr * di + ti * dr;
     }
@@ -390,7 +391,7 @@ export function inverseDftReference(input: ArrayLike<number>, n: number): Float6
   for (let o = 0; o < n; o++) {
     let re = 0, im = 0;
     for (let i = 0; i < n; i++) {
-      const a = TWO_PI * ((i * o) % n) / n, c = Math.cos(a), s = Math.sin(a);
+      const a = TWO_PI * ((i * o) % n) / n, c = detMath.cos(a), s = detMath.sin(a);
       re += input[i * 2] * c - input[i * 2 + 1] * s;
       im += input[i * 2] * s + input[i * 2 + 1] * c;
     }
@@ -429,7 +430,7 @@ export function spatialFieldReference(spectrum: ArrayLike<number>, n: number): F
   for (let v = 0; v < n; v++) for (let u = 0; u < n; u++) {
     let re = 0, im = 0;
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const a = TWO_PI * ((i - half) * u + (j - half) * v) / n, c = Math.cos(a), s = Math.sin(a);
+      const a = TWO_PI * ((i - half) * u + (j - half) * v) / n, c = detMath.cos(a), s = detMath.sin(a);
       const hr = spectrum[(j * n + i) * 2], hi = spectrum[(j * n + i) * 2 + 1];
       re += hr * c - hi * s;
       im += hr * s + hi * c;

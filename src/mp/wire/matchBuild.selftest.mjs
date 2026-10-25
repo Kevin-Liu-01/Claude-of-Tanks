@@ -90,7 +90,13 @@ const P1 = 'aaaaaaaaaaaa', P2 = 'bbbbbbbbbbbb', A1 = 'cccccccccccc', A2 = 'ddddd
     }
   }
   const en = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
-  assert.equal(en['playMenu.entryRefusal.buildMismatch'], matchRefusalMessage('build_mismatch'), 'the English catalog and the fallback agree');
+  // 252 (the brand-ui lead's rooms gauntlet, 85eeec5d97): the lobby's version banner titles itself "Refresh to join this
+  // match", so the catalog's detail drops the fallback's "Refresh the page to join: " lead and keeps the rest.
+  const lead = 'Refresh the page to join: ';
+  const fallback = matchRefusalMessage('build_mismatch');
+  assert.ok(fallback.startsWith(lead));
+  assert.equal(en['playMenu.entryRefusal.buildMismatch'], fallback[lead.length].toUpperCase() + fallback.slice(lead.length + 1),
+    'the English catalog and the fallback agree (less the banner title\'s lead)');
 }
 
 // ---- the digests: a prediction-closure edit moves p, an authority-only edit moves a alone, a type-only import is not followed

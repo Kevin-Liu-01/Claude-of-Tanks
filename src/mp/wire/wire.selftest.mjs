@@ -384,8 +384,9 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(badTeam).error.code, 'range');
   const badUtf8 = encodeMessage({ type: MESSAGE_TYPE.CHAT, text: 'ab' }).slice(); badUtf8[badUtf8.length - 1] = 0xff;
   assert.equal(decodeMessage(badUtf8).error.code, 'bad_utf8');
+  // wire 8: an event's payload is a tagged binary object (eventPayload.ts); a payload that is not an object is bad_json
   const badJson = encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 1, events: [{ kind: 'chat', payload: { x: 1 } }] }).slice();
-  badJson[badJson.length - 1] = 0x5b; // '}' -> '['
+  badJson[9] = 6; // the payload's object tag (version, type, u32 tick, count, kind, length) -> a string's
   assert.equal(decodeMessage(badJson).error.code, 'bad_json');
   const arrayJson = new Uint8Array([...encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 1, events: [] })]);
   arrayJson[arrayJson.length - 1] = 1; // count 1 with no body -> truncated, never a throw
@@ -524,4 +525,106 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   const reset={...changed,tick:302,entities:changed.entities.map((r,i)=>i?r:{...r,auxiliaryJson:''})};
   const restored=applySnapshotPacket(roundTrip(buildSnapshotPacket(reset,changed),changed,()=>changed).message,changed);
   assert.equal(restored.entities[0].auxiliaryJson,'','respawn clears auxiliary state');
+}
+
+// ------------------------------------------------------------ the direct encoder (mp-scale-251)
+// encodeSnapshotFrame writes the same bytes as encodeMessage(buildSnapshotPacket(...)) on keyframes and on chains of
+// deltas (rows moving, vanishing, appearing, ERA spent and reset, auxiliary state and wreck bodies coming and going,
+// the destroyed list growing or held as the same array, the destruction log growing); writeEntityRowDelta writes the
+// codec's patch bytes for one row and, without a writer, counts them exactly.
+{
+  const { encodeSnapshotFrame } = await import('./codec.ts');
+  const { ByteWriter } = await import('./bytes.ts');
+  const { diffEntityRow, writeEntityRowDelta, writeEntityRowPatch } = await import('./rows.ts');
+  const dress = (frame, tick) => {
+    for (const row of frame.entities) {
+      if (rng() < 0.15) row.auxiliaryJson = rng() < 0.5 ? '' : JSON.stringify({ lights: int(0, 1), shots: int(0, 9), name: unicodeWord() });
+      if (rng() < 0.1) row.wreckBody = rng() < 0.3 ? null : { x: int(-5e5, 5e5), y: int(0, 9e4), z: int(-5e5, 5e5), qx: int(-32767, 32767), qy: int(-32767, 32767), qz: int(-32767, 32767), qw: int(-32767, 32767), asleep: rng() < 0.5 };
+      if (row.tick > tick) row.tick = tick;
+    }
+    return frame;
+  };
+  const writer = new ByteWriter(256);
+  let frames = 0, rows = 0;
+  for (let chain = 0; chain < 120; chain++) {
+    let frame = dress(randomFrame(2000 + chain * 100, int(0, 40)), 2000 + chain * 100);
+    assert.deepEqual(encodeSnapshotFrame(frame, null), encodeMessage(buildSnapshotPacket(frame, null), null), 'a keyframe, the same bytes');
+    frames++;
+    for (let step = 1; step <= 25; step++) {
+      const tick = frame.tick + 3;
+      const next = dress(evolveFrame(frame, tick), tick);
+      if (rng() < 0.4) next.destroyed = frame.destroyed; // an unchanged destroyed list is the same array, as the actor keeps it
+      assert.deepEqual(encodeSnapshotFrame(next, frame), encodeMessage(buildSnapshotPacket(next, frame), frame), `a delta (chain ${chain}, step ${step}), the same bytes`);
+      frames++;
+      for (const row of next.entities) {
+        const base = frame.entities.find((entry) => entry.entityId === row.entityId) ?? null;
+        const patch = diffEntityRow(row, base, tick);
+        writer.reset();
+        if (!base || patch.mask !== 0) writeEntityRowPatch(writer, patch, base, tick);
+        const expected = writer.toBytes();
+        writer.reset();
+        const written = writeEntityRowDelta(writer, row, base, tick);
+        assert.deepEqual(writer.toBytes(), expected, 'one row, the patch\'s bytes');
+        assert.equal(writeEntityRowDelta(null, row, base, tick), written, 'counted exactly without a writer');
+        rows++;
+      }
+      frame = next;
+    }
+  }
+  // unsorted rows take the packet path (the same bytes still)
+  const unsorted = randomFrame(9000, 6);
+  unsorted.entities.reverse();
+  assert.deepEqual(encodeSnapshotFrame(unsorted, null), encodeMessage(buildSnapshotPacket(unsorted, null), null), 'unsorted rows, the packet path');
+  console.log(`wire.selftest: the direct encoder writes the packet path's bytes on ${frames} frames and ${rows} rows`);
+}
+
+// ------------------------------------------------------------ the merge-walk apply (mp-scale-251)
+// applySnapshotPacket merges sorted patches, removals and baseline rows without maps or sets and keeps the baseline's
+// persistent lists when a packet adds nothing: every frame equals the general algorithm's (copied here as the oracle), in
+// host order, with the patches shuffled, over an unsorted baseline; a duplicate row out of order is still refused.
+{
+  const { applyEntityRowPatch } = await import('./rows.ts');
+  const reference = (packet, baseline) => {
+    const base = packet.keyframe ? null : baseline;
+    const rows = new Map((base?.entities ?? []).map((row) => [row.entityId, row]));
+    const removed = new Set(packet.removed);
+    const entities = [];
+    const patched = new Set();
+    for (const patch of packet.entities) { patched.add(patch.entityId); entities.push(applyEntityRowPatch(patch, rows.get(patch.entityId) ?? null)); }
+    if (base) for (const row of base.entities) if (!patched.has(row.entityId) && !removed.has(row.entityId)) entities.push(row);
+    entities.sort((a, b) => a.entityId - b.entityId);
+    const destroyed = base ? [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b) : packet.destroyed.slice();
+    const baseLog = base ? base.destruction ?? [] : [];
+    const additions = packet.destruction ?? [];
+    return { ...applySnapshotPacket(packet, baseline), entities, destroyed, destruction: additions.length ? [...baseLog, ...additions] : baseLog.slice() };
+  };
+  let checked = 0;
+  for (let chain = 0; chain < 80; chain++) {
+    let frame = randomFrame(5000 + chain * 50, int(1, 40));
+    let held = applySnapshotPacket(buildSnapshotPacket(frame, null), null);
+    for (let step = 0; step < 20; step++) {
+      const next = evolveFrame(frame, frame.tick + 3);
+      const packet = buildSnapshotPacket(next, frame);
+      const decoded = decodeMessage(encodeMessage(packet, frame), { resolveBaseline: () => held });
+      assert.ok(decoded.ok, decoded.ok ? '' : decoded.error.message);
+      const applied = applySnapshotPacket(decoded.message, held);
+      assert.deepEqual(applied, reference(decoded.message, held), `chain ${chain} step ${step}: the general algorithm's frame`);
+      const shuffled = { ...decoded.message, entities: [...decoded.message.entities].reverse(), removed: [...decoded.message.removed].reverse() };
+      assert.deepEqual(applySnapshotPacket(shuffled, held), applied, 'shuffled patches, the same frame');
+      const unsortedBase = { ...held, entities: [...held.entities].reverse() };
+      assert.deepEqual(applySnapshotPacket(decoded.message, unsortedBase), applied, 'an unsorted baseline, the same frame');
+      if (!decoded.message.destroyed.length) assert.equal(applied.destroyed, held.destroyed, 'nothing destroyed: the baseline\'s own list');
+      checked++;
+      held = applied;
+      frame = next;
+    }
+  }
+  // a duplicate row out of order is refused (the in-order check hands over to a set)
+  const twoRows = randomFrame(7000, 3);
+  const bytes = encodeMessage(buildSnapshotPacket(twoRows, null), null);
+  const packet = decodeMessage(bytes).message;
+  const duplicated = { ...packet, entities: [packet.entities[1], packet.entities[0], packet.entities[1]] };
+  const dupBytes = encodeMessage(duplicated, null);
+  assert.equal(decodeMessage(dupBytes).error?.code, 'invalid_message', 'a duplicate row out of order is refused');
+  console.log(`wire.selftest: the merge-walk apply equals the general algorithm on ${checked} deltas, shuffled and over unsorted baselines`);
 }

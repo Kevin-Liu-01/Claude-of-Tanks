@@ -56,8 +56,9 @@ function basket(add: Add, side: number): void {
     add('turretOpenLattice', box(x1 - x0, .012, .026), (x0 + x1) / 2, bottom, z);
   }
   // Source inner legs meet the permanent casting, not an invented full floor.
-  for (const z of [-1.50, -.84]) add('turretDetail', box(.055, .16, .040),
-    side < 0 ? -.952 : .951, bottom - .060, z);
+  // (release 240: 5 cm shorter, their feet over the engine deck the bustle turns over)
+  for (const z of [-1.50, -.84]) add('turretDetail', box(.055, .11, .040),
+    side < 0 ? -.952 : .951, bottom - .035, z);
 }
 
 function stowage(add: Add): void {

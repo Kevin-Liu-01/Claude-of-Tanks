@@ -132,7 +132,7 @@ assert.match(touch,
   /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
   'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
 assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells\{[^}]*width:48px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
+  /body\.cot-touch-layout \.cot-shells\{[^}]*width:52px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
   'mobile ammunition must collapse to one trigger and expand sideways for selection');
 assert.match(hud,
   /const s = el\('button', 'cot-con', conBox\)[\s\S]*bus\.emit\('ui:consumable'[\s\S]*addEventListener\('pointerdown'/,
@@ -273,7 +273,7 @@ assert.match(shotInfo,
   /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-card-top,var\(--cot-si-roster-bottom,272px\)\);width:320px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
   'desktop ballistic reports must use the compact centered-lane composition');
 assert.match(shotInfo,
-  /\.cot-si-diag\{display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
+  /\.cot-si-diag\{(?:zoom:var\(--hud-report-zoom,1\);)?display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
   'desktop penetration schematics must fill the available report frame');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='compact'\] \.cot-si-diag\{[\s\S]*grid-template-columns:78px 154px/,
@@ -291,9 +291,10 @@ assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
 assert.match(shotInfo,
   /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
-// (bc8de4d713: the rule is the Premiere plates' line token)
+// (bc8de4d713: the rule is the Premiere plates' line token; gauntlet r3: every row on one rhythm, each over its own
+// hairline, the penetration row included, so no row's gap is a one-off)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
+  /\.cot-si-kv\{[^}]*padding:2px 0;border-top:1px solid var\(--line-1\);/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,

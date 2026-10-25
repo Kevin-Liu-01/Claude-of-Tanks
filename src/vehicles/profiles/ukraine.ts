@@ -26,6 +26,7 @@ import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 import * as THREE from 'three';
 import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { addGunFloodlight } from './gunFloodlight.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { cloneRehookedVehicleMaterial } from '../materials.ts';
@@ -1714,6 +1715,10 @@ function buildUAOplotM(P: TankBuilderPort): void {
   });
   P.add('gunDark', cylZ(0.087, 0.05, 16), 0, 0, 4.555);
   muzzleBore(P, { r: 0.0625 });
+  // 2026-10-24 (the owner: "make the ... oplot m ... have floodlights at front by guns"): a gun floodlight right of the gun
+  // (gunFloodlight.ts), its back 9 cm ahead of the cheek beside it (gun frame 0.46) and the boot's 0.57 face there, its
+  // bracket's foot run back into the boot 17 cm off the bore (the sleeve is 10.4 cm)
+  addGunFloodlight(P, { side: 'right', x: 0.40, y: 0.02, backZ: 0.55, anchorX: 0.17, anchorY: 0.05, anchorZ: 0.50 });
 
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.40, 0.32, -0.60], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.40, 0.32, -0.60], -Math.PI / 2);

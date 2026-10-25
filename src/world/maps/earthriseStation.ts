@@ -15,6 +15,7 @@
 // which the works' plant takes; every plot stands 12 m or more off a carriageway and 35 m or more off an objective disc
 // (the station receipt, earthriseStation.selftest.mjs). The sites are terraces in the props' sense (an authored site, its
 // own stream, its author holding the footprints apart), so each stands exactly where it is written.
+import * as detMath from '../../sim/detMath.ts';
 interface StationSite {
   structure: string;
   x: number;
@@ -75,14 +76,14 @@ export const SUN_SKY = Object.freeze({ azimuthDeg: 140, elevationDeg: 20 });
  * -z) down the track to the hub, each the other's rotation (landmarks/lunar.ts relayRepeater).
  */
 export const RELAY_REPEATERS = Object.freeze([
-  Object.freeze({ x: -41, z: -342, yawDeg: Math.round(Math.atan2(-41, -342) * 1800 / Math.PI) / 10 + 360 }),
-  Object.freeze({ x: 41, z: 342, yawDeg: Math.round(Math.atan2(41, 342) * 1800 / Math.PI) / 10 }),
+  Object.freeze({ x: -41, z: -342, yawDeg: Math.round(detMath.atan2(-41, -342) * 1800 / Math.PI) / 10 + 360 }),
+  Object.freeze({ x: 41, z: 342, yawDeg: Math.round(detMath.atan2(41, 342) * 1800 / Math.PI) / 10 }),
 ]);
 
 /** The oxygen works' plant (props.landmarks isruWorks) where the logistics yard's rotation falls, and its heading. */
 export const ISRU_PLANT = Object.freeze({ x: 56, z: -65, yawDeg: 253.3 });
 /** Challenger's site, its gate (local -z) toward the station, and the works' excavation front at its rotation. */
-export const APOLLO_SITE = Object.freeze({ x: 150, z: 225, yawDeg: Math.round(Math.atan2(150, 225) * 1800 / Math.PI) / 10 });
+export const APOLLO_SITE = Object.freeze({ x: 150, z: 225, yawDeg: Math.round(detMath.atan2(150, 225) * 1800 / Math.PI) / 10 });
 export const EXCAVATION_FRONT = Object.freeze({ x: -150, z: -225, yawDeg: APOLLO_SITE.yawDeg - 180 });
 
 /**
@@ -93,8 +94,8 @@ export const EXCAVATION_FRONT = Object.freeze({ x: -150, z: -225, yawDeg: APOLLO
  * seats of the round-1 berm pair north and south of the apron.
  */
 export const STATION_DOMES = Object.freeze([
-  Object.freeze({ x: 12, z: 88, yawDeg: Math.round(Math.atan2(12, 88) * 1800 / Math.PI) / 10 }),
-  Object.freeze({ x: -12, z: -88, yawDeg: Math.round(Math.atan2(12, 88) * 1800 / Math.PI) / 10 + 180 }),
+  Object.freeze({ x: 12, z: 88, yawDeg: Math.round(detMath.atan2(12, 88) * 1800 / Math.PI) / 10 }),
+  Object.freeze({ x: -12, z: -88, yawDeg: Math.round(detMath.atan2(12, 88) * 1800 / Math.PI) / 10 + 180 }),
 ]);
 
 type XZ = readonly [number, number];
@@ -112,14 +113,14 @@ function offsetPolyline(points: ReadonlyArray<XZ>, d: number): Array<[number, nu
     const p = points[i], a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
     const n0 = i > 0 ? normalLeft(a, p) : normalLeft(p, b), n1 = i < points.length - 1 ? normalLeft(p, b) : n0;
     let nx = n0[0] + n1[0], nz = n0[1] + n1[1];
-    const l = Math.hypot(nx, nz) || 1; nx /= l; nz /= l;
+    const l = detMath.hypot(nx, nz) || 1; nx /= l; nz /= l;
     const k = Math.min(2, 1 / Math.max(0.5, nx * n0[0] + nz * n0[1]));
     out.push([Math.round((p[0] + nx * d * k) * 100) / 100, Math.round((p[1] + nz * d * k) * 100) / 100]);
   }
   return out;
 }
 function normalLeft(a: XZ, b: XZ): [number, number] {
-  const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
+  const dx = b[0] - a[0], dz = b[1] - a[1], l = detMath.hypot(dx, dz) || 1;
   return [-dz / l, dx / l];
 }
 
@@ -144,7 +145,7 @@ export function roverTrack(points: ReadonlyArray<XZ>, band = 3.8, ruts = true): 
  * Every door is the plot's front from its centre (its half depth and a step) along its yaw.
  */
 export function stationTracks(): StationTrackLine[] {
-  const front = (yawDeg: number): [number, number] => [Math.sin(yawDeg * Math.PI / 180), Math.cos(yawDeg * Math.PI / 180)];
+  const front = (yawDeg: number): [number, number] => [detMath.sin(yawDeg * Math.PI / 180), detMath.cos(yawDeg * Math.PI / 180)];
   const door = (s: StationSite): [number, number] => {
     const [fx, fz] = front(s.yawDeg), h = (HALF_DEPTH[s.structure] ?? 4) + 0.8;
     return [s.x + fx * h, s.z + fz * h];
@@ -155,7 +156,7 @@ export function stationTracks(): StationTrackLine[] {
   // (the dome's tunnels, landmarks/lunar.ts stationDome: the main one to local -z, the others 100 degrees either side; each
   // tunnel's step 17.3 m and 15.9 m out from the centre for the default 12 m radius)
   const airlock: [number, number] = [dome.x - dfx * 17.6, dome.z - dfz * 17.6];
-  const wa = Math.PI + 1.75 + dome.yawDeg * Math.PI / 180, west: [number, number] = [dome.x + Math.sin(wa) * 16.2, dome.z + Math.cos(wa) * 16.2];
+  const wa = Math.PI + 1.75 + dome.yawDeg * Math.PI / 180, west: [number, number] = [dome.x + detMath.sin(wa) * 16.2, dome.z + detMath.cos(wa) * 16.2];
   const north: Array<{ pts: XZ[]; band?: number; ruts?: boolean }> = [
     // the habitat row
     { pts: [[36, 34], [55, 38.5], [73, 46], garage] },

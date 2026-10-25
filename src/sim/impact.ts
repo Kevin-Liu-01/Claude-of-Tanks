@@ -18,6 +18,7 @@ import type { ModuleId } from './moduleCatalog.ts';
 import { ramDamage } from './damage.ts';
 import type { RulesetPhysics } from './matchRuleset.ts';
 
+import * as detMath from './detMath.ts';
 export type HullImpactKind = 'impact' | 'fall';
 
 interface ImpactModuleHit {
@@ -256,7 +257,7 @@ interface RamBodyState {
 
 /** A hull's velocity component along a world XZ direction: the drive along its heading plus the decaying shove. */
 export function hullVelocityAlong(state: RamBodyState, nx: number, nz: number): number {
-  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+  const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
   return (fx * state.speed + state._spring.recoilVX) * nx + (fz * state.speed + state._spring.recoilVZ) * nz;
 }
 
@@ -266,7 +267,7 @@ export function hullVelocityAlong(state: RamBodyState, nx: number, nz: number): 
  */
 export function shiftHullVelocityAlong(state: RamBodyState, nx: number, nz: number, delta: number): void {
   if (!(Math.abs(delta) > 1e-9)) return;
-  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+  const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
   const along = fx * nx + fz * nz;
   state.speed += delta * along;
   state._spring.recoilVX += delta * (nx - along * fx);

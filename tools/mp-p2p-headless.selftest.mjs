@@ -23,4 +23,16 @@ assert.equal(report.steps.rejoin?.role, 'peer');
 // §13.14: the ICE of every peer connection came from the room (both sides of every link), from fewer requests than links
 assert.equal(report.steps.ice?.granted, report.steps.ice?.connections);
 assert.ok(report.steps.ice.requests >= 1 && report.steps.ice.requests < report.steps.ice.connections, JSON.stringify(report.steps.ice));
+// (mp-scale-251) the room's Workers Free requests stay linear in the seats: a peer link signals with an offer and an
+// answer (candidates in the SDP), nothing per seat is billed while the match plays (the host's reports alone), and
+// the keepalive frames never are (docs/MULTIPLAYER-V2.md §13.30)
+{
+  const billing = report.steps.billing;
+  const count = (snapshot, type) => snapshot.messages[type] ?? 0;
+  assert.ok(count(billing.connected, 'room_signal') <= 2 * 2 + 1, `two peer links signal in at most five messages (${count(billing.connected, 'room_signal')})`);
+  const during = Object.entries(billing.play.messages).filter(([type, value]) => value !== (billing.connected.messages[type] ?? 0)).map(([type]) => type);
+  assert.deepEqual(during, ['room_command:match_report'], `while the match plays only the host's reports reach the room (${during.join(', ')})`);
+  const handled = Object.values(billing.total.messages).reduce((sum, value) => sum + value, 0);
+  assert.ok(handled + billing.total.upgrades <= 45, `three seats, a migration and a rejoin cost ${handled} messages and ${billing.total.upgrades} upgrades`);
+}
 console.log('mp-p2p-headless.selftest: the peer-to-peer flow passed every gate');

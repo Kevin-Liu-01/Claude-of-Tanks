@@ -53,7 +53,8 @@ export const VEHICLE_ACTIONS: readonly VehicleActionDef[] = Object.freeze([
 /** A flight's actions, in the console's order (src/ui/aerialHud.ts). */
 export const FLIGHT_ACTIONS: readonly VehicleActionDef<FlightActionId>[] = Object.freeze([
   { id: 'vision', binding: 'aerialVision', key: 'KeyI', glyph: 'visionInfrared', label: 'flight.view.action', help: 'flight.view.action', source: 'mode' },
-  { id: 'supplyAmmo', binding: 'supplyAmmo', key: 'KeyJ', glyph: 'shell', label: 'flight.supply.ammo', help: 'flight.supply.ammo', source: 'mode' },
+  // (the rack's glyph: the round's was the 152 mm HE card's beside it, gauntlet r6)
+  { id: 'supplyAmmo', binding: 'supplyAmmo', key: 'KeyJ', glyph: 'ammoRack', label: 'flight.supply.ammo', help: 'flight.supply.ammo', source: 'mode' },
   { id: 'supplyHeal', binding: 'supplyHeal', key: 'KeyK', glyph: 'medkit', label: 'flight.supply.heal', help: 'flight.supply.heal', source: 'mode' },
 ] as const);
 

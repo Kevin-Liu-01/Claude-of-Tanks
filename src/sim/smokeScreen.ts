@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import type { SmokeSource } from './smokeReceipt.ts';
 import { smokeCanisterPosition, SMOKE_CANISTER_RADIUS_M, type SmokeCanister, type SmokePoint, type SmokeWorld } from './smokeBallistics.ts';
 import { sceneWindFor } from '../world/sceneWind.ts';
+import * as detMath from './detMath.ts';
 /** Shared deterministic smoke envelope, used by spotting and presentation. `clip` (per canister, its bank's walls:
  * decimetres per SMOKE_CLIP_DIRS bearing, or 0 in the open) and `paths` (per canister, its bounces as the receipt's
  * groups, or 0) are the wire's; the authority's own screens carry the bounces in their canisters. */
@@ -53,7 +54,7 @@ const CLOUD_RADIUS_M = 10.5;
  *  whole decimetres so the authority and the wire agree. */
 export function smokeClipReach(wind?: readonly [number, number] | null): number {
   if (!wind) return CLIP_REACH_M;
-  return Math.max(CLIP_REACH_M, Math.round((CLOUD_RADIUS_M + Math.hypot(wind[0], wind[1]) * SMOKE_DURATION_S) * 10) / 10);
+  return Math.max(CLIP_REACH_M, Math.round((CLOUD_RADIUS_M + detMath.hypot(wind[0], wind[1]) * SMOKE_DURATION_S) * 10) / 10);
 }
 /** Read at three heights over the rest; the middle distance counts, so the cloud spills over a low wall (two of the three
  * pass over it) and through an open doorway, while a house's wall, and a wall with a window in it, stop it. */
@@ -70,7 +71,7 @@ export function smokeClip(rest: SmokePoint, world: SmokeWorld, reach = CLIP_REAC
   let walled = false;
   for (let k = 0; k < SMOKE_CLIP_DIRS; k++) {
     const a = k / SMOKE_CLIP_DIRS * Math.PI * 2;
-    dir.x = Math.cos(a); dir.z = Math.sin(a);
+    dir.x = detMath.cos(a); dir.z = detMath.sin(a);
     // (the low and the high read first: both free, and the middle distance is free whatever the middle reads)
     for (const h of [0, 2, 1]) {
       if (h === 1 && read[0]! >= reach && read[2]! >= reach) { read[1] = reach; break; }
@@ -90,7 +91,7 @@ const _rest = { x: 0, y: 0, z: 0 };
 /** How far a bank's walls stand from its rest toward the bearing (unit ux, uz): the two nearest bearings' distances
  * interpolated as inverse distances (exact for a flat wall between them), in metres; Infinity in the open. */
 function wallDistance(clip: readonly number[], ux: number, uz: number): number {
-  let a = Math.atan2(uz, ux);
+  let a = detMath.atan2(uz, ux);
   if (a < 0) a += Math.PI * 2;
   const f = a / (Math.PI * 2) * SMOKE_CLIP_DIRS, k0 = Math.floor(f) % SMOKE_CLIP_DIRS, k1 = (k0 + 1) % SMOKE_CLIP_DIRS, w = f - Math.floor(f);
   // (the samples are decimetres: d = 0.1 / interpolated (1 / decimetres))
@@ -120,7 +121,7 @@ export function smokeReach(screen: SmokeScreen, bank: number, volume: SmokeVolum
  * stands nearer. The presentation places its puffs through this, so no puff of a screen stands past a wall. */
 export function smokeHoldInside(screen: SmokeScreen, bank: number, volume: SmokeVolume, out: { x: number; z: number }): void {
   if (!screen.clip) return;
-  const dx = out.x - volume.x, dz = out.z - volume.z, r = Math.hypot(dx, dz);
+  const dx = out.x - volume.x, dz = out.z - volume.z, r = detMath.hypot(dx, dz);
   if (!(r > 1e-6)) return;
   const reach = smokeReach(screen, bank, volume, dx / r, dz / r);
   if (r <= reach) return;
@@ -139,7 +140,7 @@ export function smokeWallRoom(screen: SmokeScreen, bank: number, x: number, z: n
   for (let k = 0; k < SMOKE_CLIP_DIRS; k++) {
     if (clip[k]! >= open) continue;
     const a = k / SMOKE_CLIP_DIRS * Math.PI * 2;
-    room = Math.min(room, clip[k]! / 10 - (dx * Math.cos(a) + dz * Math.sin(a)));
+    room = Math.min(room, clip[k]! / 10 - (dx * detMath.cos(a) + dz * detMath.sin(a)));
   }
   return Math.max(0, room - WALL_MARGIN_M);
 }
@@ -175,7 +176,7 @@ function bankFootprint(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume
     const clip=screen.clip?.[screen.banks![bank+2]!];
     const wx=windX(screen),wz=windZ(screen);
     if(clip){
-      const wind=Math.hypot(wx,wz);
+      const wind=detMath.hypot(wx,wz);
       if(wind>1e-9){
         const ux=wx/wind,uz=wz/wind;
         const drift=Math.min(wind*landedAge,Math.max(0,wallDistance(clip,ux,uz)-WALL_MARGIN_M-1));
@@ -191,12 +192,12 @@ function bankFootprint(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume
   }
   const growth=smooth((age-.85-Math.abs(bank)*.06)/2.2);
   const fade=1-smooth((age-13.5)/4.5);
-  const side=bank*3.6+Math.sin(bank*4.1+screen.born)*.45;
+  const side=bank*3.6+detMath.sin(bank*4.1+screen.born)*.45;
   const fore=-bank*bank*.45;
-  out.x=screen.x+Math.cos(screen.yaw)*side+Math.sin(screen.yaw)*fore+windX(screen)*Math.max(0,age-1);
-  out.z=screen.z-Math.sin(screen.yaw)*side+Math.cos(screen.yaw)*fore+windZ(screen)*Math.max(0,age-1);
+  out.x=screen.x+detMath.cos(screen.yaw)*side+detMath.sin(screen.yaw)*fore+windX(screen)*Math.max(0,age-1);
+  out.z=screen.z-detMath.sin(screen.yaw)*side+detMath.cos(screen.yaw)*fore+windZ(screen)*Math.max(0,age-1);
   footing.shot=false;footing.restY=screen.y;footing.rise=Math.max(0,age-1)*.055;
-  out.radius=1.2+growth*(4.4+Math.sin(bank*2.7)*.35);
+  out.radius=1.2+growth*(4.4+detMath.sin(bank*2.7)*.35);
   out.height=.8+growth*3.2;
   out.density=growth*fade;
   return true;
@@ -220,7 +221,7 @@ const volume:SmokeVolume={x:0,y:0,z:0,radius:0,height:0,density:0};
 function segmentPointDistanceXZ(a:{x:number;z:number},b:{x:number;z:number},px:number,pz:number):number{
   const dx=b.x-a.x,dz=b.z-a.z,length=dx*dx+dz*dz;
   const t=length>0?clamp(((px-a.x)*dx+(pz-a.z)*dz)/length):0;
-  return Math.hypot(a.x+t*dx-px,a.z+t*dz-pz);
+  return detMath.hypot(a.x+t*dx-px,a.z+t*dz-pz);
 }
 /** Samples along a sight line's chord through a walled bank's full envelope, each held to the bank's reach. */
 const WALLED_SAMPLES = 8;
@@ -254,7 +255,7 @@ export function smokeBlocks(screens:Iterable<SmokeScreen>,a:{x:number;y:number;z
         const t=t0+(t1-t0)*s/WALLED_SAMPLES;
         const px=a.x+(b.x-a.x)*t-volume.x,pz=a.z+(b.z-a.z)*t-volume.z,eta=(a.y+(b.y-a.y)*t-volume.y)/volume.height;
         if(eta*eta>=1)continue;
-        const rho=Math.hypot(px,pz);
+        const rho=detMath.hypot(px,pz);
         if(rho<1e-6||rho<smokeReach(screen,bank,volume,px/rho,pz/rho)*Math.sqrt(1-eta*eta))return true;
       }
     }

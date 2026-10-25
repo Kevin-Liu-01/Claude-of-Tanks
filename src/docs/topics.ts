@@ -1,4 +1,5 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
+import { icon } from '../ui/icons/icon.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
@@ -61,7 +62,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.start.title'),
     pageTitle: t('metadata.docsStart.title'),
     lede: t('docs.topic.start.lede'),
-    hero: '/media/site50-r14/loops/s226-church-duel.webm',
+    hero: '/media/docs-hero-r2/frontier-t90m-leo2a6.webm',
     icon: 'manual',
     sectionIcons: [],
     sections: [],
@@ -133,7 +134,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.models.title'),
     pageTitle: t('metadata.docsModels.title'),
     lede: t('docs.topic.models.lede'),
-    hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
+    hero: '/media/docs-hero-r2/verdant-challenger3-t80u.webm',
     icon: 'models',
     sectionIcons: ['research', 'construction', 'rig', 'vehicles', 'anatomy', 'iconPipeline', 'critique'],
     sections: [
@@ -327,12 +328,41 @@ function mediaFigure([src, caption]: TopicMedia): string {
  */
 export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; readonly phone?: true }>> = {
   's05-barn-advance': { r960: true, phone: true },
-  's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
-  's226-church-duel': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
 };
-const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
+
+/** A loop hero's files and its caption's catalog key, by its collection: a site50-r14 take spreads over the loops, the
+ *  stills and web-video-r1 (its rungs in TOPIC_HERO_RUNGS); a docs-hero-r2 take (the media lane's 251 duels) keeps its
+ *  whole ladder beside its loop. Null for a still hero. */
+export interface TopicHeroLadder {
+  readonly take: string;
+  readonly captionKey: string;
+  readonly poster: string;
+  readonly still: string;
+  readonly wide: string;
+  readonly r960: string | null;
+  readonly phone: string | null;
+}
+/** The trail's separator: the sprite's chevron (never a typed ›). */
+const CRUMB = icon('chevronRight', { size: 12 });
+
+export function topicHeroLadder(hero: string): TopicHeroLadder | null {
+  const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  if (site50) {
+    const loops = '/media/site50-r14/loops', rungs = TOPIC_HERO_RUNGS[site50] ?? {};
+    return { take: site50, captionKey: `media.site50.title.${camelTake(site50)}`, poster: `${loops}/${site50}.jpg`,
+      still: `/media/site50-r14/stills/${site50}-thumb.webp`, wide: hero, r960: rungs.r960 ? `${loops}/${site50}-960.webm` : null,
+      phone: rungs.phone ? `/media/web-video-r1/${site50}-mobile.mp4` : null };
+  }
+  const r2 = /^\/media\/docs-hero-r2\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  if (r2) {
+    const dir = '/media/docs-hero-r2';
+    return { take: r2, captionKey: `media.docsHero.title.${camelTake(r2)}`, poster: `${dir}/${r2}.jpg`, still: `${dir}/${r2}-thumb.webp`,
+      wide: hero, r960: `${dir}/${r2}-960.webm`, phone: `${dir}/${r2}-mobile.mp4` };
+  }
+  return null;
+}
 
 /**
  * A topic header: its take's first frame as the page's LCP picture (a 640 still under data saving, which never plays),
@@ -341,24 +371,22 @@ const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
  * saving. A still header is the picture alone.
  */
 export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSaver()): string {
-  const take = LOOP_HERO.exec(hero)?.[1];
-  if (!take) {
+  const ladder = topicHeroLadder(hero);
+  if (!ladder) {
     const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
     return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
   }
-  const loops = '/media/site50-r14/loops';
   const poster = pictureMarkup({
-    src: `${loops}/${take}.jpg`, rungs: [{ src: `${loops}/${take}.jpg`, width: 1920 }], width: 1920, height: 1080, alt,
+    src: ladder.poster, rungs: [{ src: ladder.poster, width: 1920 }], width: 1920, height: 1080, alt,
     eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
-    saveData: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
-    phone: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
+    saveData: { src: ladder.still, width: 640 },
+    phone: { src: ladder.still, width: 640 },
   }, saving);
-  const rungs = TOPIC_HERO_RUNGS[take] ?? {};
   const sources = [
-    rungs.r960 ? `<source data-src="${loops}/${take}-960.webm" type="video/webm">` : '',
-    `<source data-src="${loops}/${take}.webm" type="video/webm"${rungs.r960 ? ' data-rung="wide"' : ''}>`,
-    rungs.phone ? `<source data-src="/media/web-video-r1/${take}-mobile.mp4" type="video/mp4" data-rung="phone">` : '',
+    ladder.r960 ? `<source data-src="${ladder.r960}" type="video/webm">` : '',
+    `<source data-src="${ladder.wide}" type="video/webm"${ladder.r960 ? ' data-rung="wide"' : ''}>`,
+    ladder.phone ? `<source data-src="${ladder.phone}" type="video/mp4" data-rung="phone">` : '',
   ].join('');
   const label = alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return `${poster}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
@@ -437,7 +465,6 @@ function mountTocSpy(root: HTMLElement): void {
   for (const target of targets) observer.observe(target);
 }
 
-const HERO_TAKE = /\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 const camelTake = (take: string): string => take.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly string[]).includes(value);
 
@@ -455,14 +482,16 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   const group = TOPIC_GROUPS.find((shelf) => shelf.topics.includes(slug)) ?? TOPIC_GROUPS[0];
   const order = TOPIC_GROUPS.flatMap((shelf) => shelf.topics);
   const at = order.indexOf(slug);
-  const take = HERO_TAKE.exec(topic.hero)?.[1];
-  const caption = take ? t(`media.site50.title.${camelTake(take)}`) : '';
+  const ladder = topicHeroLadder(topic.hero);
+  const caption = ladder ? t(ladder.captionKey) : '';
   const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
-  const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
-    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`)).join('')
+  // the reader starts at the first section: it is the current one before the spy (mountTocSpy) sees a scroll
+  const current = (index: number): string => (index === 0 ? ' aria-current="location"' : '');
+  const toc = (rich ? rich.map(({ id, title }, index) => `<a href="#${id}"${current(index)}>${title}</a>`)
+    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"${current(index)}>${title}</a>`)).join('')
     + (reference ? `<a href="#reference">${t('docs.reference.vehicles.title')}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
@@ -477,9 +506,9 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
-    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
-    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap" aria-hidden="true"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">${CRUMB}</i>`
+    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></nav>`
+    + `<h1>${titleMarkup(topic.title)}</h1></div></header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')

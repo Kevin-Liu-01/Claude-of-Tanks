@@ -12,6 +12,7 @@ import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 // Oasis round 3 (the map-revival lane, 2026-10-07; gauntlet wave 135: "a sparse scatter of small white boxes isolated on
 // open dune sand along wide empty roads, with no dense heaped Shali core, no mud-walled garden plots and no palm
 // groves"): Siwa authored lot by lot — old Shali heaped north of the caravan street (its blocks packed a metre apart,
@@ -117,7 +118,7 @@ export default {
     palmSites: [
       { x: -114, z: 46, r: 160 },
       // (round 3) the walled gardens
-      ...SIWA_GARDENS.map((g) => ({ x: (g.x0 + g.x1) / 2, z: (g.z0 + g.z1) / 2, r: Math.hypot(g.x1 - g.x0, g.z1 - g.z0) / 2 })),
+      ...SIWA_GARDENS.map((g) => ({ x: (g.x0 + g.x1) / 2, z: (g.z0 + g.z1) / 2, r: detMath.hypot(g.x1 - g.x0, g.z1 - g.z0) / 2 })),
       ...[[-208, -104, -218, 148], [10, -102, 24, 142]].flatMap(([x0, z0, x1, z1]) => Array.from({ length: 8 },
         (_, i) => ({ x: x0 + (x1 - x0) * i / 7, z: z0 + (z1 - z0) * i / 7, r: 26 }))),
     ],

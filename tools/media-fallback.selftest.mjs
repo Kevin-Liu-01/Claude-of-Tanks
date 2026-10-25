@@ -139,10 +139,18 @@ if (existsSync(join(ROOT, FLEET_INDEX))) {
 }
 
 // The topic headers' rung table is the disk.
-const { TOPIC_HERO_RUNGS, TOPIC_FIGURE_SIZES, topics } = await topicData();
+const { TOPIC_HERO_RUNGS, TOPIC_FIGURE_SIZES, topics, topicHeroLadder } = await topicData();
 for (const [take, rungs] of Object.entries(TOPIC_HERO_RUNGS)) {
   if (rungs.r960) assert.ok(existsPublic(`/media/site50-r14/loops/${take}-960.webm`), `${take}: its 960 rung ships`);
   if (rungs.phone) assert.ok(existsPublic(`/media/web-video-r1/${take}-mobile.mp4`), `${take}: its phone rung ships`);
+}
+// every loop hero's ladder (topics.ts topicHeroLadder, whichever collection holds it) is on disk
+for (const topic of Object.values(topics)) {
+  const ladder = topicHeroLadder(topic.hero);
+  if (!ladder) continue;
+  for (const file of [ladder.poster, ladder.still, ladder.wide, ladder.r960, ladder.phone].filter(Boolean)) {
+    assert.ok(existsPublic(file), `${ladder.take}: ${file} ships`);
+  }
 }
 for (const topic of Object.values(topics)) {
   const take = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(topic.hero)?.[1];

@@ -11,7 +11,7 @@
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}}
 @layer surfaces{
-:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
+:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
@@ -31,22 +31,23 @@ img{display:block;max-width:100%}
 /* the bar floats over the hero until the page scrolls (publicNav.ts data-scrolled), then takes its plate (02, 03) */
 .home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
   transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter)}
-.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:var(--side-plate)}
+.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:var(--surface-nav)}
 
 /* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
 .hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
-  min-height:max(640px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
+  min-height:max(540px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
 .hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
-.hero__still{z-index:-3}
-.hero__reel{position:absolute;inset:0;z-index:-2;pointer-events:none}
+.hero__reel{position:absolute;inset:0;pointer-events:none}
+/* the still, the reel and the grade share one layer under the card: their order in the markup stacks them */
+:is(.hero__still,.hero__reel,.hero__grade){z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
-.hero__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-hero-grade)}
+.hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
 /* the reel carries the hero: the actions sit at its foot, the game's name stays in the nav bar (the h1 is for assistive tech) */
 .hero__card{grid-area:card;align-self:end;display:flex;align-items:center;justify-content:space-between;gap:var(--s4);margin-bottom:var(--s6)}
 .home-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .hero__ctas{display:flex;align-items:center;gap:var(--s4)}
-.hero__trailer{padding-left:var(--s2)}
+.hero__trailer{padding-left:var(--s2);background:var(--surface-raised)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
@@ -55,19 +56,19 @@ img{display:block;max-width:100%}
 /* the reel's pause: the media player's own control (mediaPlayer.css .cot-media-toggle), a disc on the scrim */
 .hero__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
 .hero__toggle svg{display:block;width:16px;height:16px}
-.hero__toggle:hover{border-color:var(--accent);color:var(--accent-hi)}
-.hero__toggle[aria-pressed=true]{border-color:transparent;background:var(--accent);color:var(--ink-on-accent)}
+.hero__toggle:hover{border-color:var(--ink-2)}
+.hero__toggle[aria-pressed=true]{color:var(--ink-1)}
 .hero__toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .hero__toggle[hidden]{display:none}
 .hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0;padding:0;list-style:none;border-top:1px solid var(--line-1)}
-.hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3)}
+.hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
 .hero__stats .cot-i{width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
 .hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
 .hero__film::backdrop{background:var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
-.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--scrim);color:var(--ink-1)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -90,6 +91,7 @@ img{display:block;max-width:100%}
 /* ---- the features: one large picture or loop each, its name the way in (a row of one runs the page's width) ---- */
 .features{padding:var(--s7) 0 var(--s8)}
 .features-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+.feat,.play-tile{box-shadow:var(--ring-1)}
 .feat{margin:0;aspect-ratio:16/9}
 .feat--wide{grid-column:1 / -1;aspect-ratio:21/9}
 .feat>img,.feat>video{transition:transform var(--dur-stage) var(--ease-camera)}
@@ -97,8 +99,8 @@ img{display:block;max-width:100%}
 .feat>video.has-frame{opacity:1}
 .feat .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
 .feat__cap{position:absolute;inset:0;display:flex;align-items:flex-end;margin:0;padding:var(--s5) var(--s6)}
-.feat__link{display:inline-flex;align-items:center;gap:var(--s3);font:700 clamp(var(--fs-28),2.6vw,var(--fs-44))/.95 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.feat--wide .feat__link{font-size:clamp(var(--fs-36),4vw,var(--fs-76))}
+.feat__link{display:inline-flex;align-items:center;gap:var(--s3);font:700 var(--home-feat)/.95 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.feat--wide .feat__link{font-size:var(--home-feat-wide)}
 /* the whole picture answers the link; the player's own control stays above it */
 .feat__link::after{content:'';position:absolute;inset:0}
 .feat__link b{color:var(--gold)}
@@ -112,7 +114,7 @@ img{display:block;max-width:100%}
 
 /* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
-.home-head>.home-h2{text-box:trim-end alphabetic}
+.home-head>.home-h2{text-box:trim-end cap alphabetic}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -141,15 +143,18 @@ img{display:block;max-width:100%}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
 .press{padding:var(--s7) 0 var(--s8);border-top:1px solid var(--line-1)}
-.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:end;gap:var(--s6) var(--s7)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s6) var(--s7)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+:lang(zh-CN) .home-h2 .t-hollow{opacity:1}
+/* zh quotes break at their punctuation, never inside a word */
+:lang(zh-CN) .press__quotes blockquote{line-break:strict}
 .press__title{grid-area:title}
-.press__title em{font-style:normal;color:var(--gold);-webkit-text-stroke:0;text-shadow:none}
+.press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
 .press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
-.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,auto);gap:var(--s6);margin:0}
-.press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);white-space:nowrap}
+.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0}
+.press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
 .press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1)}
 .press__sources{grid-area:sources;display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:var(--s5) 0 0;list-style:none;border-top:1px solid var(--line-1)}
@@ -163,7 +168,7 @@ img{display:block;max-width:100%}
 .press__quotes .v5-social-card__body{justify-content:flex-start}
 .press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
 .press__avatar{display:inline-block;width:.8em;height:.8em;margin-right:var(--s4);vertical-align:-.06em;border-radius:50%;outline:1px solid var(--line-3)}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
+.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
 .v5-social-card--vaibhav{--social-accent:var(--ink-2)}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
@@ -173,7 +178,7 @@ img{display:block;max-width:100%}
 .v5-social-card>a{position:relative;z-index:2;display:flex;height:100%;min-height:inherit;flex-direction:column;padding:var(--s6);background:linear-gradient(180deg,transparent,var(--scrim))}
 .v5-social-card__identity{display:flex;align-items:center;gap:var(--s3)}
 .v5-social-card__identity>span:nth-child(2){display:flex;min-width:0;flex-direction:column;line-height:1.15}
-.v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 max(var(--fs-floor-12) + 2px,var(--fs-14))/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
+.v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-2);font:400 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
 .v5-social-card__identity em{margin-left:auto;padding:0 var(--s2);height:20px;display:inline-flex;align-items:center;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--social-accent);font:600 var(--fs-11)/1 var(--font-display);font-style:normal;letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap}
 .v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover}
@@ -227,16 +232,15 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
-  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--side-plate);box-shadow:var(--home-bar-edge)}
+  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--home-gutter) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
-  .hero__trailer{position:relative;--h:58px;width:58px;padding:0}
-  /* icon-only on a phone: the film glyph (Play's triangle is the bar's other button), its name for assistive tech */
-  .hero__trailer>:not(.hero__trailer-icon){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  .hero__trailer-icon{display:block;width:22px;height:22px}
+  /* the trailer keeps its name on a phone; its picture and length step aside */
+  .hero__trailer{--h:58px;padding-inline:var(--s4)}
+  .hero__trailer>:is(.hero__thumb,.hero__dur){display:none}
   /* in the picture's lower right, above the counts: the hero's own box ends with them */
   .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
-  .hero__stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:max(var(--fs-floor-11),var(--fs-11))}
+  .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
+  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
   .features{padding-top:var(--s6)}
@@ -269,18 +273,19 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .v5-cta>div:not(.shell){display:none}
   .v5-cta>.shell{margin-top:var(--s5)}
   .v5-cta .hero-actions>.cot-c-btn{flex:1 1 100%}
+  .v5-cta .hero-actions>.cot-c-btn--primary{display:none}
   .cot-media-toggle{top:14px;left:14px}
   /* the trailer's controls at the 44 px target */
   .film-btn,.hero__film-close{--h:44px}
   .film-scrub{height:44px}
   .film-time{display:none}
 }
-@media (height < 500px) and (width >= 768px){
+@media (height < 520px) and (width >= 768px){
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
 }
 /* blockers 3, 4: touch screens (and a short landscape one, which is a phone) get the 44 px targets */
-@media (pointer:coarse),(height < 500px){
+@media (pointer:coarse),(height < 520px){
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px}
   .play-acts .cot-c-btn--icon{--h:44px}
   .press__src{height:44px}

@@ -141,6 +141,43 @@ function installHeatProgram(m:MeshStandardMaterial,rec:HeatRecord,part:number):v
   };
   m.customProgramCacheKey=()=> 'thermal-vehicle-v3';
 }
+const HEAT_PART_NAMES=['hull','running gear','gun'] as const;
+/**
+ * A heat stand-in for `source` (battle-spikes-253): a fresh standard material carrying only what the heat picture or the
+ * silhouette reads — the surface's normal detail (normal and bump maps: the heat's `normal.z` shading), its displaced
+ * shape, its cutouts and blending, its side, depth, stencil and clipping. The stand-in's diffuse is 0.035 grey under a
+ * 2-4 emission, so the albedo, roughness, metalness, occlusion, light and environment maps, the vertex colours and a
+ * physical material's extras changed nothing a heat lens shows — but a `source.clone()` kept them, and each combination
+ * the fleet's materials make was its own program: 25 programs a 7 v 7 battle (16 hulls, 8 running gears, a gun), each a
+ * link and, on its first-bind render, a GPU pipeline the GPU process built on its main thread in the battle's first
+ * seconds (100-750 ms GPU stalls in cold battles). The stand-ins of sources that differ only in those share a program.
+ */
+export function heatStandIn(source:MeshStandardMaterial,part:number):MeshStandardMaterial{
+  const own=new MeshStandardMaterial();
+  own.name='Thermal vehicle '+HEAT_PART_NAMES[part];own.color.setRGB(.035,.035,.035);
+  own.emissive.setRGB(1,1,1);own.emissiveIntensity=1;own.metalness=0;own.roughness=1;
+  // the surface's normal detail and shape
+  own.normalMap=source.normalMap;own.normalMapType=source.normalMapType;own.normalScale.copy(source.normalScale);
+  own.bumpMap=source.bumpMap;own.bumpScale=source.bumpScale;
+  own.displacementMap=source.displacementMap;own.displacementScale=source.displacementScale;own.displacementBias=source.displacementBias;
+  own.flatShading=source.flatShading;own.wireframe=source.wireframe;own.fog=source.fog;
+  // coverage: the cutouts, the blending, the faces drawn
+  own.alphaMap=source.alphaMap;own.alphaTest=source.alphaTest;own.alphaHash=source.alphaHash;own.alphaToCoverage=source.alphaToCoverage;
+  own.transparent=source.transparent;own.opacity=source.opacity;own.premultipliedAlpha=source.premultipliedAlpha;
+  own.blending=source.blending;own.blendSrc=source.blendSrc;own.blendDst=source.blendDst;own.blendEquation=source.blendEquation;
+  own.blendSrcAlpha=source.blendSrcAlpha;own.blendDstAlpha=source.blendDstAlpha;own.blendEquationAlpha=source.blendEquationAlpha;
+  own.side=source.side;own.shadowSide=source.shadowSide;own.dithering=source.dithering;own.toneMapped=source.toneMapped;
+  // depth, stencil, clipping: the stand-in occludes and is occluded as the hull is
+  own.depthTest=source.depthTest;own.depthWrite=source.depthWrite;own.depthFunc=source.depthFunc;
+  own.polygonOffset=source.polygonOffset;own.polygonOffsetFactor=source.polygonOffsetFactor;own.polygonOffsetUnits=source.polygonOffsetUnits;
+  own.stencilWrite=source.stencilWrite;own.stencilWriteMask=source.stencilWriteMask;own.stencilFunc=source.stencilFunc;
+  own.stencilRef=source.stencilRef;own.stencilFuncMask=source.stencilFuncMask;own.stencilFail=source.stencilFail;
+  own.stencilZFail=source.stencilZFail;own.stencilZPass=source.stencilZPass;
+  own.clippingPlanes=source.clippingPlanes;own.clipIntersection=source.clipIntersection;own.clipShadows=source.clipShadows;
+  own.colorWrite=source.colorWrite;own.forceSinglePass=source.forceSinglePass;own.visible=source.visible;
+  own.userData=JSON.parse(JSON.stringify(source.userData));
+  return own;
+}
 /** Temporary render-only materials: preserve geometry, depth, alpha cutouts and
  * spotting visibility. Never change a shared fleet material or reveal an actor. */
 export function createThermalVehicles(){
@@ -176,11 +213,8 @@ export function createThermalVehicles(){
     if(!set){set=[];rec.materials.set(source,set);}
     let m=set[part];
     if(!m){
-      const own=source.clone();
-      own.name='Thermal vehicle '+['hull','running gear','gun'][part];own.color.setRGB(.035,.035,.035);
-      own.emissive.setRGB(1,1,1);own.emissiveIntensity=1;own.emissiveMap=null;
-      own.metalness=0;own.roughness=1;
-      installHeatProgram(own,rec,part); // Material.copy() carries no onBeforeCompile: each stand-in takes the heat program
+      const own=heatStandIn(source,part);
+      installHeatProgram(own,rec,part); // each stand-in takes the heat program
       set[part]=m=own;
       source.addEventListener('dispose',()=>own.dispose());
     }

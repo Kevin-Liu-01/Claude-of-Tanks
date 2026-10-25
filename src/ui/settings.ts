@@ -268,7 +268,9 @@ const SETTINGS_CSS = `
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
   box-shadow:var(--e1);}
-.cot-set-card .cot-set-group{margin:0 0 var(--s1);}
+/* the heading's label starts on the rows' inset (at the row glyphs); its (i) button ends at the card's edge, so the
+   glyph centred in it lines up with the controls' edge */
+.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2) 0;}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
@@ -287,21 +289,19 @@ const SETTINGS_CSS = `
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
-.cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
+.cot-set-colhdr span{width:calc(92px * var(--cot-type-scale,1));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
-.cot-set-colhdr span.pad{width:72px;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
-.cot-chip{width:92px;height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
+.cot-chip{width:calc(92px * var(--cot-type-scale,1));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
-.cot-chip.padcol{width:72px;}
 .cot-chip svg{display:inline-block;width:14px;height:14px;vertical-align:middle;}
 .cot-chip:hover{background:var(--surface-hover);}
 .cot-chip:active{transform:translateY(var(--btn-press-drop));}
-.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:var(--ring-3);}
+.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:none;outline:1px dashed var(--ink-4);outline-offset:-1px;}
 .cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
   animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
 .cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
@@ -325,26 +325,28 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
   background:transparent;}
 .cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
-  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--line-3) var(--f));}
+  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--ink-4) var(--f));}
 .cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
   border-radius:var(--control-radius);background:var(--ink-1);box-shadow:var(--e1);
   transition:transform var(--dur-fast) var(--ease-enter);}
 .cot-set-slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15);}
-.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-3);}
+.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--ink-4);}
 .cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
-.cot-set-slider input[type=number]{width:62px;height:30px;padding:0 var(--s2);text-align:right;
+.cot-set-slider input[type=number]{width:62px;height:36px;padding:0 var(--s2);text-align:right;
   font:500 max(13px,var(--fs-13))/1 var(--font-data);color:var(--ink-1);background:var(--surface-page);border:0;
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 .cot-set-slider .unit{width:16px;text-align:end;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+/* a multiplier has no unit, so its field ends on the controls' edge */
+.cot-set-slider .unit:empty{display:none;}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
-   (components.css .cot-c-seg) on the panel's own state class */
+   (components.css .cot-c-seg) on the panel's own state class; every inline control is 36 px tall */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
   box-shadow:var(--ring-1);}
-.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 13px;
+.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:30px;padding:0 13px;
   border:0;border-radius:var(--control-radius);background:transparent;cursor:pointer;white-space:nowrap;
   color:var(--ink-3);font:500 max(13px,var(--fs-13))/1 var(--font-body);
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
@@ -352,20 +354,21 @@ const SETTINGS_CSS = `
 .cot-set-seg button.sel{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
 .cot-set-seg button:disabled{color:var(--ink-4);cursor:not-allowed;}
 .cot-set-seg.onoff button{min-width:48px;}
-/* time of day (battleTimeChoices.ts): checkboxes in the segmented look, a checked one lit; the legend names the group */
-.cot-settings .cot-battle-times{flex-wrap:nowrap;margin:0;padding:3px;border:0;min-width:0;}
+/* time of day (battleTimeChoices.ts): a multi-select, so the kit's chips (each its own pill, a tick when on) rather than
+   a segmented control; the legend names the group */
+.cot-settings .cot-battle-times{display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:0;border:0;min-width:0;}
 .cot-settings .cot-battle-times legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-settings .cot-time-choice{flex:none;min-width:0;}
-.cot-settings .cot-time-content{min-height:0;height:32px;padding:0 13px;background:transparent;box-shadow:none;color:var(--ink-3);
-  font:500 max(13px,var(--fs-13))/1 var(--font-body);}
+.cot-settings .cot-time-content{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:0;height:36px;padding:0 var(--s3);
+  border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(13px,var(--fs-13))/1 var(--font-body);}
 .cot-settings .cot-time-content>svg{display:none;}
 .cot-settings .cot-time-check{flex:0 0 12px;width:12px;height:12px;border:0;color:var(--ink-1);visibility:hidden;}
 @media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
-.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--chip-fill-on);box-shadow:var(--ring-accent);color:var(--ink-1);}
 .cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
-.cot-set-preview{margin:var(--s3) 0 var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
+.cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{margin:var(--s3) 0 var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
@@ -400,17 +403,19 @@ const SETTINGS_CSS = `
    battleHudLayout.ts writes as --hud-systems-top (the tray's top less the row), on the centre line; under the sight's
    notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
    max-content keeps one row until the edge clamps it. */
-.cot-hints{position:fixed;left:50%;top:calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2));
-  transform:translate(-50%,-100%);z-index:45;width:max-content;
-  display:none;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);pointer-events:none;
-  background:var(--hud-plate);box-shadow:var(--e1);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+.cot-hints{position:fixed;left:var(--hud-hints-x,50%);top:var(--hud-hints-bottom,calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2)));
+  transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
+  display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
+  pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
+  font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
   text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints.show{display:flex;}
 .cot-hints.fade{opacity:0;}
 .cot-hints .hg{display:flex;align-items:center;gap:var(--s2);transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints .hg.done{opacity:0;}
 .cot-hints .hk{display:flex;gap:2px;}
+/* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
+.cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 /* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
    spectated battle (owner 2026-10-25) */
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
@@ -425,10 +430,14 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 .cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
   text-transform:uppercase;}
 .cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
+/* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
+   the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
+.cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) 0 var(--s2);padding:var(--s2) var(--s3);
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
   border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
@@ -443,7 +452,7 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* each custom colour beside its team's shape (a team is shape plus colour) */
 .cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
 .cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
-.cot-set-refused{margin:var(--s2) 0 0;padding-inline-start:var(--s2);}
+.cot-set-refused{margin:var(--s2) var(--s2) 0;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -473,7 +482,8 @@ export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[strin
     [t('settings.group.fire'), ['fire']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
     [t('settings.group.sniper'), ['sniperToggle']],
-    [t('settings.group.menu'), ['settingsMenu']],
+    // (ESC opens the settings: the pause veil's cap names the same word, gauntlet r1)
+    [t('settings.title'), ['settingsMenu']],
   ];
 }
 
@@ -551,9 +561,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn reset cot-c-btn" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36" type="button">${t('settings.reset')}</button>` +
     // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
-    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
+    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
 
@@ -768,10 +778,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
     if (slotKey === 'pad') {
       const label = input.padLabelFor(input.getPadBinding(actionId));
-      return label === '—' ? t('settings.bind.empty') : label;
+      return label === '—' ? '' : label;
     }
     const label = input.labelFor(input.getBinding(actionId, slotKey));
-    return label === '—' ? t('settings.bind.empty') : label;
+    return label === '—' ? '' : label; // the input layer's '—' is an unbound slot: an empty cap
   }
 
   function makeChip(
@@ -841,7 +851,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         const chip = r.chips[slotKey];
         if (capture && capture.chip === chip) continue; // keep listening label
         const text = chipText(def.id, slotKey);
-        const empty = text === t('settings.bind.empty');
+        const empty = text === '';
         const arrow = ARROW_KEY_GLYPHS[text];
         // an unbound slot is an empty cap (no dash in view) and an arrow key the sprite's arrow, each named for
         // assistive tech
@@ -1083,7 +1093,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // time of day: a row like the others, its choices (any one or more) in the segmented look
     const timesRow = el('div', 'cot-set-row', battle);
     settingLabel(timesRow, t('garage.battle.timeOfDay'), SETTINGS_OPTION_ICONS.battleTimes).setAttribute('aria-hidden', 'true');
-    const times = el('fieldset', 'cot-battle-times cot-set-seg', timesRow);
+    const times = el('fieldset', 'cot-battle-times', timesRow);
     times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
@@ -1727,8 +1737,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const defA = input.actionDefs.find((d) => d.id === c.actionId);
     const defB = input.actionDefs.find((d) => d.id === c.otherId);
     const codeLabel = c.pad
-      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })()
-      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })();
+      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })()
+      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })();
     const slotTag = c.pad ? '' : ` (${SLOT_NAME[c.otherSlot]})`;
     conflictMsg.innerHTML =
       t('settings.conflict.message', {
@@ -2168,6 +2178,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   function showHints() {
     hideHints();
+    // its caps name keyboard keys: a touch layout never shows it, whoever asks (takeFirstBattleHint guards the rollout)
+    if (input.isTouchLayout?.()) return;
     const record = hintsRecord();
     const groups = battleControlHintGroups(input.getSettings().rmbMode)
       .map(([label, actionIds], index) => ({ id: HINT_GROUP_IDS[index], label, actionIds }))

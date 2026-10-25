@@ -72,13 +72,20 @@ export function markedText(text: string, query: string): string {
   return out + esc(text.slice(at));
 }
 
-/** About two lines of the text around the query's first word. */
+/**
+ * About two lines of the text around the query's first word, kept to that word's line (a section's prose, or one of
+ * its tables) and cut between words where the text has spaces (a CJK run has none, and cuts anywhere).
+ */
 export function snippetOf(text: string, query: string, room = 64): string {
   const lower = text.toLowerCase();
   const found = query.toLowerCase().split(/\s+/).filter(Boolean).map((word) => lower.indexOf(word)).filter((at) => at >= 0);
   const at = found.length ? Math.min(...found) : 0;
-  const start = Math.max(0, at - room), end = Math.min(text.length, start + room * 2);
-  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+  const lineStart = text.lastIndexOf('\n', at) + 1;
+  const lineEnd = text.indexOf('\n', at) < 0 ? text.length : text.indexOf('\n', at);
+  let start = Math.max(lineStart, at - room), end = Math.min(lineEnd, start + room * 2);
+  if (start > lineStart) { const space = text.indexOf(' ', start); if (space >= 0 && space < at) start = space + 1; }
+  if (end < lineEnd) { const space = text.lastIndexOf(' ', end); if (space > at) end = space; }
+  return `${start > lineStart ? '…' : ''}${text.slice(start, end).trim()}${end < lineEnd ? '…' : ''}`;
 }
 
 export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {

@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../../src/sim/matchModes.ts';
+import { MODE_PRESENTATION_ORDER } from '../../src/sim/gameModeCatalog.ts';
 import { renderProductStats } from '../../src/productStats.ts';
 import { replaceAppVersionTokens } from '../appVersion.ts';
 
@@ -69,7 +70,8 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 const playSection = home.match(/<!--home:play-->([\s\S]*?)<!--\/home:play-->/)?.[1] ?? '';
 const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" data-play-panel="${name}" tabindex="0" role="group" aria-labelledby="play-title"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
 const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)">([\s\S]*?)<\/figure>/g)];
-assert.deepEqual(cards.map((c) => c[1]), [...BATTLE_MODE_IDS], 'one tile per battle mode, in BATTLE_MODE_IDS order (the practice modes are not battles)');
+assert.deepEqual(cards.map((c) => c[1]), [...MODE_PRESENTATION_ORDER], 'one tile per battle mode, in the one presentation order Deploy and the rooms show (the practice modes are not battles)');
+assert.deepEqual([...MODE_PRESENTATION_ORDER].sort(), [...BATTLE_MODE_IDS].sort(), 'the presentation order holds every battle mode once');
 assert.deepEqual(picks.home.modes.map((m) => m.id), [...BATTLE_MODE_IDS], 'one mode shot per battle mode');
 for (const [, id, body] of cards) {
   assert.match(body, new RegExp(`<use href="#i-${GAME_MODE_DEFINITIONS[id].icon}(?:-s)?"/>`), `${id} wears the battle setup's icon`);

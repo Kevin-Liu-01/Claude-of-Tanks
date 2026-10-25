@@ -5,7 +5,7 @@ import { createTank } from '../tankFactory.ts';
 const CASES = {
   stb1: {
     family: 'stb-leopard-generation-cast',
-    planStations: 18,
+    planStations: 36,
     width: [2.58, 2.66],
     depth: [3.12, 3.22],
     height: [0.60, 0.65],
@@ -14,7 +14,7 @@ const CASES = {
   },
   type74: {
     family: 'type74-leopard-generation-cast',
-    planStations: 18,
+    planStations: 36,
     width: [2.24, 2.32],
     depth: [3.50, 3.60],
     height: [0.61, 0.66],
@@ -41,8 +41,11 @@ for (const [id, expected] of Object.entries(CASES)) {
 
   assert.deepEqual(turretRig.userData.japaneseCastTurretReceipt, {
     family: expected.family,
+    // owner 2026-10-25 (the Type 74 / STB-1 modernisation): the 18 measured stations and five rings are refined into a
+    // continuous casting (factoryGeometry.ts refineCastLoft)
+    authoredStations: 18,
     planStations: expected.planStations,
-    verticalRings: 5,
+    verticalRings: 9,
     cheekBreaksPerSide: 4,
     flatCrown: true,
     circularLathe: false,
