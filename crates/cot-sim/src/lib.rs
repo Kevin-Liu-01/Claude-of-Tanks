@@ -18,6 +18,8 @@
 #![warn(missing_docs)]
 
 pub mod ballistics;
+pub mod contact;
+pub mod grid;
 pub mod jsmath;
 pub mod math;
 pub mod rng;

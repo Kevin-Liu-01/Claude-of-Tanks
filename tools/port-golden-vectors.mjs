@@ -14,8 +14,16 @@
  *                                                 npm test)
  *
  * Numbers are emitted by JSON.stringify, whose shortest round-trip form
- * decodes to the identical double in serde_json; a non-finite value is
- * written as the string "NaN" / "Infinity" / "-Infinity".
+ * decodes to the identical double in serde_json (with its float_roundtrip
+ * parser); a non-finite value is written as the string "NaN" / "Infinity" /
+ * "-Infinity".
+ *
+ * The TypeScript runs on pinned math (tools/cot-sim-wasm.mjs pinMath: the
+ * Rust port's own libm, compiled to WebAssembly, over Math.*), so the vectors
+ * are the same on every engine and the Rust comparison proves the port's
+ * operation order exactly. An engine's own Math.* differs from it, and from
+ * other engines, by up to an ulp (tools/jsmath-conformance.mjs); the tool
+ * reports how many vector doubles the engine's math would change.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -23,6 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Vector3 } from 'three';
 import { mulberry32 } from '../src/game/stateCore.ts';
+import { loadCotSimWasmNode, pinMath } from './cot-sim-wasm.mjs';
 import {
   GRAVITY_SCALE,
   GUIDED_MISSILE_TURN_RATE_RAD_S,
@@ -74,6 +83,9 @@ function ballisticsVectors() {
     nanScale: { velocityMps: 900, gravityScale: NaN, pen100Mm: 200, pen1000Mm: 150 },
     zeroFar: { velocityMps: 900, pen100Mm: 200, pen1000Mm: 150, pen2000Mm: 0 },
     slow: { velocityMps: 40, pen100Mm: 30, pen1000Mm: 20 },
+    // b9d6a7f4ff (the battle modes): an FPV drone's flight-time limit, and a NaN one that never expires
+    drone: { velocityMps: 60, maxLifetimeS: 4, pen100Mm: 10, pen1000Mm: 10 },
+    nanLife: { velocityMps: 300, maxLifetimeS: NaN, pen100Mm: 50, pen1000Mm: 40 },
   };
   const distances = [0, 50, 100, 250, 500, 999, 1000, 1000.5, 1001, 1500, 2000, 2500, 3000, -50];
   const dt = 1 / 60;
@@ -120,7 +132,7 @@ function ballisticsVectors() {
       record(0);
       for (let step = 1; step <= 370; step++) {
         stepShell(shell, dt);
-        if (step === 1 || step === 2 || step === 30 || step === 120 || step === 359 || step === 360 || step === 361 || step === 370) record(step);
+        if (step === 1 || step === 2 || step === 30 || step === 120 || step === 240 || step === 241 || step === 359 || step === 360 || step === 361 || step === 370) record(step);
       }
       flights.push({ spec: name, dir: vec(dir), gravityMps2: num(shell.gravityMps2), samples });
     }
@@ -182,12 +194,30 @@ function ballisticsVectors() {
 }
 
 // --------------------------------------------------------------- main ------
-const modules = { rng: rngVectors(), ballistics: ballisticsVectors() };
+const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors() });
+const engineModules = generate();
+const restoreMath = pinMath(await loadCotSimWasmNode());
+let modules;
+try {
+  modules = generate();
+} finally {
+  restoreMath();
+}
+{
+  // how many vector doubles the engine's own Math.* would change
+  let numbers = 0, changed = 0;
+  const walk = (a, b) => {
+    if (typeof a === 'number') { numbers++; if (!Object.is(a, b)) changed++; return; }
+    if (a && typeof a === 'object') for (const key of Object.keys(a)) walk(a[key], b?.[key]);
+  };
+  walk(modules, engineModules);
+  console.log(`[port-golden] pinned math; this engine's Math.* (V8 ${process.versions.v8}, ${process.arch}) would change ${changed} of ${numbers} doubles`);
+}
 mkdirSync(OUT_DIR, { recursive: true });
 let drift = 0;
 for (const [name, data] of Object.entries(modules)) {
   const file = path.join(OUT_DIR, `${name}.json`);
-  const text = `${JSON.stringify({ generator: 'tools/port-golden-vectors.mjs', ...data }, null, 1)}\n`;
+  const text = `${JSON.stringify({ generator: 'tools/port-golden-vectors.mjs', math: 'pinned (crates/cot-sim-wasm jsmath)', ...data }, null, 1)}\n`;
   if (CHECK) {
     const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
     if (current !== text) {

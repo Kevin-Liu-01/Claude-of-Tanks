@@ -56,32 +56,51 @@ pub fn imul(a: i32, b: i32) -> i32 {
     a.wrapping_mul(b)
 }
 
-/// `Math.hypot(a, b)` as V8 evaluates it: scale by the largest magnitude,
-/// Kahan-sum the squared ratios, then `sqrt(sum) * max`. This is not the
-/// fdlibm `hypot`, and the two differ in the last bit often enough to matter.
-pub fn hypot2(a: f64, b: f64) -> f64 {
-    let a = a.abs();
-    let b = b.abs();
-    if a.is_infinite() || b.is_infinite() {
+/// `Math.hypot(...values)` as V8 evaluates it (`MathHypot` in `math.tq`):
+/// an infinite argument wins over a NaN, otherwise scale by the largest
+/// magnitude, Kahan-sum the squared ratios, then `sqrt(sum) * max`. This is not
+/// the fdlibm `hypot`, and the two differ in the last bit often enough to matter.
+pub fn hypot(values: &[f64]) -> f64 {
+    let mut max = 0.0;
+    let mut one_is_nan = false;
+    for &v in values {
+        if v.is_nan() {
+            one_is_nan = true;
+        } else if v.abs() > max {
+            max = v.abs();
+        }
+    }
+    if max == f64::INFINITY {
         return f64::INFINITY;
     }
-    if a.is_nan() || b.is_nan() {
+    if one_is_nan {
         return f64::NAN;
     }
-    let m = if a > b { a } else { b };
-    if m == 0.0 {
+    if max == 0.0 {
         return 0.0;
     }
     let mut sum = 0.0;
     let mut compensation = 0.0;
-    for n in [a, b] {
-        let n = n / m;
+    for &v in values {
+        let n = v.abs() / max;
         let summand = n * n - compensation;
         let preliminary = sum + summand;
         compensation = (preliminary - sum) - summand;
         sum = preliminary;
     }
-    sqrt(sum) * m
+    sqrt(sum) * max
+}
+
+/// `Math.hypot(a, b)`.
+#[inline]
+pub fn hypot2(a: f64, b: f64) -> f64 {
+    hypot(&[a, b])
+}
+
+/// `Math.hypot(a, b, c)`.
+#[inline]
+pub fn hypot3(a: f64, b: f64, c: f64) -> f64 {
+    hypot(&[a, b, c])
 }
 
 /// `Math.sqrt`: correctly rounded on every IEEE target, so `std` is exact here.
@@ -154,6 +173,12 @@ pub fn exp(x: f64) -> f64 {
 #[inline]
 pub fn pow(x: f64, y: f64) -> f64 {
     libm::pow(x, y)
+}
+
+/// `Math.cbrt`.
+#[inline]
+pub fn cbrt(x: f64) -> f64 {
+    libm::cbrt(x)
 }
 
 /// `Math.PI`.

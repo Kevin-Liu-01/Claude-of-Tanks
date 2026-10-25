@@ -27,6 +27,9 @@ pub const GUIDED_MISSILE_TURN_RATE_RAD_S: f64 = 2.4;
 pub struct ShellSpec {
     /// Muzzle velocity, m/s.
     pub velocity_mps: f64,
+    /// Optional flight-time limit, s (`maxLifetimeS`; `??` semantics: absent falls back to
+    /// [`SHELL_MAX_LIFETIME_S`], a NaN never expires).
+    pub max_lifetime_s: Option<f64>,
     /// Cursor-guided missile: flies the sight line, no gravity.
     pub guided: bool,
     /// Optional custom gravity scale (artillery ammunition).
@@ -192,7 +195,7 @@ pub fn step_shell(shell: &mut Shell, dt: f64) {
     shell.dist_m += shell.pos.distance_to(&shell.prev_pos); // true arc length for pen falloff
     shell.vel.y -= gravity * dt;
     shell.age_s += dt;
-    if shell.age_s > SHELL_MAX_LIFETIME_S {
+    if shell.age_s > shell.spec.max_lifetime_s.unwrap_or(SHELL_MAX_LIFETIME_S) {
         shell.dead = true;
     }
 }

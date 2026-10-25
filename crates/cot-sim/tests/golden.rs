@@ -174,6 +174,7 @@ struct Constants {
 #[serde(rename_all = "camelCase")]
 struct JsSpec {
     velocity_mps: JsNum,
+    max_lifetime_s: Option<JsNum>,
     #[serde(default)]
     guided: bool,
     gravity_scale: Option<JsNum>,
@@ -187,6 +188,7 @@ impl JsSpec {
     fn spec(&self) -> ShellSpec {
         ShellSpec {
             velocity_mps: self.velocity_mps.f64(),
+            max_lifetime_s: self.max_lifetime_s.map(JsNum::f64),
             guided: self.guided,
             gravity_scale: self.gravity_scale.map(JsNum::f64),
             guidance_turn_rate_rad_s: self.guidance_turn_rate_rad_s.map(JsNum::f64),

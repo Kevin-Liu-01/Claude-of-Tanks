@@ -3,7 +3,7 @@
 # until the port passes the same receipts; nothing here is bundled by Vite.
 [workspace]
 resolver = "2"
-members = ["crates/cot-sim"]
+members = ["crates/cot-sim", "crates/cot-sim-wasm"]
 
 [workspace.package]
 version = "0.1.0"
