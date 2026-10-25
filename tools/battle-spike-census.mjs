@@ -76,7 +76,9 @@ export function parseCensusArgs(argv) {
     roots: null, governor: 'pinned',
   };
   for (const arg of argv) {
-    const [key, value = '1'] = arg.replace(/^--/, '').split('=');
+    // split at the first '=' only: a value may carry its own (--roots=base=<dir>)
+    const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
+    const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
     switch (key) {
       case 'scenarios': o.scenarios = value.split(',').filter(Boolean); break;
       case 'sizes': o.sizes = value.split(',').map(Number); break;

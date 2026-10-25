@@ -184,6 +184,28 @@ census saw 90–125 ms hitches under load).
 - **Result:** the first step is now 16.4 ms (14 v 14) and 18.4 ms (21 v 21). The paired bench (base and lane in one
   process) keeps every state digest identical over 1,800 ticks. The rest is the first run's compilation.
 
+### The adaptive resolution's steps
+
+The governor (`engine/post.ts` `dynGovern`, `engine/adaptiveQualityPolicy.ts`) moves the composer's pixel ratio in
+0.09 steps, at most two a cut and one cut every 1.5 s. Every step reallocates the whole composer chain: the MSAA HDR
+scene target, GTAO, bloom, SMAA and TAA (`applySize` → `composer.setPixelRatio`).
+
+On the loaded census machine the diagnostic battle (Verdant 7 v 7 cold) stepped down three times in combat's first 5 s:
+
+| Step | Re-created scene target (first draws) | Stall that followed |
+|---|---|---|
+| 1.94 s | framebuffer 71 (80 first draws) | 1,233 ms just before it: no frames while the GPU caught up |
+| 3.46 s | framebuffer 93 (69) | 141 ms GPU busy at 3.7 s |
+| 4.97 s | framebuffer 114 (81) | 217 ms at 5.3 s |
+
+A player whose machine needs the governor pays a hitch at every step. The census pins the scale (`--governor=pinned`):
+a pair must render the same pixels, and the steps are the loaded machine's, not the battle's.
+
+**The root fix** is a resolution change that allocates nothing: targets kept at the preset's full ratio, the scene
+rendered into a scaled viewport, and every pass reading the scaled sub-rectangle (UV scale and clamp, the upscaler
+from the sub-rectangle). It touches every pass of the post chain and its edges (GTAO's and bloom's taps, TAA's
+history), so it is proposed as its own lane with a capture A/B. Not done here.
+
 ### The HUD's layout pass
 
 `ui/battleHudLayout.ts` `refresh` re-plans the HUD whenever a watched element's class, `hidden` or `data-count`
@@ -194,6 +216,17 @@ changes, or the kill lane's, toasts' or log's children change. It ran 25–27 ti
   body-variable writes.
 
 It is the most frequent hitch cause after the GPU stalls (`hud/dom`).
+
+**Proposed to the UI owner (a UI-gauntlet change, not made blind here):**
+
+- A transient part's change (kill lane, toasts, log, alerts, the sixth-sense mark) re-plans nothing (`planInputs`
+  stays false), but still re-reads every instrument's box. It needs only the notice placement; the steady
+  instruments' boxes can be kept between passes until a plan input changes.
+- The pass writes body variables and attributes between its reads. A write to `body` invalidates the whole page's
+  style, so the next read pays a full recalculation (two of about 14 ms in the worst pass under load). All reads
+  first, then all writes, keeps it to one.
+- `observe()` runs five selector-list queries a pass. They matter only when the HUD's elements change, which a
+  childList record marks.
 
 ### Allocation
 
