@@ -237,8 +237,8 @@ const CSS = `
 .cot-play .play-head{position:sticky;top:calc(-1 * var(--s5));z-index:5;flex-shrink:0;margin:calc(-1 * var(--s5)) calc(-1 * var(--s5)) 0;
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
-.cot-play{--play-close:36px;--play-head-end:calc(var(--play-close) + var(--s4) + var(--s3));--icon-ink-y:.646}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
-.cot-play .close{--h:var(--play-close);position:absolute;right:var(--s4);top:var(--s5)}
+.cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+.cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-play h2{display:flex;align-items:center;min-height:var(--play-close);margin:0;font:700 var(--fs-28)/1 var(--font-display);
@@ -434,7 +434,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .roomhead>.action{align-self:center}
 .cot-play .seats-count{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
-.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);min-height:108px;
+.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));column-gap:var(--s3);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat;
   border-right:1px solid var(--line-1)}
@@ -447,7 +447,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-art .random-map-count b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-data)}
 .cot-play .battlefield-art .random-map-count span{margin-top:2px;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
   letter-spacing:var(--track-label-s);text-transform:uppercase}
-.cot-play .battlefield-copy{display:grid;align-items:center;gap:var(--s3);padding:var(--s4)}
+.cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
 .cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) minmax(82px,auto);align-items:center;
@@ -457,7 +457,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
-.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-play .player .name{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
@@ -491,7 +491,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
    close as wide as the room (the head keeps 64 px beside its title for the close) */
 .cot-play :is(.room-failure,.version-refusal,.status){flex-wrap:wrap;padding:var(--s3) var(--s4);outline-offset:4px}
 .cot-play .room-failure{margin-top:var(--s4);scroll-margin-block:var(--s6)}
-.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--s5) - var(--play-head-end)) 2px 0}
+.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--play-gutter) - var(--play-head-end)) 2px 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/1.3 var(--font-ui)}
 .cot-play :is(.room-failure,.version-refusal,.status) .cot-c-notice__detail{font-size:max(var(--fs-floor-11),var(--fs-12));text-wrap:pretty}
@@ -526,6 +526,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none}
 
 /* phone and compact */
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play{--play-gutter:var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .panel{padding:var(--s5) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-head{top:calc(-1 * var(--s5));
   margin:calc(-1 * var(--s5)) calc(-1 * var(--s4)) 0;padding:var(--s4) var(--play-head-end) var(--s3) var(--s4)}
