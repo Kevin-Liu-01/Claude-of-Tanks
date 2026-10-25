@@ -6,10 +6,10 @@
 // still play. Each run is a fresh headed browser (a cold audio service, as a first visit meets it) with --mute-audio
 // (the device still opens; nothing is audible). Per build, A B B A, one capture ticket:
 //   inp        the press's interaction (input to its next paint)
-//   longTasks  every long task in the four seconds after the press
+//   longTasks  every long task in the eight seconds after the press
 //   contexts   each AudioContext built: when (from the press) and its constructor's own time, its state afterwards
 //   firstSound the first audio source started (from the press), and how many started
-//   console    errors and warnings, the press's four seconds and the boot before it
+//   console    errors and warnings, the press's eight seconds and the boot before it
 //
 //   node tools/gate-audio-probe.mjs --base=<label>=<url> --base=<label>=<url> --out=<dir> [--runs=4]
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -41,8 +41,11 @@ const PROBE = `(() => {
     };
     window.AudioContext.prototype = AC.prototype;
   }
-  const start = AudioScheduledSourceNode.prototype.start;
-  AudioScheduledSourceNode.prototype.start = function (...args) { rec.sounds.push(performance.now()); return start.apply(this, args); };
+  // AudioBufferSourceNode declares its own start (the game's every sound); the oscillators inherit the scheduled one
+  for (const proto of [AudioBufferSourceNode.prototype, AudioScheduledSourceNode.prototype]) {
+    const start = proto.start;
+    proto.start = function (...args) { rec.sounds.push(performance.now()); return start.apply(this, args); };
+  }
   new PerformanceObserver((list) => { for (const e of list.getEntries()) if (e.interactionId) rec.interactions.push({ at: e.startTime, ms: e.duration, name: e.name }); })
     .observe({ type: 'event', durationThreshold: 16, buffered: true });
   new PerformanceObserver((list) => { for (const e of list.getEntries()) rec.longtasks.push({ at: e.startTime, ms: e.duration }); })
@@ -71,7 +74,8 @@ async function probe(base) {
       requestAnimationFrame(tick);
     });
     await page.keyboard.press('Enter');
-    await new Promise((r) => setTimeout(r, 4000));
+    // the first sound waits on its buffer's fetch and decode: eight seconds
+    await new Promise((r) => setTimeout(r, 8000));
     const result = await page.evaluate(() => {
       const rec = window.__gateAudio, from = rec.pressAt, rel = (t) => Math.round(t - from);
       return {
