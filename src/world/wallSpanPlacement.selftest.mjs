@@ -456,7 +456,23 @@ for (const seed of [1337, 2049, 7719]) {
   const expectedBroken = DESTRUCTIBLE_TYPES.wallstone.broken(expectedRng);
   const { finalize } = poolFinalizer(fixture, field, kitRng, { group });
   let completedFits = 0;
+  const stages = [];
   for (const checkpoint of finalize('wallstone', pool)) {
+    stages.push(checkpoint.stage);
+    // (battle-spikes-253) the pool's build and its refit a slice each: nothing published, no fit begun
+    if (checkpoint.stage === 'pool-refit-wallstone') {
+      assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-refit-wallstone' });
+      assert.equal(group.children.length, 0, 'no mesh is published at the refit checkpoint');
+      assert.equal(pool.imI, undefined);
+      continue;
+    }
+    // (battle-spikes-253) and the broken form in its own slice: the intact pool published, the broken not yet
+    if (checkpoint.stage === 'pool-broken-wallstone') {
+      assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-broken-wallstone' });
+      assert.ok(pool.imI, 'the intact pool is published before the broken form is built');
+      assert.equal(pool.imB, undefined);
+      continue;
+    }
     completedFits += 8; poolCheckpoints++;
     assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'wall-fit-wallstone' });
     assert.equal(group.children.length, 0, 'no partial intact or broken mesh is published at a fit checkpoint');
@@ -470,6 +486,8 @@ for (const seed of [1337, 2049, 7719]) {
       'the checkpoint does not begin a later wall fit');
   }
   assert.equal(completedFits / 8, Math.floor((records.length - 1) / 8), 'one checkpoint per eight completed fits');
+  assert.equal(stages[0], 'pool-refit-wallstone', 'the refit slice comes first');
+  assert.equal(stages.at(-1), 'pool-broken-wallstone', 'the broken form\'s slice comes last');
   assert.equal(records.length, authoredSlots);
   assert.equal(pool.imI.count, authoredSlots);
   assert.equal(group.children.length, 2, 'one intact and one existing broken pool, no added draw families');
@@ -559,6 +577,11 @@ for (const method of ['prepare', 'finalize']) {
   for (const boundary of [1, 2]) {
     const test = trackedFinalization();
     const iterator = test.owner[method]('wallstone', test.pool);
+    // (battle-spikes-253) the build and the refit a slice each: suspended between them, nothing refit or fitted yet
+    assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'pool-refit-wallstone' } });
+    assertUnpublished(test);
+    assert.equal(test.geometries[0].disposals, 0, 'geometry remains owned while suspended before its refit');
+    assert.equal(test.fixture.records.filter(record => record.groundSupport !== null).length, 0, 'no fit begins before the refit');
     for (let index = 0; index < boundary; index++) {
       assert.deepEqual(iterator.next(), { done: false,
         value: { fine: true, progress: false, stage: 'wall-fit-wallstone' } });
@@ -584,6 +607,8 @@ for (const method of ['prepare', 'finalize']) for (const phase of ['refit', 'fit
     },
   });
   const iterator = test.owner[method]('wallstone', test.pool);
+  assert.equal(iterator.next().value?.stage, 'pool-refit-wallstone', 'the build is suspended before its refit');
+  assertUnpublished(test);
   if (phase === 'fit') {
     assert.equal(iterator.next().done, false, 'fit failure occurs after a real suspended batch');
     assertUnpublished(test);
@@ -597,7 +622,16 @@ for (const method of ['prepare', 'finalize']) for (const phase of ['refit', 'fit
 for (const method of ['prepare', 'finalize']) {
   const test = trackedFinalization(), iterator = test.owner[method]('wallstone', test.pool);
   let step = iterator.next();
-  while (!step.done) { assertUnpublished(test); step = iterator.next(); }
+  while (!step.done) {
+    // (battle-spikes-253) at the broken form's slice the intact pool stands published (as an earlier pool does at a later
+    // pool's slices) and the broken one is not built yet; every other checkpoint publishes nothing
+    if (step.value?.stage === 'pool-broken-wallstone') {
+      assert.ok(test.pool.imI);
+      assert.equal(test.pool.imB, undefined);
+      assert.equal(test.geometries.length, 1, 'the broken builder has not run');
+    } else assertUnpublished(test);
+    step = iterator.next();
+  }
   iterator.return(); iterator.return();
   assert.equal(test.geometries.length, method === 'prepare' ? 1 : 2, 'builders execute exactly once on success');
   assert.ok(test.geometries.every(item => item.disposals === 0), 'successful transfer does not dispose live geometry');
