@@ -222,7 +222,6 @@ function medals(view: ServiceRecordView): string {
 function achievementCard(entry: AchievementProgress, fresh: boolean): string {
   const { def, tier, value, next } = entry;
   const target = next ?? def.tiers[2];
-  const floor = tier > 0 ? def.tiers[tier - 1] : 0;
   // the bar reads as the count beside it does: the value toward the next tier's target
   const pct = next == null ? 100 : Math.max(0, Math.min(100, (value / Math.max(1, next)) * 100));
   return `<article class="cot-record-ach tier-${tier}${fresh ? ' is-new' : ''}" data-achievement="${def.id}">` +

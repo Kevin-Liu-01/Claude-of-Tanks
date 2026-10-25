@@ -270,7 +270,7 @@ const SETTINGS_CSS = `
   box-shadow:var(--e1);}
 .cot-set-card .cot-set-group{margin:0 0 var(--s1);}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
-.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px;
+.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
 .cot-set-row:not(:has(~ .cot-set-row)){border-bottom:0;}
 .cot-set-row:has(.cot-set-seg button:disabled):not(:has(.cot-set-seg button:enabled)) .cot-setting-label-text{color:var(--ink-3);}
@@ -361,15 +361,16 @@ const SETTINGS_CSS = `
 .cot-settings .cot-time-content>svg{display:none;}
 .cot-settings .cot-time-check{flex:0 0 12px;width:12px;height:12px;border:0;color:var(--ink-1);visibility:hidden;}
 @media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
-.cot-settings .cot-time-choice input:checked+.cot-time-content{background:transparent;box-shadow:none;color:var(--ink-1);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1);}
 .cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
 .cot-set-preview{margin:var(--s3) 0 var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
-.cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
+.cot-set-note{margin:var(--s3) 0 var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
+.cot-set-note.keep{text-wrap:balance;}
 .cot-set-note.folded{display:none;}
 .cot-set-body>.cot-set-note{margin-inline:var(--s3);}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
@@ -1437,17 +1438,22 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const customRow = el('div', 'cot-set-row', vision);
     settingLabel(customRow, t('settings.a11y.preset.custom'), { id: 'brush' });
     const custom = el('div', 'cot-a11y-custom', customRow);
-    const shape = (side: string, entity: string): void => {
+    const shape = (side: string, entity: string): HTMLSpanElement => {
       const mark = el('span', `cot-a11y-shape ${side}`, custom);
       mark.setAttribute('aria-hidden', 'true');
       mark.innerHTML = entity;
+      return mark;
     };
-    shape('own', '&#9650;');
+    const ownMark = shape('own', '&#9650;');
     const ownPick = el('input', 'cot-c-swatch', custom);
     ownPick.type = 'color';
     ownPick.setAttribute('aria-label', t('hud.team.ally'));
-    shape('enemy', '&#9670;');
+    const enemyMark = shape('enemy', '&#9670;');
     const enemyPick = el('input', 'cot-c-swatch', custom);
+    // each shape wears its picker's colour, so a refused pair shows what was picked
+    for (const [mark, pick] of [[ownMark, ownPick], [enemyMark, enemyPick]] as const) {
+      for (const type of ['input', 'change']) pick.addEventListener(type, () => mark.style.setProperty('color', pick.value));
+    }
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
     // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
@@ -1459,6 +1465,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const refusedText = requiredElement<HTMLSpanElement>(refused, '.cot-c-notice__text');
     const syncCustom = (): void => {
       ownPick.value = prefs().customOwn;
+      for (const mark of [ownMark, enemyMark]) mark.style.removeProperty('color'); // the saved pair: the team tokens again
       enemyPick.value = prefs().customEnemy;
       customRow.hidden = prefs().colorPreset !== 'custom';
       refused.hidden = true;
