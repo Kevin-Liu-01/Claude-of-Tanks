@@ -91,6 +91,33 @@ function drive(steps, atYield) {
 }
 
 {
+  // (battle-spikes-253) a covered volley's late-layer effects are drawn again through the late pass's own target (its
+  // single-sample, depth-texture attachments: their GPU pipelines), the late layer only; a live warm draws nothing
+  const { context } = stubContext({ phase: 'battle' });
+  const lateDraws = [], selects = [];
+  context.post = { prepareSoftParticles() {}, warmLateFxDraw() { lateDraws.push('late'); } };
+  context.createIsolatedForwardWarmBatches = function* (options) {
+    options.warmRender();
+    selects.push(options.select ?? null);
+    yield { label: 'fx', objects: 1, ms: 0 };
+  };
+  drive(createCombatOpeningWarmSteps(context, { cooperative: true, covered: true }), () => {});
+  assert.equal(lateDraws.length, 1, 'the opening volley\'s late draws');
+  drive(createCombatRareWarmSteps(context, { cooperative: true, covered: true }), () => {});
+  assert.equal(lateDraws.length, 2, 'and the destruction volley\'s');
+  const onLate = new THREE.Mesh(), onScene = new THREE.Mesh();
+  onLate.layers.set(30);
+  const late = selects.filter(Boolean);
+  assert.equal(late.length, 2);
+  assert.ok(late.every((select) => select(onLate) && !select(onScene)), 'the late layer only');
+  const { context: liveContext } = stubContext({ phase: 'battle' });
+  const liveDraws = [];
+  liveContext.post = { prepareSoftParticles() {}, warmLateFxDraw() { liveDraws.push('late'); } };
+  drive(createCombatRareWarmSteps(liveContext, { cooperative: true }), () => {});
+  assert.equal(liveDraws.length, 0, 'a live warm compiles in place and draws nothing');
+}
+
+{
   // the hidden-variant scope renders: every yield sees cascades fitted to the live field of view
   const { context, record, camera } = stubContext();
   camera.fov = 55;

@@ -142,19 +142,25 @@ async function probeScenario(options, scenario) {
         await cdp.send('HeapProfiler.startSampling', { samplingInterval: 32768 });
         sampling = true;
       }
+      const entryStarted = Date.now();
       await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
-      await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+      await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 250 });
+      const entryMs = Date.now() - entryStarted;
+      // the entry's covered first-battle warm (once a session; window.__BATTLE_FIRST_WARM) and its load stages
+      const entry = await page.evaluate(() => ({ firstWarm: window.__BATTLE_FIRST_WARM ?? null,
+        loadStages: window.__BATTLE_LOAD?.stages ?? null }));
+      await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
       const inBattle = rssByKind(pid);
       await driveBattle(page, { seconds: options.seconds, mode: gameMode });
       const atEnd = rssByKind(pid);
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
-      const row = { label: `garage after battle ${battle}`, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      const row = { label: `garage after battle ${battle}`, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
       returns.push(row);
       log(`${keyOf(scenario, options.size)} battle ${battle}: heap ${row.jsHeapMB} MB, nodes ${row.nodes}, listeners ${row.listeners}, `
         + `textures ${row.textures}, geometries ${row.geometries}, programs ${row.programs}, rss ${row.rss.total} MB (gpu ${row.rss.gpu}, renderer ${row.rss.renderer}); `
-        + `in battle ${atEnd.total} MB`);
+        + `in battle ${atEnd.total} MB; entry ${entryMs} ms, first warm ${JSON.stringify(entry.firstWarm)}`);
     }
     let retained = null;
     if (sampling) {
