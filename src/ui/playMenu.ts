@@ -438,7 +438,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
 .cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));column-gap:var(--s3);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-.cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat;
+.cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat padding-box;
   border-right:1px solid var(--line-1)}
 .cot-play .battlefield-art::after{content:"";position:absolute;inset:0;z-index:1;background:var(--media-fade-soft)}
 .cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-page)}
@@ -453,7 +453,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 7em;align-items:center;
+.cot-play .player{--foot-track:calc((100% + 2 * var(--s4) - 2 * var(--s3)) / 3.6);display:grid;
+  grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) calc(var(--foot-track) - 7em - var(--s3)) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
@@ -494,9 +495,9 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
    close as wide as the room (the head keeps 64 px beside its title for the close) */
 .cot-play :is(.room-failure,.version-refusal,.status){flex-wrap:wrap;padding:var(--s3) var(--s4);outline-offset:4px}
 .cot-play .room-failure{margin-top:var(--s4);scroll-margin-block:var(--s6)}
-.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--play-gutter) - var(--play-head-end)) 2px 0}
+.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--play-gutter) - var(--play-head-end)) 0 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
-.cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/1.3 var(--font-ui)}
+.cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/calc(var(--s4) + var(--s1)) var(--font-ui)}
 .cot-play :is(.room-failure,.version-refusal,.status) .cot-c-notice__detail{font-size:max(var(--fs-floor-11),var(--fs-12));text-wrap:pretty}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__acts{flex-basis:100%;padding-left:calc(20px + var(--s3))}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
