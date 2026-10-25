@@ -96,6 +96,8 @@ export interface FirstBattleWarmTrace {
   failed?: string;
   /** The enemy programs' uniform warm, when it did not finish (the deferred warm's then). */
   enemyUniforms?: string;
+  /** A stage whose programs were still linking when its window closed (the deferred warm's unlessLinksUnfinished). */
+  unfinishedLinks?: Record<string, { reason: string; pending?: number | null }>;
 }
 
 interface FirstBattleWarmPorts {
@@ -134,6 +136,15 @@ export async function runFirstBattleCoveredWarm(
     markedAt = at;
     onProgress?.(fraction);
   };
+  // (the A/B, 2026-10-25: four of eight first warms stopped at the vision stage on "incomplete: budget" under load) a stage
+  // whose programs are still linking when its window closes leaves them to their first draw and the next stage goes on,
+  // as in the deferred warm; a stale battle (invalidated) still stops it
+  const unlessLinksUnfinished = async (stage: string, run: () => Promise<void>): Promise<void> => {
+    try { await run(); } catch (error) {
+      if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
+      (trace.unfinishedLinks ??= {})[stage] = { reason: error.preparation.reason, pending: error.preparation.pending };
+    }
+  };
   try {
     const baseline = snapshotRendererPrograms(renderer);
     await getBattleVisuals().stream((entity) => entity.team === 'enemy', yieldForBudget, null, true);
@@ -141,11 +152,11 @@ export async function runFirstBattleCoveredWarm(
     try { await warmNewRendererProgramUniforms(renderer, baseline, yieldForBudget); }
     catch (error) { trace.enemyUniforms = String((error as Error)?.message ?? error).slice(0, 120); }
     mark('enemyVisuals', 0.3);
-    await combatWarm.warmOpeningChunked(6, yieldForBudget, { covered: true });
+    await unlessLinksUnfinished('openingEffects', () => combatWarm.warmOpeningChunked(6, yieldForBudget, { covered: true }));
     mark('openingEffects', 0.4);
-    await combatWarm.warmRareChunked(6, yieldForBudget, { covered: true });
+    await unlessLinksUnfinished('rareEffects', () => combatWarm.warmRareChunked(6, yieldForBudget, { covered: true }));
     mark('rareEffects', 0.75);
-    for (const _ of warmVisionSteps()) await yieldForBudget(true);
+    await unlessLinksUnfinished('visionPrograms', async () => { for (const _ of warmVisionSteps()) await yieldForBudget(true); });
     mark('visionPrograms', 1);
   } catch (error) {
     trace.failed = String((error as Error)?.message ?? error).slice(0, 200);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createCombatWarmComposition } from './combatWarmComposition.ts';
+import { ProgramUniformPreparationError } from '../engine/programWarm.ts';
 
 const calls = {
   studio: 0,
@@ -137,6 +138,7 @@ sourceMaterial.dispose(); hiddenMesh.geometry.dispose();
 {
   const order = [];
   const executions = [];
+  let visionThrows = null;
   const firstGame = { tanks: [], phase: 'battle', preBattleS: Infinity };
   const root = new THREE.Group();
   root.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
@@ -148,7 +150,7 @@ sourceMaterial.dispose(); hiddenMesh.geometry.dispose();
       createCombatOpeningWarmSteps: function* (_context, execution) { order.push('opening'); executions.push(execution); },
       createCombatRareWarmSteps: function* (_context, execution) { order.push('rare'); executions.push(execution); },
     }), warmBattleTerrainTiles: async () => {}, invalidate() {} },
-    forwardProgramWarm: { *initializeSteps() { order.push('vision'); yield; }, invalidate() {} },
+    forwardProgramWarm: { *initializeSteps() { order.push('vision'); if (visionThrows) throw visionThrows; yield; }, invalidate() {} },
     getFx: () => ({}), getWorld: () => null,
     getBattleVisuals: () => ({ stream: async (predicate, _yield, _progress, keepDetached) => {
       order.push('enemyVisuals');
@@ -181,6 +183,24 @@ sourceMaterial.dispose(); hiddenMesh.geometry.dispose();
   first.resetRendererWarmState();
   const restored = await first.warmFirstBattleCovered(async () => {});
   assert.equal(restored.ran, true, 'a lost context takes the programs: the next battle warms them again');
+
+  // (the A/B under load) the sights' programs still linking when the vision stage's window closes: their first draw
+  // waits on them, the warm is not failed, and a later battle still skips it
+  visionThrows = new ProgramUniformPreparationError({ status: 'incomplete', reason: 'budget', pending: 3 });
+  first.resetRendererWarmState();
+  const unfinished = await first.warmFirstBattleCovered(async () => {});
+  assert.equal(unfinished.ran, true);
+  assert.equal(unfinished.failed, undefined, 'links still pending are not a failed warm');
+  assert.deepEqual(unfinished.unfinishedLinks, { visionPrograms: { reason: 'budget', pending: 3 } });
+  assert.ok('visionPrograms' in unfinished.stages, 'the stage is marked done');
+  assert.equal((await first.warmFirstBattleCovered(async () => {})).ran, false, 'and the next battle skips it');
+
+  // a stale battle (invalidated) stops it, and it is still not paid again
+  visionThrows = new ProgramUniformPreparationError({ status: 'incomplete', reason: 'invalidated', pending: null });
+  first.resetRendererWarmState();
+  const stopped = await first.warmFirstBattleCovered(async () => {});
+  assert.match(stopped.failed ?? '', /invalidated/);
+  assert.equal((await first.warmFirstBattleCovered(async () => {})).ran, false, 'once a renderer, whatever it met');
   first.dispose();
   delete globalThis.__BATTLE_FIRST_WARM;
 }

@@ -295,7 +295,8 @@ export function createCombatWarmComposition({
       renderer: renderer as unknown as Parameters<typeof module.runFirstBattleCoveredWarm>[0]['renderer'],
       getBattleVisuals, combatWarm, warmVisionSteps, devTrace,
     }, yieldForBudget, onProgress);
-    if (!trace.failed) firstBattleWarmed = true;
+    // once a renderer, whatever it met: a stage it could not finish is the deferred warm's, never another entry's cost
+    firstBattleWarmed = true;
     return trace;
   };
 
