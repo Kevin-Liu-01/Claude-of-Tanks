@@ -56,7 +56,7 @@ import {
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
-import { tankTier, tierNumeral } from '../vehicles/tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
@@ -460,7 +460,7 @@ const NATION_RANK = new Map([
   ['Israel', 12], ['Ukraine', 13],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
-  return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
+  return compareCountryThenTierThenName(a, b, NATION_RANK, displayTier);
 }
 const countryCodeOf = (spec: GarageTankSpec): string => flagIconCode(spec.nation);
 

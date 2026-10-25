@@ -1202,7 +1202,7 @@ import { maskIcon } from './icons.ts';
 import { liveToken } from './tokens/tokens.ts';
 import { tokenEpoch } from './tokens/tokenSelection.ts';
 import { moduleAlertLabel } from './moduleRegistry.ts';
-import { tierNumeral } from '../vehicles/tier.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.ts.
 import { createShotInfo } from './shotInfo.ts';

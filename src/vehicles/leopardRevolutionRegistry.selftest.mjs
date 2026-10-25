@@ -6,7 +6,7 @@ import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { NATIVE_FAMILY_ORDER } from './fleetOrder.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { requiredTankAssetFiles, tankAssetMetadata } from './tankAssets.ts';
-import { tankTier, tierNumeral } from './tier.ts';
+import { matchTierNumeral, tankTier } from './tier.ts';
 import { vehicleMarkingAnchor } from './vehicleMarkings.ts';
 
 const protoId = 'leo2_revolution_proto';
@@ -30,9 +30,9 @@ assert.equal(proto.roster.productionVisible, true);
 assert.equal(proto.authorship.geometry, 'first-party-procedural');
 assert.equal(proto.publicVisualFallback, undefined);
 assert.equal(tankTier(protoId), 9);
-assert.equal(tierNumeral(protoId), 'IX');
+assert.equal(matchTierNumeral(protoId), 'IX');
 assert.equal(tankTier(revolutionId), 10);
-assert.equal(tierNumeral(revolutionId), 'X');
+assert.equal(matchTierNumeral(revolutionId), 'X');
 
 // The turret redesign retains the prototype chassis dimensions and balance.
 // The production Revolution still owns its independent source-derived data.

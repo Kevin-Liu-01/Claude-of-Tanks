@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import '../vehicles/fleetRegistration.ts';
 import { TANK_CATALOGS, TANK_SPECS } from '../vehicles/specs.ts';
 import { layoutProblems, layoutTree } from './layout.ts';
+import { displayTier, tierNumeral } from './tiers.ts';
 import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesOf } from './trees.ts';
 
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
@@ -41,10 +42,16 @@ for (const entry of TECH_TREES) {
     for (const id of vehiclesOf(n)) {
       assert.ok(entry.nations.includes(TANK_SPECS[id].nation), `${id} (${TANK_SPECS[id].nation}) drawn in ${entry.id}`);
       assert.equal(nodeForVehicle(id)?.node, n);
+      // the shown tier everywhere in the game is this column (tiers.ts, generated with the trees)
+      assert.equal(displayTier(id), n.tier, `${id}: the shown tier is its column`);
+      assert.equal(tierNumeral(id), ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n.tier]);
     }
   }
 }
 assert.equal(nodeForVehicle('not_a_tank'), null);
+assert.equal(displayTier('not_a_tank'), 0, 'an id no tree draws sorts last');
+assert.equal(tierNumeral('not_a_tank'), '', 'and shows no numeral');
+assert.equal(displayTier('toString'), 0, 'the table answers own ids only');
 assert.deepEqual(childrenOf(tree('usa'), 'm1a1_abrams_hc').map((n) => n.id).sort(), ['m1a1_abrams_aim', 'm1a1_abrams_sa']);
 assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolves to its node');
 

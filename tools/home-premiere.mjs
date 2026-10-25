@@ -17,6 +17,7 @@ import { flagMarkup, iconMarkup } from '../src/presentation/publicShell.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
+import { displayTier, tierNumeral } from '../src/techTree/tiers.ts';
 import { CONCEPT_PROTOTYPE_CLASS_FILTER, CONCEPT_PROTOTYPE_FILTER_META, VEHICLE_CLASS_META, vehicleFacetSearchWords, vehicleFacetsForId }
   from '../src/vehicles/vehicleFacets.ts';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
@@ -204,7 +205,7 @@ function fleetCard(take, entry) {
   return { id, a, take: entry, hero: heroLayers(id, a), m: mobility(id) };
 }
 /** The plate's facts of one vehicle (publicPages.ts FleetFeature): what a tile shows when it is pointed at. */
-const feature = (c) => ({ name: c.a.name, flag: c.a.countryCode, tier: c.a.tierNumeral, cal: c.a.gun?.caliberMm ?? 0,
+const feature = (c) => ({ name: c.a.name, flag: c.a.countryCode, tier: tierNumeral(c.id), cal: c.a.gun?.caliberMm ?? 0,
   pen: pen(c.a), crew: c.m.crew, weight: c.m.weight, speed: c.m.speed, tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
   anatomy: galleryHref(c.id, 'modules').replace(/&amp;/g, '&'), drive: driveHref(c.id).replace(/&amp;/g, '&') });
 let wall = null;
@@ -215,18 +216,18 @@ function fleetWall() {
   const cards = [...curated, ...rest].map(([take, entry]) => fleetCard(take, entry));
   const rank = (c) => NATION_ORDER.indexOf(c.a.countryCode);
   const ordered = [...cards.slice(0, FLEET.length), ...cards.slice(FLEET.length)
-    .sort((x, y) => rank(x) - rank(y) || y.a.tier - x.a.tier || x.a.name.localeCompare(y.a.name))];
+    .sort((x, y) => rank(x) - rank(y) || displayTier(y.id) - displayTier(x.id) || x.a.name.localeCompare(y.a.name))];
   const records = ordered.map((c) => {
     const facets = vehicleFacetsForId(c.id);
     if (!facets) throw new Error(`home-premiere: ${c.id} has no class, role or status (src/vehicles/vehicleFacets.ts)`);
     const nationKey = `nation.${c.a.nation}`;
     const nationTerms = [...new Set([c.a.nation, c.a.markings?.countryLabel, c.a.countryCode, ZH[nationKey]].filter(Boolean).map(lower))];
-    const words = [c.a.name, ...(c.a.label?.searchAliases ?? []), ...nationTerms, c.a.era, `tier ${c.a.tier}`, c.a.tierNumeral,
+    const words = [c.a.name, ...(c.a.label?.searchAliases ?? []), ...nationTerms, c.a.era, `tier ${displayTier(c.id)}`, tierNumeral(c.id),
       vehicleFacetSearchWords(facets, (key) => EN[key] ?? key), vehicleFacetSearchWords(facets, (key) => ZH[key] ?? key)];
     return {
       id: c.id, name: c.a.name, flag: c.a.countryCode, href: galleryHref(c.id).replace(/&amp;/g, '&'), poster: c.take.poster, loop: c.take.loop, title: c.take.title,
       // each word once (the facet labels and their aliases repeat across the English and Chinese words)
-      entry: { searchText: [...new Set(lower(words.join(' ')).split(/\s+/).filter(Boolean))].join(' '), facets, era: c.a.era, nationTerms, tier: c.a.tier },
+      entry: { searchText: [...new Set(lower(words.join(' ')).split(/\s+/).filter(Boolean))].join(' '), facets, era: c.a.era, nationTerms, tier: displayTier(c.id) },
       feature: feature(c),
     };
   });
@@ -271,7 +272,7 @@ function fleetBlock() {
     + `<picture><source type="image/avif" data-fact="tank-set" srcset="${first.hero.tank[0]}" sizes="${PLATE_SIZES}">`
     + `<img class="hc-tank" data-fact="tank" src="${first.hero.tank[1]}" width="480" height="300" alt="" loading="lazy" decoding="async" style="${first.hero.place}"></picture>`
     + `<h3 class="fleet-feature__name">${flag(first.a.countryCode, 'lg', 'fleet-feature__flag')}<span data-fact="name">${esc(first.a.name)}</span></h3></div>`
-    + `<dl class="fleet-facts">${fact('star', 'home.fleet.tier', first.a.tierNumeral)}${fact('gun', 'home.fleet.caliber', first.a.gun?.caliberMm ?? 0, 'mm')}`
+    + `<dl class="fleet-facts">${fact('star', 'home.fleet.tier', tierNumeral(first.id))}${fact('gun', 'home.fleet.caliber', first.a.gun?.caliberMm ?? 0, 'mm')}`
     + `${fact('penetration', 'home.fleet.penetration', pen(first.a), 'mm')}${fact('team', 'home.fleet.crew', first.m.crew, 'home.fleet.crewUnit')}`
     + `${fact('track', 'home.fleet.weight', first.m.weight, 't')}${fact('speed', 'home.fleet.speed', first.m.speed, 'km/h')}</dl>`
     + `<div class="fleet-feature__acts"><a class="${btn('primary', '36')}" data-fact="anatomy" href="${galleryHref(first.id, 'modules')}">${iconMarkup('layerModules', 16)}${t('home.fleet.anatomy')}</a>`

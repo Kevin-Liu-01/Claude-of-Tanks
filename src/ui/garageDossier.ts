@@ -3,7 +3,7 @@
 
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.ts';
 import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActionPolicy.ts';
-import { tankTier } from '../vehicles/tier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 import { t } from './i18n.ts';
 
 const MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({ trackL: 'track', trackR: 'track' });
@@ -152,9 +152,9 @@ function crewLabel(id: string): string {
   return key ? t(key) : (CREW_LABEL_BY_ID[id] || id);
 }
 
-/** Matchmaking peer key used by every normalized garage stat bar. */
+/** The peer key every normalized garage stat bar compares within: the tier the Garage shows, and the era. */
 export function garageStatGroup(spec: GarageDossierSpec | null | undefined): string {
-  return `${tankTier(spec?.id || '')}/${spec?.era || 'unclassified'}`;
+  return `${displayTier(spec?.id || '')}/${spec?.era || 'unclassified'}`;
 }
 
 /** Canonically ordered, duplicate-free damageable modules for one vehicle. */

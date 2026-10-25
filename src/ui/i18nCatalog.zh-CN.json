@@ -2727,7 +2727,7 @@
   "docs.tanks.roles": "战斗角色",
   "docs.tanks.rolesLede": "角色决定坦克的打法：机器人按此方式驾驶，车库也可按角色筛选。",
   "docs.tanks.tiers": "等级与国家",
-  "docs.tanks.tiersLede": "同一等级的坦克会与相近等级的坦克交战。",
+  "docs.tanks.tiersLede": "坦克的等级就是它在本国科技树中所在的列。",
   "docs.tanks.tiersAria": "各等级坦克数量",
   "docs.tanks.nations": "{nations} 个国家",
   "docs.tanks.equipment": "装备",

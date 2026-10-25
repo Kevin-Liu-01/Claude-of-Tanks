@@ -15,7 +15,7 @@
 import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { tierNumeral } from '../vehicles/tier.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 import { t } from './i18n.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { ensureStyle } from './styleLayers.ts';

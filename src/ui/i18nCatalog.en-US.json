@@ -2740,7 +2740,7 @@
   "docs.tanks.roles": "Battle roles",
   "docs.tanks.rolesLede": "A role is how the tank plays: the bots drive it that way, and the Garage filters by it.",
   "docs.tanks.tiers": "Tiers and nations",
-  "docs.tanks.tiersLede": "Tanks of a tier meet tanks of nearby tiers.",
+  "docs.tanks.tiersLede": "A tank's tier is its column in its nation's tech tree.",
   "docs.tanks.tiersAria": "Tanks per tier",
   "docs.tanks.nations": "{nations} nations",
   "docs.tanks.equipment": "Equipment",
