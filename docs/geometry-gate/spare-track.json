@@ -542,7 +542,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "c7520fd170f6fbf5",
+   "inputHash": "c76b55803db35705",
    "runs": [
     {
      "index": 0,
@@ -615,7 +615,7 @@
    "hostSweep": []
   },
   "centurion5_2": {
-   "inputHash": "d986872ebe5a2a68",
+   "inputHash": "131d8209885cb626",
    "runs": [
     {
      "index": 0,
@@ -688,7 +688,7 @@
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "1f2d809124427dbb",
+   "inputHash": "48aa23ff63d9ad7b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -759,7 +759,7 @@
    "hostSweep": []
   },
   "chieftain_mk10": {
-   "inputHash": "fd689b5b2727730f",
+   "inputHash": "931425c02a3f75ac",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -881,7 +881,7 @@
    "hostSweep": []
   },
   "griffin_viper": {
-   "inputHash": "7913b209634dd71b",
+   "inputHash": "9d6620266a193e1a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -947,7 +947,7 @@
    "hostSweep": []
   },
   "k1a1": {
-   "inputHash": "3ea005581c6a51e7",
+   "inputHash": "e94f7d425c253561",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1201,7 +1201,7 @@
    "hostSweep": []
   },
   "leo1a5": {
-   "inputHash": "f911d74bf91d5421",
+   "inputHash": "e55f47e6859be7e6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1710,7 +1710,7 @@
    "hostSweep": []
   },
   "leo2a6m": {
-   "inputHash": "8e6b7491bb426f2f",
+   "inputHash": "f0d6779222d1d77c",
    "runs": [
     {
      "index": 0,
@@ -2003,7 +2003,7 @@
    "hostSweep": []
   },
   "m46_patton": {
-   "inputHash": "1500367dbf8de694",
+   "inputHash": "3b15b6d78bc738ea",
    "runs": [
     {
      "index": 0,
@@ -2034,13 +2034,13 @@
    "hostSweep": []
   },
   "m47_patton": {
-   "inputHash": "06ba04dd38d8a82d",
+   "inputHash": "c1c27896bd0c221b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m48a5_patton": {
-   "inputHash": "1949abec5be0bd8c",
+   "inputHash": "2da10741a77c025b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2058,7 +2058,7 @@
    "hostSweep": []
   },
   "m60a1": {
-   "inputHash": "91778e16326e6c8d",
+   "inputHash": "59bdf335ae87bf15",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
