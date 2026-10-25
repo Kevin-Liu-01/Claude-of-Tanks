@@ -13,11 +13,11 @@ import { physicalMuzzleRimSample, muzzleBoreLuminance, sampleMuzzleRingSeams } f
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, exteriorFingerprint, metadataFingerprint,
-  requiredTankAssetFiles, tankAssetFile, tankAssetMetadata,
+  requiredTankAssetFiles, tankAssetFile, tankAssetMetadata, technicalLabelsFile,
 } from '/src/vehicles/tankAssets.ts';
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
-import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
-import { createInspectionOverlay, inspectionLegend } from '/src/gallery/overlays.ts';
+import { drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.ts';
+import { createInspectionOverlay } from '/src/gallery/overlays.ts';
 import { portraitSideRatio } from '/tools/portrait-camera.ts';
 import {
   auditPortraitPixels,
@@ -378,12 +378,13 @@ function assetProjection(box, anchor) {
   };
 }
 
-const TECHNICAL_WIDTH = BASE;
-const TECHNICAL_HEIGHT = BASE / 2;
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+// 253 (UI gauntlet: the diagrams' labels were baked at about 5 px and failed every critic's 11 px floor): the armour,
+// module and crew diagrams render at 2x and carry no text. Their labels are DOM text over the image, composed at
+// runtime in each locale from the <id>_technical.json sidecar this page writes beside them
+// (src/ui/technicalDiagramLabels.ts). The framing is the 1x composition's, scaled: the vehicle in the central opening,
+// the rails, header and legend bands left for the DOM labels.
+const TECHNICAL_WIDTH = BASE * 2;
+const TECHNICAL_HEIGHT = BASE;
 
 function sideInspectionCamera(center, size, extentZ) {
   const halfHeight = Math.max(size.y / 2, extentZ / 2) * MARGIN;
@@ -404,7 +405,7 @@ function technicalInspectionCamera(id, center, size, extentZ, box) {
   // These source X models' long guns enter the label rails in a full-canvas
   // side camera; tall whips also meet the header or push bodies into the footer.
   // Fit the complete vehicle to the actual 312×164 px content opening, not
-  // the outer 512×256 canvas. Only this technical camera moves: presentation
+  // the outer 512×256 canvas (at the 1x size; 624×328 of 1024×512 since 253). Only this technical camera moves: presentation
   // anchors, metadata dimensions, ordinary views and comparison rigs remain
   // unchanged. Include the real whip tips, gun and lowest shoes in the fit.
   const halfHeight = Math.max(size.y * 128 / 164, size.z * 128 / 312);
@@ -485,23 +486,29 @@ function compactInspectionTitle(title) {
     .slice(0, 13);
 }
 
+/** One label's data: the picker's projected centre and area, its colour, and the values its runtime text is composed
+ * from (src/ui/technicalDiagramLabels.ts technicalLabelText); no display string is baked. */
 function inspectionCallout(picker, camera, root, kind) {
   const inspection = picker.userData?.inspection || {};
   const visual = picker.userData?.inspectionVisual || picker;
   const projected = projectedInspectionBounds(visibleInspectionBounds(visual, root), camera);
   if (!projected) return null;
-  const id = String(inspection.id || '');
-  const suffix = kind === 'armor'
-    ? `${Math.round(Number(inspection.keMm || 0))}MM`
-    : compactInspectionTitle(inspection.title);
-  return {
-    ...projected,
-    label: `${id} ${suffix}`.trim(),
-    color: inspectionPickerColor(picker),
-  };
+  const callout = { key: String(inspection.id || ''), ...projected, color: inspectionPickerColor(picker) };
+  if (kind === 'armor') {
+    callout.keMm = Math.round(Number(inspection.keMm || 0));
+    callout.ceMm = Math.round(Number(inspection.ceMm || 0));
+    if (inspection.plateName) callout.plate = String(inspection.plateName);
+  } else if (kind === 'modules') {
+    callout.module = String(inspection.module || '');
+  } else {
+    callout.crew = String(inspection.crew || '');
+  }
+  if (inspection.title) callout.title = String(inspection.title);
+  return callout;
 }
 
-function renderInspectionStage(spec, visual, camera, kind) {
+/** The inspection overlay's callouts for one kind, and (when `render`) the stage captured at the diagram's size. */
+function renderInspectionStage(spec, visual, camera, kind, render = true) {
   const overlayMode = kind === 'modules' || kind === 'crew' ? kind : 'armor';
   const overlays = [createInspectionOverlay(spec, visual, overlayMode)];
   try {
@@ -515,7 +522,7 @@ function renderInspectionStage(spec, visual, camera, kind) {
       }
     }
     return {
-      canvas: capture(camera, TECHNICAL_WIDTH, TECHNICAL_HEIGHT),
+      canvas: render ? capture(camera, TECHNICAL_WIDTH, TECHNICAL_HEIGHT) : null,
       callouts,
     };
   } finally {
@@ -523,106 +530,8 @@ function renderInspectionStage(spec, visual, camera, kind) {
   }
 }
 
-function drawTechnicalLegend(c, entries) {
-  const rows = entries.length > 6 ? 2 : 1;
-  const columns = Math.ceil(entries.length / rows);
-  const left = 12;
-  const width = 488;
-  const cellWidth = width / columns;
-  c.save();
-  c.font = '700 7px system-ui, sans-serif';
-  c.textAlign = 'left';
-  entries.forEach(([label, color], index) => {
-    const row = Math.floor(index / columns);
-    const column = index % columns;
-    const y = rows === 1 ? 244 : 232 + row * 13;
-    const labelWidth = c.measureText(label).width;
-    const contentWidth = 9 + 4 + labelWidth;
-    const x = left + column * cellWidth + Math.max(0, (cellWidth - contentWidth) / 2);
-    c.fillStyle = color;
-    c.fillRect(x, y - 5, 9, 5);
-    c.fillStyle = '#c8d2da';
-    c.fillText(label.toUpperCase(), x + 13, y);
-  });
-  c.restore();
-}
-
-function drawInspectionCallouts(c, callouts) {
-  const rails = [
-    { side: 'left', x: 5, textX: 9, edgeX: 87, elbowX: 90, align: 'left' },
-    { side: 'right', x: 425, textX: 503, edgeX: 425, elbowX: 422, align: 'right' },
-  ];
-  c.save();
-  c.font = '800 7px ui-monospace, monospace';
-  c.lineWidth = 0.8;
-  for (const rail of rails) {
-    const left = rail.side === 'left';
-    const candidates = callouts.filter((item) => (item.anchor[0] < 256) === left)
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 6)
-      .sort((a, b) => a.anchor[1] - b.anchor[1]);
-    packCalloutYs(candidates, 56, 210, 14);
-    for (const item of candidates) {
-      c.strokeStyle = item.color;
-      c.beginPath();
-      c.moveTo(item.anchor[0], item.anchor[1]);
-      c.lineTo(rail.elbowX, item.labelY);
-      c.lineTo(rail.edgeX, item.labelY);
-      c.stroke();
-      c.beginPath();
-      c.arc(item.anchor[0], item.anchor[1], 1.5, 0, Math.PI * 2);
-      c.fillStyle = item.color;
-      c.fill();
-      c.fillStyle = 'rgba(5,11,15,.94)';
-      c.fillRect(rail.x, item.labelY - 6, 82, 11);
-      c.strokeStyle = 'rgba(182,203,217,.14)';
-      c.strokeRect(rail.x + 0.5, item.labelY - 5.5, 81, 10);
-      c.fillStyle = '#f6f8fa';
-      c.textAlign = rail.align;
-      c.fillText(item.label, rail.textX, item.labelY + 2.5);
-    }
-  }
-  c.restore();
-}
-
-function packCalloutYs(candidates, minY, maxY, gap) {
-  if (!candidates.length) return;
-  // Keep the original near-anchor leader-line composition.  Only displace a
-  // label when its text row would collide with a neighbour, sharing that
-  // displacement across the colliding group instead of cascading every later
-  // label down the rail.  This is minimum-displacement isotonic packing after
-  // subtracting the required row gap.
-  const desired = candidates.map((item, index) => (
-    clamp(item.anchor[1], minY, maxY) - index * gap
-  ));
-  const blocks = [];
-  desired.forEach((value, index) => {
-    blocks.push({ start: index, end: index, total: value, count: 1 });
-    while (blocks.length > 1) {
-      const right = blocks.at(-1);
-      const left = blocks.at(-2);
-      if (left.total / left.count <= right.total / right.count) break;
-      left.end = right.end;
-      left.total += right.total;
-      left.count += right.count;
-      blocks.pop();
-    }
-  });
-  const fitted = new Array(desired.length);
-  for (const block of blocks) {
-    const average = block.total / block.count;
-    for (let index = block.start; index <= block.end; index++) fitted[index] = average;
-  }
-  const packed = fitted.map((value, index) => value + index * gap);
-  const shift = packed[0] < minY
-    ? minY - packed[0]
-    : packed.at(-1) > maxY
-      ? maxY - packed.at(-1)
-      : 0;
-  candidates.forEach((item, index) => { item.labelY = packed[index] + shift; });
-}
-
-function technicalDiagram(stage, metadata, kind) {
+/** The diagram raster: the inspection stage on its gradient, no text and no label panels. */
+function technicalDiagram(stage) {
   const out = document.createElement('canvas');
   out.width = TECHNICAL_WIDTH;
   out.height = TECHNICAL_HEIGHT;
@@ -634,65 +543,29 @@ function technicalDiagram(stage, metadata, kind) {
   c.fillStyle = background;
   c.fillRect(0, 0, out.width, out.height);
   c.drawImage(stage.canvas, 0, 0);
-
-  c.fillStyle = 'rgba(3,8,11,.78)';
-  c.fillRect(0, 0, out.width, 43);
-  c.fillStyle = 'rgba(3,8,11,.7)';
-  c.fillRect(0, 43, 92, 181);
-  c.fillRect(420, 43, 92, 181);
-  c.fillStyle = 'rgba(3,8,11,.86)';
-  c.fillRect(0, 224, out.width, 32);
-  c.strokeStyle = 'rgba(155,180,196,.18)';
-  c.lineWidth = 1;
-  c.beginPath();
-  c.moveTo(0, 42.5);
-  c.lineTo(out.width, 42.5);
-  c.moveTo(0, 223.5);
-  c.lineTo(out.width, 223.5);
-  c.stroke();
-  c.strokeStyle = 'rgba(155,180,196,.13)';
-  c.strokeRect(92.5, 43.5, 327, 180);
-
-  const records = {
-    armor: {
-      title: 'Armor / penetration reference',
-      note: 'LIVE EFFECTIVE THICKNESS',
-      legend: inspectionLegend('armor'),
-    },
-    modules: {
-      title: 'Internal module layout',
-      note: 'LIVE DAMAGE MODULES',
-      legend: inspectionLegend('modules'),
-    },
-    crew: {
-      title: 'Crew station layout',
-      note: 'LIVE CREW ANATOMY',
-      legend: inspectionLegend('crew'),
-    },
-  };
-  const record = records[kind];
-
-  drawNationalInsignia(c, metadata.markings.insignia, 19, 20, 18);
-  c.fillStyle = '#f4f7f9';
-  c.font = '750 12px system-ui, sans-serif';
-  c.fillText(metadata.label?.shortName || metadata.name, 34, 17);
-  c.fillStyle = '#dca652';
-  c.font = '800 7.5px system-ui, sans-serif';
-  c.fillText(`TIER ${metadata.tierNumeral} · ${record.title}`.toUpperCase(), 34, 32);
-
-  c.textAlign = 'right';
-  c.fillStyle = '#9dafbd';
-  c.font = '800 7.5px system-ui, sans-serif';
-  c.fillText(metadata.markings.designation.toUpperCase(), out.width - 13, 17);
-  c.fillStyle = '#6fd6c5';
-  c.font = '750 7px system-ui, sans-serif';
-  c.fillText(record.note, out.width - 13, 32);
-  c.textAlign = 'left';
-
-  drawInspectionCallouts(c, stage.callouts);
-  drawTechnicalLegend(c, record.legend);
   return out;
 }
+
+/** Callouts kept per rail in the sidecar: the overlay shows six a rail at the 1x size and up to this many at large ones. */
+const TECHNICAL_LABELS_PER_RAIL = 10;
+const round4 = (value) => Number(value.toFixed(4));
+
+/** The <id>_technical.json sidecar (schema 1): each kind's heaviest callouts a rail, anchors as fractions of the raster
+ * (x right, y down), weights as fractions of its area. */
+function technicalLabelData(id, stages) {
+  const data = { schema: 1, id, size: [TECHNICAL_WIDTH, TECHNICAL_HEIGHT] };
+  for (const [kind, stage] of Object.entries(stages)) {
+    const rail = (left) => stage.callouts.filter((item) => (item.anchor[0] < TECHNICAL_WIDTH / 2) === left)
+      .sort((a, b) => b.weight - a.weight).slice(0, TECHNICAL_LABELS_PER_RAIL);
+    data[kind] = [...rail(true), ...rail(false)].map(({ anchor, weight, ...rest }) => ({
+      ...rest,
+      anchor: [round4(anchor[0] / TECHNICAL_WIDTH), round4(anchor[1] / TECHNICAL_HEIGHT)],
+      weight: round4(weight / (TECHNICAL_WIDTH * TECHNICAL_HEIGHT)),
+    }));
+  }
+  return `data:application/json;base64,${btoa(unescape(encodeURIComponent(`${JSON.stringify(data)}\n`)))}`;
+}
+
 function drawMarkingsDiagram(metadata) {
   const out = document.createElement('canvas');
   out.width = 256; out.height = 128;
@@ -846,21 +719,13 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     }
     if (wants('armorSide') || wants('modulesSide') || wants('crewSide')) {
       const sideCam = technicalInspectionCamera(id, center, size, extentZ, box);
-      if (wants('armorSide')) {
-        const stage = renderInspectionStage(spec, visual, sideCam, 'armor');
-        files[tankAssetFile(id, 'armorSide')] = technicalDiagram(stage, metadata, 'armor')
-          .toDataURL('image/png');
+      // every kind's callouts go into the sidecar whichever views render (a projection, not a capture)
+      const stages = {};
+      for (const [kind, view] of [['armor', 'armorSide'], ['modules', 'modulesSide'], ['crew', 'crewSide']]) {
+        stages[kind] = renderInspectionStage(spec, visual, sideCam, kind, wants(view));
+        if (wants(view)) files[tankAssetFile(id, view)] = technicalDiagram(stages[kind]).toDataURL('image/webp', 0.9);
       }
-      if (wants('modulesSide')) {
-        const stage = renderInspectionStage(spec, visual, sideCam, 'modules');
-        files[tankAssetFile(id, 'modulesSide')] = technicalDiagram(stage, metadata, 'modules')
-          .toDataURL('image/png');
-      }
-      if (wants('crewSide')) {
-        const stage = renderInspectionStage(spec, visual, sideCam, 'crew');
-        files[tankAssetFile(id, 'crewSide')] = technicalDiagram(stage, metadata, 'crew')
-          .toDataURL('image/png');
-      }
+      files[technicalLabelsFile(id)] = technicalLabelData(id, stages);
     }
     if (wants('markings')) files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
 

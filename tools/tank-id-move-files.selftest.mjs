@@ -23,7 +23,7 @@ const read = (rel) => readFileSync(join(repo, rel), 'utf8');
 git('init', '-q');
 for (const id of ['leo2a6m', 'leo2a6m_x']) {
   write(`public/icons/${id}_angle.webp`, `angle of ${id}`);
-  write(`public/icons/${id}_armor_side.png`, `armor of ${id}`);
+  write(`public/icons/${id}_armor_side.webp`, `armor of ${id}`);
   write(`public/icons/thumbs/${id}_angle.webp`, `thumb of ${id}`);
 }
 write('docs/geometry-gate/leo2a6m_x.json', 'gate of leo2a6m_x');
