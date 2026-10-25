@@ -17,7 +17,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // 9,119 crushable props; now any legal set fits (at most 8 KB).
 // 7 (the MP stream, 2026-10-15): a delta's viewer names only the movement checkpoint values that changed since its
 // baseline's (a mask and those values; the version byte's high bit marks it): 253 -> ~152 bytes a snapshot while driving.
-export const WIRE_VERSION = 7;
+// 8 (mp-scale-251, 2026-10-24): an event's payload is a tagged binary value instead of JSON (eventPayload.ts: keys from a
+// fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
+export const WIRE_VERSION = 8;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the

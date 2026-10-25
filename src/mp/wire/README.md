@@ -54,7 +54,7 @@ Server → client
 |---|---|
 | `WELCOME` (16) | `u16 protocolVersion`, `u8 tickHz` (60), `u8 snapshotHz` (the host's rate for the near tier: 20 by default, any divisor of the tick rate — the client adopts it), `u8 seat`, `u8 entityId` (`NO_ENTITY` for spectators), `u8 team`, `u32 serverTick`, `u32 serverTimeMs`, `u32 seed`, `u32 capabilities` (the subset the server honours), `string roomId`, `string mapId`, `string mode`, `string rulesetJson ≤ 4096` (the `MatchRuleset` the match plays by), `u8 rosterCount`, roster entries: `u8 entityId`, `u8 seat`, `u8 team`, `u8 flags` (bit0 bot, bit1 connected), `string playerId`, `string name`, `string specId`. |
 | `SNAPSHOT` (17) | See below. |
-| `EVENT` (18) | `u32 tick`, `u8 count ≤ 64`, entries: `u8 kind` (`EVENT_KIND_NAMES` index, or 255 followed by `string kind ≤ 64`), `string json ≤ 4096` (a JSON object). Reliable one-shots: the authority's `shell_fired`, `shell_hit`, `shell_impact`, `tank_destroyed`, `tank_spotted`, `module_state`, `world_prop_destroyed`, `match_*`, ammo/consumable/magazine/special-action denials and the server's `chat`, `roster` and `admin` events. Payloads are the authority's event records verbatim (ids are the roster's `playerId` strings); they are low-rate, so they stay JSON while rows and inputs are fixed binary. |
+| `EVENT` (18) | `u32 tick`, `u8 count ≤ 64`, entries: `u8 kind` (`EVENT_KIND_NAMES` index, or 255 followed by `string kind ≤ 64`), then the payload: wire 8, `varint length ≤ 4096` and a tagged binary object (`eventPayload.ts`, below); wire 7 and before, `string json ≤ 4096`. Reliable one-shots: the authority's `shell_fired`, `shell_hit`, `shell_impact`, `tank_destroyed`, `tank_spotted`, `module_state`, `world_prop_destroyed`, `match_*`, ammo/consumable/magazine/special-action denials and the server's `chat`, `roster` and `admin` events. Payloads are the authority's event records (ids are the roster's `playerId` strings), each decoding to exactly the object `JSON.parse` gives for it serialized with its numbers at four decimals. |
 | `PONG` (19) | `u32 clientTimeMs` (echo), `u32 serverTimeMs`, `u32 serverTick` |
 | `CLOSE` (20) / `ERROR` (21) | `u8 reason` (`CLOSE_REASON`), `string detail ≤ 240`. CLOSE precedes the socket close; ERROR is non-fatal (a rejected input or chat). |
 
@@ -191,6 +191,18 @@ followed by `armor.turretPlates`, in authored order (`eraPlateNames`). Both
 sides own the same first-party spec, so names never travel. Duplicate names
 share the first index (the armor model keys `eraSpent` by name).
 
+## Event payloads (wire 8, mp-scale-251)
+
+An event's payload is one tagged value, an object at the top: `u8 tag`, then by tag `0` null, `1` false, `2` true,
+`3` an integer as a zigzag varint (|v| < 2^31), `4` a decimal as a zigzag varint of `round(v × 10^4)` (|v| < 214,748),
+`5` any other finite number as `f64` (rounded to four decimals), `6` a string (`varint length ≤ 4096`, UTF-8), `7` an
+array (`varint count ≤ 1024`, values), `8` an object (`varint count ≤ 1024`, then per member `u8 key` from
+`EVENT_PAYLOAD_KEYS` or 255 and an inline `string ≤ 64`, then its value), `9` a value that is no plain data (a typed
+array, a `Date`) as its JSON string. Undefined members are dropped, non-finite numbers are null and nesting stops at
+16, as JSON has it. The key table lists the battle's keys most frequent first; it is part of the layout (append only,
+with a `WIRE_VERSION` change). A host encodes a payload once for every viewer that receives it (`WireEvent.encoded`).
+A 14v14 battle's payloads take 40 % of their rounded JSON (`eventPayload.selftest.mjs`).
+
 ## Versions
 
 `WIRE_VERSION` 1 is the frame layout; `PROTOCOL_VERSION` 2 (P3b, 2026-09-29)
@@ -219,3 +231,11 @@ rack, weapon feed, roof gun, autoloader, ammo rack, fuel, radio and optics.
 This adds two bytes per viewer record. Older peers fail the version check;
 clients and hosts must be updated together. The earlier version descriptions
 above are historical migration notes.
+
+### Binary event payloads, snapshot encode and apply (wire 8, 2026-10-24, mp-scale-251)
+
+`WIRE_VERSION` 8: an event's payload is the tagged binary value above, length-prefixed, instead of a JSON string.
+Nothing else in the layout moved. The snapshot encoder writes the same bytes from the frames directly
+(`codec.ts encodeSnapshotFrame`, `rows.ts writeEntityRowDelta`), and a client merges sorted patches into its baseline
+without maps (`applySnapshotPacket`), with the same frames. Receipts: `eventPayload.selftest.mjs`, and in
+`wire.selftest.mjs` the direct encoder against the packet path and the merged apply against the general algorithm.

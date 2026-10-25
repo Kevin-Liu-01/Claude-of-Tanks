@@ -320,6 +320,12 @@ export interface NewModeCheckpoint {
 }
 
 export interface AuthoritativeMatchOptions {
+  /**
+   * (mp-scale-251) A bench's phase profile: the spotting update's time accumulates into `spottingMs`, read with the
+   * bench's own `clock`. Never given in a match; nothing in the step reads a clock without it, and nothing reads it
+   * back, so the simulation is the same with or without it.
+   */
+  profile?: { clock: () => number; spottingMs: number } | null;
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
   seed?: number;
@@ -373,6 +379,15 @@ export interface AuthoritativeMatch {
   onPeerLeave(event: { peerId: string }): void;
   step(options: AuthoritativeStepOptions): void;
   snapshot(options: AuthoritativeSnapshotOptions): WorldSnapshot;
+  /**
+   * (mp-scale-251) What `viewerId` may observe this tick without capturing a world snapshot: the entities (its own hull
+   * among them) and the shells snapshot() would carry — the same spotting filter, before anything is serialized — into
+   * the caller's arrays (cleared first). A host that builds its own rows (the match actor) reads this for every viewer
+   * frame instead of snapshot(), whose per-entity capture it never used.
+   */
+  observeForViewer(viewerId: string, entitiesOut: AuthoritativeEntity[], shellsOut: SnapshotShellSource[]): void;
+  /** The meta snapshot() carries for `viewerId`: what every viewer shares is built once a tick, its prediction and mode state for it. */
+  snapshotMeta(viewerId: string): Record<string, RuntimeValue>;
   eventsForViewer(viewerId: string): AuthoritativeEvent[];
   afterEventBroadcast(): void;
   afterSnapshotBroadcast(): void;
@@ -824,6 +839,7 @@ export function createAuthoritativeMatch({
   ruleset: rulesetOption,
   worldCollision = null,
   shellRewind = null,
+  profile = null,
 }: AuthoritativeMatchOptions = {}): AuthoritativeMatch {
   if (!Array.isArray(players) || players.length < 1 || players.length > MAX_AUTHORITATIVE_PLAYERS) {
     throw new TypeError(`players must contain 1-${MAX_AUTHORITATIVE_PLAYERS} records`);
@@ -2258,9 +2274,11 @@ export function createAuthoritativeMatch({
   }
 
   function updateVisibility(): void {
+    const started = profile ? profile.clock() : 0;
     for (const event of spotting.update(SIM_DT, timeS)) {
       emit('tank_spotted', { ...event });
     }
+    if (profile) profile.spottingMs += profile.clock() - started;
   }
 
   function finishMatch(nextResult: MatchResult, reason: string): void {
@@ -2672,6 +2690,11 @@ export function createAuthoritativeMatch({
     for (const { sourceId, ...event } of craterEvents) emitFrom(sourceId ?? null, 'terrain_crater', event);
   }
 
+  // snapshotMeta's per-tick part (mp-scale-251): built once a tick for every viewer, never mutated by its readers
+  const sharedMeta: { timeS: number; revision: number; smokeCount: number; smokeScreens: RuntimeValue[]; destroyed: number[] } = {
+    timeS: -1, revision: -1, smokeCount: -1, smokeScreens: [], destroyed: [],
+  };
+
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
     const entity = entityById.get(entityId);
     return Boolean(entity && entity.modeActive !== false &&
@@ -2846,31 +2869,57 @@ export function createAuthoritativeMatch({
         canObserve,
         canObserveShell,
         canObserveEvent: (_id, event) => canObserveEvent(viewer, event),
-        meta: {
-          phase,
-          smokeScreens: auxiliarySmokeScreens.filter(screen=>timeS-screen.born<=18).map(packSmokeScreen),
-          // Stable presentation seed: no draw from the combat RNG stream.
-          weatherSeed: seed >>> 0,
-          countdownMs: Math.round(countdownRemainingS * 1000),
-          battleTimeMs: Math.round(timeS * 1000),
-          result,
-          resultReason,
-          destructibleRevision,
-          destroyedObstacleIndices: destroyedObstacleIndices.slice(),
-          // the destruction log (append-only; the host actor copies it when it grows)
-          destructionLog: destruction.log,
-          ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
-          ...(normalizedGameMode === 'standard' ? {} : {
-            gameMode: normalizedGameMode,
-            modeState: {
-              ...modeController.serialize(viewerId),
-              ...(normalizedGameMode === 'drone' ? {missionPayloads: entities
-                .filter(entity => canObserveEntity(viewer,entity.id))
-                .map(entity => ({id:entity.id,ready:!entity.aerial?.active && (entity.aerial?.cooldownS ?? 0)<=0}))} : {}),
-            },
-          }),
-        },
+        meta: simulation.snapshotMeta(viewerId),
       });
+    },
+
+    observeForViewer(viewerId, entitiesOut, shellsOut): void {
+      entitiesOut.length = 0;
+      shellsOut.length = 0;
+      const viewer = entityById.get(viewerId);
+      for (const entity of entities) {
+        if (entity.id === viewerId || canObserveEntity(viewer, entity.id)) entitiesOut.push(entity);
+      }
+      for (const shell of shells) {
+        const shooter = entityById.get(String(shell.shooterId));
+        if (!shooter || canObserveEntity(viewer, shooter.id)) shellsOut.push(shell as unknown as SnapshotShellSource);
+      }
+    },
+
+    snapshotMeta(viewerId) {
+      const viewer = entityById.get(viewerId);
+      // what every viewer shares, once a tick (the smoke screens' expiry, the destroyed list's copy)
+      if (sharedMeta.timeS !== timeS || sharedMeta.revision !== destructibleRevision || sharedMeta.smokeCount !== auxiliarySmokeScreens.length) {
+        sharedMeta.timeS = timeS;
+        sharedMeta.revision = destructibleRevision;
+        sharedMeta.smokeCount = auxiliarySmokeScreens.length;
+        sharedMeta.smokeScreens = auxiliarySmokeScreens.filter(screen=>timeS-screen.born<=18).map(packSmokeScreen);
+        sharedMeta.destroyed = destroyedObstacleIndices.slice();
+      }
+      return {
+        phase,
+        smokeScreens: sharedMeta.smokeScreens,
+        // Stable presentation seed: no draw from the combat RNG stream.
+        weatherSeed: seed >>> 0,
+        countdownMs: Math.round(countdownRemainingS * 1000),
+        battleTimeMs: Math.round(timeS * 1000),
+        result,
+        resultReason,
+        destructibleRevision,
+        destroyedObstacleIndices: sharedMeta.destroyed,
+        // the destruction log (append-only; the host actor copies it when it grows)
+        destructionLog: destruction.log,
+        ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
+        ...(normalizedGameMode === 'standard' ? {} : {
+          gameMode: normalizedGameMode,
+          modeState: {
+            ...modeController.serialize(viewerId),
+            ...(normalizedGameMode === 'drone' ? {missionPayloads: entities
+              .filter(entity => canObserveEntity(viewer,entity.id))
+              .map(entity => ({id:entity.id,ready:!entity.aerial?.active && (entity.aerial?.cooldownS ?? 0)<=0}))} : {}),
+          },
+        }),
+      } as Record<string, RuntimeValue>;
     },
 
     afterSnapshotBroadcast(): void {

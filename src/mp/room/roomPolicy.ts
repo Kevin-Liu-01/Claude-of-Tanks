@@ -11,10 +11,10 @@ import { planRoomBots, type RoomTeamNations } from './roomBots.ts';
  */
 import { BATTLE_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
 import type { SerializedLobby } from './lobbyShape.ts';
-import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchRuleset.ts';
+import { normalizeTeamArrangement, roomSizeRulesFor, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
-  ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_MAP_RE, ROOM_MAX_COOP_PLAYERS, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
+  ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_DEV_MAX_TEAM_SIZE, ROOM_MAP_RE, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
   ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, cleanSeatId, isRecord,
   isRoomTeam, noElection, normalizePlayerName,
 } from './protocol.ts';
@@ -31,15 +31,20 @@ function roomGameMode(value: unknown) {
   return GAME_MODE_SET.has(gameMode) ? gameMode : 'standard';
 }
 
-/** Cooperative modes: every human deploys on Alpha against authority-held defenders (v1 rule). */
+/** Cooperative modes: every human deploys on Alpha against authority-held defenders (the mode's room rules, matchRuleset.ts). */
 export function isCoopGameMode(gameMode: string | null | undefined): boolean {
-  return gameMode === 'endless_horde' || gameMode === 'frontline_assault';
+  return roomSizeRulesFor(gameMode).sides === 'coop';
 }
 
 export interface RoomPolicyGuards {
   isVehicleAllowed(specId: string, player: RoomPlayer, room: RoomSnapshot): boolean;
   isCamoAllowed(camo: string, player: RoomPlayer, room: RoomSnapshot): boolean;
   isMapAllowed(mapId: string, room: RoomSnapshot): boolean;
+  /**
+   * (mp-scale-251) A team size past the mode's own (its room rules, matchRuleset.ts), up to ROOM_DEV_MAX_TEAM_SIZE: the
+   * LAN service's dev override for bot-filled test rooms (COT_ROOM_DEV_MAX_TEAM_SIZE). The rooms Worker never sets it.
+   */
+  maxTeamSize?: number;
 }
 
 const OPEN_GUARDS: RoomPolicyGuards = {
@@ -47,6 +52,14 @@ const OPEN_GUARDS: RoomPolicyGuards = {
   isCamoAllowed: () => true,
   isMapAllowed: () => true,
 };
+
+/** The largest team the room may set in `gameMode`: the mode's rule, or the dev override's (never past ROOM_DEV_MAX_TEAM_SIZE). */
+function maxTeamSizeFor(gameMode: string, guards: Partial<RoomPolicyGuards>): number {
+  const rules = roomSizeRulesFor(gameMode);
+  const override = guards.maxTeamSize;
+  return rules.sides === 'versus' && Number.isInteger(override) && override! > rules.maxTeamSize
+    ? Math.min(ROOM_DEV_MAX_TEAM_SIZE, override!) : rules.maxTeamSize;
+}
 
 export interface CreateRoomOptions {
   roomCode: string;
@@ -114,9 +127,9 @@ function cleanMap(value: unknown): string {
   return id;
 }
 
-function cleanTeamSize(value: unknown): number {
+function cleanTeamSize(value: unknown, maxTeamSize: number = ROOM_MAX_TEAM_SIZE): number {
   const size = Number(value);
-  if (!Number.isInteger(size) || size < ROOM_MIN_TEAM_SIZE || size > ROOM_MAX_TEAM_SIZE) throw new RoomError('invalid_team_size');
+  if (!Number.isInteger(size) || size < ROOM_MIN_TEAM_SIZE || size > maxTeamSize) throw new RoomError('invalid_team_size');
   return size;
 }
 
@@ -197,7 +210,7 @@ export function autoTeam(room: RoomSnapshot): 'alpha' | 'bravo' {
 
 function teamCapacity(room: RoomSnapshot, team: RoomTeam): number {
   if (team === 'spectator') return room.settings.maxSpectators;
-  return isCoopGameMode(room.settings.gameMode) ? ROOM_MAX_COOP_PLAYERS : room.settings.teamSize;
+  return roomSizeRulesFor(room.settings.gameMode).maxHumans ?? room.settings.teamSize;
 }
 
 function resolveJoinTeam(room: RoomSnapshot, requested: RoomTeam): RoomTeam {
@@ -206,9 +219,10 @@ function resolveJoinTeam(room: RoomSnapshot, requested: RoomTeam): RoomTeam {
     return 'spectator';
   }
   const active = activePlayers(room).length;
-  if (isCoopGameMode(room.settings.gameMode)) {
-    if (active >= ROOM_MAX_COOP_PLAYERS) throw new RoomError('coop_capacity');
-    room.settings.teamSize = Math.max(room.settings.teamSize, Math.min(ROOM_MAX_TEAM_SIZE, active + 1));
+  const rules = roomSizeRulesFor(room.settings.gameMode);
+  if (rules.sides === 'coop') {
+    if (active >= (rules.maxHumans ?? rules.maxTeamSize)) throw new RoomError('coop_capacity');
+    room.settings.teamSize = Math.max(room.settings.teamSize, Math.min(rules.maxTeamSize, active + 1));
     return 'alpha';
   }
   if (active >= room.settings.teamSize * 2) throw new RoomError('room_full');
@@ -239,13 +253,14 @@ function createPlayer(room: RoomSnapshot, {
 
 export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined): RoomSettings {
   const gameMode = roomGameMode(settings?.gameMode);
-  const teamSize = settings?.teamSize == null ? 7 : cleanTeamSize(settings.teamSize);
+  const rules = roomSizeRulesFor(gameMode);
+  const teamSize = settings?.teamSize == null ? rules.defaultTeamSize : cleanTeamSize(settings.teamSize);
   const maxSpectators = settings?.maxSpectators == null ? ROOM_MAX_SPECTATORS : Number(settings.maxSpectators);
   if (!Number.isInteger(maxSpectators) || maxSpectators < 0 || maxSpectators > ROOM_MAX_SPECTATORS) throw new RoomError('invalid_payload', 'maxSpectators');
   return {
     gameMode,
     mapId: cleanMap(settings?.mapId),
-    teamSize: isCoopGameMode(gameMode) ? Math.min(teamSize, ROOM_MAX_COOP_PLAYERS) : teamSize,
+    teamSize: Math.min(teamSize, rules.maxTeamSize),
     maxSpectators,
     botsFill: settings?.botsFill == null ? true : !!settings.botsFill,
     allowTeamSwitch: settings?.allowTeamSwitch == null ? true : !!settings.allowTeamSwitch,
@@ -445,11 +460,14 @@ export function applyRoomCommand(
       assertAdmin(room, id);
       const gameMode = normalizeGameMode(command.gameMode);
       if (!GAME_MODE_SET.has(gameMode)) throw new RoomError('invalid_command');
-      if (isCoopGameMode(gameMode)) {
+      const rules = roomSizeRulesFor(gameMode);
+      if (rules.sides === 'coop') {
         const active = activePlayers(room);
-        if (active.length > ROOM_MAX_COOP_PLAYERS) throw new RoomError('coop_capacity');
-        room.settings.teamSize = Math.max(1, Math.min(ROOM_MAX_COOP_PLAYERS, Math.max(room.settings.teamSize, active.length)));
+        if (active.length > (rules.maxHumans ?? rules.maxTeamSize)) throw new RoomError('coop_capacity');
+        room.settings.teamSize = Math.max(1, Math.min(rules.maxTeamSize, Math.max(room.settings.teamSize, active.length)));
         for (const entry of active) entry.team = 'alpha';
+      } else if (room.settings.teamSize > maxTeamSizeFor(gameMode, guards)) {
+        room.settings.teamSize = maxTeamSizeFor(gameMode, guards);
       }
       // a new mode drops the old mode's arrangement but keeps the host's TEAM NATIONS choice (it is no mode's setting)
       if (gameMode !== room.settings.gameMode) {
@@ -463,9 +481,11 @@ export function applyRoomCommand(
     }
     case 'set_team_size': {
       assertAdmin(room, id);
-      const size = cleanTeamSize(command.teamSize);
+      // a co-op room takes any legal size and seats up to its mode's; a versus room up to its mode's (or the dev override's)
+      const rules = roomSizeRulesFor(room.settings.gameMode);
+      const size = cleanTeamSize(command.teamSize, rules.sides === 'coop' ? ROOM_MAX_TEAM_SIZE : maxTeamSizeFor(room.settings.gameMode, guards));
       if (countTeam(room, 'alpha') > size || countTeam(room, 'bravo') > size) throw new RoomError('team_size_too_small');
-      room.settings.teamSize = isCoopGameMode(room.settings.gameMode) ? Math.min(size, ROOM_MAX_COOP_PLAYERS) : size;
+      room.settings.teamSize = rules.sides === 'coop' ? Math.min(size, rules.maxTeamSize) : size;
       resetReadiness(room);
       break;
     }

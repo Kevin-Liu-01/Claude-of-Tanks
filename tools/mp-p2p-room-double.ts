@@ -116,6 +116,8 @@ export interface P2pRoomDouble {
   readonly address: AddressInfo;
   readonly rooms: ReadonlyMap<string, RoomState>;
   room(code: string): RoomState | null;
+  /** (mp-scale-251) The run's Workers Free accounting so far: upgrades, handled messages by type, keepalive frames (unbilled). */
+  billing(): { upgrades: number; keepalives: number; messages: Record<string, number> };
   close(): Promise<void>;
 }
 
@@ -360,6 +362,11 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
 
   // ------------------------------------------------------------ messages
 
+  // (mp-scale-251) the Workers Free accounting of the run: socket upgrades (a Worker request and a Durable Object request
+  // each), handled messages by type (a Durable Object request each), keepalive frames (the hibernation auto-response:
+  // never billed)
+  const billing = { upgrades: 0, keepalives: 0, messages: new Map<string, number>() };
+
   const handle = (socketId: string, text: string): void => {
     const entry = sockets.get(socketId);
     if (!entry) return;
@@ -367,6 +374,10 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     const room = state(entry.code);
     try {
       message = parseRoomEnvelope(text);
+      // (mp-scale-251) what the Durable Object bills: every handled message is a request (keepalive frames are not)
+      const command = message.type === 'room_command' && isRecord(message.payload) && isRecord(message.payload.command)
+        ? `room_command:${String(message.payload.command.type ?? '')}` : message.type;
+      billing.messages.set(command, (billing.messages.get(command) ?? 0) + 1);
       const requestId = message.requestId;
       const reply = (type: string, payload: Record<string, unknown>) => send(socketId, { type, ...(requestId ? { requestId } : {}), payload });
       const at = now();
@@ -593,6 +604,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
       const text = buffer.toString('utf8');
       // P1b: the keepalive frame is answered outside the room logic, as the Durable Object's auto-response does.
       if (!isBinary && text === ROOM_KEEPALIVE_REQUEST) {
+        billing.keepalives++;
         emit('keepalive', route.code, { socketId });
         try { socket.send(ROOM_KEEPALIVE_RESPONSE); } catch { /* closing */ }
         return;
@@ -617,6 +629,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
   server.on('upgrade', (request, socket, head) => {
     const route = parseRoomRoute((request.url || '').split('?', 1)[0]!);
     if (!route || route.match || closed) { socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    billing.upgrades++;
     wss.handleUpgrade(request, socket, head, (websocket) => wss.emit('connection', websocket, request));
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => { server.off('error', reject); resolve(); }); });
@@ -626,6 +639,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     address,
     rooms,
     room: (code) => rooms.get(code) ?? null,
+    billing: () => ({ upgrades: billing.upgrades, keepalives: billing.keepalives, messages: Object.fromEntries(billing.messages) }),
     async close() {
       closed = true;
       for (const room of rooms.values()) { clearHostGrace(room); clearReportStale(room); for (const playerId of [...room.seatLeases.keys()]) clearSeatLease(room, playerId); }

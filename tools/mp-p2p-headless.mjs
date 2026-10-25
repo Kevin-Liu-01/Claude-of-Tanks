@@ -46,6 +46,8 @@ const until = async (predicate, label, timeoutMs) => {
 export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs = 4000, world = 'terrain', mapId = 'verdant', standbyDelayMs = 300, log = () => {} } = {}) {
   const SECRET = 'mp-p2p-headless-seat-secret-0123456789abcdef';
   const events = [];
+  // (mp-scale-251) the room's billed requests at each step's end (the double's accounting)
+  const billingAt = {};
   // the room's relay grant (§13.14): test values the scripted links carry in their configuration, never a real credential
   const relayGrant = { iceServers: [{ urls: 'stun:stun.headless.test:3478' }, { urls: ['turn:turn.headless.test:3478?transport=udp', 'turns:turn.headless.test:443?transport=tcp'], username: 'headless-user', credential: 'headless-grant' }], relay: true, expiresInSeconds: 3600 };
   const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => events.push(event), relayGrant });
@@ -111,6 +113,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     await p2.headless.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
     await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await until(() => p1.headless.room.room?.players.length === 3, 'three seats', 10_000);
+    billingAt.lobby = rooms.billing();
     await Promise.all(sessions.map((entry) => entry.headless.room.setReady(true)));
     await until(() => p1.headless.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
     await p1.headless.room.start();
@@ -125,6 +128,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     await until(() => sessions.every((entry) => (entry.headless.presentation?.frames.length ?? 0) > 10), 'frames flowing on every seat', 15_000);
     const hostStats = p1.headless.session.matchHost.stats();
     const startElection = events.find((event) => event.kind === 'host_changed');
+    billingAt.connected = rooms.billing();
     report.steps.connected = {
       peers: hostStats.peersConnected, hostState: hostStats.state, offers: events.filter((event) => event.kind === 'signal' && event.signal === 'offer').length,
       signals: events.filter((event) => event.kind === 'signal').length, refused: events.filter((event) => event.kind === 'signal_refused').length, reports: roomState().reports,
@@ -150,6 +154,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const movedM = after ? Math.hypot(after.x - before.x, after.z - before.z) : 0;
     const retained2 = p2.headless.session.match.retainedMigration();
     const retained3 = p3.headless.session.match.retainedMigration();
+    billingAt.play = rooms.billing();
     report.steps.play = { movedM, keyframeTick2: retained2.keyframe?.tick ?? null, keyframeTick3: retained3.keyframe?.tick ?? null, config2: !!retained2.config, snapshots2: p2.headless.session.match.snapshotsAcceptedCount, snapshots3: p3.headless.session.match.snapshotsAcceptedCount, hostTick: cores[0].core.actor.tick };
     log(`play: p3 saw p2's hull move ${movedM.toFixed(1)} m in ${playMs} ms; keyframes retained at ticks ${report.steps.play.keyframeTick2} / ${report.steps.play.keyframeTick3}; host tick ${report.steps.play.hostTick}`);
     if (movedM < 2) failures.push(`p2's hull moved ${movedM.toFixed(2)} m as p3 saw it`);
@@ -210,6 +215,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     const drivenAfterLiveS = firstAfter3 && p2.hostLiveTick !== null ? Math.max(0, (firstAfter3.tick - p2.hostLiveTick) / 60) : 0;
     const discontinuityM = Math.max(0, worstJumpM - 10 * drivenAfterLiveS);
     const reportsBy = events.filter((event) => event.kind === 'match_report').map((event) => event.from);
+    billingAt.migration = rooms.billing();
     report.steps.migration = {
       electedAfterMs, hostLost, claims: { p2: p2.headless.session.hostUnreachableClaims, p3: p3.headless.session.hostUnreachableClaims }, generation: election.generation, resumeTickRoom: election.resumeTick, coreResumedAt: core2.actor.resumedBattleTimeMs, hostTickAfter: resumedTick, oldHostTick,
       p2Role: p2.headless.session.role, p3Role: p3.headless.session.role, p3Target: p3.headless.session.stats().p2p?.hostId ?? null,
@@ -246,6 +252,9 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     for (const entry of sessions) if (!entry.disposed && entry.headless.session.stats().phase === 'lost') failures.push(`${entry.id} ended in lost`);
     const refused = events.filter((event) => event.kind === 'signal_refused');
     report.steps.relay = { relayed: events.filter((event) => event.kind === 'signal').length, refused: refused.length, refusedCodes: [...new Set(refused.map((event) => event.code))] };
+    // (mp-scale-251) what the room billed, by phase: the lobby (three seats in), connected (signaling), the play, the
+    // migration and the rejoin (the Workers Free requests a room costs, docs/MULTIPLAYER-V2.md §13.30)
+    report.steps.billing = { ...billingAt, total: rooms.billing() };
 
     // ---- 5. ICE from the room: every peer connection built with the room's grant, fewer requests than connections
     const connections = [...rtc.connections.values()];

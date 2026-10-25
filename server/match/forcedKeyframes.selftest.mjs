@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { MESSAGE_TYPE, NO_TICK, PROTOCOL_VERSION } from '../../src/mp/wire/constants.ts';
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { createLoopbackLink } from './link.ts';
+import { KEYFRAME_INTERVAL_TICKS, keyframeSlotFor } from './publisher.ts';
 import { createMatchActor } from './matchActor.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 
@@ -71,18 +72,25 @@ await advance(actor, 300); // 5 s: 100 snapshots
 
 const snapshots = (viewer) => viewer.keyframes.length + viewer.deltas;
 const gaps = (ticks) => ticks.slice(1).map((tick, i) => tick - ticks[i]);
-for (const [name, viewer] of [['silent', silent], ['retract', retract]]) {
+// the viewer's own slot of the periodic cycle (publisher.ts keyframeSlotFor, mp-scale-251): a keyframe there is the
+// cadence's, drawn from no token (a snapshot every 3 ticks at 20 Hz)
+const onSlot = (seat, tick) => (tick + KEYFRAME_INTERVAL_TICKS - keyframeSlotFor(seat)) % KEYFRAME_INTERVAL_TICKS < 3;
+for (const [name, viewer, seat] of [['silent', silent, 1], ['retract', retract, 2]]) {
   assert.ok(viewer.keyframes.length >= 14 && viewer.keyframes.length <= 20,
     `${name}: a burst of 8, then one keyframe per half second (${viewer.keyframes.length} in 5 s, not ~100)`);
-  // the first keyframe is the cadence's own (no token), then the burst of eight, then the refill's spacing
-  assert.ok(gaps(viewer.keyframes.slice(9)).every((gap) => gap >= 27), `${name}: past the burst, keyframes ≥ 27 ticks apart (${gaps(viewer.keyframes).join(',')})`);
+  // the first keyframe is the cadence's own (no token), then the burst of eight, then the refill's spacing between the
+  // keyframes that drew a token (the slot's own keyframe draws none)
+  const drawn = viewer.keyframes.slice(9).filter((tick) => !onSlot(seat, tick));
+  assert.ok(gaps(drawn).every((gap) => gap >= 27), `${name}: past the burst, token keyframes ≥ 27 ticks apart (${gaps(viewer.keyframes).join(',')})`);
   assert.equal(viewer.deltas, 0, `${name}: nothing to apply a delta to, so none is sent`);
 }
-assert.ok(honest.keyframes.length <= 4, `the honest viewer keeps the 2 s cadence (${honest.keyframes.length} keyframes)`);
+assert.ok(honest.keyframes.length <= 4, `the honest viewer keeps its periodic cadence (${honest.keyframes.length} keyframes)`);
 assert.ok(snapshots(honest) >= 98, `the honest viewer misses no snapshot (${snapshots(honest)})`);
 assert.equal(snapshots(slow), snapshots(honest), `acknowledging 300 ms late loses no snapshot while joining (${snapshots(slow)})`);
 assert.ok(slow.keyframes.length <= 10, `its first round trip is keyframes, then deltas (${slow.keyframes.length} keyframes)`);
-assert.ok(silent.bytes < honest.bytes, `the silent viewer's stream is now below an honest one (${silent.bytes} vs ${honest.bytes} bytes)`);
+// the bucket's bound: a silent viewer costs about what an honest one does, not 8x (mp-scale-251: the honest stream's own
+// keyframes went from every 2 s to every 6 s, so the bucket's 2 a second now reads slightly above it, never far)
+assert.ok(silent.bytes < honest.bytes * 1.25, `the silent viewer's stream stays within a quarter of an honest one (${silent.bytes} vs ${honest.bytes} bytes)`);
 
 // honest gap recoveries are answered with the next snapshot, two in a row included (the burst)
 for (let round = 0; round < 2; round++) {
