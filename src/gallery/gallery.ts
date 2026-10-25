@@ -37,9 +37,7 @@ import { flagIconCode } from '../ui/flagCodes.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
-import {
-  esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
-} from '../ui/components/components.ts';
+import { emptyState, esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
@@ -789,8 +787,8 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = `<div class="fam__empty"><span>${esc(t('gallery.empty.noMatch'))}</span>`
-      + `<button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press" data-clear-filters>${esc(t('gallery.empty.clear'))}</button></div>`;
+    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+      action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
     for (const row of vehicleList.querySelectorAll<HTMLElement>('.it')) {

@@ -79,9 +79,7 @@
 .cot-facet-option[aria-pressed='true'] .ct{color:var(--accent-hi);}
 .cot-facet-option:disabled{cursor:default;opacity:.5;}
 .cot-facet-option:disabled svg{color:var(--ink-4);}
-.cot-facet-empty{display:flex;align-items:center;gap:var(--s3);margin:0;padding:10px var(--s3);font-size:max(12.5px,var(--fs-floor-12),var(--fs-12));color:var(--text-accent);
-  border:1px dashed var(--accent-lo);}
-.cot-facet-empty svg{flex:0 0 auto;color:var(--text-accent);opacity:.8;}
+.cot-facet-empty{padding:var(--s3);}
 .cot-facet-empty[hidden]{display:none;}
 /* Phones: each facet is one swipeable line of chips, so the panel stays short above the roster; the side with more
    chips shows an edge cue (garageFacetPanel.ts sets data-more). */
