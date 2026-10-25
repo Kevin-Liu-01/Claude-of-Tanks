@@ -65,6 +65,12 @@ const TRACE_CATEGORIES = Object.freeze(['devtools.timeline', 'disabled-by-defaul
 /** Chrome's trace buffer for a battle (KB): it holds the battle; the stream is read event by event, never whole. */
 const TRACE_BUFFER_KB = 600 * 1024;
 const RSS_ABORT_KB = 6 * 1024 * 1024;
+/**
+ * A scenario's whole run (a fresh browser, its cold and warm battles) at most. A browser the RSS watchdog closed left a
+ * page call that never settled, and the census held the capture FIFO for 91 minutes with no browser (2026-10-25): every
+ * scenario now races the watchdog's abort and this deadline, and moves on.
+ */
+const SCENARIO_DEADLINE_MS = 25 * 60 * 1000;
 
 const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${message}`);
 
@@ -414,7 +420,24 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
   });
 }
 
+/** A scenario raced against its watchdog's abort and its deadline: a stuck page never holds the census (and the FIFO). */
 async function runScenario(options, side, scenario, size, done) {
+  let fail;
+  const failed = new Promise((_, reject) => { fail = reject; });
+  failed.catch(() => {});
+  const deadline = setTimeout(() => fail(new Error(`${scenario} ${size}v${size}: past its ${SCENARIO_DEADLINE_MS / 60000}-minute deadline`)), SCENARIO_DEADLINE_MS);
+  deadline.unref();
+  const run = playScenario(options, side, scenario, size, done, (reason) => fail(new Error(reason)));
+  run.catch(() => {}); // a run left behind by an abort settles (or not) on its own
+  try { await Promise.race([run, failed]); } finally {
+    clearTimeout(deadline);
+    // whatever stopped the race, the scenario's browser goes with it
+    await activeBrowser?.close().catch(() => {});
+    activeBrowser = null;
+  }
+}
+
+async function playScenario(options, side, scenario, size, done, abort) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = size - 1, enemies = size;
@@ -425,7 +448,12 @@ async function runScenario(options, side, scenario, size, done) {
   const pid = browser.process()?.pid;
   const watchdog = setInterval(() => {
     const kb = pid ? treeRssKb(pid) : 0;
-    if (kb > RSS_ABORT_KB && !aborted) { aborted = `browser RSS ${(kb / 1048576).toFixed(1)} GB past 6 GB`; log(`${scenario} ${size}v${size}: ${aborted}: aborting`); browser.close().catch(() => {}); }
+    if (kb > RSS_ABORT_KB && !aborted) {
+      aborted = `browser RSS ${(kb / 1048576).toFixed(1)} GB past 6 GB`;
+      log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
+      abort(aborted);
+      browser.close().catch(() => {});
+    }
   }, 5000);
   watchdog.unref();
   try {
@@ -603,6 +631,13 @@ export async function runCensus(options) {
   const locks = await acquireProbeLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
+  // a chunk with a budget stops hard 30 minutes past it, whatever is pending: the FIFO is the other lanes' too
+  if (options.budgetMin) {
+    setTimeout(() => {
+      log(`hard stop: ${options.budgetMin + 30} minutes`);
+      void (activeBrowser?.close() ?? Promise.resolve()).catch(() => {}).finally(() => { locks.release(); process.exit(2); });
+    }, (options.budgetMin + 30) * 60000).unref();
+  }
   const servers = [];
   for (const side of options.roots) servers.push(await openPreview(side.root, side.port));
   const started = Date.now();
