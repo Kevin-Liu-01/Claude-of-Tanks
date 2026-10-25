@@ -76,9 +76,20 @@ impl SupportField {
 
     /// `beginHull`: select the hull about to be stepped (its candidates from the world's obstacle grid).
     pub fn begin_hull(&mut self, records: &[Record], grid: &mut ObstacleGrid, x: f64, z: f64, belly_y: f64, pose: Option<&HullFootprint>) {
+        self.query(grid, x, z);
+        self.begin_queried(records, x, z, belly_y, pose);
+    }
+
+    /// `beginHull`'s first half: the candidates about (x, z) from the obstacle grid (a host syncs their flags next).
+    pub fn query(&mut self, grid: &mut ObstacleGrid, x: f64, z: f64) -> usize {
         let mut candidates = core::mem::take(&mut self.candidates);
         grid.query(x - SUPPORT_QUERY_MARGIN_M, z - SUPPORT_QUERY_MARGIN_M, x + SUPPORT_QUERY_MARGIN_M, z + SUPPORT_QUERY_MARGIN_M, &mut candidates);
         self.candidates = candidates;
+        self.candidates.len()
+    }
+
+    /// `beginHull`'s second half, over the candidates [`SupportField::query`] gathered.
+    pub fn begin_queried(&mut self, records: &[Record], x: f64, z: f64, belly_y: f64, pose: Option<&HullFootprint>) {
         self.begin_candidates(records, x, z, belly_y, pose);
     }
 

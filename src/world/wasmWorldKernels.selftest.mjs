@@ -8,7 +8,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import '../vehicles/tankFactory.ts';
-import { compileWorldKernels, instantiateWorldKernels } from './wasmWorldKernels.ts';
+import { compileWorldKernels } from './wasmWorldKernels.ts';
+import { createHullFootprint, hullFootprint } from './collision.ts';
+import { createStructureSupportField } from '../sim/structureSupport.ts';
+import { createDeformedHeightField, createTerrainDeformation } from '../sim/terrainDeformation.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { serverWorldKernels } from '../../server/match/simKernels.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
@@ -71,10 +74,61 @@ for (const mapId of ['verdant', 'titan_gorge']) {
   ts.release?.(); wasm.release?.();
 }
 
-// one lattice per instance: a second surface on the same instance is refused
-const instance = instantiateWorldKernels(module);
-instance.contactSurface(() => 0);
-assert.throws(() => instance.contactSurface(() => 0), /one contact lattice/);
+// the match's support on the kernel (one call a sample: the contact surface, the overlay mirrored onto it, the tops over
+// it): Urban's roofed buildings, an overlay of craters and heaps laid before and after the bind, its clock stepped while
+// heaps rise, crushed records; every hull begun posed and unposed reads the same field as the TypeScript's
+{
+  const ts = createDedicatedWorldCollision('urban');
+  const wasm = createDedicatedWorldCollision('urban', { kernels: module });
+  assert.equal(typeof wasm.kernelSupportField, 'function', 'a kernel world offers its support field');
+  const grounds = [createTerrainDeformation(), createTerrainDeformation()];
+  const lay = (ground, phase) => {
+    let r = 0x9e3779b9 ^ phase;
+    const next = () => { r = (Math.imul(r ^ (r >>> 15), 0x2c1b3c6d) + 0x6d2b79f5) | 0; return ((r >>> 0) % 100000) / 100000; };
+    for (let i = 0; i < 40; i++) ground.addCrater(-200 + next() * 400, -200 + next() * 400, 0.6 + next() * 3, 0.3 + next(), next() * 0.5, (next() * 4294967296) >>> 0);
+    for (let i = 0; i < 4; i++) ground.addRubble(-150 + next() * 300, -150 + next() * 300, 4 + next() * 8, 4 + next() * 8, next() * 6, 0.8 + next() * 2, phase ? 3 + i * 0.4 : undefined);
+  };
+  for (const ground of grounds) lay(ground, 0);
+  ts.bindGroundOverlay(grounds[0]);
+  wasm.bindGroundOverlay(grounds[1]);
+  const fieldTs = createStructureSupportField(createDeformedHeightField(ts.heightField, grounds[0]), { queryObstacles: ts.queryObstacles.bind(ts) });
+  const fieldWasm = wasm.kernelSupportField(createDeformedHeightField(wasm.heightField, grounds[1]));
+  const obstaclesTs = [...new Set(ts.getObstacles())], obstaclesWasm = [...new Set(wasm.getObstacles())];
+  const roofed = obstaclesTs.map((r, i) => [r, i]).filter(([r]) => r.shape2?.kind === 'compound' && !r.crushable);
+  for (let k = 0; k < 8; k++) { obstaclesTs[k * 97].crushed = true; obstaclesWasm[k * 97].crushed = true; }
+  const rect = { centerX: 0.02, centerZ: 0.2, halfLength: 3.6, halfWidth: 1.75, frontLiftM: 0.45, rearLiftM: 0.3 };
+  let samples = 0, lifted = 0;
+  for (const phase of [0, 1, 2, 3]) {
+    if (phase === 1) for (const ground of grounds) lay(ground, 1);
+    if (phase === 2) for (const ground of grounds) ground.setTime(3.9);
+    if (phase === 3) for (const ground of grounds) { ground.setTime(9); ground.reset(); ground.addCrater(10, 10, 3, 1, 0.4, 7); }
+    for (let h = 0; h < 60; h++) {
+      const [target] = roofed[(h * 7919 + phase * 31) % roofed.length];
+      const x = target.min[0] + random() * (target.max[0] - target.min[0]), z = target.min[2] + random() * (target.max[2] - target.min[2]);
+      const belly = target.max[1] - 1 + random() * 1.5;
+      const pose = h % 2 ? hullFootprint(rect, x, z, random() * 6.28, (random() - 0.5) * 0.5, (random() - 0.5) * 0.4, createHullFootprint()) : null;
+      fieldTs.beginHull(x, z, belly, pose);
+      fieldWasm.beginHull(x, z, belly, pose);
+      assert.equal(fieldWasm.candidateCount, fieldTs.candidateCount, `phase ${phase} hull ${h}: candidates`);
+      assert.equal(fieldWasm.standingDeck, fieldTs.standingDeck, `phase ${phase} hull ${h}: the deck it stands on`);
+      for (let k = 0; k < 24; k++) {
+        const sx = x + (random() - 0.5) * 14, sz = z + (random() - 0.5) * 14;
+        const read = {};
+        for (const name of ['getContactHeightAt', 'getTerrainContactHeightAt', 'getHeightAt', 'getHeightAtFast']) {
+          const a = fieldTs[name](sx, sz), b = fieldWasm[name](sx, sz);
+          assert.ok(Object.is(a, b), `phase ${phase} hull ${h}: ${name}(${sx}, ${sz}) ${b} where the TypeScript gives ${a}`);
+          read[name] = a;
+        }
+        if (read.getContactHeightAt > read.getTerrainContactHeightAt) lifted++;
+        samples++;
+      }
+    }
+  }
+  assert.equal(fieldWasm.recordReads, fieldTs.recordReads, 'the same reads answered by a top');
+  assert.ok(lifted > 500, `the roofs lift the samples (${lifted})`);
+  console.log(`wasmWorldKernels.selftest: urban support on the kernel: ${samples} samples x 4 samplers over 240 hulls (${lifted} on a top), through stamps laid before and after the bind, a clock step and a reset, identical`);
+  ts.release?.(); wasm.release?.();
+}
 
 // the server's switch: unset and `ts` are the TypeScript, `wasm` the module, anything else refused
 assert.equal(await serverWorldKernels(''), null);

@@ -5,6 +5,7 @@ import type { HeightField } from './terrain.ts';
 import { createDeformedHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { instantiateWorldKernels, type WorldKernelModule } from './wasmWorldKernels.ts';
+import type { StructureSupportField, SupportHeightField } from '../sim/structureSupport.ts';
 
 /**
  * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
@@ -86,6 +87,8 @@ interface HeadlessCollisionWorld {
     minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[],
   ): CollisionRecord[];
   crushObstacle(obstacle: CollisionRecord | null | undefined): boolean;
+  /** With kernels: the structure support field over the match's deformed field, on the kernel (authoritativeMatch.ts). */
+  kernelSupportField?(terrain: SupportHeightField): StructureSupportField;
 }
 
 function unpackRecord(packed: PackedCollisionRecord): CollisionRecord {
@@ -163,13 +166,12 @@ export function createHeadlessCollisionWorld(
   if (!manifest || !Array.isArray(manifest.obstacles) || !Array.isArray(manifest.colliders)) {
     throw new TypeError('collision manifest is required');
   }
-  const kernels = kernelModule ? instantiateWorldKernels(kernelModule) : null;
+  const kernels = kernelModule ? instantiateWorldKernels(kernelModule, heightField.getHeightAt) : null;
   // the shared field (a cached map field serves several worlds) stays as it is: this world reads its own lattice
-  const contact = kernels && heightField.getContactHeightAt ? kernels.contactSurface(heightField.getHeightAt) : null;
+  const contact = kernels && heightField.getContactHeightAt ? kernels.contactSurface() : null;
   const worldHeightField: HeightField = contact
     ? { ...heightField, getContactHeightAt: contact.heightAt, getContactCellFlippedAt: contact.cellFlippedAt }
     : heightField;
-  const obstacleGrid = kernels ? (records: CollisionRecord[]) => kernels.obstacleGrid(records) : createObstacleGrid;
   const obstacles = manifest.obstacles.map(unpackRecord);
   const colliders = manifest.colliders.map(unpackRecord);
   const packedTreeIds = new Set(
@@ -182,8 +184,9 @@ export function createHeadlessCollisionWorld(
   }
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
   const mapCraters = unpackMapCraterStamps(manifest.craters);
-  const queryObstacles = obstacleGrid(obstacles);
-  const queryColliders = obstacleGrid(colliders);
+  // (the obstacles are what hulls stand on: the kernel keeps their table beside their grid)
+  const queryObstacles = kernels ? kernels.obstacleGrid(obstacles, 24, true) : createObstacleGrid(obstacles);
+  const queryColliders = kernels ? kernels.obstacleGrid(colliders) : createObstacleGrid(colliders);
   const candidates: CollisionRecord[] = [];
   const point = new Vector3();
   const bisectPoint = new Vector3();
@@ -317,9 +320,11 @@ export function createHeadlessCollisionWorld(
     heightField: worldHeightField,
     raycast,
     bindGroundOverlay(overlay: TerrainDeformation | null) {
+      kernels?.mirrorOverlay(overlay);
       rayOverlay = overlay;
       rayNormalField = overlay ? createDeformedHeightField(worldHeightField, overlay) : worldHeightField;
     },
+    ...(kernels ? { kernelSupportField: (terrain: SupportHeightField) => kernels.supportField(terrain) } : {}),
     getObstacles: () => obstacles,
     getColliders: () => colliders,
     getConcealment: () => concealers,

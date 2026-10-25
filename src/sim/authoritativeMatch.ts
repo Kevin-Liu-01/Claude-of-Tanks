@@ -39,7 +39,7 @@ import {
   exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
-import { createHullSupportPose, createStructureSupportField, hullSupportPose } from './structureSupport.ts';
+import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
 import {
   prefersVerticalTankContact,
   tanksVerticallyClear,
@@ -291,6 +291,8 @@ export interface AuthoritativeWorldCollision {
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   /** The map's pre-placed craters from the world's shard (world/mapCraters.ts), laid into the match's ground first. */
   getMapCraters?(): readonly MapCraterStamp[];
+  /** A world on the WebAssembly kernels (world/wasmWorldKernels.ts): its structure support over the match's ground. */
+  kernelSupportField?(terrain: StructureSupportTerrain): ReturnType<typeof createStructureSupportField>;
   crushObstacle?(
     obstacle: AuthoritativeObstacle,
     directionX: number,
@@ -2481,7 +2483,8 @@ export function createAuthoritativeMatch({
 
   // round 30: hulls stand on the primitives they are above (structureSupport.ts), the same field the solo sim rides
   const _supportPose = createHullSupportPose();
-  const structureSupport = createStructureSupportField(heightField, {
+  // (a world on the kernels answers the same field there: its tops and its ground in one call a sample)
+  const structureSupport = worldCollision?.kernelSupportField ? worldCollision.kernelSupportField(heightField) : createStructureSupportField(heightField, {
     queryObstacles: worldCollision && typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles.bind(worldCollision) : undefined,
     getObstacles: worldCollision && typeof worldCollision.getObstacles === 'function'

@@ -29,7 +29,7 @@ const SUPPORT_QUERY_MARGIN_M = 6;
 /** The steepest underside (rise per metre, 60 degrees) the pose's floor rule reads; past it the root's belly decides. */
 const POSED_RISE_MAX = detMath.tan(Math.PI / 3);
 
-interface SupportHeightField {
+export interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getContactHeightAt?(x: number, z: number): number;
@@ -219,7 +219,7 @@ function partOutline(record: CollisionRecord, part: SimpleCollisionShape | null)
  * the roof, and the standing rule then found it inside the building and pushed it out sideways a metre a step.
  * `quad` holds the box's four bottom corners in world (x, z), in order round it.
  */
-function topEdgeStationsIn(
+export function topEdgeStationsIn(
   candidates: readonly CollisionRecord[], count: number, quad: ArrayLike<number>, out: Float64Array, max: number,
   groundAt: (x: number, z: number) => number,
 ): number {

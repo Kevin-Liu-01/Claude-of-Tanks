@@ -3,8 +3,9 @@
 //
 // The whole authoritative tick with the WebAssembly kernels as they ship (src/world/wasmWorldKernels.ts behind
 // headlessCollisionWorld.ts `kernels`): two matches from the same roster and seed in one process, A on a dedicated world
-// on the TypeScript, B on a dedicated world whose contact surface (heights and fold splits) and obstacle and collider
-// grids are answered by crates/cot-sim-wasm. Ticks alternate A B B A on thread CPU, so load drift cancels; a
+// on the TypeScript, B on a dedicated world whose contact surface (heights and fold splits), obstacle and collider grids
+// and hulls' structure support (the overlay mirrored, the tops over it: one call a sample) are answered by
+// crates/cot-sim-wasm. Ticks alternate A B B A on thread CPU, so load drift cancels; a
 // full-precision digest of every tank, shell and destroyed record is compared every 300 ticks — identical digests
 // prove the kernels change no bit of the simulation.
 //
@@ -80,7 +81,7 @@ for (let tick = 1; tick <= ticks; tick++) {
 }
 const stats = (list) => { const sorted = [...list].sort((a, b) => a - b); return { mean: list.reduce((a, b) => a + b, 0) / list.length, p50: sorted[sorted.length >> 1], p95: sorted[Math.floor(sorted.length * 0.95)] }; };
 const [sa, sb] = sides.map((s) => stats(s.cpu));
-console.log(`[tick-ab] ${mapId}, ${players.length} tanks, ${ticks} ticks, kernels contact+grids, load ${load0.toFixed(1)} -> ${loadavg()[0].toFixed(1)}`);
+console.log(`[tick-ab] ${mapId}, ${players.length} tanks, ${ticks} ticks, kernels contact+grids+support, load ${load0.toFixed(1)} -> ${loadavg()[0].toFixed(1)}`);
 console.log(`[tick-ab] A (TypeScript) mean ${sa.mean.toFixed(3)} ms p50 ${sa.p50.toFixed(3)} p95 ${sa.p95.toFixed(3)}; B (WebAssembly kernels) mean ${sb.mean.toFixed(3)} ms p50 ${sb.p50.toFixed(3)} p95 ${sb.p95.toFixed(3)}; B/A ${(sb.mean / sa.mean).toFixed(3)} (${((1 - sb.mean / sa.mean) * 100).toFixed(1)} % less tick CPU)`);
 console.log(`[tick-ab] digests ${firstDiff === null ? 'identical at every check' : `DIFFER from tick ${firstDiff}`}`);
 process.exitCode = firstDiff === null ? 0 : 1;
