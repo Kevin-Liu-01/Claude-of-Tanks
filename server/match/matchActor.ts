@@ -28,8 +28,9 @@ import {
 import type { CloseReasonId, TeamId } from '../../src/mp/wire/constants.ts';
 import { decodeMessage, encodeMessage, shellTypeIndex } from '../../src/mp/wire/codec.ts';
 import type {
-  EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
+  EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, SnapshotMeta, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
+import { captureShellSnapshot, type QuantizedShellSnapshot, type SnapshotShellSource } from '../../src/sim/worldSnapshot.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
 import { estimateEntityRowBytes } from '../../src/mp/wire/rows.ts';
 import { createEventPayloadCache } from '../../src/mp/wire/eventPayload.ts';
@@ -142,6 +143,12 @@ export interface MatchActorOptions {
    * rest wait a snapshot. 0 turns the budget off (the tiers' cadences alone).
    */
   uplinkTargetBps?: number;
+  /**
+   * How a viewer frame reads the authority: 'observe' (default; observeForViewer and snapshotMeta, mp-scale-251) or
+   * 'snapshot' (the full viewer snapshot, its per-entity capture unused). The frames are the same bytes; receipts and
+   * the scaling bench compare the two.
+   */
+  frameView?: 'observe' | 'snapshot';
 }
 
 /** Accumulated phase timings (ms) of a profiled actor (MatchActorOptions.profile). */
@@ -155,6 +162,8 @@ export interface MatchActorProfile {
   eventsMs: number;
   /** Each viewer's frame: the spotting-filtered viewer snapshot, the tiered rows, shells and meta. */
   buildMs: number;
+  /** Of which the authority's viewer view (what the viewer may observe, and the meta). */
+  viewMs: number;
   /** Each viewer's packet: keyframe or delta against its baseline, encoded. */
   encodeMs: number;
   sendMs: number;
@@ -336,6 +345,8 @@ const MAX_MESSAGES_PER_SECOND = 150;
  * closed in about a second).
  */
 const MESSAGE_BURST = 900;
+/** A viewer frame's shells at most (the world snapshot's own bound). */
+const MAX_VIEW_SHELLS = 256;
 const MAX_MALFORMED = 20;
 const TICK_MS = SIM_DT * 1000;
 
@@ -353,7 +364,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated',
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
-    endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS,
+    endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
   if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs))) {
@@ -444,6 +455,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     lagComp.bind(entity, entityId - 1);
   }
   const era = createEraIndexer();
+  // the authority's view for one viewer frame (buildFrame), reused for every frame
+  const viewEntities: AuthoritativeEntity[] = [];
+  const viewShells: SnapshotShellSource[] = [];
+  const viewQuantizedShells: QuantizedShellSnapshot[] = [];
+  let frameMeta: SnapshotMeta | null = null;
+  let frameMetaTick = -1;
   // the snapshot budget's scratch (buildFrame): the due mid and far rows of one viewer's frame, reused for every frame
   let rowBudgetBytes = Infinity;
   const dueIds = new Int32Array(MAX_ENTITIES + 1);
@@ -748,13 +765,32 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   }
 
   /**
-   * The viewer's frame at `tick`. The authority's viewer snapshot is the spotting filter (a hidden enemy is absent
-   * before any tier applies); each visible entity's row is then refreshed on its interest tier's cadence for this
-   * viewer or carried over from what the viewer holds (P3b, 2026-09-29; interestTiers.ts). Spectators have no hull
-   * to measure from and see every entity at full rate.
+   * The viewer's frame at `tick`. The authority's view for the viewer is the spotting filter (a hidden enemy is absent
+   * before any tier applies: observeForViewer, the set snapshot() carries, without its per-entity capture); each visible
+   * entity's row is then refreshed on its interest tier's cadence for this viewer or carried over from what the viewer
+   * holds (P3b, 2026-09-29; interestTiers.ts). Spectators have no hull to measure from and see every entity at full rate.
    */
   function buildFrame(client: ActorClient, tick: number): SnapshotFrame {
-    const snapshot = authority.snapshot({ tick, serverTimeMs: serverTimeMs(tick), viewerId: client.viewerId, ackInputSeq: null });
+    const viewed = profile ? profile.clock() : 0;
+    let meta: Record<string, unknown> | null;
+    if (frameView === 'snapshot') {
+      // the full viewer snapshot (receipts and the bench compare the two views)
+      const snapshot = authority.snapshot({ tick, serverTimeMs: serverTimeMs(tick), viewerId: client.viewerId, ackInputSeq: null });
+      viewEntities.length = 0;
+      for (const row of snapshot.entities) { const entity = authority.entityById.get(row.id); if (entity) viewEntities.push(entity); }
+      viewShells.length = 0;
+      for (const shell of snapshot.shells) viewQuantizedShells.push(shell);
+      meta = snapshot.meta;
+    } else {
+      authority.observeForViewer(client.viewerId, viewEntities, viewShells);
+      for (const shell of viewShells) {
+        if (viewQuantizedShells.length >= MAX_VIEW_SHELLS) break;
+        const captured = captureShellSnapshot(shell);
+        if (captured) viewQuantizedShells.push(captured);
+      }
+      meta = authority.snapshotMeta(client.viewerId);
+    }
+    if (profile) profile.viewMs += profile.clock() - viewed;
     const entities: EntityRow[] = [];
     const interest = client.interest;
     const snapshotIndex = (tick / snapshotEveryTicks) | 0;
@@ -766,10 +802,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     // the rows that must be fresh go first and spend the budget; the due mid and far rows queue for what is left
     let budget = rowBudgetBytes;
     let queued = 0;
-    for (const row of snapshot.entities) {
-      const entityId = entityIdOf.get(row.id);
-      const entity = entityId == null ? null : entityByWireId.get(entityId);
-      if (!entity || entityId == null) continue;
+    for (const entity of viewEntities) {
+      const entityId = entityIdOf.get(entity.id);
+      if (entityId == null || entityByWireId.get(entityId) !== entity) continue;
       let tier: InterestTier = 0;
       if (viewer && entity !== viewer) {
         const dx = entity.state.pos.x - vx;
@@ -830,7 +865,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     }
     entities.sort((a, b) => a.entityId - b.entityId);
     const shells: ShellRow[] = [];
-    for (const shell of snapshot.shells) {
+    for (const shell of viewQuantizedShells) {
       const shooter = entityIdOf.get(shell.shooterId) ?? NO_ENTITY;
       shells.push({
         id: shell.id & 0xffff, shooterEntityId: shooter,
@@ -839,7 +874,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         shellType: shellTypeIndex(shell.type), flags: shell.guided ? SHELL_FLAGS.GUIDED : 0,
       });
     }
-    const meta = snapshot.meta;
+    viewQuantizedShells.length = 0;
+    // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
+    if (frameMetaTick !== tick) { frameMeta = captureMeta(metaWithResumedClock(meta), ended); frameMetaTick = tick; }
     const margin = client.input.marginTicks;
     return {
       tick,
@@ -848,7 +885,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       ackedFireSeq: Math.max(0, client.input.lastAppliedFireSeq),
       ackedActionSeq: Math.max(0, client.input.lastAppliedActionSeq),
       inputMarginTicks: margin == null ? INPUT_MARGIN_UNKNOWN : Math.max(-128, Math.min(126, margin)),
-      meta: captureMeta(metaWithResumedClock(meta), ended),
+      meta: frameMeta!,
       destroyed: destroyedList(meta),
       destruction: destructionLog(meta),
       entities,

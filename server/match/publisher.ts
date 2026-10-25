@@ -24,7 +24,7 @@
  * slot costs at most one more keyframe, at the next slot.
  */
 import { NO_TICK, TICK_HZ } from '../../src/mp/wire/constants.ts';
-import { buildSnapshotPacket, encodeMessage } from '../../src/mp/wire/codec.ts';
+import { encodeSnapshotFrame } from '../../src/mp/wire/codec.ts';
 import type { SnapshotFrame } from '../../src/mp/wire/messages.ts';
 
 /**
@@ -139,8 +139,8 @@ export function createViewerPublisher({ keyframeSlotTicks = 0, snapshotEveryTick
       }
       const keyframe = forced || due;
       keyframeRequested = false;
-      const packet = buildSnapshotPacket(frame, keyframe ? null : baseline);
-      const bytes = encodeMessage(packet, keyframe ? null : baseline);
+      // straight from the frames, the same bytes as the packet path (codec.ts encodeSnapshotFrame, mp-scale-251)
+      const bytes = encodeSnapshotFrame(frame, keyframe ? null : baseline);
       history.set(frame.tick, { frame, sentAtMs: nowMs, acked: false });
       while (history.size > HISTORY_FRAMES) history.delete(history.keys().next().value!);
       if (keyframe) { lastKeyframeTick = frame.tick; stats.keyframes++; } else stats.deltas++;

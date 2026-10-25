@@ -35,6 +35,8 @@ const uplinkTargetBps = arg('uplink', '') === '' ? undefined : Number(arg('uplin
 const jsonOut = arg('json', '');
 const TICK_MS = 1000 / TICK_HZ;
 const specs = ALL_TANK_IDS.filter((id) => ['mbt', 'medium', 'heavy', 'light'].includes(getSpec(id).role)).slice(0, 14);
+// --views=snapshot,observe,observe,snapshot: each room once per view in that order (an in-process A/B of the frame view)
+const views = arg('views', 'observe').split(',');
 const rooms = roomsArg.split(',').map((text) => {
   const match = /^(\d+)v\1:(\d+)$/.exec(text.trim());
   if (!match) throw new Error(`room "${text}" is not <n>v<n>:<humans>`);
@@ -53,7 +55,8 @@ function countKeys(value) {
 }
 const results = [];
 
-for (const room of rooms) {
+for (const baseRoom of rooms) for (const frameView of views) {
+  const room = { ...baseRoom, label: views.length > 1 ? `${baseRoom.label}/${frameView}` : baseRoom.label };
   let nowMs = 0;
   const seats = [], bots = [];
   const humansOn = { alpha: Math.ceil(room.humans / 2), bravo: Math.floor(room.humans / 2) };
@@ -66,11 +69,11 @@ for (const room of rooms) {
       bots.push({ playerId: `bot-${team}-${n}`, name: `Bot ${team} ${n}`, team, specId: specs[(n + (team === 'bravo' ? 7 : 0)) % specs.length] });
     }
   }
-  const profile = { clock: () => performance.now(), stepMs: 0, spottingMs: 0, eventsMs: 0, buildMs: 0, encodeMs: 0, sendMs: 0, ticks: 0, frames: 0 };
+  const profile = { clock: () => performance.now(), stepMs: 0, spottingMs: 0, eventsMs: 0, buildMs: 0, viewMs: 0, encodeMs: 0, sendMs: 0, ticks: 0, frames: 0 };
   const actor = createMatchActor({
     roomId: `scale-${room.teamSize}v${room.teamSize}-${room.humans}`, mapId, seed: 1337, countdownS: 0, seats, bots,
     world: 'dedicated', snapshotHz, now: () => nowMs, schedule: () => () => {}, profile,
-    ...(uplinkTargetBps !== undefined ? { uplinkTargetBps } : {}),
+    ...(uplinkTargetBps !== undefined ? { uplinkTargetBps } : {}), frameView,
   });
   // every seat: a loopback client that queues what it receives (decoded after the tick, outside the host's timings)
   const viewers = seats.map((seat, index) => {
@@ -164,7 +167,7 @@ for (const room of rooms) {
   for (let n = 0; n < warmTicks + measureTicks; n++) {
     if (n === warmTicks) {
       measuring = true;
-      for (const key of ['stepMs', 'spottingMs', 'eventsMs', 'buildMs', 'encodeMs', 'sendMs', 'ticks', 'frames']) profile[key] = 0;
+      for (const key of ['stepMs', 'spottingMs', 'eventsMs', 'buildMs', 'viewMs', 'encodeMs', 'sendMs', 'ticks', 'frames']) profile[key] = 0;
       actor.loop.tickCost.reset();
     }
     const tick = actor.tick;
@@ -204,7 +207,7 @@ for (const room of rooms) {
     host: {
       tickP50: pct(0.5), tickP95: pct(0.95), stepMs: perTick(profile.stepMs), spottingMs: perTick(profile.spottingMs),
       eventsMs: perTick(profile.eventsMs), buildMs: perTick(profile.buildMs), encodeMs: perTick(profile.encodeMs), sendMs: perTick(profile.sendMs),
-      perFrameUs: { build: (profile.buildMs / Math.max(1, profile.frames)) * 1000, encode: (profile.encodeMs / Math.max(1, profile.frames)) * 1000 },
+      perFrameUs: { build: (profile.buildMs / Math.max(1, profile.frames)) * 1000, view: (profile.viewMs / Math.max(1, profile.frames)) * 1000, encode: (profile.encodeMs / Math.max(1, profile.frames)) * 1000 },
       uplinkKbps: kbps(viewers.reduce((sum, v) => sum + v.snapshotBytes + v.eventBytes, 0)),
     },
     viewer: {
@@ -224,7 +227,7 @@ for (const room of rooms) {
   };
   results.push(row);
   const h = row.host;
-  console.log(`${row.room.padEnd(10)} ${String(row.entities).padStart(3)} ent ${String(row.humans).padStart(2)} viewers | tick p50 ${h.tickP50.toFixed(2)} p95 ${h.tickP95.toFixed(2)} ms: step ${h.stepMs.toFixed(2)} (spot ${h.spottingMs.toFixed(2)}) events ${h.eventsMs.toFixed(2)} build ${h.buildMs.toFixed(2)} encode ${h.encodeMs.toFixed(2)} send ${h.sendMs.toFixed(2)} | frame build ${h.perFrameUs.build.toFixed(0)} us encode ${h.perFrameUs.encode.toFixed(0)} us | host up ${h.uplinkKbps.toFixed(0)} kbit/s, per viewer ${row.viewer.snapshotKbps.toFixed(1)} + events ${row.viewer.eventKbps.toFixed(1)} kbit/s (key ${row.viewer.meanKeyframeB.toFixed(0)} B, delta ${row.viewer.meanDeltaB.toFixed(0)} B; full ${row.viewer.fullKbpsViewer0.toFixed(1)}) | client apply ${row.client.applyUs.toFixed(0)} us, sample ${row.client.sampleUs.toFixed(0)} us | tiers ${row.tiers.population.join('/')} deferred ${row.tiers.deferred} | burst p50 ${(row.burst.p50 / 1024).toFixed(1)} p95 ${(row.burst.p95 / 1024).toFixed(1)} max ${(row.burst.max / 1024).toFixed(1)} KB`);
+  console.log(`${row.room.padEnd(18)} ${String(row.entities).padStart(3)} ent ${String(row.humans).padStart(2)} viewers | tick p50 ${h.tickP50.toFixed(2)} p95 ${h.tickP95.toFixed(2)} ms: step ${h.stepMs.toFixed(2)} (spot ${h.spottingMs.toFixed(2)}) events ${h.eventsMs.toFixed(2)} build ${h.buildMs.toFixed(2)} encode ${h.encodeMs.toFixed(2)} send ${h.sendMs.toFixed(2)} | frame build ${h.perFrameUs.build.toFixed(0)} us (view ${h.perFrameUs.view.toFixed(0)}) encode ${h.perFrameUs.encode.toFixed(0)} us | host up ${h.uplinkKbps.toFixed(0)} kbit/s, per viewer ${row.viewer.snapshotKbps.toFixed(1)} + events ${row.viewer.eventKbps.toFixed(1)} kbit/s (key ${row.viewer.meanKeyframeB.toFixed(0)} B, delta ${row.viewer.meanDeltaB.toFixed(0)} B; full ${row.viewer.fullKbpsViewer0.toFixed(1)}) | client apply ${row.client.applyUs.toFixed(0)} us, sample ${row.client.sampleUs.toFixed(0)} us | tiers ${row.tiers.population.join('/')} deferred ${row.tiers.deferred} | burst p50 ${(row.burst.p50 / 1024).toFixed(1)} p95 ${(row.burst.p95 / 1024).toFixed(1)} max ${(row.burst.max / 1024).toFixed(1)} KB`);
   console.log(`   worst tick ${row.worstTick.tick}: ${(row.worstTick.bytes / 1024).toFixed(1)} KB, snapshots ${(row.worstTick.snapshotBytes / 1024).toFixed(1)} KB with ${row.worstTick.keyframes} keyframes`);
   console.log(`   viewer 0 events: ${Object.entries(row.eventKinds).map(([kind, e]) => `${kind} ${e.count} (${e.kbps.toFixed(1)} kbit/s)`).join(', ')}`);
   actor.stop();

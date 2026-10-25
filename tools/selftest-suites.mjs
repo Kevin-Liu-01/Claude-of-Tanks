@@ -1449,6 +1449,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
+    'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',

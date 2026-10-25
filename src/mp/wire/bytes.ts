@@ -144,6 +144,13 @@ export class ByteWriter {
     this.raw(encoded);
   }
 
+  /** Overwrite one written byte (a count that is known only after what it counts). */
+  setU8(position: number, value: number): void {
+    if (!Number.isInteger(position) || position < 0 || position >= this.cursor) throw new WireError('range', `byte ${position} is not written`);
+    if (!Number.isInteger(value) || value < 0 || value > 0xff) throw new WireError('range', `u8 out of range: ${value}`);
+    this.bytes[position] = value;
+  }
+
   raw(bytes: Uint8Array): void {
     this.ensure(bytes.byteLength);
     this.bytes.set(bytes, this.cursor);
