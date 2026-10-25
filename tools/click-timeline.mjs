@@ -328,7 +328,9 @@ async function censusWindow(page, t0, consoleFrom) {
         scripts: l.scripts.slice(0, 3).map((x) => ({ invoker: x.invoker, url: x.url, pos: x.pos, fn: x.fn, ms: Math.round(x.duration) })) })),
     };
   }, t0).catch((cause) => ({ error: firstLine(cause) }));
-  const logged = (page.__consoleLog ?? []).slice(consoleFrom);
+  // Chrome ignores COOP on a plain-http origin and says so; the deployment is https, so that line is the preview's
+  const logged = (page.__consoleLog ?? []).slice(consoleFrom)
+    .filter((m) => !/Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy/.test(m.text));
   return { ...window_, consoleErrors: logged.filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
     consoleWarnings: logged.filter((m) => m.type === 'warn').length };
 }
@@ -370,7 +372,7 @@ const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-bat
   '[data-nav=home]', '[data-nav=gallery]', '[data-nav=docs]', '[data-nav=studio]', '[data-nav=github]', '.cot-github',
   '[data-mobile-nav=home]', '[data-mobile-nav=gallery]', '[data-mobile-nav=docs]', '[data-mobile-nav=studio]',
   '[data-mobile-nav=locale]', '[data-deploy-room]', '[data-tabbar=gallery]', '.cot-wordmark', 'a[href^="http"]',
-  'a[href^="/"]', '[hreflang]', '[data-locale]'].join(', ');
+  'a[href^="/"]', '[hreflang]', '[data-locale]', '[data-nav=locale]', '.cot-locale-switcher'].join(', ');
 const openDeploy = async (page, ctx) => {
   if (await page.evaluate(() => window.__click.shown('#cot-battle-menu.open'))) return;
   await tapOrClick(page, await target(page, '[data-nav=deploy], .cot-battle-mode'), ctx);
@@ -560,8 +562,11 @@ export const PATHS = [
     shown: `document.querySelector('[data-click-target]')?.getAttribute('aria-selected') === 'true'` },
   { id: 'gallery-mode', doc: 'gallery', reps: 6,
     press: (page, i) => target(page, `[data-mode="${['armor', 'modules', 'crew', 'appearance'][i % 4]}"]`),
-    done: `window.__TANK_GALLERY?.getState?.().mode === document.querySelector('[data-click-target]')?.dataset.mode
-      && (window.__TANK_GALLERY.getState().mode === 'appearance' || window.__TANK_GALLERY.getState().overlayCount > 0)`, doneTimeoutMs: 60000 },
+    // (lockdown-251) every read guarded: after a reload there is no target and no gallery, and an unguarded read threw
+    // inside the page (a pageerror the census counted against the Gallery)
+    done: `!!document.querySelector('[data-click-target]')
+      && window.__TANK_GALLERY?.getState?.().mode === document.querySelector('[data-click-target]')?.dataset.mode
+      && (window.__TANK_GALLERY?.getState?.().mode === 'appearance' || window.__TANK_GALLERY?.getState?.().overlayCount > 0)`, doneTimeoutMs: 60000 },
 ];
 
 // The renderer's live programs (name, use count, key), so a path can diff the sets two states link: a long key keeps
@@ -702,7 +707,9 @@ async function main() {
     if (profile.userAgent) await page.setUserAgent(profile.userAgent);
     page.__consoleLog = [];
     page.on('pageerror', (error) => { log(`  [${base.label}:${doc} page error] ${firstLine(error)}`);
-      page.__consoleLog.push({ type: 'error', text: `pageerror: ${firstLine(error)}`.slice(0, 240) }); });
+      // the first frame of the stack names the code that threw
+      const at = String(error?.stack ?? '').split('\n').find((line) => /^\s+at /.test(line))?.trim() ?? '';
+      page.__consoleLog.push({ type: 'error', text: `pageerror: ${firstLine(error)}${at ? ` (${at})` : ''}`.slice(0, 320) }); });
     page.on('console', (message) => {
       const type = message.type();
       if (type === 'error' || type === 'warn' || type === 'warning') {

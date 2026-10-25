@@ -1686,6 +1686,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/catalog.selftest.mjs',
     'src/gallery/viewGlyphs.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',
+    'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',
     'src/gallery/surfaceMarkup.selftest.mjs',
     'src/vehicles/rosterPolicy.selftest.mjs',
