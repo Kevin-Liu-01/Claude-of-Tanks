@@ -157,6 +157,17 @@ for (const id of ['m1a2_abrams_sepv3', 't90m']) {
   await settle(lazy, state, 200); await settle(prepared, state, 200);
   const key = (d) => d.split('|').slice(0, 2).join('|');
   assert.deepEqual(drawn(prepared, 200).draws.map(key), drawn(lazy, 200).draws.map(key), 'the prepared far LOD is the one the range builds');
+  // (250) prepared hidden, as an unspotted enemy is in the countdown warm (setVisible(false) hides its root): the same
+  // far LOD, hull and gear (the vehicle's own visibility is not its far detail's)
+  const hidden = build(id, 'dual');
+  await settle(hidden, state, 10);
+  hidden.setVisible(false);
+  assert.equal(hidden.prepareFarLod(), true, 'prepared hidden');
+  hidden.setVisible(true);
+  assert.ok(hidden.root.userData.farLod.hullDraws > 0, `a vehicle prepared hidden has its far hull (${hidden.root.userData.farLod.hullDraws} draws)`);
+  await settle(hidden, state, 200);
+  assert.deepEqual(drawn(hidden, 200).draws.map(key), drawn(lazy, 200).draws.map(key), 'the far LOD prepared hidden is the one the range builds');
+  hidden.dispose();
   lazy.dispose(); prepared.dispose();
 }
 // ---- a tank moving at the boundary (perf-256, the coordinator's flicker check): 60 Hz frames of screen-equivalent

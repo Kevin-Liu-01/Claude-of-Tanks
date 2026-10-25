@@ -155,13 +155,16 @@ function layoutOf(geometry: THREE.BufferGeometry): string | null {
 }
 
 /**
- * Whether `object` draws at the far LOD's range: it and every ancestor up to `root` visible and on the default layer, and
+ * Whether `object` draws at the far LOD's range: it and every ancestor below `root` visible and on the default layer, and
  * on the level each LOD above it shows at FAR_LOD_RETURN_M (the LODs switch at render time, so a build's levels all
  * stand visible: the 150 m greeble tier would otherwise join the far hull and stand out again).
  */
 function drawnUnder(object: THREE.Object3D, root: THREE.Object3D): boolean {
   if (!object.layers.isEnabled(0)) return false;
   for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    // (250) the vehicle's own visibility (setVisible: spotting) is not its far detail's: an unspotted enemy prepares its
+    // far LOD hidden in the countdown warm, and a hidden root left its far hull empty
+    if (node === root) return true;
     if (!node.visible) return false;
     const lod = node.parent as THREE.LOD | null;
     if (lod?.isLOD && lod.levels.length) {
@@ -169,7 +172,6 @@ function drawnUnder(object: THREE.Object3D, root: THREE.Object3D): boolean {
       for (const level of lod.levels) if (FAR_LOD_RETURN_M >= level.distance) shown = level.object;
       if (shown !== node) return false;
     }
-    if (node === root) return true;
   }
   return false;
 }
