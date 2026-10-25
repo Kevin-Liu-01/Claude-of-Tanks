@@ -1,0 +1,72 @@
+{
+ "libraryId": "claude-of-tanks-docs-hero-r2",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "Field Manual topic heroes (2026-10-25, the media lane): moving 1v1 duels rendered on release 251 as seamless loops, in the topic hero ladder (1920 and 960 VP9 webm, a 960 H.264 phone rung, a 1920 jpg poster and a 640 webp thumbnail).",
+ "items": [
+  {
+   "id": "frontier-t90m-leo2a6",
+   "topic": "start",
+   "seconds": 6.1,
+   "title": {
+    "en": "A T-90M races a Leopard 2A6 across Frontier Basin by day, the Leopard firing down from the hill",
+    "zh": "白天，一辆 T-90M 在边境盆地与一辆 Leopard 2A6 并驾齐驱，Leopard 从山坡上向下开火"
+   },
+   "files": {
+    "wide": {
+     "path": "/media/docs-hero-r2/frontier-t90m-leo2a6.webm",
+     "bytes": 3433990
+    },
+    "r960": {
+     "path": "/media/docs-hero-r2/frontier-t90m-leo2a6-960.webm",
+     "bytes": 917028
+    },
+    "phone": {
+     "path": "/media/docs-hero-r2/frontier-t90m-leo2a6-mobile.mp4",
+     "bytes": 934178
+    },
+    "poster": {
+     "path": "/media/docs-hero-r2/frontier-t90m-leo2a6.jpg",
+     "bytes": 291737
+    },
+    "thumb": {
+     "path": "/media/docs-hero-r2/frontier-t90m-leo2a6-thumb.webp",
+     "bytes": 29104
+    }
+   }
+  },
+  {
+   "id": "verdant-challenger3-t80u",
+   "topic": "models",
+   "seconds": 5.1,
+   "title": {
+    "en": "A Challenger 3 races a T-80U past the kolkhoz gate on Verdant Fields, the T-80U knocked out behind the wall",
+    "zh": "一辆 Challenger 3 在翠野原的集体农庄大门旁与一辆 T-80U 并驾齐驱，T-80U 在矮墙后被击毁"
+   },
+   "files": {
+    "wide": {
+     "path": "/media/docs-hero-r2/verdant-challenger3-t80u.webm",
+     "bytes": 2867032
+    },
+    "r960": {
+     "path": "/media/docs-hero-r2/verdant-challenger3-t80u-960.webm",
+     "bytes": 765346
+    },
+    "phone": {
+     "path": "/media/docs-hero-r2/verdant-challenger3-t80u-mobile.mp4",
+     "bytes": 797900
+    },
+    "poster": {
+     "path": "/media/docs-hero-r2/verdant-challenger3-t80u.jpg",
+     "bytes": 336467
+    },
+    "thumb": {
+     "path": "/media/docs-hero-r2/verdant-challenger3-t80u-thumb.webp",
+     "bytes": 37590
+    }
+   }
+  }
+ ]
+}
