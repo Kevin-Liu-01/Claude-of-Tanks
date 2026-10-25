@@ -48,12 +48,13 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 /* the destinations: Play in the accent, then each page over its own picture */
 .not-found__go{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
 .nf-go{isolation:isolate;display:flex;align-items:flex-end;aspect-ratio:16/9;padding:var(--s4) var(--s4);border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
+.nf-go.cot-c-media{box-shadow:var(--ring-1)}
 .nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .nf-go__nm{display:inline-flex;align-items:center;gap:var(--s3)}
 .nf-go__nm .cot-i{width:18px;height:18px;color:var(--ink-2)}
 .nf-go b{font:700 max(var(--fs-floor-12),var(--fs-16))/1 var(--font-display);text-transform:uppercase}
 /* Play: the other tiles' shape and name, on the accent plate; it takes the row's height, not its own 16:9 */
-.nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
+.nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:none}
 .nf-go--play .cot-i{width:18px;height:18px;color:inherit;fill:currentColor}
 .nf-go--play:hover,.nf-go--play:focus-visible{background:var(--accent-hi);box-shadow:var(--e2)}
 :lang(zh-CN) .not-found h1,:lang(zh-CN) .not-found__line{line-height:1.15}

@@ -115,6 +115,7 @@ img{display:block;max-width:100%}
 /* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-head>.home-h2{text-box:trim-end cap alphabetic}
+:lang(zh-CN) :is(.home-head>.home-h2,.press__title){text-box:trim-end cap text}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
