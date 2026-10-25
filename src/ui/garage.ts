@@ -3545,15 +3545,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     pop.append(mapsEl);
+    // the open picker's one close, beside its (i); it leaves with the picker
+    mapsEl.querySelector('.mtitle')?.insertAdjacentHTML('beforeend', `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" ` +
+      `data-deploy-field-close aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>`);
     pop.hidden = false;
+    pop.closest('.cot-battle-details')?.classList.add('is-picking');
     pop.scrollIntoView({ block: 'nearest' }); // a phone's opened picker comes into view above the dock
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
-    mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
+    // the selected battlefield scrolls into view within the list only (its column keeps its place)
+    const list = mapsEl.querySelector<HTMLElement>('.cot-map-scroll');
+    const sel = mapsEl.querySelector<HTMLElement>('.cot-map-card.sel');
+    if (list && sel) {
+      const at = sel.getBoundingClientRect(), box = list.getBoundingClientRect();
+      if (at.top < box.top || at.bottom > box.bottom) list.scrollTop += at.top - box.top;
+    }
   }
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
     pop.hidden = true;
+    pop.closest('.cot-battle-details')?.classList.remove('is-picking');
+    mapsEl.querySelector('[data-deploy-field-close]')?.remove();
     camosEl.before(mapsEl);
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
@@ -4006,6 +4018,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     if (requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').hidden) openDeployField(); else closeDeployField();
   });
+  requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').addEventListener('click', (event) => {
+    if (!(event.target as Element | null)?.closest('[data-deploy-field-close]')) return;
+    emit('ui:click', {});
+    closeDeployField();
+    requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').focus();
+  });
   for (const host of [deployOps, deployLower, requiredElement<HTMLElement>(battleMenu, '[data-deploy-brief]')]) host.addEventListener('click', (event) => {
     const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
     if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
@@ -4284,6 +4302,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return;
     }
     if (e.code === 'Escape' && battleMenu.classList.contains('open')) {
+      // an open battlefield picker takes the first Escape
+      const fieldPop = battleMenu.querySelector<HTMLElement>('[data-deploy-field-pop]');
+      if (fieldPop && !fieldPop.hidden) {
+        closeDeployField();
+        battleMenu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.focus();
+        e.preventDefault();
+        return;
+      }
       closeBattleMenu({ restoreFocus: true });
       e.preventDefault();
       return;

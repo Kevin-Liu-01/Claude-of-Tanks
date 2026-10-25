@@ -254,11 +254,25 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-deploy-field-mm:has(img[hidden]){display:none;}
 /* the battlefield picker opens in the field's place (no transient layer over the pickers under it), scrolling within
    its own height under a foot fade; the field's art and map step aside while it is open */
-.cot-garage .cot-deploy-field-pop{grid-column:1/-1;max-height:min(440px,58vh);overflow:auto;padding:var(--s3) var(--s3) calc(var(--s3) + var(--s5));
-  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);}
+.cot-garage .cot-deploy-field-pop{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
 .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])) :is(.cot-deploy-field-card,.cot-deploy-field-mm){display:none;}
+/* the open picker is the field: one plate (the picker's own), on the column's edge, as tall as its list */
+body[data-cot-panels] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])){display:flex;flex-direction:column;flex:1 1 0;
+  min-height:min(240px,30vh);background:none;box-shadow:none;}
+/* while a battlefield is picked the rules step aside, so the picker has their height and the column holds still */
+.cot-garage .cot-battle-details.is-picking .cot-deploy-rules{display:none;}
+/* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])){flex:none;height:min(440px,60vh);}
+.cot-garage .cot-deploy-field-pop .cot-maps{height:auto;flex:1 1 auto;min-height:0;}
+.cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:24px;gap:var(--s1);}
+body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:var(--cot-control-floor);}
+.cot-garage .cot-deploy-field-pop .cot-deploy-field-close{--h:24px;flex:none;box-shadow:var(--ring-2);color:var(--ink-3);}
+.cot-garage .cot-deploy-field-pop .cot-deploy-field-close:hover{background:var(--surface-hover);box-shadow:var(--ring-3);color:var(--ink-1);}
+body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-deploy-field-close{--h:var(--cot-control-floor);}
+/* one selected treatment for one-of-many tiles: the accent ring (as the mode tiles) */
+.cot-garage .cot-deploy-field-pop .cot-map-card.sel{background:var(--btn-secondary-fill);}
+.cot-garage .cot-deploy-field-pop .cot-map-card.sel .mthumb{box-shadow:var(--ring-2);}
 .cot-garage .cot-deploy-field-pop[hidden]{display:none;}
-.cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
 /* the time, the sides and the bot tier in one row (.ctl, .seg); the mode's own settings open under it on the toggle */
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);}
 .cot-garage .cot-battle-menu.open [data-team-options]{display:contents;}
@@ -323,6 +337,9 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-mode-settings label>span){display:block;padding:0 0 var(--s2);color:var(--ink-3);
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
 .cot-garage .cot-battle-menu.open .cot-teams{flex-direction:column;align-items:flex-start;gap:0;}
+.cot-garage .cot-battle-menu.open .cot-teams button{height:34px;}
+.cot-garage .cot-battle-menu.open .cot-custom-select-trigger{min-height:40px;}
+.cot-garage .cot-battle-menu.open .cot-mode-settings label{gap:0;}
 
 /* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{display:flex;flex-direction:column;gap:var(--s3);padding:0;border:0;background:none;}
@@ -464,7 +481,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
   .cot-garage .cot-deploy-brief-name{font-size:var(--fs-20);}
 }
 /* touch: the screen's tabs and option pickers meet the control floor (44 px) */
-body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tab,.cot-c-seg__opt,.cot-time-content,.cot-sides-choice){min-height:var(--cot-control-floor);}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tab,.cot-c-seg__opt,.cot-time-content,.cot-sides-choice,.cot-teams button){min-height:var(--cot-control-floor);}
 body[data-cot-input='coarse'] .cot-garage .cot-deploy-more{width:var(--cot-control-floor);height:var(--cot-control-floor);}
 /* the scrim token under a picture card's title band (the band reaches the card's edges; it fades only in its top
    padding, so a two-line name sits on it whole), so the name holds 4.5:1 over the brightest art */
@@ -486,10 +503,11 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-badge{display:none;}
    at their foot where they scroll on */
 body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-deploy-rules{order:1;}
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open .cot-battle-details.is-scrollable{
-  padding-block:var(--s3) var(--s5);mask-image:linear-gradient(180deg,transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s5)),transparent);}
+  padding-block:var(--s3);mask-image:linear-gradient(180deg,transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s3)),transparent);}
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-plate:has(.cot-battle-details.is-scrollable){padding-top:var(--s1);row-gap:0;}
 /* the columns fade at their foot where they scroll on, and keep room to scroll clear of it */
-body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open :is(.cot-battle-mode-list,.cot-deploy-campaign).is-scrollable{padding-block:var(--s3) var(--s5);
-  mask-image:linear-gradient(180deg,transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s5)),transparent);}
+body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open :is(.cot-battle-mode-list,.cot-deploy-campaign).is-scrollable{padding-bottom:var(--s5);
+  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);}
 /* a phone's column fades under the tab row as it scrolls */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{mask-image:linear-gradient(180deg,transparent,var(--ink-1) var(--s3));}
 /* time of day takes its own row, its chips named; the sides and the options share the next (a narrow plate tightens
@@ -506,7 +524,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-choi
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-content{width:100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-sides{flex:1 1 auto;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-sides-choice{flex:1 1 0;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams{align-self:stretch;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams{align-self:stretch;align-items:stretch;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams [role=radiogroup]{display:flex;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams button{flex:1 1 auto;white-space:nowrap;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-mode-settings{grid-template-columns:minmax(0,1fr);}

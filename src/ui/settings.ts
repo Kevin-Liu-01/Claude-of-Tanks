@@ -381,9 +381,9 @@ const SETTINGS_CSS = `
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
    heading's line so every heading keeps one height */
 /* the (i) is its glyph's size on the line (so it ends where the controls end); its hit area reaches the control floor */
-.cot-set-info{--h:16px;order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+.cot-set-info{--h:16px;order:2;flex:none;margin-block:calc(var(--h) / -2);color:var(--ink-3);}
 /* the touch floors size the (i)'s hit area, never its box: a heading with an (i) is as tall as one without */
-body.cot-touch-layout .cot-settings .cot-set-info,body[data-cot-input='coarse'] .cot-settings .cot-set-info{min-height:0;}
+body.cot-touch-layout .cot-settings .cot-set-info.cot-c-btn,body[data-cot-input='coarse'] .cot-settings .cot-set-info.cot-c-btn{min-height:0;}
 .cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2) calc(-1 * var(--s1));}
 body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2);}
 .cot-set-info svg{width:16px;height:16px;}
@@ -446,7 +446,10 @@ body.cot-hud-aerial .cot-hints{display:none;}
 /* each custom colour beside its team's shape (a team is shape plus colour) */
 .cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
 .cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
-.cot-set-refused{margin:var(--s2) var(--s2) 0;}
+/* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
+   label columns */
+.cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
+.cot-set-refused{flex:1 1 100%;margin:0 calc(-1 * var(--s2));padding-inline:var(--s2);}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -1466,7 +1469,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
     // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
-    const refused = el('div', 'cot-c-notice cot-set-refused', vision);
+    const refused = el('div', 'cot-c-notice cot-set-refused', customRow);
     refused.dataset.severity = 'error';
     refused.setAttribute('role', 'alert');
     refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`
