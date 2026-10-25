@@ -230,7 +230,7 @@ export const TOKENS = {
   'fill-quiet': 'rgba(246,243,236,.04)',
   'fill-soft': 'rgba(246,243,236,.05)',
   'fill-scale': 'rgba(246,243,236,.1)',
-  'btn-primary-shadow': '0 1px 0 rgba(255,255,255,.35) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 12px 32px rgba(0,0,0,.35)',
+  'btn-primary-shadow': '0 12px 32px rgba(0,0,0,.35)',
   'btn-media-fill': 'rgba(5,6,8,.55)',
   'kbd-on-accent-ink': 'rgba(20,13,3,.78)',
   'kbd-on-accent-ring': 'inset 0 0 0 1px oklch(from #140d03 l c h / .35)',

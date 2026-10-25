@@ -715,7 +715,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
     `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-quick" data-tab="quick" aria-selected="true" aria-controls="cot-deploy-quick">` +
-    `${uiIconSVG('battleBots', 18)}${t('garage.deploy.quick')}</button>` +
+    `${uiIconSVG('play', 18)}${t('garage.deploy.quick')}</button>` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-campaign" data-tab="campaign" aria-selected="false" aria-controls="cot-deploy-campaign" tabindex="-1">` +
     `${uiIconSVG('modeFrontline', 18)}${t('campaign.heading')}<span class="cot-deploy-count num" data-deploy-campaign-count></span></button></div>` +
     `<button type="button" class="cot-deploy-tab" data-deploy-room="private">${uiIconSVG('battlePrivate', 18)}${t('garage.battle.typePrivate')}</button>` +
@@ -735,7 +735,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
     `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
+    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span><span class="cot-deploy-chips"></span></span></button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
@@ -744,7 +744,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the campaign tab's plate: the operation in focus (deployScreen.ts brief)
     `<section class="cot-deploy-brief" data-deploy-brief aria-live="polite"></section>` +
     `<div class="cot-battle-details">` +
-    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
+    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon is-active" data-setup-icon aria-hidden="true"></span>` +
     `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
     `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
     `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +

@@ -201,7 +201,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   .dm{grid-template-columns:minmax(0,1fr)}
   /* the topic strip fades at both ends where it scrolls on; the index link is one of its items, not a framed chip */
   .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--s4);box-shadow:var(--docs-side-edge);
-    mask-image:linear-gradient(90deg,transparent,var(--scrim) var(--s4),var(--scrim) calc(100% - var(--s4)),transparent)}
+    mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s4),var(--ink-1) calc(100% - var(--s4)),transparent)}
   .dm-home{margin:0;flex:none;box-shadow:none}
   .dm-grp{display:none}
   .dm-search{display:none}

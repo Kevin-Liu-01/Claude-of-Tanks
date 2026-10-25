@@ -125,6 +125,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
+    // the mode's own settings open under the pickers: bring them into the plate's view (a compact screen scrolls it)
+    if (open) requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
@@ -149,8 +151,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   const keys = document.createElement('footer');
   keys.className = 'cot-deploy-keys';
   keys.setAttribute('aria-hidden', 'true');
-  keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>` +
-    `<span>${keycap(t('garage.key.enter'))}${t('garage.battle')}</span><span>${keycap('Esc')}${t('garage.nav.garage')}</span>`;
+  // the arrows only: Enter and Esc wear their key caps on Deploy and on the Garage control already
+  keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>`;
   menu.append(keys);
 
   // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right

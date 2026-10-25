@@ -71,7 +71,7 @@
   --ring-accent:inset 0 0 0 1px var(--accent);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
   --btn-secondary-ring-hover:inset 0 0 0 1px var(--ink-2);--ring-ok:inset 0 0 0 1px var(--ok);--ring-warn:inset 0 0 0 1px var(--warn);
   --ring-danger:inset 0 0 0 1px var(--danger);--z-lift:1;--fill-faint:rgba(246,243,236,.03);--fill-quiet:rgba(246,243,236,.04);
-  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 12px 32px rgba(0,0,0,.35);
+  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 12px 32px rgba(0,0,0,.35);
   --btn-media-fill:rgba(5,6,8,.55);--kbd-on-accent-ink:rgba(20,13,3,.78);--kbd-on-accent-ring:inset 0 0 0 1px oklch(from var(--ink-on-accent) l c h / .35);
   --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
   --sil-shadow:drop-shadow(0 1px 0 rgba(0,0,0,.5));--glyph-plate:rgba(5,6,8,.86);--row-plate:rgba(17,21,26,.88);

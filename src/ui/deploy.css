@@ -134,7 +134,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-camp>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cot-garage .cot-deploy-camp::after{content:'';position:absolute;inset:0;background:var(--media-fade-full);}
 .cot-garage .cot-deploy-camp .t{position:absolute;z-index:var(--z-lift);left:14px;right:14px;bottom:12px;display:flex;flex-direction:column;gap:var(--s2);}
-.cot-garage .cot-deploy-camp .t b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-camp .t b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--hollow-shadow);}
 .cot-garage .cot-deploy-camp .op{display:flex;gap:var(--s1);}
 .cot-garage .cot-deploy-camp .op i{flex:1;height:4px;background:var(--fill-scale);}
 .cot-garage .cot-deploy-camp .op i.d{background:var(--ink-1);}
@@ -159,13 +159,14 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op-index{font:700 var(--fs-44)/1 var(--font-display);color:var(--ink-3);}
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--ink-1);}
 .cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-data);color:var(--ink-2);}
+.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s2);}
 .cot-garage .cot-deploy-op-meta svg{color:var(--ink-3);}
 .cot-garage .cot-deploy-op-stars{display:inline-flex;gap:var(--s1);color:var(--ink-4);}
 .cot-garage .cot-deploy-op-stars .on{color:var(--accent);}
 .cot-garage .cot-deploy-op-map{display:block;height:66px;border-radius:var(--control-radius);background:var(--surface-raised) center/cover no-repeat;}
-.cot-garage .cot-deploy-op.locked{opacity:.72;}
+/* a locked operation keeps readable ink (no dimmed plate); its lock glyph says it is locked */
+.cot-garage .cot-deploy-op.locked .cot-deploy-op-name{color:var(--ink-2);}
 .cot-garage .cot-deploy-op-diff{display:inline-flex;gap:2px;}
 .cot-garage .cot-deploy-op-diff i{width:4px;height:12px;border-radius:1px;background:var(--ink-4);}
 .cot-garage .cot-deploy-op-diff i.on{background:var(--ink-1);}
@@ -175,7 +176,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow);}
 @media (hover:hover){.cot-garage .cot-deploy-op-launch:hover{background:var(--surface-hover);}
   .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch:hover{background:var(--btn-primary-hover);}}
-.cot-garage .cot-deploy-op-lock{color:var(--ink-3);}
+.cot-garage .cot-deploy-op-lock{color:var(--ink-2);}
 
 /* ---- the campaign tab's plate: the operation in focus over its battlefield (deployScreen.ts brief); a folded layout keeps
    the operations alone ---- */
@@ -218,7 +219,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
   background:var(--fill-quiet);box-shadow:var(--ring-1);text-align:center;}
 .cot-garage .cot-deploy-rule>svg{width:19px;height:19px;color:var(--ink-2);}
 .cot-garage .cot-deploy-rule dd{order:1;margin:0;font:700 var(--fs-15)/1 var(--font-display);white-space:nowrap;color:var(--ink-1);}
-.cot-garage .cot-deploy-rule dt{order:2;min-width:0;font:400 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);color:var(--ink-3);}
+.cot-garage .cot-deploy-rule dt{order:2;min-width:0;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 /* a plate narrower than the six values' widest ("Elimination") sets them three across */
 @container deploy-plate (max-width:640px){.cot-garage .cot-deploy-rules{grid-template-columns:repeat(3,minmax(0,1fr));}}
 /* a tablet's campaign list gives the operation's name the width its picture took */
@@ -235,7 +236,7 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-deploy-field-thumb .random-map-mosaic{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;width:100%;height:100%;}
 .cot-garage .cot-deploy-field-thumb .random-map-tile{display:block;background:center/cover no-repeat;}
 .cot-garage .cot-deploy-field-nm{position:absolute;z-index:var(--z-lift);left:14px;right:12px;bottom:12px;display:flex;flex-direction:column;gap:var(--s2);}
-.cot-garage .cot-deploy-field-name{font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-field-name{font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;text-shadow:var(--hollow-shadow);}
 .cot-garage .cot-deploy-field-tags .cot-c-rules{gap:var(--s3);font-family:var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-field-all{position:absolute;z-index:var(--z-lift);left:12px;top:12px;background:var(--glyph-plate);}
 .cot-garage .cot-deploy-field-mm{position:relative;height:100%;aspect-ratio:1;background:var(--surface-page);border-left:1px solid var(--line-2);}
@@ -247,7 +248,7 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-deploy-field-mm:has(img[hidden]){display:none;}
 /* the battlefield picker opens over the plate */
 .cot-garage .cot-deploy-field-pop{position:absolute;z-index:var(--z-menu);left:0;right:0;top:0;max-height:min(440px,58vh);overflow:auto;padding:var(--s3) var(--s3) calc(var(--s3) + var(--s5));
-  mask-image:linear-gradient(180deg,var(--scrim) calc(100% - var(--s5)),transparent);
+  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);
   border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e3);}
 .cot-garage .cot-deploy-field-pop[hidden]{display:none;}
 .cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
@@ -370,11 +371,12 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back>span{position:absol
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back svg{width:22px;height:22px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-title{font-size:var(--fs-20);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tabs{flex:1 0 100%;height:auto;gap:var(--s2);padding:0 var(--s6) 0 var(--s2);overflow-x:auto;
-  mask-image:linear-gradient(90deg,var(--scrim) calc(100% - var(--s6)),transparent);}
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{flex:none;height:36px;gap:var(--s2);padding:0 var(--s3);border-radius:var(--control-radius);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-13));}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab svg{width:15px;height:15px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);box-shadow:var(--ring-accent);background:var(--accent-wash);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{color:var(--ink-2);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);box-shadow:var(--seg-on-shadow);background:var(--surface-hover);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']::after{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
   overflow:auto;gap:var(--s3);padding:var(--s3) var(--s3) calc(96px + env(safe-area-inset-bottom));}
@@ -477,11 +479,11 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-badge{display:none;}
 /* a compact height: the battlefield and the pickers come first and the rules after them, set as rows; the details fade
    at their foot where they scroll on */
 body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-deploy-rules{order:1;}
-body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open .cot-battle-details{
-  padding-bottom:var(--s5);mask-image:linear-gradient(180deg,var(--scrim) calc(100% - var(--s5)),transparent);}
+body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open .cot-battle-details{
+  padding-bottom:var(--s5);mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);}
 /* the columns fade at their foot where they scroll on, and keep room to scroll clear of it */
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open :is(.cot-battle-mode-list,.cot-deploy-campaign){padding-bottom:var(--s5);
-  mask-image:linear-gradient(180deg,var(--scrim) calc(100% - var(--s5)),transparent);}
+  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);}
 /* a plate too narrow for three named times shows their glyphs (each keeps its name for assistive tech), so the time,
    the sides and the options stay one row */
 @container deploy-plate (max-width:520px){
@@ -494,8 +496,11 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-choi
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-content{width:100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-sides{flex:1 1 auto;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-sides-choice{flex:1 1 0;}
-/* the phone's open mode sets its glyph on the title band's line, beside the name */
+/* the phone's open mode reads as a desktop card does: its glyph at the top left, its title band across the foot */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .cot-deploy-choice-t{position:absolute;
-  left:calc(var(--s3) * 2 + 40px);right:0;bottom:0;padding-left:0;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{position:absolute;left:var(--s3);bottom:var(--s3);}
+  left:0;right:0;bottom:0;padding-left:var(--s3);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{position:absolute;left:var(--s3);top:var(--s3);}
+/* beside the brief, an operation's row launch is the secondary; the brief's Launch is the one primary */
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{background:var(--btn-media-fill);color:var(--ink-1);box-shadow:var(--ring-3);}
+@media (hover:hover){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch:hover{background:var(--surface-hover);}}
 }

@@ -9,7 +9,7 @@
 /* data-built chapters (src/docs/chapters): a table to pick from, cards with the game's stills, objective maps and rules */
 .dm-table{margin:var(--s4) 0;overflow-x:auto;border-radius:var(--r1);box-shadow:var(--ring-1)}
 /* a phone's table fades at its end where it scrolls on, and keeps room to scroll clear of the fade */
-@media (width < 520px){.dm-table{padding-right:var(--s5);mask-image:linear-gradient(90deg,var(--scrim) calc(100% - var(--s5)),transparent)}}
+@media (width < 520px){.dm-table{padding-right:var(--s5);mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s5)),transparent)}}
 .dm-table:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .dm-table table{width:100%;border-collapse:collapse;font:400 max(var(--fs-floor-12),var(--fs-14))/1.35 var(--font-body);color:var(--ink-2)}
 .dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--line-1);white-space:nowrap}
