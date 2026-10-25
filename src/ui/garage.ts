@@ -3181,6 +3181,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
+  let readoutModuleCount = -1; // the systems the readout last listed (the anatomy can finish after the first draw)
+  let heroModel: unknown = null;
 
   function animateStatsSwap(vehicleChanged: boolean): void {
     const shouldAnimate = vehicleChanged
@@ -3458,6 +3460,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `${uiIconSVG('modeProving', 15)}<span>${t('garage.dossier.testDrive')}</span>` +
       `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
+    readoutModuleCount = moduleRows.length;
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
       `<div class="cot-module-chip" data-tip="${t('garage.module.tooltip', { name: row.label })}">` +
@@ -4523,6 +4526,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     isOpen: false,
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
     frameHotspots(camera, model) {
+      // the hero's model arrives after its readout: a readout drawn from the spec before its anatomy was finished (fewer
+      // systems, in authored order) is drawn once more (the gauntlet 10-25: 9 systems at first view, 12 after)
+      if (model !== heroModel) {
+        heroModel = model;
+        const spec = selectedId ? specById.get(selectedId) : null;
+        if (spec && statsFor === spec.id && garageModuleRows(spec).length !== readoutModuleCount) renderStats(spec);
+      }
       if (!calloutsShown || !hotspots) return;
       hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));

@@ -111,9 +111,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 .cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:var(--s1);}
 .cot-garage .stats[data-density~='1'] .cot-mag-cell{padding-block:var(--s1);}
 /* at density 2 the magazine's cells read like the plates under them: the label left, the figure at the right edge */
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell{grid-template-columns:16px minmax(0,1fr) auto;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell svg{grid-row:1;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell b{grid-column:3;grid-row:1;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell svg{flex:none;align-self:center;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell span{flex:1 0 auto;max-width:100%;overflow:visible;text-overflow:clip;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell b{margin-left:auto;}
 .cot-garage[data-station] .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
 .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
   .cot-technical-gallery){display:none;}
@@ -214,9 +215,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-ammo-tile:first-child{border-color:var(--accent);background:var(--accent-wash);}
 .cot-garage .cot-ammo-tile svg{width:40px;height:16px;color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-data);color:var(--ink-1);}
-.cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
+.cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 var(--s1);min-width:0;white-space:nowrap;
-  font:400 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
+  font:400 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft small{margin-left:2px;font:inherit;}
 .cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;}
 
