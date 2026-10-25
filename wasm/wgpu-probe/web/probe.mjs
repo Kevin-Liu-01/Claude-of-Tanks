@@ -98,6 +98,13 @@ async function makeWgpu(scene) {
 const median = (list) => [...list].sort((a, b) => a - b)[list.length >> 1];
 try {
   await init({ module_or_path: new URL('cot_wgpu_probe_bg.wasm', import.meta.url) });
+  {
+    // which GPU: the WebGL renderer string and the WebGPU adapter (a software fallback would void the comparison)
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const debug = gl?.getExtension('WEBGL_debug_renderer_info');
+    const adapter = await navigator.gpu?.requestAdapter({ powerPreference: 'high-performance' });
+    show(`gpu: WebGL ${debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown'}; WebGPU ${adapter ? `${adapter.info.vendor} ${adapter.info.architecture}${adapter.info.isFallbackAdapter ? ' (fallback)' : ''}` : 'unavailable'}`);
+  }
   const scene = buildScene({ tanks, detail });
   show(`scene: ${tanks} tanks (detail ${detail}, ${(scene.tank.indices.length / 3).toLocaleString()} triangles each), ${tanks + 1} draws and ${scene.triangles.toLocaleString()} triangles a pass, 2048² shadow map, ${W} × ${H}; ${rounds} rounds of ${frames} frames`);
   const renderers = [];
