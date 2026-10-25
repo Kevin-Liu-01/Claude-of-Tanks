@@ -303,7 +303,7 @@
   "href": "/docs/audio#settings",
   "title": "Sound settings",
   "chapter": "Sound and radio",
-  "text": "Settings › Sound has six sliders and two alarms; changes apply at once. Master volume Engine & mechanical volume Gunfire & impacts volume Ambience volume Interface & music volume Crew voices & alarms volume Critical-damage heartbeat pulse Concussion muffle and ear ringing after close blasts Every sound is a recording made for Claude of Tanks with ElevenLabs before release; nothing is generated while you play."
+  "text": "Settings › Sound has six sliders and two alarms; changes apply at once. Master volume Engine & mechanical volume Gunfire & impacts volume Ambience volume Interface & music volume Crew voices & alarms volume Critical-damage heartbeat pulse Concussion ringing Every sound is a recording made for Claude of Tanks with ElevenLabs before release; nothing is generated while you play."
  },
  {
   "href": "/docs/studio",

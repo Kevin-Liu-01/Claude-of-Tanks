@@ -50,7 +50,7 @@ const DOCS: readonly string[] = [
   ...PUBLIC_NAV,
   '.docs-hero-actions a', '.docs-evidence dt',
   '.docs-evidence dd', '.kicker', '.docs-chapters-heading>p', '.docs-chapter-grid span', '.docs-chapter-grid strong', '.toc-head',
-  '.docs-toc a', '.docs-toc a span', '.toc-footer', '.callout', '.callout strong', '.principle p',
+  '.docs-toc a', '.docs-toc a span', '.toc-footer',
   '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker', '.aside-card-copy',
   '.aside-card-action', '.dm-side a', '.dm-grp', '.dm-crumb', '.dm-meta', '.dm-banner__cap', '.dm-toc a', '.topic-figure figcaption',
   '.footer-links a', '.footer-mark',

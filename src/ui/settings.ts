@@ -221,6 +221,7 @@ const SETTINGS_CSS = `
 .cot-settings :where(:not([class*="cot-c-"])){box-sizing:border-box;margin:0;padding:0;}
 .cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
   display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
+.cot-set-panel:focus{outline:none;}
 .cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
 @keyframes cotSetVeil{from{opacity:0;}}
 @keyframes cotSetIn{from{opacity:0;transform:translateY(14px);}}
@@ -272,6 +273,7 @@ const SETTINGS_CSS = `
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px;
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
 .cot-set-row:not(:has(~ .cot-set-row)){border-bottom:0;}
+.cot-set-row:has(.cot-set-seg button:disabled):not(:has(.cot-set-seg button:enabled)) .cot-setting-label-text{color:var(--ink-3);}
 .cot-set-row:hover{background:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
@@ -284,9 +286,9 @@ const SETTINGS_CSS = `
 .cot-set-row.conflict{background:color-mix(in srgb,var(--text-warn) 9%,transparent);}
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
-.cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
+.cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
 .cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
-  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-4);}
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
@@ -299,7 +301,7 @@ const SETTINGS_CSS = `
 .cot-chip svg{display:inline-block;width:14px;height:14px;vertical-align:middle;}
 .cot-chip:hover{background:var(--surface-hover);}
 .cot-chip:active{transform:translateY(var(--btn-press-drop));}
-.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:inset 0 0 0 1px var(--line-1);}
+.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:var(--ring-2);}
 .cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
   animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
 .cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
@@ -312,21 +314,22 @@ const SETTINGS_CSS = `
 .cot-set-conflict.show{display:flex;}
 .cot-set-conflict b{color:var(--text-warn);font-weight:600;}
 /* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
-.cot-set-ftr{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
+.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
-/* sliders: a line track with the accent's fill (--f set from JS) and a square knob */
+.cot-set-btn[hidden]{display:none;}
+/* sliders: a line track with an ink fill (--f set from JS) and a square knob */
 .cot-set-slider{display:flex;align-items:center;gap:var(--s3);}
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
   background:transparent;}
 .cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
-  background:linear-gradient(90deg,var(--accent) var(--f),var(--line-2) var(--f));}
+  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--line-2) var(--f));}
 .cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
   border-radius:var(--control-radius);background:var(--ink-1);box-shadow:var(--e1);
   transition:transform var(--dur-fast) var(--ease-enter);}
 .cot-set-slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15);}
 .cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-2);}
-.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--accent);}
+.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
 .cot-set-slider input[type=number]{width:62px;height:30px;padding:0 var(--s2);text-align:right;
@@ -334,7 +337,7 @@ const SETTINGS_CSS = `
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+.cot-set-slider .unit{width:16px;text-align:end;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
    (components.css .cot-c-seg) on the panel's own state class */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
@@ -353,17 +356,20 @@ const SETTINGS_CSS = `
 .cot-settings .cot-time-choice{flex:none;min-width:0;}
 .cot-settings .cot-time-content{min-height:0;height:32px;padding:0 13px;background:transparent;box-shadow:none;color:var(--ink-3);
   font:500 max(13px,var(--fs-13))/1 var(--font-body);}
-.cot-settings .cot-time-check{display:none;}
+.cot-settings .cot-time-content>svg{display:none;}
+.cot-settings .cot-time-check{flex:0 0 12px;width:12px;height:12px;border:0;color:var(--ink-1);visibility:hidden;}
 @media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
-.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{color:var(--ink-1);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
-.cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
+.cot-set-preview{margin:var(--s3) 0 var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
 .cot-set-note.folded{display:none;}
+.cot-set-body>.cot-set-note{margin-inline:var(--s3);}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
@@ -429,7 +435,7 @@ body.cot-hud-aerial .cot-hints{display:none;}
 /* each custom colour beside its team's shape (a team is shape plus colour) */
 .cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
 .cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
-.cot-set-refused{margin:var(--s2) 0 0;}
+.cot-set-refused{margin:var(--s2) 0 0;padding-inline-start:var(--s2);}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -509,7 +515,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- DOM ---------------------------------------------------------------------
   const root = el('div', 'cot-settings');
   root.innerHTML =
-    `<div class="cot-set-panel" role="dialog" aria-modal="true" aria-label="${t('settings.title')}">` +
+    `<div class="cot-set-panel" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
@@ -787,12 +793,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     colhdr.innerHTML =
       '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';
     let lastGroup = null;
+    let card: HTMLDivElement = body;
     for (const def of input.actionDefs) {
       if (def.group !== lastGroup) {
-        el('div', 'cot-set-group', body).textContent = t(def.group);
+        card = groupCard(body, t(def.group)); // each group a card, as on every other tab
         lastGroup = def.group;
       }
-      const row = el('div', 'cot-set-row', body);
+      const row = el('div', 'cot-set-row', card);
       row.dataset.action = def.id;
       settingLabel(row, t(def.label), SETTINGS_ACTION_ICONS[def.id]);
       const chipsWrap = el('div', 'chips', row);
@@ -1419,7 +1426,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     };
     for (const button of presetButtons) {
       const preset = button.dataset.value as ColorPreset;
-      if (preset === 'custom') swatch(button, prefs().customOwn, prefs().customEnemy);
+      if (preset === 'custom') button.insertAdjacentHTML('afterbegin', uiIconSVG('brush', 16));
       else {
         const cvd = preset === 'default' ? {} : { cvd: preset };
         swatch(button, tokenValue('team-own', cvd), tokenValue('team-enemy', cvd));
@@ -1507,7 +1514,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- LANGUAGE tab -----------------------------------------------------------
   function renderLanguage() {
     body.textContent = '';
-    const langCard = groupCard(body, t('settings.language.title'));
+    const langCard = groupCard(body, t('settings.language.card'));
     const langRow = el('div', 'cot-set-row', langCard);
     settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
     const langSeg = el('div', 'cot-set-seg', langRow);
@@ -1545,9 +1552,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       t.tabIndex = on ? 0 : -1;
       if (on) root.querySelector('.cot-set-body')?.setAttribute('aria-labelledby', t.id);
     }
-    resetBtn.style.visibility =
-      activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility'
-        ? 'visible' : 'hidden';
+    resetBtn.hidden = !(activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility');
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
     else if (activeTab === 'accessibility') renderAccessibility();
@@ -1856,7 +1861,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // battle to resume — the garage gear context labels the same button CLOSE.
     resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
     root.classList.add('open');
-    requiredElement<HTMLButtonElement>(root, '.cot-set-close').focus({ preventScroll: true });
+    requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);

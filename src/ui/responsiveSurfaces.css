@@ -197,6 +197,10 @@ body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
 body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
+/* a short screen keeps the rows: the title steps aside (the dialog keeps its name) and the close sits at the tab row's end */
+body[data-cot-height='short'] .cot-set-hdr{position:absolute;top:0;right:0;padding:0 var(--cot-edge)}
+body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
