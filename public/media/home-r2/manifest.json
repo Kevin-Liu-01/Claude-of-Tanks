@@ -3,262 +3,270 @@
   "schemaVersion": 1,
   "author": "Kevin B. Liu",
   "copyright": "Copyright © 2026 Kevin B. Liu",
-  "description": "The /home reel and feature slots (tools/home-premiere.mjs). Interim: published files picked by the brand-ui lead until the media lane's curated set replaces this file in place.",
+  "description": "The /home reel and feature slots (tools/home-premiere.mjs): the media lane's curated set (2026-10-25) — the hero reel of moving 1v1 duels and the montages, cut from the deterministic Scene Studio renders on release 246; slots the set does not name keep the lead's picks.",
   "hero": [
     {
-      "id": "f6-leo2a6-steinburg-r7",
-      "altKey": "media.versus.title.f6Leo2a6SteinburgR6",
+      "id": "vs03-reservoir-k2-vt4a1",
+      "map": "reservoir",
       "title": {
-        "en": "Steinburg, day: Leopard 2A6 v T-90M",
-        "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
+        "en": "A K2 Black Panther races a VT-4A1 past a farmhouse on Highland Reservoir at golden hour, both guns firing",
+        "zh": "黄金时刻，一辆 K2 Black Panther 在高地水库的农舍旁与一辆 VT-4A1 并驾齐驱，双方炮火交错"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-960.webp",
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.webp",
             "width": 960,
             "height": 540,
-            "bytes": 89552
+            "bytes": 59794
           },
           {
-            "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-1440.webp",
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1440.webp",
             "width": 1440,
             "height": 810,
-            "bytes": 161386
+            "bytes": 113482
           },
           {
-            "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-1920.webp",
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 237522
+            "bytes": 177636
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 276192
           }
         ]
       },
       "film": {
-        "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.mp4",
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1.mp4",
         "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 5.9,
-        "bytes": 2668631
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.0,
+        "bytes": 3825506
       },
       "mobile": {
-        "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7-mobile.mp4",
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 5.9,
-        "bytes": 1254117,
+        "seconds": 6.0,
+        "bytes": 1235946,
         "rung": "phone"
       }
     },
     {
-      "id": "vs03-reservoir-k2-ztz99-r6",
-      "altKey": "media.versus.title.vs03ReservoirK2Ztz99R6",
+      "id": "frosthollow-cv90-bmp3",
+      "map": "winter",
       "title": {
-        "en": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
-        "zh": "高地水库，黄金时刻：K2 Black Panther 对 ZTZ-99 Longwei"
+        "en": "A CV90 Mk 4 races a BMP-3 across the snow at Frosthollow by day, both firing as they go",
+        "zh": "白天，一辆 CV90 Mk 4 在霜谷的雪地上与一辆 BMP-3 并驾齐驱，双方边行进边开火"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 142940
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 68590
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 134716
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 210302
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 323210
           }
         ]
       },
       "film": {
-        "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.mp4",
+        "path": "/media/home-r2/frosthollow-cv90-bmp3.mp4",
         "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 7.23,
-        "bytes": 2415550
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3675192
       },
       "mobile": {
-        "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6-mobile.mp4",
+        "path": "/media/home-r2/frosthollow-cv90-bmp3-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 7.23,
-        "bytes": 989536,
+        "seconds": 6.6,
+        "bytes": 1185623,
         "rung": "phone"
       }
     },
     {
-      "id": "vs09-alpine-strv122-t80bv-r7",
-      "altKey": "media.versus.title.vs09AlpineStrv122T80bvR7",
+      "id": "wadi-abrams-t90m",
+      "map": "desert",
       "title": {
-        "en": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
-        "zh": "冰川关，白天：Stridsvagn 122 对 T-80BV"
+        "en": "An M1A2 Abrams SEPv3 races a T-90M down Sirocco Wadi by day, firing across the sand",
+        "zh": "白天，一辆 M1A2 Abrams SEPv3 在西罗科干谷与一辆 T-90M 并驾齐驱，隔着沙地开火"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 55256
+            "path": "/media/home-r2/wadi-abrams-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56632
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 108624
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 167844
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 254996
           }
         ]
       },
       "film": {
-        "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.mp4",
+        "path": "/media/home-r2/wadi-abrams-t90m.mp4",
         "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 5.47,
-        "bytes": 2136781
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.3,
+        "bytes": 3710619
       },
       "mobile": {
-        "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7-mobile.mp4",
+        "path": "/media/home-r2/wadi-abrams-t90m-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 5.47,
-        "bytes": 910439,
+        "seconds": 6.3,
+        "bytes": 1212190,
         "rung": "phone"
       }
     },
     {
-      "id": "vs05-oasis-merkava-t72b3-r6",
-      "altKey": "media.versus.title.vs05OasisMerkavaT72b3R6",
+      "id": "oasis-night-merkava-t72b3",
+      "map": "oasis",
       "title": {
-        "en": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
-        "zh": "日痕绿洲，白天：Merkava Mk 4 对 T-72B3"
+        "en": "A Merkava Mk 4 races a T-72B3 over the dunes of Sunscar Oasis at night, muzzle flashes under the stars",
+        "zh": "夜晚，一辆 Merkava Mk 4 在日痕绿洲的沙丘上与一辆 T-72B3 并驾齐驱，星空下炮口火光闪烁"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 112599
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50734
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 90974
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 129798
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 188586
           }
         ]
       },
       "film": {
-        "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.mp4",
+        "path": "/media/home-r2/oasis-night-merkava-t72b3.mp4",
         "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 7.23,
-        "bytes": 3444922
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3763910
       },
       "mobile": {
-        "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6-mobile.mp4",
+        "path": "/media/home-r2/oasis-night-merkava-t72b3-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 7.23,
-        "bytes": 1576643,
+        "seconds": 6.6,
+        "bytes": 1215548,
         "rung": "phone"
       }
     },
     {
-      "id": "vs04-railyard-leclerc-t14-r7",
-      "altKey": "media.versus.title.vs04RailyardLeclercT14R7",
+      "id": "glacier-strv122-t80bv",
+      "map": "alpine",
       "title": {
-        "en": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
-        "zh": "灰渣枢纽，黄金时刻：Leclerc SXXI 对 T-14 Armata"
+        "en": "A Stridsvagn 122 races a T-80BV over the snow of Glacier Pass by day, the peaks behind",
+        "zh": "白天，一辆 Stridsvagn 122 在冰川关的雪地上与一辆 T-80BV 并驾齐驱，身后是雪峰"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 118533
-          }
-        ]
-      },
-      "film": {
-        "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.mp4",
-        "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 6.23,
-        "bytes": 2288533
-      },
-      "mobile": {
-        "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7-mobile.mp4",
-        "type": "video/mp4",
-        "width": 960,
-        "height": 540,
-        "seconds": 6.23,
-        "bytes": 984651,
-        "rung": "phone"
-      }
-    },
-    {
-      "id": "vs01-desert-abrams-t90m-r6",
-      "altKey": "media.versus.title.vs01DesertAbramsT90mR6",
-      "title": {
-        "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
-        "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M"
-      },
-      "poster": {
-        "rungs": [
+            "path": "/media/home-r2/glacier-strv122-t80bv-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 40740
+          },
           {
-            "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 99738
-          }
-        ]
-      },
-      "film": {
-        "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.mp4",
-        "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 7.23,
-        "bytes": 2416715
-      },
-      "mobile": {
-        "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6-mobile.mp4",
-        "type": "video/mp4",
-        "width": 960,
-        "height": 540,
-        "seconds": 7.23,
-        "bytes": 976004,
-        "rung": "phone"
-      }
-    },
-    {
-      "id": "vs06-coastal-type10-ztz99a2-r7",
-      "altKey": "media.versus.title.vs06CoastalType10Ztz99a2R7",
-      "title": {
-        "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
-        "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
-      },
-      "poster": {
-        "rungs": [
+            "path": "/media/home-r2/glacier-strv122-t80bv-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 77636
+          },
           {
-            "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.jpg",
-            "width": 1280,
-            "height": 720,
-            "bytes": 77910
+            "path": "/media/home-r2/glacier-strv122-t80bv-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 122890
+          },
+          {
+            "path": "/media/home-r2/glacier-strv122-t80bv-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 190402
           }
         ]
       },
       "film": {
-        "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.mp4",
+        "path": "/media/home-r2/glacier-strv122-t80bv.mp4",
         "type": "video/mp4",
-        "width": 1280,
-        "height": 720,
-        "seconds": 7.23,
-        "bytes": 2768333
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3763745
       },
       "mobile": {
-        "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7-mobile.mp4",
+        "path": "/media/home-r2/glacier-strv122-t80bv-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 7.23,
-        "bytes": 1160342,
+        "seconds": 6.6,
+        "bytes": 1212001,
         "rung": "phone"
       }
     }
@@ -313,81 +321,107 @@
       }
     },
     "destruction": {
-      "id": "s18-street-knockout",
-      "altKey": "media.site50.title.s18StreetKnockout",
+      "id": "destruction-steinburg-t90m",
+      "map": "urban",
       "title": {
-        "en": "A T-90A is knocked out at the end of a Steinburg street at night",
-        "zh": "夜间，一辆 T-90A 在斯泰因堡街道尽头被击毁"
+        "en": "A T-90M on a Steinburg street is hit and knocked out, its turret thrown into the air",
+        "zh": "斯泰因堡街道上，一辆 T-90M 中弹被击毁，炮塔被掀上半空"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/site50-r14/loops/s18-street-knockout.jpg",
+            "path": "/media/home-r2/destruction-steinburg-t90m-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 39744
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70994
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 99958
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 651344
+            "bytes": 170322
           }
         ]
       },
-      "wide": {
-        "path": "/media/site50-r14/loops/s18-street-knockout.webm",
-        "type": "video/webm",
-        "width": 1920,
-        "height": 1080,
-        "seconds": 6.0,
-        "bytes": 5806035,
-        "rung": "wide"
-      },
       "film": {
-        "path": "/media/site50-r14/loops/s18-street-knockout-960.webm",
-        "type": "video/webm",
-        "width": 960,
-        "height": 540,
-        "seconds": 6.0,
-        "bytes": 1497042
+        "path": "/media/home-r2/destruction-steinburg-t90m.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2789702
       },
       "mobile": {
-        "path": "/media/web-video-r1/s18-street-knockout-mobile.mp4",
+        "path": "/media/home-r2/destruction-steinburg-t90m-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 6.0,
-        "bytes": 956166,
+        "seconds": 6.6,
+        "bytes": 1219105,
         "rung": "phone"
       }
     },
     "studio": {
-      "id": "studio",
-      "altKey": "home.evidence.studioTitle",
+      "id": "studio-246",
       "title": {
-        "en": "Create scenes in Scene Studio",
-        "zh": "在场景工作室创作场景"
+        "en": "Scene Studio's Director workspace playing a Frontier Basin scene: a tank firing in the viewport, the shot cards and timeline around it",
+        "zh": "场景工作室的导演工作区正在播放边境盆地的场景：视口中一辆坦克开火，四周是镜头卡片与时间轴"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/site50-r14/home/features/studio.jpg",
+            "path": "/media/home-r2/studio-246-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41582
+          },
+          {
+            "path": "/media/home-r2/studio-246-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 75474
+          },
+          {
+            "path": "/media/home-r2/studio-246-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 116756
+          },
+          {
+            "path": "/media/home-r2/studio-246-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 382555
+            "bytes": 210266
           }
         ]
       },
       "film": {
-        "path": "/media/site50-r14/home/features/studio.mp4",
+        "path": "/media/home-r2/studio-246.mp4",
         "type": "video/mp4",
-        "width": 1920,
-        "height": 1080,
+        "width": 1280,
+        "height": 720,
         "seconds": 6.6,
-        "bytes": 3042523
+        "bytes": 2615815
       },
       "mobile": {
-        "path": "/media/web-video-r1/home-studio-mobile.mp4",
+        "path": "/media/home-r2/studio-246-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 6.58,
-        "bytes": 498108,
+        "seconds": 6.6,
+        "bytes": 1125424,
         "rung": "phone"
       }
     },
@@ -440,38 +474,54 @@
       }
     },
     "battlefields": {
-      "id": "reel",
-      "altKey": "media.site50.title.reel",
+      "id": "battlefields-montage",
       "title": {
-        "en": "Battle reel",
-        "zh": "战斗集锦"
+        "en": "Seven battlefields in quick cuts, a duel on each: Frontier Basin, Verdant Fields, Saltmere Bay, Amberford, Tarkhan Steppe, Sunscar Oasis and a Steinburg street",
+        "zh": "七个战场的快速剪辑，每处一场对决：边境盆地、翠野原、盐沼湾、琥珀渡、塔尔汗草原、日痕绿洲与斯泰因堡的街道"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/site50-r14/films/reel.jpg",
+            "path": "/media/home-r2/battlefields-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 28356
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50796
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 74666
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 587821
+            "bytes": 127340
           }
         ]
       },
-      "wide": {
-        "path": "/media/site50-r14/films/reel.webm",
-        "type": "video/webm",
-        "width": 1600,
-        "height": 900,
-        "seconds": 28.07,
-        "bytes": 15094482,
-        "rung": "wide"
+      "film": {
+        "path": "/media/home-r2/battlefields-montage.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 8.4,
+        "bytes": 3760908
       },
       "mobile": {
-        "path": "/media/web-video-r1/reel-mobile.mp4",
+        "path": "/media/home-r2/battlefields-montage-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
-        "seconds": 28.08,
-        "bytes": 3844053,
+        "seconds": 8.4,
+        "bytes": 1233181,
         "rung": "phone"
       }
     },
