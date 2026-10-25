@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  createBackgroundYielder,
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
   nextFrame,
@@ -468,5 +469,57 @@ for (const kind of ['task', 'frame']) {
   await yieldWork();
   assert.deepEqual(calls, [kind, kind], 'a failed yield does not pretend its deadline was serviced');
 }
+
+// (battle-spikes-253; nav-perf's phone census) background work behind the live Garage: a slice ends at its budget or
+// when input is pending; a press, seen in the capture phase, holds the next slice until the press's paint (its animation
+// callback and the task after it); the work resumes as a task, never inside the animation callback
+await withFrameHost({}, async ({ frames, timers }) => {
+  const presses = {};
+  const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  globalThis.window = { addEventListener(type, callback, options) { presses[type] = { callback, options }; } };
+  const priorNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let inputWaiting = false;
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { scheduling: { isInputPending: () => inputWaiting } } });
+  try {
+    let clock = 0;
+    const yieldWork = createBackgroundYielder(4, { now: () => clock });
+    assert.equal(presses.pointerdown?.options.capture, true, 'a pointerdown is seen in the capture phase');
+    assert.equal(presses.keydown?.options.capture, true, 'and a keydown');
+    await yieldWork();
+    assert.equal(timers.length + frames.length, 0, 'under its budget with nothing pending a slice goes on');
+    clock = 4;
+    let resumed = false;
+    let pending = yieldWork().then(() => { resumed = true; });
+    await flush();
+    assert.equal(frames.length, 0, 'the work resumes as a task, not in an animation callback');
+    assert.equal(timers.length, 1);
+    timers[0].ran = true; timers[0].callback(); await pending; assert.equal(resumed, true);
+    // a press: the next slice waits for the press's paint
+    presses.pointerdown.callback();
+    resumed = false;
+    pending = yieldWork().then(() => { resumed = true; });
+    await flush();
+    assert.equal(resumed, false, 'a press holds background work');
+    assert.equal(frames.length, 1, 'until its animation callback');
+    frames[0](); await flush();
+    assert.equal(resumed, false, 'and the task after its paint');
+    const paintTask = timers.find((timer) => timer.delay === 0 && !timer.cancelled && !timer.ran);
+    paintTask.ran = true; paintTask.callback(); await flush();
+    const resumeTask = timers.findLast((timer) => timer.delay === 0 && !timer.ran);
+    assert.ok(resumeTask, 'then it resumes as a task');
+    resumeTask.ran = true; resumeTask.callback(); await pending;
+    assert.equal(resumed, true);
+    // input waiting behind the task ends a slice early, inside its budget
+    inputWaiting = true;
+    const before = timers.length;
+    pending = yieldWork();
+    await flush();
+    assert.equal(timers.length, before + 1, 'pending input ends the slice');
+    timers.at(-1).callback(); await pending;
+  } finally {
+    delete globalThis.window;
+    if (priorNavigator) Object.defineProperty(globalThis, 'navigator', priorNavigator); else delete globalThis.navigator;
+  }
+});
 
 console.log('[frameScheduler] all tests passed');

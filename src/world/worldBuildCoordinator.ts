@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import {
-  createFrameBudgetYielder,
+  createBackgroundYielder,
   createOpaqueLoadingYielder,
 } from '../engine/frameScheduler.ts';
 import {
@@ -287,7 +287,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         // slices; individual construction checkpoints can still overrun either budget.
         ?? createOpaqueLoadingYielder(6, 16);
       const yieldBackground = dependencies.backgroundYielder?.()
-        ?? createFrameBudgetYielder(4);
+        // (battle-spikes-253) behind the live Garage: 4 ms slices that wait out a press until its paint and resume as
+        // background-priority tasks between frames (frameScheduler.ts createBackgroundYielder)
+        ?? createBackgroundYielder(4);
 
       const throwIfCancelled = (): void => {
         if (!created.cancelled) return;
