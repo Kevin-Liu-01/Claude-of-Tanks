@@ -12,12 +12,7 @@ import {
   createDeploymentShadowWarmOwner,
   type DeploymentShadowWarmOwner,
 } from '../engine/deploymentShadowWarm.ts';
-import {
-  snapshotRendererPrograms,
-  warmNewRendererProgramUniforms,
-  type ContextProgramRenderer,
-  type ForwardProgramWarmOwner,
-} from '../engine/programWarm.ts';
+import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import type { BattleWarmAccess } from '../game/battleWarmAccess.ts';
 import type { CombatWarmRuntimeContext } from '../game/battleWarmRuntime.ts';
@@ -25,7 +20,7 @@ import {
   createCombatWarmCoordinator,
   type CombatWarmCoordinator,
 } from '../game/combatWarmCoordinator.ts';
-import type { DeferredCombatWarmRuntime } from '../game/deferredCombatWarmRuntime.ts';
+import type { DeferredCombatWarmRuntime, FirstBattleWarmTrace } from '../game/deferredCombatWarmRuntime.ts';
 import type { BattleVisualStreamer } from '../game/battleVisualStreamer.ts';
 import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
 import type {
@@ -72,16 +67,6 @@ interface CombatWarmCompositionOptions {
   simDt: number;
   publishStudioTrace?(trace: RuntimeValue): void;
   devTrace?: TraceSink | null;
-}
-
-/** The covered first-battle warm's record (window.__BATTLE_FIRST_WARM): what ran behind the veil and how long. */
-interface FirstBattleWarmTrace {
-  ran: boolean;
-  stages: Record<string, number>;
-  totalMs: number;
-  failed?: string;
-  /** The enemy programs' uniform warm, when it did not finish (the deferred warm's then). */
-  enemyUniforms?: string;
 }
 
 interface CombatWarmComposition {
@@ -295,51 +280,22 @@ export function createCombatWarmComposition({
     return deferred.schedule(generation);
   };
 
-  /**
-   * Behind the entry veil, a session's first battle (battle-spikes-253): the GPU-heavy work the deferred warm would do in
-   * the live battle's first seconds — the hidden enemies' visuals and their programs, the opening and rare effects
-   * (rendered as a covered load renders them, so the GPU builds their pipelines here), and the sights' heat stand-ins.
-   * The census measured those stages as 100 ms-1.1 s GPU-process stalls in a cold session's first ~10 s of combat, and
-   * none in its later battles. After it the deferred warm finds this work done (the visuals streamed, the warms ready, the
-   * stand-ins warmed) and only routes, tiles and the lookahead remain. Later battles skip it; a failure is the deferred
-   * warm's to finish, as before.
-   */
+  /** A session's first battle's covered warm (the deferred module's runFirstBattleCoveredWarm), once a renderer. */
   const warmFirstBattleCovered = async (
     yieldForBudget: WorkYielder,
     onProgress: ((fraction: number) => void) | null = null,
   ): Promise<FirstBattleWarmTrace> => {
-    const trace: FirstBattleWarmTrace = { ran: false, stages: {}, totalMs: 0 };
-    (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = trace;
-    if (firstBattleWarmed) return trace;
-    trace.ran = true;
-    const startedAt = performance.now();
-    let markedAt = startedAt;
-    const mark = (stage: string, fraction: number): void => {
-      const at = performance.now();
-      trace.stages[stage] = Math.round(at - markedAt);
-      markedAt = at;
-      onProgress?.(fraction);
-    };
-    try {
-      const baseline = snapshotRendererPrograms(renderer as unknown as ContextProgramRenderer);
-      await getBattleVisuals().stream((entity) => entity.team === 'enemy', yieldForBudget, null, true);
-      // the new enemy programs' uniforms; a link still pending (or no program owner) is the deferred warm's, as there
-      try { await warmNewRendererProgramUniforms(renderer as unknown as ContextProgramRenderer, baseline, yieldForBudget); }
-      catch (error) { trace.enemyUniforms = String((error as Error)?.message ?? error).slice(0, 120); }
-      mark('enemyVisuals', 0.3);
-      await combatWarm.warmOpeningChunked(6, yieldForBudget, { covered: true });
-      mark('openingEffects', 0.4);
-      await combatWarm.warmRareChunked(6, yieldForBudget, { covered: true });
-      mark('rareEffects', 0.75);
-      for (const _ of warmVisionSteps()) await yieldForBudget(true);
-      mark('visionPrograms', 1);
-      firstBattleWarmed = true;
-    } catch (error) {
-      trace.failed = String((error as Error)?.message ?? error).slice(0, 200);
-      console.warn('[warm] the first battle\'s covered warm stopped (the deferred warm finishes it):', error);
+    if (firstBattleWarmed) {
+      const skipped: FirstBattleWarmTrace = { ran: false, stages: {}, totalMs: 0 };
+      (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = skipped;
+      return skipped;
     }
-    trace.totalMs = Math.round(performance.now() - startedAt);
-    devTrace?.mark?.('battle:first-warm', { totalMs: trace.totalMs, ran: 1 });
+    const module = await loadDeferred();
+    const trace = await module.runFirstBattleCoveredWarm({
+      renderer: renderer as unknown as Parameters<typeof module.runFirstBattleCoveredWarm>[0]['renderer'],
+      getBattleVisuals, combatWarm, warmVisionSteps, devTrace,
+    }, yieldForBudget, onProgress);
+    if (!trace.failed) firstBattleWarmed = true;
     return trace;
   };
 

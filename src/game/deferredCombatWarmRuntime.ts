@@ -88,6 +88,74 @@ interface DeferredCombatWarmRuntimeOptions<
   createYielder?: (budgetMs: number) => WorkYielder;
 }
 
+/** The covered first-battle warm's record (window.__BATTLE_FIRST_WARM): what ran behind the veil and how long. */
+export interface FirstBattleWarmTrace {
+  ran: boolean;
+  stages: Record<string, number>;
+  totalMs: number;
+  failed?: string;
+  /** The enemy programs' uniform warm, when it did not finish (the deferred warm's then). */
+  enemyUniforms?: string;
+}
+
+interface FirstBattleWarmPorts {
+  renderer: ContextProgramRenderer;
+  getBattleVisuals(): Pick<BattleVisualStreamer<BattleVisualEntity & BattleEntity>, 'stream'>;
+  combatWarm: {
+    warmOpeningChunked(budgetMs: number, yielder: WorkYielder, options?: { covered?: boolean }): Promise<void>;
+    warmRareChunked(budgetMs: number, yielder: WorkYielder, options?: { covered?: boolean }): Promise<void>;
+  };
+  warmVisionSteps(): Generator<void>;
+  devTrace?: { mark?(event: string, payload: Record<string, RuntimeValue>): void } | null;
+}
+
+/**
+ * Behind the entry veil, a session's first battle (battle-spikes-253; the owner via the coordinator, 2026-10-25: "a few
+ * seconds' longer entry once per session is far better than 0.1-1.1 s stalls in the first seconds of play"): the
+ * GPU-heavy work the deferred warm would do in the live battle's first seconds — the hidden enemies' visuals and their
+ * programs, the opening and rare effects (rendered as a covered load renders them, so the GPU builds their pipelines
+ * here), and the sights' heat stand-ins. The census measured those stages as 100 ms-1.1 s GPU-process stalls in a cold
+ * session's first ~10 s of combat, and none in its later battles. After it the deferred warm finds the work done (the
+ * visuals streamed, the warms ready, the stand-ins warmed). A failure leaves the rest to the deferred warm, as before.
+ * Called once a renderer by app/combatWarmComposition.ts warmFirstBattleCovered (later battles skip it).
+ */
+export async function runFirstBattleCoveredWarm(
+  { renderer, getBattleVisuals, combatWarm, warmVisionSteps, devTrace = null }: FirstBattleWarmPorts,
+  yieldForBudget: WorkYielder,
+  onProgress: ((fraction: number) => void) | null = null,
+): Promise<FirstBattleWarmTrace> {
+  const trace: FirstBattleWarmTrace = { ran: true, stages: {}, totalMs: 0 };
+  (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = trace;
+  const startedAt = performance.now();
+  let markedAt = startedAt;
+  const mark = (stage: string, fraction: number): void => {
+    const at = performance.now();
+    trace.stages[stage] = Math.round(at - markedAt);
+    markedAt = at;
+    onProgress?.(fraction);
+  };
+  try {
+    const baseline = snapshotRendererPrograms(renderer);
+    await getBattleVisuals().stream((entity) => entity.team === 'enemy', yieldForBudget, null, true);
+    // the new enemy programs' uniforms; a link still pending (or no program owner) is the deferred warm's, as there
+    try { await warmNewRendererProgramUniforms(renderer, baseline, yieldForBudget); }
+    catch (error) { trace.enemyUniforms = String((error as Error)?.message ?? error).slice(0, 120); }
+    mark('enemyVisuals', 0.3);
+    await combatWarm.warmOpeningChunked(6, yieldForBudget, { covered: true });
+    mark('openingEffects', 0.4);
+    await combatWarm.warmRareChunked(6, yieldForBudget, { covered: true });
+    mark('rareEffects', 0.75);
+    for (const _ of warmVisionSteps()) await yieldForBudget(true);
+    mark('visionPrograms', 1);
+  } catch (error) {
+    trace.failed = String((error as Error)?.message ?? error).slice(0, 200);
+    console.warn('[warm] the first battle\'s covered warm stopped (the deferred warm finishes it):', error);
+  }
+  trace.totalMs = Math.round(performance.now() - startedAt);
+  devTrace?.mark?.('battle:first-warm', { totalMs: trace.totalMs, ran: 1 });
+  return trace;
+}
+
 export interface DeferredCombatWarmRuntime {
   schedule(generation: number): Promise<void>;
   cancel(): void;
