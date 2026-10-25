@@ -394,7 +394,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr{display:contents}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr>span{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.15;color:var(--ink-3)}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-top:2px;font-size:max(14px,var(--fs-14));line-height:1.1;white-space:normal;overflow:visible}
 .cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 92px 60px;
-  gap:7px;padding:0 7px 5px;color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
+  gap:7px;padding:0 7px 5px;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;}
 .cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
 .cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 92px 60px;
@@ -624,8 +624,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
    src/ui/heroCardPolicy.ts) and the name takes a soft halo, so it reads on any livery. */
 .cot-card.hc-n2{--hc-n2:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:var(--line-control);transform:translateY(-2px);}
-.cot-card.sel:hover{transform:translateY(-6px);}
-.cot-card.sel{border-color:var(--accent);transform:translateY(-4px);
+.cot-card.sel:hover{transform:none;}
+.cot-card.sel{border-color:var(--accent);transform:none;
   box-shadow:0 8px 26px rgba(240,140,20,.28);}
 .cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px var(--s1) 2px;
@@ -1100,7 +1100,7 @@ body[data-cot-width='laptop'] .cot-garage{
 /* Laptop keeps the destinations labelled (Garage, Deploy, Gallery, Studio, Docs); GitHub, the locale and Record fold to
    their glyphs, Record's count riding its corner. The width band decides it (responsiveLayout.ts), never a device-width
    query: the narrowest laptop bar (1100 px) is the one that must fit. */
-body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher,.cot-record-trigger) .nav-label{display:none}
+body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher) .nav-label{display:none}
 body[data-cot-width='laptop'] .cot-header-nav .nv{padding-inline:var(--s2)}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
@@ -1330,7 +1330,7 @@ body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
   --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:11px;--hc-tier:11px;
 }
-body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
+body[data-cot-panels='overlay'] .cot-card.sel{transform:none}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
 /* The compact chip shows the numeral alone at the 11 px floor ("Tier VIII" would span two thirds of a phone card). */
@@ -1520,8 +1520,8 @@ body[data-cot-panels='persistent'] .cot-battle .cot-c-kbd{color:var(--btn-primar
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head{min-height:0;padding:0;margin:0;border:0;background:none;}
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:var(--s3);right:var(--s3);}
 /* with the view tabs folded away, the section's about control stands beside the drawing's row, never inside it */
-body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:calc((var(--btn-h-s) - 20px) / 2);right:0;}
-body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-section .cot-technical-figure{margin-right:calc(20px + var(--s2));}
+/* the docked readout's drawing row runs the links' full width: the section's about control waits in the folded sheets */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-section .cot-dossier-head>.cot-info-trigger{display:none;}
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-tabs{margin-right:var(--s6);}
 /* the nation rail rides over the roster's own box */
 /* the dossier column clears only the Deploy stack below it (Deploy, its mode row and Multiplayer), not the rail */

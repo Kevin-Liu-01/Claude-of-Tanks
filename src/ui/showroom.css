@@ -126,7 +126,10 @@ html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow)
 /* each performance card sets its label and value on one line over its scale */
 .cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;
   column-gap:var(--s1);}
-.cot-garage .stats[data-density~='2'] .srow .lr b{margin:0 0 0 auto;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 1 0;min-width:0;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{flex:none;margin:0;white-space:nowrap;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex-basis:100%;}
 .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
@@ -173,6 +176,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-hrow .v{display:inline-flex;align-items:baseline;gap:var(--s1);white-space:nowrap;}
 .cot-garage .cot-hrow .v b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1);}
 .cot-garage .cot-hrow .v small{font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
+.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v{display:grid;grid-template-columns:auto auto 5ch;justify-content:end;align-items:baseline;}
+.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v em{justify-self:start;}
 .cot-garage .cot-hrow .v em{margin-left:var(--s1);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);font-style:normal;color:var(--ink-3);}
 .cot-garage .cot-hrow .v em.up{color:var(--ok);}
 .cot-garage .cot-hrow .v em.dn{color:var(--danger);}
@@ -205,7 +210,7 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .
 /* the docked paint sheet names itself and closes from its head, as the phone's sheet does (no second Camouflage name) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:flex;flex:0 0 auto;align-items:center;
   justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2);color:var(--ink-1);font:600 var(--fs-16)/1 var(--font-display);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{--h:var(--btn-h-s);flex:0 0 auto;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{--h:var(--btn-h-s);flex:0 0 auto;margin:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle>:is(svg,span){display:none;}
 /* the roster filter opens over the band's place: the band steps aside while it is open, so no control is half under it */
 body[data-cot-panels='persistent'] .cot-garage.facets-open .cot-lower-third{visibility:hidden;}
@@ -247,7 +252,8 @@ body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(
   margin:calc(-1 * var(--s6)) 0 calc(var(--s2) - var(--s5)) calc(-1 * var(--s4));
   background:var(--stage-scrim);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-36);}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));padding:var(--s1) var(--s2);
+  margin-left:calc(-1 * var(--s2));border-radius:var(--control-radius);background:var(--glyph-plate);}
 .cot-lt-band{display:flex;align-items:flex-end;gap:var(--s3);max-width:100%;pointer-events:auto;}
 .cot-lt-band>*{display:flex;align-items:stretch;gap:var(--s1);min-width:0;}
 .cot-lt-band>*+*{padding-left:var(--s3);border-left:1px solid var(--line-2);}
@@ -513,6 +519,7 @@ body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
 }
 body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
+body[data-cot-panels='overlay'] :is(.cot-garage .cot-lt-loadout .eqslot.empty,.cot-lt-paint-all){background:var(--surface-menu);}
 /* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}

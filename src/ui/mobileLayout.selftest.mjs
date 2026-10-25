@@ -42,10 +42,11 @@ assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
 assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
   'Garage composition must consume semantic orientation attributes instead of media-query guesses');
-// The laptop bar keeps its destinations labelled and folds GitHub, the locale and Record to glyphs, all through the width
-// band (36af9d7638 kept the labels; the 246 pass moved its sub-1280 fold onto the band itself).
-assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher,\.cot-record-trigger\) \.nav-label\{display:none\}/,
-  'laptop navigation folds GitHub, the locale and Record through the shared width-band contract');
+// The laptop bar keeps its destinations labelled (Record among them: the gauntlet 10-25 found it a lone glyph beside a
+// half-empty bar) and folds GitHub and the locale to glyphs, all through the width band (36af9d7638 kept the labels; the
+// 246 pass moved its sub-1280 fold onto the band itself).
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher\) \.nav-label\{display:none\}/,
+  'laptop navigation folds GitHub and the locale through the shared width-band contract');
 assert.doesNotMatch(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
   'laptop navigation keeps Garage, Deploy, Gallery, Studio and Docs labelled');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
