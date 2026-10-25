@@ -699,7 +699,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // nav-perf census: 400 + 251 ms over 11 tasks from the end to the garage, worst on a 4x phone). The report's exit
     // relayouts again (the class's own mutation).
     if (document.body.classList.contains('cot-si-report')) return;
-    const visible = !!root.getClientRects().length;
+    // (the HUD's own switch first, hud.ts setMode: a hidden HUD is known without a layout read, the read that forced the
+    // frame's reflow at a pass's start, the perf lane's census)
+    const visible = root.style?.display === 'none' ? false : !!root.getClientRects().length;
     if (document.body.hasAttribute('data-cot-battle-layout') !== visible) {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
