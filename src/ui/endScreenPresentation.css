@@ -143,7 +143,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-hero .es-sub{
    cue; r4: a fade over a sliced row was no cue) */
 body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report){max-height:var(--es-fit,none)}
 body[data-cot-width] .cot-es.cot-es--record .es-more{display:none}
-body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report).more>.es-more{position:sticky;bottom:0;z-index:1;display:flex;
+body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report).more>.es-more{position:sticky;bottom:0;z-index:var(--z-lift);display:flex;
   align-items:center;justify-content:center;height:22px;margin-top:-1px;border-top:1px solid var(--line-1);
   background:var(--hud-plate-strong);color:var(--ink-3);pointer-events:none}
 /* (the wide windows' report is the two columns' grid, each column with its own cue) */
