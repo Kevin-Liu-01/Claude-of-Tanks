@@ -43,7 +43,9 @@ export function causeOfBucket(key) {
   if (key === 'compile') return 'chunk load';
   if (key === 'image') return 'image decode';
   if (key === 'idle') return 'gpu/present';
+  if (key === 'idle:gpu') return 'gpu busy';
   if (key === 'gap') return 'untraced gap';
+  if (key.startsWith('other:')) return 'other';
   if (key.startsWith('script:')) {
     const chunk = key.slice(7);
     if (/audio|sound|voice|radio|ambience|sfx|mixer/i.test(chunk)) return 'audio';
@@ -128,9 +130,7 @@ export function mainThreadEvents(events, { pid, tid }, offsetMs) {
   const out = [];
   const open = new Map();
   for (const e of events) {
-    if (e.pid !== pid || e.tid !== tid) continue;
-    if (!(TASK_EVENT.test(e.name) || GC_EVENT.test(e.name) || DOM_EVENT.test(e.name) || COMPILE_EVENT.test(e.name)
-      || IMAGE_EVENT.test(e.name) || SCRIPT_EVENT.test(e.name))) continue;
+    if (e.pid !== pid || e.tid !== tid || e.ph === 'M' || e.ph === 'I' || e.ph === 'R' || e.ph === 'n') continue;
     if (e.ph === 'X') out.push(eventOf(e, e.ts, e.dur ?? 0, offsetMs));
     else if (e.ph === 'B') { const stack = open.get(e.name) ?? []; stack.push(e); open.set(e.name, stack); }
     else if (e.ph === 'E') { const begin = open.get(e.name)?.pop(); if (begin) out.push(eventOf(begin, begin.ts, e.ts - begin.ts, offsetMs)); }
@@ -155,6 +155,7 @@ function eventOf(e, ts, dur, offsetMs) {
   return {
     name: e.name, start, end: start + dur / 1000, dur: dur / 1000, self: dur / 1000,
     url: data?.url ?? data?.stackTrace?.[0]?.url ?? null, fn: data?.functionName ?? null, type: data?.type ?? null,
+    heapBefore: e.args?.usedHeapSizeBefore ?? null, heapAfter: e.args?.usedHeapSizeAfter ?? null,
   };
 }
 
@@ -165,26 +166,16 @@ export function bucketOfEvent(event, chunkOfUrl) {
   if (COMPILE_EVENT.test(event.name)) return 'compile';
   if (IMAGE_EVENT.test(event.name)) return 'image';
   if (TASK_EVENT.test(event.name)) return 'task';
+  // a detailed trace's other events (V8.Execute, a mojo message, a GPU sync …) by name, unless a script holds them
+  if (!SCRIPT_EVENT.test(event.name) && !/^(V8\.|v8\.)/.test(event.name)) {
+    for (let e = event.parent; e; e = e.parent) if (e.url) return `script:${chunkOfUrl(e.url)}`;
+    return `other:${event.name}`;
+  }
   for (let e = event; e; e = e.parent) if (e.url) return `script:${chunkOfUrl(e.url)}`;
   if (event.type) return `script:(${event.type})`;
   return 'script:(unknown)';
 }
 
-/** Add the self time of the events inside [from, to) (clipped) to `buckets`; returns the busy time it added. */
-function addTraceBuckets(buckets, events, from, to, chunkOfUrl, skip = null) {
-  let added = 0;
-  for (const event of events) {
-    if (event.end <= from || event.start >= to || (skip && skip(event))) continue;
-    // the clipped share of the event's self time
-    const share = event.dur > 0 ? (Math.min(event.end, to) - Math.max(event.start, from)) / event.dur : 1;
-    const ms = event.self * share;
-    if (ms <= 0) continue;
-    const key = bucketOfEvent(event, chunkOfUrl);
-    buckets[key] = (buckets[key] ?? 0) + ms;
-    added += ms;
-  }
-  return added;
-}
 
 const defaultChunkOfUrl = (url) => (url.split(/[?#]/)[0].split('/').pop() || url).replace(/\.m?js$/, '').replace(/-[a-z0-9_]{6,}$/i, '');
 
@@ -211,15 +202,6 @@ function frameBuckets(frame, gcInWorkMs = 0) {
   return buckets;
 }
 
-function sumGc(events, from, to) {
-  let ms = 0;
-  for (const event of events) {
-    if (!GC_EVENT.test(event.name) || event.end <= from || event.start >= to) continue;
-    const share = event.dur > 0 ? (Math.min(event.end, to) - Math.max(event.start, from)) / event.dur : 1;
-    ms += event.self * share;
-  }
-  return ms;
-}
 
 /** Busy main-thread time inside [from, to): the union of the top-level tasks there. */
 function busyMs(tasks, from, to) {
@@ -243,17 +225,79 @@ function roundedBuckets(buckets, floorMs = 0.5) {
   return Object.fromEntries(Object.entries(buckets).filter(([, ms]) => ms >= floorMs).sort((a, b) => b[1] - a[1]).map(([k, ms]) => [k, round(ms, 1)]));
 }
 
+/** A frame interval past both SPIKE_FRAME_MS and this multiple of the battle's median interval is a hitch. */
+export const HITCH_RATIO = 2;
+
+/** Events by start time, with a look-back long enough for any event that starts before a window and runs into it. */
+function indexEvents(events) {
+  let lookback = 0;
+  for (const e of events) if (!TASK_EVENT.test(e.name)) lookback = Math.max(lookback, Math.min(e.dur, 5000));
+  const starts = events.map((e) => e.start);
+  return {
+    events, lookback,
+    /** The index of the first event that may overlap a window opening at `from`. */
+    first(from) {
+      let lo = 0, hi = starts.length;
+      const at = from - lookback;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (starts[mid] < at) lo = mid + 1; else hi = mid; }
+      return lo;
+    },
+  };
+}
+
+function bucketsIn(index, buckets, from, to, chunkOfUrl, skip) {
+  let added = 0;
+  const { events } = index;
+  for (let i = index.first(from); i < events.length && events[i].start < to; i++) {
+    const event = events[i];
+    if (event.end <= from || (skip && skip(event))) continue;
+    const share = event.dur > 0 ? (Math.min(event.end, to) - Math.max(event.start, from)) / event.dur : 1;
+    const ms = event.self * share;
+    if (ms <= 0) continue;
+    const key = bucketOfEvent(event, chunkOfUrl);
+    buckets[key] = (buckets[key] ?? 0) + ms;
+    added += ms;
+  }
+  return added;
+}
+
+function gcIn(index, from, to) {
+  let ms = 0;
+  const { events } = index;
+  for (let i = index.first(from); i < events.length && events[i].start < to; i++) {
+    const event = events[i];
+    if (!GC_EVENT.test(event.name) || event.end <= from) continue;
+    const share = event.dur > 0 ? (Math.min(event.end, to) - Math.max(event.start, from)) / event.dur : 1;
+    ms += event.self * share;
+  }
+  return ms;
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
 /**
- * One battle's spikes and long tasks.
+ * One battle's frame intervals, hitches and long tasks.
+ *
+ * Every interval between consecutive shown frames is split into buckets: the earlier frame's stages (less the GC the
+ * trace saw in its work, pro rata) and WebGL kinds, the rest of the main thread in the interval by kind, and the main
+ * thread idle — the part the GPU process was busy through named apart. A **hitch** is an interval past SPIKE_FRAME_MS
+ * and HITCH_RATIO × the battle's median: on a quiet machine every frame past 33 ms, on a loaded one the frames the load
+ * alone does not explain. A hitch's cause is the bucket furthest past its median over the battle's ordinary intervals
+ * (its excess, not its size: a render that takes 20 ms in every frame is not the cause of the one that took 200).
+ *
  * @param readout the recorder's readout
- * @param trace { events, syncName, syncPerfMs } or null (the recorder alone: the gap is idle-or-unknown)
+ * @param trace { events, syncName, syncPerfMs, fromMs } or null (the recorder alone: the gap is untraced)
  * @param observers { tasks: [{t, ms}], loaf: [...], decodes: [...] } from the page
  * @param window { fromMs, toMs } performance.now() bounds of the battle the census measured (optional)
  */
 export function analyzeBattle({ readout, trace = null, observers = {}, window = null, chunkOfUrl = defaultChunkOfUrl,
-  spikeMs = SPIKE_FRAME_MS, longTaskMs = LONG_TASK_MS } = {}) {
+  spikeMs = SPIKE_FRAME_MS, longTaskMs = LONG_TASK_MS, hitchRatio = HITCH_RATIO } = {}) {
   const frames = framesOf(readout).filter((f) => !window || (f.tMs >= window.fromMs && f.tMs <= window.toMs));
-  let events = [], tasks = [];
+  let events = [], tasks = [], gpuTasks = [];
   if (trace?.events?.length) {
     const main = rendererMainThread(trace.events, trace.syncName);
     const sync = trace.events.find((e) => e.name === trace.syncName && (!main || e.pid === main.pid));
@@ -261,75 +305,131 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
       const offsetMs = sync.ts / 1000 - trace.syncPerfMs;
       events = mainThreadEvents(trace.events, main, offsetMs);
       tasks = events.filter((e) => TASK_EVENT.test(e.name) && !e.parent);
+      const gpu = gpuMainThread(trace.events);
+      if (gpu) gpuTasks = mainThreadEvents(trace.events, gpu, offsetMs).filter((e) => TASK_EVENT.test(e.name) && !e.parent);
     }
   }
   const traced = tasks.length > 0;
+  const index = indexEvents(events);
   // the trace may begin after the entry (the census starts it when the battle phase begins): earlier gaps are untraced
   const tracedFrom = traced ? (trace.fromMs ?? -Infinity) : Infinity;
+  const position = new Map(frames.map((f, i) => [f, i]));
   const shown = frames.filter((f) => f.battle && f.rendered && !f.paused);
-  const intervals = [];
-  const spikes = [];
+
+  // every interval's buckets
+  const rows = [];
   for (let k = 1; k < shown.length; k++) {
     const a = shown[k - 1], b = shown[k];
     // consecutive recorded frames only (a veil or a pause between them is not a hitch the player saw)
-    if (frames.indexOf(b) !== frames.indexOf(a) + 1) continue;
+    if (position.get(b) !== position.get(a) + 1) continue;
     const interval = b.rafMs - a.rafMs;
-    intervals.push(interval);
-    if (interval <= spikeMs) continue;
     const workEnd = a.tMs + a.workMs;
     const tracedHere = a.tMs >= tracedFrom;
-    const gcInWork = tracedHere ? sumGc(events, a.tMs, workEnd) : 0;
-    const buckets = frameBuckets(a, gcInWork);
+    const buckets = frameBuckets(a, tracedHere ? gcIn(index, a.tMs, workEnd) : 0);
     let busy = a.workMs;
     if (tracedHere) {
       // the rest of the main thread in the interval: the frame task's pipeline after the callback, and other tasks
-      const gapTraced = addTraceBuckets(buckets, events, workEnd, b.tMs, chunkOfUrl, (e) => TASK_EVENT.test(e.name));
-      busy += busyMs(tasks, workEnd, b.tMs);
+      const gapTraced = bucketsIn(index, buckets, workEnd, b.tMs, chunkOfUrl, (e) => TASK_EVENT.test(e.name));
+      const gapBusy = busyMs(tasks, workEnd, b.tMs);
+      busy += gapBusy;
       // tasks with no traced children (their own time): charged as 'task:other'
-      const untraced = busyMs(tasks, workEnd, b.tMs) - gapTraced;
-      if (untraced > 0.5) buckets['task:other'] = (buckets['task:other'] ?? 0) + untraced;
-      // the gap's WebGL work happened inside those scripts: name it, and take it out of them
-      moveGapGl(buckets, b);
-    } else {
-      moveGapGl(buckets, b);
+      if (gapBusy - gapTraced > 0.5) buckets['task:other'] = (buckets['task:other'] ?? 0) + gapBusy - gapTraced;
     }
+    // the gap's WebGL work happened inside those scripts: name it, and take it out of them
+    moveGapGl(buckets, b);
     const rest = Math.max(0, interval - busy);
-    // traced: the main thread idle (the GPU or the compositor held the frame); untraced: a gap no source saw into
-    if (rest > 0.5) buckets[tracedHere ? 'idle' : 'gap'] = rest;
-    const key = dominant(buckets);
+    if (rest > 0.5) {
+      if (!tracedHere) buckets.gap = rest;
+      else {
+        // the main thread idle: the GPU process busy through it (a pipeline compile, a flush) or not (presentation)
+        const gpuBusy = Math.min(rest, busyMs(gpuTasks, workEnd, b.tMs));
+        if (gpuBusy > 0.5) buckets['idle:gpu'] = gpuBusy;
+        if (rest - gpuBusy > 0.5) buckets.idle = rest - gpuBusy;
+      }
+    }
+    rows.push({ a, b, interval, buckets });
+  }
+
+  const intervals = rows.map((r) => r.interval);
+  const medianMs = median(intervals);
+  const hitchMs = Math.max(spikeMs, hitchRatio * medianMs);
+  // the ordinary interval's buckets: each key's median over the intervals that are not hitches
+  const ordinary = rows.filter((r) => r.interval <= hitchMs);
+  const keys = new Set();
+  for (const r of rows) for (const key of Object.keys(r.buckets)) keys.add(key);
+  const baseline = {};
+  for (const key of keys) baseline[key] = median(ordinary.map((r) => r.buckets[key] ?? 0));
+
+  const spikes = [];
+  for (const { a, b, interval, buckets } of rows) {
+    if (interval <= hitchMs) continue;
+    const excess = {};
+    for (const [key, ms] of Object.entries(buckets)) excess[key] = ms - (baseline[key] ?? 0);
+    const key = dominant(excess);
     spikes.push({
       atMs: round(a.tMs, 1), simS: round(a.simS, 2), intervalMs: round(interval, 1), workMs: round(a.workMs, 1),
-      cause: key ? causeOfBucket(key) : 'unknown', dominant: key, buckets: roundedBuckets(buckets),
-      programs: b.programs - a.programs, heapDropMB: round(Math.max(0, a.heapMB - b.heapMB), 1), simSteps: a.simSteps,
-      links: a.links + b.gapLinks, topEvents: a.topEvents.map((e) => ({ name: e.name, ms: round(e.ms, 1) })),
-      countdown: a.countdown, killcam: a.killcam,
+      cause: key ? causeOfBucket(key) : 'diffuse', dominant: key, excess: roundedBuckets(excess, 1), buckets: roundedBuckets(buckets),
+      programs: b.programs - a.programs, simSteps: a.simSteps, links: a.links + b.gapLinks,
+      topEvents: a.topEvents.map((e) => ({ name: e.name, ms: round(e.ms, 1) })), countdown: a.countdown, killcam: a.killcam,
     });
   }
 
-  // long tasks: the trace's top-level tasks (else the observer's), each split as a spike is
+  // long tasks: the trace's top-level tasks (else the observer's), each split as an interval is
   const longTasks = [];
   const source = traced ? tasks.filter((t) => t.dur > longTaskMs) : (observers.tasks ?? []).filter((t) => t.ms > longTaskMs)
     .map((t) => ({ start: t.t, end: t.t + t.ms, dur: t.ms }));
   for (const task of source) {
     if (window && (task.end < window.fromMs || task.start > window.toMs)) continue;
     const frame = frames.find((f) => f.tMs >= task.start - 0.5 && f.tMs + f.workMs <= task.end + 0.5 && f.workMs > 0);
-    const buckets = frame ? frameBuckets(frame, traced ? sumGc(events, frame.tMs, frame.tMs + frame.workMs) : 0) : {};
+    const buckets = frame ? frameBuckets(frame, traced ? gcIn(index, frame.tMs, frame.tMs + frame.workMs) : 0) : {};
     if (traced) {
-      addTraceBuckets(buckets, events, task.start, task.end, chunkOfUrl, (e) => e === task
+      bucketsIn(index, buckets, task.start, task.end, chunkOfUrl, (e) => e === task
         || (frame && e.end > frame.tMs && e.start < frame.tMs + frame.workMs));
       // the task's own time past what its events name
       const named = Object.values(buckets).reduce((sum, ms) => sum + ms, 0);
       if (task.dur - named > 0.5) buckets['task:other'] = task.dur - named;
     }
-    const key = dominant(buckets);
+    const excess = {};
+    for (const [key, ms] of Object.entries(buckets)) excess[key] = frame ? ms - (baseline[key] ?? 0) : ms;
+    const key = dominant(excess);
     longTasks.push({
       atMs: round(task.start, 1), ms: round(task.dur, 1), inFrame: !!frame, battle: !!frame?.battle,
-      cause: key ? causeOfBucket(key) : (frame ? 'unknown' : 'untraced'), dominant: key, buckets: roundedBuckets(buckets),
+      cause: key ? causeOfBucket(key) : (frame ? 'diffuse' : 'untraced'), dominant: key, buckets: roundedBuckets(buckets),
     });
   }
 
-  return { frames: shown.length, intervals: summarizeIntervals(intervals), heap: heapOf(shown), links: linksOf(shown), spikes, longTasks,
-    summary: summarize(spikes, longTasks), traced };
+  return {
+    frames: shown.length, intervals: { ...summarizeIntervals(intervals), medianMs: round(medianMs, 1), hitchMs: round(hitchMs, 1), hitches: spikes.length },
+    baseline: roundedBuckets(baseline, 0.3), heap: traced ? gcOf(events, tracedFrom) : heapOf(shown), links: linksOf(shown, readout?.links ?? []),
+    spikes, longTasks, summary: summarize(spikes, longTasks), traced,
+  };
+}
+
+/** The GPU process's main thread (CrGpuMain). */
+export function gpuMainThread(events) {
+  for (const e of events) if (e.ph === 'M' && e.name === 'thread_name' && e.args?.name === 'CrGpuMain') return { pid: e.pid, tid: e.tid };
+  return null;
+}
+
+/**
+ * The main thread's collections from the trace: scavenges and mark-compacts, their time, the scavenges past 5 ms, and
+ * the allocation rate (each scavenge's heap before it, less the heap the one before left).
+ */
+export function gcOf(events, fromMs = -Infinity) {
+  const minor = events.filter((e) => e.name === 'MinorGC' && e.start >= fromMs);
+  const major = events.filter((e) => e.name === 'MajorGC' && e.start >= fromMs);
+  let allocated = 0;
+  for (let i = 1; i < minor.length; i++) {
+    const before = minor[i].heapBefore, after = minor[i - 1].heapAfter;
+    if (before != null && after != null) allocated += Math.max(0, before - after);
+  }
+  const span = minor.length > 1 ? (minor[minor.length - 1].start - minor[0].start) / 1000 : 0;
+  return {
+    allocMBPerS: span > 0 ? round(allocated / 1048576 / span, 1) : null,
+    scavenges: minor.length, scavengeMs: round(minor.reduce((sum, e) => sum + e.dur, 0), 1), scavengesOver5: minor.filter((e) => e.dur > 5).length,
+    markCompacts: major.length, markCompactMs: round(major.reduce((sum, e) => sum + e.dur, 0), 1),
+    heapAfterMB: minor.length ? round((minor[minor.length - 1].heapAfter ?? 0) / 1048576, 1) : null,
+  };
 }
 
 /**
@@ -348,8 +448,11 @@ export function heapOf(frames) {
   return { allocMBPerS: seconds > 0 ? round(rise / seconds, 2) : null, gcDrops: drops, gcDropMB: round(dropMB, 1), peakMB: round(peak, 1) };
 }
 
-/** First-use WebGL work over the shown frames: programs linked (in frames and between them) and the frames that linked. */
-export function linksOf(frames) {
+/**
+ * First-use WebGL work over the shown frames: programs linked (in frames and between them), the frames that linked, the
+ * time, and the programs by name (the recorder's link rows inside the frames' span).
+ */
+export function linksOf(frames, rows = []) {
   let links = 0, linkMs = 0, framesLinking = 0, texMs = 0, bufMs = 0;
   for (const f of frames) {
     const n = (f.links ?? 0) + (f.gapLinks ?? 0);
@@ -359,7 +462,10 @@ export function linksOf(frames) {
     texMs += (f.texMs ?? 0) + (f.gapTexMs ?? 0);
     bufMs += (f.bufMs ?? 0) + (f.gapBufMs ?? 0);
   }
-  return { links, framesLinking, linkMs: round(linkMs, 1), texMs: round(texMs, 1), bufMs: round(bufMs, 1) };
+  const from = frames[0]?.tMs ?? 0, to = (frames[frames.length - 1]?.tMs ?? 0) + (frames[frames.length - 1]?.workMs ?? 0);
+  const names = {};
+  for (const row of rows) if (row.tMs >= from && row.tMs <= to) names[row.name] = (names[row.name] ?? 0) + 1;
+  return { links, framesLinking, linkMs: round(linkMs, 1), texMs: round(texMs, 1), bufMs: round(bufMs, 1), names };
 }
 
 function moveGapGl(buckets, b) {

@@ -6,9 +6,11 @@
 // battle and pass (cold, warm) it judges, from control release to the end:
 //   - links: the WebGL programs linked (the combat warm must have compiled every one before the reveal);
 //   - longTasks: main-thread tasks over 50 ms;
-//   - allocMBPerS: the JS heap's allocation rate, which the machine's load does not move;
-//   - over33PerMin and over50PerMin: frame intervals past 33 and 50 ms a minute. These are time, so they are judged
-//     only while the load average stays at or below loadPerCore × the cores; past it the line says HELD (load).
+//   - allocMBPerS: the JS heap's allocation rate (the trace's scavenges), which the machine's load does not move;
+//   - hitchesPerMin: intervals past 33 ms and twice the battle's median a minute (tools/battle-spike-analysis.mjs);
+//   - over33PerMin and over50PerMin: frame intervals past 33 and 50 ms a minute.
+//   The last three are time, so they are judged only while the load average stays at or below loadPerCore × the
+//   cores; past it the line says HELD (load).
 //
 //   node tools/battle-spike-budget.mjs [--gate] [--root=.] [--out=<dir>] [--port=5397] [--report=<census dir>]
 //
@@ -33,10 +35,11 @@ export function liveReadings(record) {
     allocMBPerS: live.heap?.allocMBPerS ?? null,
     over33PerMin: live.intervals?.over33 != null ? +(live.intervals.over33 / minutes).toFixed(1) : null,
     over50PerMin: live.intervals?.over50 != null ? +(live.intervals.over50 / minutes).toFixed(1) : null,
+    hitchesPerMin: live.intervals?.hitches != null ? +(live.intervals.hitches / minutes).toFixed(1) : null,
   };
 }
 
-const TIME_LIMITS = new Set(['over33PerMin', 'over50PerMin']);
+const TIME_LIMITS = new Set(['over33PerMin', 'over50PerMin', 'hitchesPerMin']);
 
 /**
  * Judge one record against its pass's limits: [{ name, value, limit, verdict: PASS | FAIL | HELD }]. A time limit
@@ -90,7 +93,7 @@ if (isMainModule(import.meta.url)) {
       const passthrough = args.filter((a) => /^--(root|out|port)=/.test(a));
       const options = parseCensusArgs([
         `--scenarios=${budget.scenarios.join(',')}`, `--sizes=${budget.sizes.join(',')}`, `--seconds=${budget.seconds}`,
-        `--passes=${(budget.passes ?? ['cold', 'warm']).join(',')}`, `--driver=${budget.driver ?? 'watch'}`, `--trace=0`,
+        `--passes=${(budget.passes ?? ['cold', 'warm']).join(',')}`, `--driver=${budget.driver ?? 'watch'}`, `--trace=1`,
         `--port=${budget.port ?? 5397}`, ...passthrough,
       ]);
       dir = options.out;

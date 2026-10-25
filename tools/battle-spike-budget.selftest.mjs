@@ -9,18 +9,18 @@ import { judgeCensus, judgeRecord, liveReadings, readBudget } from './battle-spi
 
 const budget = {
   scenarios: ['verdant:standard'], sizes: [14], passes: ['cold', 'warm'], seconds: 40, loadPerCore: 0.75,
-  limits: { warm: { links: 0, longTasks: 0, allocMBPerS: 6, over33PerMin: 4 }, cold: { links: 3, over33PerMin: 12 } },
+  limits: { warm: { links: 0, longTasks: 0, allocMBPerS: 6, over33PerMin: 4, hitchesPerMin: 2 }, cold: { links: 3, over33PerMin: 12 } },
 };
 const record = (pass, { links = 0, longTasks = 0, alloc = 4, over33 = 2, load = 4 } = {}) => ({
   key: `verdant-standard-14v14-${pass}`, pass, load: { before: [load], after: [load] },
   window: { liveStartMs: 10000, endMs: 40000 },
-  live: { links: { links }, longTasks, heap: { allocMBPerS: alloc }, intervals: { over33, over50: 0 } },
+  live: { links: { links }, longTasks, heap: { allocMBPerS: alloc }, intervals: { over33, over50: 0, hitches: 1 } },
 });
 
 // a half-minute window: two spikes are four a minute
 assert.equal(liveReadings(record('warm')).over33PerMin, 4);
 const verdict = (r, cores = 16) => Object.fromEntries(judgeRecord(r, budget, cores).map((v) => [v.name, v.verdict]));
-assert.deepEqual(verdict(record('warm')), { links: 'PASS', longTasks: 'PASS', allocMBPerS: 'PASS', over33PerMin: 'PASS' });
+assert.deepEqual(verdict(record('warm')), { links: 'PASS', longTasks: 'PASS', allocMBPerS: 'PASS', over33PerMin: 'PASS', hitchesPerMin: 'PASS' });
 assert.equal(verdict(record('warm', { links: 1 })).links, 'FAIL', 'a first-use link in a warm battle fails');
 assert.equal(verdict(record('warm', { over33: 3 })).over33PerMin, 'FAIL', 'six spikes a minute past four fail');
 // loaded: the time limit is held, never failed; the load-free limits still judge
@@ -43,7 +43,7 @@ try {
 const shipped = readBudget();
 assert.equal(shipped.driver, 'watch', 'the budget replays watched battles (the same battle every run)');
 assert.ok(shipped.scenarios.length >= 2 && shipped.sizes.length >= 1);
-for (const pass of ['cold', 'warm']) for (const name of ['links', 'longTasks', 'allocMBPerS', 'over33PerMin']) {
+for (const pass of ['cold', 'warm']) for (const name of ['links', 'longTasks', 'allocMBPerS', 'hitchesPerMin']) {
   assert.ok(Number.isFinite(shipped.limits[pass][name]), `the ${pass} pass limits ${name}`);
 }
 assert.equal(shipped.limits.warm.links, 0, 'a warm battle links no program');

@@ -63,6 +63,21 @@ interface FrameStageReadout {
   flags: Readonly<Record<string, number>>;
   frames: number[][];
   dropped: number;
+  /** Each program linked (with `gl`): when, its shader's name (three's SHADER_NAME, else the first line), how long. */
+  links: Array<{ tMs: number; name: string; ms: number; inFrame: boolean }>;
+}
+
+const MAX_LINK_ROWS = 1024;
+
+/** A program's name: three's `#define SHADER_NAME` in its vertex or fragment source, else '(unnamed)'. */
+function programName(gl: WebGL2RenderingContext, program: WebGLProgram): string {
+  try {
+    for (const shader of gl.getAttachedShaders(program) ?? []) {
+      const match = /#define SHADER_NAME (.+)/.exec(gl.getShaderSource(shader) ?? '');
+      if (match) return match[1].trim().slice(0, 80);
+    }
+  } catch { /* a lost context */ }
+  return '(unnamed)';
 }
 
 export interface FrameStageRecorder {
@@ -121,6 +136,7 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
   // WebGL time by kind: [in-frame link, tex, buf, links, gap link, tex, buf, links]
   const glAcc = new Float64Array(8);
   const glRestore: Array<() => void> = [];
+  const links: FrameStageReadout['links'] = [];
   if (gl) {
     const target = gl as unknown as Record<string, (...args: unknown[]) => unknown>;
     for (const kind of Object.keys(GL_KINDS) as GlKind[]) {
@@ -129,15 +145,24 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
         const original = target[name];
         if (typeof original !== 'function') continue;
         const counted = name === 'linkProgram';
-        target[name] = function timedGlCall(this: unknown, ...args: unknown[]): unknown {
+        // `arguments` straight into apply: no array a call (a rest parameter allocated one per upload, in the heap the
+        // census measures)
+        target[name] = function timedGlCall(this: unknown): unknown {
           const startedAt = now();
-          try { return original.apply(this, args); } finally {
+          // eslint-disable-next-line prefer-rest-params
+          try { return original.apply(this, arguments as unknown as unknown[]); } finally {
             const spent = now() - startedAt;
             // in a frame the call's time leaves the stage it ran in: the stages and the WebGL kinds add up to the work
             if (open) stageMs[stage] -= spent;
             const base = open ? 0 : 4;
             glAcc[base + slot] += spent;
-            if (counted) glAcc[base + 3]++;
+            if (counted) {
+              glAcc[base + 3]++;
+              if (links.length < MAX_LINK_ROWS) {
+                // eslint-disable-next-line prefer-rest-params
+                links.push({ tMs: Math.round(startedAt * 10) / 10, name: programName(gl, arguments[0] as WebGLProgram), ms: Math.round(spent * 100) / 100, inFrame: open });
+              }
+            }
           }
         };
         glRestore.push(() => { target[name] = original; });
@@ -233,9 +258,9 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
         const base = ((start + i) % capacity) * WIDTH;
         frames.push(Array.from(rows.subarray(base, base + WIDTH), (v) => Math.round(v * 1000) / 1000));
       }
-      return { columns: COLUMNS, stages: FRAME_STAGE_NAMES, events: eventNames.slice(), flags: FLAG, frames, dropped };
+      return { columns: COLUMNS, stages: FRAME_STAGE_NAMES, events: eventNames.slice(), flags: FLAG, frames, dropped, links: links.slice() };
     },
-    clear(): void { next = 0; size = 0; dropped = 0; },
+    clear(): void { next = 0; size = 0; dropped = 0; links.length = 0; },
     uninstall(): void {
       if (!installed) return;
       installed = false;

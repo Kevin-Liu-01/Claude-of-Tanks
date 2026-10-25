@@ -5,7 +5,7 @@
 // through the sync mark; the long tasks split as the spikes do; the summary counts by cause.
 import assert from 'node:assert/strict';
 import { FRAME_STAGE_NAMES } from '../src/game/frameStages.ts';
-import { analyzeBattle, causeOfBucket, framesOf, heapOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
+import { analyzeBattle, causeOfBucket, framesOf, gcOf, heapOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
 
 const COLUMNS = ['tMs', 'rafMs', 'workMs', 'simSteps', 'programs', 'textures', 'geometries', 'heapMB', 'simS', 'flags', 'tanks', 'shells',
   'events', 'eventMs', 'topEvent0', 'topEventMs0', 'topEvent1', 'topEventMs1', 'topEvent2', 'topEventMs2',
@@ -122,6 +122,42 @@ assert.deepEqual(heapOf([{ heapMB: 100, tMs: 0 }, { heapMB: 102, tMs: 500 }, { h
   { allocMBPerS: 1.33, gcDrops: 1, gcDropMB: 12, peakMB: 102 });
 assert.equal(result.links.links, 2, 'the program links the battle made');
 assert.equal(result.links.framesLinking, 1);
+
+// a loaded machine: every interval 42 ms (a 20 ms render, the rest waiting), so none is a hitch; one 100 ms interval
+// whose bots took 50 ms is, and its cause is the stage past its own median (the render is 20 ms in it as in every other)
+{
+  const loaded = [];
+  let at = 1000;
+  for (let i = 0; i < 60; i++) { loaded.push(frame(at, { work: 22, stages: { post: 20, bots: 2 } })); at += i === 30 ? 100 : 42; }
+  const hitchAt = 1000 + 30 * 42;
+  loaded[30] = frame(hitchAt, { work: 72, stages: { post: 20, bots: 52 } });
+  // the GPU process busy through a second hitch's idle wait (pid 8: CrGpuMain)
+  loaded.push(frame(at, { work: 22, stages: { post: 20, bots: 2 } })); const gpuAt = at; at += 130;
+  loaded.push(frame(at, { work: 22, stages: { post: 20, bots: 2 } })); at += 42;
+  loaded.push(frame(at, { work: 22, stages: { post: 20, bots: 2 } }));
+  const traceEvents = [
+    { ph: 'M', pid: 7, tid: 1, name: 'thread_name', args: { name: 'CrRendererMain' } },
+    { ph: 'M', pid: 8, tid: 3, name: 'thread_name', args: { name: 'CrGpuMain' } },
+    { ph: 'R', pid: 7, tid: 1, name: 'sync-mark', ts: us(500) },
+    { ph: 'X', pid: 8, tid: 3, name: 'RunTask', ts: us(gpuAt + 30), dur: 90000 },
+  ];
+  for (const row of loaded) traceEvents.push(X('RunTask', row[0] - 0.2, row[2] + 0.4));
+  const r = analyzeBattle({ readout: { ...readout, frames: loaded }, trace: { events: traceEvents, syncName: 'sync-mark', syncPerfMs: 500 } });
+  assert.equal(r.intervals.medianMs, 42);
+  assert.equal(r.intervals.hitchMs, 84, 'a hitch is past twice the median on a loaded machine');
+  assert.ok(r.intervals.over33 >= 60, 'every interval is past 33 ms');
+  assert.equal(r.spikes.length, 2, `two hitches (${r.spikes.map((x) => `${x.intervalMs}:${x.cause}`).join(', ')})`);
+  assert.equal(r.spikes[0].cause, 'bots', 'the bots past their median, not the render that is 20 ms in every frame');
+  assert.equal(r.spikes[1].cause, 'gpu busy', 'the main thread waited while the GPU process worked');
+}
+
+// the trace's collections: the allocation rate from each scavenge's heap before it and the one before's after
+assert.deepEqual(gcOf([
+  { name: 'MinorGC', start: 0, dur: 1, heapBefore: 40 * 1048576, heapAfter: 10 * 1048576 },
+  { name: 'MinorGC', start: 500, dur: 6, heapBefore: 30 * 1048576, heapAfter: 11 * 1048576 },
+  { name: 'MinorGC', start: 1000, dur: 1, heapBefore: 31 * 1048576, heapAfter: 12 * 1048576 },
+  { name: 'MajorGC', start: 1200, dur: 20 },
+]), { allocMBPerS: 40, scavenges: 3, scavengeMs: 8, scavengesOver5: 1, markCompacts: 1, markCompactMs: 20, heapAfterMB: 12 });
 
 // the readout's rows as objects; the cause table
 assert.equal(framesOf(readout)[2].stages.bots, 40);

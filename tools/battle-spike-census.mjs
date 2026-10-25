@@ -10,7 +10,15 @@
 //
 //   node tools/battle-spike-census.mjs [--scenarios=verdant:standard,urban:zone_control,...] [--sizes=7,14,21]
 //        [--seconds=45] [--passes=cold,warm] [--spec=t90m] [--preset=high] [--viewport=1920x1080] [--port=5396]
-//        [--root=.] [--out=<dir>] [--trace=1] [--resume] [--budget-min=0] [--driver=player|watch]
+//        [--root=.] [--out=<dir>] [--trace=1] [--resume] [--budget-min=0] [--driver=player|watch] [--heap-profile]
+//        [--trace-detail]
+//
+// --trace-detail adds V8's execution events and keeps every main-thread and GPU-thread event (each compacted as it
+// streams, the ones under 50 µs dropped), so a task the kinds the analysis names do not cover shows what ran in it.
+//
+// --heap-profile samples V8's allocations through the live battle (HeapProfiler sampling, the objects the scavenger and
+// the mark-compactor already took included) and names the sites that allocate most, through the dist's source maps
+// when the build has them (`npm run build -- --sourcemap` into a diagnostic root).
 //
 // --driver=watch plays a watched battle instead (every seat a bot's, the camera riding the human seat's hull): the
 // simulation is then the same tick for tick on every run of a build (a fresh profile, a pinned roster), the workload a
@@ -55,7 +63,7 @@ export function parseCensusArgs(argv) {
   const o = {
     scenarios: [...DEFAULT_SCENARIOS], sizes: [7, 14, 21], seconds: 45, passes: ['cold', 'warm'], spec: 't90m',
     preset: 'high', viewport: '1920x1080', port: 5396, root: process.cwd(), out: null, trace: true, resume: false,
-    budgetMin: 0, reanalyze: null, driver: 'player',
+    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false,
   };
   for (const arg of argv) {
     const [key, value = '1'] = arg.replace(/^--/, '').split('=');
@@ -75,6 +83,8 @@ export function parseCensusArgs(argv) {
       case 'budget-min': o.budgetMin = Number(value); break;
       case 'reanalyze': o.reanalyze = path.resolve(value); break;
       case 'driver': o.driver = value; break;
+      case 'heap-profile': o.heapProfile = value !== '0'; break;
+      case 'trace-detail': o.traceDetail = value !== '0'; break;
       default: throw new Error(`${TOOL}: unknown flag --${key}`);
     }
   }
@@ -205,12 +215,23 @@ export function createTraceSplitter(onEvent) {
   };
 }
 
+/** A detailed trace's event, its fields the analysis reads and no more (a minute of every event fits the heap). */
+function compactEvent(e) {
+  const data = e.args?.data;
+  const args = {};
+  if (data) args.data = { url: data.url, functionName: data.functionName, type: data.type, stackTrace: data.stackTrace?.slice(0, 1) };
+  if (e.args?.usedHeapSizeBefore != null) { args.usedHeapSizeBefore = e.args.usedHeapSizeBefore; args.usedHeapSizeAfter = e.args.usedHeapSizeAfter; }
+  if (e.ph === 'M') args.name = e.args?.name;
+  return { name: e.name, ph: e.ph, pid: e.pid, tid: e.tid, ts: e.ts, dur: e.dur, args };
+}
+
 /** Start a battle's trace (CDP Tracing, streamed); `stop()` reads it back event by event and keeps what the analysis can use. */
-async function startTrace(page) {
+async function startTrace(page, { detail = false } = {}) {
   const cdp = await page.target().createCDPSession();
+  const categories = detail ? [...TRACE_CATEGORIES, 'v8.execute', 'v8'] : [...TRACE_CATEGORIES];
   await cdp.send('Tracing.start', {
     transferMode: 'ReturnAsStream', streamFormat: 'json',
-    traceConfig: { recordMode: 'recordUntilFull', traceBufferSizeInKb: TRACE_BUFFER_KB, includedCategories: [...TRACE_CATEGORIES] },
+    traceConfig: { recordMode: 'recordUntilFull', traceBufferSizeInKb: TRACE_BUFFER_KB, includedCategories: categories },
   });
   let stopped = false;
   return {
@@ -222,7 +243,10 @@ async function startTrace(page) {
       const { stream, dataLossOccurred } = await complete;
       const kept = [];
       let seen = 0, bytes = 0;
-      const splitter = createTraceSplitter((e) => { seen++; if (traceEventOfInterest(e, SYNC_MARK)) kept.push(e); });
+      const keep = detail
+        ? (e) => e.ph === 'M' || e.name === SYNC_MARK || (e.ph === 'X' ? (e.dur ?? 0) >= 50 : e.ph === 'B' || e.ph === 'E')
+        : (e) => traceEventOfInterest(e, SYNC_MARK);
+      const splitter = createTraceSplitter((e) => { seen++; if (keep(e)) kept.push(detail ? compactEvent(e) : e); });
       const decoder = new StringDecoder('utf8');
       for (;;) {
         const chunk = await cdp.send('IO.read', { handle: stream, size: 4 << 20 });
@@ -235,6 +259,71 @@ async function startTrace(page) {
       await cdp.detach().catch(() => {});
       return { events: filterTraceEvents(kept), seen, bytes, dataLoss: !!dataLossOccurred };
     },
+  };
+}
+
+/** Start V8's sampling heap profiler (every allocation's site, the collected ones included); `stop()` returns the profile. */
+async function startHeapProfile(page) {
+  const cdp = await page.target().createCDPSession();
+  await cdp.send('HeapProfiler.enable');
+  await cdp.send('HeapProfiler.startSampling', { samplingInterval: 16384, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+  return {
+    async stop() {
+      const { profile } = await cdp.send('HeapProfiler.stopSampling');
+      await cdp.send('HeapProfiler.disable').catch(() => {});
+      await cdp.detach().catch(() => {});
+      return profile;
+    },
+  };
+}
+
+/**
+ * A sampling heap profile's allocation by site (self size: the bytes allocated in that function) and by chunk, the
+ * sites mapped to their sources when `resolve(url, line, column)` can (the dist's source maps).
+ */
+export function summarizeHeapProfile(profile, seconds, { resolve = null, top = 40 } = {}) {
+  const sites = new Map(), chunks = new Map();
+  let total = 0;
+  const stack = [profile.head];
+  while (stack.length) {
+    const node = stack.pop();
+    for (const child of node.children ?? []) stack.push(child);
+    if (!node.selfSize) continue;
+    total += node.selfSize;
+    const f = node.callFrame ?? {};
+    const key = `${f.url}|${f.lineNumber}|${f.columnNumber}|${f.functionName}`;
+    const row = sites.get(key) ?? { fn: f.functionName || '(anonymous)', url: f.url || '', line: f.lineNumber, col: f.columnNumber, bytes: 0 };
+    row.bytes += node.selfSize;
+    sites.set(key, row);
+    const chunk = chunkOfUrl(f.url, f.functionName);
+    chunks.set(chunk, (chunks.get(chunk) ?? 0) + node.selfSize);
+  }
+  const mb = (bytes) => Math.round(bytes / 1048576 * 100) / 100;
+  const ranked = [...sites.values()].sort((a, b) => b.bytes - a.bytes).slice(0, top).map((row) => {
+    const source = resolve && row.url ? resolve(row.url, row.line, row.col) : null;
+    return { mb: mb(row.bytes), mbPerS: seconds > 0 ? mb(row.bytes / seconds) : null, fn: row.fn, chunk: chunkOfUrl(row.url, row.fn), at: `${row.line + 1}:${row.col}`, ...(source ? { source } : {}) };
+  });
+  return {
+    allocMB: mb(total), allocMBPerS: seconds > 0 ? mb(total / seconds) : null, sites: ranked,
+    byChunk: [...chunks].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([chunk, bytes]) => ({ chunk, mb: mb(bytes) })),
+  };
+}
+
+/** Resolve a dist script position to its source through the script's own map (dist/assets/<file>.map), when present. */
+async function sourceResolver(root) {
+  let TraceMap, originalPositionFor;
+  try { ({ TraceMap, originalPositionFor } = await import('@jridgewell/trace-mapping')); } catch { return null; }
+  const maps = new Map();
+  return (url, line, column) => {
+    const file = url.split(/[?#]/)[0].split('/').pop();
+    if (!maps.has(file)) {
+      const mapFile = path.join(root, 'dist', 'assets', `${file}.map`);
+      maps.set(file, existsSync(mapFile) ? new TraceMap(readFileSync(mapFile, 'utf8')) : null);
+    }
+    const map = maps.get(file);
+    if (!map) return null;
+    const p = originalPositionFor(map, { line: line + 1, column });
+    return p.source ? `${p.source.replace(/^(\.\.\/)+/, '')}:${p.line}${p.name ? ` ${p.name}` : ''}` : null;
   };
 }
 
@@ -288,8 +377,11 @@ async function runScenario(options, server, scenario, size, done) {
       record.errors = errors.splice(0);
       writeFileSync(path.join(options.out, `${key}.json`), JSON.stringify(record, null, 1));
       const s = record.analysis;
-      log(`${key}: ${s.intervals.count} frames, ${s.intervals.over33} over 33 ms (p99 ${s.intervals.p99} ms, max ${s.intervals.max} ms), `
-        + `${s.longTasks.length} long tasks — ${Object.entries(s.summary).slice(0, 4).map(([c, r]) => `${c} ${r.spikes}/${r.longTasks}`).join(', ')}`);
+      const gc = record.live.heap;
+      log(`${key}: ${s.intervals.count} frames (median ${s.intervals.medianMs} ms), ${s.intervals.over33} over 33 ms, ${s.intervals.hitches} hitches `
+        + `past ${s.intervals.hitchMs} ms (max ${s.intervals.max} ms), ${s.longTasks.length} long tasks; live: ${record.live.links?.links ?? '?'} links, `
+        + `${gc?.allocMBPerS ?? '?'} MB/s allocated, ${gc?.scavenges ?? '?'} scavenges — `
+        + `${Object.entries(s.summary).slice(0, 5).map(([c, r]) => `${c} ${r.spikes}/${r.longTasks}`).join(', ')}`);
       if (aborted) throw new Error(aborted);
     }
   } finally {
@@ -316,7 +408,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     // recorder's alone): a loading trace is most of the bytes and none of the frames a player sees
     await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 100 });
     if (options.trace) {
-      tracer = await startTrace(page);
+      tracer = await startTrace(page, { detail: options.traceDetail });
       syncPerfMs = await page.evaluate((name) => performance.mark(name).startTime, SYNC_MARK);
     }
     await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
@@ -334,9 +426,16 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     });
     const liveStartMs = await page.evaluate(() => performance.now());
     const shotsBefore = await page.evaluate(() => window.__DEBUG.playerShellLog?.length ?? 0);
+    const heapProfiler = options.heapProfile ? await startHeapProfile(page) : null;
     if (watched) await sleep(options.seconds * 1000);
     else await driveBattle(page, { seconds: options.seconds, mode: gameMode });
     const endMs = await page.evaluate(() => performance.now());
+    let heapProfile = null;
+    if (heapProfiler) {
+      const profile = await heapProfiler.stop();
+      writeFileSync(path.join(options.out, `${key}.heap.json.gz`), gzipSync(JSON.stringify(profile)));
+      heapProfile = summarizeHeapProfile(profile, (endMs - liveStartMs) / 1000, { resolve: await sourceResolver(options.root) });
+    }
     const play = await page.evaluate(() => {
       const g = window.__DEBUG.game;
       return { shots: window.__DEBUG.playerShellLog?.length ?? 0, alive: g.tanks.filter((e) => !e.combat?.destroyed).length,
@@ -361,7 +460,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live,
+      analysis, live, heapProfile,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };
@@ -392,7 +491,7 @@ function reanalyze(dir) {
     const { entryStartMs, liveStartMs, endMs } = record.window;
     Object.assign(record, analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, endMs }));
     writeFileSync(file, JSON.stringify(record, null, 1));
-    log(`${name}: ${record.analysis.intervals.over33} over 33 ms, ${record.analysis.longTasks.length} long tasks`);
+    log(`${name}: ${record.analysis.intervals.over33} over 33 ms, ${record.analysis.intervals.hitches} hitches, ${record.analysis.longTasks.length} long tasks`);
   }
   writeFileSync(path.join(dir, 'census.json'), JSON.stringify(summarizeCensus(dir), null, 1));
 }
@@ -434,8 +533,10 @@ export function summarizeCensus(dir) {
     rows.push({ key: r.key, map: r.mapId, mode: r.gameMode, size: r.size, pass: r.pass, tanks: r.roster?.count, entryMs: r.entryMs,
       frames: r.analysis.intervals.count, over33: r.analysis.intervals.over33, over50: r.analysis.intervals.over50,
       over100: r.analysis.intervals.over100, p99: r.analysis.intervals.p99, max: r.analysis.intervals.max,
-      longTasks: r.analysis.longTasks.length, liveOver33: r.live.intervals.over33, liveLinks: r.live.links?.links ?? null,
-      allocMBPerS: r.live.heap?.allocMBPerS ?? null, gcDrops: r.live.heap?.gcDrops ?? null, causes: r.analysis.summary, load: r.load });
+      longTasks: r.analysis.longTasks.length, medianMs: r.analysis.intervals.medianMs, hitches: r.analysis.intervals.hitches,
+      liveOver33: r.live.intervals.over33, liveHitches: r.live.intervals.hitches, liveLinks: r.live.links?.links ?? null,
+      linkNames: r.live.links?.names ?? null, gc: r.live.heap ?? null, heapProfileMBPerS: r.heapProfile?.allocMBPerS ?? null,
+      causes: r.analysis.summary, load: r.load });
   }
   const totals = {};
   for (const row of rows) for (const [cause, c] of Object.entries(row.causes)) {
