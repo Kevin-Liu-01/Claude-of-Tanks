@@ -26,18 +26,6 @@ const ASSETS = json('public/icons/tank-assets.json').tanks;
 const HERO = json('public/icons/hero/hero-cards.json');
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
-// The horizontal lockup (public/brand/lockup.svg: the commander mark and the outlined wordmark, tools/brand-marks.mjs), inline
-// so it paints with the document: the paper parts take the ink, the accent parts (style= or fill=) the accent.
-const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
-function lockupMarkup(titleId) {
-  const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];
-  const body = LOCKUP.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/stroke="#f6f3ec"/g, 'stroke="currentColor"').replace(/stroke="#f0a030"/g, 'style="stroke:var(--accent)"')
-    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"')
-    .replace(/style="fill:#f0a030"/g, 'style="fill:var(--accent)"');
-  if (!viewBox || /#[0-9a-f]{3,8}\b/i.test(body)) throw new Error('home-premiere: public/brand/lockup.svg is not the two-ink lockup');
-  return `<svg class="hero__lockup" viewBox="${viewBox}" role="img" aria-labelledby="${titleId}"><title id="${titleId}">Claude of Tanks</title>${body}</svg>`;
-}
 const STAMP = TANK_IDS.linkParam();
 
 const esc = (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -121,7 +109,9 @@ function heroBlock() {
     + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}">`
     + `<div class="hero__reel">${clips}</div>`
     + `<div class="hero__grade" aria-hidden="true"></div>`
-    + `<div class="hero__card"><h1 class="hero__title" id="hero-title">${lockupMarkup('hero-title-name')}</h1>`
+    // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
+    // duplicate it in hero"); the page's h1 names the game for assistive tech and search
+    + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}<kbd class="cot-c-kbd" lang="en">Enter</kbd></a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
     + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${t('home.hero.trailer')}`

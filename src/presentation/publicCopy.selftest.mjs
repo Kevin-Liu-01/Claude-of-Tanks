@@ -103,8 +103,9 @@ assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trai
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 // Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
 // lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.
-assert.match(homeSource, /<h1 class="hero__title" id="hero-title"><svg class="hero__lockup" viewBox="[^"]+" role="img" aria-labelledby="hero-title-name"><title id="hero-title-name">Claude of Tanks<\/title>/,
-  'the hero names the game with the outlined lockup (SPEC 3.1), its title Latin in every locale');
+assert.match(homeSource, /<h1 class="hero__title home-sr" id="hero-title">Claude of Tanks<\/h1>/,
+  'the hero names the game in its h1 for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
+assert.doesNotMatch(homeSource, /hero__lockup/, 'the hero draws no second lockup');
 assert.doesNotMatch(homeStyles, /html\[lang\^='zh'\][^{]*\{[^}]*-webkit-text-stroke/, 'no outline type on the Chinese hero');
 assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(--hollow-ink,#eef4f8\);-webkit-text-stroke:0;opacity:\.72\}/,
   'the shared hollow treatment is solid ink on Chinese');

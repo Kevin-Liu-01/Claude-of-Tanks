@@ -42,11 +42,10 @@ img{display:block;max-width:100%}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-hero-grade)}
-.hero__card{grid-area:card;align-self:start;max-width:min(1000px,72vw)}
-/* the H1 is the horizontal lockup (SPEC 3.1), set at display size in the sky */
-.hero__title{margin:0;line-height:0;color:var(--ink-1);filter:var(--home-lockup-shadow)}
-.hero__lockup{display:block;width:clamp(520px,60vw,940px);max-width:100%;height:auto}
-.hero__ctas{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s6)}
+/* the reel carries the hero: the actions sit at its foot, the game's name stays in the nav bar (the h1 is for assistive tech) */
+.hero__card{grid-area:card;align-self:end;margin-bottom:var(--s6)}
+.home-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.hero__ctas{display:flex;align-items:center;gap:var(--s4)}
 .hero__trailer{padding-left:var(--s2)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
@@ -181,7 +180,6 @@ img{display:block;max-width:100%}
 html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
 @media (width < 1100px){
-  .hero__card{max-width:none}
   .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 1.6)}
   .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
   .press__stats{grid-template-columns:repeat(2,auto);justify-content:start}
@@ -197,7 +195,6 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__still,.hero__clip{top:0;bottom:auto;height:640px;object-position:54% 50%}
   .hero__reel{bottom:auto;height:640px}
   .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
-  .hero__lockup{width:100%}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
