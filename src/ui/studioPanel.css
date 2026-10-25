@@ -17,6 +17,7 @@
 .cot-studio :is(h2,h3,p){margin:0}
 .cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px}
 .cot-studio .cot-c-chip{font-size:max(var(--fs-floor-11),var(--fs-13))}
+.cot-studio .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */
 .cot-studio [hidden][hidden]{display:none}
 /* Quick (brand-ui SPEC 12.6) leaves the fine controls to Pro; the doubled attribute outranks the rows' own display */
@@ -513,7 +514,7 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
 /* each frame's name stands on a plate, legible over sand and sky */
 .cot-studio-archive .media-archive-card-copy strong{padding:2px var(--s1);border-radius:var(--r1);background:var(--hud-plate)}
-.cot-studio-archive .media-archive-grid{padding-inline-end:var(--s6);
+.cot-studio-archive .media-archive-grid{gap:var(--s3);padding-inline-end:var(--s6);
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent)}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
@@ -549,6 +550,8 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .add{displa
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-rows:50px 40dvh auto auto minmax(0,1fr)}
 /* the six workspace tabs share the bar's width, each a full touch target (they bunched at the left under a false fade) */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .og{flex:1 1 0;min-width:44px}
+/* the open workspace's tab takes its name's width (it was cut to 'Sc…' in an equal share); the glyph tabs share the rest */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .og:has(.gh>button[aria-current=true]){flex:0 0 auto}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:first-child{justify-content:center;min-width:44px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
 /* a phone's header keeps the palette's door (Commands, as a glyph), Export and Exit: the frame formats, Quick and Pro,
@@ -584,6 +587,10 @@ body[data-cot-height='short'] .st-out{gap:0;padding-block:var(--s2)}
 body[data-cot-height='short'] .st-out .gh{padding:0}
 /* the queue ends above the transport row in a short window */
 body[data-cot-height='short'] .st-queue{max-height:calc(100dvh - 50px - 35px - var(--s4))}
+/* a short touch window gives the transport its touch row (its end buttons ran off the screen's foot) and its header the
+   palette's way: the frame formats, Quick and Pro and undo are commands there, as on a phone */
+body[data-cot-height='short'][data-cot-input='coarse'] .st-app{grid-template-rows:50px minmax(0,1fr) 0 44px}
+body[data-cot-height='short'] :is(.st-head .st-mode,.st-head>.cot-c-seg,.st-head .hist){display:none}
 body[data-cot-height='short'] .st-shelf{display:none}
 body[data-cot-height='short'] :is(.st-out,.st-insp){grid-row:2/span 2}
 /* a short window (a landscape phone): the timeline keeps its transport (the lanes need the room the workspaces and the
