@@ -6,7 +6,6 @@ type SettingsIconTone = 'steel' | 'amber' | 'red' | 'green' | 'cyan' | 'violet';
 export interface SettingsIconSpec {
   readonly id: UiIconId;
   readonly tone?: SettingsIconTone;
-  readonly badge?: string;
 }
 
 export const SETTINGS_ACTION_ICONS = Object.freeze({
@@ -18,9 +17,9 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   selfRight: { id: 'reload', tone: 'amber' },
   fire: { id: 'fireGun', tone: 'red' },
   sniperToggle: { id: 'scope', tone: 'cyan' },
-  shell1: { id: 'shell', tone: 'amber', badge: '1' },
-  shell2: { id: 'shell', tone: 'amber', badge: '2' },
-  shell3: { id: 'shell', tone: 'amber', badge: '3' },
+  shell1: { id: 'shell', tone: 'amber' },
+  shell2: { id: 'shell', tone: 'amber' },
+  shell3: { id: 'shell', tone: 'amber' },
   supplyAmmo: {id:'shell',tone:'amber'},
   supplyHeal: {id:'medkit',tone:'green'},
   aerialVision: { id: 'scope', tone: 'green' },

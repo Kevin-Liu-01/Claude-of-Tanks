@@ -34,7 +34,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.ts';
+import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -271,7 +271,7 @@ const SETTINGS_CSS = `
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px;
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
-.cot-set-row:last-child{border-bottom:0;}
+.cot-set-row:not(:has(~ .cot-set-row)){border-bottom:0;}
 .cot-set-row:hover{background:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
@@ -279,9 +279,6 @@ const SETTINGS_CSS = `
 /* a setting's glyph: one grey, the accent only on a shell slot's number */
 .cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;color:var(--ink-3);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
-.cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
-  min-width:12px;height:12px;padding:0 2px;display:grid;place-items:center;border-radius:2px;
-  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
 .cot-setting-label-text{min-width:0;}
 /* the rows in a conflict: the notice's warning tone, no stripe */
 .cot-set-row.conflict{background:color-mix(in srgb,var(--text-warn) 9%,transparent);}
@@ -290,7 +287,7 @@ const SETTINGS_CSS = `
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
 .cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-4);}
-.cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
+.cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
@@ -299,6 +296,7 @@ const SETTINGS_CSS = `
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
 .cot-chip.padcol{width:72px;}
+.cot-chip svg{display:inline-block;width:14px;height:14px;vertical-align:middle;}
 .cot-chip:hover{background:var(--surface-hover);}
 .cot-chip:active{transform:translateY(var(--btn-press-drop));}
 .cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:inset 0 0 0 1px var(--line-1);}
@@ -307,7 +305,7 @@ const SETTINGS_CSS = `
 .cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
 .cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-seg button:focus-visible{box-shadow:var(--focus-ring);}
 .cot-set-slider input[type=range]:focus{outline:none;}
-.cot-set-slider input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cot-set-slider input[type=range]:focus-visible{box-shadow:var(--focus-ring);}
 @keyframes cotChipPulse{50%{opacity:.7;}}
 /* the binding conflict is the kit's notice (components/notices.css); the panel only places and shows it */
 .cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;}
@@ -360,7 +358,7 @@ const SETTINGS_CSS = `
 .cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
-.cot-set-preview{margin:10px 10px 4px;max-width:640px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
+.cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
@@ -416,19 +414,22 @@ body.cot-hud-aerial .cot-hints{display:none;}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:18px;margin:4px 10px 8px;padding:10px 14px;
-  background:var(--surface-page);border:1px solid var(--line-control);color:var(--ink-1);}
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
+  border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
 .cot-a11y-preview .squad{color:var(--team-squad);border-radius:50%;outline:var(--team-squad-ring) solid var(--ink-1);}
 .cot-a11y-preview .sample{margin-left:auto;font-size:var(--fs-16);font-weight:600;}
-.cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px 8px;background:var(--hud-plate);
-  border:1px solid var(--line-3);}
+.cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px var(--s2);background:var(--hud-plate);
+  box-shadow:var(--ring-2);}
 .cot-set-seg.glyphs button{min-width:40px;padding:0 var(--s2);}
 .cot-set-seg .sw{display:inline-flex;gap:2px;}
 .cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
 .cot-a11y-custom{display:flex;align-items:center;gap:var(--s2);}
-.cot-set-refused{margin:var(--s2) var(--s2) 0;}
+/* each custom colour beside its team's shape (a team is shape plus colour) */
+.cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
+.cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
+.cot-set-refused{margin:var(--s2) 0 0;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -528,7 +529,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn ghost reset cot-c-btn cot-c-btn--ghost" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn reset cot-c-btn" type="button">${t('settings.reset')}</button>` +
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button">${t('settings.leave')}</button>` +
     `<button class="cot-set-btn resume cot-c-btn cot-c-btn--primary" type="button">${t('settings.resume')}</button></div>` +
     `</div>`;
@@ -578,7 +579,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const icon = el('span', `cot-setting-icon tone-${spec.tone || 'steel'}`, lb);
     icon.setAttribute('aria-hidden', 'true');
     icon.innerHTML = uiIconSVG(spec.id, 16);
-    if (spec.badge) icon.dataset.badge = spec.badge;
     el('span', 'cot-setting-label-text', lb).textContent = label;
     return lb;
   }
@@ -738,6 +738,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- CONTROLS tab -----------------------------------------------------------
   const rowByAction = new Map<ActionId, ActionBindingRow>();
+  /** An arrow key's cap: the sprite's arrow and its spoken name (the input layer labels them ↑ ↓ ← →). */
+  const ARROW_KEY_GLYPHS: Readonly<Record<string, readonly [UiIconId, string]>> = {
+    '↑': ['moveForward', 'settings.bind.arrowUp'], '↓': ['moveBack', 'settings.bind.arrowDown'],
+    '←': ['steerLeft', 'settings.bind.arrowLeft'], '→': ['steerRight', 'settings.bind.arrowRight'],
+  };
 
   function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
     if (slotKey === 'pad') {
@@ -815,10 +820,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         if (capture && capture.chip === chip) continue; // keep listening label
         const text = chipText(def.id, slotKey);
         const empty = text === t('settings.bind.empty');
-        // an unbound slot is an empty cap (no dash in view), named for assistive tech
-        chip.textContent = empty ? '' : text;
+        const arrow = ARROW_KEY_GLYPHS[text];
+        // an unbound slot is an empty cap (no dash in view) and an arrow key the sprite's arrow, each named for
+        // assistive tech
+        if (arrow) chip.innerHTML = uiIconSVG(arrow[0], 14);
+        else chip.textContent = empty ? '' : text;
         chip.classList.toggle('empty', empty);
-        if (empty) chip.setAttribute('aria-label', t('settings.bind.unbound'));
+        const name = empty ? t('settings.bind.unbound') : arrow ? t(arrow[1]) : '';
+        if (name) chip.setAttribute('aria-label', name);
         else chip.removeAttribute('aria-label');
       }
     }
@@ -851,7 +860,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     num.min = String(toD(min));
     num.max = String(toD(max));
     num.step = o.dispStep || '0.05';
-    el('span', 'unit', wrap).textContent = o.unit || '×';
+    el('span', 'unit', wrap).textContent = o.unit || ''; // a multiplier needs no unit mark
     const sync = () => {
       const v = input.getSettings()[key];
       range.value = String(v);
@@ -1420,9 +1429,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const customRow = el('div', 'cot-set-row', vision);
     settingLabel(customRow, t('settings.a11y.preset.custom'), A11Y_ICONS.colors);
     const custom = el('div', 'cot-a11y-custom', customRow);
+    const shape = (side: string, entity: string): void => {
+      const mark = el('span', `cot-a11y-shape ${side}`, custom);
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = entity;
+    };
+    shape('own', '&#9650;');
     const ownPick = el('input', 'cot-c-swatch', custom);
     ownPick.type = 'color';
     ownPick.setAttribute('aria-label', t('hud.team.ally'));
+    shape('enemy', '&#9670;');
     const enemyPick = el('input', 'cot-c-swatch', custom);
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
@@ -1465,7 +1481,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
     const motion = groupCard(body, t('settings.a11y.motion'));
     a11ySeg<MotionMode>(motion, t('settings.a11y.reduceMotion'), A11Y_ICONS.motion,
-      [['system', t('settings.a11y.system')], ['reduce', t('settings.on')], ['full', t('settings.off')]],
+      [['system', t('settings.a11y.system')], ['full', t('settings.off')], ['reduce', t('settings.on')]],
       () => prefs().motion, (mode) => { saveAccessibility({ motion: mode }); });
     a11ySlider(motion, t('settings.a11y.shake'), A11Y_ICONS.shake, 'shake', RANGES.shake);
     a11ySlider(motion, t('settings.a11y.flash'), A11Y_ICONS.flash, 'flash', RANGES.flash);
@@ -1493,7 +1509,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     body.textContent = '';
     const langCard = groupCard(body, t('settings.language.title'));
     const langRow = el('div', 'cot-set-row', langCard);
-    settingLabel(langRow, t('settings.language.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
+    settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
     const langSeg = el('div', 'cot-set-seg', langRow);
     const langBtns: HTMLButtonElement[] = [];
     const currentLocale = getLocale();

@@ -22,10 +22,10 @@
 .cot-c-btn{--h:var(--btn-h-m);box-sizing:border-box;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;
   height:var(--h);min-width:var(--h);padding:0 22px;border:0;border-radius:var(--control-radius);
   background:var(--btn-media-fill);box-shadow:var(--ring-3);color:var(--ink-1);cursor:pointer;text-decoration:none;
-  font:600 var(--fs-15)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;
+  font:600 max(var(--fs-floor-12),var(--fs-15))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;
   transition:background-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter),transform var(--dur-instant) var(--ease-enter)}
 .cot-c-btn svg{width:18px;height:18px}
-.cot-c-btn--36{--h:var(--btn-h-s);padding:0 14px;font-size:var(--fs-13)}
+.cot-c-btn--36{--h:var(--btn-h-s);padding:0 14px;font-size:max(var(--fs-floor-12),var(--fs-13))}
 .cot-c-btn--56{--h:var(--btn-h-l);padding:0 26px;font-size:var(--fs-16)}
 .cot-c-btn--64{--h:var(--btn-h-xl);padding:0 30px;font-size:var(--fs-18)}
 .cot-c-btn--icon{padding:0;width:var(--h)}

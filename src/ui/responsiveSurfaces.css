@@ -186,6 +186,14 @@ body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
 body[data-cot-width='phone'] :is(.cot-set-seg button,.cot-set-seg .cot-time-choice){flex:1 1 auto}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
+/* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
+body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
+/* touch: every Settings control meets the control floor (44 px) */
+body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-set-slider input[type=range]{height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
 body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}

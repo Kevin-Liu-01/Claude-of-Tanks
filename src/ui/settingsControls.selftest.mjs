@@ -46,11 +46,9 @@ for (const [key, spec] of Object.entries({ ...SETTINGS_ACTION_ICONS, ...SETTINGS
   assert.ok(iconIds.has(spec.id), `${key} references a shared UI icon`);
   assert.match(uiIconSVG(spec.id, 16), /^<svg[\s\S]*<\/svg>$/, `${key} renders valid inline SVG`);
 }
-assert.deepEqual([
-  SETTINGS_ACTION_ICONS.shell1.badge,
-  SETTINGS_ACTION_ICONS.shell2.badge,
-  SETTINGS_ACTION_ICONS.shell3.badge,
-], ['1', '2', '3'], 'shell icons keep their slot identity');
+// the shell slots' number is their label's (Shell slot 1), not a badge over the glyph (gauntlet 250: a badge read as a
+// stray accent chip against the label)
+assert.ok(['shell1', 'shell2', 'shell3'].every((id) => !('badge' in SETTINGS_ACTION_ICONS[id])), 'shell slots carry no badge');
 // The armour-overlay glyph follows the one icon rule (brand-ui BUI-F4): drawn once in the sprite, coloured by its
 // row's tone through currentColor, never with baked thickness colours.
 const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
