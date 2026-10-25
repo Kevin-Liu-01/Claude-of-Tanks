@@ -62,7 +62,9 @@ const PR_HEAD = {
   // place on the avenue's north-west side (props roadClearanceTargets, 59 m). As Suzhou Creek (the map-revival lane,
   // 2026-10-05) it replays that district as PR #9's head 5d2461283 seated it (TOWN_PLANS, TOWN_ROW_PLANS), the creek
   // through it (OVER_WATER below)
-  blackglass: { carriageway: 9, structures: [
+  // (setPieces: the Public Garden's bandstand on its seat, 2424c6a94a, 229: the owner's "other decorations and landmarks
+  // ... same should apply to ... suzhou")
+  blackglass: { carriageway: 9, setPieces: 1, structures: [
     [-254.16, -252.85, 37.15, 37.18], [-281.08, -227.61, 27.81, 28.03], [-263.82, -203.71, 34.76, 34.49],
     [-241.99, -183.91, 38.16, 37.03], [-197.23, -186.09, 11.01, 11.06], [-176.85, -167.41, 33.18, 33.27],
     [-205.49, -139.99, 22.07, 22.2], [-157, -148.08, 34.58, 34.7], [-186.15, -120.18, 31.13, 31.09],

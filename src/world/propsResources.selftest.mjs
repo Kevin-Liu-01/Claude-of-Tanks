@@ -56,6 +56,8 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'make
     const noi = null, aniso = 4;
     // a map without a regional architecture kit (maps/regional): the kit's weathered materials stay absent
     const regionalArchitecture = null;
+    // (world 240, 71aaa6e0c3) the Aegis Crossing bridge's own ashlar is made only on cliffbridge's regional kit
+    const bridgeAshlar = null;
     const grimeTex = makeGrimeTexture(); // Completed before the material stage.
     ${source.slice(start, end)}
     return { mats, grimeTex, retainedSurfaceMaterials };
