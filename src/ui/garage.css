@@ -951,7 +951,8 @@ html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wr
   border:1px solid var(--accent-lo);padding:1px var(--s1);text-transform:uppercase;}
 .cot-eqtile.inother .tag{color:var(--ink-3);border-color:var(--line-3);
   background:var(--surface-plate);}
-.cot-eqtile.locked{cursor:default;opacity:.55;}
+/* a locked tile reads as unavailable by its tag and its quiet plate, its words still legible (opacity took them to 2.9:1) */
+.cot-eqtile.locked{cursor:default;opacity:.8;}
 .cot-eqtile.locked :is(.n,.e){color:var(--ink-3);}
 .cot-eqtile.remove .n{color:var(--ink-3);}
 .cot-eqtile.remove svg{opacity:.55;}
@@ -1546,6 +1547,8 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-
 .cot-lt-id{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-1);
   text-shadow:var(--stage-halo);}
 .cot-lt-id>span{display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;}
+/* the tier reads as one word in Chinese (X级), the gap that spaces 'Tier X' would split it */
+html[lang^='zh'] .cot-lt-id .lt-tier{gap:0;}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
 .cot-lt-id .lt-tier b{color:var(--accent);}
