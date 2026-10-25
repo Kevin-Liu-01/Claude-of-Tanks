@@ -696,13 +696,24 @@
         if (nav && nav.onLine === false) return 'offline';
         return 'stalled';
       }
-      const MESSAGES = {
+      const MESSAGES = /^\/cn(?:\/|$)/.test(location.pathname) ? {
+        chunk: '游戏文件下载失败',
+        driver: '显卡驱动无法启动。请关闭其他 3D 标签页或重新加载。',
+        script: '游戏启动时出错。请重新加载再试。',
+        slow: '当前网络下加载时间比预期更长。可以继续等待或重新加载。',
+        offline: '已有一段时间没有下载任何内容，请检查网络连接后重新加载。',
+        stalled: '加载已停滞。一分钟内没有收到任何内容，请重新加载再试。',
+        offlineRetry: '。你似乎已离线，网络恢复后游戏会自动重试。',
+        reload: '重新加载',
+      } : {
         chunk: 'A game file failed to download',
         driver: 'The graphics driver refused to start. Close other 3D tabs or reload.',
         script: 'The game hit an error while starting. Reload to try again.',
         slow: 'Loading is taking longer than expected on this connection. Keep waiting or reload.',
         offline: 'Nothing has downloaded for a while, so check your connection and reload.',
         stalled: 'Loading stalled. Nothing has arrived for a minute, so reload to try again.',
+        offlineRetry: '. You appear to be offline. The game retries when the connection returns.',
+        reload: 'Reload',
       };
       function describe(reason) {
         const kind = classify(reason);
@@ -710,7 +721,7 @@
         const nav = globalThis.navigator;
         let text = MESSAGES[kind];
         if (kind === 'chunk' && file) text += ' (' + file + ')';
-        if (kind === 'chunk' && nav && nav.onLine === false) text += '. You appear to be offline. The game retries when the connection returns.';
+        if (kind === 'chunk' && nav && nav.onLine === false) text += MESSAGES.offlineRetry;
         return { kind, text };
       }
       // A failed import names the entry script, not the dependency that 404ed;
@@ -762,7 +773,7 @@
         if (!retry && window.__GAME_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
-          retry.textContent = 'Reload';
+          retry.textContent = MESSAGES.reload;
           retry.title = verdict.text;
           retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);color:var(--btn-primary-ink);font:700 12px var(--font-ui);cursor:pointer';
           document.body.appendChild(retry);

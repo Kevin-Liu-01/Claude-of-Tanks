@@ -377,4 +377,12 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   assert.equal(bare.recovery(), true, 'without fetch the watchdog keeps its plain bounded recovery');
 }
 
+// (2026-10-25 gauntlet, line 8) the stop states speak the route's language: /cn gets the Chinese table, the runtime
+// retry button and the offline note included
+const recoverySource = match[1];
+assert.match(recoverySource, /MESSAGES = \/\^\\\/cn\(\?:\\\/\|\$\)\/\.test\(location\.pathname\) \? \{/, 'the stop messages pick their table by route');
+for (const key of ['chunk', 'driver', 'script', 'slow', 'offline', 'stalled', 'offlineRetry', 'reload']) {
+  assert.equal((recoverySource.match(new RegExp(`\\n\\s+${key}: '`, 'g')) || []).length, 2, `${key} has its en and zh text`);
+}
+assert.match(recoverySource, /retry\.textContent = MESSAGES\.reload;/, 'the runtime retry button reads the table');
 console.log('chunkRecovery.selftest: bounded failures recover without reloading healthy slow stages');
