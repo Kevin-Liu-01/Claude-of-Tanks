@@ -370,9 +370,12 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
       P.add('hullDetail', box(0.40, 0.022, 0.026), side * 1.29, 1.362, z);
     }
     for (let k = 0; k < 14; k++) P.add('hullDetail', KIT.cylY(0.016, 0.016, 0.012, 8), side * 1.31, 1.396, 2.10 - k * 0.32);
-    // filler cap and lift handles on the deck behind the turret
-    P.add('hull', cylY(0.075, 0.08, 0.026, 14), side * 0.98, 1.39, -0.98);
-    P.add('hullDark', torus(0.068, 0.008, 14), side * 0.98, 1.403, -0.98, Math.PI / 2, 0, 0);
+    // filler caps on the deck behind the turret, clear of the bustle (whose underside is 1.51 over z -0.98) and nearly
+    // flush with the 1.378 deck, each ring lying flat on its cap (KIT.torus lies flat): a standing ring under the gun's
+    // rear arc held its depression up to full elevation from yaw 136 to 146 (gun-depression-sweep, against the
+    // pre-batch sweep)
+    P.add('hull', cylY(0.075, 0.08, 0.016, 14), side * 0.98, 1.386, -1.45);
+    P.add('hullDark', torus(0.066, 0.006, 14), side * 0.98, 1.394, -1.45);
   }
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) P.add('hullDetail', box(0.46, 0.025, 0.035),
