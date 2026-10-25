@@ -306,13 +306,29 @@ main thread only rendering, remove the hitches?
 - `main.ts` records why solo stays in-page: the multiplayer modules "duplicated work without adding any useful
   authority boundary" for a local battle.
 
+### The census's rows
+
+Verdant, the base build, warm battles, live frames, on the loaded Mac:
+
+| Room | Frame work | Fixed-step stages | Share | Steps a frame | A step |
+|---|---|---|---|---|---|
+| 7 v 7 | 23.9 ms | 2.6 ms (bots 0.6, movement 1.4) | 11 % | 1.67 | 1.55 ms |
+| 14 v 14 | 33.1 ms | 5.6 ms (bots 1.5, movement 3.2) | 17 % | 2.31 | 2.43 ms |
+| 21 v 21 | 42.7 ms | 10.3 ms (bots 2.7, movement 6.0) | 24 % | 2.99 | 3.43 ms |
+
+The step's share grows with the room, and it feeds itself: a slower frame owes more fixed steps the next frame, up to
+the accumulator's cap. That is the 21 v 21 battle's 3 steps a frame at a 50 ms median.
+
 ### The call
 
-Not the spike lever. The hitches are presentation and GPU work that stays on the main thread whichever thread steps
+**Not the spike lever.** The hitches are presentation and GPU work that stays on the main thread whichever thread steps
 the battle.
 
-It is a frame-rate lever for the largest rooms on weak CPUs: up to 10–15 % of the frame at 21 v 21. The census's 21 v
-21 rows say how much.
+**A real frame-rate lever for the largest rooms.**
 
-If it is taken, it is its own lane: the solo battle as a local host, in the existing multiplayer path, with parity
-receipts per mode.
+- At 21 v 21 the step is a quarter of the main thread's work here. On a machine holding 60 fps (one step a frame, about
+  2–3.5 ms) it is 12–20 % of the frame.
+- Off the main thread it no longer compounds: a slow frame owes the Worker steps, not itself.
+
+If it is taken, it is its own lane: the solo battle as a local host in the existing multiplayer path, with parity
+receipts per mode. Recommended after the GPU first-use work below, which is what the census's worst hitches are.
