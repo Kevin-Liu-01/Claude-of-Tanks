@@ -31,6 +31,8 @@ import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
+import { refineCastLoft } from '../factoryGeometry.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -3003,7 +3005,7 @@ export function buildType90(P: MiscBuilderPort): void {
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
 function buildType74(P: MiscBuilderPort): void {
-  const { box, cylY, cylZ, frustum, openRackGrid, polyMultiLoft, torus, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, openRackGrid, polyMultiLoft, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -3070,13 +3072,51 @@ function buildType74(P: MiscBuilderPort): void {
   P.add('hull', box(2.00, 0.055, 0.60), 0, 1.4195, -2.99);                     // rear rack shelf 1.447 top (ref 1.447 flat, z -2.69..-3.29; bottom 1.392 = sprocket shoe crown 1.355 + §B4 margin)
   P.add('hull', box(1.90, 0.10, 0.08), 0, 1.246, -3.30);                       // tail corner step (ref 1.296 @ -3.23 -> lip 1.27)
   fenders(P, 1.05, 1.57, 1.375, -3.42, 3.05, 0.028);                         // full length: the rear flaps hang from the fender end over the sprocket
+  // owner 2026-10-25 (the modernisation): the fender's support gussets along its outer edge and a weld seam along the
+  // sponson band (the long plain side read as a slab). Gussets hang 0.075 under the 1.375 fender line, 0.2 m clear of
+  // the dead track's top run.
+  for (const s of [-1, 1]) {
+    for (const z of [2.30, 1.40, 0.50, -0.40, -1.30, -2.20]) {
+      P.add('hullDetail', box(0.026, 0.075, 0.07), s * 1.52, 1.3375, z);
+      P.add('hullDetail', box(0.40, 0.022, 0.026), s * 1.31, 1.352, z);
+    }
+    P.add('hullDark', box(0.012, 0.016, 4.55), s * 1.5065, 1.08, -0.03);
+    for (let k = 0; k < 14; k++) P.add('hullDetail', cylX(0.014, 0.012, 8), s * 1.5075, 1.27, 2.05 - k * 0.32);
+  }
   // driver LEFT: flush hatch + periscopes on the fore deck
   P.add('hull', cylY(0.23, 0.23, 0.035, 14), -0.52, 1.398, 2.00);
   P.add('hullDark', cylY(0.236, 0.236, 0.012, 14), -0.52, 1.393, 2.00);
   periscope(P, 'hullDetail', -0.52, 1.425, 2.27);
   periscope(P, 'hullDetail', -0.26, 1.425, 2.27);
-  // rear deck louvres
-  for (let k = 0; k < 4; k++) P.add('hullDark', box(2.20, 0.016, 0.34), 0, 1.372, -2.10 - k * 0.42);
+  // ENGINE DECK (owner 2026-10-25, the modernisation: the four flat dark louvre slabs read as a bare plate). On the flat
+  // 1.395 deck behind the ring, two radiator grilles in raised frames over dark wells, a hinged access plate between
+  // them and two filler caps; on the 1.395 -> 1.372 rear deck, the cooling-air louvre banks. Everything stands at most
+  // 2.5 cm proud: the bustle's floor (world 1.47) swings over all of it.
+  for (const s of [-1, 1]) {
+    const gx = s * 0.56, gz = -1.48, gw = 0.82, gd = 0.66;
+    P.add('hullDark', box(gw - 0.04, 0.006, gd - 0.04), gx, 1.396, gz);                 // the well under the mesh
+    for (const dz of [-1, 1]) P.add('hull', box(gw, 0.024, 0.035), gx, 1.405, gz + dz * (gd / 2 - 0.0175));
+    for (const dx of [-1, 1]) P.add('hull', box(0.035, 0.024, gd - 0.07), gx + dx * (gw / 2 - 0.0175), 1.405, gz);
+    P.add('hullDetail', openRackGrid(gw - 0.07, gd - 0.07, 0.010, 9, 12), gx, 1.404, gz); // the mesh, inside the frame
+    for (const dz of [-0.2, 0.2]) P.add('hullDetail', box(0.10, 0.018, 0.025), gx + s * (gw / 2 - 0.09), 1.42, gz + dz); // lift handles
+    // cooling-air louvre bank on the sloped rear deck: six slats on their own frame, the deck falling 3 cm over it
+    const lz0 = -2.06, lz1 = -2.66;
+    P.add('hullDark', box(0.86, 0.006, lz0 - lz1), gx, 1.382, (lz0 + lz1) / 2, -0.031, 0, 0);
+    for (let k = 0; k < 6; k++) {
+      const z = lz0 - 0.05 - k * ((lz0 - lz1 - 0.10) / 5);
+      const y = 1.395 + (z + 2.00) * 0.0311 + 0.010;
+      P.add('hullDetail', box(0.80, 0.012, 0.075), gx, y, z, -0.42, 0, 0);
+    }
+    for (const dx of [-1, 1]) P.add('hull', box(0.03, 0.022, lz0 - lz1), gx + dx * 0.43, 1.392, (lz0 + lz1) / 2, -0.031, 0, 0);
+    // filler cap with its hinge lug, inboard of the fender stowage
+    P.add('hull', cylY(0.075, 0.08, 0.026, 14), s * 1.02, 1.408, -1.02);
+    P.add('hullDark', torus(0.068, 0.008, 14), s * 1.02, 1.421, -1.02, Math.PI / 2, 0, 0);
+    P.add('hullDetail', box(0.04, 0.03, 0.05), s * 1.02, 1.41, -0.92);
+  }
+  // the hinged access plate between the grilles, with its hinge bar and handle
+  P.add('hull', box(0.26, 0.022, 0.64), 0, 1.405, -1.48);
+  P.add('hullDark', box(0.26, 0.016, 0.03), 0, 1.402, -1.165);
+  P.add('hullDetail', box(0.12, 0.016, 0.02), 0, 1.42, -1.70);
   for (const s of [-1, 1]) {
     // §B4: flaps hang ABOVE the exposed wrap arcs (idler shoe top 1.075 at
     // z 3.12; sprocket shoe top 1.071 at z -3.40)
@@ -3135,6 +3175,9 @@ function buildType74(P: MiscBuilderPort): void {
   // touching row. The Type 74 carries five ~740 mm wheels (2R/pitch 0.86, a 12 cm gap); the dead
   // track still rides on their tops, as on the real vehicle.
   buildRunningGear(P, {
+    // owner 2026-10-25 (the Type 74 modernisation): the fleet's fitted shoe (abramsSourceXTrackShoe.ts) in the Japanese
+    // staggered-rib pattern replaces the native flat recipe, and the loaded run fits the live wheel rims
+    trackShoeBuilder: buildFleetTrackShoe, fitLoadedRun: true, dedupeLoopPoints: true,
     style: 'rubber', wheelR: 0.37, wheelW: 0.26, wheelY: 0.425, xc: XC,
     wheelZs,
     sprocket: { z: -3.00, y: 0.90, r: 0.26 }, idler: { z: 2.93, y: 0.64, r: 0.28 },
@@ -3167,7 +3210,10 @@ function buildType74(P: MiscBuilderPort): void {
     [-0.63, -1.78], [-0.91, -1.34], [-1.08, -0.78], [-1.14, -0.18],
     [-1.11, 0.34], [-0.96, 0.76], [-0.70, 1.08], [-0.36, 1.29],
   ];
-  P.add('turret', toCreasedNormals(polyMultiLoft(type74CastPlan, [
+  // owner 2026-10-25 ("update the type 74 … no longer look really outdated"): the measured stations and rings below are
+  // refined into a continuous casting (refineCastLoft: 36 plan stations through the 18 authored, nine rings rounding the
+  // shoulder and crown inside the authored envelope); the 40° crease keeps the deliberate armour breaks only.
+  const type74Cast = refineCastLoft(type74CastPlan, [
     { height: -0.015, inset: 0.72 },
     {
       height: [0.075, 0.075, 0.07, 0.065, 0.06, 0.06, 0.07, 0.085, 0.10,
@@ -3192,11 +3238,13 @@ function buildType74(P: MiscBuilderPort): void {
         0.53, 0.55, 0.58, 0.60, 0.60, 0.58, 0.54, 0.50, 0.46],
       centerHeight: 0.465,
     },
-  ]), Math.PI / 4.5));
+  ]);
+  P.add('turret', toCreasedNormals(polyMultiLoft(type74Cast.plan, type74Cast.rings), Math.PI / 4.5));
   P.turretG.userData.japaneseCastTurretReceipt = {
     family: 'type74-leopard-generation-cast',
-    planStations: type74CastPlan.length,
-    verticalRings: 5,
+    authoredStations: type74CastPlan.length,
+    planStations: type74Cast.plan.length,
+    verticalRings: type74Cast.rings.length,
     cheekBreaksPerSide: 4,
     flatCrown: true,
     circularLathe: false,
@@ -3251,6 +3299,12 @@ function buildType74(P: MiscBuilderPort): void {
   P.add('turretDark', box(0.014, 0.34, 0.36), -0.62, 0.29, 1.19, 0, 0.06, 0);
   P.add('turretDetail', box(0.06, 0.20, 0.06), -0.58, 0.10, 1.02);
   P.add('turretDetail', box(0.028, 0.028, 0.62), -0.88, 0.29, 0.62, 0, -0.35, 0);
+  // owner 2026-10-25 (the modernisation): the searchlight's guard bars over the glass, the cooling fins on its back
+  // half and the door hinge pins (the bare box read as a crate)
+  for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.014, 0.25, 0.018), -0.745 + k * 0.05, 0.30, 1.433, 0, 0.06, 0);
+  for (const dy of [-0.13, 0.13]) P.add('turretDetail', box(0.30, 0.016, 0.018), -0.615, 0.30 + dy, 1.433, 0, 0.06, 0);
+  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.40, 0.035, 0.014), -0.625, 0.487, 1.03 + k * 0.055, 0, 0.06, 0);
+  for (const dy of [-0.10, 0.10]) P.add('turretDetail', cylY(0.016, 0.016, 0.07, 8), -0.395, 0.29 + dy, 1.40);
   // stowage BASKETS hugging the bustle flanks (identity: turret rear sides;
   // pipe rails + mesh + cloth load; outer face ±1.30 inside the §D ±1.59
   // width guard; front-view 1.92-2.0 band at x 1.04-1.31 = the ref's own)
@@ -3291,7 +3345,11 @@ function buildType74(P: MiscBuilderPort): void {
   trunnionRoll(P, 0.22, 0.62, { ballR: 0.19, ballZ: 0.18 });
   P.addGunExtra(cylZ(0.16, 0.28, 12, 0.135), 0, 0, 0.30);                      // cast collar taper
   P.addGunExtraDark(cylZ(0.024, 0.09, 8), 0.25, 0.05, 0.20);                   // coax port RIGHT of the saddle
+  // owner 2026-10-25 (the modernisation): the canvas mantlet boot the Type 74 fights in (it rides the gun), from the
+  // cast face round the saddle to the collar, its folds held by three straps; the cast brow keeps its seat above it
   P.add('turret', box(0.64, 0.18, 0.34), 0, 0.32, 1.30, -0.52, 0, 0);          // cast brow over the saddle
+  P.add('gunMountCanvasSkin', cylZ(0.205, 0.30, 18, 0.255), 0, 0, 0.17);
+  for (const [z, r] of [[0.08, 0.250], [0.17, 0.233], [0.26, 0.214]]) P.add('gunMountDark', torus(r, 0.011, 18), 0, 0, z);
   buildGun(P, { len: 3.91, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.15 });
   P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 3.85);                             // muzzle reference step at the measured overall-length station
   muzzleBore(P, 0.062, 3.895);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)

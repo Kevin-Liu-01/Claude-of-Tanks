@@ -89,7 +89,9 @@ expect('k21', 'bmp3m_dragun125'); // owner 2026-09-23 (round 46): the K21 takes 
 expect('pt91m', 't90_1992'); // owner 2026-10-06: actual T-72BU donor running gear
 assert.equal(resolveNationWheel(TANK_SPECS.pt91m).donor, resolveNationWheel(TANK_SPECS.t72bu).donor);
  expect('t72m1_jaguar', 'pl01'); expect('upior', 'bwp1');
-expect('type10_tk_x', 'type10_tk_x'); expect('raiju_ifv', 'type10_tk_x'); expect('type74', 'type90_kyumaru'); expect('hayate_ifv', 'type90_kyumaru');
+expect('type10_tk_x', 'type10_tk_x'); expect('raiju_ifv', 'type10_tk_x'); expect('hayate_ifv', 'type90_kyumaru');
+// owner 2026-10-25 (the Type 74 / STB-1 modernisation): their exposed wheels take the Type 10 face by exception
+expect('type74', 'type10_tk_x'); expect('stb1', 'type10_tk_x');
 expect('carro45t', 'c1_ariete_proto_serie1'); expect('c1_ariete_preserie', 'c1_ariete_proto_serie1'); expect('c2_ariete', 'c1_ariete_proto_serie1', 'donor');
 expect('leclerc_s2', 'leclerc_sxxi'); expect('leclerc_sxxi', 'leclerc_sxxi'); expect('leclerc_s1', 'leclerc_sxxi'); expect('amx56', 'leclerc_sxxi');
 expect('amx30', 'amx40_proto'); expect('amx40_proto', 'amx40_proto'); expect('amx40', 'amx40_proto', 'donor');

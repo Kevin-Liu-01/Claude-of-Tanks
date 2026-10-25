@@ -5,6 +5,8 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, convexSlab } from './kit.ts';
+import { refineCastLoft } from '../factoryGeometry.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
@@ -360,6 +362,18 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   // Thin broken fenders and fully exposed native track run.  Source has no
   // full-height side skirts; the five suspension stations remain countable.
   fenders(P, 1.02, 1.555, 1.385, -2.72, 2.72, 0.028);
+  // owner 2026-10-25 (the modernisation): fender support gussets along the outer edge (0.18 m over the 1.13 top run)
+  // and a bolt course along the shoulder return
+  for (const side of [-1, 1]) {
+    for (const z of [2.20, 1.30, 0.40, -0.50, -1.40, -2.30]) {
+      P.add('hullDetail', box(0.026, 0.075, 0.07), side * 1.505, 1.3475, z);
+      P.add('hullDetail', box(0.40, 0.022, 0.026), side * 1.29, 1.362, z);
+    }
+    for (let k = 0; k < 14; k++) P.add('hullDetail', KIT.cylY(0.016, 0.016, 0.012, 8), side * 1.31, 1.396, 2.10 - k * 0.32);
+    // filler cap and lift handles on the deck behind the turret
+    P.add('hull', cylY(0.075, 0.08, 0.026, 14), side * 0.98, 1.39, -0.98);
+    P.add('hullDark', torus(0.068, 0.008, 14), side * 0.98, 1.403, -0.98, Math.PI / 2, 0, 0);
+  }
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) P.add('hullDetail', box(0.46, 0.025, 0.035),
       side * 1.30, 1.415, -2.45 + i * 0.92);
@@ -397,6 +411,9 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   // Tire width 0.30 (round 40 axial fit): the Type 90 forging this hull draws is 1.38 × its radius wide; the 0.26
   // band and the 0.42 track bounded it to 0.60 of its proportion.
   buildRunningGear(P, {
+    // owner 2026-10-25 (the STB-1 modernisation): the fleet's fitted shoe in the Japanese staggered-rib pattern, the
+    // loaded run fitted to the live wheel rims
+    trackShoeBuilder: buildFleetTrackShoe, fitLoadedRun: true, dedupeLoopPoints: true,
     style: 'rubber', dishR: 0.86, wheelR: 0.35, wheelW: 0.30,
     wheelY: 0.42, xc: 1.38,
     wheelZs,
@@ -426,7 +443,10 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
   ];
   const stbCastBaseY = -0.045;
   const raiseSTBCastY = (y: number): number => stbCastBaseY + (y - stbCastBaseY) * 2;
-  P.add('turret', toCreasedNormals(polyMultiLoft(stbCastPlan, [
+  // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly"): the measured stations and rings are refined
+  // into a continuous casting (refineCastLoft: 36 plan stations through the 18 authored, nine rings rounding the shoulder
+  // and crown inside the authored envelope); the 40° crease keeps the deliberate armour breaks only.
+  const stbCast = refineCastLoft(stbCastPlan, [
     { height: stbCastBaseY, inset: 0.70 },
     {
       height: [0.10, 0.10, 0.095, 0.09, 0.085, 0.085, 0.095, 0.115, 0.13,
@@ -454,11 +474,13 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
         0.53, 0.55, 0.58, 0.60, 0.60, 0.58, 0.54, 0.50, 0.46],
       centerHeight: raiseSTBCastY(0.49),
     },
-  ]), Math.PI / 4.5), 0, 0, -0.03);
+  ]);
+  P.add('turret', toCreasedNormals(polyMultiLoft(stbCast.plan, stbCast.rings), Math.PI / 4.5), 0, 0, -0.03);
   P.turretG.userData.japaneseCastTurretReceipt = {
     family: 'stb-leopard-generation-cast',
-    planStations: stbCastPlan.length,
-    verticalRings: 5,
+    authoredStations: stbCastPlan.length,
+    planStations: stbCast.plan.length,
+    verticalRings: stbCast.rings.length,
     cheekBreaksPerSide: 4,
     flatCrown: true,
     circularLathe: false,
@@ -523,6 +545,9 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
       0.42 + row * 0.112, 1.262);
   }
   P.add('turretDetail', box(0.085, 0.42, 0.085), 0.73, 0.27, 0.92);
+  // owner 2026-10-25 (the modernisation): guard bars over the six panes and cooling fins on the cradle's back
+  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.014, 0.36, 0.018), 0.57 + k * 0.08, 0.52, 1.274);
+  for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.46, 0.04, 0.014), 0.73, 0.735, 0.92 + k * 0.06);
   P.add('turretDark', box(0.025, 0.025, 0.76), 1.02, 0.49, 0.62, 0, 0.32, 0);
 
   // Offset rangefinder blisters and their backed optic faces give the side
@@ -660,6 +685,10 @@ function addSTB1GunAndFinish(P: JapaneseBuilderPort): void {
   buildGun(P, { len: 4.72, r: 0.062, sleeve: false, evac: 0.46,
     evacR: 1.72, collar: false, baseR: 0.145 });
   P.add('gunDark', cylZ(0.067, 0.075, 12), 0, 0, 4.695);
+  // owner 2026-10-25 (the modernisation): the canvas boot over the tube's root ahead of the saddle, three straps
+  // holding its folds (it rides the gun)
+  P.add('gunMountCanvasSkin', cylZ(0.128, 0.20, seg, 0.168), 0, 0, 0.78);
+  for (const [z, r] of [[0.72, 0.163], [0.79, 0.151], [0.86, 0.139]]) P.add('gunMountDark', KIT.torus(r, 0.009, 18), 0, 0, z);
 
   // Compress every already-transformed turret primitive around the local
   // ring datum. This catches canted cheek plates, baskets and roof hardware
