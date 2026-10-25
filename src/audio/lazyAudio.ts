@@ -40,8 +40,7 @@ interface AudioMixerModule {
 
 interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
-  /** `direct`: open the output device in the constructor (the fallback when a deferred device fails to attach). */
-  createContext?(mode?: 'deferred' | 'direct'): AudioContext | null;
+  createContext?(): AudioContext | null;
   getMapId?(): string | null;
   getGameMode?(): string | null;
   getObjectiveTeam?(): string | null;
@@ -93,21 +92,12 @@ export function createLazyAudio({
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
   loadMixer = () => import('./audioEngine.ts'),
-  createContext = (mode = 'deferred') => {
+  createContext = () => {
     const scope = globalThis as typeof globalThis & {
       webkitAudioContext?: typeof AudioContext;
     };
     const AC = scope.AudioContext || scope.webkitAudioContext;
-    if (!AC) return null;
-    // (2026-10-25, lockdown-251) the constructor waits for the output device, and a cold audio service took 300-940 ms
-    // of the first press's next frame in the spike census (Garage, Settings, Studio). A context with no sink returns at
-    // once; attachDevice moves it to the default device asynchronously. Engines without setSinkId open it directly.
-    if (mode === 'deferred' && typeof (AC.prototype as { setSinkId?: unknown }).setSinkId === 'function') {
-      try {
-        return new AC({ latencyHint: 'interactive', sinkId: { type: 'none' } } as AudioContextOptions);
-      } catch { /* an engine that rejects the option opens the device directly */ }
-    }
-    return new AC({ latencyHint: 'interactive' });
+    return AC ? new AC({ latencyHint: 'interactive' }) : null;
   },
   // the world and game getters (map, mode, objective side, terrain, the world, the counted roster, the fleet), handed to the mixer
   ...world
@@ -128,27 +118,8 @@ export function createLazyAudio({
   let loadingRevision = 0;
   let gestureBound = false;
 
-  // The default device's attachment to a context created without one (createContext): the mixer is built after it, and
-  // a failed attachment swaps in a context that opens the device directly, so sound is never left on the silent sink.
-  let deviceAttached: Promise<void> | null = null;
-  const attachDevice = (created: AudioContext): Promise<void> | null => {
-    const sinked = created as AudioContext & { sinkId?: unknown; setSinkId?(id: string): Promise<void> };
-    const sink = sinked.sinkId as { type?: string } | string | undefined;
-    if (!sink || typeof sink !== 'object' || sink.type !== 'none' || typeof sinked.setSinkId !== 'function') return null;
-    return sinked.setSinkId('').catch((error: unknown) => {
-      console.warn('[audio] the default output device did not attach; opening it directly:', error);
-      if (context !== created || real) return;
-      context = createContext('direct');
-      if (context?.state === 'suspended') void context.resume().catch(() => {});
-      void created.close().catch(() => {});
-    });
-  };
-
   const unlockContext = (): AudioContext | null => {
-    if (!context) {
-      context = createContext();
-      if (context) deviceAttached = attachDevice(context);
-    }
+    if (!context) context = createContext();
     if (!context) return null;
     if (context.state === 'suspended') void context.resume().catch(() => {});
     return context;
@@ -201,7 +172,6 @@ export function createLazyAudio({
     if (!realPromise) {
       realPromise = preload().then(async (module) => {
         if (!module) return null;
-        if (deviceAttached) await deviceAttached;
         // Keep the full graph, bus subscriptions and shared sound RNG private
         // while its exact buffers are prepared; phase and intent are read
         // again at handoff.
