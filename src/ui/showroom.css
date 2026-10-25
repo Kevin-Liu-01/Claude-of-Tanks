@@ -559,7 +559,8 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--
   --cot-fleet-right:calc(var(--cot-col-right) + var(--cot-land-col) + var(--s3));}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--cot-col-gap);position:absolute;
   right:var(--cot-col-right);top:var(--cot-col-top);bottom:auto;left:auto;width:var(--cot-land-col);pointer-events:none;}
-body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{right:calc(var(--cot-fleet-right) - var(--s3) + var(--s2));
+/* the stage's acts stand a gutter off the column (they crowded its flag and its band's captions) and top-align with its name */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{right:calc(var(--cot-fleet-right) - var(--s3) + var(--s4));
   top:var(--cot-col-top);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] .cot-garage:not([data-garage-panel='equipment']) .stats{
   right:var(--cot-col-right);left:auto;top:calc(var(--cot-col-top) + var(--cot-name-h) + var(--slot) + 3 * var(--cot-col-gap));bottom:auto;
