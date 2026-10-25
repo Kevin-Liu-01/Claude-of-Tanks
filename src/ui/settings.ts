@@ -35,6 +35,7 @@ import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import {
@@ -504,19 +505,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
-    `<div class="cot-set-tabs">` +
+    `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
-    `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}</button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
-    `<button class="cot-set-tab" data-tab="accessibility" type="button">${t('settings.tab.accessibility')}</button>` +
-    `<button class="cot-set-tab" data-tab="language" type="button">${t('settings.tab.language')}</button>` +
+    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel">${t('settings.tab.controls')}</button>` +
+    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.gameplay')}</button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.sound')}</button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.graphics')}</button>` +
+    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.accessibility')}</button>` +
+    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
     `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></div>` +
-    `<div class="cot-set-body"></div>` +
+    `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn ghost reset cot-c-btn cot-c-btn--ghost" type="button">${t('settings.reset')}</button>` +
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button">${t('settings.leave')}</button>` +
@@ -690,7 +691,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   if (input.isTouchLayout && input.isTouchLayout()) {
     activeTab = 'gameplay';
     const tb = root.querySelector<HTMLButtonElement>('.cot-set-tab[data-tab="controls"]');
-    if (tb) tb.style.display = 'none';
+    if (tb) { tb.style.display = 'none'; tb.hidden = true; } // hidden: the roving keys pass it too
   }
   let capture: CaptureState | null = null; // { actionId, slot: 0|1|'pad', chip }
   let escHoldTimer: TimerHandle | null = null; // pending hold-Esc-to-bind timer during capture
@@ -1499,7 +1500,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
-      t.classList.toggle('sel', t.dataset.tab === activeTab);
+      const on = t.dataset.tab === activeTab;
+      t.classList.toggle('sel', on);
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      if (on) root.querySelector('.cot-set-body')?.setAttribute('aria-labelledby', t.id);
     }
     resetBtn.style.visibility =
       activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility'
@@ -1872,6 +1877,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bindingsMutated();
   });
   const SETTINGS_TABS: readonly SettingsTab[] = ['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'];
+  // the strip is a tab list: arrows, Home and End move between the tabs (the kit's roving keys press each, so the click
+  // below switches)
+  const tabStrip = root.querySelector<HTMLElement>('.cot-set-tabs');
+  if (tabStrip) wireRovingKeys(tabStrip);
   for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
     t.addEventListener('click', () => {
       const tab = SETTINGS_TABS.find((id) => id === t.dataset.tab);
