@@ -480,7 +480,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap" aria-hidden="true"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
-    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}"><p class="dm-lede">${topic.lede}</p>`
+    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))

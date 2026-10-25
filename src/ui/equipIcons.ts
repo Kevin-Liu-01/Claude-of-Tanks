@@ -52,6 +52,11 @@ const CATEGORY_ACCENT: Readonly<Record<EquipmentIconCategory, string>> = {
  * Inline SVG for an equipment item: the bare glyph below 20 px, the glyph on its category plate from 20 px.
  * Returns '' for unknown ids.
  */
+/** An equipment item's sprite glyph (null for an unknown id): the kit's chips draw it in their own ink. */
+export function equipIconId(id: string): IconId | null {
+  return EQUIPMENT[id]?.[0] ?? null;
+}
+
 export function equipIconSVG(id: string, size = 24, ink = EQUIP_INK): string {
   const entry = EQUIPMENT[id];
   if (!entry) return '';

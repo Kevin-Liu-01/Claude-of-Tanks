@@ -6,7 +6,6 @@ type SettingsIconTone = 'steel' | 'amber' | 'red' | 'green' | 'cyan' | 'violet';
 export interface SettingsIconSpec {
   readonly id: UiIconId;
   readonly tone?: SettingsIconTone;
-  readonly badge?: string;
 }
 
 export const SETTINGS_ACTION_ICONS = Object.freeze({
@@ -18,9 +17,9 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   selfRight: { id: 'reload', tone: 'amber' },
   fire: { id: 'fireGun', tone: 'red' },
   sniperToggle: { id: 'scope', tone: 'cyan' },
-  shell1: { id: 'shell', tone: 'amber', badge: '1' },
-  shell2: { id: 'shell', tone: 'amber', badge: '2' },
-  shell3: { id: 'shell', tone: 'amber', badge: '3' },
+  shell1: { id: 'shell', tone: 'amber' },
+  shell2: { id: 'shell', tone: 'amber' },
+  shell3: { id: 'shell', tone: 'amber' },
   // the vehicle's and a flight's actions take the vehicle-action table's glyphs (src/game/vehicleActions.ts), as the HUD's
   // controls row and the Garage do
   specialAction: { id: 'track', tone: 'amber' },
@@ -52,7 +51,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   settingsMenu: { id: 'settings' },
 } satisfies Readonly<Record<ActionId, SettingsIconSpec>>);
 
-type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality';
+type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality' | 'battleTimes';
 
 export const SETTINGS_OPTION_ICONS = Object.freeze({
   sensitivity: { id: 'mouse' },
@@ -76,6 +75,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   volVoice: { id: 'radio', tone: 'cyan' },
   alarmHeartbeat: { id: 'heartbeat', tone: 'red' },
   crewVoice: { id: 'radio', tone: 'amber' },
-  audioConcussion: { id: 'sound', tone: 'red' },
+  audioConcussion: { id: 'soundOff', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
+  battleTimes: { id: 'timeDay', tone: 'amber' },
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);

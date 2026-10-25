@@ -152,9 +152,9 @@ async function cdpKey(page, key = 'Escape', code = 'Escape', vk = 27) {
 }
 /** After a perturbation: a pause panel or resume veil left open is closed the way a player does (RESUME / a click). */
 async function ensureResumed(page) {
-  const st = await bounded(page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-btn.resume'); return !!b && b.offsetParent !== null; })(),
+  const st = await bounded(page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-close'); return !!b && b.offsetParent !== null; })(),
     veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on'), locked: !!document.pointerLockElement })), callTimeoutMs, 'resume state').catch(() => null);
-  if (st?.resume) { try { await bounded(page.click('.cot-set-btn.resume'), callTimeoutMs, 'RESUME'); } catch { await bounded(page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click()), callTimeoutMs, 'RESUME').catch(() => {}); } await sleep(400); }
+  if (st?.resume) { try { await bounded(page.click('.cot-set-close'), callTimeoutMs, 'RESUME'); } catch { await bounded(page.evaluate(() => document.querySelector('.cot-set-close')?.click()), callTimeoutMs, 'RESUME').catch(() => {}); } await sleep(400); }
   else if (st?.veil) { await bounded(page.mouse.click(vw / 2, vh / 2), callTimeoutMs, 'veil click').catch(() => {}); await sleep(400); }
   return st;
 }
@@ -633,7 +633,7 @@ async function realEscape(page, dwellS = pauseS) {
   out.afterEsc = await lockState();
   await sleep(Math.max(0, dwellS * 1000 - 400));
   // RESUME with a trusted click (the panel's own relock), or the click-to-resume veil
-  const resume = await page.$('.cot-set-btn.resume');
+  const resume = await page.$('.cot-set-close');
   const visible = resume ? await resume.evaluate((b) => b.offsetParent !== null) : false;
   if (visible) await resume.click();
   else await page.mouse.click(vw / 2, vh / 2);
@@ -647,7 +647,7 @@ async function pauseAndResume(page) {
   await page.keyboard.press('Escape');
   await sleep(pauseS * 1000);
   const resumed = await page.evaluate(() => {
-    const b = document.querySelector('.cot-set-btn.resume');
+    const b = document.querySelector('.cot-set-close');
     if (b && b.offsetParent !== null) { b.click(); return 'button'; }
     return null;
   });
@@ -1760,7 +1760,7 @@ try {
           else {
             await page.keyboard.press('Escape');
             await sleep(Number(step.value ?? 30) * 1000);
-            const resumed = await page.evaluate(() => { const b = document.querySelector('.cot-set-btn.resume'); if (b && b.offsetParent !== null) { b.click(); return true; } return false; });
+            const resumed = await page.evaluate(() => { const b = document.querySelector('.cot-set-close'); if (b && b.offsetParent !== null) { b.click(); return true; } return false; });
             if (!resumed) await page.keyboard.press('Escape');
             await sleep(300);
           }
@@ -1775,7 +1775,7 @@ try {
           // Esc (the pause menu, pointer lock released), the window away, back, Resume
           await page.keyboard.press('Escape');
           await blurAndReturn(page);
-          await page.evaluate(() => { const b = document.querySelector('.cot-set-btn.resume'); if (b && b.offsetParent !== null) b.click(); });
+          await page.evaluate(() => { const b = document.querySelector('.cot-set-close'); if (b && b.offsetParent !== null) b.click(); });
           await sleep(300);
           row.action = 'esc-blur-resume';
         } else {

@@ -165,7 +165,8 @@ body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
 /* Phone tabs size to their labels and share the spare width; a row too wide for a narrow phone scrolls instead of
    letting a label run past its plate. */
-body[data-cot-width='phone'] .cot-set-tab{flex:1 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
+body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
+body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 body[data-cot-width='phone'] .cot-set-tab.sel::after{left:3px;right:3px}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
@@ -186,10 +187,24 @@ body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 auto}
+body[data-cot-width='phone'] :is(.cot-set-seg button,.cot-set-seg .cot-time-choice){flex:1 1 auto}
+body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
+/* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
+body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
+/* touch: every Settings control meets the control floor (44 px) */
+body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
 body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
+/* a short screen keeps the rows: the title steps aside (the dialog keeps its name) and the close sits at the tab row's end */
+body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0;right:0;height:var(--cot-control-floor);padding:0 var(--cot-edge);align-items:center}
+body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+body[data-cot-height='short'] .cot-set-preview{display:none}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}

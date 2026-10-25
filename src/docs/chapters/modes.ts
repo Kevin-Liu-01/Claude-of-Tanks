@@ -182,7 +182,7 @@ function glanceTable(): string {
 /** The chapter's sections: the table to pick from, then each group's mode cards. */
 export function modesSections(): RichSection[] {
   const sections: RichSection[] = [];
-  const glance = `<p>${esc(t('docs.modes.glanceLede'))}</p>${glanceTable()}${legend()}`;
+  const glance = `${glanceTable()}${legend()}`;
   sections.push({ id: 'glance', title: t('docs.modes.glance'), html: glance, text: plain(glance) });
   for (const group of GROUPS) {
     const html = `<div class="dm-modes">${group.modes.map(modeCard).join('')}</div>`;

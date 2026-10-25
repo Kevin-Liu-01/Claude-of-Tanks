@@ -31,7 +31,7 @@ const SHELL: readonly string[] = [
   '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',
   '.cot-custom-select-copy',
   // settings
-  '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
+  '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn',
   // service record
   '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-card-head small',
   '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-plate small',
@@ -50,8 +50,8 @@ const DOCS: readonly string[] = [
   ...PUBLIC_NAV,
   '.docs-hero-actions a', '.docs-evidence dt',
   '.docs-evidence dd', '.kicker', '.docs-chapters-heading>p', '.docs-chapter-grid span', '.docs-chapter-grid strong', '.toc-head',
-  '.docs-toc a', '.docs-toc a span', '.toc-footer', '.callout', '.callout strong', '.principle p',
-  '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker', '.aside-card-copy',
+  '.docs-toc a', '.docs-toc a span', '.toc-footer',
+  '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker',
   '.aside-card-action', '.dm-side a', '.dm-grp', '.dm-crumb', '.dm-meta', '.dm-banner__cap', '.dm-toc a', '.topic-figure figcaption',
   '.footer-links a', '.footer-mark',
 ];

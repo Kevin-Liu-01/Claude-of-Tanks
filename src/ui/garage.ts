@@ -36,16 +36,17 @@ import {
 } from '../game/equipment.ts';
 import type { EquipmentItem, EquipmentLock, EquipmentPickerItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
-import { equipIconSVG } from './equipIcons.ts';
+import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
-import { shellIconSVG } from './shellIcons.ts';
+import { shellIconId, shellIconSVG } from './shellIcons.ts';
+import { shellTypeLabel } from './shellLabels.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup,
-  garageTechnicalViews, shellTypeLabel, translateTechnicalView,
+  garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
@@ -71,7 +72,7 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -278,13 +279,19 @@ const GARAGE_STATIONS = Object.freeze([
 ] as const);
 type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
-/** A core mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card). */
-const deployCardArt = (id: string): string =>
-  `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`;
+/** The modes public/media/deploy-r1 holds a 640 card picture for (the others have their 480 tile picture). */
+const DEPLOY_CARD_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
+/** A headline mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card): its 640
+ *  card picture, or its tile picture until a card one lands (Drone, 2026-10-25). */
+const deployCardArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
-/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range too). */
-const deployTileArt = (id: string): string =>
-  `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range
+ *  too); a mode that only has a card picture shows that one. */
+const deployTileArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
 /**
  * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
@@ -726,9 +733,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${deployCardArt('standard')}<span class="choice-icon">${uiIconSVG('modeStandard', 21)}</span>` +
     `<span class="cot-deploy-choice-t"><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
     `<span class="cot-deploy-chips" data-deploy-chips="standard"></span></span></button>` +
-    deployCardsHTML(['zone_control', 'capture_the_flag', 'frontline_assault'], true) +
+    // the presentation order (sim/gameModeCatalog.ts): Standard leads as the solo card above, then the other headline modes
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(1, HEADLINE_MODE_COUNT), true) +
     `</div><div class="cot-deploy-rows">` +
-    deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
     `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
@@ -3710,6 +3718,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     pop.append(mapsEl);
     pop.hidden = false;
+    pop.scrollIntoView({ block: 'nearest' }); // a phone's opened picker comes into view above the dock
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
     mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
   }
@@ -4047,7 +4056,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
       const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
       const shown = (['gravity', 'speed', 'boss', 'respawn', 'victory', 'teams', 'clock'] as const).filter((key) => facts[key] != null).slice(0, 2);
-      row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
+      row.innerHTML = rules(shown.map((key) => [DEPLOY_FACT_ICON[key], String(facts[key])] as const));
     }
   }
   function renderDeployRules(): void {
@@ -4079,19 +4088,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
   }
-  // the tank you deploy with (the direction's .tank): its hero card, its name over its flag, its rounds and fittings,
-  // and the control that returns to the roster to change it
+  // the tank you deploy with (the direction's .tank): its hero card; its name over its flag and its readiness; its rounds
+  // (type and penetration at 100 m, the kit's stat chips) and its fittings (glyph chips named by their tips); and the
+  // control that returns to the roster to change it (its name is its hover tip)
   function renderDeployTank(): void {
     const spec = selectedId ? specById.get(selectedId) : null;
     const copy = selectedId ? heroCopy(selectedId) : null;
     if (!copy || !spec) { deployTank.replaceChildren(); return; }
     deployTank.replaceChildren(copy);
-    const shells = (spec.gun.shells || []).map((shell) =>
-      `<span class="sh">${shellIconSVG(shell.type, 24)}${shell.count == null ? '' : `<span class="num">${shell.count}</span>`}</span>`).join('');
-    const fittings = loadEquipment(spec.id, spec).map((id) => `<span class="eq">${equipIconSVG(id, 15)}</span>`).join('');
-    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><b>${flagIconHTML(spec.nation, 22, 16)}` +
-      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b><div class="load">${shells}${fittings}` +
-      `${vehicleLocked ? '' : `<span class="ok">${uiIconSVG('check', 14)}${t('garage.deploy.ready')}</span>`}</div></div>` +
+    const mm = t('garage.unit.mm');
+    const rounds = (spec.gun.shells || []).map((shell) => {
+      const type = shellTypeLabel(shell.type);
+      const pen = String(Math.round(shell.pen100Mm));
+      return statChip({ icon: shellIconId(shell.type), label: type, value: pen, unit: mm,
+        tip: t('garage.deploy.roundTip', { name: shell.name || type, pen }) });
+    }).join('');
+    const fittings = loadEquipment(spec.id, spec).map((id) => {
+      const glyph = equipIconId(id);
+      return glyph ? statChip({ icon: glyph, tip: equipmentLabel(id) }) : '';
+    }).join('');
+    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b>${flagIconHTML(spec.nation, 22, 16)}` +
+      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
+      `${vehicleLocked ? '' : tag(t('garage.deploy.ready'), 'ok')}</div><div class="load">${rounds}${fittings}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
       `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }
