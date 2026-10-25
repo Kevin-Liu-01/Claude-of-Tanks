@@ -32,7 +32,7 @@ function loadSearch(): Promise<Search> {
         .slice(0, VEHICLE_HITS)
         .map(({ record }): Hit => ({ kind: 'vehicle', href: record.href, title: record.name, detail: t('publicNav.tankGallery') }));
       const sections = docs.searchManual(manual, query, MANUAL_HITS)
-        .map((entry): Hit => ({ kind: 'manual', href: entry.href, title: entry.title, detail: entry.chapter }));
+        .map((entry): Hit => ({ kind: 'manual', href: entry.href, title: entry.title, detail: t('publicNav.fieldManual') }));
       return [...tanks, ...sections];
     };
   });

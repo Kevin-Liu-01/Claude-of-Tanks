@@ -17,7 +17,7 @@ import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
 import { vehicleFacetSearchWords, vehicleFacetsForId } from '../src/vehicles/vehicleFacets.ts';
-import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../src/sim/gameModeCatalog.ts';
+import { GAME_MODE_DEFINITIONS, MODE_PRESENTATION_ORDER } from '../src/sim/gameModeCatalog.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = (path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
@@ -226,7 +226,7 @@ function playBlock() {
     + `<header class="home-head"><h2 class="home-h2" id="play-title">${t('home.play.title', 'span', 't-hollow')}</h2>`
     + `<div class="play-acts"><div class="cot-c-seg" role="radiogroup" aria-labelledby="play-title">${tabs}</div>`
     + `${arrow('prev', 'home.play.previousAria')}${arrow('next', 'home.play.nextAria')}</div></header>`
-    + panel('modes', BATTLE_MODE_IDS.map(modeTile), false)
+    + panel('modes', MODE_PRESENTATION_ORDER.map(modeTile), false)
     + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
     + `</div></section>`;
 }
