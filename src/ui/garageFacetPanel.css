@@ -11,7 +11,7 @@
   max-height:max(220px,min(480px,calc(100vh - 300px)));overflow-y:auto;overscroll-behavior:contain;
   display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding:10px var(--s3) var(--s3);box-sizing:border-box;
   color:var(--ink-2);background:var(--surface-menu);
-  border:1px solid var(--accent-lo);box-shadow:var(--e3);
+  border:1px solid var(--line-2);box-shadow:var(--e3);
   font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;
   contain:content;}
 .cot-facet-panel[hidden]{display:none;}
@@ -99,7 +99,7 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-row{
 /* the panel scrolls when its wrapped rows outgrow the room above the rail: its foot fades where the rows continue */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-panel{padding-bottom:var(--s6);}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-panel::after{content:'';position:sticky;bottom:calc(-1 * var(--s6));
-  height:var(--s6);margin:calc(-1 * var(--s6)) calc(-1 * var(--s3)) calc(-1 * var(--s6));background:linear-gradient(180deg,transparent,var(--facet-bg));
+  height:var(--s6);margin:calc(-1 * var(--s6)) calc(-1 * var(--s3)) calc(-1 * var(--s6));background:linear-gradient(180deg,transparent,var(--surface-menu));
   pointer-events:none;}
 .cot-facet-panel:focus{outline:none;}
 /* the side with more chips fades out (the gauntlet 10-25: an orange arrow over a solid wash read as a chip cut mid-word);

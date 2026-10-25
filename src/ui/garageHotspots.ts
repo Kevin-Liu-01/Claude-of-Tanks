@@ -61,6 +61,18 @@ const _toRoot = new Matrix4();
 const _point = new Vector3();
 const _camera = new Vector3();
 const _placed = new Float64Array(ORDER.length * 4);
+// each placed plate's leader, anchor to numeral (ax, ay, bx, by): a later plate keeps off it, and its own leader off the plates
+const _leads = new Float64Array(ORDER.length * 4);
+const LEAD_SAMPLES = 12;
+
+/** Whether the segment (ax, ay)-(bx, by) passes through the box x0..x1, y0..y1 (sampled: the leaders are short). */
+function segmentHits(ax: number, ay: number, bx: number, by: number, x0: number, y0: number, x1: number, y1: number): boolean {
+  for (let s = 1; s < LEAD_SAMPLES; s++) {
+    const f = s / LEAD_SAMPLES, x = ax + (bx - ax) * f, y = ay + (by - ay) * f;
+    if (x > x0 && x < x1 && y > y0 && y < y1) return true;
+  }
+  return false;
+}
 const _parts = new Float64Array(3 * 4);
 const _try = new Float64Array(3);
 
@@ -274,6 +286,13 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     else return false;
     const x0 = left ? bx - width + BADGE : bx - BADGE;
     if (!clear(x0, by - PLATE_H / 2, x0 + width, by + PLATE_H / 2, count)) return false;
+    // no leader crosses another callout's plate: this plate keeps off the leaders placed before it, and its leader off
+    // their plates (the gauntlet 10-25: callout 3's line ran through callout 2's plate)
+    for (let i = 0; i < count; i++) {
+      const at = i * 4;
+      if (segmentHits(_leads[at], _leads[at + 1], _leads[at + 2], _leads[at + 3], x0 - 2, by - PLATE_H / 2 - 2, x0 + width + 2, by + PLATE_H / 2 + 2)) return false;
+      if (segmentHits(ax, ay, bx, by, _placed[at] - 2, _placed[at + 1] - 2, _placed[at + 2] + 2, _placed[at + 3] + 2)) return false;
+    }
     _try[0] = bx;
     _try[1] = by;
     _try[2] = code;
@@ -333,6 +352,10 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
         _placed[at + 1] = by - PLATE_H / 2;
         _placed[at + 2] = x0 + spot.width;
         _placed[at + 3] = by + PLATE_H / 2;
+        _leads[at] = ax;
+        _leads[at + 1] = ay;
+        _leads[at + 2] = bx;
+        _leads[at + 3] = by;
         if (left !== spot.left) { spot.left = left; spot.el.classList.toggle('l', left); }
         spot.el.style.transform = `translate3d(${bx.toFixed(1)}px,${by.toFixed(1)}px,0)`;
         spot.dot.style.transform = `translate3d(${ax.toFixed(1)}px,${ay.toFixed(1)}px,0)`;

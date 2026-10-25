@@ -94,6 +94,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    gauntlet 10-25: small plates over an empty column at 1920 and 2560) */
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-performance-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow{min-height:62px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armor-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armorline{min-height:62px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armorline b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow .lr b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-stat-section{margin-bottom:var(--s4);}
 /* the roomy overview opens its figures' pitch and its rounds' plates into the column's height */
@@ -107,6 +110,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 .cot-garage .stats[data-density~='1'] .srow .lr b{font-size:max(var(--fs-floor-11),var(--fs-13));}
 .cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:var(--s1);}
 .cot-garage .stats[data-density~='1'] .cot-mag-cell{padding-block:var(--s1);}
+/* at density 2 the magazine's cells read like the plates under them: the label left, the figure at the right edge */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell{grid-template-columns:16px minmax(0,1fr) auto;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell svg{grid-row:1;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-mag-cell b{grid-column:3;grid-row:1;}
 .cot-garage[data-station] .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
 .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
   .cot-technical-gallery){display:none;}
@@ -242,9 +249,9 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-g
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections)>*{flex:none;}
 /* the compact sheet gives its height to the paint: the info and Create pair stands at the flags' row end, and the staging
    strip is one control high (the gauntlet 10-25: one swatch row, cut, under three header rows) */
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camos{position:relative;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle{position:absolute;top:0;right:0;margin:0;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camo-collections{margin-right:132px;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{position:relative;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle{position:absolute;top:0;right:0;margin:0;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-collections{margin-right:132px;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{height:38px;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
   grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}
@@ -409,6 +416,11 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic{display:block;posit
   background:var(--surface-raised) center/cover no-repeat;transition:transform var(--dur-screen) var(--ease-enter);}
 /* the picture paints first; the words stand over it */
 body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;text-shadow:var(--stage-halo);}
+/* its chevron stands on a glyph plate at the picture's corner, a target the eye finds (it read as a 6 px tick on sky) */
+body[data-cot-panels='persistent'] .cot-battle-mode::before{content:'';position:absolute;z-index:1;top:var(--s2);right:var(--s2);width:24px;height:24px;
+  border-radius:var(--control-radius);background:var(--glyph-plate);}
+body[data-cot-panels='persistent'] .cot-battle-mode::after{z-index:2;top:calc(var(--s2) + 9px);right:calc(var(--s2) + 7px);margin:0;
+  border-left-width:5px;border-right-width:5px;border-top-width:6px;opacity:1;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic::after{content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,transparent 10%,var(--glyph-plate) 75%);}
 /* Random's four battlefields: one row of four on the wide card, two by two in a phone's small picture; no empty cell */
