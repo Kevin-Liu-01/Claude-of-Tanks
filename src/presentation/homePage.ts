@@ -31,8 +31,9 @@ function mountFilm(dialog: HTMLDialogElement, video: HTMLVideoElement): void {
   const scrub = dialog.querySelector<HTMLInputElement>('[data-film-scrub]');
   const time = dialog.querySelector<HTMLElement>('[data-film-time]');
   if (!play || !mute || !full || !scrub || !time) return;
-  const set = (button: HTMLButtonElement, icon: string, key: string): void => {
-    button.querySelector('use')?.setAttribute('href', `#i-${icon}`);
+  // each toggle holds both its glyphs (tools/home-premiere.mjs): data-on shows the other one
+  const set = (button: HTMLButtonElement, on: boolean, key: string): void => {
+    button.toggleAttribute('data-on', on);
     button.setAttribute('aria-label', t(key));
   };
   let scrubbing = false;
@@ -51,13 +52,13 @@ function mountFilm(dialog: HTMLDialogElement, video: HTMLVideoElement): void {
     else if (dialog.requestFullscreen) void dialog.requestFullscreen().catch(() => {});
     else (video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen?.();
   };
-  video.addEventListener('play', () => set(play, 'pause', 'publicPages.film.pause'));
-  video.addEventListener('pause', () => set(play, 'play', 'publicPages.film.play'));
-  video.addEventListener('volumechange', () => set(mute, video.muted ? 'soundOff' : 'sound', video.muted ? 'publicPages.film.unmute' : 'publicPages.film.mute'));
+  video.addEventListener('play', () => set(play, true, 'publicPages.film.pause'));
+  video.addEventListener('pause', () => set(play, false, 'publicPages.film.play'));
+  video.addEventListener('volumechange', () => set(mute, video.muted, video.muted ? 'publicPages.film.unmute' : 'publicPages.film.mute'));
   video.addEventListener('timeupdate', progress);
   video.addEventListener('loadedmetadata', progress);
-  document.addEventListener('fullscreenchange', () => set(full, 'fullscreen',
-    document.fullscreenElement ? 'publicPages.film.exitFullscreen' : 'publicPages.film.fullscreen'));
+  document.addEventListener('fullscreenchange', () => full.setAttribute('aria-label',
+    t(document.fullscreenElement ? 'publicPages.film.exitFullscreen' : 'publicPages.film.fullscreen')));
   play.addEventListener('click', toggle);
   video.addEventListener('click', toggle);
   mute.addEventListener('click', () => { video.muted = !video.muted; });

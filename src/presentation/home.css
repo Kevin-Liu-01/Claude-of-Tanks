@@ -51,7 +51,6 @@ img{display:block;max-width:100%}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
 .hero__dur{font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
-.hero__play .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11))}
 .hero__trailer-icon{display:none}
 /* the reel's pause: the media player's own control (mediaPlayer.css .cot-media-toggle), a disc on the scrim */
 .hero__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
@@ -73,6 +72,8 @@ img{display:block;max-width:100%}
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
 .film-btn .cot-i{width:20px;height:20px}
+.film-btn>.film-alt,.film-btn[data-on]>.cot-i:not(.film-alt){display:none}
+.film-btn[data-on]>.film-alt{display:block}
 .film-time{flex:none;min-width:9ch;font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-data);color:var(--ink-2);text-align:right}
 .film-scrub{flex:1;min-width:0;height:24px;margin:0;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
 .film-scrub::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),var(--fill-scale) 0)}
@@ -111,6 +112,7 @@ img{display:block;max-width:100%}
 
 /* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
+.home-head>.home-h2{text-box:trim-end alphabetic}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -132,7 +134,8 @@ img{display:block;max-width:100%}
 .play-tile__nm a::after{content:'';position:absolute;inset:0}
 .play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
 .play-tile__nm a:focus-visible{outline:none}
-.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--accent)}
+/* a mode wears its Deploy glyph, in ink: the accent stays with the primary and the selection */
+.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--ink-2)}
 /* a long name takes a second line, never an ellipsis */
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
@@ -158,9 +161,7 @@ img{display:block;max-width:100%}
 .press__quotes .v5-social-card__body blockquote,.press__quotes .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
 .press__quotes .v5-social-metrics{gap:var(--s4)}
 .press__quotes .v5-social-card__body{justify-content:flex-start}
-.press__quotes :is(.v5-social-metrics,.v5-social-card__identity small){font-size:max(var(--fs-floor-12),var(--fs-12))}
-/* Chinese: the hollow line paints solid (the shared rule); the name stays at full strength */
-:lang(zh-CN) .press__title .t-hollow{opacity:1;color:var(--ink-2)}
+.press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
 .press__avatar{display:inline-block;width:.8em;height:.8em;margin-right:var(--s4);vertical-align:-.06em;border-radius:50%;outline:1px solid var(--line-3)}
 .v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
@@ -172,8 +173,8 @@ img{display:block;max-width:100%}
 .v5-social-card>a{position:relative;z-index:2;display:flex;height:100%;min-height:inherit;flex-direction:column;padding:var(--s6);background:linear-gradient(180deg,transparent,var(--scrim))}
 .v5-social-card__identity{display:flex;align-items:center;gap:var(--s3)}
 .v5-social-card__identity>span:nth-child(2){display:flex;min-width:0;flex-direction:column;line-height:1.15}
-.v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body)}
+.v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 max(var(--fs-floor-12) + 2px,var(--fs-14))/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
+.v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-2);font:400 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
 .v5-social-card__identity em{margin-left:auto;padding:0 var(--s2);height:20px;display:inline-flex;align-items:center;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--social-accent);font:600 var(--fs-11)/1 var(--font-display);font-style:normal;letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap}
 .v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover}
 .v5-social-card__body{display:flex;flex:1;flex-direction:column;justify-content:center;padding:var(--s6) 0}
@@ -194,9 +195,9 @@ img{display:block;max-width:100%}
 
 /* ---- the closing call: full-bleed art under its fade; the headline and its two calls on the open snow ---- */
 .v5-cta{position:relative;display:flex;align-items:flex-end;min-height:560px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
-.v5-cta>img,.v5-cta>div{position:absolute;inset:0;width:100%;height:100%}
+.v5-cta>img,.v5-cta>div:not(.shell){position:absolute;inset:0;width:100%;height:100%}
 .v5-cta>img{object-fit:cover;object-position:50% 100%}
-.v5-cta>div{background:var(--home-closing-grade)}
+.v5-cta>div:not(.shell){background:var(--home-closing-grade)}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--s4)}
 
@@ -244,7 +245,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__cap{padding:var(--s4)}
   .feat__link,.feat--wide .feat__link{font-size:var(--fs-24)}
   .feat__link .cot-i{width:20px;height:20px}
-  .press__title{font-size:var(--fs-36)}
+  :root{--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
   /* one whole card per view, the arrows beside the switch; the switch takes two rows at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
@@ -265,7 +266,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the picture, then the words under it: no headline over a tank on a narrow screen */
   .v5-cta{flex-direction:column;align-items:stretch;min-height:0;padding:0 0 var(--s7)}
   .v5-cta>img{position:static;height:auto;aspect-ratio:16/9}
-  .v5-cta>div{display:none}
+  .v5-cta>div:not(.shell){display:none}
   .v5-cta>.shell{margin-top:var(--s5)}
   .v5-cta .hero-actions>.cot-c-btn{flex:1 1 100%}
   .cot-media-toggle{top:14px;left:14px}
@@ -273,6 +274,18 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .film-btn,.hero__film-close{--h:44px}
   .film-scrub{height:44px}
   .film-time{display:none}
+}
+@media (height < 500px) and (width >= 768px){
+  .hero{min-height:var(--cot-viewport-height,100dvh)}
+  .hero__card{margin-bottom:var(--s4)}
+}
+/* blockers 3, 4: touch screens (and a short landscape one, which is a phone) get the 44 px targets */
+@media (pointer:coarse),(height < 500px){
+  .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px}
+  .play-acts .cot-c-btn--icon{--h:44px}
+  .press__src{height:44px}
+  .film-btn,.hero__film-close{--h:44px}
+  .film-scrub{height:44px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after{transition:none}.v5-social-card::after{transform:none}html{scroll-behavior:auto}.feat>img,.feat>video,.feat__link .cot-i{transition:none}.feat:hover>img,.feat:hover>video{transform:none}}

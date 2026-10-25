@@ -94,8 +94,9 @@ function ladder(clip) {
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
-const filmButton = (role, icon, key) => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
-  + ` aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${iconMarkup(icon, 20)}</button>`;
+// a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
+const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
+  + ` aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${iconMarkup(icon, 20)}${alt ? iconMarkup(alt, 20).replace('class="cot-i', 'class="cot-i film-alt') : ''}</button>`;
 function heroBlock() {
   if (!REEL.hero?.length) throw new Error('home-premiere: public/media/home-r2/manifest.json names no hero clip');
   if (!TRAILER) throw new Error('home-premiere: the trailer is missing from the site manifest');
@@ -116,7 +117,7 @@ function heroBlock() {
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
     // duplicate it in hero"); the page's h1 names the game for assistive tech and search
     + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
-    + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}<kbd class="cot-c-kbd" lang="en">Enter</kbd></a>`
+    + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
     + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}${t('home.hero.trailer')}`
     + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></button></div>`
@@ -135,10 +136,10 @@ function heroBlock() {
     + ` data-i18n-aria-label="home.trailers.trailerAria" data-i18n-vars='{"seconds":"${Math.round(TRAILER.seconds)}"}'>`
     + `${trailer ? `<source data-src="/${trailer.path}" type="video/webm">` : ''}<source data-src="/${TRAILER.path}" type="video/mp4"></video>`
     + `<div class="film-bar">`
-    + filmButton('play', 'play', 'publicPages.film.play')
+    + filmButton('play', 'play', 'publicPages.film.play', 'pause')
     + `<input class="film-scrub" type="range" min="0" max="1000" step="1" value="0" data-film-scrub aria-label="${esc(text('publicPages.film.seek'))}" data-i18n-aria-label="publicPages.film.seek">`
     + `<span class="film-time num" lang="en" data-film-time>0:00 / ${clock(TRAILER.seconds)}</span>`
-    + filmButton('mute', 'sound', 'publicPages.film.mute')
+    + filmButton('mute', 'sound', 'publicPages.film.mute', 'soundOff')
     + filmButton('full', 'fullscreen', 'publicPages.film.fullscreen')
     + `</div>`
     + `<button class="${btn('icon', '36')} cot-c-btn--ghost hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
