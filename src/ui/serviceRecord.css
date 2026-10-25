@@ -130,11 +130,7 @@
 .cot-record-battle{border:1px solid var(--line-2);
   background:linear-gradient(90deg,var(--surface-scene) 10%,color-mix(in srgb,var(--surface-scene) 62%,transparent) 55%,color-mix(in srgb,var(--surface-scene) 84%,transparent)),
     var(--battle-map,none) center/cover no-repeat var(--surface-page)}
-.cot-record-battle.result-victory{border-left:3px solid var(--ok)}
-.cot-record-battle.result-defeat{border-left:3px solid var(--danger)}
 .cot-record-battle[open]{border-color:var(--line-3)}
-.cot-record-battle[open].result-victory{border-left-color:var(--ok)}
-.cot-record-battle[open].result-defeat{border-left-color:var(--danger)}
 .cot-record-battle summary{position:relative;padding:var(--s3) var(--s7) var(--s3) var(--s4);list-style:none;cursor:pointer}
 .cot-record-battle summary::-webkit-details-marker{display:none}
 .cot-record-battle summary:hover{background:var(--fill-faint)}
