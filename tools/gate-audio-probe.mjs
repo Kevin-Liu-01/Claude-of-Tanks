@@ -51,7 +51,9 @@ const PROBE = `(() => {
 
 async function probe(base) {
   const browser = await puppeteer.launch({ headless: false, defaultViewport: null,
-    args: ['--mute-audio', '--window-size=1440,960', '--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist'] });
+    args: ['--mute-audio', '--window-size=1440,960', '--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist',
+      // the builds are served as cot.test (a non-loopback name, as the other recorders serve them)
+      `--host-resolver-rules=MAP ${new URL(base.url).hostname} 127.0.0.1`] });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 900 });
@@ -89,7 +91,7 @@ async function probe(base) {
 
 const lock = createCaptureLock();
 mkdirSync(out, { recursive: true });
-await lock.acquire(60 * 60 * 1000, { place: 'gate-audio-probe' });
+await lock.acquire(150 * 60 * 1000, { place: 'gate-audio-probe' });
 const refresher = setInterval(() => lock.refresh(), 30_000);
 refresher.unref();
 const results = [];

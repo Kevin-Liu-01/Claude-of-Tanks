@@ -362,8 +362,12 @@ const CANVAS_CAP = 2;
  *  compounds, smaller blurs); hidden, it holds at most one pixel. */
 const CANVAS_CHECK = `(() => {
   const rec = window.__click, dpr = devicePixelRatio, scale = Math.min(dpr, ${CANVAS_CAP});
-  const describe = (node) => { const cls = typeof node.className === 'string' ? node.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
-    const owner = node.closest('[id]'); return (owner && owner !== node ? '#' + owner.id + ' ' : '') + 'canvas' + (node.id ? '#' + node.id : '') + (cls ? '.' + cls : ''); };
+  // the canvas and up to three ancestors (to the first with an id): an id-less canvas still names where it lives
+  const label = (el) => { const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.') : '';
+    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : ''); };
+  const describe = (node) => { const path = [label(node)];
+    for (let el = node.parentElement, n = 0; el && el !== document.body && n < 3 && !path[0].includes('#'); el = el.parentElement, n++) path.unshift(label(el));
+    return path.join(' > '); };
   const violations = []; let checked = 0;
   for (const canvas of document.querySelectorAll('canvas')) {
     const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
