@@ -504,9 +504,10 @@ export const PATHS = [
   // the Garage at rest: no frame or task may stall while nobody touches it
   { id: 'garage-idle', doc: 'game', reps: 1,
     script: async (page, i, run) => { await run('garage-idle', async () => null, { idleMs: 8000, quietMs: 1 }); } },
-  // (lockdown-251) graceful recovery: the WebGL context lost in the Garage and restored 0.7 s later; the window records
+  // (lockdown-251) graceful recovery: the WebGL context lost in the Garage and restored 0.7 s later (the battle document,
+  // for its debug surface's renderer; the Garage is where it opens); the window records
   // the restoration's frames, tasks and console, and the log says whether the Garage came back (context live, cover gone)
-  { id: 'recover-context', doc: 'game', reps: 2,
+  { id: 'recover-context', doc: 'battle', reps: 2,
     script: async (page, i, run) => {
       await page.evaluate(() => {
         const lose = window.__DEBUG.renderer.getContext().getExtension('WEBGL_lose_context');
