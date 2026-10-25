@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { addGunFloodlight, type GunFloodlightSeat } from './gunFloodlight.ts';
 import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { antenna, equipment, hatch, panel, openGunTube, hullStation, optic, towEye, turretStation } from './easternSourceKit.ts';
@@ -285,11 +286,18 @@ const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28
  * `boxSightSourceTop: true` (with `boxSightOnGun`; release 227, 2026-10-20) keeps the sight's measured top (source y
  * 2.396): the box stands from its flat bottom on the boot's crown up to that top, as the source draws it over the boot,
  * instead of the whole authored box raised onto the crown (its top then 46 mm over the source's on the Type 96B's boot);
- * its window keeps the authored size, centred on the shorter face. */
+ * its window keeps the authored size, centred on the shorter face.
+ * `floodlight: true` (release 240) carries a gun floodlight right of the gun (TYPE96_GUN_FLOODLIGHT). */
 export interface Type96TurretOptions {
     mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
-    bootFloor?: readonly (number | null)[]; boxSightSourceTop?: boolean;
+    bootFloor?: readonly (number | null)[]; boxSightSourceTop?: boolean; floodlight?: boolean;
 }
+
+// 2026-10-24 (the owner: "make the ... type 96b, type 96-80, have floodlights at front by guns"): the gun floodlight
+// (gunFloodlight.ts) right of the gun, its back 7 cm ahead of the cheek beside it (gun frame 0.33); its bracket runs on
+// the bore line, under the cheek's 0.33 lip at y 0.10, into the boot's 0.35 face 19 cm off the bore (the barrel's
+// collars are 16 cm)
+const TYPE96_GUN_FLOODLIGHT: GunFloodlightSeat = { side: 'right', x: .40, y: .02, backZ: .40, anchorX: .19, anchorY: 0, anchorZ: .31 };
 
 // The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
 const TYPE96_BOX_SIGHT = { x: 0, y: 2.278, z: 1.540, w: .25, h: .236, d: .396 } as const;
@@ -419,6 +427,7 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     }
     for (const z of [.43, .65])
         P.add('gun', cylZ(.160, .045, P.q ? 28 : 16), 0, 0, z);
+    if (options.floodlight) addGunFloodlight(P, TYPE96_GUN_FLOODLIGHT);
     P.muzzleZ = 4.92211;
 }
 /** Release 227 (critic CN5-02): buildType96Turret draws the gunner's sight housing 59-71 mm over the roof with nothing
@@ -459,7 +468,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     buildType96Gear(P);
     // Release 227: the box sight over the mantlet rides the pitching boot (boxSightOnGun); turret-fixed, the boot passed
     // through it at every pitch. It keeps its measured top (boxSightSourceTop; type96bSightBoot.selftest.mjs).
-    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR, boxSightOnGun: true, boxSightSourceTop: true });
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR, boxSightOnGun: true, boxSightSourceTop: true, floodlight: true });
     addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);

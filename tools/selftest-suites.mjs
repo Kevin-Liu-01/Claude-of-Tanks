@@ -192,6 +192,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/physicalMuzzleBore.selftest.mjs',
     'src/vehicles/carvedMuzzleBore.selftest.mjs',
     'src/vehicles/profiles/lathedWheelStock.selftest.mjs',
+    // 2026-10-25 (the owner's profile skirts): skirts swept on their hull's side and glacis lines, closed on both sides
+    'src/vehicles/profiles/profileSkirt.selftest.mjs',
     'src/vehicles/profiles/kf41LynxWheelStock.selftest.mjs',
     'src/vehicles/nationWheelSets.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',

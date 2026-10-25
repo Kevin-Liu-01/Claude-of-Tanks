@@ -9211,7 +9211,7 @@ function* buildTankCoreSteps(
     // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
     // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back),
     // and so do the equipment lids' and the weapon stock's damage ranges.
-    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
+    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
       const was = built.getAttribute('position'), now = seated.getAttribute('position');
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) {
