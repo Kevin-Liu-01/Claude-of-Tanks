@@ -11,6 +11,8 @@
   /* vehicle names are Latin in every locale, so they keep the en floor (zh lifts --fs-floor-11 for its own script) */
   --tt-name-floor:calc(var(--battle-fs-13) * 11 / 13);
   --tt-detail-art-w:clamp(240px,19vw,360px);
+  /* the page gutter: the header, the tree (techTree.ts reads it) and the detail start and end on it */
+  --tt-gutter:28px;
   position:fixed;inset:0;z-index:var(--z-modal);display:grid;grid-template-columns:minmax(0,1fr);
   grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface-page);color:var(--ink-1);
   font-family:var(--font-ui);font-weight:500;-webkit-font-smoothing:antialiased;
@@ -18,8 +20,9 @@
 .cot-tt[hidden]{display:none}
 
 /* Header: the nation (its flag and name), the rail of every nation's flag, the zoom plate, close. */
-.cot-tt .tt-head{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) 28px var(--s2)}
-.cot-tt .tt-nation{display:flex;align-items:center;gap:var(--s4);min-width:0}
+.cot-tt .tt-head{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) var(--tt-gutter) var(--s2)}
+/* as wide as the widest nation (techTree.ts fitNation), so the rail never slides when the nation changes */
+.cot-tt .tt-nation{display:flex;align-items:center;gap:var(--s4);min-width:var(--tt-nation-w,0)}
 .cot-tt .tt-flag{display:inline-flex;line-height:0}
 .cot-tt .tt-flag .cot-c-flag{width:calc(48px * var(--tt-ui));height:calc(36px * var(--tt-ui));border-radius:var(--r1)}
 .cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-display);letter-spacing:var(--track-display);
@@ -48,8 +51,8 @@
 .cot-tt .tt-rail-flag.is-on{opacity:1;background:var(--surface-hover);box-shadow:var(--ring-2)}
 /* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen. */
 .cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2)}
-/* a plate (2 px inset each side) stands exactly as tall as the rail's flags beside it */
-.cot-tt .tt-plate .cot-c-btn{--h:calc(40px * var(--tt-ui) - 4px)}
+/* a plate (2 px inset each side, and its 1 px ring outside its box) stands exactly as tall as the rail's flags */
+.cot-tt .tt-plate .cot-c-btn{--h:calc(40px * var(--tt-ui) - 6px)}
 .cot-tt .tt-plate .cot-c-btn svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
 
 /* The board: one band per tier's cells (the gutters stay clear, so a connector in a gutter never runs on a band edge),
@@ -64,8 +67,9 @@
 .cot-tt .tt-stage::before{left:0;right:0;bottom:0;height:48px;background:linear-gradient(180deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage::after{top:0;right:0;bottom:0;width:48px;background:linear-gradient(90deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage.is-more-below::before,.cot-tt .tt-stage.is-more-right::after{opacity:1}
-.cot-tt .tt-grid{position:relative;margin:0 auto}
-.cot-tt .tt-grid::before{content:'';position:absolute;top:var(--tt-head);bottom:0;left:var(--tt-pad);right:var(--tt-pad);pointer-events:none;
+/* pinned to the page gutter: a tree narrower than the board leaves its spare width on the right */
+.cot-tt .tt-grid{position:relative;margin:0}
+.cot-tt .tt-grid::before{content:'';position:absolute;top:var(--tt-head);bottom:var(--tt-end);left:var(--tt-pad);right:var(--tt-pad);pointer-events:none;
   background:repeating-linear-gradient(90deg,var(--fill-faint) 0 var(--tt-col),transparent var(--tt-col) var(--tt-pitch))}
 .cot-tt .tt-tiers{position:sticky;top:0;z-index:var(--z-lift);height:var(--tt-head);background:var(--surface-page)}
 .cot-tt .tt-numeral{position:absolute;top:var(--s1);width:var(--tt-col);text-align:center;
@@ -119,9 +123,10 @@
 .cot-tt .tt-node.is-sel .tt-name{color:var(--ink-1)}
 
 /* Detail: the selected vehicle's render; its name, tags and builds over its four numbers on the kit's scale (one
-   column, so the numbers start under the name for every vehicle); Select at the end. The band keeps the page's 28 px
-   gutter on every side. */
-.cot-tt .tt-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s7);padding:28px;
+   column, so the numbers start under the name for every vehicle); Select at the end. The band keeps the page gutter on
+   every side. */
+.cot-tt .tt-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s7);
+  padding:var(--tt-gutter);
   background:linear-gradient(180deg,var(--row-plate),var(--surface-raised));border-top:1px solid var(--line-2)}
 .cot-tt .tt-detail-info{display:flex;flex-direction:column;gap:var(--s4);min-width:0}
 .cot-tt .tt-detail-art{position:relative;width:calc(var(--tt-detail-art-w) * var(--tt-ui));
@@ -136,7 +141,8 @@
 .cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
   font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
 .cot-tt .tt-detail-special[hidden]{display:none}
-.cot-tt .tt-builds{flex-wrap:wrap;flex-basis:100%;max-width:100%}
+/* the builds follow the tags on the name's line where the width allows, so a twin node keeps the band's height */
+.cot-tt .tt-builds{flex-wrap:wrap;max-width:100%}
 .cot-tt .tt-builds[hidden]{display:none}
 .cot-tt .tt-builds .cot-c-seg__opt{height:calc(32px * var(--tt-ui));font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))}
 .cot-tt .tt-builds .cot-c-sil{width:40px;height:16px}
@@ -145,7 +151,7 @@
 /* the kit's stat rows on the screen's scale: the label style for the labels, the floor for the units, and empty cells
    that read at 3:1 against the panel */
 .cot-tt .tt-stats .cot-c-stat__label{font:600 max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))/1.2 var(--font-ui);
-  letter-spacing:var(--track-label);text-transform:uppercase}
+  letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .cot-tt .tt-stats .cot-c-stat__value b{font-size:calc(var(--fs-18) * var(--tt-ui))}
 .cot-tt .tt-stats .cot-c-stat__value small{font-size:max(var(--fs-floor-11),calc(var(--fs-11) * var(--tt-ui)))}
 .cot-tt .tt-stats .cot-c-scale{height:calc(8px * var(--tt-ui))}
@@ -153,36 +159,41 @@
 .cot-tt .tt-stats .cot-c-stat svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
 .cot-tt .tt-stats .cot-c-scale i{background:var(--ink-4)}
 .cot-tt .tt-stats .cot-c-scale i.f{background:var(--ink-2)}
-/* Select grows with the screen like everything beside it */
-.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui));font-size:calc(var(--fs-16) * var(--tt-ui))}
+/* Select grows with the screen like everything beside it (its caps are the kit primary's) */
+.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui))}
 
 /* Tablets: the rail takes its own row; the detail folds the stats under the name. */
 @media (max-width:1100px){
-  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s2);padding:var(--s3) var(--s5) var(--s2)}
+  .cot-tt{--tt-gutter:var(--s5)}
+  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s2);padding:var(--s3) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{margin-right:auto}
   .cot-tt .tt-rail{order:1;flex-basis:100%;margin-right:0}
-  .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'art id act' 'art stats stats';
-    gap:var(--s3) var(--s5);padding:var(--s5)}
+  /* the name and Select over the two stat columns: Select takes the second column, its top on the render's */
+  .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);grid-template-areas:'art id act' 'art stats stats';
+    align-items:start;gap:var(--s3) var(--s5);padding:var(--tt-gutter)}
   .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{grid-area:art}
   .cot-tt .tt-detail-id{grid-area:id}
   .cot-tt .tt-stats{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5)}
   .cot-tt .tt-act{grid-area:act}
+  .cot-tt .tt-act .tt-select{width:100%}
 }
 /* Phones: close beside the nation; the rail and the zoom plate share the second row; the render leads the detail. */
 @media (max-width:520px){
-  .cot-tt{--tt-detail-art-w:128px}
+  .cot-tt{--tt-detail-art-w:128px;--tt-gutter:var(--s4)}
   /* two rows whatever the title's length: the nation and close, then the rail and the zoom plate */
   .cot-tt .tt-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'nation close' 'rail zoom';
-    align-items:center;gap:var(--s2) var(--s4);padding:var(--s3) var(--s4) var(--s2)}
+    align-items:center;gap:var(--s2) var(--s4);padding:var(--s3) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{grid-area:nation;gap:var(--s3)}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-24)}
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
   .cot-tt .tt-rail{grid-area:rail;gap:var(--s2);--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
+  /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the row */
+  .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
-    padding:var(--s3) var(--s4) var(--s4)}
+    padding:var(--s3) var(--tt-gutter) var(--s4)}
   .cot-tt .tt-detail-name{font-size:var(--fs-24)}
   /* one stat a row: the labels' tracking needs the width */
   .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr);row-gap:var(--s2)}
@@ -191,27 +202,24 @@
 /* Short landscape screens (a phone on its side, a small laptop window): the detail becomes a side panel and the header
    one row, so the board keeps the height. */
 @media (max-height:640px) and (orientation:landscape){
-  .cot-tt{--tt-detail-art-w:200px;grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr)}
-  .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;padding:var(--s2) var(--s4)}
+  .cot-tt{--tt-detail-art-w:200px;--tt-gutter:var(--s4);grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr)}
+  .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;padding:var(--s2) var(--tt-gutter)}
   .cot-tt .tt-nation{margin-right:0}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-28)}
   .cot-tt .tt-rail{order:0;flex:1 1 0;margin-right:0}
   .cot-tt .tt-stage{grid-column:1;grid-row:2}
-  /* Select sits at the panel's foot: the spare height goes above it */
-  .cot-tt .tt-detail{grid-column:2;grid-row:2;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
-    grid-template-areas:'art' 'id' 'stats' 'act';gap:var(--s3);overflow-y:auto;padding:var(--s3) var(--s4);border-top:0;
-    border-left:1px solid var(--line-2)}
+  /* a column: the render takes the panel's spare height (up to a square), then Select sits at the panel's foot */
+  .cot-tt .tt-detail{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:stretch;gap:var(--s3);overflow-y:auto;
+    padding:var(--s3) var(--tt-gutter);border-top:0;border-left:1px solid var(--line-2)}
   .cot-tt .tt-detail-info{display:contents}
-  .cot-tt .tt-detail-art{grid-area:art;width:100%;height:calc(var(--tt-detail-art-w) * .52)}
-  .cot-tt .tt-detail-id{grid-area:id}
-  .cot-tt .tt-stats{grid-area:stats}
-  .cot-tt .tt-act{grid-area:act}
+  .cot-tt .tt-detail-art{flex:1 0 calc(var(--tt-detail-art-w) * .52);width:100%;height:auto;
+    max-height:calc(280px - 2 * var(--tt-gutter))}
   .cot-tt .tt-detail-name{font-size:var(--fs-20)}
   .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr)}
   /* Select stays at the panel's foot while the panel scrolls, and the stats it hides fade out over it */
-  .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);align-self:end;margin:0 calc(var(--s4) * -1);
-    padding:var(--s2) var(--s4) var(--s3);background:var(--surface-raised)}
+  .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);margin:auto calc(var(--tt-gutter) * -1) 0;
+    padding:var(--s2) var(--tt-gutter) var(--s3);background:var(--surface-raised)}
   .cot-tt .tt-detail.is-more-below .tt-act::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--s6);
     pointer-events:none;background:linear-gradient(180deg,transparent,var(--surface-raised))}
   .cot-tt .tt-act .tt-select{width:100%}
@@ -219,7 +227,7 @@
 /* The shortest of them (a phone on its side): the render beside the name and tags, the builds under them across the
    panel, so all four numbers fit over Select. */
 @media (max-height:420px) and (orientation:landscape){
-  .cot-tt .tt-detail{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
+  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
     grid-template-areas:'art name' 'art meta' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
   .cot-tt .tt-detail.has-builds{grid-template-rows:auto auto auto auto 1fr;
     grid-template-areas:'art name' 'art meta' 'builds builds' 'stats stats' 'act act'}
@@ -227,13 +235,15 @@
   .cot-tt .tt-detail-name{grid-area:name;align-self:end}
   .cot-tt .tt-detail-meta{grid-area:meta;align-self:start}
   .cot-tt .tt-builds{grid-area:builds}
-  .cot-tt .tt-detail-art{height:calc(var(--tt-detail-art-w) * .32)}
-  .cot-tt .tt-stats{row-gap:var(--s2)}
+  .cot-tt .tt-detail-art{grid-area:art;height:calc(var(--tt-detail-art-w) * .32)}
+  .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
+  .cot-tt .tt-act{grid-area:act}
 }
 /* Touch: every control is at least 44 px. */
 @media (pointer:coarse){
   .cot-tt .tt-plate .cot-c-btn{--h:44px}
-  .cot-tt .tt-rail-flag{width:44px;height:48px}
+  /* a 44 px button on its 2 px pad, plus the plate's 1 px ring */
+  .cot-tt .tt-rail-flag{width:44px;height:50px}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-tt .tt-node:hover{transform:none}
