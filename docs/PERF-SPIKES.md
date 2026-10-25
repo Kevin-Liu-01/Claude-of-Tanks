@@ -321,7 +321,10 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
   of its own, and the seal a step per grass mesh). The group stays hidden from its scene add to its last step; a pace
   that throws (a cancelled build) lets the assembly finish so the coordinator releases a whole world. Byte-identical:
   Verdant, Urban and Alpine through createMapAsync and Verdant through createMap, HEAD against the lane in Node.
-- Open: the terrain mask paint.
+- **The terrain mask** (terrain.ts makeMaskTexture: its splat step one 87 ms task on the desktop Verdant entry) bakes in
+  steps: the land grid, the road raster, 64 rows of the paint a step, the road layers. Byte-identical with every data
+  texture the world's materials reach (the mask and its road layers) on the same three maps. liquidMarshSurface's red
+  (Mangrove's bank grade 0.88) is the base's: the same with terrain.ts at HEAD.
 
 ## Draw count (the engine ruling's lever)
 
