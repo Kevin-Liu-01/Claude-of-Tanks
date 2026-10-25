@@ -53,9 +53,13 @@ export function button(options: ButtonOptions): string {
     + `${options.key && !options.iconOnly ? keycap(options.key) : ''}</button>`;
 }
 
+/** An arrow key's cap draws the sprite's arrow, not a typed one (the gauntlet's line 3). */
+const KEYCAP_GLYPHS: Readonly<Record<string, IconId>> = { '↑': 'moveForward', '↓': 'moveBack', '←': 'steerLeft', '→': 'steerRight' };
+
 /** A keyboard key cap; touch layouts hide it (SPEC §6.2 input glyphs). */
 export function keycap(key: string): string {
-  return `<kbd class="cot-c-kbd" aria-hidden="true">${esc(key)}</kbd>`;
+  const glyph = KEYCAP_GLYPHS[key];
+  return `<kbd class="cot-c-kbd" aria-hidden="true">${glyph ? icon(glyph, { size: 12 }) : esc(key)}</kbd>`;
 }
 
 /* ------------------------------------------------------------------------------------------------- chips and tags */

@@ -227,4 +227,9 @@ sticky.push('e', { text: 'Failed', severity: 'error' }); now += 1e9;
 assert.deepEqual(sticky.expired(), [], 'an error stays until dismissed');
 assert.equal(sticky.nextDeadline(), null);
 
+// an arrow key's cap is the sprite's arrow; a letter stays text
+assert.match(keycap('↑'), /data-icon="moveForward"/, 'the up arrow key draws the sprite arrow');
+assert.doesNotMatch(keycap('→'), /→/, 'no typed arrow in a key cap');
+assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
+
 console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); three tokens-only sheets in the components layer');
