@@ -324,7 +324,6 @@
   "garage.equipment.empty.name": "Empty",
   "garage.equipment.slot.filledAria": "Slot {slot}: {name}. {desc}",
   "garage.equipment.slot.emptyAria": "Slot {slot}: Empty. Mount equipment",
-  "garage.equipment.empty.desc": "remove equipment from this slot",
   "garage.equipment.empty.aria": "Empty Slot — remove the equipment fitted in Slot {slot}",
   "garage.equipment.tag.fitted": "Fitted",
   "garage.equipment.tag.slot": "Slot {slot}",

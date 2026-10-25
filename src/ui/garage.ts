@@ -255,12 +255,16 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
 function fitWholeRows(grid: HTMLElement): void {
   grid.style.maxHeight = '';
   const style = getComputedStyle(grid);
-  const cell = [...grid.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0);
-  if (cell && grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
-    const gap = parseFloat(style.rowGap) || 0;
-    const pad = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
-    const rows = Math.floor((grid.clientHeight - pad + gap) / (cell.offsetHeight + gap));
-    if (rows >= 1) grid.style.maxHeight = `${rows * (cell.offsetHeight + gap) - gap + pad}px`;
+  if (grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
+    // the lowest row foot that shows whole (rows may differ in height: a phone's tiles carry one to four lines)
+    const top = grid.getBoundingClientRect().top + grid.clientTop - grid.scrollTop;
+    const room = grid.clientHeight - (parseFloat(style.paddingBottom) || 0);
+    let foot = 0;
+    for (const child of grid.children) {
+      const box = child.getBoundingClientRect();
+      if (box.height > 0 && box.bottom - top <= room + 0.5) foot = Math.max(foot, box.bottom - top);
+    }
+    if (foot > 0) grid.style.maxHeight = `${Math.ceil(foot + (parseFloat(style.paddingBottom) || 0))}px`;
   }
   grid.classList.toggle('can-scroll', grid.scrollHeight > grid.clientHeight + 1);
 }
@@ -431,8 +435,7 @@ function equipmentPickerTiles(
     `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
     `aria-label="${emptyLabel}">` +
     `${uiIconSVG('close', 34)}` +
-    `<span class="n">${t('garage.equipment.empty.name')}</span>` +
-    `<span class="e">${t('garage.equipment.empty.desc')}</span></button>`;
+    `<span class="n">${t('garage.equipment.empty.name')}</span></button>`;
   // the lead's equipmentPicker (equipment 249): one group per category in catalog order, each tile's lock and fitted slot
   const itemTiles = equipmentPicker(spec, currentLoadout)
     .filter((group) => activeCategory === 'all' || group.category.id === activeCategory)

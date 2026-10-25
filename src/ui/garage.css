@@ -753,7 +753,11 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 .cot-camo-tags::-webkit-scrollbar{display:none}
 .cot-camo-collections{display:flex;flex:0 0 auto;gap:var(--s1);min-width:0;margin-bottom:var(--s1);overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;}
+  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;padding-inline-end:var(--s5);
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
+/* a sheet already named "Camouflage" in its head keeps only the section's actions, not a second name */
+body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-camo-collections::-webkit-scrollbar{display:none;}
 .cot-camo-collection{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:30px;min-height:24px;
   padding:2px 6px;border:1px solid var(--line-3);background:var(--surface-menu);color:var(--ink-2);cursor:pointer;font-family:inherit;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;scroll-snap-align:start}
@@ -1648,7 +1652,7 @@ body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger:focus-visible{box-shadow:var(--focus-ring)}
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger__icon{width:18px;height:18px}
 body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
-body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;
+body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;padding-inline-end:var(--s6);
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
 body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}

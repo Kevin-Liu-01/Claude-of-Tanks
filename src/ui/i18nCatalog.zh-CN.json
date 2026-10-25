@@ -336,7 +336,6 @@
   "garage.equipment.empty.name": "空",
   "garage.equipment.slot.filledAria": "槽位 {slot}：{name}。{desc}",
   "garage.equipment.slot.emptyAria": "槽位 {slot}：空。点击搭载装备",
-  "garage.equipment.empty.desc": "从该槽位移除装备",
   "garage.equipment.empty.aria": "空槽位 — 移除槽位 {slot} 中已安装的装备",
   "garage.equipment.tag.fitted": "已安装",
   "garage.equipment.tag.slot": "槽位 {slot}",
