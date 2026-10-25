@@ -216,6 +216,21 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 .cot-garage .cot-deploy-rule dt{order:2;min-width:0;font:400 var(--fs-11)/1 var(--font-body);color:var(--ink-3);}
 /* a plate narrower than the six values' widest ("Elimination") sets them three across */
 @container deploy-plate (max-width:640px){.cot-garage .cot-deploy-rules{grid-template-columns:repeat(3,minmax(0,1fr));}}
+/* a narrow plate (900-1024 px windows): the tank card drops its render so the name and rounds keep their width, Deploy keeps
+   its word and drops its key and estimate, and the campaign brief sets its minimap under the text */
+@container deploy-plate (max-width:420px){
+  .cot-garage .cot-deploy-tank .cot-card{display:none;}
+  .cot-garage .cot-deploy-tank .head b>span{white-space:normal;overflow-wrap:anywhere;}
+  .cot-garage .cot-battle-menu.open [data-battle-launch]{padding:0 var(--s4);}
+  .cot-garage .cot-deploy-go{gap:var(--s3);font-size:var(--fs-20);}
+  .cot-garage .cot-deploy-end{display:none;}
+  .cot-garage .cot-battle-menu.open [data-battle-watch]{padding:0 var(--s4);font-size:var(--fs-15);}
+  body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-deploy-brief{grid-template-columns:minmax(0,1fr);}
+  .cot-garage .cot-deploy-brief-mm{grid-column:1;grid-row:auto;width:min(100%,248px);}
+  .cot-garage .cot-deploy-brief-name{font-size:var(--fs-20);}
+}
+/* a tablet's campaign list gives the operation's name the width its picture took */
+body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:56px 120px minmax(0,1fr) auto;}
 /* the battlefield (.bfield): its art, name and region over a fade, the count to pick from, the tactical map beside it */
 /* the field grows into the plate's free height; its floor is low enough that a 768 px screen keeps the options in view */
 .cot-garage .cot-deploy-field{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;flex:1 0 auto;
