@@ -105,8 +105,6 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
 .cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-crew-chip{padding:var(--s1) 2px;}
-/* the compact crew chip keeps the role's name and drops its glyph: an icon beside "Commander" overflows a quarter column */
-.cot-garage .stats[data-density~='2'] .cot-crew-chip svg{display:none;}
 .cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.cot-mag){display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}

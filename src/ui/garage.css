@@ -457,8 +457,13 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .stats .cot-technical-figure::after{display:none;}
 .cot-garage .stats .cot-technical-expand{background:none;cursor:pointer;}
 .cot-garage .stats .cot-technical-expand img{display:none;}
-.cot-garage .stats .cot-technical-expand-label{position:static;justify-content:center;min-height:var(--btn-h-s);
-  text-transform:none;font-size:max(var(--fs-floor-11),var(--fs-13));}
+.cot-garage .stats .cot-technical-expand-label{position:static;justify-content:flex-start;gap:var(--s2);min-height:var(--btn-h-s);
+  padding:0 var(--s3);background:var(--btn-secondary-fill);border-color:var(--btn-secondary-edge);box-shadow:none;
+  text-transform:none;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);}
+/* the drawing's row reads as the links under it: glyph, name, and the chevron at its end */
+.cot-garage .stats .cot-technical-expand-label svg{width:16px;height:16px;}
+.cot-garage .stats .cot-technical-expand-label::after{content:'\203A';margin-left:auto;color:var(--ink-3);
+  font-size:max(var(--fs-floor-11),var(--fs-14));line-height:1;}
 .cot-technical-expand-label>span{display:none;}
 .cot-garage .stats .cot-technical-expand-label>span{display:inline;}
 /* the tabs name the view; the caption stays for assistive technology (brand-ui S2) */
@@ -497,6 +502,10 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
   font:600 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-ui);letter-spacing:0;text-align:center;}
 .cot-crew-chip svg{width:16px;height:16px;color:var(--accent-lo);}
+/* the docked readout sets crew as it sets modules: two columns, the glyph beside the role (the gauntlet 10-25) */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direction:row;justify-content:flex-start;min-height:30px;gap:7px;
+  padding:0 7px;text-align:left;}
 /* a role's name takes two lines rather than an ellipsis (Commander, Radio operator in a quarter column) */
 .cot-crew-chip span{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 /* One combined historical fleet, filtered by national flag. Compact arrow
@@ -1498,6 +1507,9 @@ body[data-cot-panels='persistent'] .cot-battle .cot-c-kbd{color:var(--btn-primar
 /* the dossier's head gave its name to the lower third: only its about control stays, over the view tabs */
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head{min-height:0;padding:0;margin:0;border:0;background:none;}
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:var(--s3);right:var(--s3);}
+/* with the view tabs folded away, the section's about control stands beside the drawing's row, never inside it */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:calc((var(--btn-h-s) - 20px) / 2);right:0;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-section .cot-technical-figure{margin-right:calc(20px + var(--s2));}
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-tabs{margin-right:var(--s6);}
 /* the nation rail rides over the roster's own box */
 /* the dossier column clears only the Deploy stack below it (Deploy, its mode row and Multiplayer), not the rail */
