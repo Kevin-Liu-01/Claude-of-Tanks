@@ -7941,8 +7941,10 @@ ${snowCap ? `
     const groundAt = rockGroundAt(heightField);
     let settled = 0;
     for (const seat of rockSeats) {
-      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
-      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      // (a tenth of a millisecond a stone or less on a desktop core, but a stone's profile is up to ~2 ms on a 4x phone,
+      // where nav-perf's census found 48 a slice past 50 ms in the Garage's background build; battle-spikes-253: 8 a slice,
+      // the build's yielder decides whether a slice ends a task)
+      if (++settled % 8 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
       // (round 3) a low stone under the drive-over line, past ROCK_LOW_STONE_M: a crushable small rock, its records its own
       const low = !seat.profile && !!(seat.profile = lowStoneProfile(rockForms[seat.vv], seat.placement.elements, groundAt));
@@ -8213,7 +8215,8 @@ ${snowCap ? `
           shade.computeVertexNormals();
           rockBedShades.push(shade);
         }
-        if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
+        // (battle-spikes-253: 8 a slice, as the rock colliders, for a 4x phone's Garage background build)
+        if (++built % 8 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
       }
     }
     const out: THREE.BufferGeometry[] = [];
