@@ -230,7 +230,8 @@ body[data-cot-width='phone'] .cot-play .player{
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .name{order:1;flex:1 1 0}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player :is(.ready,.wait){order:2}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player::after{content:'';order:3;flex-basis:100%}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .vehicle{order:4;flex:1 1 0;margin-top:4px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .vehicle{order:4;flex:1 1 0;margin-top:4px;
+  min-height:calc(1.3 * max(var(--fs-floor-12),var(--fs-13)))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .team{order:5;margin-top:4px}
 body[data-cot-width='compact'] .cot-play .player .vehicle,
 body[data-cot-width='phone'] .cot-play .player .vehicle{grid-column:1;grid-row:2}
