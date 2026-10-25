@@ -137,6 +137,7 @@ const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'ma
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
     const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
+    const bridgeAshlar = null; // (world 240, 71aaa6e0c3) the bridge ashlar is cliffbridge's regional kit's alone
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,
