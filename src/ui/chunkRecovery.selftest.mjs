@@ -328,7 +328,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   const h = createNetworkHarness({ href: 'https://game.test/?tank=leo1a5&_bootretry=2-x' });
   h.listeners.get('vite:preloadError')({ payload: new Error('Unable to preload CSS for /assets/hud-Ab12Cd34.js') });
   assert.equal(h.recovery(), false, 'the reload budget is spent');
-  assert.equal(h.stage.textContent, 'A game file failed to download (hud-Ab12Cd34.js)', 'the terminal message names the file');
+  assert.equal(h.stage.textContent, 'A game file failed to download (hud-Ab12Cd34.js).', 'the terminal message names the file');
   assert.equal(h.beacons.at(-1).body.code, 'chunk');
   assert.equal(h.beacons.at(-1).body.outcome, 'halted');
   assert.deepEqual(h.beacons.at(-1).body.error.frames, ['hud-Ab12Cd34.js']);
@@ -351,11 +351,11 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
     { name: 'https://game.test/assets/main-EB7eBKg4.js', transferSize: 640000, responseStatus: 200 }]);
   h.listeners.get('error')({ target: { tagName: 'SCRIPT', type: 'module', src: 'https://game.test/assets/main-EB7eBKg4.js' },
     message: '', filename: '', error: null });
-  assert.equal(h.stage.textContent, 'A game file failed to download (i18n-CQsdmk14.js)',
+  assert.equal(h.stage.textContent, 'A game file failed to download (i18n-CQsdmk14.js).',
     'the file that answered 404 is named, not the entry script that failed to import');
   assert.deepEqual(h.beacons.at(-1).body.error.frames, ['i18n-CQsdmk14.js', 'main-EB7eBKg4.js']);
   h.arrive([{ name: 'https://game.test/assets/late-x.js', transferSize: 10 }]);
-  assert.equal(h.stage.textContent, 'A game file failed to download (i18n-CQsdmk14.js)',
+  assert.equal(h.stage.textContent, 'A game file failed to download (i18n-CQsdmk14.js).',
     'later arrivals cannot repaint the download counter over the retry surface');
   h.context.navigator.onLine = false;
   const offline = createNetworkHarness({ href: 'https://game.test/?tank=leo1a5&_bootretry=2-x', online: false });
