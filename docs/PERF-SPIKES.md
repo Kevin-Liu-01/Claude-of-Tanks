@@ -307,8 +307,16 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
   modes, not one each; a light wreck settles a body a slice; the rock colliders and beds go 8 a slice (were 48); with
   the entry's slicing above (stonePlan, fortKit's footprint and pools). Byte-identical: the props hashes, the 33 exact
   collision manifests and matchPlacement's pinned placement hash.
-- Open: sourcedTextureCompositionClient's main-thread part, groundCoverClearance, the terrain mask paint (nav-perf's full
-  stacks pending).
+- **The source bitmaps** (sourcedTextureCompositionClient): `createImageBitmap(<img>)` decoded each 1K JPEG in its
+  native front half on the main thread (31-75 ms at 4x; `img.decode()` first moved nothing). The browser port decodes
+  the element's cached file as a Blob instead: ≤ 3.6 ms of main thread, the same pixels in Chrome.
+- **The Garage pedestal** (nav-perf's garage-idle profile on main 251, phone): an idle Garage's long tasks are the hero
+  tank's builds, not the world's. The mudguard hangers and the fitting snap souped every running-gear triangle for a few
+  station boxes (an Abrams X: 3.4 s and 2.0 s at 4x); the running gear now soups a piece only when a tested box meets
+  its bounds. Over the fleet at HIGH and LOW (442 builds): the same answer on all 2,757 queries, 1.1 s against 21.9 s.
+  The Abrams X profile body (4.1 s and 1.5 s at 4x) is still one step: its authored stages are drained synchronously,
+  and yielding inside it needs the profile's run serial (spareTrackRunTag) to tolerate another build between stages.
+- Open: groundCoverClearance (the vegetation's synchronous seal), the terrain mask paint.
 
 ## Draw count (the engine ruling's lever)
 
