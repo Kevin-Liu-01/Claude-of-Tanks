@@ -381,6 +381,10 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
   for (const task of source) {
     if (window && (task.end < window.fromMs || task.start > window.toMs)) continue;
     const frame = frames.find((f) => f.tMs >= task.start - 0.5 && f.tMs + f.workMs <= task.end + 0.5 && f.workMs > 0);
+    // on screen: the battle frame before the task drew the scene (behind the entry veil a task is entry time)
+    let before = null;
+    for (const f of frames) { if (f.tMs > task.start) break; before = f; }
+    const visible = !!(frame ?? before)?.battle && !!(frame ?? before)?.rendered && !(frame ?? before)?.paused;
     const buckets = frame ? frameBuckets(frame, traced ? gcIn(index, frame.tMs, frame.tMs + frame.workMs) : 0) : {};
     if (traced) {
       bucketsIn(index, buckets, task.start, task.end, chunkOfUrl, (e) => e === task
@@ -393,7 +397,7 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
     for (const [key, ms] of Object.entries(buckets)) excess[key] = frame ? ms - (baseline[key] ?? 0) : ms;
     const key = dominant(excess);
     longTasks.push({
-      atMs: round(task.start, 1), ms: round(task.dur, 1), inFrame: !!frame, battle: !!frame?.battle,
+      atMs: round(task.start, 1), ms: round(task.dur, 1), inFrame: !!frame, visible, simS: round((frame ?? before)?.simS ?? 0, 2),
       cause: key ? causeOfBucket(key) : (frame ? 'diffuse' : 'untraced'), dominant: key, buckets: roundedBuckets(buckets),
     });
   }
@@ -491,7 +495,7 @@ function summarizeIntervals(intervals) {
     over100: sorted.filter((v) => v > 100).length };
 }
 
-/** Counts and excess time (past one 16.7 ms frame) by cause. */
+/** Counts and excess time (past one 16.7 ms frame) by cause; the long tasks a player saw (the veil's are entry time). */
 export function summarize(spikes, longTasks) {
   const byCause = {};
   for (const spike of spikes) {
@@ -500,6 +504,7 @@ export function summarize(spikes, longTasks) {
     row.excessMs = round(row.excessMs + Math.max(0, spike.intervalMs - 16.7), 1);
   }
   for (const task of longTasks) {
+    if (!task.visible) continue;
     const row = byCause[task.cause] ??= { spikes: 0, excessMs: 0, longTasks: 0, longTaskMs: 0 };
     row.longTasks++;
     row.longTaskMs = round(row.longTaskMs + task.ms, 1);
