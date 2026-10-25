@@ -53,6 +53,30 @@ export interface CreateTankOptions {
   proceduralOnly?: boolean;
   quality?: 'high' | 'ai' | 'low' | 'preview';
   staticPreview?: boolean;
+  staticDrawMerge?: 'off' | 'identity' | 'translations' | 'dual';
+}
+
+/** (perf-252, from rosterState) The geometry tier of a BATTLE build — the battle roster's and the multiplayer seats'
+ * (battlePresentation seatVisualOptions); the Garage and the Studio use their own builders: the player's own tank at
+ * full geometry on a desktop, every other tank and every phone build at low. */
+export function battleGeometryQuality(playerActor: boolean, deviceTier: string): NonNullable<CreateTankOptions['geometryQuality']> {
+  return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
+}
+
+/**
+ * The P21 static merge a BATTLE build takes (the battle roster's builds and the multiplayer seats'; never the Garage,
+ * Gallery or hero builds): 'dual' for every vehicle (coordinator rulings 2026-10-24, perf-250/254): the identity build
+ * exactly, plus far copies of its same-key parts, drawn only past ~30 m of screen-equivalent distance (tankFactoryCore
+ * FAR_MERGE_ENTER_M). The player's own hull, a spectated or ridden one, a killcam subject and anything the camera comes
+ * near draw byte-for-byte as the identity build; at range the copies fold the roof stations, gun rigs and loader guns
+ * (a SEPv3 bot 112 -> 50 draws, a Leopard 2A7V 100 -> 65; the CPU render pairs at 50 m moved at most 12 px).
+ * `?staticmerge=` (off | identity | translations | dual) still selects one mode for every build, for the probes'
+ * same-build pairs.
+ */
+export function battleStaticDrawMerge(_specId: string): NonNullable<CreateTankOptions['staticDrawMerge']> {
+  const requested = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('staticmerge') : null;
+  if (requested === 'off' || requested === 'identity' || requested === 'translations' || requested === 'dual') return requested;
+  return 'dual';
 }
 
 let profileKit: ProfileBuildFunctions | null = null;

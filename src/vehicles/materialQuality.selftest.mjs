@@ -62,7 +62,7 @@ assert.match(materialsSource,
   'Garage material construction must defer destroyed-only atlases until prepareBurnt');
 const factorySource = await readFile(new URL('./tankFactoryCore.ts', import.meta.url), 'utf8');
 assert.match(factorySource,
-  /setDestroyed\(opts\) \{[\s\S]{0,350}mats\.prepareBurnt\?\.\(\);/,
+  /setDestroyed\(opts\) \{[\s\S]{0,500}mats\.prepareBurnt\?\.\(\);/,
   'destruction remains self-contained when a caller bypasses battle warming');
 
 {

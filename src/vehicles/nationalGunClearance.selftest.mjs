@@ -64,8 +64,8 @@ const CURVES = {
   mbt70: [],
   // 242: the turrets whose squash 235 moved off rig_turret (turretScaleGunPitch.ts; mount windows: the sweep's
   // mountConflicts, the geometry fixes to make)
-  t90am: [[4,4],[12,20],[179,180]],
-  t90m_proryv: [[13,18]],
+  t90am: [[179,180]],
+  t90m_proryv: [],
   t90a_burlak_proto: [],
   strv81: [[2,34],[124,150]],
   challenger1_mk2: [[140,140]],

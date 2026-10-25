@@ -132,21 +132,54 @@ function insidePlot(p: YardPlot, x: number, z: number, margin: number): boolean 
   return Math.abs(lx) <= p.w / 2 + margin && Math.abs(lz) <= p.d / 2 + margin;
 }
 
+/** The plots, solids and destructibles a point test may meet (pointClear): the world's, or a rectangle's share. */
+interface ClearLists {
+  plots: readonly YardPlot[];
+  solids: readonly YardSolid[];
+  destructibles: readonly YardDestructible[];
+}
+
+/**
+ * (perf-253) The plots, solids and destructibles that can reach any point of the box [x0, x1] x [z0, z1]
+ * (pointClear's own tests, bounded: a plot's disc round its margin, a solid's box past its margin, a destructible's disc;
+ * a centimetre more), in their order; the house's own records and the destructibles under `destructibleR`, which
+ * pointClear passes over for every point, are left out. rectClear tests its ~100 samples against these instead of the
+ * whole world: Badlands' yards scanned every solid and destructible for every sample, 1.2 s in one task.
+ */
+function listsNear(world: YardWorld, house: YardPlot, x0: number, z0: number, x1: number, z1: number, solidMargin: number,
+  destructibleR: number): ClearLists {
+  const pad = 0.01;
+  const plots = world.plots.filter((p) => {
+    if (p === house) return false;
+    const r = Math.hypot(p.w / 2 + 0.8, p.d / 2 + 0.8) + pad;
+    return p.x + r >= x0 && p.x - r <= x1 && p.z + r >= z0 && p.z - r <= z1;
+  });
+  const solids = world.solids.filter((s) => s.max[0] + solidMargin + pad >= x0 && s.min[0] - solidMargin - pad <= x1
+    && s.max[2] + solidMargin + pad >= z0 && s.min[2] - solidMargin - pad <= z1
+    && !insidePlot(house, (s.min[0] + s.max[0]) / 2, (s.min[2] + s.max[2]) / 2, 0.6));
+  const destructibles = world.destructibles.filter((d) => {
+    if (d.r < destructibleR) return false;
+    const r = d.r + 0.3 + pad;
+    return d.x + r >= x0 && d.x - r <= x1 && d.z + r >= z0 && d.z - r <= z1;
+  });
+  return { plots, solids, destructibles };
+}
+
 /** Whether a world point is free ground for a yard element (`roadClear`: its distance from a carriageway's centre). */
 function pointClear(world: YardWorld, house: YardPlot, x: number, z: number, roadClear: number, solidMargin: number,
-  destructibleR: number): boolean {
+  destructibleR: number, near: ClearLists = world): boolean {
   if (Math.max(Math.abs(x), Math.abs(z)) > SQUARE) return false;
   const g = world.ground;
   if (g.roadDist(x, z) < roadClear) return false;
   if (g.water(x, z) > 0.05 || g.normalY(x, z) < 0.9) return false;
-  for (const p of world.plots) if (p !== house && insidePlot(p, x, z, 0.8)) return false;
-  for (const s of world.solids) {
+  for (const p of near.plots) if (p !== house && insidePlot(p, x, z, 0.8)) return false;
+  for (const s of near.solids) {
     if (x < s.min[0] - solidMargin || x > s.max[0] + solidMargin || z < s.min[2] - solidMargin || z > s.max[2] + solidMargin) continue;
     // the house's own records (its contact box) stand round its plot
     if (insidePlot(house, (s.min[0] + s.max[0]) / 2, (s.min[2] + s.max[2]) / 2, 0.6)) continue;
     return false;
   }
-  for (const d of world.destructibles) {
+  for (const d of near.destructibles) {
     if (d.r < destructibleR) continue;
     if (Math.hypot(x - d.x, z - d.z) < d.r + 0.3) return false;
   }
@@ -162,9 +195,12 @@ function pointClear(world: YardWorld, house: YardPlot, x: number, z: number, roa
 function rectClear(world: YardWorld, house: YardPlot, cx: number, cz: number, ax: readonly [number, number],
   bx: readonly [number, number], ha: number, hb: number, roadClear: number, destructibleR: number): boolean {
   const na = Math.max(1, Math.ceil(ha * 2 / 0.9)), nb = Math.max(1, Math.ceil(hb * 2 / 0.9));
+  // the box the samples span (the rectangle's corners), and what in the world can reach it
+  const ex = Math.abs(ax[0] * ha) + Math.abs(bx[0] * hb), ez = Math.abs(ax[1] * ha) + Math.abs(bx[1] * hb);
+  const near = listsNear(world, house, cx - ex, cz - ez, cx + ex, cz + ez, 0.3, destructibleR);
   for (let i = 0; i <= na; i++) for (let j = 0; j <= nb; j++) {
     const a = -ha + 2 * ha * i / na, b = -hb + 2 * hb * j / nb;
-    if (!pointClear(world, house, cx + ax[0] * a + bx[0] * b, cz + ax[1] * a + bx[1] * b, roadClear, 0.3, destructibleR)) return false;
+    if (!pointClear(world, house, cx + ax[0] * a + bx[0] * b, cz + ax[1] * a + bx[1] * b, roadClear, 0.3, destructibleR, near)) return false;
   }
   return true;
 }

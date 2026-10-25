@@ -31,7 +31,10 @@ const SET_CLONE = /\bmats\.[A-Za-z_$]+\.clone\(\)/g;
 /** Where vehicle materials are swapped or cloned at run time: a material-named raw clone needs a reviewed reason. */
 const RUNTIME_DIRS = ['src/app', 'src/engine', 'src/fx', 'src/game', 'src/mp', 'src/ui', 'src/vehicles'];
 const RUNTIME_ALLOWED = new Map([
-  ['src/vehicles/materials.ts', [2, 'cloneVehicleMaterial and cloneRehookedVehicleMaterial: the clone joins its source\'s registration']],
+  // copyVehicleMaterial (6b2bbed99e, cloneTankVisual; reviewed 2026-10-24, transitions-249): it restores every define,
+  // joins its source's registration family, keeps the chain and the program key, and refuses a burnt source, a twin and an
+  // unregistered cascade material (vehicleMaterialClone.selftest.mjs exercises it on real hulls)
+  ['src/vehicles/materials.ts', [3, 'cloneVehicleMaterial, cloneRehookedVehicleMaterial and copyVehicleMaterial: the clone joins its source\'s registration']],
   ['src/vehicles/battleGeometrySharing.ts', [1, 'a BufferGeometry (source.clone of a geometry), no material']],
   ['src/engine/thermalVehicles.ts', [2, 'the thermal view\'s emissive heat stand-ins (raw on purpose: no cascades; they write the vehicle alpha through tagUnlitVehiclePixels, round 3)']],
   ['src/engine/shadowDepthKinds.ts', [1, 'plain depth/distance materials without hooks']],
@@ -39,6 +42,8 @@ const RUNTIME_ALLOWED = new Map([
   ['src/game/garageDressing.ts', [1, 'the Garage set dressing (a battle screen), not a vehicle material']],
   ['src/game/garageDressingOptimization.ts', [1, 'the Garage set dressing bake, not a vehicle material']],
   ['src/ui/garageEnvironmentKit.ts', [1, 'a BufferGeometry (source.clone of a geometry), no material']],
+  ['src/vehicles/turretSeatRace.ts', [1, 'a BufferGeometry (the seated fitting\'s own copy of mesh.geometry), no material']],
+  ['src/vehicles/vehicleGraphClone.ts', [2, 'a BufferGeometry and an InstancedBufferAttribute (a cloned visual\'s own buffers), no material: its materials go through copyVehicleMaterial']],
 ]);
 /**
  * A set member's raw clone (P.mats.X.clone()): none on a tank. The profiles' 48 hand re-hooked clones moved to

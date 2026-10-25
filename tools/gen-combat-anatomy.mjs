@@ -26,7 +26,7 @@ import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
 import { plateFittedCell } from './plate-fitted-cell.mjs';
-import { rigidHullFrame } from './rigid-hull-frame.mjs';
+import { rigidHullFrame, rigidTurretFrame } from './rigid-hull-frame.mjs';
 import {
   acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readCommittedCalibrations,
   readFloorLedger, seedFloorRows, writeFloorLedger,
@@ -613,6 +613,7 @@ function receiptFor(id) {
     const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
     rigidHullFrame(tank, id);
+    rigidTurretFrame(tank);
     // Only the explicitly structural armor buckets calibrate shell collision.
     // Painted equipment can share the same material, but its semantic role
     // keeps MGs, sights, antennas, launchers and stowage out of these bounds.

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { Group, ShaderLib, Texture } from 'three';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
-import { createShallowWaterSurface, SEA_SHELF_WIDTH_M, seaShelfWidthM, shallowWaterGeometrySteps, shoreDistanceTexture, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
+import { createShallowWaterSurface, SEA_SHELF_WIDTH_M, seaShelfWidthM, shallowWaterGeometrySteps, shoreDistanceTexture, shoreDistanceTextureSteps, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 import { disposeObject3DResources, registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -162,9 +162,12 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   assert.ok(probe.uniforms.uWaterMask.value === mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
   const terrain = terrainSourceText();
-  // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`)
-  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend, openings: seaOpenings \} : null,\s*ocean\);/,
-    'the terrain builder routes the sheet through the engine hook and hands it the reactive field and the ocean');
+  // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`); perf-253: then the shore
+  // distance the build made in slices (shallowWaterShoreSteps)
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\), ripples,\s*\/\/[^\n]*\n\s*seaOpenings\.length \? \{ \.\.\.materialStep\.value\.outlandWater, sectorBlend: seaOpeningsSectorBlend, openings: seaOpenings \} : null,\s*ocean, shoreDistance\);/,
+    'the terrain builder routes the sheet through the engine hook and hands it the reactive field, the ocean and its shore distance');
+  assert.match(terrain, /const shoreSteps = shallowWaterShoreSteps\(step\.value\.geometry, materialStep\.value\.waterMask, heightField\.size,\s*cfg\.id \|\| '', cfg\.splat\.seaRamp \|\| \[0\.40, 0\.78\], ocean\);[\s\S]{0,120}while \(!shore\.done\) \{\s*yield \[/,
+    'perf-253: the shore distance is made in the build\'s own slices, with the sheet\'s own inputs');
   assert.match(terrain, /const ripples = createWaterRippleField\(engineCtx\.renderer, \{/,
     'water pass 8: the field is built from the engine renderer inside the sea/lake block (null in receipts)');
   // water pass 8: without a field the sheet declares the sampler and an inactive window, and keeps its wake
@@ -385,6 +388,19 @@ assert.match(fx, /printCenters\.fill\(1e9\)/, 'rematch reset clears wake admissi
   assert.equal(at(40), 100, '24 cells (96 m) further: 100 m');
   assert.equal(at(63), 192, 'and on to the far edge');
   assert.ok(shoreDistanceTexture({ image: { width: 8, height: 8 } }, 256, 0.3) === null, 'no CPU data, no field (the law stays off)');
+  // (perf-253) in slices (the terrain build drains them through its yields): a slow land rise yields along the way, and
+  // the texture's bytes are the one-shot texture's
+  const slowRise = (x, z) => {
+    const until = performance.now() + 0.4;
+    while (performance.now() < until) { /* a costly rise, as 25 height samples are */ }
+    return 0.02 + (((Math.round(x) * 7 + Math.round(z) * 13) % 10) + 10) % 10 / 100;
+  };
+  const steps = shoreDistanceTextureSteps({ image: { data, width: W, height: W } }, 256, 0.3, slowRise);
+  let step = steps.next(), slices = 0;
+  while (!step.done) { slices++; step = steps.next(); }
+  assert.ok(slices > 1, `a slow rise slices (${slices} yields)`);
+  const whole = shoreDistanceTexture({ image: { data, width: W, height: W } }, 256, 0.3, slowRise);
+  assert.deepEqual([...step.value.image.data], [...whole.image.data], 'the slices make the one-shot texture\'s bytes');
 }
 assert.match(shader.fragmentShader, /seaShoreM = seaShore\.x \+ \(uSeaShelf\.x > 0\.0 \? max\(pastEdgeM, 0\.0\) : 0\.0\);[\s\S]{0,200}seaShelfM = mix\(uSeaShelf\.y, max\(seaShore\.y \* uSeaLook\.z, 4\.0\), uSeaLook\.y \* step\(0\.5, seaShore\.y\)\);\s*waterDeep = mix\(waterDeep, 1\.0 - exp\(-seaShoreM \/ seaShelfM\), uSeaShelf\.x\);/,
   'the body\'s share rises over the shelf, metres from the shore (past the edge, plus the metres out — never minus inside the square)');

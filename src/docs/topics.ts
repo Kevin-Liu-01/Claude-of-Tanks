@@ -10,6 +10,8 @@ type TopicMedia = readonly [string, string];
 interface TopicDefinition {
   label: string;
   title: string;
+  /** The tab title, the head's own string (metadata.docs<Topic>.title: "<label> · Claude of Tanks"). */
+  pageTitle: string;
   lede: string;
   hero: string;
   icon: DocsIconKey;
@@ -31,6 +33,7 @@ export const topics: Record<string, TopicDefinition> = {
   modes: {
     label: t('docs.topic.modes.label'),
     title: t('docs.topic.modes.title'),
+    pageTitle: t('metadata.docsModes.title'),
     lede: t('docs.topic.modes.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'modes',
@@ -43,6 +46,7 @@ export const topics: Record<string, TopicDefinition> = {
   controls: {
     label: t('docs.topic.controls.label'),
     title: t('docs.topic.controls.title'),
+    pageTitle: t('metadata.docsControls.title'),
     lede: t('docs.topic.controls.lede'),
     hero: '/media/site50-r14/loops/s26-minaret-fire.webm',
     icon: 'interface',
@@ -55,6 +59,7 @@ export const topics: Record<string, TopicDefinition> = {
   start: {
     label: t('docs.topic.start.label'),
     title: t('docs.topic.start.title'),
+    pageTitle: t('metadata.docsStart.title'),
     lede: t('docs.topic.start.lede'),
     hero: '/media/site50-r14/loops/s226-church-duel.webm',
     icon: 'manual',
@@ -67,6 +72,7 @@ export const topics: Record<string, TopicDefinition> = {
   tanks: {
     label: t('docs.topic.tanks.label'),
     title: t('docs.topic.tanks.title'),
+    pageTitle: t('metadata.docsTanks.title'),
     lede: t('docs.topic.tanks.lede'),
     hero: '/media/site50-r14/loops/s05-barn-advance.webm',
     icon: 'fleet',
@@ -79,6 +85,7 @@ export const topics: Record<string, TopicDefinition> = {
   combat: {
     label: t('docs.topic.combat.label'),
     title: t('docs.topic.combat.title'),
+    pageTitle: t('metadata.docsCombat.title'),
     lede: t('docs.topic.combat.lede'),
     hero: '/media/site50-r14/loops/s24-ice-duel.webm',
     icon: 'combat',
@@ -91,6 +98,7 @@ export const topics: Record<string, TopicDefinition> = {
   battlefields: {
     label: t('docs.topic.battlefields.label'),
     title: t('docs.topic.battlefields.title'),
+    pageTitle: t('metadata.docsBattlefields.title'),
     lede: t('docs.topic.battlefields.lede'),
     hero: '/maps/fjord.webp',
     icon: 'battlefields',
@@ -102,6 +110,7 @@ export const topics: Record<string, TopicDefinition> = {
   build: {
     label: t('docs.topic.build.label'),
     title: t('docs.topic.build.title'),
+    pageTitle: t('metadata.docsBuild.title'),
     lede: t('docs.topic.build.lede'),
     hero: '/media/site50-r14/loops/s23-village-crossroads.webm',
     icon: 'build',
@@ -122,6 +131,7 @@ export const topics: Record<string, TopicDefinition> = {
   models: {
     label: t('docs.topic.models.label'),
     title: t('docs.topic.models.title'),
+    pageTitle: t('metadata.docsModels.title'),
     lede: t('docs.topic.models.lede'),
     hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
     icon: 'models',
@@ -143,6 +153,7 @@ export const topics: Record<string, TopicDefinition> = {
   ai: {
     label: t('docs.topic.ai.label'),
     title: t('docs.topic.ai.title'),
+    pageTitle: t('metadata.docsAi.title'),
     lede: t('docs.topic.ai.lede'),
     hero: '/media/site50-r14/loops/s04-column-under-fire.webm',
     icon: 'ai',
@@ -164,6 +175,7 @@ export const topics: Record<string, TopicDefinition> = {
   audio: {
     label: t('docs.topic.audio.label'),
     title: t('docs.topic.audio.title'),
+    pageTitle: t('metadata.docsAudio.title'),
     lede: t('docs.topic.audio.lede'),
     hero: '/media/site50-r14/loops/s34-furnace-salvo.webm',
     icon: 'audio',
@@ -176,6 +188,7 @@ export const topics: Record<string, TopicDefinition> = {
   simulation: {
     label: t('docs.topic.simulation.label'),
     title: t('docs.topic.simulation.title'),
+    pageTitle: t('metadata.docsSimulation.title'),
     lede: t('docs.topic.simulation.lede'),
     hero: '/media/site50-r14/loops/s24-ice-duel.webm',
     icon: 'simulation',
@@ -196,6 +209,7 @@ export const topics: Record<string, TopicDefinition> = {
   rendering: {
     label: t('docs.topic.rendering.label'),
     title: t('docs.topic.rendering.title'),
+    pageTitle: t('metadata.docsRendering.title'),
     lede: t('docs.topic.rendering.lede'),
     hero: '/media/site50-r14/loops/s20-road-return-fire.webm',
     icon: 'rendering',
@@ -218,6 +232,7 @@ export const topics: Record<string, TopicDefinition> = {
   multiplayer: {
     label: t('docs.topic.multiplayer.label'),
     title: t('docs.topic.multiplayer.title'),
+    pageTitle: t('metadata.docsMultiplayer.title'),
     lede: t('docs.topic.multiplayer.lede'),
     hero: '/media/site50-r14/loops/s18-street-knockout.webm',
     icon: 'multiplayer',
@@ -231,6 +246,7 @@ export const topics: Record<string, TopicDefinition> = {
   studio: {
     label: t('docs.topic.studio.label'),
     title: t('docs.topic.studio.title'),
+    pageTitle: t('metadata.docsStudio.title'),
     lede: t('docs.topic.studio.lede'),
     hero: '/media/site50-r14/loops/s33-water-tower.webm',
     icon: 'studio',
@@ -245,6 +261,7 @@ export const topics: Record<string, TopicDefinition> = {
   filming: {
     label: t('docs.topic.filming.label'),
     title: t('docs.topic.filming.title'),
+    pageTitle: t('metadata.docsFilming.title'),
     lede: t('docs.topic.filming.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'filming',
@@ -482,7 +499,7 @@ function renderTopicPage(): void {
   const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
   const slug: TopicId = isTopicId(last) ? last : 'simulation';
   const topic = topics[slug];
-  document.title = `${topic.label} · ${t('docs.topic.pageTitle')}`;
+  document.title = topic.pageTitle;
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
   const prerendered = root.dataset.prerendered === slug && root.dataset.prerenderedLocale === getLocale() && root.querySelector('.dm');

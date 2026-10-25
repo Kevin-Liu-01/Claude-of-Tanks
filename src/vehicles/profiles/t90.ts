@@ -6946,6 +6946,11 @@ function addT90MProryvGlacisRelikt(P: T90BuilderPort): void {
   }
 }
 
+/** (249) The T-90M Proryv hull's front deck under the gun, measured on the build (builder units): its top at z
+ *  T90M_DECK_Z0 and its fall per metre toward the bow (rad, small-angle), which the driver's plate and the glacis brow
+ *  lie on. */
+const T90M_DECK_Y0 = 1.319, T90M_DECK_Z0 = 1.212, T90M_DECK_FALL = 0.109;
+
 function replaceT90MProryvHull(P: T90BuilderPort): void {
   const { box, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
 
@@ -6983,17 +6988,21 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // Layered glacis and supported shoulder bridges.  The center plate is
   // narrow at the track line and broad only above the idler crown, avoiding
   // the rejected full-width vertical slab seen in the old front view.
+  // (249) its crest 7 cm lower, at 1.20: under the deck's fall it stood a 10 cm lip, which the barrel met at -5 deg
   P.add('hull', orientedSlab(
-    [-1.00, 0.62, 3.16], [1.00, 0.62, 3.16], [1.42, 1.20, 2.63], [-1.42, 1.20, 2.63],
-    [-0.96, 0.69, 3.11], [0.96, 0.69, 3.11], [1.38, 1.27, 2.58], [-1.38, 1.27, 2.58],
+    [-1.00, 0.62, 3.16], [1.00, 0.62, 3.16], [1.42, 1.17, 2.63], [-1.42, 1.17, 2.63],
+    [-0.96, 0.69, 3.11], [0.96, 0.69, 3.11], [1.38, 1.20, 2.58], [-1.38, 1.20, 2.58],
   ));
   P.add('hullDark', box(1.72, 0.035, 0.055), 0, 0.78, 3.055, -0.50, 0, 0);
+  // (249) the bridges lie on the deck's fall, their tops 1.5-2 cm over it: raised to 1.40 at the inner rear corner and
+  // 1.25-1.30 elsewhere they stood up to 18 cm over the deck under the barrel's sweep 12-36 deg off the bow (the gun
+  // held +0.4 deg there)
   for (const s of [-1, 1]) {
     P.add('hull', orientedSlab(
-      [s * 0.92, 1.17, 2.76], [s * 1.59, 1.17, 2.55], [s * 1.69, 1.20, 2.16], [s * 0.82, 1.32, 2.05],
-      [s * 0.92, 1.25, 2.73], [s * 1.57, 1.25, 2.52], [s * 1.66, 1.30, 2.18], [s * 0.82, 1.40, 2.08],
+      [s * 0.92, 1.14, 2.76], [s * 1.59, 1.13, 2.55], [s * 1.69, 1.16, 2.16], [s * 0.82, 1.22, 2.05],
+      [s * 0.92, 1.20, 2.73], [s * 1.57, 1.19, 2.52], [s * 1.66, 1.24, 2.18], [s * 0.82, 1.245, 2.08],
     ));
-    P.add('hullDark', box(0.48, 0.035, 0.055), s * 1.25, 1.255, 2.54, -0.23, -s * 0.28, 0);
+    P.add('hullDark', box(0.48, 0.035, 0.055), s * 1.25, 1.21, 2.54, T90M_DECK_FALL, -s * 0.28, 0);
   }
 
   // Glacis Relikt: broad V-shaped plates with nested seams, carried by the
@@ -7040,6 +7049,9 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   ruSkirtBand(P, {
     x: 1.80, th: 0.075, z0: -2.84, z1: 2.81, yTop: 1.27, yBot: 0.92,
     panels: 6, lipX: 1.76, lipY: 0.94, dressIn: 0.08,
+    // (249) the front panel's top falls 10 cm to the bow: square, its front end stood 10 cm over the barrel's -5.5 deg
+    // sweep 29-36 deg off the bow
+    frontRake: 0.10,
   });
   for (const s of [-1, 1]) {
     MUDGUARDS.add(P, {
@@ -7058,30 +7070,37 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
     });
   }
 
-  // Low driver/engine deck with distinct hatches, periscopes and grilles.
-  P.add('hull', box(0.86, 0.055, 0.72), 0, 1.355, 1.58);
-  P.add('hullDark', box(0.72, 0.014, 0.055), 0, 1.39, 1.84);
+  // Low driver/engine deck with distinct hatches, periscopes and grilles. (249, the coordinator: the gun could not lay
+  // below +2.7 deg ahead) the driver's plate lies on the deck's fall to the bow (T90M_DECK_FALL) instead of standing
+  // level up to 15 cm over it at its front edge, 2.5 cm thick (5.5: the mantlet's -5 deg stop passed 6-12 mm over its
+  // rear), and its three periscope heads stand 3.5 cm proud of it (5.5): the barrel's -5 deg stop passes 27 mm over them
+  const driverDeckAt = (z: number): number => T90M_DECK_Y0 - T90M_DECK_FALL * (z - T90M_DECK_Z0);
+  P.add('hull', box(0.86, 0.025, 0.72), 0, driverDeckAt(1.58) + 0.0075, 1.58, T90M_DECK_FALL, 0, 0);
+  P.add('hullDark', box(0.72, 0.014, 0.055), 0, driverDeckAt(1.84) + 0.025 + 0.005, 1.84, T90M_DECK_FALL, 0, 0);
   for (const x of [-0.28, 0, 0.28]) {
-    P.add('hullDark', box(0.17, 0.055, 0.075), x, 1.40, 1.93);
-    P.add('hullGlass', box(0.12, 0.026, 0.010), x, 1.415, 1.972);
+    const top = driverDeckAt(1.93) + 0.025 + 0.035;
+    P.add('hullDark', box(0.17, 0.040, 0.075), x, top - 0.020, 1.93);
+    P.add('hullGlass', box(0.12, 0.026, 0.010), x, top - 0.013, 1.972);
   }
   for (const [x, z, w, d] of [[-0.82, -1.58, 0.84, 1.06], [0.18, -1.58, 0.84, 1.06], [0.82, -2.46, 0.72, 0.55], [-0.12, -2.46, 0.88, 0.55]]) {
     P.add('hullDark', box(w, 0.040, d), x, 1.36, z);
     for (let k = -2; k <= 2; k++) P.add('hullDetail', box(w * 0.88, 0.012, 0.020), x, 1.385, z + k * d * 0.15);
   }
 
-  // Compact lamp cassettes, tow eyes and fender guards are hull-owned and
-  // land directly on the raised shoulder bridges.
+  // Compact lamp cassettes, tow eyes and fender guards are hull-owned. (249) The cassettes are set low into the
+  // shoulder brows' forward slope beside the glacis, their housings run back into it: standing on the bridges, their
+  // covers rose 26 cm over the barrel's -5.5 deg sweep 20-33 deg off the bow.
+  const lampAt = [0.945, 2.95] as const;
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.34, 0.18, 0.25), s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
+    P.add('hull', box(0.34, 0.30, 0.25), s * 1.26, lampAt[0], lampAt[1], -0.18, -s * 0.18, 0);
     // These existing discs faced upward. Seat their apertures in the actual
     // canted cassette front, with 5.5 mm of rear stock entering its housing.
     for (const dx of [-0.075, 0.075]) {
       const lens = markVehicleNightLens(cylY(0.047, 0.052, 0.025, 10).rotateX(Math.PI / 2), 'headlight');
-      P.add('hullGlass', KIT.xform(lens, dx, 0.025, 0.132),
-        s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
+      P.add('hullGlass', KIT.xform(lens, dx, 0.085, 0.132),
+        s * 1.26, lampAt[0], lampAt[1], -0.18, -s * 0.18, 0);
     }
-    P.add('hullDark', box(0.38, 0.025, 0.30), s * 1.40, 1.39, 2.66, -0.18, -s * 0.18, 0);
+    P.add('hullDark', KIT.xform(box(0.38, 0.025, 0.30), 0, 0.1625, -0.02), s * 1.26, lampAt[0], lampAt[1], -0.18, -s * 0.18, 0);
     P.add('hullDark', torus(0.105, 0.024, 14), s * 0.73, 0.66, 3.09, Math.PI / 2, 0, 0);
   }
 
@@ -7628,15 +7647,17 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
   // fenders.  Their forward tips descend around (not through) the idlers,
   // replacing the thin rectangular mudguard read with a closed armored brow.
   for (const s of [-1, 1]) {
+    // (249) its crest at 1.20, flush with the bridges over it, and the seam strip on them lying on the deck's fall: at
+    // 1.27, the strip raked 17 deg, they rose under the barrel's sweep 17-36 deg off the bow
     P.add('hull', orientedSlab(
       [s * 0.96, 0.84, 3.16], [s * 1.80, 0.82, 3.10], [s * 1.70, 1.17, 2.43], [s * 0.91, 1.17, 2.65],
-      [s * 0.94, 0.93, 3.10], [s * 1.77, 0.92, 3.04], [s * 1.65, 1.27, 2.44], [s * 0.89, 1.27, 2.64],
+      [s * 0.94, 0.93, 3.10], [s * 1.77, 0.92, 3.04], [s * 1.65, 1.20, 2.44], [s * 0.89, 1.20, 2.64],
     ));
     P.add('hull', orientedSlab(
       [s * 1.34, 0.77, 3.18], [s * 1.82, 0.75, 3.12], [s * 1.77, 1.01, 2.72], [s * 1.28, 1.03, 2.80],
       [s * 1.32, 0.83, 3.14], [s * 1.80, 0.82, 3.08], [s * 1.73, 1.09, 2.73], [s * 1.27, 1.10, 2.80],
     ));
-    P.add('hullDark', box(0.50, 0.026, 0.050), s * 1.44, 1.275, 2.55, -0.30, -s * 0.22, 0);
+    P.add('hullDark', box(0.50, 0.026, 0.050), s * 1.44, 1.20, 2.55, T90M_DECK_FALL, -s * 0.22, 0);
     P.add('hullDark', box(0.42, 0.026, 0.045), s * 1.58, 1.105, 2.83, -0.42, -s * 0.16, 0);
 
     // Unequal Relikt shoulder cassettes disappear into the structural brow.
@@ -7671,18 +7692,23 @@ function refineT90MProryvArmor2026(P: T90BuilderPort): void {
   // base; these smaller modules overlap it and leave deliberate dark breaks.
   for (const s of [-1, 1]) {
     P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
-      for (const [x, y, z, yaw, w, d] of [
-        [0.22, 1.340, 2.10, 0.10, 0.34, 0.28],
-        [0.50, 1.325, 2.20, 0.20, 0.38, 0.30],
-        [0.80, 1.300, 2.31, 0.30, 0.40, 0.30],
-        [1.09, 1.270, 2.43, 0.40, 0.36, 0.28],
+      // (249, the coordinator: the gun held +0.4 deg or more over the front 30 deg) the brow's modules lie on the
+      // deck's fall (T90M_DECK_FALL), 5 mm into it; raked 18 deg front-up they stood 4-15 cm over it, their raised
+      // front edges under the barrel's sweep
+      for (const [x, z, yaw, w, d] of [
+        [0.22, 2.10, 0.10, 0.34, 0.28],
+        [0.50, 2.20, 0.20, 0.38, 0.30],
+        [0.80, 2.31, 0.30, 0.40, 0.30],
+        [1.09, 2.43, 0.40, 0.36, 0.28],
       ]) {
-        P.add('hull', box(w, 0.065, d), s * x, y, z, -0.32, -s * yaw, 0);
-        P.add('hullDark', box(w * 0.74, 0.010, 0.025), s * x, y + 0.040, z - d * 0.34, -0.32, -s * yaw, 0);
+        const y = T90M_DECK_Y0 - T90M_DECK_FALL * (z - T90M_DECK_Z0) + 0.0275;
+        P.add('hull', box(w, 0.065, d), s * x, y, z, T90M_DECK_FALL, -s * yaw, 0);
+        P.add('hullDark', box(w * 0.74, 0.010, 0.025), s * x, y + 0.035, z - d * 0.34, T90M_DECK_FALL, -s * yaw, 0);
       }
     });
   }
-  P.add('hullDark', box(0.075, 0.040, 0.68), 0, 1.275, 2.30, -0.32, 0, 0);
+  // the centre seam between the two brows, on the deck's fall (it was raked up to 19 cm over the deck at its front)
+  P.add('hullDark', box(0.075, 0.040, 0.68), 0, T90M_DECK_Y0 - T90M_DECK_FALL * (2.30 - T90M_DECK_Z0) + 0.015, 2.30, T90M_DECK_FALL, 0, 0);
 
   // Armored bustle shoulders: a closed tapered side volume on each flank
   // carries the magazine roof into the terminal frame.  Four shallow panels

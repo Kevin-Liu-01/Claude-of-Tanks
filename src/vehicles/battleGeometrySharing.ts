@@ -5,6 +5,8 @@ import { BufferGeometry, Mesh, StaticDrawUsage, type Object3D } from 'three';
 const RIGID_STOCK = /^(?:gear(?:RoadWheel(?:Tires|Discs(?:Recessed)?|Insets|Recesses)|Suspension(?:Links|JointBosses)|ReturnRoller(?:Tires|Discs)|EndWheel(?:Body|Hardware))|fitting_.+|vehicleMarking_.+)$/;
 interface Entry { geometry: BufferGeometry; refs: number; bytes: Uint8Array[] }
 const entries = new Map<string, Entry[]>();
+/** (perf-252) The pool entry a shared geometry is: a copied visual (leaseSharedBattleGeometry) leases the same. */
+const pooled = new WeakMap<BufferGeometry, { entry: Entry; key: string }>();
 
 function candidate(geometry: BufferGeometry): { key: string; bytes: Uint8Array[] } | null {
   if (Object.keys(geometry.morphAttributes).length || Object.keys(geometry.userData).length
@@ -64,6 +66,7 @@ export function shareBattleGeometry(root: Object3D): () => void {
         entry = { geometry, refs: 0, bytes: canonicalBytes };
         bucket.push(entry);
         entries.set(value.key, bucket);
+        pooled.set(geometry, { entry, key: value.key });
       }
       entry.refs++;
       leased.push({source,meshes,entry,key:value.key});
@@ -73,13 +76,36 @@ export function shareBattleGeometry(root: Object3D): () => void {
   function release(): void {
     for (const {source,meshes,entry,key} of leased.splice(0)) {
       for (const mesh of meshes) if (mesh.geometry===entry.geometry) mesh.geometry=source;
-      if (--entry.refs) continue;
-      const bucket=entries.get(key)!; bucket.splice(bucket.indexOf(entry),1);
-      if (!bucket.length) entries.delete(key);
-      entry.geometry.dispose();
+      unlease(entry, key);
     }
   }
   return release;
+}
+
+function unlease(entry: Entry, key: string): void {
+  if (--entry.refs) return;
+  const bucket=entries.get(key)!; bucket.splice(bucket.indexOf(entry),1);
+  if (!bucket.length) entries.delete(key);
+  pooled.delete(entry.geometry);
+  entry.geometry.dispose();
+}
+
+/** (perf-252) A copied battle visual's own hold on the pooled stock it draws (cloneTankVisual: the copy shares its
+ * source's meshes' geometry): one lease per pooled geometry under `root`, so the pool outlives either visual alone.
+ * Nothing is hashed or swapped: the copy draws exactly what its source shared. */
+export function leaseSharedBattleGeometry(root: Object3D): () => void {
+  const held = new Set<{ entry: Entry; key: string }>();
+  root.traverse(object => {
+    if (!(object instanceof Mesh)) return;
+    const record = pooled.get(object.geometry);
+    if (!record || held.has(record)) return;
+    held.add(record);
+    record.entry.refs++;
+  });
+  return () => {
+    for (const { entry, key } of held) unlease(entry, key);
+    held.clear();
+  };
 }
 
 /** Construction-only diagnostic; does not retain owners or scene references. */

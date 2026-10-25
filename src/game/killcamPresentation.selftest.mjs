@@ -97,6 +97,22 @@ assert.match(source, /function playCollisionContact[\s\S]*applyReplaySurfaceStat
   'collision contact applies resolved module failures and dedicated impact effects');
 assert.match(main, /createKillCam\([\s\S]*getGame: \(\) => game/,
   'production composition injects canonical game state into the killcam');
+// transitions-249: the replay light pool leaves the light count while the Garage's own set is up, so a return keys
+// every lit Garage program as its boot did (the first Return relinked 48 programs when the pool stayed in the count)
+assert.match(source, /const showLightPool = \(shown(?:: boolean)?\)(?:: void)? => \{\s*for \(const light of kcLights\) light\.visible = shown;/,
+  'the replay light pool shows and hides as one set');
+assert.match(source, /showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\);\s*let warmRig/,
+  'a kill-cam created in the Garage starts with its lights out of the count');
+assert.match(source, /setBattleLights\(shown(?:: boolean)?\) \{\s*if \(!active\) showLightPool\(shown\);/,
+  'the Garage light switch never pulls the lights from a running replay');
+assert.match(source, /function begin\([\s\S]*?\{[\s\S]*?showLightPool\(true\);[\s\S]*?active = true;/,
+  'a replay always has its lights');
+assert.match(source, /active = false;\s*staged = false;\s*\/\/[^\n]*\n\s*showLightPool\(deps\.battleLightsActive\?\.\(\) \?\? true\);/,
+  'a finished replay gives its lights back to the current light set');
+assert.match(main, /const setGarageSpots = [\s\S]*?garagePhasePresentation\.setActive\(active\);\s*garageLightsUp = active;\s*killcamAccess\.current\?\.setBattleLights\(!active\);/,
+  'the Garage light switch drives the kill-cam light pool');
+assert.match(main, /createKillCam\([\s\S]*battleLightsActive: \(\) => !garageLightsUp/,
+  'a kill-cam created later reads the current light set');
 assert.match(source, /const gameRef = \(\)(?:: KillcamGame \| null)? => \{[\s\S]*getGame \? getGame\(\) : null/,
   'spectator target selection uses the injected game-state getter');
 assert.match(source, /function beginCameraHandoff[\s\S]*function setReplayCamera/,

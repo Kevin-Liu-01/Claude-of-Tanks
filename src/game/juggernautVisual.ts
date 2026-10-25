@@ -19,6 +19,8 @@ interface Shield {
   lit:boolean;
   /** the skin went onto the live tank's surfaces (its first scan) */
   installed:boolean;
+  /** (transitions-249) a Garage hero's dormant skin taken off for a battle and kept, with its programs, for the return */
+  parked?:boolean;
   surfaces:Surface[];materials:Map<THREE.Material,THREE.Material>;
   style:TankEnergyStyle;color:{value:THREE.Color};pattern:{value:number};
   strength:{value:number};time:{value:number};rootInverse:{value:THREE.Matrix4};
@@ -58,9 +60,11 @@ function originalMaterial(material:THREE.Material):THREE.Material {
   return highlightSources.get(material)??material;
 }
 
-/** End the effect before a surviving battle visual is adopted by the Garage. */
+/** End the effect before a surviving battle visual is adopted by the Garage. A parked Garage skin stays for the
+ * Garage's adoption (parkGarageTankEnergyVisual); its paint's disposal, or a battle mode that lights the tank, ends it. */
 export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=false):void {
-  shields.get(root)?.dispose();
+  const shield=shields.get(root);
+  if(!shield?.parked)shield?.dispose();
   const scale=scales.get(root)??1;
   if(scale!==1)root.scale.multiplyScalar(1/scale);
   scales.delete(root);
@@ -87,10 +91,29 @@ export function pauseGarageTankEnergyVisual(root:THREE.Object3D):void {
   nameSkins(shield,false);
 }
 
+/**
+ * The Garage hero becomes a battle's (2026-10-24, transitions-249): its dormant skin comes off its meshes, so the battle
+ * draws and warms its own paint, but stays, with the programs its materials linked, for the Garage that adopts the hero
+ * back (prepareGarageTankEnergyVisual puts the same materials back on). Disposing it here relinked them at the first
+ * Return to Garage (7 of the hero's 23 programs, those no parked hero shared). Anything but a Garage skin ends as before.
+ */
+export function parkGarageTankEnergyVisual(root:THREE.Object3D):void {
+  const shield=shields.get(root);
+  if(!shield?.preview){clearJuggernautVisual(root,true);return;}
+  for(const surface of shield.surfaces)if(surface.mesh.material===surface.highlight)surface.mesh.material=surface.original;
+  shield.parked=true;shield.installed=false;shield.lit=false;shield.strength.value=0;
+  nameSkins(shield,false);
+  if(root.userData.programVariants)splitProgramVariants(root,{onlyAlreadySplit:true});
+}
+
 /** Install the dormant skin before the Garage's ordinary first shader submission.
- * The first aura selection then changes uniforms, just like changing paint. */
+ * The first aura selection then changes uniforms, just like changing paint. A parked skin goes back on as it was. */
 export function prepareGarageTankEnergyVisual(root:THREE.Object3D,dims:{widthM:number;hullLengthM:number;heightM:number}):void {
-  if(shields.get(root)?.preview)return;
+  const shield=shields.get(root);
+  if(shield?.preview){
+    if(shield.parked){shield.parked=false;shield.refresh();}
+    return;
+  }
   syncTankEnergyVisual(root,dims,1.12,1,1,0,false,TANK_ENERGY.juggernaut,true);
   pauseGarageTankEnergyVisual(root);
 }

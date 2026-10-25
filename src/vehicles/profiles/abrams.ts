@@ -4534,6 +4534,10 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     const bearingBottom = 1.450 - P.turretG.position.y;
     P.add('turret', cylY(1.25, 1.25, bearingTop - bearingBottom, 48),
       0, (bearingTop + bearingBottom) / 2, 0);
+    // Release 240: the bearing is coaxial and reaches 1.25, past the seat's keep radius (rim 0.96-1.05 + 2 cm,
+    // turretSeatRace.ts), which lifted its lower lip off the deck; a body of revolution turns unseen, so the seat keeps it
+    // as built (abramsTurretLift's circular cross-section at every azimuth).
+    P.turretG.userData.turretSeatKeepR = 1.27;
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
     // The photo-based armored face and round cradle pitch as one assembly.
@@ -5261,11 +5265,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         if (!(p && p.noCable)) {
           const buildTejasFamilyHullCourse15 = (): void => {
             const cable = FITTINGS.towCable({ mats: P.mats, r: 0.013, eyes: false, seg: 24,
+              // (release 240: the run ends 1.33 m off the ring's axis, outside the turret's 1.25 coaxial bearing; it ran
+              // into the bearing's wall to 1.19)
               pts: [[1.00, 1.514, 2.02], [1.16, 1.459, 1.88], [1.30, 1.479, 1.42],
-                [1.32, 1.482, 0.98], [1.16, 1.483, 0.62]] });
+                [1.32, 1.482, 0.98], [1.30, 1.483, 0.62]] });
             P.hullG.add(cable);
             P.add('hullDark', box(0.05, 0.012, 0.05), 1.30, 1.477, 1.42);
-            P.add('hullDark', box(0.05, 0.012, 0.05), 1.17, 1.481, 0.80);
+            P.add('hullDark', box(0.05, 0.012, 0.05), 1.31, 1.481, 0.80);
           };
           buildTejasFamilyHullCourse15();
         }
@@ -6355,6 +6361,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // frustum. The authoring offset is cancelled by the assembly rebase below.
     const bearingZ = -AX_TURRET_CONTENT_SHIFT_Z;
     P.add('turret', cylY(1.22, 1.26, .277, 48), 0, -.3985, bearingZ);
+    // (release 240: the seat keeps this coaxial bearing as built, past its 1.26 foot; at the receipt's 0.98 keep radius
+    // it lifted the bearing's lower lip, and the ring no longer read continuous round the yaw axis)
+    P.turretG.userData.turretSeatKeepR = 1.28;
     P.add('turretDark', cylY(1.235, 1.235, .025, 48), 0, -.265, bearingZ);
     // Faceted corner sensor pods — pylons carry them to the shell/deck so
     // articulation poses stay connected.
