@@ -52,7 +52,7 @@ porting the change to its Rust file; `cargo test` fails until both agree.
 
 - The authority (server, multiplayer host): 16 a side, 3,600 ticks, digests identical at every check: Verdant −22 to
   −24 %, Urban −21 %, Mars −18 % of the tick's CPU (RUST-ENGINE-DECISION §2).
-- A solo battle in Chrome, 16 a side on Verdant, four pairs of 20 s runs (profiled): the support solve −25 %, movement
-  −12 %, the whole sim step −7.5 % (2.57 → 2.37 ms a tick). Only the support rides the kernels there; the rendered
-  world's grids and rays, the AI and the shells stay TypeScript. `wasm-check`: 5.9 million comparisons over 20 s, none
-  differ.
+- A solo battle in Chrome, 16 a side, pairs of 20 s runs (profiled): Verdant (four pairs) the sim step 2.57 → 2.37 ms
+  a tick (−7.5 %), the support solve −25 %; Urban (three pairs) 2.51 → 2.26 ms (−10 %), the support solve −15 %. Only
+  the support rides the kernels there; the rendered world's grids and rays, the AI and the shells stay TypeScript.
+  `wasm-check` over 20 s: 5.9 million comparisons on Verdant and 5.8 million on Urban, none differ.

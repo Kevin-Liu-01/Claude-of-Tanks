@@ -34,6 +34,8 @@ async function battlePage(mode) {
   await page.setViewport({ width: 1280, height: 720 });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
+  // (a renderer that dies is a crash, not a closed page: name it, with the page's memory when last read)
+  page.on('error', (error) => { errors.push(`crash: ${error}`); console.error(`[probe] ${mode ?? 'ts'} page crashed: ${error}`); });
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('cot.game.teams.v1', JSON.stringify({ standard: { allies: 15, enemies: 16 } }));
@@ -84,6 +86,7 @@ try {
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
     await cdp.send('Profiler.start');
+    const heapBefore = await page.evaluate(() => performance.memory?.usedJSHeapSize ?? null);
     const timing = await page.evaluate((s) => {
       const t0 = performance.now(), g0 = window.__DEBUG.game.timeS;
       window.__DEBUG.fastForward(s);
@@ -94,7 +97,7 @@ try {
     const incl = inclusive(profile, ['simStep', 'stepTankMovement', 'updateTank', 'solveSupportHeight', 'syncFastForwardPresentation', 'update']);
     const run = { mode: mode ?? 'ts', tanks, msPerTick: timing.ms / ticks, simStepMsPerTick: incl.simStep / ticks,
       movementMsPerTick: incl.stepTankMovement / ticks, supportMsPerTick: incl.solveSupportHeight / ticks,
-      presentationMsPerTick: incl.syncFastForwardPresentation / ticks, simS: timing.simS,
+      presentationMsPerTick: incl.syncFastForwardPresentation / ticks, simS: timing.simS, heapMbBefore: heapBefore && Math.round(heapBefore / 1048576),
       kernels: await page.evaluate(() => window.__SIM_KERNELS?.worlds ?? 0), errors: errors.slice(0, 5) };
     report.runs.push(run);
     console.log('run', JSON.stringify(run));
