@@ -477,9 +477,15 @@ async function playScenario(options, side, scenario, size, done, abort) {
     const opponents = pinnedOpponents(catalog, options.spec, allies + enemies);
     await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, opponents);
     await page.evaluate(() => window.__DEBUG.frameStages.install({ gl: true }));
+    let played = false;
     for (const pass of options.passes) {
       const key = keyOf(scenario, size, pass, side.label);
       if (done.has(key)) { log(`${key}: measured already`); continue; }
+      // a warm battle is the page's second: a resumed run whose cold battle was measured earlier plays one, unrecorded
+      if (pass === 'warm' && !played) {
+        log(`${key}: the page's first battle, unrecorded (its cold one was measured earlier)`);
+        await primeBattle(page, options, { mapId, gameMode });
+      }
       if (pass === 'warm') {
         await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
         await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
@@ -490,6 +496,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
       record.browserPeakRssMB = Math.round(rss.peakKb / 1024);
       record.label = side.label;
       record.governor = options.governor;
+      played = true;
       record.bootMs = bootMs;
       record.errors = errors.splice(0);
       writeFileSync(path.join(options.out, `${key}.json`), JSON.stringify(record, null, 1));
@@ -506,6 +513,20 @@ async function playScenario(options, side, scenario, size, done, abort) {
     await browser.close().catch(() => {});
     activeBrowser = null;
   }
+}
+
+/** Play one battle unrecorded (the census's driver, its seconds of combat): the page's first, before a resumed warm one. */
+async function primeBattle(page, options, { mapId, gameMode }) {
+  const watched = options.driver === 'watch' && gameMode !== 'ac130';
+  if (watched) {
+    await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginBattleEntry(request.specId, request.mapId, { gameMode: request.gameMode, watch: true }), 0); },
+      { specId: options.spec, mapId, gameMode });
+  } else {
+    await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
+  }
+  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+  if (watched) await sleep(options.seconds * 1000);
+  else await driveBattle(page, { seconds: options.seconds, mode: gameMode });
 }
 
 async function measureBattle(page, options, { mapId, gameMode, allies, enemies, pass, key }) {
