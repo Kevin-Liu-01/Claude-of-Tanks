@@ -51,7 +51,8 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 .nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .nf-go__nm{display:inline-flex;align-items:center;gap:var(--s3)}
 .nf-go__nm .cot-i{width:18px;height:18px;color:var(--ink-2)}
-.nf-go b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase}
+.nf-go b{font:700 max(var(--fs-floor-12),var(--fs-16))/1 var(--font-display);text-transform:uppercase}
+.nf-go--play b{letter-spacing:var(--track-label-s)}
 /* Play: the other tiles' shape and name, on the accent plate; its wider column takes the row's height, not its own 16:9 */
 .nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
 .nf-go--play .cot-i{width:18px;height:18px;fill:currentColor}
@@ -65,6 +66,7 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--s3);aspect-ratio:auto;min-height:64px}
 }
 @media (width < 768px){
+  .nf-go--play b{font-size:max(var(--fs-floor-12),var(--fs-15))}
   /* the still is a banner over the words: the tank keeps the top of the screen, the code and the search sit under it */
   .not-found{grid-template-rows:auto auto;align-content:start;gap:var(--s6);padding-block:calc(260px + var(--s5)) var(--s5)}
   .not-found__still,.not-found__grade{bottom:auto;height:260px}
@@ -74,6 +76,6 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   .not-found__line{font-size:var(--fs-28)}
   .not-found__go{gap:var(--s2)}
   .nf-go{padding:var(--s3) var(--s3)}
-  .nf-go b{font-size:var(--fs-14)}
+  .nf-go b{font-size:max(var(--fs-floor-12),var(--fs-14))}
 }
 }

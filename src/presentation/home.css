@@ -66,7 +66,7 @@ img{display:block;max-width:100%}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
 .hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
-.hero__film::backdrop{background:var(--scrim)}
+.hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
 .hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
@@ -142,8 +142,8 @@ img{display:block;max-width:100%}
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
-.press{padding:var(--s7) 0 var(--s8);border-top:1px solid var(--line-1)}
-.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s6) var(--s7)}
+.press{padding:var(--s7) 0 var(--s8)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s5) var(--s7)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
@@ -153,7 +153,8 @@ img{display:block;max-width:100%}
 .press__title{grid-area:title}
 .press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
 .press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
-.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0}
+.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0;text-align:right}
+.press__stats dt{justify-content:flex-end}
 .press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
 .press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1)}
@@ -232,7 +233,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
-  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--home-gutter) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--side-plate);box-shadow:var(--home-bar-edge)}
+  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--home-gutter) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--surface-nav);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   /* the trailer keeps its name on a phone; its picture and length step aside */
   .hero__trailer{--h:58px;padding-inline:var(--s4)}
@@ -240,7 +241,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* in the picture's lower right, above the counts: the hero's own box ends with them */
   .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
   .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1)}
+  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
   .features{padding-top:var(--s6)}
