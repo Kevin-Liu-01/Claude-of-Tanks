@@ -15,6 +15,11 @@ import { CLIFF_STRATA_FLOOR, STEEP_NORMAL_G2 } from './terrain.ts';
 // (2026-10-15) the chunk builder's steep-cell split (terrainContactSurface.ts terrainCellFlipped, the steep-diagonal item)
 // reaches this sandbox the way terrain.ts imports it; read off the module so either landing order evaluates
 import * as contactSurface from './terrainContactSurface.ts';
+// The extracted terrain source calls the authority's deterministic math through terrain.ts's module-level import
+// (src/sim/detMath.ts, the 2026-10-25 pinned-math ruling); a receipt that evaluates that text outside the module lends
+// the same import to its scope.
+import * as detMath from '../sim/detMath.ts';
+globalThis.detMath ??= detMath;
 
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));

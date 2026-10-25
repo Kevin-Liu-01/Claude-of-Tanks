@@ -1,6 +1,7 @@
 import { shorelineDistance, shorelineRadiusAt, shorelineWetnessFromDistance, type ShorelineDisc } from './shoreline.ts';
 import { WATER_BANK_LIP_FADE_M, waterCoverage, waterlineDistance } from './waterBank.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export interface LakeHeightResult {
   height: number; wetness: number;
   /** (2026-10-17, with a LakeBankLaw) the most covering lake's floor (its level) and its own coverage there (0: none
@@ -60,7 +61,7 @@ export function composeLakeHeight(
       // (2026-10-17, waterBank.ts) under this lake's water the bed that holds its top at its level (the most covering
       // lake's); past its own shelf law's waterline the shore's floor
       const lake = lakes[index];
-      const radius = shorelineRadiusAt(lake, Math.atan2(z - lake.z, x - lake.x));
+      const radius = shorelineRadiusAt(lake, detMath.atan2(z - lake.z, x - lake.x));
       const start = lake.shelfM !== undefined ? Math.min(0.94, 1 - lake.shelfM / Math.max(1, radius)) : 0.80;
       const coverage = waterCoverage(shorelineWetnessFromDistance(distance, true, start), bank.rampStart, bank.rampEnd);
       if (coverage > bedCoverage) { bedCoverage = coverage; bedLevel = levels[index]; }

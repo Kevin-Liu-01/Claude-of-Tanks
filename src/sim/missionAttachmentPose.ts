@@ -2,6 +2,7 @@
  * two-plane stabilizer; contains no renderer, fleet-builder or clock access. */
 import {Euler,Quaternion,Vector3} from 'three';
 import {missionAttachmentFor,missionAttachmentTurretPivot,DRONE_DOCK_HEIGHT_M,type MissionCarrierSpec} from './missionAttachment.ts';
+import * as detMath from './detMath.ts';
 export interface MissionCarrierPose {
  pos:Vector3;yaw:number;turretYaw?:number;gunPitch?:number;visualPitch?:number;visualRoll?:number;
  _susp?:{p:number;r:number};_swayEst?:number;_flinch?:{p:number;r:number};
@@ -19,11 +20,11 @@ export function missionAttachmentPose(spec:MissionCarrierSpec,state:MissionCarri
  if(seat.frame==='turret'){
   let yaw=state.turretYaw??0;
   if(Math.abs(extraPitch)+Math.abs(extraRoll)>1e-6){
-   const elevation=state.gunPitch??0,c=Math.cos(elevation);
-   direction.set(Math.sin(yaw)*c,Math.sin(elevation),Math.cos(yaw)*c);
+   const elevation=state.gunPitch??0,c=detMath.cos(elevation);
+   direction.set(detMath.sin(yaw)*c,detMath.sin(elevation),detMath.cos(yaw)*c);
    canonical.setFromEuler(euler.set(-pitch,state.yaw,roll));
    direction.applyQuaternion(canonical);canonical.copy(chassis).invert();direction.applyQuaternion(canonical);
-   yaw=Math.atan2(direction.x,direction.z);
+   yaw=detMath.atan2(direction.x,direction.z);
   }
   turn.setFromAxisAngle(yAxis,yaw);position.applyQuaternion(turn);
   const pivot=missionAttachmentTurretPivot(spec);position.x+=pivot[0];position.y+=pivot[1];position.z+=pivot[2];

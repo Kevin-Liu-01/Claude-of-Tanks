@@ -19,6 +19,7 @@
 // the cross streets lanes; there is no wall, so the town's inside is the valley floor's rectangle.
 import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 /** A point's rotation twin about the centre (the map's symmetry). */
 const rot = (p: { x: number; z: number; yawDeg?: number }) => ({ x: -p.x, z: -p.z, yawDeg: ((p.yawDeg ?? 0) + 180) % 360 });
 const rotRect = (r: CivicRect): CivicRect => ({ x0: -r.x1, x1: -r.x0, z0: -r.z1, z1: -r.z0 });
@@ -46,7 +47,7 @@ const BED_NW = {
   feature: { kind: 'flowerRondell' as const, x: -SE_MID_X, z: -SE_MID_Z, r: 1.8, ring: 3.2 },
 };
 
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 /** (229 b1 r1, the blind critics: "a second Ruinspires square is left completely empty") the west square (pad 1 at
  *  (-225, 0); zone 1) as a smaller plaza of the same make, and the east square (pad 2; zone 3) its rotation twin. The
@@ -76,7 +77,7 @@ function sideSquare(id: string, pad: number, twin: boolean): CivicAreaPlan {
     // (229 b1 r3, the gameplay critic's D1: the zone's hulls rammed the disc's benches and planes in most seeds) nothing
     // hull-high inside the zone's 30 m disc: the beds' outer benches and the boulevard corners' planters past it, the
     // halves' pieces within one of each other (D5)
-    ...ring(NWB).filter((b) => Math.hypot(b.x + 225, b.z) > 31), ...ring(SWB).filter((b) => Math.hypot(b.x + 225, b.z) > 31),
+    ...ring(NWB).filter((b) => detMath.hypot(b.x + 225, b.z) > 31), ...ring(SWB).filter((b) => detMath.hypot(b.x + 225, b.z) > 31),
     ...[[-258.8, 12.2], [-258.8, -12.2]].map(([x, z]) => ({ kind: 'pflanzkuebel', x, z, yawDeg: 0 })),
   ].map(F);
   return {

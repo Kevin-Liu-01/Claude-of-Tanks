@@ -11,6 +11,7 @@ import {missionAttachmentPose,type MissionCarrierPose} from './missionAttachment
 import type { ShellSpec } from './shellSpec.ts';
 import type { AerialView } from './matchModes.ts';
 
+import * as detMath from './detMath.ts';
 // The view type lives with the mode rules (matchModes.ts) so the rules never import this flight model.
 export type { AerialView };
 export interface AerialEntity {
@@ -72,7 +73,7 @@ export const DRONE_BOT_ATTACK = Object.freeze({
 const _botAim = new Vector3();
 /** The point a bot's airframe steers at: over the target while closing, its roof line in the dive. */
 export function botDroneAim(position: Point3, aim: Point3, out: Vector3): Vector3 {
-  const horizontal = Math.hypot(aim.x - position.x, aim.z - position.z);
+  const horizontal = detMath.hypot(aim.x - position.x, aim.z - position.z);
   if (horizontal > DRONE_BOT_ATTACK.diveRadiusM) {
     return out.set(aim.x, Math.max(aim.y + DRONE_BOT_ATTACK.cruiseM, Math.min(position.y, aim.y + DRONE_BOT_ATTACK.cruiseM * 1.5)), aim.z);
   }
@@ -177,8 +178,8 @@ function positionGunship(entity: AerialEntity, flight: Flight, timeS: number): v
   const v=flight.view;
     const rules = AERIAL_RULES.gunship;
     const angle = timeS * rules.orbitRadS;
-    v.x = flight.center.x + Math.sin(angle) * rules.radiusM;
-    v.z = flight.center.z + Math.cos(angle) * rules.radiusM;
+    v.x = flight.center.x + detMath.sin(angle) * rules.radiusM;
+    v.z = flight.center.z + detMath.cos(angle) * rules.radiusM;
     v.y = flight.center.y + rules.altitudeM;
     v.yaw = angle + Math.PI / 2;
     entity.state.pos.set(v.x, v.y, v.z); entity.state.yaw = v.yaw; entity.state.speed = 0;
@@ -192,14 +193,14 @@ function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<Shel
   const rules = AERIAL_RULES.drone;
   if (botDriven(entity)) direction.copy(botDroneAim(shell.pos, entity.input.aimPoint, _botAim)).sub(shell.pos).normalize();
   else direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
-  const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
-  const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
+  const wantedYaw = detMath.atan2(direction.x, direction.z), wantedPitch = detMath.asin(Math.max(-1, Math.min(1, direction.y)));
+  const delta = detMath.atan2(detMath.sin(wantedYaw - v.yaw), detMath.cos(wantedYaw - v.yaw));
   v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));
   v.pitch += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, wantedPitch - v.pitch));
   const speed = rules.speedMps * (botDriven(entity) ? 1 : Math.max(-.5, Math.min(1, entity.input.throttle)));
-  direction.set(Math.sin(v.yaw) * Math.cos(v.pitch), Math.sin(v.pitch), Math.cos(v.yaw) * Math.cos(v.pitch)).multiplyScalar(speed);
+  direction.set(detMath.sin(v.yaw) * detMath.cos(v.pitch), detMath.sin(v.pitch), detMath.cos(v.yaw) * detMath.cos(v.pitch)).multiplyScalar(speed);
   const strafe = botDriven(entity) ? 0 : Math.max(-1, Math.min(1, entity.input.steer)) * rules.speedMps * .6;
-  direction.x += Math.cos(v.yaw) * strafe; direction.z -= Math.sin(v.yaw) * strafe;
+  direction.x += detMath.cos(v.yaw) * strafe; direction.z -= detMath.sin(v.yaw) * strafe;
   if (!botDriven(entity) && entity.input.brake) direction.y += rules.climbMps;
 }
 
@@ -254,7 +255,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
     launchOrigin(entity, flight.launch);
     const launchYaw=entity.state.yaw+(entity.spec && missionAttachmentFor(entity.spec).frame==='turret' ? entity.state.turretYaw??0 : 0);
-    direction.set(Math.sin(launchYaw), .4, Math.cos(launchYaw)).normalize();
+    direction.set(detMath.sin(launchYaw), .4, detMath.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
     flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0; flight.strikes = 0;
@@ -296,15 +297,15 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
     steerDrone(entity, v, shell, dt);
     // Bounded, zero-mean gusts; the velocity controller continuously corrects them.
     const phase=flight.born*.73;
-    direction.x+=.85*Math.sin(age*1.7+phase)+.35*Math.sin(age*4.3+phase);
-    direction.y+=.65*Math.sin(age*2.3+phase)+.25*Math.sin(age*5.7+phase);
-    direction.z+=.7*Math.sin(age*1.9+phase)+.3*Math.sin(age*3.7+phase);
+    direction.x+=.85*detMath.sin(age*1.7+phase)+.35*detMath.sin(age*4.3+phase);
+    direction.y+=.65*detMath.sin(age*2.3+phase)+.25*detMath.sin(age*5.7+phase);
+    direction.z+=.7*detMath.sin(age*1.9+phase)+.3*detMath.sin(age*3.7+phase);
     // Owner 2026-10-12: a human pilot flies wherever they steer, down to the ground (deploy 212). Only a bot's
     // airframe takes the look-ahead avoidance; a human's contact is the shell sweep's alone.
     if(world&&botDriven(entity))avoidDroneObstacles(world,entity.id,shell.pos,direction);
   }
   if(v.launching) shell.vel.copy(direction);
-  else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));
+  else shell.vel.lerp(direction, 1-detMath.exp(-dt*AERIAL_RULES.drone.responseHz));
   v.x = shell.pos.x; v.y = shell.pos.y; v.z = shell.pos.z;
   v.batteryS = Math.max(0, rules.batteryS - age);
 }

@@ -22,6 +22,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { type BorderLandUse, type LandUseSampleLike, traceLandUseLines } from './borderLandUse.ts';
 import { createMassifField } from './horizonMassif.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** The playable half extent (battlefieldBounds PLAYABLE_HALF_EXTENT_M): the rim inside it may only be lowered. */
 export const BORDER_PLAYABLE_M = 470;
 /** Where the classic rim lift starts (its S-curve runs 430 → 512). */
@@ -47,7 +48,7 @@ const TRACK_LINE_SHARE = 0.42;
 const TRACK_RUN_LEVELS = 7;
 const _field = { a: 0, b: 0 };
 function fieldHash(n: number): number {
-  const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  const s = detMath.sin(n * 12.9898 + 78.233) * 43758.5453;
   return s - Math.floor(s);
 }
 /**
@@ -292,7 +293,7 @@ export function createBorderLandform(
   /** 0..1: inside one of the open arcs (soft shoulders), by the point's bearing from the centre. */
   function openAt(x: number, z: number): number {
     if (!openArcs) return 0;
-    const b = ((Math.atan2(x, z) * 180) / Math.PI + 360) % 360;
+    const b = ((detMath.atan2(x, z) * 180) / Math.PI + 360) % 360;
     let w = 0;
     for (const [a0, a1] of openArcs) {
       const span = ((a1 - a0) % 360 + 360) % 360, rel = ((b - a0) % 360 + 360) % 360;
@@ -319,7 +320,7 @@ export function createBorderLandform(
     for (let i = 0; i + 1 < line.xs.length; i++) {
       const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
       const t = Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
-      const d = Math.hypot(x - ax - bx * t, z - az - bz * t);
+      const d = detMath.hypot(x - ax - bx * t, z - az - bz * t);
       if (d < best) best = d;
     }
     return best;
@@ -420,7 +421,7 @@ export function createBorderLandform(
   const ownAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
   // (a land-use map's grid has its own heading: the farmsteads square up to it)
   const fieldAngle = landUse ? landUse.heading : ownAngle;
-  const fieldCos = Math.cos(fieldAngle), fieldSin = Math.sin(fieldAngle);
+  const fieldCos = detMath.cos(fieldAngle), fieldSin = detMath.sin(fieldAngle);
   const fieldShare = FIELD_LINE_SHARE[settings.crops] ?? FIELD_LINE_SHARE.temperate;
   /** The two families' pitch levels at (x, z): continuous, a pitch line on every whole level. */
   let fieldX = Number.NaN, fieldZ = Number.NaN, fieldA = 0, fieldB = 0;
@@ -644,7 +645,7 @@ export function createBorderLandform(
       const { a, b } = fieldCoords(x, z);
       const a0 = a, b0 = b, e = 3;
       const ax = fieldCoords(x + e, z).a, bx = _field.b, az = fieldCoords(x, z + e).a, bz = _field.b;
-      const metresPer = [e / Math.max(1e-6, Math.hypot(ax - a0, az - a0)), e / Math.max(1e-6, Math.hypot(bx - b0, bz - b0))];
+      const metresPer = [e / Math.max(1e-6, detMath.hypot(ax - a0, az - a0)), e / Math.max(1e-6, detMath.hypot(bx - b0, bz - b0))];
       for (let family = 0; family < 2; family++) {
         const level = family ? b0 : a0, other = family ? a0 : b0;
         // the nearest track line of this family (scanning out from the nearest pitch line)

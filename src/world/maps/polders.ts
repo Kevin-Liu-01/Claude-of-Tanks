@@ -18,6 +18,7 @@
 // it, the second within 8 m of the first's rotation about the farm court.
 import { roundRoadBends } from './roadBends.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import * as detMath from '../../sim/detMath.ts';
 import { POLDERS_VILLAGE } from './poldersVillage.ts'; // the maps lane, 2026-10-15: the dyke village's street
 
 /** The farm court's settlement rect (terrain.village below). */
@@ -45,11 +46,11 @@ function dykeRamps(dykes: readonly Dyke[], roads: readonly (readonly (readonly [
   // (the field dykes, 3.6 m, keep their cuttings: ramped, their raised approaches turned the routes and the objectives'
   // symmetry past its band; the main dykes' crossings are ramped)
   for (const d of dykes.filter((dyke) => dyke.height >= 4)) for (const road of roads) for (let i = 1; i < road.length; i++) {
-    const [px, pz] = road[i - 1], [qx, qz] = road[i], ex = qx - px, ez = qz - pz, len = Math.hypot(ex, ez);
+    const [px, pz] = road[i - 1], [qx, qz] = road[i], ex = qx - px, ez = qz - pz, len = detMath.hypot(ex, ez);
     const hit = dykeCrossing(d, px, pz, ex, ez, len);
     if (!hit) continue;
     ramps.push({ kind: 'knoll', x: Math.round((px + ex * hit.t) * 10) / 10, z: Math.round((pz + ez * hit.t) * 10) / 10, rx: RAMP_RUN_M, rz: 8,
-      height: Math.round(d.height * RAMP_LIFT * 10) / 10, yawDeg: Math.round(Math.atan2(ez, ex) * 1800 / Math.PI) / 10, corridorScale: 1 });
+      height: Math.round(d.height * RAMP_LIFT * 10) / 10, yawDeg: Math.round(detMath.atan2(ez, ex) * 1800 / Math.PI) / 10, corridorScale: 1 });
   }
   return ramps;
 }
@@ -109,7 +110,7 @@ function withDykeStations(paths: readonly (readonly (readonly [number, number])[
   return paths.map((path) => {
     const out: [number, number][] = [[path[0][0], path[0][1]]];
     for (let i = 1; i < path.length; i++) {
-      const [px, pz] = path[i - 1], [qx, qz] = path[i], ex = qx - px, ez = qz - pz, len = Math.hypot(ex, ez);
+      const [px, pz] = path[i - 1], [qx, qz] = path[i], ex = qx - px, ez = qz - pz, len = detMath.hypot(ex, ez);
       const at: number[] = [];
       for (const d of dykes.filter((dyke) => dyke.height >= 4)) {
         const hit = dykeCrossing(d, px, pz, ex, ez, len);
@@ -128,7 +129,7 @@ function withDykeStations(paths: readonly (readonly (readonly [number, number])[
 
 /** Where a road segment crosses a dyke's centre line within its full-height reach (t along the segment), or null. */
 function dykeCrossing(d: Dyke, px: number, pz: number, ex: number, ez: number, len: number): { t: number; u: number } | null {
-  const c = Math.cos(d.yawDeg * Math.PI / 180), s = Math.sin(d.yawDeg * Math.PI / 180), half = d.length / 2;
+  const c = detMath.cos(d.yawDeg * Math.PI / 180), s = detMath.sin(d.yawDeg * Math.PI / 180), half = d.length / 2;
   const ax = d.x - c * half, az = d.z - s * half, fx = c * d.length, fz = s * d.length, cross = ex * fz - ez * fx;
   // nearly parallel: the road runs along the dyke, not across it
   if (Math.abs(cross) < 0.5 * len * d.length) return null;

@@ -10,6 +10,7 @@
 //   - a hairline: a faint pale line, half the width.
 // A handful of short hairline crazes sit beside the seams. The atlas is still sampled at 5 m and 75 m, so the count stays
 // small (three seams, at most one short fork each, four crazes): many strokes became a uniformly scratched print.
+import * as detMath from '../sim/detMath.ts';
 
 type Css = (h: number, s: number, l: number) => string;
 type Wrap = (ctx: CanvasRenderingContext2D, s: number, fn: () => void) => void;
@@ -37,8 +38,8 @@ export function drawIceCracks(
     for (let q = 0; q < segs; q++) {
       a += (rng() - 0.5) * 0.65;
       const step = (22 + rng() * 14) * unit;
-      x += Math.cos(a) * step;
-      y += Math.sin(a) * step;
+      x += detMath.cos(a) * step;
+      y += detMath.sin(a) * step;
       pts.push([x, y]);
       tone.push(rng());
     }
@@ -62,7 +63,7 @@ export function drawIceCracks(
       ctx.globalAlpha = 1;
     });
     if (fork && segs > 3 && rng() < 0.35) {
-      const heading = Math.atan2(pts[2][1] - pts[1][1], pts[2][0] - pts[1][0]);
+      const heading = detMath.atan2(pts[2][1] - pts[1][1], pts[2][0] - pts[1][0]);
       crack(pts[2][0], pts[2][1], heading + (rng() < 0.5 ? 0.8 : -0.8), 2, w * 0.45, kind === 'open' ? 'hair' : kind, false);
     }
   }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import * as detMath from '../sim/detMath.ts';
 interface ProceduralTextureOptions {
   srgb?: boolean;
   anisotropy?: number;
@@ -74,9 +75,9 @@ export function tileableTorusNoise(
   const radiusU = frequencyU * 0.55;
   const radiusV = frequencyV * 0.55;
   return noise.noise4d(
-    Math.cos(angleU) * radiusU + offset,
-    Math.sin(angleU) * radiusU - offset * 0.7,
-    Math.cos(angleV) * radiusV + offset * 1.3,
-    Math.sin(angleV) * radiusV + offset * 0.35,
+    detMath.cos(angleU) * radiusU + offset,
+    detMath.sin(angleU) * radiusU - offset * 0.7,
+    detMath.cos(angleV) * radiusV + offset * 1.3,
+    detMath.sin(angleV) * radiusV + offset * 0.35,
   );
 }
