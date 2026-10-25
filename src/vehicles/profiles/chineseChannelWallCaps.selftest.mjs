@@ -49,7 +49,7 @@ function channelWallEdges(id) {
 }
 
 const report = [];
-for (const id of ['ztz99a2', 't72b3_qilin', 'vt4a1']) {
+for (const id of ['ztz99a2', 'vt4a1']) { // (252: the Qilin's turret is a Type 96B now, with no Chinese gun channel)
   const { meshes, edges } = channelWallEdges(id);
   assert.ok(meshes > 0, `${id}: the chevron ERA cassettes (${OWNER}) must be built`);
   assert.ok(edges.length >= 40, `${id}: the cassettes must be cut at the gun channel walls (read ${edges.length} wall edges)`);

@@ -1,14 +1,18 @@
 // Owner 2026-10-15 (VEH-19..VEH-22): "adopt its turret to actually use the ztz-99a2 turret", "make the kunlun usee the
 // type 96b turret", "turrets properly based off the t72 b3m 2016, t72 b3"; release 227 (owner 2026-10-16): the Yun on the
-// Type 96B, the Qilin's 99A2 cut 10 % at its bustle. Each listed concept's turret is the donor
+// Type 96B; 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin on the Type 96B too.
+// Each listed concept's turret is the donor
 // fleet turret itself, emitted by the donor's own builder: every vertex of the donor's turret casting and of its main
 // gun appears in the concept at the same turret-frame position, the turret rides the listed ring seat, and the combat
-// spec carries the donor turret's own trunnion, barrel, turret plates and turret modules.
+// spec carries the donor turret's own trunnion, barrel, turret plates and turret modules. 252: each turret is seated over
+// its own hull's deck (turretSeatRace.ts, from its ring receipt; the Qilin's 96B collar stands 11 mm into the B3 deck's
+// seat plane as authored), so the casting identity compares the turrets as authored: the donor and each concept built
+// without their ring receipts.
 import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
-import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z } from './donorBustleCut.ts';
+import { combatAnatomyCalibration, registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 
 const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
 function vertexSet(mesh) {
@@ -22,48 +26,29 @@ function owned(tank, rigName, meshName) {
   return mesh;
 }
 
+/** Build with the ids' ring receipts set aside (the turrets as authored), then restore the committed rows. */
+function authored(ids, build) {
+  const committed = ids.map((id) => combatAnatomyCalibration(id));
+  registerCombatAnatomyCalibrations(Object.fromEntries(ids.map((id, i) => { const { turretRing: _ring, ...bare } = committed[i]; return [id, bare]; })));
+  try { return build(); } finally { registerCombatAnatomyCalibrations(Object.fromEntries(ids.map((id, i) => [id, committed[i]]))); }
+}
+
 const donors = new Map();
 for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
   if (!donors.has(d.donor)) {
-    const donor = createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+    const donor = authored([d.donor], () => createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
     donors.set(d.donor, { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) });
     donor.dispose();
   }
   const { turret, gun } = donors.get(d.donor);
-  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+  const tank = authored([id], () => createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 }));
   try {
     const rig = tank.root.getObjectByName('rig_turret');
     rig.position.toArray().forEach((v, i) => assert(Math.abs(v - d.pivot[i]) < 1e-6, `${id}: turret rides its listed ring seat`));
     assert.equal(rig.userData.nationalDonorTurret?.donor, d.donor, `${id}: donor turret receipt`);
     const concept = vertexSet(owned(tank, 'rig_turret', 'turret'));
-    if (id === 't72b3_qilin') {
-      // round 8 (critic CN8-09: the mapped comparison below passes any cut): the cut itself, a tenth of the 99A2 body's
-      // 3.954 m, and the casting's rear wall where that cut puts it (the 99A2's z -2.22 at -1.825)
-      const cutM = Number(d.builderOptions?.bustleCutM ?? 0);
-      assert.ok(Math.abs(cutM - .1 * 3.954) < .001, `${id}: its bustle cut is 10 % of the 99A2 body (${cutM} m)`);
-      const rearZ = Math.min(...[...concept].map((k) => Number(k.split(',')[2]) / 1e4));
-      assert.ok(Math.abs(rearZ - (-2.22 + .1 * 3.954)) < .002, `${id}: the cut casting's rear wall stands at z ${rearZ.toFixed(4)} (-1.825)`);
-    }
-    // Release 227: a donor built with its bustle cut (the Qilin's ZTZ-99A2) is compared to the donor's casting with the
-    // same cut: each vertex's z maps through bustleCutZ. Its omitted rear flank fit (rearFlank: false: the rear stowage
-    // box among the casting's own parts) and the gun throat's clip seams (|x| 0.40 and its rear wall at z 0.20, where the
-    // floor and crown fans' slopes changed under the mantlet) are the only donor vertices not carried over.
-    const cut = Number(d.builderOptions?.bustleCutM ?? 0);
-    const mapped = cut > 0 ? new Set([...turret].map((k) => { const [x, y, z] = k.split(',').map(Number); return key(x / 1e4, y / 1e4, bustleCutZ(z / 1e4, cut)); })) : turret;
-    // A donor built with its own ring collar (ringCollar: the Qilin's turns in place on its pivot) leaves out the 99A2's
-    // collar (cylY 1.08/1.14, y -0.08..0.02, centred 0.12 m behind the pivot: its rims and cap centres), and carries its
-    // own, concentric.
-    const collar = d.builderOptions?.ringCollar;
-    const fleetCollar = (x, y, z) => Boolean(collar) && y > -.0805 && y < .0205 && (Math.hypot(x, z + .12) < 1e-3 || (Math.hypot(x, z + .12) > 1.075 && Math.hypot(x, z + .12) < 1.145));
-    const omitted = (k) => { const [x, y, z] = k.split(',').map((n) => n / 1e4); if (fleetCollar(x, y, z)) return true; if (!(cut > 0)) return false;
-      return (d.builderOptions?.rearFlank === false && Math.abs(x) > 1.19 && Math.abs(x) < 1.41 && y > .40 && z < ZTZ99A2_BUSTLE_CUT_FRONT_Z)
-        || Math.abs(Math.abs(x) - .40) < 2e-4 || (Math.abs(x) < .40 && Math.abs(z - .20) < 2e-4); };
-    if (collar) {
-      const ring = [...concept].map((k) => k.split(',').map((n) => n / 1e4)).filter(([x, y, z]) => Math.abs(y + .08) < 2e-4 && Math.abs(Math.hypot(x, z - collar.z) - collar.radiusM) < 2e-3);
-      assert.ok(ring.length >= 14, `${id}: its own ring collar's skirt, r ${collar.radiusM} round (0, ${collar.z}) (${ring.length} vertices)`);
-    }
-    const missing = [...mapped].filter((v) => !concept.has(v) && !omitted(v));
-    assert.equal(missing.length, 0, `${id}: ${missing.length} of the ${d.donor} turret casting's vertices are missing${cut > 0 ? ' (with its bustle cut)' : ''}: ${missing.slice(0, 4).join(' ; ')}`);
+    const missing = [...turret].filter((v) => !concept.has(v));
+    assert.equal(missing.length, 0, `${id}: ${missing.length} of the ${d.donor} turret casting's vertices are missing: ${missing.slice(0, 4).join(' ; ')}`);
     const barrel = vertexSet(owned(tank, 'rig_gun', 'gun'));
     const lost = [...gun].filter((v) => !barrel.has(v));
     assert.equal(lost.length, 0, `${id}: ${lost.length} of the ${d.donor} main gun's vertices are missing`);
