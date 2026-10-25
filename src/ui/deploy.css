@@ -95,7 +95,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);}
 /* a tile grows with a two-line name instead of setting it over its glyph */
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choice{position:relative;display:flex;flex-direction:column;
-  justify-content:flex-end;min-height:clamp(96px,11.5vh,128px);padding:var(--s7) var(--s2) var(--s2) var(--s3);overflow:hidden;background:var(--row-plate);}
+  align-items:stretch;justify-content:flex-end;min-height:clamp(96px,11.5vh,128px);padding:var(--s7) var(--s2) var(--s2) var(--s3);overflow:hidden;background:var(--row-plate);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-tile-art{display:block;position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;transition:filter var(--dur-fast) var(--ease-move);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choice::after{content:'';display:block;position:absolute;
@@ -449,13 +449,21 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
 }
 /* touch: the screen's tabs and option pickers meet the control floor (44 px) */
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tablist [role=tab],.cot-c-seg__opt,.cot-time-content,.cot-sides-choice){min-height:var(--cot-control-floor);}
-/* the scrim token under a picture card's title band (the band reaches the card's edges), so the name holds 4.5:1 over the
-   brightest art */
+/* the scrim token under a picture card's title band (the band reaches the card's edges; it fades only in its top
+   padding, so a two-line name sits on it whole), so the name holds 4.5:1 over the brightest art */
 .cot-garage .cot-deploy-card .cot-deploy-choice-t{left:0;right:0;bottom:0;padding:var(--s5) var(--s3) var(--s3) 14px;
-  background:linear-gradient(0deg,var(--scrim) 60%,transparent);}
+  background:linear-gradient(0deg,var(--scrim) calc(100% - var(--s5)),transparent);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-deploy-choice-t{margin:0 calc(var(--s2) * -1) calc(var(--s2) * -1) calc(var(--s3) * -1);
-  padding:var(--s4) var(--s2) var(--s2) var(--s3);background:linear-gradient(0deg,var(--scrim) 60%,transparent);}
+  padding:var(--s4) var(--s2) var(--s2) var(--s3);background:linear-gradient(0deg,var(--scrim) calc(100% - var(--s4)),transparent);
+  align-items:flex-start;text-align:start;}
 /* a phone's dock is fixed over the screen's foot: the battlefield picker keeps its height free, so it scrolls clear */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open{--deploy-dock-h:calc(58px + var(--s3) + max(10px,env(safe-area-inset-bottom)) + 1px);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-pop{padding-bottom:calc(var(--s3) + var(--deploy-dock-h));}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-pop{z-index:var(--z-lift);padding-bottom:calc(var(--s3) + var(--deploy-dock-h));}
+/* the dock comes later in the screen's order at the same lift, so it stays over the picker */
+/* a compact height (600-720 px): the brief keeps its text and Launch (no picture or minimap), the details scroll rather
+   than squash the battlefield preview, and a tablet's selected card loses the badge its ring already says */
+body:is([data-cot-height='compact'],[data-cot-height='short']) .cot-garage :is(.cot-deploy-brief-art,.cot-deploy-brief-mm){display:none;}
+body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow-y:auto;}
+body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-deploy-field{flex:none;min-height:clamp(120px,24vh,200px);}
+body[data-cot-width='tablet'] .cot-garage .cot-deploy-badge{display:none;}
 }

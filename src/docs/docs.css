@@ -335,6 +335,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
    the archive */
 .docs-index{display:grid;gap:var(--s7);padding-top:var(--s6);padding-bottom:var(--s8)}
 .docs-index-search{position:relative;width:min(640px,100%);margin:0}
+@media (width < 1100px){.docs-index-search{width:100%}}
 /* the topic shelf folds its search away under 1100 px; the index keeps its own */
 .docs-index-search.dm-search{display:flex}
 .docs-index-search .dm-search__field{height:48px;padding:0 10px 0 14px}
@@ -356,5 +357,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (height < 520px){.dm-banner__cap{display:none}}
 :lang(zh) .docs-evidence :is(dt,dd){word-break:keep-all}
 .dm-keys .cot-c-kbd{vertical-align:middle}
+.docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
+@media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
 @media (pointer:coarse){.public-nav__cta{--h:var(--btn-h-m)}}
 }

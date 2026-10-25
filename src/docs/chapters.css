@@ -57,7 +57,8 @@
 .dm-keys{margin-top:var(--s5)}
 .dm-keys h3,.dm-view h3{display:flex;align-items:center;gap:10px;margin:0 0 var(--s2);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
 .dm-keys h3 .cot-i,.dm-view h3 .cot-i{flex:none;color:var(--accent)}
-.dm-keys .dm-table{margin:0}
+.dm-keys .dm-table{margin:0;table-layout:fixed;width:100%}
+.dm-keys .dm-table :is(th,td):nth-child(1){width:44%}.dm-keys .dm-table :is(th,td):nth-child(2){width:36%}
 .dm-keys .dm-table tbody th{font-weight:500;color:var(--ink-1)}
 /* the manual documents the keys: its key caps show on touch layouts too, where the kit hides the game's key hints */
 .dm-article .cot-c-kbd{display:inline-flex}

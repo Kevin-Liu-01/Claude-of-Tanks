@@ -17,7 +17,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 
 /* the wordmark: the outlined master (src/ui/brandMark.ts), the words in the ink, the "of" in the accent; sized by height */
 .cot-wordmark{display:inline-flex;align-items:center;color:var(--ink-1)}
-.cot-wordmark .wm{display:block;width:auto;height:var(--wordmark-h,11px)}
+.cot-wordmark .wm{display:block;width:auto;height:var(--wordmark-h,13px)}
 
 /* the shell's Play buttons are the kit's (src/ui/components/components.css, on every public page at first paint);
    the links' focus ring matches the kit's */
@@ -90,10 +90,16 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   .public-footer__inner{grid-template-columns:1fr;gap:var(--s5)}
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
+/* a phone's footer: the language switch keeps its own width, the links two to a row (no link left alone on a line), each
+   row a 44 px target on touch */
+@media (width < 768px){.public-footer__lang{justify-self:start}}
+@media (width < 520px){.public-footer__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1) var(--s4)}}
+@media (pointer:coarse){.public-footer__links a{min-height:var(--btn-h-m)}}
 /* a phone (the 520 px band edge) keeps the menu button on the bar: Play now becomes its glyph (named, its tip on hover); the
    menu repeats it in full */
 @media (width < 520px){
   .public-nav__cta{width:var(--btn-h-s);padding:0}
+  .public-nav .cot-wordmark{--wordmark-h:11px}
   .public-nav__cta span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (width <= 380px){
