@@ -310,7 +310,8 @@
       text-wrap: balance;
     }
     .cot-boot-invite.on { display: block; }
-    #cot-boot.has-invite .cot-boot-load { margin-top: 20px; }
+    /* the caption sits 12 px under the mark and 24 px above the label's line (the stage reserves 20 px over a one-line label) */
+    #cot-boot.has-invite .cot-boot-load { margin-top: calc(var(--s5) - 20px); }
     /* Entrance motion is scoped to the class present in the inline first
        paint. bootScreen.ts permanently retires that class after this stagger,
        so image decode or later layout work cannot restart the animation. */
@@ -575,7 +576,7 @@
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
       .cot-boot-invite { margin-top: 12px; }
       #cot-boot.has-invite .cot-boot-mark { height: min(28vh, 120px); }
-      #cot-boot.has-invite .cot-boot-load { margin-top: 12px; }
+      #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
       .cot-boot-gate, .cot-boot-retry { margin-top: 12px; }
@@ -942,7 +943,7 @@
         if (document.querySelector('.cot-boot-gate.on')) return;
         const stage = document.getElementById('cot-boot-stage');
         if (!stage) return;
-        const counted = `${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        const counted = `${Math.min(network.scripts, network.expected)}/${network.expected}`;
         // the count ticks in place, so it wears the data face (.num); an engine without replaceChildren keeps plain text
         if (typeof stage.replaceChildren !== 'function' || typeof document.createElement !== 'function') {
           stage.textContent = `${MESSAGES.downloading} · ${counted}`;
