@@ -356,7 +356,8 @@ async function censusWindow(page, t0, consoleFrom) {
 
 /** (UI-LOCKDOWN A) The device-pixel cap a UI canvas's backing store may take (src/ui/uiCanvas.ts). */
 const CANVAS_CAP = 2;
-/** Every on-screen UI canvas (not a WebGL view: the 3D renderers own their resolution) against the canvas rule: shown,
+/** Every on-screen UI canvas with a context (not a WebGL view: the 3D renderers own their resolution; not a canvas
+ *  never given a context: it holds no store) against the canvas rule: shown,
  *  its backing store is its CSS box times min(devicePixelRatio, CANVAS_CAP) within a pixel (larger wastes memory and
  *  compounds, smaller blurs); hidden, it holds at most one pixel. */
 const CANVAS_CHECK = `(() => {
@@ -366,7 +367,8 @@ const CANVAS_CHECK = `(() => {
   const violations = []; let checked = 0;
   for (const canvas of document.querySelectorAll('canvas')) {
     const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
-    if (kind && /webgl/i.test(kind)) continue;
+    // a WebGL view owns its resolution; a canvas never given a context allocates no store (a swatch not yet painted)
+    if (!kind || /webgl/i.test(kind)) continue;
     checked++;
     const box = canvas.getBoundingClientRect();
     const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
