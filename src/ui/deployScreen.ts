@@ -173,8 +173,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   }
   new MutationObserver(placeDetails).observe(document.body, { attributes: true, attributeFilter: ['data-cot-panels'] });
 
-  // a column that scrolls says so (deploy.css .is-scrollable fades its foot and keeps room to scroll clear; .is-scrolled
-  // fades its top once it has moved), so a column that fits shows every edge whole
+  // a column that scrolls says so (deploy.css .is-scrollable fades both its ends and keeps room under each fade), so a
+  // column that fits shows every edge whole
   const scrollers = [...menu.querySelectorAll<HTMLElement>('.cot-battle-details,.cot-battle-mode-list,.cot-deploy-campaign')];
   const markScrollers = (): void => {
     for (const el of scrollers) el.classList.toggle('is-scrollable', el.scrollHeight > el.clientHeight + 1);
@@ -183,7 +183,6 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const sizes = new ResizeObserver(markScrollers);
     for (const el of scrollers) { sizes.observe(el); for (const child of el.children) sizes.observe(child); }
   }
-  for (const el of scrollers) el.addEventListener('scroll', () => el.classList.toggle('is-scrolled', el.scrollTop > 0), { passive: true });
 
   function renderTiers(): void {
     const control = host.difficulty();
