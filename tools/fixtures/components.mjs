@@ -4,8 +4,9 @@ import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/components/components.css';
 import {
-  button, chip, keycap, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
+  button, chip, keycap, scaleCells, segmented, statRow, tabs, tag, toggle, wireRoving,
 } from '../../src/ui/components/components.ts';
+import { nationChip, vehicle } from '../../src/ui/components/identity.ts';
 import { t } from '../../src/ui/i18n.ts';
 
 const section = (title, body) => `<section><h2>${title}</h2><div class="row">${body}</div></section>`;
@@ -23,8 +24,8 @@ const html = [
   ].join('')),
   section('Chips and tags', [
     chip({ label: 'MBT', icon: 'shield' }), chip({ label: 'MBT', icon: 'shield', pressed: true, count: 38 }),
-    chip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }),
-    chip({ label: 'United Kingdom', nation: 'uk', pressed: true, compact: true }),
+    nationChip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }),
+    nationChip({ label: 'United Kingdom', nation: 'uk', pressed: true, compact: true }),
     tag('New', 'accent'), tag('Ready', 'ok'), tag('3 / 6'), tag('Damaged', 'warn'), tag('Destroyed', 'danger'),
   ].join('')),
   section('Choice', [

@@ -20,7 +20,7 @@
 .dm-legend li{display:inline-flex;align-items:center;gap:6px}
 /* a data-built chapter takes the width to the contents rail; its prose keeps the reading measure */
 @media (width >= 1100px){.dm-body:has(.dm-article--wide){grid-template-columns:minmax(0,1fr) var(--docs-toc-w)}}
-.dm-article--wide>.dm-lede,.dm-article--wide .dm-section>p{max-width:var(--measure-docs)}
+.dm-article--wide .dm-section>p{max-width:var(--measure-docs)}
 .dm-modes{display:grid;gap:var(--s5);margin-top:var(--s4)}
 @media (width >= 1440px){.dm-article--wide .dm-modes{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
 .dm-mode{display:grid;gap:var(--s4);padding:var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
@@ -57,7 +57,8 @@
 .dm-keys{margin-top:var(--s5)}
 .dm-keys h3,.dm-view h3{display:flex;align-items:center;gap:10px;margin:0 0 var(--s2);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
 .dm-keys h3 .cot-i,.dm-view h3 .cot-i{flex:none;color:var(--accent)}
-.dm-keys .dm-table{margin:0}
+.dm-keys .dm-table{margin:0;table-layout:fixed;width:100%}
+.dm-keys .dm-table :is(th,td):nth-child(1){width:44%}.dm-keys .dm-table :is(th,td):nth-child(2){width:36%}
 .dm-keys .dm-table tbody th{font-weight:500;color:var(--ink-1)}
 /* the manual documents the keys: its key caps show on touch layouts too, where the kit hides the game's key hints */
 .dm-article .cot-c-kbd{display:inline-flex}

@@ -13,6 +13,8 @@ export interface ManualRecord {
 }
 
 const plain = (text: string): string => text.replace(/`/g, '');
+/** A chart's axis ticks (runs of four or more bare numbers) say nothing a snippet can use; prose keeps its figures. */
+const prose = (text: string): string => text.replace(/(?:[\d.,%]+\s+){3,}[\d.,%]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
 
 export function manualRecords(): ManualRecord[] {
   return TOPIC_ORDER.flatMap((slug) => {
@@ -20,7 +22,7 @@ export function manualRecords(): ManualRecord[] {
     const chapter: ManualRecord = { href: `/docs/${slug}`, title, chapter: label, text: plain(lede) };
     // a chapter built from the game's tables indexes its sections as written (their anchors, headings and text)
     const rich = richSections(slug);
-    if (rich) return [chapter, ...rich.map((section) => ({ href: `/docs/${slug}#${section.id}`, title: section.title, chapter: label, text: section.text }))];
+    if (rich) return [chapter, ...rich.map((section) => ({ href: `/docs/${slug}#${section.id}`, title: section.title, chapter: label, text: prose(section.text) }))];
     return [chapter, ...sections.map(([heading, ...paragraphs], index) => ({
       href: `/docs/${slug}#${topicSectionId(index)}`, title: heading, chapter: label, text: plain(paragraphs.join(' ')),
     }))];

@@ -571,7 +571,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
       // Resume through the real footer button. That click is the user gesture
       // which production uses to regain pointer lock; a programmatic
       // noRelock close leaves keyboard Fire intentionally gated off.
-      const resume = await page.$eval('.cot-settings .resume', (node) => {
+      const resume = await page.$eval('.cot-settings .cot-set-close', (node) => {
         const r = node.getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       });

@@ -46,7 +46,7 @@ import {
   OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph,
   drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
 } from './objectiveGlyphs.ts';
-import { shellTypeCode, shellTypeLabel } from './garageDossier.ts';
+import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
 // the proving ground's range card (2026-10-17): loaded the first time a frame carries the range (updateRangeCard)
 import type { RangeCardState } from './provingRangeCard.ts';
 import type { CombatState } from '../sim/damage.ts';

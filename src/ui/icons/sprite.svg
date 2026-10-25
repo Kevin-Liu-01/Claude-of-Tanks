@@ -29,7 +29,7 @@
 <symbol id="i-chevronRight"><path d="M9 6l6 6-6 6"/></symbol>
 <symbol id="i-close"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></symbol>
 <symbol id="i-menu"><path d="M3.5 6.5h17M3.5 12h17M3.5 17.5h17"/></symbol>
-<symbol id="i-info"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></symbol>
+<symbol id="i-info"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></symbol><symbol id="i-alert"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></symbol>
 <symbol id="i-check"><path d="M4.5 12.5l4.5 4.5L19.5 6.5"/></symbol>
 <symbol id="i-clock"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></symbol>
 <symbol id="i-rematch"><path d="M4 11.5A8 8 0 0 1 18.2 7M20 12.5A8 8 0 0 1 5.8 17M18.5 3v4.5H14M5.5 21v-4.5H10"/></symbol>

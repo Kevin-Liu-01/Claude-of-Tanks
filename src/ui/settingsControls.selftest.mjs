@@ -40,9 +40,10 @@ for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entr
   assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
   assert.ok(iconIds.has(def.glyph), `${def.glyph} is in the shared set`);
 }
-// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
+// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab; the time of day
+// is a row of its own (gauntlet 250)
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
-  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'crewVoice',
+  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes', 'crewVoice',
   'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',
@@ -52,11 +53,9 @@ for (const [key, spec] of Object.entries({ ...SETTINGS_ACTION_ICONS, ...SETTINGS
   assert.ok(iconIds.has(spec.id), `${key} references a shared UI icon`);
   assert.match(uiIconSVG(spec.id, 16), /^<svg[\s\S]*<\/svg>$/, `${key} renders valid inline SVG`);
 }
-assert.deepEqual([
-  SETTINGS_ACTION_ICONS.shell1.badge,
-  SETTINGS_ACTION_ICONS.shell2.badge,
-  SETTINGS_ACTION_ICONS.shell3.badge,
-], ['1', '2', '3'], 'shell icons keep their slot identity');
+// the shell slots' number is their label's (Shell slot 1), not a badge over the glyph (gauntlet 250: a badge read as a
+// stray accent chip against the label)
+assert.ok(['shell1', 'shell2', 'shell3'].every((id) => !('badge' in SETTINGS_ACTION_ICONS[id])), 'shell slots carry no badge');
 // The armour-overlay glyph follows the one icon rule (brand-ui BUI-F4): drawn once in the sprite, coloured by its
 // row's tone through currentColor, never with baked thickness colours.
 const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);

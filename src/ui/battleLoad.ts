@@ -28,9 +28,6 @@ import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
-// Backward-compatible re-export for main.ts, killcam and end-screen callers.
-export { tierNumeral };
-
 // Translate legacy English progress labels written by the various loading
 // runtimes. Each entry pairs a known English string with its i18n key; any
 // unknown label is left as-is so the loading screen still updates.
