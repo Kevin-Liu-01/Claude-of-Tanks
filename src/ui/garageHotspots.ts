@@ -10,7 +10,7 @@
 // running gear) or beside it that clears the hull's, the turret's and the gun's projected boxes, the panels standing in
 // the stage and the other plates. A plate keeps last frame's place while that stays clear, so an orbit moves it smoothly;
 // a frame projects 28 points and writes twelve transforms.
-import { Box3, Matrix4, Vector3, type Mesh, type Object3D, type PerspectiveCamera } from 'three';
+import { Box3, Matrix4, Vector3, type LOD, type Mesh, type Object3D, type PerspectiveCamera } from 'three';
 import { uiIconSVG } from './uiIcons.ts';
 
 export type HotspotId = 'gun' | 'turret' | 'engine' | 'tracks';
@@ -53,6 +53,8 @@ const SIDES: Readonly<Record<HotspotId, readonly Side[]>> = {
 const _box = new Box3();
 const _geomBox = new Box3();
 const _geomPart = new Box3();
+const _gear = new Box3();
+const _turretBody = new Box3();
 const _inverse = new Matrix4();
 const _toRoot = new Matrix4();
 const _point = new Vector3();
@@ -62,12 +64,17 @@ const _parts = new Float64Array(3 * 4);
 const _try = new Float64Array(3);
 
 /** `frame`'s bounds in its own space (each mesh's geometry box carried into it), leaving out the `skip` subtree. */
-function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null): Box3 {
+/**
+ * A frame's mesh bounds in its own space. `bodyOnly` leaves out the LOD detail groups: their merged dark-parts mesh
+ * carries the whip antennas, metres above the roof, which lifted the turret's and the engine's anchors into the air
+ * above the tank (the gauntlet 10-25).
+ */
+function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null, bodyOnly = false): Box3 {
   out.makeEmpty();
   frame.updateWorldMatrix(true, true);
   _inverse.copy(frame.matrixWorld).invert();
   const visit = (node: Object3D): void => {
-    if (node === skip) return;
+    if (node === skip || (bodyOnly && (node as LOD).isLOD)) return;
     const mesh = node as Mesh;
     if (mesh.isMesh && mesh.visible && mesh.geometry) {
       if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
@@ -80,6 +87,31 @@ function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null): 
   };
   visit(frame);
   return out;
+}
+
+/**
+ * A part's body in `frame`'s space: the meshes of the first name (or name prefix, with `prefix`) that the frame holds,
+ * else every mesh outside the detail groups, else every mesh.
+ */
+function bodyBounds(frame: Object3D, out: Box3, names: readonly string[], skip: Object3D | null, prefix = false): Box3 {
+  for (const name of names) {
+    out.makeEmpty();
+    frame.updateWorldMatrix(true, true);
+    _inverse.copy(frame.matrixWorld).invert();
+    frame.traverse((node) => {
+      const mesh = node as Mesh;
+      if (!mesh.isMesh || !mesh.geometry || !(prefix ? mesh.name.startsWith(name) : mesh.name === name)) return;
+      for (let up: Object3D | null = node; up && up !== frame; up = up.parent) if (up === skip) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      if (!mesh.geometry.boundingBox) return;
+      _toRoot.multiplyMatrices(_inverse, mesh.matrixWorld);
+      out.union(_geomBox.copy(mesh.geometry.boundingBox).applyMatrix4(_toRoot));
+    });
+    if (!out.isEmpty()) return out;
+  }
+  if (prefix) return out;
+  if (!localBounds(frame, out, skip, true).isEmpty()) return out;
+  return localBounds(frame, out, skip);
 }
 
 interface Spot {
@@ -133,30 +165,31 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
 
   function measure(model: Object3D): void {
     measured = model;
-    const box = localBounds(model, _box);
-    if (box.isEmpty()) { measured = null; return; }
-    for (const spot of spots) spot.place = -1;
-    const { min, max } = box;
-    const h = max.y - min.y, l = max.z - min.z;
-    const cz = (min.z + max.z) / 2;
-    sideX = (max.x - min.x) / 2;
-    for (const id of ORDER) anchors[id].node = model;
-    anchors.gun.local.set(0, min.y + h * 0.74, max.z - l * 0.2);
-    anchors.turret.local.set(0, max.y - h * 0.06, cz - l * 0.06);
-    anchors.engine.local.set(0, min.y + h * 0.6, min.z + l * 0.16);
-    anchors.tracks.local.set(sideX, min.y + h * 0.16, cz + l * 0.12);
-    // the gun's on its barrel a third back from the muzzle (the direction's 1), in its own frame (the barrel runs +Z)
+    const turret = model.getObjectByName('rig_turret');
     const gun = model.getObjectByName('rig_gun');
+    // the bodies the anchors stand on: each part's shadow proxy (its armour body without the antennas, weapon stations
+    // and fittings that stand metres above the roof), else its body mesh, else every mesh outside the detail groups
+    const hull = bodyBounds(model, _box, ['procShadow_hull', 'hull'], turret ?? null);
+    if (hull.isEmpty()) { measured = null; return; }
+    const gear = bodyBounds(model, _gear, ['gearTrackBand', 'gearRoadWheel'], turret ?? null, true);
+    if (gear.isEmpty()) gear.copy(hull);
+    for (const spot of spots) spot.place = -1;
+    const h = hull.max.y - hull.min.y, l = hull.max.z - hull.min.z;
+    sideX = Math.max(gear.max.x, -gear.min.x);
+    for (const id of ORDER) anchors[id].node = model;
+    anchors.gun.local.set(0, hull.max.y, hull.max.z - l * 0.2);
+    anchors.turret.local.set(0, hull.max.y, (hull.min.z + hull.max.z) / 2);
+    anchors.engine.local.set(0, hull.min.y + h * 0.9, hull.min.z + l * 0.16);
+    anchors.tracks.local.set(sideX, gear.min.y + (gear.max.y - gear.min.y) * 0.35, (gear.min.z + gear.max.z) / 2 + l * 0.12);
+    // the gun's on its barrel a third back from the muzzle (the direction's 1), in its own frame (the barrel runs +Z)
     const gunBox = gun ? localBounds(gun, _geomPart) : null;
     if (gun && gunBox && !gunBox.isEmpty()) {
       anchors.gun.node = gun;
       anchors.gun.local.set((gunBox.min.x + gunBox.max.x) / 2, (gunBox.min.y + gunBox.max.y) / 2,
         gunBox.max.z - (gunBox.max.z - gunBox.min.z) * 0.33);
     }
-    // the turret's on its body behind the trunnion: a little over half its height, since a roof weapon station or a
-    // sight mast stands well above the roof
-    const turret = model.getObjectByName('rig_turret');
-    const turretBox = turret ? localBounds(turret, _geomPart) : null;
+    // the turret's on its body behind the trunnion, a little over half its height
+    const turretBox = turret ? bodyBounds(turret, _turretBody, ['procShadow_turret', 'turret'], gun && gun !== turret ? gun : null) : null;
     if (turret && turretBox && !turretBox.isEmpty()) {
       anchors.turret.node = turret;
       anchors.turret.local.set((turretBox.min.x + turretBox.max.x) / 2, turretBox.min.y + (turretBox.max.y - turretBox.min.y) * 0.55,
@@ -164,9 +197,9 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     }
     // the boxes the plates keep off: one box round a whole tank would stand far wider than its silhouette
     parts[0].node = model;
-    localBounds(model, parts[0].box, turret ?? null);
+    parts[0].box.copy(hull).union(gear);
     parts[1].node = turret ?? null;
-    if (turret) localBounds(turret, parts[1].box, gun && gun !== turret ? gun : null);
+    if (turretBox) parts[1].box.copy(turretBox);
     parts[2].node = gun ?? null;
     if (gun) localBounds(gun, parts[2].box);
   }
