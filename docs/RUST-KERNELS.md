@@ -49,6 +49,12 @@ function, `env.terrain_height`, the map's height function.
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.
 
+## The default's gate (2026-10-25)
+
+- Node, all 33 maps, 3,600 ticks at 16 a side: every digest identical at all 12 checks (`tools/rust-kernel-tick-ab.mjs`).
+- Chrome, a 32-tank solo battle on every map under `wasm-check`: 111,372,312 comparisons, 0 mismatches
+  (`tools/solo-kernels-probe.mjs --check-only --maps=all`).
+
 ## Measured
 
 - The authority (server, multiplayer host): 16 a side, 3,600 ticks, digests identical at every check: Verdant −22 to
