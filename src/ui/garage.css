@@ -1516,6 +1516,8 @@ body[data-cot-panels='persistent'] :is(.cot-multiplayer-entry,.cot-room-controls
 
 body[data-cot-panels='persistent'] .cot-garage.enter .cot-battle-control{animation-name:cot-g-fade;}
 body[data-cot-panels='persistent'] .cot-battle .cot-c-kbd{color:var(--btn-primary-ink);border-color:currentColor;}
+/* a Chinese key name (回车) keeps the Latin caps' side room and a size its counters stay open at */
+html[lang^='zh'] .cot-garage .cot-c-kbd{padding:0 var(--s2);font-size:max(13px,var(--fs-13));}
 
 
 /* the dossier's head gave its name to the lower third: only its about control stays, over the view tabs */
