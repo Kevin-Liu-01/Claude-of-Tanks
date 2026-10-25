@@ -605,6 +605,10 @@ const ALERT_SEVERITY: Readonly<Record<string, 'info' | 'success' | 'warning' | '
 };
 /** How long an alert shows (ms). */
 const ALERT_HOLD_MS = 2400;
+/** The alert band's order: a higher severity takes the band from a lower one, which waits again (NoticeQueue). */
+const ALERT_PRIORITY: Readonly<Record<'info' | 'success' | 'warning' | 'error', number>> = { error: 3, warning: 2, success: 1, info: 1 };
+/** A waiting alert older than this is dropped rather than shown late: the battle has moved on. */
+const ALERT_STALE_MS = 3000;
 
 /** Watch mode's drone on the minimap (watch-mode-243): its ground point and the lens's heading. */
 export interface HudWatchDrone {
@@ -1200,6 +1204,9 @@ const RET_CEIL_FRAC = 0.15;
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import type { IconId } from './icons/icon.ts';
+// the alert band's line is the kit's notice queue (premiere-site's primitive, components/notice.ts)
+import { NoticeQueue, type QueuedToast } from './components/notice.ts';
 import { setAttr, setData, setDisabled, setHidden, setText } from './domWrite.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
@@ -3103,9 +3110,17 @@ export function initHud(bus: EventBus): HudRuntime {
   let localSlot = 0;
   let forced: HudAimInput | null = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells: HudShellCard[] = DEFAULT_SHELLS;
+  // The alert band (the kit's NoticeQueue, components/notice.ts, on the planners' one slot): one alert shows at a time; a
+  // repeat raises its count and restarts its time, a higher severity takes the band (the alert it displaces waits again),
+  // an alert that waited past ALERT_STALE_MS is dropped, and the game's pause holds the time.
   let alertTimer: ReturnType<typeof setTimeout> | null = null;
-  /** The alert's words, its repeats while it shows, and its time (held through the game's pause). */
-  let alertText = '', alertRepeat = 0, alertPaused = false, alertLeftMs = 0, alertStartedAt = 0;
+  let alertSerial = 0;
+  const alertBorn = new Map<string, number>();
+  const alertQueue = new NoticeQueue(1, () => performance.now(), {
+    show: (toast) => paintAlert(toast),
+    update: (toast) => paintAlert(toast),
+    hide: () => { alertEl.classList.remove('show'); },
+  });
   let heightFieldRef: HudHeightField | null = null; // for spotting line-of-sight tests
   const nameById = new Map<string, string>();
   const teamById = new Map<string, string | undefined>();
@@ -3194,6 +3209,9 @@ export function initHud(bus: EventBus): HudRuntime {
       clearTimeout(alertTimer);
       alertTimer = null;
     }
+    // (the waiting line first, so emptying the band shows nothing from it)
+    for (const toast of [...alertQueue.waiting, ...alertQueue.shown]) alertQueue.remove(toast.id);
+    alertBorn.clear();
     alertEl.classList.remove('show', 'danger', 'warning', 'success', 'info');
   }
 
@@ -5389,7 +5407,8 @@ export function initHud(bus: EventBus): HudRuntime {
       if (touchAimWarning.dataset.kind !== warning.kind) {
         touchAimWarning.dataset.kind = warning.kind;
         touchAimWarning.dataset.severity = warning.kind === 'blocked' ? 'error' : warning.kind === 'rollover' ? 'warning' : 'info';
-        touchAimWarningGlyph.innerHTML = uiIconSVG(warning.kind === 'rollover' ? 'rematch' : 'turretRing', 14);
+        // (a blocked gun is an error, in the kit's error glyph: the sprite's alert)
+        touchAimWarningGlyph.innerHTML = uiIconSVG(warning.kind === 'rollover' ? 'rematch' : warning.kind === 'blocked' ? 'alert' : 'turretRing', 14);
       }
       seatTouchWarning(seated, draw);
       return;
@@ -7273,9 +7292,22 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
-    // (a wrapped alert breaks before its separator, never after it: each dot and the word after it share a nowrap span,
-    // their space an ordinary one, r10f. A no-break space there set narrower than the space before the dot, "EMPTY
-    // ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g.)
+    const severity = ALERT_SEVERITY[tone] ?? 'warning';
+    const now = performance.now();
+    dropStaleAlerts(now);
+    // (a fresh id each time and the words as the dedupe key: a repeat counts on the alert it repeats, "×3")
+    const toast = alertQueue.push(`alert-${++alertSerial}`, { text, icon: icon as IconId, severity, dedupeKey: `${severity}|${text}`,
+      priority: ALERT_PRIORITY[severity], durationMs: ALERT_HOLD_MS, dismissible: false });
+    alertBorn.set(toast.id, now);
+    scheduleAlert();
+  }
+  /** Paints the band's one alert: its words (a wrapped alert breaks before a separator, never after it: each dot and the
+   *  word after it share a nowrap span, their space an ordinary one, r10f; a no-break space there set narrower than the
+   *  space before the dot, "EMPTY ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g),
+   *  the severity's glyph and wash (the kit's notice grammar: an error wears the sprite's alert and is assertive), and its
+   *  count. */
+  function paintAlert(toast: QueuedToast): void {
+    const { text, severity = 'warning' } = toast.options;
     const parts = text.split(' · ');
     // (a compact alert reads as its glyph: its words in the live region and in the hover tip)
     alertEl.dataset.tip = text;
@@ -7287,33 +7319,36 @@ export function initHud(bus: EventBus): HudRuntime {
       bound.textContent = `· ${space < 0 ? parts[i] : parts[i].slice(0, space)}`;
       alertCopyEl.append(' ', bound, space < 0 ? '' : parts[i].slice(space));
     }
-    alertIconEl.innerHTML = uiIconSVG(icon, 18);
-    // (the kit's notice grammar: the severity is the glyph's tone and the plate's wash; an error is assertive. A repeat
-    // while it shows raises its count and restarts its time; the game's pause holds that time.)
-    const severity = ALERT_SEVERITY[tone] ?? 'warning';
-    alertRepeat = alertEl.classList.contains('show') && text === alertText && severity === alertEl.dataset.severity ? alertRepeat + 1 : 1;
-    alertText = text;
-    setText(alertCountEl, alertRepeat > 1 ? `×${alertRepeat}` : '');
+    alertIconEl.innerHTML = uiIconSVG(severity === 'error' ? 'alert' : toast.options.icon ?? 'info', 18);
+    setText(alertCountEl, toast.count > 1 ? `×${toast.count}` : '');
     setData(alertEl, 'severity', severity);
     setAttr(alertEl, 'role', severity === 'error' ? 'alert' : 'status');
     alertEl.classList.add('show');
-    holdAlert(ALERT_HOLD_MS);
   }
-  /** (Re)starts the alert's time: `ms` to run, held while the game is paused. */
-  function holdAlert(ms: number): void {
+  /** Drops the waiting alerts that have waited too long. */
+  function dropStaleAlerts(now: number): void {
+    for (const toast of [...alertQueue.waiting]) {
+      if (now - (alertBorn.get(toast.id) ?? now) <= ALERT_STALE_MS) continue;
+      alertQueue.remove(toast.id);
+      alertBorn.delete(toast.id);
+    }
+  }
+  /** Runs the band's clock: the shown alert's time out, then the next in line (unless it waited too long). */
+  function scheduleAlert(): void {
     if (alertTimer) clearTimeout(alertTimer);
     alertTimer = null;
-    alertLeftMs = ms;
-    if (alertPaused) return;
-    alertStartedAt = performance.now();
-    alertTimer = setTimeout(() => { alertTimer = null; alertRepeat = 0; alertEl.classList.remove('show'); }, ms);
+    const next = alertQueue.nextDeadline();
+    if (next === null) return;
+    alertTimer = setTimeout(() => {
+      alertTimer = null;
+      dropStaleAlerts(performance.now());
+      for (const id of alertQueue.expired()) { alertQueue.remove(id); alertBorn.delete(id); }
+      scheduleAlert();
+    }, Math.ceil(next));
   }
   on('ui:pause', ({ on: paused }) => {
-    alertPaused = !!paused;
-    if (!alertEl.classList.contains('show')) return;
-    if (alertPaused) {
-      if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; alertLeftMs = Math.max(0, alertLeftMs - (performance.now() - alertStartedAt)); }
-    } else holdAlert(alertLeftMs);
+    alertQueue.pause(!!paused);
+    scheduleAlert();
   });
 
   let playerRef: HudTank | null = null;

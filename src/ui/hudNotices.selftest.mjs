@@ -93,6 +93,26 @@ try {
   assert.equal(alert.classes.has('show'), false, 'it leaves with the time it had left');
   bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
   assert.equal(count.textContent, '', 'after it leaves, the count starts again');
+  // the band's line (the kit's NoticeQueue): an error takes it from a success, in the sprite's alert glyph and assertive,
+  // and the success it displaced shows again after it, unless it waited too long
+  const glyph = created.find((node) => node.classes.has('cot-alert-icon'));
+  advance(100);
+  bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
+  assert.equal(alert.dataset.severity, 'error', 'an error takes the band from a success');
+  assert.equal(alert.getAttribute('role'), 'alert', 'an error is assertive');
+  assert.match(glyph.innerHTML, /data-icon="alert"/, 'an error wears the sprite\'s alert glyph');
+  advance(2450);
+  assert.equal(alert.dataset.severity, 'success', 'the success it displaced shows again after it');
+  advance(2500);
+  assert.equal(alert.classes.has('show'), false, 'and leaves in its own time');
+  bus.emit('ui:specialActionResult', { kind: 'hydropneumatic_aim', active: true });
+  advance(100);
+  bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
+  advance(1500);
+  bus.emit('ui:ammoSelectionDenied', { slot: 1, guided: false });
+  assert.equal(count.textContent, '×2', 'the error counts its repeat');
+  advance(2450);
+  assert.equal(alert.classes.has('show'), false, 'a success that waited past its staleness is dropped, not shown late');
   const sixth = created.find((node) => node.classes.has('cot-sixth'));
   assert.equal(sixth.dataset.severity, 'warning', 'detection is a warning');
 } finally {
@@ -100,4 +120,4 @@ try {
 }
 
 console.log(`hudNotices.selftest: ${rules} notice rules carry no stripe or one-sided coloured border; the alert names its severity, `
-  + 'counts a repeat and holds its time through the pause');
+  + 'counts a repeat and holds its time through the pause, and its band queues by severity and drops a stale wait');
