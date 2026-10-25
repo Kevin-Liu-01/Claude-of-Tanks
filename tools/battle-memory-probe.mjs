@@ -10,11 +10,14 @@
 //     process's).
 // --retained samples, from the first return to the last, the allocations still alive at the end (V8's sampling heap
 // profiler without the collected objects): what battles 2..N left behind, by site (through the dist's source maps).
+// --leak-check holds each battle's world weakly under a marker class of its own and reports, after each return, which
+// worlds are alive (current, cached, or LEAKED); --retainers (implies it) prints a leaked world's shortest strong
+// retainer paths from a heap snapshot parsed as it streams (tools/heap-retainers.mjs).
 // --gate judges the returns against tools/battle-memory-budget.json: the growth from the first return to the last, a
 // battle, and the peak.
 //
 //   node tools/battle-memory-probe.mjs [--scenarios=urban:zone_control] [--size=14] [--battles=3] [--seconds=30]
-//        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--gate] [--viewport=1920x1080] [--preset=high]
+//        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--leak-check] [--retainers] [--gate] [--viewport=1920x1080] [--preset=high]
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -25,6 +28,7 @@ import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
+import { snapshotRetainerPaths } from './heap-retainers.mjs';
 
 const TOOL = 'battle-memory-probe';
 const BUDGET_FILE = fileURLToPath(new URL('./battle-memory-budget.json', import.meta.url));
@@ -32,7 +36,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, walk: false, leakCheck: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, walk: false, leakCheck: false, retainers: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -49,6 +53,7 @@ export function parseMemoryArgs(argv) {
       case 'dump': o.dump = value !== '0'; break;
       case 'walk': o.walk = value !== '0'; break;
       case 'leak-check': o.leakCheck = value !== '0'; break;
+      case 'retainers': o.retainers = value !== '0'; o.leakCheck ||= o.retainers; break;
       // a battle per entry, in order, in the one page (a player on the random rotation): the scenario names the first
       case 'sequence': o.sequence = value.split(',').filter(Boolean); break;
       case 'gate': o.gate = value !== '0'; break;
@@ -335,6 +340,14 @@ async function probeScenario(options, scenario) {
             current: world ? window.__DEBUG?.world === world : false };
         }));
         log(`worlds alive: ${row.worldsAlive.map((w) => `${w.label}${w.alive ? (w.current ? ' (current)' : w.cached ? ' (cached)' : ' (LEAKED)') : ' (collected)'}`).join(', ')}`);
+        // (--retainers) a leaked world's shortest strong retainer paths, from a heap snapshot parsed as it streams
+        const leaked = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached).map((w) => `LeakMarker_${w.label}`);
+        if (options.retainers && leaked.length) {
+          row.retainers = await snapshotRetainerPaths(cdp, leaked, 3);
+          for (const [name, perMarker] of Object.entries(row.retainers)) {
+            for (const paths of perMarker) for (const steps of paths) log(`retainer of ${name}: ${steps.join(' > ')}`);
+          }
+        }
       }
       if (options.walk) {
         row.bufferWalk = await page.evaluate(pageBufferWalk);
