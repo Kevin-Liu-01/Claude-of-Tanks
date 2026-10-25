@@ -1299,6 +1299,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   fxStack.setAttribute('aria-label', t('studioPanel.effects.listAria'));
   const clearStackBtn = kitButton(t('studio.clearAll'), 'danger', 'trash');
   clearStackBtn.classList.add('cot-c-btn--wide');
+  clearStackBtn.hidden = true;
   clearStackBtn.addEventListener('click', () => S.clearEffects());
   secFx.append(fxStack, clearStackBtn);
   const selOr = <Result>(fn: (actor: StudioActor | null) => Result): Result =>
@@ -1531,6 +1532,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   const resetFxBtn = kitButton(t('studio.clearAllEffects'), 'danger');
   resetFxBtn.classList.add('cot-c-btn--wide');
+  resetFxBtn.hidden = true;
   resetFxBtn.addEventListener('click', () => S.clearEffects());
   secTime.append(duelBtn, resetFxBtn);
   globalGroup.body.appendChild(secTime);
@@ -2043,6 +2045,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     refreshQueue();
   });
   queueFoot.append(queueClear, queueStart);
+  queueFoot.hidden = true;
   queuePop.append(queuePresets, queueList, queueEmpty, queueFoot);
   head.appendChild(queuePop);
   queuePop.addEventListener('keydown', (event) => {
@@ -2109,6 +2112,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
     queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
     queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
+    // an empty queue shows no actions at all (the kit's disabled ink still read as live beside "Nothing queued")
+    queueFoot.hidden = !queueJobs.length;
   }
   const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
   /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
@@ -2434,8 +2439,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     rebuildFxParams(effects);
     refreshCinematicToggles();
     outlineCount('effects', effects.length);
-    // nothing to clear reads as nothing to clear
-    clearStackBtn.disabled = resetFxBtn.disabled = !effects.length;
+    // nothing to clear shows no clear (the kit's disabled ink still read as live beside the empty list)
+    clearStackBtn.hidden = resetFxBtn.hidden = !effects.length;
     if (!effects.length) {
       fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;

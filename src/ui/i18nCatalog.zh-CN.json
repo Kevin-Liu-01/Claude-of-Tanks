@@ -2443,7 +2443,7 @@
   "studioPanel.fxGroup.strikes": "打击 · 在标记点",
   "studioPanel.fxGroup.armorHits": "装甲命中 · 选中战车",
   "studioPanel.fxGroup.vehicleState": "战车状态",
-  "studioPanel.fx.empty": "尚无特效 · 请在下方选择一个",
+  "studioPanel.fx.empty": "尚无特效",
   "studioPanel.fx.fireGun": "火炮开火",
   "studioPanel.fx.muzzleFlash": "炮口焰",
   "studioPanel.fx.mgBurst": "机枪扫射",
