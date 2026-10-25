@@ -324,7 +324,7 @@
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(8px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { grid-area: load; margin-top: 44px; }
+    .cot-boot-load { grid-area: load; margin-top: 45px; }
     #cot-boot.cot-boot-enter .cot-boot-load {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
     }
@@ -334,8 +334,8 @@
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      display: flex; flex-direction: column; justify-content: flex-end; min-height: calc(2 * 1.4em);
-      font-size: 14px; font-weight: 500; line-height: 1.4; text-align: left; color: var(--ink-2); text-wrap: pretty;
+      display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px;
+      font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: pretty;
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
@@ -440,7 +440,7 @@
     :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
     /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
-      box-sizing:border-box;width:min(900px,calc(100vw - 32px));max-width:none;
+      box-sizing:border-box;width:min(900px,calc(100vw - 34px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
       border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-raised);box-shadow:var(--e4);
       font-family:var(--font-ui);
@@ -473,7 +473,7 @@
     /* a phone (the responsiveLayout.ts phone and compact bands, < 768 px): the splash's own media query, since the
        credits can open before any module writes body[data-cot-width] */
     @media (width < 768px) {
-      .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
+      .cot-credits{width:calc(100vw - 34px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
       .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
       .cot-credits-grid{grid-template-columns:1fr}
       .cot-credits-profile{flex-direction:row;align-items:center;padding:24px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
@@ -486,9 +486,9 @@
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (height < 520px) {
       .cot-credits-grid{grid-template-columns:132px minmax(0,1fr)}
-      .cot-credits-profile{flex-direction:column;padding:20px;border-right:1px solid var(--line-1);border-bottom:0}
+      .cot-credits-profile{flex-direction:column;padding:24px;border-right:1px solid var(--line-1);border-bottom:0}
       .cot-credits-portrait{width:100%}
-      .cot-credits-copy{padding:20px 24px}
+      .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:28px;margin-bottom:12px}
       .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
       .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
@@ -520,8 +520,8 @@
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
     .cot-boot-load { position: relative; }
-    .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 1.4; color: var(--text-danger); }
-    .cot-boot-alert svg { display: inline-block; vertical-align: -5px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+    .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
+    .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
     #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
     .cot-boot-meta { position: relative; }
@@ -529,10 +529,13 @@
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
     #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
-      content: ''; position: absolute; inset: -8px 0; z-index: -1; border-radius: var(--plate-radius);
+      content: ''; position: absolute; inset: -9px 0; z-index: -1; border-radius: var(--plate-radius);
       background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 8px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 12px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
     #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
     #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
@@ -563,7 +566,7 @@
     }
     @media (width < 768px) {
       .cot-boot-mark { width: 164px; }
-      .cot-boot-load { margin-top: 44px; }
+      .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
       .cot-boot-links { width: 100%; }
       .cot-boot-retry { justify-self: stretch; }
@@ -574,7 +577,7 @@
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
       .cot-boot-invite { margin-top: 20px; }
       #cot-boot.has-invite .cot-boot-mark { height: min(28vh, 120px); }
-      .cot-boot-load { margin-top: 32px; }
+      .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
       .cot-boot-gate, .cot-boot-retry { margin-top: 12px; }
       .cot-boot-links { margin-top: 24px; }
