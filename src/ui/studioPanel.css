@@ -235,10 +235,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sw .cot-c-chip{width:auto;height:22px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .st-insp .cot-c-seg{display:flex;flex-wrap:wrap}
 .st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 var(--s3);font-size:max(var(--fs-floor-11),var(--fs-12))}
-/* the seven times of day stand four over three, each row's cells equal and edge to edge (a free wrap left 5 + 2 or 6 + 1) */
-.st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
-.st-insp .cot-c-seg.times .cot-c-seg__opt{grid-column:span 3;min-width:0;padding:0 2px;white-space:nowrap}
-.st-insp .cot-c-seg.times .cot-c-seg__opt:nth-child(n+5){grid-column:span 4}
+/* the seven times of day stand in three even columns (every name with room round it, the columns aligned row to row) */
+.st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.st-insp .cot-c-seg.times .cot-c-seg__opt{min-width:0;padding:0 var(--s2);white-space:nowrap}
 /* the five sun presets likewise fill their two rows */
 .cot-studio .sunPresets .cot-c-chip:last-child:nth-child(3n+2){grid-column:span 2}
 /* the map and tank pickers */
@@ -290,7 +289,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunDial .ring{fill:none;stroke:var(--line-2)}
 .cot-studio .sunDial .tick{stroke:var(--line-2)}
 .cot-studio .sunDial .tick.major{stroke:var(--line-3)}
-.cot-studio .sunDial .north{fill:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display)}
+/* the dial draws at 78 px of its 100-unit box: the label's size is scaled back up to the floor, and a halo cuts the tick under it */
+.cot-studio .sunDial .north{fill:var(--ink-2);font:700 calc(max(var(--fs-floor-11),var(--fs-11)) * 100 / 78)/1 var(--font-display);
+  paint-order:stroke;stroke:var(--surface-page);stroke-width:4px}
 .cot-studio .sunDial .cam{fill:var(--fill-soft);stroke:var(--team-own)}
 .cot-studio .sunDial .ray{stroke:var(--accent)}
 .cot-studio .sunDial .sun{fill:var(--accent);stroke:var(--surface-page)}
@@ -315,6 +316,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .fxg{display:flex;flex-direction:column;gap:var(--s2)}
 /* each effect group stands apart from the one above it, so its heading reads with its own buttons */
 .cot-studio .fxg+.fxg{margin-top:var(--s3)}
+.cot-studio .sec>.fxg:first-of-type{margin-top:var(--s2)}
+/* the library's cards end their section: the next heading stands clear of the last caption */
+.cot-studio .director .production-library{margin-bottom:var(--s3)}
 .cot-studio .fxg .gh{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display)}
 /* the shots: one card per camera key */
 .cot-studio .shotboard{display:grid;gap:var(--s1);max-height:210px;overflow-y:auto;scrollbar-width:thin}
@@ -331,6 +335,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .planView canvas{border-radius:var(--r1);box-shadow:var(--ring-1)}
 .cot-studio .recStatus{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.4 var(--font-data)}
 .cot-studio .recStatus.on{color:var(--text-danger)}
+/* Chinese never sets in the figures' monospace (its glyphs spread unevenly there) */
+html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:var(--font-ui)}
+.cot-studio input::placeholder{color:var(--ink-3)}
 /* the film's summary wraps by whole facts (a dot or a lone word never dangles at a line's end) */
 .cot-studio .filmSummary{display:flex;flex-wrap:wrap;column-gap:var(--s3)}
 .cot-studio .filmSummary>span{white-space:nowrap}
@@ -381,7 +388,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-shelf>.h .cot-c-chip{height:30px}
 .st-shelf .production-takes{display:flex;flex:1;flex-direction:column;min-height:0}
 .st-shelf .production-takes .production-library{display:grid;flex:1;grid-auto-flow:column;grid-template-columns:none;
-  grid-auto-columns:calc((100% - 32px) / 5);gap:var(--s2);min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  grid-auto-columns:calc((100% - 4 * var(--s4)) / 5);gap:var(--s4);min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 /* on the shelf the still fills the row above its caption */
 .st-shelf .production-card{grid-template-rows:minmax(0,1fr) auto;min-height:0}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
@@ -499,6 +506,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio-archive>header strong{font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase}
 .cot-studio-archive>header :is(small,span){display:none}
 .cot-studio-archive .archiveBody{padding:var(--s5) var(--s5) var(--s5)}
+/* the count is a plain stat, not an eyebrow */
+.cot-studio-archive .media-archive-count{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-13))/1.3 var(--font-ui);letter-spacing:0;text-transform:none}
 /* the Studio's frames: each card names its map once (no feature eyebrow, no second name, no per-map index that repeats
    01, 02, 01), and the row fades where it continues */
 .cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
@@ -538,8 +547,9 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
   height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .add{display:none}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-rows:50px 40dvh auto auto minmax(0,1fr)}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out{padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
+/* the six workspace tabs share the bar's width, each a full touch target (they bunched at the left under a false fade) */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .og{flex:1 1 0;min-width:44px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:first-child{justify-content:center;min-width:44px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
 /* a phone's header keeps the palette's door (Commands, as a glyph), Export and Exit: the frame formats, Quick and Pro,
    undo, the queue and the scene link are the palette's commands there */
@@ -557,6 +567,8 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r [data-s
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{max-height:calc(40dvh - var(--s2))}
 /* the Field frames read as one column on a phone: the cards fill the dialog, with no sideways fade */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .archiveBody{padding:var(--s3)}
+/* a phone's Field frames take the whole screen (an inset dialog cut the header's buttons along its top edge) */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;inset:0;border-radius:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .media-archive-grid{padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
@@ -570,6 +582,8 @@ body[data-cot-height='short'] .st-app{grid-template-rows:50px minmax(0,1fr) 0 35
 /* the six workspaces stand without the gaps between groups, so the last one is never under the transport */
 body[data-cot-height='short'] .st-out{gap:0;padding-block:var(--s2)}
 body[data-cot-height='short'] .st-out .gh{padding:0}
+/* the queue ends above the transport row in a short window */
+body[data-cot-height='short'] .st-queue{max-height:calc(100dvh - 50px - 35px - var(--s4))}
 body[data-cot-height='short'] .st-shelf{display:none}
 body[data-cot-height='short'] :is(.st-out,.st-insp){grid-row:2/span 2}
 /* a short window (a landscape phone): the timeline keeps its transport (the lanes need the room the workspaces and the

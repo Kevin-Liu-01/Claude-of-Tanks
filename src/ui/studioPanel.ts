@@ -836,7 +836,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     dial.appendChild(svg('line', { x1: -Math.sin(a) * r0, y1: -Math.cos(a) * r0, x2: -Math.sin(a) * 44, y2: -Math.cos(a) * 44,
       class: tick % 90 ? 'tick' : 'tick major', 'stroke-width': 1 }));
   }
-  const north = svg('text', { x: 0, y: -24, 'text-anchor': 'middle', class: 'north' });
+  // north reads at the rim, clear of the camera's wedge (it sat on the wedge whenever the camera faced north)
+  const north = svg('text', { x: 0, y: -38, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'north' });
   north.textContent = t('studioPanel.light.north');
   const camWedge = svg('path', { d: 'M0 0 L-9 -30 A31 31 0 0 1 9 -30 Z', class: 'cam', 'stroke-width': 1 });
   const sunRay = svg('line', { x1: 0, y1: 0, x2: 0, y2: -38, class: 'ray', 'stroke-width': 1.5 });
