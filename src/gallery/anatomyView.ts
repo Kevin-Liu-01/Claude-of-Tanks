@@ -57,6 +57,8 @@ const ROLE_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
 /** Callout geometry in px: the first leader, each deeper step, and the label box the separation pass keeps apart. */
 const CALLOUT_LEADER_PX = 56;
 const CALLOUT_STEP_PX = 22;
+/** The clear space between two stacked callout plates (the --s3 step). */
+const CALLOUT_GAP_PX = 12;
 const CALLOUT_MIN_PX = 14;
 const CALLOUT_WIDTH_PX = 150;
 const CALLOUT_HEIGHT_PX = 28;
@@ -677,15 +679,22 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         callout++;
       }
       // and its greedy separation, top to bottom: a label that would overlap one placed above it moves down (a label above
-      // its anchor shortens its leader, one below lengthens it)
+      // its anchor shortens its leader, one below lengthens it); a label above that cannot shorten enough turns below its
+      // anchor, so two plates never touch
       const labelY = (entry: typeof placed[number]): number => entry.y + (entry.up ? -1 : 1) * (entry.length + CALLOUT_HEIGHT_PX / 2);
+      const clear = CALLOUT_HEIGHT_PX + CALLOUT_GAP_PX;
       placed.sort((a, b) => labelY(a) - labelY(b));
       for (let i = 0; i < placed.length; i++) {
         for (let j = 0; j < i; j++) {
           const dy = labelY(placed[i]) - labelY(placed[j]);
-          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= CALLOUT_HEIGHT_PX + 6) continue;
-          const push = CALLOUT_HEIGHT_PX + 6 - dy;
-          placed[i].length = placed[i].up ? Math.max(CALLOUT_MIN_PX, placed[i].length - push) : placed[i].length + push;
+          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= clear) continue;
+          const push = clear - dy;
+          if (!placed[i].up) placed[i].length += push;
+          else if (placed[i].length - push >= CALLOUT_MIN_PX) placed[i].length -= push;
+          else {
+            placed[i].up = false;
+            placed[i].length = Math.max(CALLOUT_MIN_PX, labelY(placed[j]) + clear - placed[i].y - CALLOUT_HEIGHT_PX / 2);
+          }
         }
         const { item, up, length } = placed[i];
         const rounded = Math.round(length);
