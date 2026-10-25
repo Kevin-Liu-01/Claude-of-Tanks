@@ -17,7 +17,15 @@ import type { RichSection } from './types.ts';
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
-const kbd = (label: string): string => `<kbd class="cot-c-kbd">${esc(label)}</kbd>`;
+/** An arrow key's cap draws the sprite's arrow (named for assistive tech), as the Settings panel does. */
+const ARROW_KEYS: Readonly<Record<string, readonly [IconId, string]>> = {
+  '↑': ['moveForward', 'settings.bind.arrowUp'], '↓': ['moveBack', 'settings.bind.arrowDown'],
+  '←': ['steerLeft', 'settings.bind.arrowLeft'], '→': ['steerRight', 'settings.bind.arrowRight'],
+};
+const kbd = (label: string): string => {
+  const arrow = ARROW_KEYS[label];
+  return arrow ? `<kbd class="cot-c-kbd" aria-label="${esc(t(arrow[1]))}">${icon(arrow[0], { size: 12 })}</kbd>` : `<kbd class="cot-c-kbd">${esc(label)}</kbd>`;
+};
 
 /** The settings panel's groups, in its order, each with its icon. */
 const GROUP_ICONS: Readonly<Record<string, IconId>> = {
@@ -41,7 +49,7 @@ function bindingTables(): string {
   return groups.map((group) => {
     const rows = ACTION_DEFS.filter((action) => action.group === group).map((action) => {
       const { keys, pad } = keysOf(action.id);
-      return `<tr><th scope="row">${esc(t(action.label))}</th><td>${keys.map(kbd).join(' ') || '—'}</td><td>${pad ? kbd(pad) : '—'}</td></tr>`;
+      return `<tr><th scope="row">${esc(t(action.label))}</th><td>${keys.map(kbd).join(' ') || '–'}</td><td>${pad ? kbd(pad) : '–'}</td></tr>`;
     }).join('');
     return `<div class="dm-keys"><h3>${icon(GROUP_ICONS[group] ?? 'settings', { size: 18 })}<span>${esc(t(group))}</span></h3>`
       + `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t(group))}"><table><thead><tr>`

@@ -354,4 +354,5 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-reels .battle-reels{margin:0;padding-top:0;border-top:0}
 .docs-reels .battle-reels-head h2{margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
 .docs-more{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:var(--s3)}
+.docs-more>.aside-card{margin:0}
 }
