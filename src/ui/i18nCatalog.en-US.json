@@ -707,7 +707,7 @@
   "equipment.loader_kit.short": "Loader Kit",
   "equipment.turret_drive.name": "Powered Turret Drive",
   "equipment.turret_drive.desc": "+20% turret traverse",
-  "equipment.turret_drive.short": "Turret Drive",
+  "equipment.turret_drive.short": "Traverse",
   "equipment.drivetrain.name": "Reinforced Drivetrain",
   "equipment.drivetrain.desc": "+40% engine and +60% transmission durability",
   "equipment.drivetrain.short": "Drivetrain",

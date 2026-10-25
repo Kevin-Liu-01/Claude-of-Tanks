@@ -203,7 +203,7 @@ export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
     effects: { moduleHp: { trackL: 1.5, trackR: 1.5 } },
   },
   {
-    id: 'turret_drive', name: 'Powered Turret Drive', short: 'Turret Drive', cat: 'mobility', era: 'modern', needs: 'turret',
+    id: 'turret_drive', name: 'Powered Turret Drive', short: 'Traverse', cat: 'mobility', era: 'modern', needs: 'turret',
     desc: '+20% turret traverse',
     effects: { turret: 1.20 },
   },
@@ -214,7 +214,7 @@ export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
   },
   // --- PROTECTION ----------------------------------------------------------
   {
-    id: 'spall_liner', name: 'Spall Liner', short: 'Spall Liner', cat: 'protection', era: 'all',
+    id: 'spall_liner', name: 'Spall Liner', short: 'Liner', cat: 'protection', era: 'all',
     desc: '-25% HE splash damage, -50% crew hits from splash',
     effects: { heSplash: 0.75, crewHe: 0.5 },
   },

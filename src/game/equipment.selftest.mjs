@@ -328,6 +328,21 @@ console.log('[10] garage stat helper');
   assert(equipmentPicker(modernSpec, []).flatMap((g) => g.items).every((e) => e.lock !== 'mode'), 'no filter, no mode locks');
 }
 
+// ----------------------------- the Garage slot's caption (2026-10-25) --
+// a slot shows the short name under its glyph in about 54 px at 11 px: ten characters in English, five in Chinese
+{
+  const { readFileSync } = await import('node:fs');
+  const catalogs = [['en-US', 10], ['zh-CN', 5]].map(([locale, max]) => [locale, max,
+    JSON.parse(readFileSync(new URL(`../ui/i18nCatalog.${locale}.json`, import.meta.url), 'utf8'))]);
+  for (const item of EQUIPMENT_CATALOG) {
+    assert(item.short.length <= 10, `${item.id}: the catalog's own short "${item.short}" fits the slot`);
+    for (const [locale, max, catalog] of catalogs) {
+      const short = catalog[`equipment.${item.id}.short`] ?? '';
+      assert(short.length > 0 && short.length <= max, `${item.id}: the ${locale} short "${short}" fits the slot`);
+    }
+  }
+}
+
 if (failures) {
   console.error(`\nequipment.selftest: ${failures}/${checks} checks FAILED`);
   process.exit(1);
