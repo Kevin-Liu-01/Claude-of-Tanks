@@ -801,6 +801,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const fillRack = !touch && !!ammo && ammo.width >= RACK_FILL_MIN && ammo.width >= 2 * ammo.height
       && document.body.dataset.cotWidth !== 'phone' && document.body.dataset.cotWidth !== 'compact';
     if (fillRack && ammo) { systemsWidth = dockWidth = ammo.width; systemsLeft = ammo.left; }
+    // (a mouse layout's map stops 12 px short of the rack and its row, whatever its zoom step: the large map's 288 px ran
+    // over the consumables and the row at 1024x600, gauntlet r4's overlap receipt; battleHudLayout.css --hud-map-max)
+    const rackRight = Math.max(ammo?.right ?? 0, fillRack ? systemsLeft + systemsWidth : 0);
+    setBodyVar('--hud-map-max', !touch && rackRight > width / 2 ? `${Math.floor(width - 16 - rackRight - 12)}px` : '');
     if ((document.body.dataset.systemsFill === '1') !== fillRack) {
       if (fillRack) document.body.dataset.systemsFill = '1';
       else delete document.body.dataset.systemsFill;
@@ -974,11 +978,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // follows the objective's bottom measured in this pass.
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
     let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
+    const scopeVision = read('.cot-scope-vision');
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
       watchBar && watchBar.right > width - sideWidth ? watchFloorTop - 8 : height,
       // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
-      watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height);
+      watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height,
+      // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane
+      // ran 2 px onto it, gauntlet r4's overlap receipt)
+      scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     // (a row is never squeezed under 16 px: at 12 px the enemy roster's lines touched, gauntlet r1 at 1280x720)

@@ -12,7 +12,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
-  max-width:calc(32vh * var(--mm-k,1));max-height:calc(32vh * var(--mm-k,1));
+  max-width:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));max-height:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));
+}
+/* (the wide top's plate sizes its content box, so its cap leaves out the plate's insets and the grid's gutter) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-minimap{
+  --mm-cap:calc(var(--hud-map-max,100vw) - var(--mm-pl) - var(--mm-pr) - var(--mm-g));
+  max-width:min(calc(32vh * var(--mm-k,1)),var(--mm-cap));max-height:min(calc(32vh * var(--mm-k,1)),var(--mm-cap));
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
