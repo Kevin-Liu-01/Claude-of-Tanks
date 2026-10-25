@@ -157,7 +157,7 @@ import {
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
-import { FRAME_STAGE, frameStages } from './frameStages.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,

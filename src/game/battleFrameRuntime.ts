@@ -1,6 +1,6 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
-import { FRAME_STAGE, frameStages } from './frameStages.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 
 interface BattlePauseInfo {
   paused: boolean;

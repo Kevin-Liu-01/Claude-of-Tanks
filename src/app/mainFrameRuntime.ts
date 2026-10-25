@@ -22,7 +22,7 @@ import type { CameraFrameInput } from '../game/playerFrameInput.ts';
 import type { SniperFillRuntime } from '../game/sniperFillRuntime.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { WorldFramePresentationRuntime } from '../world/worldFramePresentationRuntime.ts';
-import { FRAME_STAGE, frameStages } from '../game/frameStages.ts';
+import { FRAME_STAGE, frameStages } from '../game/stateCore.ts';
 import type {
   MainFxRuntime,
   MainGameState,

@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { FRAME_STAGE, FRAME_STAGE_NAMES, setFrameStageSink, type FrameStageSink } from '../game/frameStages.ts';
+import { FRAME_STAGE, FRAME_STAGE_NAMES, setFrameStageSink, type FrameStageSink } from '../game/stateCore.ts';
 
 // The battle spike census's frame recorder (battle-spikes-253, docs/PERF-SPIKES.md; tools/battle-spike-census.mjs). It
 // is the sink of the stage marks (game/frameStages.ts): every rendered frame's work split by stage, the simulation steps

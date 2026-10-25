@@ -45,7 +45,8 @@ assert.match(solo, /bus\.emit\(DESTRUCTION_BUS_EVENTS\.blast, \{ munition: cookO
 assert.match(authority, /emit\('shell_impact', \{\s*munition, chargeKg: munitionChargeKg\(shell\.spec, munition\),\s*\.\.\.\(typeof structureId === 'number' \? \{ structureId \} : \{\}\),/,
   'authority: a world impact carries the class, the charge and the struck structure');
 assert.match(authority, /pendingTankBlast = \{ shellId: shell\.id, blast: \[strike\.x, strike\.y, strike\.z,/, 'authority: the burst on a hull rides the direct hit');
-assert.match(solo, /tickRepairs\(game, bus, SIM_DT\);\s*stepDestruction\(game, bus, world\);/, 'the solo step steps it at the same place');
+// (battle-spikes-253: a frame-stage mark, game/frameStages.ts, may name the destruction stage between them)
+assert.match(solo, /tickRepairs\(game, bus, SIM_DT\);\s*(stages\?\.stage\(FRAME_STAGE\.destruction\);\s*)?stepDestruction\(game, bus, world\);/, 'the solo step steps it at the same place');
 assert.match(solo, /resetStructureRecords\(world\.getObstacles\(\), worldColliders\);/, 'a reused solo world stands its buildings again');
 
 // ---- the shell paths: a real HE round and a real APFSDS round on a structure ---------------------------------------
