@@ -332,8 +332,9 @@ function installLifecycle(): void {
 // --- one player -------------------------------------------------------------------------------------------------
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const MEDIA_PLAY_ICON = 'M4.5 2.5v11l9-5.5z';
-const MEDIA_PAUSE_ICON = 'M4 2.5h3v11H4zM9 2.5h3v11H9z';
+/** The player's play and pause glyphs (16 grid, filled): the landing's reel draws its pause control with the same pair. */
+export const MEDIA_PLAY_ICON = 'M4.5 2.5v11l9-5.5z';
+export const MEDIA_PAUSE_ICON = 'M4 2.5h3v11H4zM9 2.5h3v11H9z';
 const TRANSFER_DONE = ['canplaythrough', 'suspend', 'stalled'] as const;
 
 /** A frame's visible share: of the viewport for a frame taller than it, else of the frame. */
