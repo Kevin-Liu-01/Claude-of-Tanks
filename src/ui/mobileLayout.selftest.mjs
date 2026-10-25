@@ -158,9 +158,10 @@ assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
 // owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
-// the corner controls leave it, instead of a fixed 294 px set 18 px off centre
+// the corner controls leave it, instead of a fixed 294 px set 18 px off centre; since 2026-10-25 ("less so big and wide")
+// it hugs its scores and clock inside that lane
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;max-width:calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,

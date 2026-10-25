@@ -1468,31 +1468,36 @@ const HUD_CSS = `
 /* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
 .cot-hitmark{position:absolute;z-index:var(--hud-layer-sight);left:0;top:0;width:${HIT_MARK_BOX_PX}px;height:${HIT_MARK_BOX_PX}px;
   display:none;pointer-events:none;}
-/* The score plate (brand-ui H1, the direction's 06-battle-hud.html .score): a trapezoid on the HUD plate, each side's
-   points beside the bar of its share of what wins it, the clock in the data voice over its label. It hangs from the
-   window's top edge (owner 2026-10-24: "make the trapezoid on top of score be attached to top of screen"), the corner
-   plates beside it (the mission plate left, the readout and the settings gear right). */
-.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(604px,calc(100vw - 24px));
-  min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,150px) minmax(0,1fr);
-  align-items:center;padding:0 56px;isolation:isolate;overflow:hidden;
+/* The score plate (brand-ui H1, the direction's 06-battle-hud.html .score): a trapezoid on the HUD plate hung from the
+   window's top edge (owner 2026-10-24: "make the trapezoid on top of score be attached to top of screen"), hugging what
+   it holds (owner 2026-10-25: "AND MAKE THIS TOP THING LESS SO BIG AND WIDE"): each side's points beside a short bar of
+   its share of what wins it, the clock between them, and the team strip's pips along its lower edge where they show
+   (hudTeamPips.ts). It is the top band's height (--hud-band-h), as the corner plates beside it are (the mission plate
+   left, the readout and the settings gear right: battleHudLayout.css). */
+.cot-hud{--hud-band-h:44px;}
+.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);
+  width:max-content;max-width:min(400px,calc(100vw - 24px));min-height:var(--hud-band-h);
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-content:center;align-items:center;
+  column-gap:var(--s3);row-gap:3px;padding:var(--s1) 30px 5px;isolation:isolate;overflow:hidden;
   background:var(--hud-plate);border-radius:0;
-  clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);}
+  clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,16px 100%);}
 
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
-.cot-top .sc{display:flex;align-items:center;gap:var(--s3);min-width:0;}
+.cot-top .sc{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);min-width:0;}
 .cot-top .sc.enemy{flex-direction:row-reverse;}
 /* the side carries the team; a label shows only where it says more (the Horde's wave and remaining) */
 .cot-top .team-label[data-default]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
-.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:36px;font-weight:700;line-height:1;
-  letter-spacing:0;}
-.cot-top .fg{color:var(--hud-own);}
+/* (two figures' width held, so a score reaching 10 does not widen the plate) */
+.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
+  letter-spacing:0;min-width:2ch;}
+.cot-top .fg{color:var(--hud-own);text-align:right;}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
    transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
    a gauge, never as an empty slot (H1 critics), and any point on the board shows a stub (setScoreBars) */
-.cot-top .sc .bar{position:relative;flex:0 1 96px;width:96px;height:4px;overflow:hidden;
+.cot-top .sc .bar{position:relative;flex:none;width:28px;height:3px;overflow:hidden;
   background:color-mix(in srgb,var(--hud-own) 24%,transparent);}
 .cot-top .sc.enemy .bar{background:color-mix(in srgb,var(--hud-enemy) 24%,transparent);}
 .cot-top .sc .bar i{display:block;height:100%;transform:scaleX(var(--p,0));transform-origin:left;
@@ -1500,11 +1505,11 @@ const HUD_CSS = `
 .cot-top .sc.ally .bar i{background:var(--hud-own);}
 .cot-top .sc.enemy .bar i{background:var(--hud-enemy);transform-origin:right;}
 .cot-top .fe .of{font-size:.5em;font-weight:700;letter-spacing:0;margin-left:2px;opacity:.82;}
-.cot-top .tm-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
+.cot-top .tm-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
 .cot-top .tm-block .tm{order:1;}.cot-top .tm-block .tm-label{order:2;}
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
 .cot-top .tm-label:empty{display:none;}
-.cot-top .tm{font:500 30px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
+.cot-top .tm{font:500 18px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
 /* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
 .cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp var(--dur-screen) steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:var(--warn);}
@@ -1594,9 +1599,9 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:56px;width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:calc(var(--hud-band-h) + 8px);width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
 .cot-ear.l{left:0;}
-.cot-ear.r{right:0;top:var(--hud-roster-top-right,56px);}
+.cot-ear.r{right:0;top:var(--hud-roster-top-right,calc(var(--hud-band-h) + 8px));}
 .cot-ear .hd{flex-shrink:0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;color:var(--ink-3);
   font-family:${FONT_COND};
   text-transform:uppercase;padding:var(--s1) 10px;display:flex;justify-content:space-between;
@@ -2238,8 +2243,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
-  // the team strip under the score: a silhouette per tank and a chip per capture zone (hudTeamPips.ts)
-  const teamPips = createTeamPips(root);
+  // the team strip: a silhouette pip per tank along the score plate's lower edge, a chip per capture zone under it
+  // (hudTeamPips.ts)
+  const teamPips = createTeamPips(root, topPlate);
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
   let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;

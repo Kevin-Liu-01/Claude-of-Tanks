@@ -25,7 +25,7 @@ for (const count of [1, 2, 3, 7, 10, 14]) {
 
 for(const width of [240,280,344,420]) {
   const w=objectiveWidth(width);
-  assert.ok((width-w)/2>25, 'objective clears both clipped scoreboard corners');
+  assert.ok((width-w)/2>16, 'objective clears both clipped scoreboard corners');
 }
 
 for(const height of [0,30,62,100,150,200,320,600])for(const chat of [false,true])for(const count of [0,1,3,8]){
@@ -671,7 +671,7 @@ assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'
 assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
 assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');
 assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
-assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,56px\);\}/,'the right roster reads its lane from the layout, with its own lane (under the corner plate) as the fallback');
+assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,calc\(var\(--hud-band-h\) \+ 8px\)\);\}/,'the right roster reads its lane from the layout, with its own lane (under the corner plate) as the fallback');
 assert.match(hud,/installBattleHudLayout\(root\)/);
 const shot=readFileSync(new URL('./shotInfo.ts',import.meta.url),'utf8');
 assert.doesNotMatch(shot,/t\('shotInfo\.(yourShots|yourShotsLast|damageReceived)'/,'log headings use existing GT catalog entries');

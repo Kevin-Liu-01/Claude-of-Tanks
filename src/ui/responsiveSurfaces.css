@@ -24,9 +24,8 @@ body[data-cot-viewport='visual'] :is(
 /* BATTLE HUD -------------------------------------------------------------- */
 body[data-cot-width='laptop'] .cot-ear{width:clamp(172px,14vw,194px)}
 body[data-cot-width='laptop'] .cot-killfeed{left:clamp(184px,15vw,210px)}
-body[data-cot-width='tablet'] .cot-top{width:min(326px,calc(100vw - 120px));padding:0 25px}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{top:58px;width:160px}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear.r{top:var(--hud-roster-top-right,58px)}
+body[data-cot-width='tablet'] .cot-top{max-width:calc(100vw - 120px);padding:var(--s1) 26px 5px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{width:160px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:var(--battle-fs-11)}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .ic{width:25px;height:13px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .nick{font-size:var(--battle-fs-11)}
@@ -38,15 +37,19 @@ body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-kf{font-size:var(--bat
 
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-ear,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-ear{display:none}
+/* (a phone's plate: the scores, bars and clock a size down, the band 36 px) */
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top{
-  top:0;width:min(320px,calc(100vw - 88px));min-height:52px;
-  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);padding:max(5px,env(safe-area-inset-top)) 25px 7px;
+  top:0;max-width:calc(100vw - 88px);min-height:36px;column-gap:var(--s2);padding:max(4px,env(safe-area-inset-top)) 22px 5px;
 }
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fg,
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fe,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top .fg,
-body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top .fe{font-size:22px}
+body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top .fe{font-size:20px}
+body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .tm,
+body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top .tm{font-size:15px}
+body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .sc .bar,
+body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top .sc .bar{width:20px}
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-killfeed,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-killfeed{
   top:60px;left:50%;transform:translateX(-50%);max-width:72%;align-items:center;
@@ -544,8 +547,7 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
    shifts off the line. On a short landscape phone the toolbar's corner plate (158 px, hung from the corner) is that corner:
    the score plate keeps 6 px from it at 568 px wide (240 px), 294 px where it fits (it was biased 18 px left). */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top{
-  left:50%;width:min(294px,calc(100vw - 2 * (env(safe-area-inset-right) + 164px)));padding:5px 18px 7px;
-  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);
+  left:50%;max-width:calc(100vw - 2 * (env(safe-area-inset-right) + 164px));padding:4px 22px 5px;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
   top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));

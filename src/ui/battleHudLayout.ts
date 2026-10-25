@@ -16,9 +16,8 @@ type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
  *  unless a queued medal card waits on it). */
 const SCOPED_ATTRIBUTE = 'data-cot-scoped';
 
-/** The scoreboard polygon's bottom corners (6 % of the plate, the direction's trapezoid) stay inside this on the
- *  compact plates; the objective clears each by 8px. */
-const SCORE_BOTTOM_INSET = 25;
+/** The scoreboard polygon's bottom corners (its 16 px slants, hud.ts .cot-top); the objective clears each by 8px. */
+const SCORE_BOTTOM_INSET = 16;
 /** The objective's width under the desktop plate: the panel keeps its measure under the direction's wider score. */
 const OBJECTIVE_MAX_W = 278;
 export function objectiveWidth(scoreWidth: number): number {
