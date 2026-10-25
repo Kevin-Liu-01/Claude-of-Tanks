@@ -1167,6 +1167,7 @@
   "playMenu.lobby.ready": "已准备",
   "playMenu.lobby.notReady": "未准备",
   "playMenu.lobby.offline": "离线",
+  "playMenu.lobby.seats": "座位",
   "playMenu.eyebrow.lan": "局域网邀请",
   "playMenu.eyebrow.private": "私人邀请",
   "playMenu.invite.titleHost": "加入 {host} 的游戏",

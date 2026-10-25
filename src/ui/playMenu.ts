@@ -227,13 +227,13 @@ const CSS = `
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:var(--s2)}
 
 /* the two ways in: a private room and the local network */
-.cot-play .modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);margin-top:var(--s4)}
+.cot-play .modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4)}
 .cot-play .mode{position:relative;display:flex;align-items:center;gap:var(--s3);min-height:64px;padding:var(--s3) var(--s4);
   border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);
   text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .cot-play .mode:hover{background:var(--surface-hover)}
 .cot-play .mode.on{background:var(--accent-wash);box-shadow:var(--ring-accent)}
-.cot-play .mode b{display:block;margin:0;font:700 max(var(--fs-floor-12),var(--fs-15))/1 var(--font-display);text-transform:uppercase}
+.cot-play .mode b{display:block;margin:0;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-transform:uppercase}
 .cot-play .mode-icon{display:grid;flex:none;place-items:center;color:var(--ink-2)}
 .cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
 .cot-play .mode-icon svg{display:block}
@@ -261,7 +261,7 @@ const CSS = `
 .cot-play .rule:disabled{cursor:not-allowed}
 .cot-play .rule svg{display:block}
 .cot-play .rule-copy{display:grid;min-width:0;gap:2px}
-.cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-display);text-overflow:ellipsis;
+.cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-overflow:ellipsis;
   white-space:nowrap;text-transform:uppercase}
 .cot-play .rule-copy small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
 .cot-play .rule-copy .rule-progress{color:var(--accent)}
@@ -403,6 +403,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .roomhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s3) var(--s4);
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .roommeta{margin-bottom:var(--s2)}
+.cot-play .roomhead .seats{margin-left:auto;text-align:right}
+.cot-play .seats-count{color:var(--ink-1);font:700 max(var(--fs-floor-12),var(--fs-20))/1 var(--font-ui)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
 .cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -421,7 +423,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
 .cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
-  gap:var(--s3);min-height:58px;padding:var(--s2) var(--s3);border-radius:var(--control-radius);background:var(--row-plate);
+  gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
@@ -456,8 +458,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
-.cot-play :is(.room-failure,.version-refusal){flex-wrap:wrap;outline-offset:4px}
-.cot-play .room-failure{margin-top:var(--s4);scroll-margin-top:var(--s4)}
+.cot-play :is(.room-failure,.version-refusal,.status){flex-wrap:wrap;padding:var(--s3) var(--s4);outline-offset:4px}
+.cot-play .room-failure{margin-top:var(--s4);scroll-margin-block:var(--s4)}
 .cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--s5) - 64px) 2px 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/1.3 var(--font-ui)}
@@ -481,12 +483,14 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* open, the rules show their own selection: the summary's echo of it steps aside */
 .cot-play .room-rules[open] [data-selected-rule]{visibility:hidden}
 .cot-play .teams-host:not(:empty){margin-top:var(--s3)}
+.cot-play .cot-teams{flex-direction:column;align-items:flex-start;gap:var(--s2)}
+.cot-play .cot-teams .cot-c-seg__opt{height:38px}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
 /* the arrangement's pickers are the room's selects: the 44 px row and the thin chevron */
 .cot-play .cot-custom-select-trigger{position:relative;min-height:44px}
 .cot-play .cot-custom-select-trigger::after{position:absolute;right:var(--s4);top:50%;margin:0;border-right-width:1.5px;border-bottom-width:1.5px;color:var(--ink-2);transform:translateY(-68%) rotate(45deg)}
 .cot-play .room-rules .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
-.cot-play .room-rules .rule{min-height:60px}
+.cot-play .room-rules .rule{min-height:64px;padding:var(--s3) var(--s4)}
 .cot-play .room-rules .rule-copy b{white-space:normal;line-height:1.4}
 .cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none}
 
@@ -807,7 +811,7 @@ export function createPlayMenu({
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
-    <section class="version-refusal cot-c-notice" data-severity="warning" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
+    <section class="version-refusal cot-c-notice" data-severity="info" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
       <span class="cot-c-notice__glyph">${uiIconSVG('info', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
       <span class="cot-c-notice__acts"><button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button></span>
     </section></header>
@@ -850,6 +854,7 @@ export function createPlayMenu({
       </div>
     </section><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"></div></div>
+        <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
@@ -1062,6 +1067,7 @@ export function createPlayMenu({
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
   const playersEl = requiredElement<HTMLElement>(root, '.players');
   const codeEl = requiredElement<HTMLElement>(root, '.code');
+  const seatsEl = requiredElement<HTMLElement>(root, '[data-seats]');
   const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
   const startBtn = requiredElement<HTMLButtonElement>(root, '[data-action="start"]');
   const rejoinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="rejoin"]');
@@ -1620,6 +1626,7 @@ export function createPlayMenu({
 
   function renderLobbyBattlefield(next: SerializedLobby): void {
     codeEl.textContent = next.roomCode;
+    seatsEl.textContent = `${next.players.filter((candidate) => candidate.team !== 'spectator').length}/${next.maxPlayers}`;
     // batch 30 (2026-09-15): a Frontline room may play a campaign operation — it names the battlefield
     const operation = next.gameMode === 'frontline_assault' ? campaignOperationById(next.campaignOperationId) : null;
     operationField.hidden = next.gameMode !== 'frontline_assault';
