@@ -68,8 +68,6 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   color:var(--ink-on-accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .more-facets__n[hidden]{display:none}
 .more-facets>.toggles--glyphs{display:grid;gap:var(--s2);margin-top:var(--s2)}
-/* opened in a short column, the extra filters scroll in place so the list keeps its rows */
-@media (height < 900px) and (width >= 1100px){.more-facets>.toggles--glyphs{max-height:30vh;overflow-y:auto;scrollbar-width:thin}}
 @media (hover:hover){.more-facets summary:hover{color:var(--ink-1)}}
 @media (prefers-reduced-motion:reduce){.more-facets summary .cot-i{transition:none}}
 .order{display:flex;align-items:center;gap:var(--s1)}
@@ -222,6 +220,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .take .nm h1{min-width:0;margin:0;font:700 calc(var(--fs-32) * var(--name-fit,1))/.95 var(--font-display);text-transform:uppercase;
   overflow-wrap:anywhere;text-wrap:balance}
 :lang(zh-CN) .take .nm h1{line-height:1.15}
+/* the dossier's figures share one right edge: the gap to the rival keeps a fixed column, present or not */
+.dossier .cot-c-stat__value{display:inline-grid;grid-template-columns:auto auto 6ch;justify-content:end;align-items:baseline}
+.dossier .cot-c-stat__value b{justify-self:end}
+.dossier .cot-c-stat__delta{justify-self:start;margin-left:var(--s1)}
 .dz-tabs{position:sticky;top:0;z-index:var(--z-hud-world);padding:0 var(--g-pad);border-bottom:1px solid var(--line-1);background:var(--surface-page)}
 .dz-tabs .cot-c-tabs{gap:var(--s3);overflow-x:auto;scrollbar-width:none}
 .dz-tabs .cot-c-tabs__tab{font-size:var(--fs-14)}
@@ -431,4 +433,6 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   /* the stage and its turntable fit under the site bar */
   .stage{max-height:calc(var(--cot-viewport-height,100dvh) - 56px)}
 }
+/* a short stacked stage sets its legend at the top beside the camera rail, off the tank framed low in it */
+@media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto}}
 }
