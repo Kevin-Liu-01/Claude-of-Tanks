@@ -48,7 +48,7 @@
 .cot-record-ach-title .cot-record-new{margin-left:auto}
 
 /* overview: the scoreboard (the win rate over one victory/draw/defeat bar), the six career figures, the cards */
-.cot-record-overview{display:grid;gap:var(--s4)}
+.cot-record-overview{display:grid;gap:var(--s3)}
 .cot-record-outcomes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
 .cot-record-outcome.win-rate{grid-column:span 3}
 .cot-record-outcome{min-width:0;overflow-wrap:anywhere}
@@ -64,7 +64,7 @@
 .cot-record-split .loss{background:var(--danger)}
 /* the figures are the kit's stat tiles (statTile), the overview's and each battle's alike */
 .cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
-.cot-record-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+.cot-record-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s3)}
 .cot-record-card{min-width:0;padding:var(--s5);background:var(--surface-page);box-shadow:var(--ring-1)}
 .cot-record-card-head{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);color:var(--ink-3)}
 .cot-record-card-head strong{font:600 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1)}
@@ -140,7 +140,7 @@
 .cot-record-battle-what time{font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-3)}
 .cot-record-battle-num b{display:block;font:600 var(--fs-20)/1.1 var(--font-display);color:var(--ink-1)}
 .cot-record-battle-num small{display:block;margin-top:2px}
-.cot-record-battle-num .cot-record-stat-label{gap:4px;font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-record-battle-num .cot-record-stat-label{gap:4px;font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-2)}
 .cot-record-battle-num .cot-record-stat-label svg{width:12px;height:12px}
 .cot-record-battle-medals{display:flex;align-items:center;gap:4px;min-width:0}
 .cot-record-battle-medals small{margin-left:2px;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-2)}

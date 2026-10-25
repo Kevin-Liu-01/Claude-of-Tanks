@@ -3546,6 +3546,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     pop.append(mapsEl);
     pop.hidden = false;
+    pop.scrollIntoView({ block: 'nearest' }); // a phone's opened picker comes into view above the dock
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
     mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
   }
