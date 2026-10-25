@@ -9263,7 +9263,9 @@ function* buildTankCoreSteps(
   // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
   // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
   // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret.
-  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
+  seatTurretOverDeck({
+    specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg],
+  });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
