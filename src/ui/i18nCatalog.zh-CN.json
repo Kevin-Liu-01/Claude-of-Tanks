@@ -70,7 +70,7 @@
   "battle.entryFailed.body": "{reason}。已返回车库——请再试一次；若反复出现，请重新加载页面。",
   "boot.pressAnyKey": "点击屏幕或按任意键继续",
   "credits.body1": "我设计并开发了《Claude of Tanks》，以此实验一个人能在多大程度上，凭借持续的智能体协作，独立完成一款原创浏览器游戏。Claude 和 Codex 只是开发工具，不是共同作者。",
-  "credits.body2": "车辆、模拟、战斗系统、界面、性能、测试、文档与发布流水线，全部通过长期运行的多智能体 Claude 与 Codex 工作流端到端完成。每辆可上场坦克都是 Kevin B. Liu 原创的过程化模型作品。",
+  "credits.body2": "车辆、模拟、战斗系统、界面、性能、测试、文档与发布流水线，全部通过长期运行的多智能体 Claude 与 Codex 工作流端到端完成。每辆可上场坦克都是 Kevin B. Liu 原创的过程化模型作品。",
   "credits.links.github": "Kevin 的 GitHub",
   "credits.links.source": "源代码",
   "credits.links.notice": "版权声明",
