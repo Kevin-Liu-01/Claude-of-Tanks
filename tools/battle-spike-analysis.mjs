@@ -360,6 +360,13 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
   const baseline = {};
   for (const key of keys) baseline[key] = median(ordinary.map((r) => r.buckets[key] ?? 0));
 
+  // the recorder's first draws (a program into a framebuffer for the first time) by time, to name a hitch's new pipelines
+  const drawRows = [...(readout?.firstDraws ?? [])].sort((x, y) => x.tMs - y.tMs);
+  const drawsIn = (from, to) => {
+    const names = {};
+    for (const row of drawRows) { if (row.tMs >= to) break; if (row.tMs >= from) names[row.name] = (names[row.name] ?? 0) + 1; }
+    return names;
+  };
   const spikes = [];
   for (const { a, b, interval, buckets } of rows) {
     if (interval <= hitchMs) continue;
@@ -370,6 +377,7 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
       atMs: round(a.tMs, 1), simS: round(a.simS, 2), intervalMs: round(interval, 1), workMs: round(a.workMs, 1),
       cause: key ? causeOfBucket(key) : 'diffuse', dominant: key, excess: roundedBuckets(excess, 1), buckets: roundedBuckets(buckets),
       programs: b.programs - a.programs, simSteps: a.simSteps, links: a.links + b.gapLinks,
+      firstDraws: (a.firstDraws ?? 0) + (b.gapFirstDraws ?? 0), firstDrawNames: drawsIn(a.tMs, b.tMs),
       topEvents: a.topEvents.map((e) => ({ name: e.name, ms: round(e.ms, 1) })), countdown: a.countdown, killcam: a.killcam,
     });
   }
@@ -405,8 +413,19 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
   return {
     frames: shown.length, intervals: { ...summarizeIntervals(intervals), medianMs: round(medianMs, 1), hitchMs: round(hitchMs, 1), hitches: spikes.length },
     baseline: roundedBuckets(baseline, 0.3), heap: traced ? gcOf(events, tracedFrom) : heapOf(shown), links: linksOf(shown, readout?.links ?? []),
+    firstDraws: firstDrawsOf(shown, drawRows),
     spikes, longTasks, summary: summarize(spikes, longTasks), traced,
   };
+}
+
+/** First draws over the shown frames (a program into a framebuffer for the first time), and by program name. */
+export function firstDrawsOf(frames, rows = []) {
+  let count = 0;
+  for (const f of frames) count += (f.firstDraws ?? 0) + (f.gapFirstDraws ?? 0);
+  const from = frames[0]?.tMs ?? 0, to = (frames[frames.length - 1]?.tMs ?? 0) + (frames[frames.length - 1]?.workMs ?? 0);
+  const names = {};
+  for (const row of rows) if (row.tMs >= from && row.tMs <= to) names[row.name] = (names[row.name] ?? 0) + 1;
+  return { count, names: Object.fromEntries(Object.entries(names).sort((x, y) => y[1] - x[1]).slice(0, 40)) };
 }
 
 /** The GPU process's main thread (CrGpuMain). */

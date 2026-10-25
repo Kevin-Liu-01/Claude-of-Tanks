@@ -12,6 +12,9 @@ const COLUMNS = Object.freeze([
   'events', 'eventMs', 'topEvent0', 'topEventMs0', 'topEvent1', 'topEventMs1', 'topEvent2', 'topEventMs2',
   // WebGL work by kind (with `gl`): in the frame, then in the gap before it (idle callbacks, worker replies, timers)
   'links', 'linkMs', 'texMs', 'bufMs', 'gapLinks', 'gapLinkMs', 'gapTexMs', 'gapBufMs',
+  // first draws (with `gl`): a program drawn into a framebuffer it never drew into before, in the frame and in the gap
+  // (the GPU process builds its pipeline for the pair then: ANGLE on Metal at the draw, not at the link)
+  'firstDraws', 'gapFirstDraws',
 ] as const);
 const STAGE_BASE = COLUMNS.length;
 const WIDTH = STAGE_BASE + FRAME_STAGE_NAMES.length;
@@ -65,17 +68,36 @@ interface FrameStageReadout {
   dropped: number;
   /** Each program linked (with `gl`): when, its shader's name (three's SHADER_NAME, else the first line), how long. */
   links: Array<{ tMs: number; name: string; ms: number; inFrame: boolean }>;
+  /** Each first draw of a program into a framebuffer (with `gl`): when, the program's name, the framebuffer (0: the canvas). */
+  firstDraws: Array<{ tMs: number; name: string; fb: number; inFrame: boolean }>;
 }
 
 const MAX_LINK_ROWS = 1024;
 
-/** A program's name: three's `#define SHADER_NAME` in its vertex or fragment source, else '(unnamed)'. */
+/**
+ * A program's name: three's `#define SHADER_NAME` (the material's name) in its vertex or fragment source. A material
+ * with no name (three writes the define empty) reads as its kind and features from three's defines ('(standard) map
+ * normalmap instancing'); a raw shader (no prefix at all) by its first uniforms, '(raw) uA,uB,uC'; else '(unnamed)'.
+ */
+const PROGRAM_KINDS = ['STANDARD', 'PHYSICAL', 'PHONG', 'LAMBERT', 'BASIC', 'TOON', 'MATCAP', 'DEPTH', 'DISTANCE', 'NORMAL', 'SHADOW'];
+const PROGRAM_FEATURES = ['USE_MAP', 'USE_NORMALMAP', 'USE_ALPHAMAP', 'USE_ALPHATEST', 'USE_INSTANCING', 'USE_BATCHING', 'USE_SKINNING',
+  'USE_COLOR', 'USE_AOMAP', 'USE_ROUGHNESSMAP', 'USE_METALNESSMAP', 'USE_ENVMAP', 'USE_DISPLACEMENTMAP', 'DOUBLE_SIDED', 'FLAT_SHADED'];
 function programName(gl: WebGL2RenderingContext, program: WebGLProgram): string {
   try {
+    const uniforms: string[] = [];
+    let named: string | null = null, kind = '', prefixed = false;
+    const features = new Set<string>();
     for (const shader of gl.getAttachedShaders(program) ?? []) {
-      const match = /#define SHADER_NAME (.+)/.exec(gl.getShaderSource(shader) ?? '');
-      if (match) return match[1].trim().slice(0, 80);
+      const source = gl.getShaderSource(shader) ?? '';
+      const match = /#define SHADER_NAME ?(.*)/.exec(source);
+      if (match) { prefixed = true; if (match[1].trim()) named = match[1].trim().slice(0, 80); }
+      for (const k of PROGRAM_KINDS) if (!kind && new RegExp(`#define ${k}\\b`).test(source)) kind = k.toLowerCase();
+      for (const f of PROGRAM_FEATURES) if (source.includes(`#define ${f}`)) features.add(f.replace(/^USE_/, '').toLowerCase());
+      for (const found of source.matchAll(/uniform\s+\w+\s+(\w+)/g)) if (uniforms.length < 4 && !uniforms.includes(found[1])) uniforms.push(found[1]);
     }
+    if (named) return named;
+    if (prefixed) return `(${kind || 'shader'})${features.size ? ' ' + [...features].join(' ') : ''}`.slice(0, 120);
+    if (uniforms.length) return `(raw) ${uniforms.join(',')}`;
   } catch { /* a lost context */ }
   return '(unnamed)';
 }
@@ -137,6 +159,55 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
   const glAcc = new Float64Array(8);
   const glRestore: Array<() => void> = [];
   const links: FrameStageReadout['links'] = [];
+  const firstDraws: FrameStageReadout['firstDraws'] = [];
+  const drawAcc = new Float64Array(2); // first draws in the frame, in the gap
+  if (gl) {
+    // the bound program and draw framebuffer (their own calls tracked: a getParameter would wait on the GPU process)
+    const target = gl as unknown as Record<string, (...args: unknown[]) => unknown>;
+    let program: WebGLProgram | null = null, framebuffer = 0, framebuffers = 0;
+    const framebufferIds = new WeakMap<WebGLFramebuffer, number>();
+    const drawnInto = new WeakMap<WebGLProgram, Set<number>>();
+    const names = new WeakMap<WebGLProgram, string>();
+    const useProgram = target.useProgram, bindFramebuffer = target.bindFramebuffer;
+    target.useProgram = function trackedUseProgram(this: unknown, next: unknown): unknown {
+      program = next as WebGLProgram | null;
+      return useProgram.call(this, next);
+    };
+    target.bindFramebuffer = function trackedBindFramebuffer(this: unknown, slot: unknown, fb: unknown): unknown {
+      if (slot === gl.FRAMEBUFFER || slot === gl.DRAW_FRAMEBUFFER) {
+        if (!fb) framebuffer = 0;
+        else {
+          let id = framebufferIds.get(fb as WebGLFramebuffer);
+          if (id === undefined) { id = ++framebuffers; framebufferIds.set(fb as WebGLFramebuffer, id); }
+          framebuffer = id;
+        }
+      }
+      return bindFramebuffer.call(this, slot, fb);
+    };
+    glRestore.push(() => { target.useProgram = useProgram; target.bindFramebuffer = bindFramebuffer; });
+    for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements']) {
+      const original = target[name];
+      if (typeof original !== 'function') continue;
+      target[name] = function trackedDraw(this: unknown): unknown {
+        if (program) {
+          let into = drawnInto.get(program);
+          if (!into) { into = new Set(); drawnInto.set(program, into); }
+          if (!into.has(framebuffer)) {
+            into.add(framebuffer);
+            drawAcc[open ? 0 : 1]++;
+            if (firstDraws.length < MAX_LINK_ROWS * 4) {
+              let label = names.get(program);
+              if (label === undefined) { label = programName(gl, program); names.set(program, label); }
+              firstDraws.push({ tMs: Math.round(now() * 10) / 10, name: label, fb: framebuffer, inFrame: open });
+            }
+          }
+        }
+        // eslint-disable-next-line prefer-rest-params
+        return original.apply(this, arguments as unknown as unknown[]);
+      };
+      glRestore.push(() => { target[name] = original; });
+    }
+  }
   if (gl) {
     const target = gl as unknown as Record<string, (...args: unknown[]) => unknown>;
     for (const kind of Object.keys(GL_KINDS) as GlKind[]) {
@@ -241,7 +312,10 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
       rows[base + 25] = glAcc[4];
       rows[base + 26] = glAcc[5];
       rows[base + 27] = glAcc[6];
+      rows[base + 28] = drawAcc[0];
+      rows[base + 29] = drawAcc[1];
       glAcc.fill(0);
+      drawAcc.fill(0);
       for (let s = 0; s < stageMs.length; s++) rows[base + STAGE_BASE + s] = stageMs[s];
       next = (next + 1) % capacity;
       if (size === capacity) dropped++; else size++;
@@ -258,9 +332,10 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
         const base = ((start + i) % capacity) * WIDTH;
         frames.push(Array.from(rows.subarray(base, base + WIDTH), (v) => Math.round(v * 1000) / 1000));
       }
-      return { columns: COLUMNS, stages: FRAME_STAGE_NAMES, events: eventNames.slice(), flags: FLAG, frames, dropped, links: links.slice() };
+      return { columns: COLUMNS, stages: FRAME_STAGE_NAMES, events: eventNames.slice(), flags: FLAG, frames, dropped, links: links.slice(),
+        firstDraws: firstDraws.slice() };
     },
-    clear(): void { next = 0; size = 0; dropped = 0; links.length = 0; },
+    clear(): void { next = 0; size = 0; dropped = 0; links.length = 0; firstDraws.length = 0; },
     uninstall(): void {
       if (!installed) return;
       installed = false;

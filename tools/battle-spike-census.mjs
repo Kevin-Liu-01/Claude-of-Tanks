@@ -11,7 +11,16 @@
 //   node tools/battle-spike-census.mjs [--scenarios=verdant:standard,urban:zone_control,...] [--sizes=7,14,21]
 //        [--seconds=45] [--passes=cold,warm] [--spec=t90m] [--preset=high] [--viewport=1920x1080] [--port=5396]
 //        [--root=.] [--out=<dir>] [--trace=1] [--resume] [--budget-min=0] [--driver=player|watch] [--heap-profile]
-//        [--trace-detail]
+//        [--trace-detail] [--cpu-profile] [--roots=base=<dir>,lane=<dir>] [--governor=pinned|live]
+//
+// --roots plays every battle on each build (a root holding a dist), each served on its own port, in alternating order
+// from one scenario to the next (base then lane, lane then base …), so the machine's load drifts across both sides
+// alike; census-ab.json sets the pairs side by side. --governor=pinned (the default) holds the adaptive resolution at
+// its full scale from boot: on a loaded machine its steps reallocate the composer's targets mid-battle (each a GPU
+// stall the census would charge to the battle), and a pair must render the same pixels.
+//
+// --cpu-profile samples the main thread's JavaScript through the live battle (CDP Profiler, 200 µs) and names the
+// functions with the most self time, through the dist's source maps when the build has them.
 //
 // --trace-detail adds V8's execution events and keeps every main-thread and GPU-thread event (each compacted as it
 // streams, the ones under 50 µs dropped), so a task the kinds the analysis names do not cover shows what ran in it.
@@ -63,7 +72,8 @@ export function parseCensusArgs(argv) {
   const o = {
     scenarios: [...DEFAULT_SCENARIOS], sizes: [7, 14, 21], seconds: 45, passes: ['cold', 'warm'], spec: 't90m',
     preset: 'high', viewport: '1920x1080', port: 5396, root: process.cwd(), out: null, trace: true, resume: false,
-    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false,
+    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false, cpuProfile: false,
+    roots: null, governor: 'pinned',
   };
   for (const arg of argv) {
     const [key, value = '1'] = arg.replace(/^--/, '').split('=');
@@ -85,6 +95,13 @@ export function parseCensusArgs(argv) {
       case 'driver': o.driver = value; break;
       case 'heap-profile': o.heapProfile = value !== '0'; break;
       case 'trace-detail': o.traceDetail = value !== '0'; break;
+      case 'cpu-profile': o.cpuProfile = value !== '0'; break;
+      case 'roots': o.roots = value.split(',').filter(Boolean).map((pair) => {
+        const at = pair.indexOf('=');
+        if (at <= 0) throw new Error('--roots: label=<dir>,label=<dir>');
+        return { label: pair.slice(0, at), root: path.resolve(pair.slice(at + 1)) };
+      }); break;
+      case 'governor': o.governor = value; break;
       default: throw new Error(`${TOOL}: unknown flag --${key}`);
     }
   }
@@ -93,6 +110,9 @@ export function parseCensusArgs(argv) {
   if (o.passes.some((p) => p !== 'cold' && p !== 'warm') || o.passes[0] !== 'cold' && o.passes.length > 1) throw new Error('--passes: cold[,warm]');
   if (!/^\d+x\d+$/.test(o.viewport)) throw new Error('--viewport: <w>x<h>');
   if (o.driver !== 'player' && o.driver !== 'watch') throw new Error('--driver: player or watch');
+  if (o.governor !== 'pinned' && o.governor !== 'live') throw new Error('--governor: pinned or live');
+  o.roots = (o.roots ?? [{ label: '', root: o.root }]).map((side, i) => ({ ...side, port: o.port + i }));
+  if (new Set(o.roots.map((side) => side.label)).size !== o.roots.length) throw new Error('--roots: one label a root');
   o.out ??= path.join(os.homedir(), 'cot-lanes', 'battle-spikes-census', new Date().toISOString().slice(0, 16).replace(/[:T]/g, ''));
   return o;
 }
@@ -228,7 +248,8 @@ function compactEvent(e) {
 /** Start a battle's trace (CDP Tracing, streamed); `stop()` reads it back event by event and keeps what the analysis can use. */
 async function startTrace(page, { detail = false } = {}) {
   const cdp = await page.target().createCDPSession();
-  const categories = detail ? [...TRACE_CATEGORIES, 'v8.execute', 'v8'] : [...TRACE_CATEGORIES];
+  // detail: V8's execution, and the GPU process's own work (ANGLE's pipeline and program builds inside a GPUTask)
+  const categories = detail ? [...TRACE_CATEGORIES, 'v8.execute', 'v8', 'gpu', 'gpu.angle', 'disabled-by-default-gpu.service'] : [...TRACE_CATEGORIES];
   await cdp.send('Tracing.start', {
     transferMode: 'ReturnAsStream', streamFormat: 'json',
     traceConfig: { recordMode: 'recordUntilFull', traceBufferSizeInKb: TRACE_BUFFER_KB, includedCategories: categories },
@@ -309,6 +330,51 @@ export function summarizeHeapProfile(profile, seconds, { resolve = null, top = 4
   };
 }
 
+/** Start the main thread's sampling CPU profile; `stop()` returns it. */
+async function startCpuProfile(page) {
+  const cdp = await page.target().createCDPSession();
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+  await cdp.send('Profiler.start');
+  return {
+    async stop() {
+      const { profile } = await cdp.send('Profiler.stop');
+      await cdp.send('Profiler.disable').catch(() => {});
+      await cdp.detach().catch(() => {});
+      return profile;
+    },
+  };
+}
+
+/** A CPU profile's self time by function (and by chunk), sources mapped when `resolve` can. */
+export function summarizeCpuProfile(profile, seconds, { resolve = null, top = 40 } = {}) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const self = new Map();
+  let total = 0;
+  for (let i = 0; i < profile.samples.length; i++) {
+    const us = profile.timeDeltas[i + 1] ?? 0;
+    const node = byId.get(profile.samples[i]);
+    if (!node) continue;
+    total += us;
+    const f = node.callFrame;
+    const key = `${f.url}|${f.lineNumber}|${f.columnNumber}|${f.functionName}`;
+    const row = self.get(key) ?? { fn: f.functionName || '(anonymous)', url: f.url || '', line: f.lineNumber, col: f.columnNumber, us: 0 };
+    row.us += us;
+    self.set(key, row);
+  }
+  const ms = (us) => Math.round(us / 10) / 100;
+  const chunks = new Map();
+  for (const row of self.values()) { const chunk = chunkOfUrl(row.url, row.fn); chunks.set(chunk, (chunks.get(chunk) ?? 0) + row.us); }
+  return {
+    totalMs: ms(total), msPerS: seconds > 0 ? ms(total / seconds) : null,
+    functions: [...self.values()].sort((a, b) => b.us - a.us).slice(0, top).map((row) => {
+      const source = resolve && row.url ? resolve(row.url, row.line, row.col) : null;
+      return { ms: ms(row.us), msPerS: seconds > 0 ? ms(row.us / seconds) : null, fn: row.fn, chunk: chunkOfUrl(row.url, row.fn), ...(source ? { source } : {}) };
+    }),
+    byChunk: [...chunks].sort((a, b) => b[1] - a[1]).slice(0, 24).map(([chunk, us]) => ({ chunk, ms: ms(us) })),
+  };
+}
+
 /** Resolve a dist script position to its source through the script's own map (dist/assets/<file>.map), when present. */
 async function sourceResolver(root) {
   let TraceMap, originalPositionFor;
@@ -335,14 +401,24 @@ export function filterTraceEvents(events) {
   return events.filter((e) => (e.ph === 'M') || (main && e.pid === main.pid && e.tid === main.tid) || gpu.has(`${e.pid}:${e.tid}`));
 }
 
-const keyOf = (scenario, size, pass) => `${scenario.replace(':', '-')}-${size}v${size}-${pass}`;
+const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''}${scenario.replace(':', '-')}-${size}v${size}-${pass}`;
 
-async function runScenario(options, server, scenario, size, done) {
+// the browser playing now: a stopped census (SIGTERM, SIGINT) closes it before it exits, leaving no orphan Chrome
+let activeBrowser = null;
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.once(signal, () => {
+    const closing = activeBrowser ? activeBrowser.close().catch(() => {}) : Promise.resolve();
+    void closing.finally(() => process.exit(130));
+  });
+}
+
+async function runScenario(options, side, scenario, size, done) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = size - 1, enemies = size;
   const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
     args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] });
+  activeBrowser = browser;
   let aborted = null;
   const pid = browser.process()?.pid;
   const watchdog = setInterval(() => {
@@ -357,22 +433,28 @@ async function runScenario(options, server, scenario, size, done) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument(installCensusObservers, { preset: options.preset, allies, enemies });
     const bootAt = Date.now();
-    await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+    await page.goto(`http://127.0.0.1:${side.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+    // the adaptive resolution held at its full scale from boot (--governor=pinned): no mid-battle reallocation
+    if (options.governor === 'pinned') {
+      await page.evaluate(() => { const P = window.__DEBUG.post; P.setAdaptiveSuspended?.(true); P.pinDynScale?.(1); });
+    }
     const bootMs = Date.now() - bootAt;
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
     const opponents = pinnedOpponents(catalog, options.spec, allies + enemies);
     await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, opponents);
     await page.evaluate(() => window.__DEBUG.frameStages.install({ gl: true }));
     for (const pass of options.passes) {
-      const key = keyOf(scenario, size, pass);
+      const key = keyOf(scenario, size, pass, side.label);
       if (done.has(key)) { log(`${key}: measured already`); continue; }
       if (pass === 'warm') {
         await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
         await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
         await sleep(5000);
       }
-      const record = await measureBattle(page, options, { mapId, gameMode, allies, enemies, pass, key });
+      const record = await measureBattle(page, { ...options, root: side.root, port: side.port }, { mapId, gameMode, allies, enemies, pass, key });
+      record.label = side.label;
+      record.governor = options.governor;
       record.bootMs = bootMs;
       record.errors = errors.splice(0);
       writeFileSync(path.join(options.out, `${key}.json`), JSON.stringify(record, null, 1));
@@ -387,6 +469,7 @@ async function runScenario(options, server, scenario, size, done) {
   } finally {
     clearInterval(watchdog);
     await browser.close().catch(() => {});
+    activeBrowser = null;
   }
 }
 
@@ -411,6 +494,9 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       tracer = await startTrace(page, { detail: options.traceDetail });
       syncPerfMs = await page.evaluate((name) => performance.mark(name).startTime, SYNC_MARK);
     }
+    // the CPU profile covers the battle from its phase on, as the trace does: the countdown's warm work and the fight
+    const battlePhaseMs = await page.evaluate(() => performance.now());
+    const cpuProfiler = options.cpuProfile ? await startCpuProfile(page) : null;
     await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
     const entryMs = Date.now() - entryAt;
     // a watched battle: ride the human seat's hull (its bot drives it) as a player's chase view would follow it
@@ -430,6 +516,12 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     if (watched) await sleep(options.seconds * 1000);
     else await driveBattle(page, { seconds: options.seconds, mode: gameMode });
     const endMs = await page.evaluate(() => performance.now());
+    let cpuProfile = null;
+    if (cpuProfiler) {
+      const profile = await cpuProfiler.stop();
+      writeFileSync(path.join(options.out, `${key}.cpu.json.gz`), gzipSync(JSON.stringify(profile)));
+      cpuProfile = summarizeCpuProfile(profile, (endMs - battlePhaseMs) / 1000, { resolve: await sourceResolver(options.root) });
+    }
     let heapProfile = null;
     if (heapProfiler) {
       const profile = await heapProfiler.stop();
@@ -442,6 +534,10 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
         destroyed: g.tanks.filter((e) => e.combat?.destroyed).length, simS: +g.timeS.toFixed(1), result: !!g.result };
     });
     const readout = await page.evaluate(() => window.__DEBUG.frameStages.read());
+    // the deferred warm's own record (game/deferredCombatWarmRuntime.ts): its stages, each opening route's job, when it ended
+    const deferredWarm = await page.evaluate(() => {
+      try { return JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM ?? null)); } catch { return null; }
+    });
     const observers = await page.evaluate(() => window.__CENSUS);
     let trace = null, traceInfo = null;
     if (tracer) {
@@ -460,7 +556,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live, heapProfile,
+      analysis, live, heapProfile, cpuProfile, deferredWarm,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };
@@ -473,8 +569,8 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
 function analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, endMs }) {
   const analysis = analyzeBattle({ readout, trace, observers, window: { fromMs: entryStartMs, toMs: endMs }, chunkOfUrl });
   const live = analyzeBattle({ readout, trace, observers, window: { fromMs: liveStartMs, toMs: endMs }, chunkOfUrl });
-  return { analysis, live: { intervals: live.intervals, heap: live.heap, links: live.links, summary: live.summary, spikes: live.spikes.length,
-    longTasks: live.longTasks.length } };
+  return { analysis, live: { intervals: live.intervals, heap: live.heap, links: live.links, firstDraws: live.firstDraws, summary: live.summary,
+    spikes: live.spikes.length, longTasks: live.longTasks.length } };
 }
 
 const readGz = (file) => JSON.parse(gunzipSync(readFileSync(file)).toString('utf8'));
@@ -499,30 +595,62 @@ function reanalyze(dir) {
 export async function runCensus(options) {
   mkdirSync(options.out, { recursive: true });
   const done = new Set(options.resume ? readdirSync(options.out).filter((n) => /-(cold|warm)\.json$/.test(n)).map((n) => n.replace(/\.json$/, '')) : []);
-  if (!existsSync(path.join(options.root, 'dist', 'index.html'))) throw new Error(`${options.root} has no dist (npm run build)`);
+  for (const side of options.roots) {
+    if (!existsSync(path.join(side.root, 'dist', 'index.html'))) throw new Error(`${side.root} has no dist (npm run build)`);
+  }
   const locks = await acquireProbeLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
-  const server = await openPreview(options.root, options.port);
+  const servers = [];
+  for (const side of options.roots) servers.push(await openPreview(side.root, side.port));
   const started = Date.now();
   const failures = [];
+  let turn = 0;
   try {
     for (const scenario of options.scenarios) {
       for (const size of options.sizes) {
-        if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); return { failures, stopped: true }; }
-        try { await runScenario(options, server, scenario, size, done); } catch (error) {
-          failures.push({ scenario, size, error: String(error?.message ?? error).slice(0, 400) });
-          log(`${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 200)}`);
+        // the sides alternate who plays first, battle pair to battle pair
+        const order = turn++ % 2 ? [...options.roots].reverse() : options.roots;
+        for (const side of order) {
+          if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); return { failures, stopped: true }; }
+          try { await runScenario(options, side, scenario, size, done); } catch (error) {
+            failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 400) });
+            log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 200)}`);
+          }
         }
       }
     }
   } finally {
-    await server.close().catch(() => {});
+    for (const server of servers) await server.close().catch(() => {});
     clearInterval(refresh);
     locks.release();
   }
   writeFileSync(path.join(options.out, 'census.json'), JSON.stringify(summarizeCensus(options.out), null, 1));
+  if (options.roots.length > 1) writeFileSync(path.join(options.out, 'census-ab.json'), JSON.stringify(compareCensus(options.out), null, 1));
   return { failures };
+}
+
+/** An A/B census's pairs: each battle on each side, the hitches, the causes, the GPU stalls and the first-use links. */
+export function compareCensus(dir) {
+  const { rows } = summarizeCensus(dir);
+  const pairs = new Map();
+  for (const row of rows) {
+    const key = row.key.replace(/^[^-]+--/, '');
+    const pair = pairs.get(key) ?? { key };
+    const gpu = (row.causes['gpu busy']?.spikes ?? 0);
+    pair[row.label || 'only'] = { hitches: row.hitches, liveHitches: row.liveHitches, over33: row.over33, median: row.medianMs, max: row.max,
+      gpuBusy: gpu, links: row.liveLinks, longTasks: row.longTasks, load: row.load?.before?.[0] ?? null };
+    pairs.set(key, pair);
+  }
+  const labels = [...new Set(rows.map((row) => row.label || 'only'))];
+  const totals = {};
+  for (const label of labels) {
+    const sides = [...pairs.values()].map((pair) => pair[label]).filter(Boolean);
+    totals[label] = { battles: sides.length, hitches: sides.reduce((n, x) => n + (x.hitches ?? 0), 0),
+      liveHitches: sides.reduce((n, x) => n + (x.liveHitches ?? 0), 0), gpuBusy: sides.reduce((n, x) => n + x.gpuBusy, 0),
+      links: sides.reduce((n, x) => n + (x.links ?? 0), 0), worst: Math.max(0, ...sides.map((x) => x.max ?? 0)) };
+  }
+  return { labels, totals, pairs: [...pairs.values()] };
 }
 
 /** The folder's battles side by side: spikes, long tasks and the causes, cold against warm. */
@@ -530,7 +658,7 @@ export function summarizeCensus(dir) {
   const rows = [];
   for (const name of readdirSync(dir).filter((n) => /-(cold|warm)\.json$/.test(n)).sort()) {
     const r = JSON.parse(readFileSync(path.join(dir, name), 'utf8'));
-    rows.push({ key: r.key, map: r.mapId, mode: r.gameMode, size: r.size, pass: r.pass, tanks: r.roster?.count, entryMs: r.entryMs,
+    rows.push({ key: r.key, label: r.label ?? '', map: r.mapId, mode: r.gameMode, size: r.size, pass: r.pass, tanks: r.roster?.count, entryMs: r.entryMs,
       frames: r.analysis.intervals.count, over33: r.analysis.intervals.over33, over50: r.analysis.intervals.over50,
       over100: r.analysis.intervals.over100, p99: r.analysis.intervals.p99, max: r.analysis.intervals.max,
       longTasks: r.analysis.longTasks.length, medianMs: r.analysis.intervals.medianMs, hitches: r.analysis.intervals.hitches,

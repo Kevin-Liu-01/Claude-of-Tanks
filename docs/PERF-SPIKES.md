@@ -118,6 +118,97 @@ Causes:
 
 `node tools/battle-spike-analysis.selftest.mjs` proves the attribution on a synthetic battle whose causes are known.
 
+## Hitches, not frames past 33 ms
+
+The census runs on a shared, loaded Mac:
+
+- the load average sits at 30–100;
+- other sessions' headless Chromes keep their GPU processes at about 140 % CPU.
+
+On it a 14 v 14 battle's median frame is 34–42 ms. "Every frame past 33 ms" then counts the machine: 621 of 744
+intervals in the first pilot.
+
+So the analysis names a **hitch**:
+
+- an interval past 33.4 ms **and** past `HITCH_RATIO` (2) × the battle's own median;
+- on a quiet machine, every frame past 33 ms; on a loaded one, the frames the load alone does not explain.
+
+A hitch's cause is the bucket furthest past its own median over the battle's ordinary intervals: its **excess**, not
+its size. A render that takes 20 ms in every frame is not the cause of the one frame that took 200.
+
+Long tasks behind the entry veil are entry time, not battle hitches. The analysis marks each long task as seen or
+behind the veil, and counts only the seen ones.
+
+The browser's `performance.memory` no longer moves in this Chrome. Allocation and collections come from the trace's
+scavenges (`usedHeapSizeBefore` and `usedHeapSizeAfter`).
+
 ## Findings
 
-(The census results and the fixes follow as they land.)
+Pilots: Verdant, standard, 14 v 14, cold and warm (`~/cot-lanes/battle-spikes-253-evidence/pilot3`, `diag1`). The full
+census is in progress (`before/`).
+
+### GPU-process stalls on first use (cold battles only)
+
+The largest hitches are the main thread idle while the GPU process works through one long task: 128–758 ms,
+**`gpu busy`**. A warm battle on the same page has none: Verdant 7 v 7 cold had 10 (worst 758 ms), warm 0 (worst frame
+108 ms).
+
+They follow the deferred warm's **vision programs**, the thermal stand-ins (`engine/thermalVehicles.ts`):
+
+- the warm runs in the battle's background after rollout (`game/deferredCombatWarmRuntime.ts`);
+- it links 25 programs, polled, never blocking (16 "Thermal vehicle hull", 8 "running gear", 1 "gun"), 2–15 s into
+  the fight;
+- it gives each actor a private first-bind render;
+- that render makes ANGLE build each program's Metal pipeline on the GPU process's main thread, and the frames after it
+  wait.
+
+In Verdant 7 v 7 cold, each of the stalls of 758, 323, 158, 132 and 66 ms came 1–3 s after a burst of those links.
+
+Two further first uses:
+
+- a 575 ms frame at 36 s of combat linked an unnamed program synchronously (435 ms of link, right after a shell hit and
+  a structure breach);
+- two 183 and 315 ms GPU stalls at 29 and 33 s had no link near them.
+
+The recorder now names raw programs by their uniforms and records every program's first draw into each framebuffer, to
+attribute these.
+
+### The bots' first step (cold)
+
+At rollout the first simulation step ran 33 ms at 14 v 14 and 42 ms at 21 v 21 (the authority on thread CPU; the
+census saw 90–125 ms hitches under load).
+
+- **Cause:** each bot's controller walked the whole obstacle list on its first box query, to learn whether the obstacle
+  grid's order is the list's. That answer is the same for every bot.
+- **Fix (`game/ai.ts` `gridOrderMatches`):** one answer per list and grid, shared by every bot.
+- **Result:** the first step is now 16.4 ms (14 v 14) and 18.4 ms (21 v 21). The paired bench (base and lane in one
+  process) keeps every state digest identical over 1,800 ticks. The rest is the first run's compilation.
+
+### The HUD's layout pass
+
+`ui/battleHudLayout.ts` `refresh` re-plans the HUD whenever a watched element's class, `hidden` or `data-count`
+changes, or the kill lane's, toasts' or log's children change. It ran 25–27 times in a 14 v 14 battle:
+
+- 461–499 ms in all under load, up to 44 ms a pass;
+- about three quarters of it is the pass's own script, the rest the forced style and layout of its reads after its
+  body-variable writes.
+
+It is the most frequent hitch cause after the GPU stalls (`hud/dom`).
+
+### Allocation
+
+| Measure | Value |
+|---|---|
+| Battle (the trace's scavenges) | 150–330 MB/s |
+| Scavenges | 7–10 a second, a handful past 5 ms |
+| Authority alone (`tools/sim-alloc-probe.mjs`) | 1.08 MB a 14 v 14 Verdant tick |
+
+- **The authority's largest sites:** the ground contact's sampler (`terrainContactSurface.ts` `sample`, about 200 KB a
+  tick), `movement.ts` `contactAwareFit`, the structure supports and the track-line sampling.
+- **Where it comes from:** doubles that cross non-inlined calls. Every hot ground query is reached through a function
+  reference, and V8 boxes a double argument or result as a HeapNumber at the boundary. Moving the sampler's cached
+  corners into a typed array changed nothing, so the boxing is the calls'.
+- **What it costs:** collection was never a hitch's dominant cause in the census (1–12 ms against 90–750 ms
+  hitches).
+- **The real fix:** the sim's numeric kernels batched or in WASM (PERF-LOCKDOWN workstream 3), not a scratch object at
+  a time.
