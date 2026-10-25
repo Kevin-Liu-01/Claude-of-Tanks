@@ -282,7 +282,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-take-card[aria-pressed="true"]{border-color:var(--amber);background:var(--surface-raised)}
 .filming-take-card[aria-pressed="true"] b{color:var(--amber)}
 @media(hover:hover) and (pointer:fine){.filming-take-card:hover,.filming-stage-button:not(:disabled):hover,.filming-take-scene a:hover{background:var(--surface-menu)}}
-.filming-numbers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
+.filming-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
 .filming-numbers div{min-width:0;padding:16px 14px;background:var(--surface-raised)}
 .filming-numbers dt{color:var(--ink);font-size:var(--docs-fluid-1);font-weight:700;line-height:1;letter-spacing:var(--track-title);white-space:nowrap}
 .filming-numbers dd{margin:8px 0 0;color:var(--ink-4);font:700 var(--fs-11)/1.45 var(--mono);letter-spacing:normal;text-transform:uppercase}
@@ -293,7 +293,6 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-steps strong{font-size:var(--fs-12);line-height:1.2}
 .filming-steps li>span:last-child{color:var(--ink-3);font-size:var(--fs-11);line-height:1.5}
 @media (width < 1100px){
-.filming-numbers{grid-template-columns:repeat(3,minmax(0,1fr))}
 .filming-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (width < 768px){
