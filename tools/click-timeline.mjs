@@ -200,14 +200,17 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   // the press's task and its next two frames: what the layout tracer (when on) attributes
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
   const layoutReads = await page.evaluate(() => { window.__click.layoutArmed = false; return window.__click.layoutReads.splice(0); }).catch(() => []);
-  if (profiler) {
+  // --cpu-profile-full: the profile runs to the end of the census window (the work that lands after the press too: a
+  // background build's slices the press waited behind), stopped below
+  const stopProfile = async () => {
     const { profile } = await profiler.send('Profiler.stop').catch(() => ({ profile: null }));
     if (profile) {
       mkdirSync(cpuProfile.dir, { recursive: true });
       writeFileSync(join(cpuProfile.dir, `${cpuProfile.name}.cpuprofile`), JSON.stringify(profile));
     }
     await profiler.detach().catch(() => {});
-  }
+  };
+  if (profiler && !flag('cpu-profile-full')) await stopProfile();
   const stamp = () => page.evaluate(() => performance.now());
   let shownAt = null;
   let doneAt = null;
@@ -221,6 +224,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   }
   await settle(page, quietMs);
   const censusData = census ? await censusWindow(page, t0, consoleFrom) : null;
+  if (profiler && flag('cpu-profile-full')) await stopProfile();
   if (censusData && flag('canvas')) censusData.canvas = await canvasCheck(page);
   if (heap && censusData) censusData.alloc = await allocationWindow(heap, censusData.windowMs);
   const data = await page.evaluate((from, inputs, spanEnd) => {
