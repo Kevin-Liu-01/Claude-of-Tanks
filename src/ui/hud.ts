@@ -6629,6 +6629,35 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.5, 0.5, MM - 1, MM - 1);
   }
 
+  // The chrome never changes, so it renders once into its own layer at the
+  // plate's device size and each paint copies it 1:1 (two grid strokes, the
+  // full-plate vignette and two keylines become one drawImage). The layer
+  // re-renders every MM_CHROME_REFRESH paints and whenever its context reads
+  // lost, so a backing store a browser purged under memory pressure (iPadOS
+  // Safari, a lost GPU context) heals within seconds; the raster itself stays
+  // the decoded image (above). No layer context: the chrome draws direct.
+  const MM_CHROME_REFRESH = 120;
+  let mmChrome: HTMLCanvasElement | null = null;
+  let mmChromeCtx: CanvasRenderingContext2D | null = null;
+  let mmChromePaints = MM_CHROME_REFRESH;
+  function minimapChromeLayer(): HTMLCanvasElement | null {
+    if (!mmChrome) {
+      mmChrome = document.createElement('canvas');
+      mmChrome.width = mmCanvas.width; mmChrome.height = mmCanvas.height;
+      mmChromeCtx = mmChrome.getContext('2d');
+    }
+    const lctx = mmChromeCtx;
+    if (!lctx) return null;
+    if (++mmChromePaints > MM_CHROME_REFRESH || lctx.isContextLost?.()) {
+      mmChromePaints = 1;
+      lctx.setTransform(1, 0, 0, 1, 0, 0);
+      lctx.clearRect(0, 0, mmChrome.width, mmChrome.height);
+      lctx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
+      drawMinimapChrome(lctx);
+    }
+    return mmChrome;
+  }
+
   function drawMinimapBackground(): void {
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
@@ -6638,7 +6667,11 @@ export function initHud(bus: EventBus): HudRuntime {
       // camera cone rotate as the player looks around.
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
     }
-    drawMinimapChrome(mmCtx);
+    const chrome = minimapChromeLayer();
+    if (!chrome) { drawMinimapChrome(mmCtx); return; }
+    mmCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mmCtx.drawImage(chrome, 0, 0);
+    mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
   }
 
   // Team spawn flags (mode objective markers for annihilation): captured from
