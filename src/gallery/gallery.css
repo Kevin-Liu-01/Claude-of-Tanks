@@ -288,18 +288,26 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 
 /* surface markup (surfaceMarkup.ts) */
 .surface-workbench{display:flex;flex-direction:column;gap:var(--s3)}
-.markup-operation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
-.markup-operation-grid button,.markup-action-row button,.markup-selection{min-height:36px;padding:var(--s2);border:0;border-radius:var(--control-radius);
+.markup-operation-grid{display:flex;width:100%}
+.markup-operation-grid .cot-c-seg__opt{flex:1 1 0;min-width:0;padding:0 var(--s2)}
+.markup-selection{min-height:36px;padding:var(--s2);border:0;border-radius:var(--control-radius);
   background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);font:500 var(--fs-12)/1.2 var(--font-body)}
-.markup-operation-grid button.active,.markup-operation-grid button[aria-pressed=true],.markup-selection.active{background:var(--accent-wash);
-  box-shadow:var(--ring-accent);color:var(--ink-1)}
+.markup-selection.active{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .markup-control-grid{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:var(--s2)}
-.markup-control-grid label>span,.markup-field>span,.markup-request>span,.markup-request label>span,.markup-selection-head{display:block;margin-bottom:var(--s1);
-  color:var(--ink-3);font:500 var(--fs-12)/1.2 var(--font-body)}
+.markup-control-grid label>span:not(.markup-select),.markup-field>span,.markup-request>span,.markup-request label>span:not(.markup-select),
+  .markup-selection-head{display:block;margin-bottom:var(--s1);color:var(--ink-3);font:500 var(--fs-12)/1.2 var(--font-body)}
 .markup-control-grid :is(select,input),.markup-field textarea,.markup-vector input,.markup-request select{width:100%;min-height:34px;padding:var(--s1) var(--s2);
   border:0;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2);color:var(--ink-1);font:400 var(--fs-12)/1.4 var(--font-body)}
+/* the workbench's fields are the sort menu's kind: no native chevron, spinner or resize grip */
+.markup-select{position:relative;display:block}
+.markup-select select{padding-right:var(--s5);appearance:none;-webkit-appearance:none;cursor:pointer}
+.markup-select::after{content:'';position:absolute;right:10px;top:50%;width:6px;height:6px;margin-top:-5px;
+  border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(45deg);pointer-events:none}
+.surface-workbench input[type=number]{appearance:textfield;-moz-appearance:textfield}
+.surface-workbench input[type=number]::-webkit-inner-spin-button,.surface-workbench input[type=number]::-webkit-outer-spin-button{margin:0;-webkit-appearance:none}
+.surface-workbench :is(select,input,textarea):focus-visible{outline:0;box-shadow:var(--focus-ring)}
 .markup-field{display:block}
-.markup-field textarea{min-height:72px;resize:vertical}
+.markup-field textarea{min-height:72px;resize:none}
 .markup-json{min-height:120px;font-family:var(--font-data)}
 .markup-vector{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
 .markup-selection-head{display:flex;justify-content:space-between}
@@ -309,6 +317,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .markup-selection strong{display:block;color:var(--ink-1);font-weight:600}
 .markup-selection small{display:block;color:var(--ink-3)}
 .markup-action-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.markup-action-row .cot-c-btn{min-width:0;padding:0 var(--s2)}
 
 /* the page's one notice (the UI gauntlet's notification line: no coloured edge or outline): a raised plate over the
    dossier's actions, where its trigger (copy link, copy data, the markup tools) sits */
@@ -339,6 +348,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
   .toast{left:50%}
+  /* the short stage: the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it, never over it */
+  .views button{width:30px;padding:0;justify-content:center}
+  .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  #viewport .legend:not(:empty){right:calc(16px + 36px + var(--s2))}
 }
 @media (width < 768px){
   :root{--g-pad:12px}
