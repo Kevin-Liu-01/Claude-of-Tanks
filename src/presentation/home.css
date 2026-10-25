@@ -51,7 +51,7 @@ img{display:block;max-width:100%}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
-.hero__dur{font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
+.hero__dur{margin-left:var(--s3);font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
 .hero__trailer-icon{display:none}
 /* the reel's pause: the media player's own control (mediaPlayer.css .cot-media-toggle), a disc on the scrim */
 .hero__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
@@ -61,8 +61,8 @@ img{display:block;max-width:100%}
 .hero__toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .hero__toggle[hidden]{display:none}
 .hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0;padding:0;list-style:none;border-top:1px solid var(--line-1)}
-.hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
-.hero__stats .cot-i{width:17px;height:17px;color:var(--ink-2)}
+.hero__stats li{display:inline-flex;align-items:baseline;gap:var(--s3);white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
+.hero__stats .cot-i{align-self:center;width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
 .hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
@@ -217,7 +217,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 @media (width < 1100px){
   .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 2)}
   .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
-  .press__stats{grid-template-columns:repeat(2,auto);justify-content:start}
+  .press__stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5);text-align:left}
+  .press__stats dt{justify-content:flex-start}
   .press__inner{grid-template-areas:"title" "stats" "quotes" "sources" "date"}
   .press__quotes{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -237,7 +238,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   /* the trailer keeps its name on a phone; its picture and length step aside */
   .hero__trailer{--h:58px;padding-inline:var(--s4)}
-  .hero__trailer>:is(.hero__thumb,.hero__dur){display:none}
+  .hero__trailer :is(.hero__thumb,.hero__dur){display:none}
   /* in the picture's lower right, above the counts: the hero's own box ends with them */
   .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
   .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
@@ -254,7 +255,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play{padding:var(--s6) 0}
   /* one whole card per view, the arrows beside the switch; the switch takes two rows at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
-  .play-acts{display:grid;grid-template-columns:1fr auto auto;width:100%}
+  .play-acts{display:grid;grid-template-columns:1fr auto auto;width:100%;container:play-acts / inline-size}
   .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;grid-column:1 / -1;overflow:visible}
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px;white-space:normal}
   .play-acts .cot-c-btn--icon{--h:44px}
@@ -262,6 +263,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play-tile__nm{left:var(--s4);right:var(--s4);bottom:var(--s3)}
   .play-tile__nm b{font-size:var(--fs-20)}
   .play-tile__nm .cot-i{width:20px;height:20px}
+  .press__stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .press__stats dd{font-size:var(--fs-28)}
   .press__quotes{grid-template-columns:minmax(0,1fr)}
   .v5-social-card{min-height:0}
@@ -281,6 +283,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .film-scrub{height:44px}
   .film-time{display:none}
 }
+/* a phone column wide enough for the four tabs keeps them on one row */
+@container play-acts (width >= 560px){.play-acts>.cot-c-seg{display:flex}}
 @media (height < 520px) and (width >= 768px){
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
