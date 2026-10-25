@@ -108,7 +108,7 @@ export function recordSummary(names: RecordViewNames, view: ServiceRecordView = 
   const plate = last
     ? `<div class="cot-record-plate result-${safe(last.result)}">${battleVehicleArt(last)}<p><span class="cot-record-result">${safe(resultLabel(last.result))}</span>` +
       `<b>${safe(battleVehicleName(last, names))}</b><small>${safe(names.map(last.mapId))} · ${safe(when(last.completedAt))}</small></p></div>`
-    : `<div class="cot-record-plate is-empty"><p><small>${t('garage.record.historyEmpty')}</small></p></div>`;
+    : '<div class="cot-record-plate is-empty"></div>'; // the tabs' empty states say what will fill them
   return {
     plate,
     counts: {
