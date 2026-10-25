@@ -1379,7 +1379,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/p2pMatchHost.selftest.mjs',
+    'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/syncCrypto.selftest.mjs',
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',

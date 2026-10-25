@@ -253,7 +253,10 @@ export class PausableClock {
 
   constructor(source: () => number) { this.source = source; }
 
-  readonly now = (): number => (this.pausedAtMs ?? this.source()) - this.offsetMs;
+  readonly now = (): number => this.at(this.source());
+
+  /** This clock's reading for a reading `sourceMs` of its source (a frame time its caller took). */
+  at(sourceMs: number): number { return (this.pausedAtMs ?? sourceMs) - this.offsetMs; }
 
   get paused(): boolean { return this.pausedAtMs !== null; }
 
