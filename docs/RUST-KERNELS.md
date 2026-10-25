@@ -22,8 +22,16 @@ function, `env.terrain_height`, the map's height function.
 
 - **Dedicated server:** `COT_SIM_KERNELS=wasm` (`server/match/simKernels.ts`). The server compiles
   `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once per process, so the deploy image must carry that file.
-- **Browser host:** `?simKernels=wasm`. The lazy host chunk carries the asset URL; the host Worker fetches and compiles
-  the module. The flag stays with the host: it is never sealed into the migration config.
+- **Browser host and solo battles:** `?simKernels=wasm`. The lazy chunks read the flag and carry the asset URL; nothing
+  loads at boot.
+  - A multiplayer host's Worker fetches and compiles the module. The flag stays with the host: it is never sealed into
+    the migration config.
+  - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
+    support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
+    world's own obstacle grid, its ground mirrored from the battle's overlay. A world binds them when its hulls first
+    need support; one that steps before the module is ready stays on the TypeScript.
+  - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
+    and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
 ## Receipts
 
@@ -34,11 +42,17 @@ function, `env.terrain_height`, the map's height function.
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |
 | `node tools/mp-p2p-soak.mjs … --sim-kernels=wasm[@seats]` | The browser host Worker on the kernels, migrations included |
+| `node tools/sim-determinism-audit.mjs --craters --kernels` | A match on the kernels against one on the TypeScript, the dug ground included |
+| `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.
 
 ## Measured
 
-16 a side, 3,600 ticks, digests identical at every check: Verdant −22 to −24 %, Urban −21 %, Mars −18 % of the
-authoritative tick's CPU (RUST-ENGINE-DECISION §2).
+- The authority (server, multiplayer host): 16 a side, 3,600 ticks, digests identical at every check: Verdant −22 to
+  −24 %, Urban −21 %, Mars −18 % of the tick's CPU (RUST-ENGINE-DECISION §2).
+- A solo battle in Chrome, 16 a side on Verdant, four pairs of 20 s runs (profiled): the support solve −25 %, movement
+  −12 %, the whole sim step −7.5 % (2.57 → 2.37 ms a tick). Only the support rides the kernels there; the rendered
+  world's grids and rays, the AI and the shells stay TypeScript. `wasm-check`: 5.9 million comparisons over 20 s, none
+  differ.

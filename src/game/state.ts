@@ -2800,6 +2800,24 @@ function resolveTankImpacts(
 
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
 
+/**
+ * The world kernels for solo battles (?simKernels=wasm; world/soloWorldKernels.ts, docs/RUST-KERNELS.md): a world whose
+ * hulls first need their support while they are set rides them for its lifetime — its ground mirrored onto them (the
+ * stamps laid so far, then every change) and its hulls' support answered there, the same values as the TypeScript's —
+ * and any other world stays on the TypeScript.
+ */
+interface SoloWorldKernels {
+  /** Mirror this world's ground onto its own kernels; false when the world cannot ride them. */
+  mirrorGround(world: SoloWorld, overlay: TerrainDeformation): boolean;
+  /** The world's structure support field over `terrain` (its ground's field), on its kernels. */
+  supportField(world: SoloWorld, terrain: SoloHeightField): StructureSupportField;
+}
+let soloWorldKernels: SoloWorldKernels | null = null;
+/** Set (or clear) the solo world kernels: worlds whose support field is made from now on ride them. */
+export function setSoloWorldKernels(kernels: SoloWorldKernels | null): void {
+  soloWorldKernels = kernels;
+}
+
 const wreckEnvironmentByWorld = new WeakMap<SoloWorld, RigidEnvironment>();
 /** Physics lane: what a turret body meets in this world — its deformed ground and its solid records (one grid a world). */
 function wreckEnvironmentFor(world: SoloWorld, field: SoloHeightField): RigidEnvironment {
@@ -2830,7 +2848,9 @@ function groundFor(world: SoloWorld): SoloGround {
 function structureSupportFor(world: SoloWorld): StructureSupportField {
   let field = structureSupportByWorld.get(world);
   if (!field) {
-    field = createStructureSupportField(groundFor(world).field, world);
+    const ground = groundFor(world);
+    field = soloWorldKernels?.mirrorGround(world, ground.overlay)
+      ? soloWorldKernels.supportField(world, ground.field) : createStructureSupportField(ground.field, world);
     structureSupportByWorld.set(world, field);
   }
   return field;
