@@ -442,6 +442,13 @@ function frameView(requestedName = 'hero'): void {
 
 // the page's notices stand at the top of the window, under the bar and over the stage's open middle
 noticeRegion('gallery', { placement: 'top', limit: 2 });
+/**
+ * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
+ * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
+ * with the word before it.
+ */
+const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2060').replace(/ (?=\S{1,4}$)/, '\u00a0');
+
 function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): void {
   if (!visual) {
     // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
@@ -786,7 +793,7 @@ function rowMarkup(record: GalleryRecord): string {
   const dev = record.developmentOnly ? `<b class="it__dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
     + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
-    + `<span class="it__name">${esc(record.displayName)}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
+    + `<span class="it__name">${esc(keepDesignation(record.displayName))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {
   const layout = effectiveLayout();
@@ -1047,7 +1054,7 @@ function renderAmmo(record: GalleryRecord): void {
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shell.type)}</small></span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
@@ -1082,7 +1089,7 @@ function populateRivals(): void {
 }
 /** One side of the versus card (07-gallery .vsc .s): flag, silhouette, name; the rival's silhouette faces the selection. */
 function versusSide(record: GalleryRecord, mirrored: boolean): string {
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}<b>${esc(record.displayName)}</b>`;
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}<b>${esc(keepDesignation(record.displayName))}</b>`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
@@ -1128,7 +1135,7 @@ function setRival(id: string | null, pinned: boolean): void {
 }
 
 function renderDossier(record: GalleryRecord): void {
-  $('#dossierName').textContent = record.displayName;
+  $('#dossierName').textContent = keepDesignation(record.displayName);
   $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
   const flagImage = $<HTMLImageElement>('#dossierFlag');
   flagImage.src = flagIconUrl(record.nation);
