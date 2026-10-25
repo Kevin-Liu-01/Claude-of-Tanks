@@ -68,6 +68,24 @@ interface StaticMergeOptions {
   readonly detail: ReadonlySet<THREE.Object3D>;
   /** Receives every finished merge so owners can move their references. */
   onMerge(sources: readonly VehicleMesh[], merged: VehicleMesh): void;
+  /**
+   * (perf-250, the far merge) Leave every run's meshes where they are and build its translated merge beside them,
+   * hidden, as a far copy (FarMergeRun): the vehicle draws its parts where the camera is near and the copy where it is
+   * far (tankFactoryCore's syncFromState). Only runs with a translated part become copies; a part in a detail wrapper, a
+   * battle detail group, a turret squash frame or the near-hull shadow cascade never joins one (their visibility and
+   * frame are another owner's).
+   */
+  readonly dual?: boolean;
+}
+
+/** A far copy of a run (StaticMergeOptions.dual): the merged draw, hidden, and the parts it stands for. */
+export interface FarMergeRun {
+  readonly copy: VehicleMesh;
+  readonly sources: readonly VehicleMesh[];
+  /** The run's top layer (the copy's place in the far layer order). */
+  readonly layer: number;
+  /** The parts are distance-detail objects (StaticMergeOptions.detail): the copy follows their policy too. */
+  readonly detail: boolean;
 }
 
 interface StaticMergeResult {
@@ -75,6 +93,8 @@ interface StaticMergeResult {
   sourceMeshes: number;
   merges: number;
   savedDraws: number;
+  /** The far copies (StaticMergeOptions.dual); empty otherwise. */
+  duals: FarMergeRun[];
 }
 
 const IDENTITY = new THREE.Matrix4();
@@ -179,6 +199,8 @@ function candidateFor(record: CoplanarLayerRecord, options: StaticMergeOptions):
   const identity = matrix.equals(IDENTITY);
   const section = !identity && !owner.wrapper && isTurretSectionFrame(owner.owner, matrix);
   if (!identity && !section && !(options.bakeTranslations && isPureTranslation(matrix))) return null;
+  if (options.dual && (owner.wrapper || section || options.nearShadow.has(mesh)
+    || owner.owner.userData?.battleDetailGroup)) return null;
   const key = [
     owner.owner.uuid, owner.signature, material.uuid, layout,
     mesh.castShadow ? 1 : 0, mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
@@ -310,6 +332,7 @@ export function mergeContiguousStaticRuns(
   options: StaticMergeOptions,
 ): StaticMergeResult {
   const ordered = [...records].sort((a, b) => a.layer - b.layer);
+  if (options.dual) return farCopies(ordered, disposables, options);
   const output: CoplanarLayerRecord[] = [];
   let sourceMeshes = 0, merges = 0;
   let run: Candidate[] = [];
@@ -358,5 +381,46 @@ export function mergeContiguousStaticRuns(
   }
   flush();
   output.sort((a, b) => a.layer - b.layer);
-  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges };
+  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges, duals: [] };
+}
+
+/**
+ * (perf-250/254) The dual merge's far copies: every record stays as it is; each same-key group of the order becomes
+ * one hidden copy in its members' layer order, whether or not its members are contiguous (perf-254: the far view
+ * keeps no near tie to arbitrate: a source-X Abrams' loader M240 alternates two vertex layouts part by part, and its 30
+ * draws merged nowhere), bounded by the near merge's vertex cap.
+ */
+function farCopies(ordered: readonly CoplanarLayerRecord[], disposables: GeometryOwnerList,
+  options: StaticMergeOptions): StaticMergeResult {
+  const groups = new Map<string, Candidate[]>();
+  for (const record of ordered) {
+    const candidate = candidateFor(record, options);
+    if (!candidate) continue;
+    let group = groups.get(candidate.key);
+    if (!group) groups.set(candidate.key, group = []);
+    group.push(candidate);
+  }
+  const duals: FarMergeRun[] = [];
+  const copyOf = (chunk: Candidate[]): void => {
+    if (chunk.length < 2) return;
+    const copy = mergeRun(chunk, duals.length, disposables, options);
+    if (!copy) return;
+    copy.name = `staticMergeFar_${duals.length}`;
+    copy.visible = false;
+    chunk[0].owner.owner.add(copy);
+    duals.push({ copy, sources: chunk.map(({ record }) => record.object), layer: chunk[chunk.length - 1].record.layer,
+      detail: options.detail.has(chunk[0].record.object) });
+  };
+  for (const group of groups.values()) {
+    let chunk: Candidate[] = [], vertices = 0;
+    for (const candidate of group) {
+      const count = candidate.record.object.geometry.getAttribute('position').count;
+      if (count > MAX_MERGED_VERTICES) continue;
+      if (vertices + count > MAX_MERGED_VERTICES) { copyOf(chunk); chunk = []; vertices = 0; }
+      chunk.push(candidate);
+      vertices += count;
+    }
+    copyOf(chunk);
+  }
+  return { records: [...ordered], sourceMeshes: 0, merges: 0, savedDraws: 0, duals };
 }

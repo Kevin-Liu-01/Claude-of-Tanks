@@ -341,6 +341,10 @@ function addTerminatorStation(P: AfvBuilderPort): void {
   // invisible second turret below the station.
   P.add('turretTrack', cylY(1.04, 1.10, 0.08, 24), 0, -0.025, 0);
   P.add('turret', cylY(0.98, 1.16, 0.22, 24), 0, 0.09, 0);
+  // Release 240: the turntable and the base drum are coaxial and reach 1.10-1.16, past the seat's keep radius (rim 0.90
+  // + 2 cm, turretSeatRace.ts), which pressed the turntable into a 3 mm sheet on its plane (its caps coincident: the
+  // gun-junction census's openings beside both 2A42s). Bodies of revolution turn unseen, so the seat keeps them as built.
+  P.turretG.userData.turretSeatKeepR = 1.18;
   P.add('turret', orientedSlab(
     [-0.72, 0.10, 0.98], [0.72, 0.10, 0.98], [0.92, 0.10, -1.05], [-0.92, 0.10, -1.05],
     [-0.50, 0.58, 0.76], [0.50, 0.58, 0.76], [0.64, 0.62, -0.88], [-0.64, 0.62, -0.88]));

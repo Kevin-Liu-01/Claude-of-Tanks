@@ -54,7 +54,9 @@ try {
   assert.deepEqual(turretRig.position.toArray(), [...OPLOT_FRAME.turret], 'turret ring at the rebuilt frame');
   assert.deepEqual(gunRig.position.toArray(), [...OPLOT_FRAME.gun], 'gun trunnion at the rebuilt frame');
   const spec = getSpec(id);
-  assert.deepEqual(spec.armor.turretPivot, [...OPLOT_FRAME.turret], 'hit frame and installed ring agree');
+  // the hit frame is the combat-rig table's measured row (combatGunRigs.generated.ts, 0.1 mm rounding since 4499464c2b)
+  assert.ok(spec.armor.turretPivot.every((v, k) => Math.abs(v - OPLOT_FRAME.turret[k]) <= 5e-5),
+    `hit frame and installed ring agree (${spec.armor.turretPivot} vs ${OPLOT_FRAME.turret})`);
 
   // Discrete reactive cassettes: six cheek and six flank bodies, each with its own lid face.
   const side = (c) => c.size[0] < c.size[1] && c.size[0] < c.size[2];

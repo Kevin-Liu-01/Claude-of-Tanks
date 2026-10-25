@@ -728,6 +728,9 @@ export function createGaragePedestalRuntime({
       const revealCached = () => {
         if (!canStage() || cachedToken !== pollToken || !cached) return;
         if (cache.get(specId) !== cached || !reusable(cached)) return;
+        // (transitions-249) a hero a battle start parked its dormant skin on, and no battle adopted back, wears it again
+        // before it shows (a hero already wearing it is left as it is)
+        prepareVisual?.(cached, getSpec(specId));
         current = cached;
         touch(specId, cached);
         parked.delete(cached);

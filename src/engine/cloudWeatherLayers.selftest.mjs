@@ -111,7 +111,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 {
   const { VolumetricCloudLayer } = await import('./volumetricClouds.ts');
   const layer = new VolumetricCloudLayer({}, new THREE.Scene(), {}, new THREE.Vector3(1, 1, 1));
-  const night = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('monsoon').sky, skyIntensity: 0.08, sunColorHex: 0xafc3ec, cloudscape: getMapConfig('monsoon').clouds });
+  // a night storm front: Monsoon's sky over the front regime's own anvil (Monsoon's clouds became congestus with a 0.15
+  // anvil in 233, under the 0.5 that makes a front stormy)
+  const night = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('monsoon').sky, skyIntensity: 0.08, sunColorHex: 0xafc3ec,
+    cloudscape: { ...getMapConfig('monsoon').clouds, anvil: CLOUDSCAPE_REGIMES['cumulonimbus-front'].anvil } });
+  assert.ok(night.anvil >= 0.5, 'the front stands as a storm');
   const day = { ...night, timeOfDay: 'day' };
   applyCloudWeatherPreset(layer.traceMaterial.uniforms, night);
   const run = (preset, seconds) => {

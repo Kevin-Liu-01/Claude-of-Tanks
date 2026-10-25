@@ -1278,6 +1278,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deviceDiag.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
+    'src/engine/sceneProbeTarget.selftest.mjs',
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
@@ -1754,6 +1755,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/battleGeometrySharing.selftest.mjs',
     'src/vehicles/staticDrawMerge.selftest.mjs',
+    'src/vehicles/battleStaticDrawMerge.selftest.mjs', // perf-250/251: the source-X Abrams' battle builds take the dual merge
+    'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
+    'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',

@@ -67,6 +67,8 @@ interface TransitionScreen {
   run<Result>(work: TransitionWork<Result>, options?: TransitionOptions): Promise<Result>;
 }
 
+// (2026-10-24, transitions-249; the brand lead's trace) a fading cover (.out) passes clicks to the screen showing through
+// it: it took a press on the Garage's Studio button for its last ~180 ms. An opaque cover still takes them.
 const CSS = `
 .cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
   justify-content:center;flex-direction:column;background:#05080b;opacity:0;
@@ -74,7 +76,7 @@ const CSS = `
   -webkit-user-select:none;user-select:none;cursor:default;overflow:hidden;}
 .cot-trans.on{display:flex;}
 .cot-trans.lit{opacity:1;}
-.cot-trans.out{opacity:0;transition:opacity ${FADE_OUT_MS}ms var(--cot-ease-out);}
+.cot-trans.out{opacity:0;pointer-events:none;transition:opacity ${FADE_OUT_MS}ms var(--cot-ease-out);}
 .cot-trans.quick{transition-duration:${QUICK_FADE_IN_MS}ms;}
 .cot-trans.quick.out{transition-duration:${QUICK_FADE_OUT_MS}ms;}
 .cot-trans *{box-sizing:border-box;margin:0;padding:0;}
@@ -225,6 +227,7 @@ export function createTransition(): TransitionScreen {
       activeFadeOutMs = quick ? QUICK_FADE_OUT_MS : FADE_OUT_MS;
       visible = true;
       shownAt = performance.now();
+      root.style.transition = '';
       root.classList.remove('out');
       root.classList.toggle('quick', quick);
       root.classList.add('on');
@@ -246,6 +249,7 @@ export function createTransition(): TransitionScreen {
       if (skipTransitions() || !visible) return;
       const token = ++hideToken;
       visible = false;
+      root.style.transition = '';
       root.classList.add('out');
       root.classList.remove('lit');
       const fadeOutMs = activeFadeOutMs;
@@ -273,7 +277,12 @@ export function createTransition(): TransitionScreen {
       try {
         // A nominal timer can expire before CSS has painted its final frame,
         // especially if GPU/program work delayed the transition's first frame.
-        await waitForOpaqueTransition(root, { isCurrent });
+        // (transitions-250) a fade a loaded main thread has not finished by the deadline is cut to opaque, not failed:
+        // an exit that threw here never landed
+        await waitForOpaqueTransition(root, { isCurrent, forceOpaque: () => {
+          root.style.transition = 'none';
+          root.classList.add('lit');
+        } });
         if (!isCurrent()) throw new DOMException('Transition cover was superseded', 'AbortError');
         // Covered work may render the destination explicitly. Never carry the
         // old-frame hold into that work, the dwell, or the new scene's reveal.

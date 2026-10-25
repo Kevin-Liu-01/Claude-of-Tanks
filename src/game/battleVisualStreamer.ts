@@ -53,12 +53,16 @@ interface VisualLoadTiming {
   maxBuildStepIndex?: number;
   maxBuildStepStartedAt?: number;
   maxBuildStepFinishedAt?: number;
+  /** (perf-255) The far LOD's build, under the stream's budget (TankVisual.prepareFarLod). */
+  farLodMs?: number;
   coreBuildTiming?: CoreBuildTiming;
   uploadMs?: number;
   preUploadYieldMs?: number;
   textureUploadMs?: number;
   compileMs?: number;
   postCompileYieldMs?: number;
+  /** The root's draw warm when its stream drew it after every build (awaitProgramLinks). */
+  drawWarmMs?: number;
   totalMs?: number;
 }
 
@@ -118,6 +122,12 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
    * GPU pipelines of a hidden opponent were made at its first sight — the mode-sheen lane's 7.4 s boss reveal.
    */
   drawWarm?: (root: Object3D) => void;
+  /**
+   * Wait, between tasks, until the programs the staged roots submitted have linked (2026-10-24, transitions-249). With
+   * it, a stream draws its roots once all are built: each root's links run while the next tank builds, where a draw
+   * straight after its compile waited on them inside one task (5.4 s, the first ally on a 4x phone).
+   */
+  awaitProgramLinks?: (yieldForBudget: VisualBudgetYield) => Promise<void>;
   onVisualReady?: (entity: TGame['tanks'][number]) => void;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
@@ -218,6 +228,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   armorAimOverlay,
   forwardProgramWarm,
   drawWarm,
+  awaitProgramLinks,
   onVisualReady,
   recordTiming = () => {},
   now = () => performance.now(),
@@ -248,12 +259,39 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     return { textures: textures.size, totalMs: Math.round(now() - startedAt) };
   };
 
-  const stageBattleVisualReveal = async (
+  /**
+   * A root's draw warm, run later by its stream (after the links): a hidden opponent is attached and shown only inside
+   * this one task, so no frame can present it; one the battle's spotting has attached meanwhile draws as it stands.
+   */
+  const laterDraw = (
+    warmDraw: (root: Object3D) => void,
+    visual: NonNullable<Entity['visual']>,
+    home: Object3D,
+    initiallyHidden: boolean,
+  ) => (): number => {
+    const root = visual.root!;
+    const drawAt = now();
+    const borrowed = initiallyHidden && !root.parent;
+    if (borrowed) { home.add(root); visual.setVisible?.(true); }
+    try { warmDraw(root); } catch { /* first render fallback */ }
+    finally {
+      if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
+    }
+    return Math.round(now() - drawAt);
+  };
+
+  /**
+   * Stage a built root: textures, programs, and its draw warm. `deferDraw` returns the draw (and, for a hidden opponent,
+   * a moment's re-attachment around it) as `draw` for the caller to run once its links are in; the root is already in
+   * its final state (a hidden opponent detached) when this returns.
+   */
+  const stageRoot = async (
     entity: Entity,
     yieldForBudget: VisualBudgetYield,
-    initiallyHidden = false,
-    options: BattleVisualStageOptions = {},
-  ): Promise<BattleVisualStageReceipt> => {
+    initiallyHidden: boolean,
+    options: BattleVisualStageOptions,
+    deferDraw: boolean,
+  ): Promise<{ receipt: BattleVisualStageReceipt; draw: (() => number) | null }> => {
     const visual = entity.visual;
     const root = visual?.root;
     const emptyReceipt: BattleVisualStageReceipt = {
@@ -263,7 +301,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       postCompileYieldMs: 0,
       totalMs: 0,
     };
-    if (!root || root.userData.loadStaged) return emptyReceipt;
+    if (!root || root.userData.loadStaged) return { receipt: emptyReceipt, draw: null };
     const stageAt = now();
     const parent = root.parent;
     if (parent) parent.remove(root);
@@ -272,7 +310,8 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const preUploadYieldMs = Math.round(now() - mark);
     const textureUpload = await stageRootTextureUploads(root, yieldForBudget);
     root.userData.loadStaged = true;
-    (parent || scene).add(root);
+    const home = parent || scene;
+    home.add(root);
     if (entity.state && visual.syncFromState) visual.syncFromState(entity.state);
     visual.setVisible?.(true);
     onVisualReady?.(entity);
@@ -286,8 +325,10 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     finally { restoreArmorWarmVisibility(); }
     // (perf-245) and draws once while it is attached, before a hidden opponent detaches: its pipelines are made here,
     // within the staging budget, not on the frame it is first seen
-    if (options.compilePrograms !== false && drawWarm) {
-      try { drawWarm(root); } catch { /* first render fallback */ }
+    const warmDraw = options.compilePrograms !== false && drawWarm ? drawWarm : null;
+    const draw = warmDraw && deferDraw ? laterDraw(warmDraw, visual, home, initiallyHidden) : null;
+    if (warmDraw && !deferDraw) {
+      try { warmDraw(root); } catch { /* first render fallback */ }
     }
     const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);
     root.userData.loadCompileMs = compileMs;
@@ -306,8 +347,15 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       totalMs: Math.round(now() - stageAt),
     };
     root.userData.loadStageReceipt = receipt;
-    return receipt;
+    return { receipt, draw };
   };
+
+  const stageBattleVisualReveal = async (
+    entity: Entity,
+    yieldForBudget: VisualBudgetYield,
+    initiallyHidden = false,
+    options: BattleVisualStageOptions = {},
+  ): Promise<BattleVisualStageReceipt> => (await stageRoot(entity, yieldForBudget, initiallyHidden, options, false)).receipt;
 
   const stream = async (
     predicate: VisualPredicate<Entity> | null,
@@ -320,9 +368,20 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const total = pending.length;
     await ensureTankBuilders(pending.map((entity) => entity.specId));
     let built = 0;
+    const deferDraws = !!awaitProgramLinks && !!drawWarm;
+    const draws: Array<{ draw: () => number; timing: VisualLoadTiming }> = [];
     for (;;) {
       const next = nextStagedBake(game, predicate);
-      if (!next) return built;
+      if (!next) {
+        if (draws.length && awaitProgramLinks) {
+          await awaitProgramLinks(yieldForBudget);
+          for (const { draw, timing } of draws) {
+            timing.drawWarmMs = draw();
+            await yieldForBudget();
+          }
+        }
+        return built;
+      }
       const timing: VisualLoadTiming = {
         specId: next.ent.specId,
         quality: next.quality,
@@ -360,16 +419,20 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       timing.buildCheckpointCount = buildCheckpointCount;
       recordCurrentCoreBuildTiming(next.ent.visual?.root, timing);
       mark = now();
-      const stageReceipt = await stageBattleVisualReveal(
-        next.ent,
-        yieldForBudget,
-        initiallyHidden,
-      );
+      const { receipt: stageReceipt, draw } = await stageRoot(next.ent, yieldForBudget, initiallyHidden, {}, deferDraws);
+      if (draw) draws.push({ draw, timing });
       timing.uploadMs = Math.round(now() - mark);
       timing.preUploadYieldMs = stageReceipt.preUploadYieldMs;
       timing.textureUploadMs = stageReceipt.textureUploadMs;
       timing.compileMs = stageReceipt.compileMs;
       timing.postCompileYieldMs = stageReceipt.postCompileYieldMs;
+      // (perf-255) its far LOD now, under this budget, rather than in the first battle frame it stands that far
+      const visual = next.ent.visual as { prepareFarLod?(): boolean } | null | undefined;
+      if (visual?.prepareFarLod) {
+        await yieldForBudget();
+        mark = now();
+        if (visual.prepareFarLod()) timing.farLodMs = Math.round(now() - mark);
+      }
       timing.totalMs = Math.round(now() - timing.startedAt);
       built += 1;
       onProgress?.(built / Math.max(1, total));

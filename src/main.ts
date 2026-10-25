@@ -63,7 +63,7 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  battleProbeRadianceScale, type SceneWatchdogResult,
+  battleProbeRadianceScale, setSceneProbeTargetSource, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -168,7 +168,7 @@ import {
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
-import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
+import { parkGarageTankEnergyVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -946,9 +946,14 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
 let pendingCampaignOperationId: string | null = null;
+// transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
+// (killcam.ts setBattleLights), so a return relinks nothing its boot linked
+let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
   if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide(); }
   garagePhasePresentation.setActive(active);
+  garageLightsUp = active;
+  killcamAccess.current?.setBattleLights(!active);
 };
 const setGarageSunTrim = (active: boolean): void => {
   // Network activation follows covered weather preparation. It must not
@@ -1065,9 +1070,14 @@ const pedestal = createGaragePedestalRuntime({
   // forwardProgramWarm is initialized before the first pedestal warm is
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
-  prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
+  // transitions-249: a hero adopted back from a battle first drops the battle's disarmed burn hooks, so its Garage skin
+  // compiles the chain the Garage linked (a fresh build has none)
+  prepareVisual: (visual) => {
+    (visual as { releaseBurnHooks?(): void }).releaseBurnHooks?.();
+    prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims);
+  },
   // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
-  releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
+  releaseVisual: (visual) => parkGarageTankEnergyVisual(visual.root),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1363,10 +1373,12 @@ const playSurface = createPlaySurfaceRuntime({
 // Battle entry owns the play modal's visibility. Every player-facing entry
 // path emits this event, so first matches, retained-room rematches,
 // and solo all dismiss the operation picker before the next painted frame.
+// transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
+// adoption) before the mode preview's clear, which leaves a parked skin alone
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
+  if(pedestal.current)parkGarageTankEnergyVisual(pedestal.current.root);
   garageModePreview.clear();
-  if(pedestal.current)clearJuggernautVisual(pedestal.current.root);
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
@@ -1665,7 +1677,9 @@ const killcamAccess = createKillcamAccess({
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
       prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
-    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination']));
+      battleLightsActive: () => !garageLightsUp,
+    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination',
+      'battleLightsActive']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -1786,6 +1800,9 @@ const nightLighting = createNightLightingAccess({
       || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+// transitions-249: the scene probes (the black-world watchdogs) draw in the scene target's format, so the GPU pipelines
+// they build are the frames' own (deviceDiag.ts)
+setSceneProbeTargetSource(() => post.sceneAA.sceneTarget);
 // (black-screen-228) the network entry arms the black-world guard through the engine context
 (engineCtx as { post?: PostRuntime }).post = post;
 // 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
@@ -1995,6 +2012,15 @@ bus.on('ui:debugHud', (payload) => {
   perfHud.setVisible(enabled);
 });
 const armorAimOverlay = createArmorAimOverlayAccess();
+// transitions-249: wait, between tasks, until the renderer's queued program links are in, so the draw that binds them
+// does not wait inside one task. Bounded: a link still pending at the deadline waits at its draw, as before.
+const awaitRendererProgramLinks = async (yieldForBudget: (force?: boolean) => Promise<void> | undefined): Promise<void> => {
+  const deadline = performance.now() + 12_000;
+  const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
+  while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
+    await yieldForBudget(true);
+  }
+};
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
   scene,
@@ -2011,6 +2037,9 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   drawWarm: (root) => {
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
+  // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
+  // linked between tasks
+  awaitProgramLinks: awaitRendererProgramLinks,
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
@@ -2209,6 +2238,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       assertCurrent();
       return result;
     },
+    awaitProgramLinks: awaitRendererProgramLinks,
     getGeneration: () => battleWarmGeneration,
     advanceGeneration: () => ++battleWarmGeneration,
     setPending: (pending: boolean) => { battleWarmPending = pending; },

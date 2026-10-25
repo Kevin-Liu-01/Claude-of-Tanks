@@ -1,5 +1,5 @@
 import type { Object3D } from 'three';
-import { clearJuggernautVisual } from './juggernautVisual.ts';
+import { clearJuggernautVisual, hasGarageTankEnergyVisual } from './juggernautVisual.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * End every battle-owned presentation lifetime before a resident player tank
@@ -116,7 +116,11 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
 
   for (const entity of game.allTanks || []) {
     const visual = entity.visual;
-    if (visual?.root) clearJuggernautVisual(visual.root);
+    // (transitions-249) the hero the Garage just adopted keeps the dormant Garage skin its adoption installed: clearing it
+    // here left the Garage's first frames drawing the battle paint, every program linked again under the Garage lights
+    if (visual?.root && !(visual === preservedVisual && hasGarageTankEnergyVisual(visual.root))) {
+      clearJuggernautVisual(visual.root);
+    }
     // A successfully adopted player visual is now garage-owned. Sever its
     // entity reference without disposing the scene graph the pedestal cache
     // just acquired. Every other actor releases its visual to the detached

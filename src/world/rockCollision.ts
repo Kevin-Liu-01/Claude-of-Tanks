@@ -893,17 +893,34 @@ function outlineOf(points: number[]): Outline {
   return { points, area: polygonArea(points), box: [x0, z0, x1, z1] };
 }
 
+/**
+ * (perf-253) The joint hull of two outlines (`a`'s points, then `b`'s), each pair's once: the greedy merges below
+ * replace two outlines by their joint one and keep every other in order, so every other pair's hull is the one an
+ * earlier pass found (the same points in the same order). Each pass recomputed all of them: 4.3 s of Saltwind's props
+ * build in two single tasks (9.7 s and 7.1 s on a 4x phone), 2.6 s of Orchard's in one.
+ */
+function pairHulls(corners: number): (a: Outline, b: Outline) => Outline | null {
+  const hulls = new Map<Outline, Map<Outline, Outline | null>>();
+  return (a, b) => {
+    let row = hulls.get(a);
+    if (!row) hulls.set(a, row = new Map());
+    const known = row.get(b);
+    if (known !== undefined) return known;
+    for (let i = 0; i < a.points.length; i += 2) pushPoint(a.points[i], a.points[i + 1]);
+    for (let i = 0; i < b.points.length; i += 2) pushPoint(b.points[i], b.points[i + 1]);
+    const points = scratchHullOf(corners);
+    const outline = points ? outlineOf(points) : null;
+    row.set(b, outline);
+    return outline;
+  };
+}
+
 /** Merge neighbouring outlines (greedy, the least waste first) while a merge wastes little; then down to `limit`. */
 function mergeOutlines(items: Outline[], limit: number, corners: number): Outline[] {
   const list = items.slice();
   const near = (a: Outline, b: Outline) => a.box[0] - MERGE_REACH_M <= b.box[2] && b.box[0] - MERGE_REACH_M <= a.box[2]
     && a.box[1] - MERGE_REACH_M <= b.box[3] && b.box[1] - MERGE_REACH_M <= a.box[3];
-  const joined = (a: Outline, b: Outline): Outline | null => {
-    for (let i = 0; i < a.points.length; i += 2) pushPoint(a.points[i], a.points[i + 1]);
-    for (let i = 0; i < b.points.length; i += 2) pushPoint(b.points[i], b.points[i + 1]);
-    const points = scratchHullOf(corners);
-    return points ? outlineOf(points) : null;
-  };
+  const joined = pairHulls(corners);
   for (;;) {
     let bestI = -1, bestJ = -1, bestWaste = Infinity, best: Outline | null = null;
     const forced = list.length > limit;
@@ -953,13 +970,13 @@ function formationTiers(surfaces: readonly PlacedSurface[]): RockBand[] {
     if (step !== Infinity) continue;
     // more blocks than parts: the least wasteful merges, each merged column to the taller top
     const items = tiers.map((tier) => ({ outline: outlineOf(tier.points), y0: tier.y0, y1: tier.y1 }));
+    const pairHull = pairHulls(ROCK_HULL_POINTS);
     while (items.length > FORMATION_MAX_PARTS) {
       let bestI = -1, bestJ = -1, bestWaste = Infinity, best: Outline | null = null;
       for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
-        for (const o of [items[i].outline, items[j].outline]) for (let k = 0; k < o.points.length; k += 2) pushPoint(o.points[k], o.points[k + 1]);
-        const points = scratchHullOf(ROCK_HULL_POINTS);
-        if (!points) continue;
-        const joined = outlineOf(points), waste = joined.area - items[i].outline.area - items[j].outline.area;
+        const joined = pairHull(items[i].outline, items[j].outline);
+        if (!joined) continue;
+        const waste = joined.area - items[i].outline.area - items[j].outline.area;
         if (waste < bestWaste) { bestWaste = waste; bestI = i; bestJ = j; best = joined; }
       }
       if (!best) break;

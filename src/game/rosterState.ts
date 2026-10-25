@@ -7,7 +7,9 @@
 import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
-import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import {
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, type CreateTankOptions,
+} from '../vehicles/fleetFactory.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -250,14 +252,6 @@ export function nextStagedBake<Entity extends RosterEntity>(
   return { ent, quality: textureQualityFor(game, ent) };
 }
 
-/** Visual-only battle geometry policy; garage/Studio use separate builders. */
-export function battleGeometryQuality(
-  playerActor: boolean,
-  deviceTier: string = getDeviceTier(),
-): NonNullable<CreateTankOptions['geometryQuality']> {
-  return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
-}
-
 /**
  * PERF (performance_budget r4): build a pool entity's visual on demand (battle
  * roster selection). Shares the per-spec texture cache with any live instance
@@ -347,10 +341,12 @@ function* buildRosterVisual(
     let failure: unknown = null;
     const variantOf = typeof ent.spec?.variantOf === 'string' ? ent.spec.variantOf : undefined;
     for (const attempt of rosterVisualAttempts(specId, options, variantOf, firstParticipant?.specId)) {
+      // the static merge is the vehicle's own (a fallback build takes its donor's)
+      const attemptOptions = { ...attempt.options, staticDrawMerge: battleStaticDrawMerge(attempt.specId) };
       try {
         visual = cooperative
-          ? yield* createTankSteps(attempt.specId, engineCtx, attempt.options)
-          : createTank(attempt.specId, engineCtx, attempt.options);
+          ? yield* createTankSteps(attempt.specId, engineCtx, attemptOptions)
+          : createTank(attempt.specId, engineCtx, attemptOptions);
         if (failure) console.error(`[battle roster] ${specId} visual built as ${attempt.reason} ${attempt.specId}`);
         return;
       } catch (error) {

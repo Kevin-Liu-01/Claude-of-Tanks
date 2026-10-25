@@ -113,6 +113,19 @@ export function seaShelfWidthM(riseSlope: number): number {
  */
 export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom: number,
   riseAt: ((x: number, z: number) => number) | null = null): THREE.DataTexture | null {
+  const steps = shoreDistanceTextureSteps(mask, size, wetFrom, riseAt);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/**
+ * (perf-253) shoreDistanceTexture in slices: the same cells in the same order, yielding about every 8 ms. Every cell's
+ * shelf reads its seed's land rise (25 height samples, memoised per seed, and every land cell seeds itself): 7.8 s of
+ * Coastal's desktop entry in one task. The terrain build drains it through its own yields (shallowWaterShoreSteps).
+ */
+export function* shoreDistanceTextureSteps(mask: THREE.Texture, size: number, wetFrom: number,
+  riseAt: ((x: number, z: number) => number) | null = null): Generator<void, THREE.DataTexture | null, void> {
   const img = mask.image as { data?: ArrayLike<number> | null; width?: number; height?: number } | undefined;
   const W = img?.width ?? 0, H = img?.height ?? 0, src = img?.data;
   if (!src || !W || !H || src.length < W * H * 4) return null;
@@ -152,9 +165,11 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
     return w;
   };
   const out = new Uint8Array(N * N * 2);
+  let sliceAt = performance.now();
   for (let k = 0; k < N * N; k++) {
     out[k * 2] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
     out[k * 2 + 1] = Math.min(255, Math.round(shelf(seed[k])));
+    if ((k & 255) === 255 && performance.now() - sliceAt >= 8) { yield; sliceAt = performance.now(); }
   }
   const tex = new THREE.DataTexture(out, N, N, THREE.RGFormat, THREE.UnsignedByteType);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
@@ -380,6 +395,17 @@ const OUTLAND_SECTOR_GLSL = `
   }
 `;
 
+/** (perf-253) The shore-distance texture a sheet with these inputs reads (createShallowWaterSurface), made in slices:
+ * a coast with an FFT ocean and a readable mask only, else null. */
+export function* shallowWaterShoreSteps(
+  geometry: THREE.BufferGeometry, mask: THREE.Texture, size: number, mapId: string, ramp: readonly [number, number],
+  ocean: OceanField | null,
+): Generator<void, THREE.DataTexture | null, void> {
+  if (waterContactProfile(mapId).kind !== 'coast' || !ocean) return null;
+  return yield* shoreDistanceTextureSteps(mask, size, ramp[0] + 0.02,
+    (geometry.userData.landRiseAt as ((x: number, z: number) => number) | undefined) ?? null);
+}
+
 export function createShallowWaterSurface(
   geometry: THREE.BufferGeometry,
   mask: THREE.Texture,
@@ -391,15 +417,22 @@ export function createShallowWaterSurface(
   ripples: WaterRippleField | null = null,
   outlandWater: { texture: THREE.Texture; sizeM: number; sectorBlend?: readonly [number, number]; openings?: readonly SeaOpening[] } | null = null,
   ocean: OceanField | null = null,
+  shoreDistance: THREE.DataTexture | null | undefined = undefined,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
   // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
   // incidence and the specular cap, read per frame through the light model's QA hook
   const waterQa = { value: new THREE.Vector4(0.45, WATER_ENV_GRAZING, 1.15, 0.35) };
-  // 2026-10-04 (the sea's shelf and swell): a coast with an FFT ocean and a readable mask only
-  const shoreDist = profile.kind === 'coast' && ocean
-    ? shoreDistanceTexture(mask, size, ramp[0] + 0.02, (geometry.userData.landRiseAt as ((x: number, z: number) => number) | undefined) ?? null) : null;
+  // 2026-10-04 (the sea's shelf and swell): a coast with an FFT ocean and a readable mask only; (perf-253) the terrain
+  // build hands it over made in slices (shallowWaterShoreSteps), else it is made here
+  let shoreDist = shoreDistance;
+  if (shoreDist === undefined) {
+    const steps = shallowWaterShoreSteps(geometry, mask, size, mapId, ramp, ocean);
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    shoreDist = step.value;
+  }
   const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
   // (2026-10-23: a sea may carry its own shelf look, the profile's seaTurquoise / seaDeepBlue)
   const seaTurquoise = profile.seaTurquoise ?? SEA_TINT.turquoise, seaDeepBlue = profile.seaDeepBlue ?? SEA_TINT.deepBlue;
