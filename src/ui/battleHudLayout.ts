@@ -72,6 +72,8 @@ const NETWORK_CORNER_RIGHT = 10;
 const REPORT_DOCK_MIN = 140;
 /** A roster row's least height (its line and its gap: 12 px rows touched one another). */
 const ROSTER_ROW_MIN = 16;
+/** A roster's head row (battleHudLayout.css: the rows take the roster's height less it). */
+const ROSTER_HEAD_H = 22;
 /** The lowest share of the window a flying Watch bar may rise to on the floor before it takes the top seat. */
 const WATCH_FLOOR_SHARE = 0.22;
 
@@ -238,6 +240,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     '.cot-vehicle-controls', '.cot-vehicle-status:not([hidden])', '.cot-flight-hud:not([hidden]) .flight-console']);
   const readsThisPass = new Map<string, DOMRect | null>();
   let reuseReads = false;
+  /** A roster too short for its rows at 16 px holds whole rows only (gauntlet r3: a 900x700 Watch bar left a sliver of
+   *  the fourth row under the third); a roster that fits keeps its height. */
+  const snapRosterHeight = (heightPx: number, selector: string): number => {
+    const count = Number(root.querySelector<HTMLElement>(selector)?.dataset.count) || 0;
+    const body = heightPx - ROSTER_HEAD_H;
+    if (!count || body >= count * ROSTER_ROW_MIN) return heightPx;
+    return ROSTER_HEAD_H + Math.max(1, Math.floor(body / ROSTER_ROW_MIN)) * ROSTER_ROW_MIN;
+  };
   const read = (selector: string) => {
     const keep = reuseReads && steadyReads.has(selector);
     if (keep) { const seen = readsThisPass.get(selector); if (seen !== undefined) return seen; }
@@ -1145,8 +1155,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     const rosterLeftHeight = battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded'));
     const rosterRightHeight = Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity);
-    const rosterHeights = read('.cot-ear.l') && read('.cot-ear.r') && !root.querySelector('.cot-ear.icon-grid')
-      ? [Math.min(rosterLeftHeight, rosterRightHeight), Math.min(rosterLeftHeight, rosterRightHeight)] : [rosterLeftHeight, rosterRightHeight];
+    const sharedRoster = read('.cot-ear.l') && read('.cot-ear.r') && !root.querySelector('.cot-ear.icon-grid')
+      ? Math.min(rosterLeftHeight, rosterRightHeight) : null;
+    const rosterHeights = [snapRosterHeight(sharedRoster ?? rosterLeftHeight, '.cot-ear.l'), snapRosterHeight(sharedRoster ?? rosterRightHeight, '.cot-ear.r')];
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
