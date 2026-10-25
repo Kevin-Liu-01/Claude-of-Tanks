@@ -308,22 +308,20 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{display:flex;flex-direction:column;gap:var(--s3);padding:0;border:0;background:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot::before,.cot-garage .cot-battle-menu.open .cot-battle-menu-foot::after{display:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot>span{display:none;}
-.cot-garage .cot-deploy-tank{display:flex;align-items:stretch;gap:var(--s3);padding:var(--s2);border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
+.cot-garage .cot-deploy-tank{display:flex;align-items:center;gap:var(--s3);padding:var(--s2);border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
 .cot-garage .cot-deploy-tank:empty{display:none;}
 .cot-garage .cot-deploy-tank .cot-card{position:relative;width:132px;height:80px;min-height:0;flex:none;margin:0;pointer-events:none;}
 .cot-garage .cot-deploy-tank .cot-card :is(.nm,.hc-tier){display:none;}
-.cot-garage .cot-deploy-tank .info{display:flex;flex-direction:column;justify-content:center;gap:var(--s3);flex:1;min-width:0;}
-.cot-garage .cot-deploy-tank .info b{display:flex;align-items:center;gap:var(--s2);min-width:0;font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-tank .info b>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-garage .cot-deploy-tank .info b img{flex:none;box-shadow:var(--flag-ring);border-radius:1px;}
-.cot-garage .cot-deploy-tank .load{display:flex;align-items:center;gap:var(--s2);flex-wrap:nowrap;}
-.cot-garage .cot-deploy-tank .sh{display:inline-flex;align-items:center;gap:var(--s1);font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
-.cot-garage .cot-deploy-tank .sh svg{width:24px;height:9px;color:var(--ink-2);}
-.cot-garage .cot-deploy-tank .eq{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);}
-.cot-garage .cot-deploy-tank .eq svg{width:15px;height:15px;}
+.cot-garage .cot-deploy-tank .info{display:flex;flex-direction:column;justify-content:center;gap:var(--s2);flex:1;min-width:0;}
+/* the name over its flag, and its readiness (the kit's tag) at the row's end */
+.cot-garage .cot-deploy-tank .head{display:flex;align-items:center;gap:var(--s2);min-width:0;}
+.cot-garage .cot-deploy-tank .head b{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-garage .cot-deploy-tank .head b>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-garage .cot-deploy-tank .head b img{flex:none;box-shadow:var(--flag-ring);border-radius:1px;}
+.cot-garage .cot-deploy-tank .head .cot-c-tag{flex:none;}
+/* the rounds and fittings: the kit's stat chips, wrapping under the name */
+.cot-garage .cot-deploy-tank .load{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1);}
 .cot-garage .cot-deploy-tank .chg{align-self:center;flex:none;}
-.cot-garage .cot-deploy-tank .ok{display:inline-flex;align-items:center;gap:var(--s1);margin-left:var(--s1);color:var(--ok);font:500 var(--fs-12)/1 var(--font-body);}
-.cot-garage .cot-deploy-tank .ok svg{width:14px;height:14px;}
 .cot-garage .cot-battle-menu.open [data-battle-launch]{display:flex;align-items:center;justify-content:space-between;width:100%;height:66px;min-height:0;
   padding:0 var(--s5);border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);
   color:var(--btn-primary-ink);cursor:pointer;}

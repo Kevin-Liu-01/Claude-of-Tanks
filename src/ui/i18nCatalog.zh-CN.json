@@ -273,6 +273,7 @@
   "garage.deploy.againShort": "再来一局",
   "garage.deploy.again": "再来一局：{mode} · {map}",
   "garage.deploy.ready": "就绪",
+  "garage.deploy.roundTip": "{name}：100 米处穿深 {pen} 毫米",
   "garage.deploy.loadEstimate": "约 {value} 秒载入",
   "garage.deploy.moreSettings": "更多设置",
   "garage.deploy.keys.move": "移动",

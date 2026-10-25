@@ -7,7 +7,7 @@
 // in the `components` cascade layer: a surface restyles a component without !important (src/ui/styleLayers.ts).
 //
 // The kit is deliberately small (owner 2026-10-22: less is more). It holds what the rebuilt surfaces use: buttons,
-// key caps, chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed 20-cell scale,
+// key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed 20-cell scale,
 // and the vehicle identity (flag, silhouette, name). Plates are classes. Modal, select, slider and tooltip keep their
 // existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
 
@@ -102,6 +102,30 @@ type TagTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 /** A short status word (New, Recommended, Campaign 3/6): at most 14 characters. */
 export function tag(text: string, tone: TagTone = 'neutral'): string {
   return `<span class="cot-c-tag cot-c-tag--${tone}">${esc(text)}</span>`;
+}
+
+interface StatChipOptions {
+  /** The kind, in caps (APFSDS). Omit it, and the value, for a glyph-only chip whose tip names it (a fitting). */
+  readonly label?: string;
+  readonly value?: string | number;
+  readonly unit?: string;
+  readonly icon?: IconId;
+  /** What the value is, for the kit's hover tip (components/hoverTip.ts): "M829A4: 855 mm at 100 m". */
+  readonly tip?: string;
+  readonly className?: string;
+}
+/**
+ * A value with its kind, compact (a round and its penetration: APFSDS 855 mm), in the data voice. A glyph-only chip
+ * (no label, no value) carries its name as the tip and the accessible name.
+ */
+export function statChip(options: StatChipOptions): string {
+  const glyphOnly = options.label === undefined && options.value === undefined;
+  const cls = `cot-c-statchip${glyphOnly ? ' cot-c-statchip--glyph' : ''}${options.className ? ` ${options.className}` : ''}`;
+  const tip = options.tip ? ` data-tip="${esc(options.tip)}"${glyphOnly ? ` role="img" aria-label="${esc(options.tip)}"` : ''}` : '';
+  const label = options.label === undefined ? '' : `<span class="cot-c-statchip__label">${esc(options.label)}</span>`;
+  const value = options.value === undefined ? '' : `<b class="num">${esc(options.value)}</b>`;
+  const unit = options.unit ? `<small>${esc(options.unit)}</small>` : '';
+  return `<span class="${cls}"${tip}>${options.icon ? icon(options.icon, { size: 14 }) : ''}${label}${value}${unit}</span>`;
 }
 
 /* ---------------------------------------------------------------------------------------------- choice controls */

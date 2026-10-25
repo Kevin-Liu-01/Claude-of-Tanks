@@ -37,13 +37,13 @@ import {
 } from '../game/equipment.ts';
 import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
-import { equipIconSVG } from './equipIcons.ts';
+import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
-import { shellIconSVG } from './shellIcons.ts';
+import { shellIconId, shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
   garageTechnicalViews, shellTypeLabel, translateTechnicalView,
@@ -3884,19 +3884,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
   }
-  // the tank you deploy with (the direction's .tank): its hero card, its name over its flag, its rounds and fittings,
-  // and the control that returns to the roster to change it
+  // the tank you deploy with (the direction's .tank): its hero card; its name over its flag and its readiness; its rounds
+  // (type and penetration at 100 m, the kit's stat chips) and its fittings (glyph chips named by their tips); and the
+  // control that returns to the roster to change it (its name is its hover tip)
   function renderDeployTank(): void {
     const spec = selectedId ? specById.get(selectedId) : null;
     const copy = selectedId ? heroCopy(selectedId) : null;
     if (!copy || !spec) { deployTank.replaceChildren(); return; }
     deployTank.replaceChildren(copy);
-    const shells = (spec.gun.shells || []).map((shell) =>
-      `<span class="sh">${shellIconSVG(shell.type, 24)}${shell.count == null ? '' : `<span class="num">${shell.count}</span>`}</span>`).join('');
-    const fittings = loadEquipment(spec.id, spec).map((id) => `<span class="eq">${equipIconSVG(id, 15)}</span>`).join('');
-    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><b>${flagIconHTML(spec.nation, 22, 16)}` +
-      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b><div class="load">${shells}${fittings}` +
-      `${vehicleLocked ? '' : `<span class="ok">${uiIconSVG('check', 14)}${t('garage.deploy.ready')}</span>`}</div></div>` +
+    const mm = t('garage.unit.mm');
+    const rounds = (spec.gun.shells || []).map((shell) => {
+      const type = shellTypeLabel(shell.type);
+      const pen = String(Math.round(shell.pen100Mm));
+      return statChip({ icon: shellIconId(shell.type), label: type, value: pen, unit: mm,
+        tip: t('garage.deploy.roundTip', { name: shell.name || type, pen }) });
+    }).join('');
+    const fittings = loadEquipment(spec.id, spec).map((id) => {
+      const glyph = equipIconId(id);
+      return glyph ? statChip({ icon: glyph, tip: equipmentLabel(id) }) : '';
+    }).join('');
+    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b>${flagIconHTML(spec.nation, 22, 16)}` +
+      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
+      `${vehicleLocked ? '' : tag(t('garage.deploy.ready'), 'ok')}</div><div class="load">${rounds}${fittings}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
       `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }

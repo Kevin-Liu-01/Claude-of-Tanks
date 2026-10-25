@@ -63,6 +63,14 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
   box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+/* ---- stat chips: a value with its kind (a round and its penetration), or a fitting's glyph named by its tip ---- */
+.cot-c-statchip{box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:var(--chip-radius);
+  background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);white-space:nowrap}
+.cot-c-statchip svg{width:14px;height:14px;color:var(--ink-3)}
+.cot-c-statchip__label{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
+.cot-c-statchip b{font-weight:600}
+.cot-c-statchip small{font-size:inherit;margin-left:-2px;color:var(--ink-3)}
+.cot-c-statchip--glyph{width:24px;padding:0;justify-content:center}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}
 .cot-c-tag--warn{color:var(--text-warn);box-shadow:var(--ring-warn)}
