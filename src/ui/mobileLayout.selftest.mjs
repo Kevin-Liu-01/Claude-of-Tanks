@@ -397,8 +397,8 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-ctxlost h2\{[\s\S]*overflow-wrap:anywhere/,
   'the graphics recovery title must reflow without overflowing small screens');
-assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Gallery feedback toasts must be viewport-bounded');
+assert.match(gallery, /\.cot-c-notices\.gallery-notices\{[^}]*width:min\(420px,calc\(100% - 24px\)\)/,
+  'Gallery feedback notices must be viewport-bounded');
 // the Field Manual's notices are the kit's (components/notices.css): a region bounded to the viewport, text that wraps
 assert.match(docs, /@import url\('\.\.\/ui\/components\/notices\.css'\);/, 'the Field Manual loads the kit\'s notices');
 assert.match(await readFile(new URL('./components/notices.css', import.meta.url), 'utf8'),

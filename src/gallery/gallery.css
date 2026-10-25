@@ -333,16 +333,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .markup-packet{display:flex;flex-direction:column;gap:var(--s3)}
 .markup-packet[open]>summary{margin-bottom:var(--s3)}
 
-/* the page's one notice (the UI gauntlet's notification line: no coloured edge or outline): a raised plate over the
-   dossier's actions, where its trigger (copy link, copy data, the markup tools) sits */
-.toast{position:fixed;z-index:var(--z-toast);left:calc(100vw - var(--g-dossier) / 2);bottom:88px;
-  max-width:calc(100vw - 24px);width:max-content;padding:var(--s2) var(--s4);border-radius:var(--plate-radius);
-  background:var(--surface-menu);box-shadow:var(--ring-2),var(--e3);color:var(--ink-1);font:500 max(11px,var(--fs-13))/1.4 var(--font-body);text-align:center;white-space:normal;
-  overflow-wrap:anywhere;opacity:0;pointer-events:none;transform:translate(-50%,8px);
-  transition:opacity var(--dur-base) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
-.toast.show{opacity:1;transform:translate(-50%,0)}
-/* an announcement for assistive technology alone (a layer's volume count) */
-.toast.sr{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);opacity:1;box-shadow:none}
+/* a layer's count, read out to assistive technology alone (the visible notices are the kit's, above) */
+.toast{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* ---------------------------------------------------------------------------------------------------- responsive */
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
@@ -361,7 +353,6 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .dossier{border-top:1px solid var(--line-1)}
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
-  .toast{left:50%}
   /* the short stage: the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it, never over it */
   .views button{width:30px;padding:0;justify-content:center}
   .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}

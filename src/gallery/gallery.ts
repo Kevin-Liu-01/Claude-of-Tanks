@@ -461,9 +461,8 @@ function showToast(message: string, { visual = true, severity = 'info' as Notice
     // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
     const toast = $('#toast');
     toast.textContent = message;
-    toast.classList.add('sr', 'show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    toastTimer = setTimeout(() => { toast.textContent = ''; }, 1800);
     return null;
   }
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
