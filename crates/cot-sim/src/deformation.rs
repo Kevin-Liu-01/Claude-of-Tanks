@@ -38,6 +38,7 @@ pub const RUBBLE_GROW_S: f64 = 2.0;
 
 /// One stamp (the TypeScript's `TerrainStamp` with its precomputed fields).
 #[derive(Clone, Debug)]
+#[allow(missing_docs)] // (the fields are the TypeScript's, named alike)
 pub enum Stamp {
     /// A crater's bowl and ragged rim.
     Crater { x: f64, z: f64, radius_m: f64, depth_m: f64, rim_m: f64, p1: f64, p2: f64, p3: f64 },

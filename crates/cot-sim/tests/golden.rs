@@ -616,3 +616,125 @@ fn deformation_matches() {
     ledger.check(overlay.max_raise_m(), g.max_raise_m.f64(), || "maxRaiseM".into());
     ledger.finish();
 }
+
+// ---------------------------------------------------- structure support ----
+
+#[derive(Deserialize)]
+struct SupportGolden {
+    records: BTreeMap<String, GoldenRecord>,
+    hulls: Vec<GoldenHull>,
+}
+
+#[derive(Deserialize)]
+struct GoldenRecord {
+    min: [JsNum; 3],
+    max: [JsNum; 3],
+    crushable: bool,
+    wreck: bool,
+    crushed: bool,
+    dead: bool,
+    shape: Option<GoldenShape>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum GoldenShape {
+    Simple(GoldenPart),
+    Compound(Vec<Option<GoldenPart>>),
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+enum GoldenPart {
+    Obb { cx: JsNum, cz: JsNum, hw: JsNum, hl: JsNum, yaw: JsNum, y: Option<[JsNum; 2]> },
+    Circle { cx: JsNum, cz: JsNum, r: JsNum, y: Option<[JsNum; 2]> },
+    Convex { points: Vec<JsNum>, tp: Option<Vec<JsNum>>, y: Option<[JsNum; 2]> },
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GoldenPose {
+    center_x: JsNum,
+    center_z: JsNum,
+    forward_x: JsNum,
+    forward_z: JsNum,
+    right_x: JsNum,
+    right_z: JsNum,
+    half_length: JsNum,
+    half_width: JsNum,
+    center_rise: JsNum,
+    rise_along: JsNum,
+    rise_across: JsNum,
+    front_lift: JsNum,
+    rear_lift: JsNum,
+}
+
+#[derive(Deserialize)]
+struct GoldenHull {
+    map: String,
+    x: JsNum,
+    z: JsNum,
+    belly: JsNum,
+    pose: Option<GoldenPose>,
+    candidates: Vec<u32>,
+    standing: bool,
+    samples: Vec<[JsNum; 4]>,
+}
+
+fn golden_part(part: &GoldenPart) -> cot_sim::records::Part {
+    use cot_sim::records::{Part, PartKind};
+    let y = |y: &Option<[JsNum; 2]>| y.map(|[a, b]| (a.f64(), b.f64()));
+    let all = |v: &[JsNum]| v.iter().map(|n| n.f64()).collect::<Vec<_>>();
+    match part {
+        GoldenPart::Obb { cx, cz, hw, hl, yaw, y: yy } => Part { kind: PartKind::Obb { cx: cx.f64(), cz: cz.f64(), hw: hw.f64(), hl: hl.f64(), yaw: yaw.f64() }, y: y(yy) },
+        GoldenPart::Circle { cx, cz, r, y: yy } => Part { kind: PartKind::Circle { cx: cx.f64(), cz: cz.f64(), r: r.f64() }, y: y(yy) },
+        GoldenPart::Convex { points, tp, y: yy } => Part { kind: PartKind::Convex { points: all(points), tp: tp.as_ref().map(|t| all(t)) }, y: y(yy) },
+    }
+}
+
+#[test]
+fn structure_support_matches() {
+    use cot_sim::records::{HullFootprint, Record, Shape};
+    use cot_sim::structure_support::SupportField;
+    let g: SupportGolden = serde_json::from_str(&golden("structureSupport")).unwrap();
+    // each map's referenced records in one table; the golden ids map to table indices
+    let mut tables: BTreeMap<String, (Vec<Record>, BTreeMap<u32, u32>)> = BTreeMap::new();
+    for (key, rec) in &g.records {
+        let (map, id) = key.split_once(':').unwrap();
+        let shape = match &rec.shape {
+            None => Shape::None,
+            Some(GoldenShape::Simple(part)) => Shape::Simple(golden_part(part)),
+            Some(GoldenShape::Compound(parts)) => Shape::Compound(parts.iter().map(|p| p.as_ref().map(golden_part)).collect()),
+        };
+        let mut record = Record::new(rec.min.map(JsNum::f64), rec.max.map(JsNum::f64), shape, rec.crushable, rec.wreck);
+        record.crushed = rec.crushed;
+        record.dead = rec.dead;
+        let table = tables.entry(map.to_string()).or_default();
+        table.1.insert(id.parse().unwrap(), table.0.len() as u32);
+        table.0.push(record);
+    }
+    let mut ledger = Ledger::new("structure support");
+    let mut field = SupportField::new();
+    let mut lifted = 0;
+    for (h, hull) in g.hulls.iter().enumerate() {
+        let (records, ids) = &tables[&hull.map];
+        let candidates: Vec<u32> = hull.candidates.iter().map(|id| ids[id]).collect();
+        let pose = hull.pose.as_ref().map(|p| HullFootprint {
+            center_x: p.center_x.f64(), center_z: p.center_z.f64(), forward_x: p.forward_x.f64(), forward_z: p.forward_z.f64(),
+            right_x: p.right_x.f64(), right_z: p.right_z.f64(), half_length: p.half_length.f64(), half_width: p.half_width.f64(),
+            center_rise: p.center_rise.f64(), rise_along: p.rise_along.f64(), rise_across: p.rise_across.f64(),
+            front_lift: p.front_lift.f64(), rear_lift: p.rear_lift.f64(),
+        });
+        field.begin_hull_with(records, &candidates, hull.x.f64(), hull.z.f64(), hull.belly.f64(), pose.as_ref());
+        assert_eq!(field.standing_deck(), hull.standing, "hull {h} ({}) stands on a deck", hull.map);
+        for [x, z, ground, expect] in &hull.samples {
+            let top = field.sample(records, x.f64(), z.f64(), ground.f64());
+            if top != ground.f64() {
+                lifted += 1;
+            }
+            ledger.check(top, expect.f64(), || format!("hull {h} ({}) top at ({}, {})", hull.map, x.f64(), z.f64()));
+        }
+    }
+    assert!(lifted > 1000, "the structures lift the samples ({lifted})");
+    ledger.finish();
+}

@@ -34,6 +34,9 @@ import { mulberry32 } from '../src/game/stateCore.ts';
 import { loadCotSimWasmNode, pinMath } from './cot-sim-wasm.mjs';
 import { createTerrainContactSampler } from '../src/world/terrainContactSurface.ts';
 import { createTerrainDeformation } from '../src/sim/terrainDeformation.ts';
+import { createStructureSupportField } from '../src/sim/structureSupport.ts';
+import { createHullFootprint, hullFootprint } from '../src/world/collision.ts';
+import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import {
   GRAVITY_SCALE,
   GUIDED_MISSILE_TURN_RATE_RAD_S,
@@ -265,8 +268,70 @@ function deformationVectors() {
     revision: overlay.revision, maxRaiseM: num(overlay.maxRaiseM) };
 }
 
+// ---------------------------------------------------- structure support ------
+// Hulls placed over real battlefields' records (Urban's roofed buildings, Titan Gorge's drawn-top stones, Verdant), their
+// belly lines a metre under to half a metre over the tops, half of them posed (pitched and rolled footprints): each
+// hull's candidates as the obstacle grid gave them, whether it stands on a deck, and structureTopAt over a 7 x 7 grid
+// about it (the ground under each point given). A few records are marked crushed or dead. The records referenced are
+// written out whole, so the Rust builds the same table without the manifests.
+function structureSupportVectors() {
+  const rng = mulberry32(2531);
+  const records = new Map();
+  const encodePart = (part) => {
+    if (!part) return null;
+    const y = part.y0 !== undefined ? [num(part.y0), num(part.y1)] : null;
+    if (part.kind === 'obb') return { kind: 'obb', cx: num(part.cx), cz: num(part.cz), hw: num(part.hw), hl: num(part.hl), yaw: num(part.yaw), y };
+    if (part.kind === 'circle') return { kind: 'circle', cx: num(part.cx), cz: num(part.cz), r: num(part.r), y };
+    return { kind: 'convex', points: part.points.map(num), tp: part.tp ? part.tp.map(num) : null, y };
+  };
+  const encode = (record) => {
+    const shape = record.shape2;
+    return { min: record.min.map(num), max: record.max.map(num), crushable: !!record.crushable,
+      wreck: record.kind === 'tank-wreck' || record.kind === 'tram-wreck', crushed: !!record.crushed, dead: !!record.dead,
+      shape: !shape ? null : shape.kind === 'compound' ? { compound: shape.parts.map(encodePart) } : { simple: encodePart(shape) } };
+  };
+  const hulls = [];
+  const rect = { centerX: 0.02, centerZ: 0.2, halfLength: 3.6, halfWidth: 1.75, frontLiftM: 0.45, rearLiftM: 0.3 };
+  for (const [mapId, count] of [['urban', 40], ['titan_gorge', 30], ['verdant', 20]]) {
+    const world = createDedicatedWorldCollision(mapId);
+    const obstacles = [...new Set(world.getObstacles())];
+    const index = new Map(obstacles.map((record, i) => [record, i]));
+    const field = createStructureSupportField(world.heightField, { queryObstacles: world.queryObstacles.bind(world) });
+    // the records worth standing on: buildings' compounds and drawn tops, then anything tall
+    const interesting = obstacles.filter((r) => (r.shape2?.kind === 'compound' || (r.shape2?.kind === 'convex' && r.shape2.tp)) && !r.crushable);
+    for (let k = 0; k < 6; k++) { const r = obstacles[Math.floor(rng() * obstacles.length)]; if (k % 2) r.crushed = true; else r.dead = true; }
+    for (let h = 0; h < count; h++) {
+      const target = interesting[Math.floor(rng() * interesting.length)];
+      const x = target.min[0] + rng() * (target.max[0] - target.min[0]), z = target.min[2] + rng() * (target.max[2] - target.min[2]);
+      const belly = target.max[1] - 1 + rng() * 1.5 - (h % 5 === 0 ? 4 : 0);
+      let pose = null;
+      if (h % 2) {
+        pose = hullFootprint(rect, x, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.4, createHullFootprint());
+        if (h % 7 === 1) { pose.riseAlong = 2.5; } // past POSED_RISE_MAX: the root's belly decides
+      }
+      field.beginHull(x, z, belly, pose);
+      const candidates = [];
+      world.queryObstacles(x - 6, z - 6, x + 6, z + 6, candidates);
+      const candidateIds = candidates.map((r) => index.get(r));
+      for (const id of candidateIds) if (!records.has(`${mapId}:${id}`)) records.set(`${mapId}:${id}`, encode(obstacles[id]));
+      const samples = [];
+      for (let a = 0; a < 7; a++) for (let b = 0; b < 7; b++) {
+        const sx = x + (a - 3) * 1.6 + (rng() - 0.5) * 0.3, sz = z + (b - 3) * 1.6 + (rng() - 0.5) * 0.3;
+        const ground = world.heightField.getHeightAt(sx, sz);
+        samples.push([num(sx), num(sz), num(ground), num(field.getHeightAt(sx, sz))]);
+      }
+      hulls.push({ map: mapId, x: num(x), z: num(z), belly: num(belly),
+        pose: pose ? Object.fromEntries(Object.entries(pose).filter(([key]) => key !== 'clearBottom').map(([key, value]) => [key, num(value)])) : null,
+        candidates: candidateIds, standing: field.standingDeck, samples });
+    }
+    world.release?.();
+  }
+  return { source: 'src/sim/structureSupport.ts', sourceSha256: sha('src/sim/structureSupport.ts'),
+    collisionSha256: sha('src/world/collision.ts'), records: Object.fromEntries(records), hulls };
+}
+
 // --------------------------------------------------------------- main ------
-const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors(), deformation: deformationVectors() });
+const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors(), deformation: deformationVectors(), structureSupport: structureSupportVectors() });
 const engineModules = generate();
 const restoreMath = pinMath(await loadCotSimWasmNode());
 let modules;
