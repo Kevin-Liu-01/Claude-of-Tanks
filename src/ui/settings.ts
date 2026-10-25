@@ -334,14 +334,14 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
-.cot-set-slider input[type=number]{width:62px;height:36px;padding:0 var(--s2);text-align:right;
+.cot-set-slider input[type=number]{width:72px;height:36px;padding:0 22px 0 var(--s2);text-align:right;
   font:500 max(13px,var(--fs-13))/1 var(--font-data);color:var(--ink-1);background:var(--surface-page);border:0;
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;text-align:end;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
-/* a multiplier has no unit, so its field ends on the controls' edge */
-.cot-set-slider .unit:empty{display:none;}
+/* the unit sits inside its field's end (a multiplier's is empty), so every value field ends on the controls' edge */
+.cot-set-slider .unit{width:20px;margin-left:calc(-1 * (var(--s3) + 20px));pointer-events:none;text-align:start;
+  font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
    (components.css .cot-c-seg) on the panel's own state class; every inline control is 36 px tall */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
@@ -371,11 +371,11 @@ const SETTINGS_CSS = `
 .cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
-.cot-set-note{margin:var(--s3) 0 var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
+.cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
 .cot-set-note.keep{text-wrap:balance;}
 .cot-set-note.folded{display:none;}
-.cot-set-body>.cot-set-note{margin-inline:var(--s3);}
+.cot-set-body>.cot-set-note{margin-inline:calc(var(--s3) + var(--s2));}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
@@ -445,6 +445,7 @@ body.cot-hud-aerial .cot-hints{display:none;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
+body[data-cot-input='coarse'] .cot-settings .cot-c-btn{min-height:var(--cot-control-floor,44px);}
 body.cot-touch-layout .cot-set-close{width:44px;height:44px;}
 `;
 

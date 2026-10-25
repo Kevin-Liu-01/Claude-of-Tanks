@@ -207,7 +207,7 @@ body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height
 body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-height='short'] .cot-set-preview{display:none}
 /* a compact screen keeps the preview to a strip, so the rows under it stay in view */
-body[data-cot-height='compact'] .cot-set-preview{max-height:200px}
+body[data-cot-height='compact'] .cot-set-preview{aspect-ratio:auto;height:200px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
