@@ -15,7 +15,9 @@
 // Korean). The ONLY functional delta is the baked hull number decal text:
 // 'PL-01' -> 'K2B'.
 
-import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, convexSlab, orientedSlab } from './kit.ts';
+import { addK2GunFront } from './k2X.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildK2 } from '../modern3.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -148,9 +150,27 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
 
   // Joined station loft for the source's low diamond turret. These pieces
   // intersect the K2 crown and each other, forming one closed stealth mass.
+  // 2026-10-25 (the owner: "give the k2b a proper mantlet and turret front that aligns with what a prototype of a k2
+  // would look like"): the diamond's front no longer buries the gun. It parts into the K2's two raked cheek wedges
+  // (the diamond's own outer faces, cut at x 0.45) round a gun well, a gun housing at its back, and the K2's measured
+  // mantlet, sight hood and collar (k2X.ts addK2GunFront) standing proud in it.
+  const CHEEK_X = 0.45;
+  const onDiagonal = (a: readonly number[], b: readonly number[], x: number): number[] => {
+    const t = (x - a[0]) / (b[0] - a[0]);
+    return a.map((value, axis) => value + (b[axis] - value) * t);
+  };
+  for (const side of [-1, 1]) {
+    const tipBottom = [side * 0.26, -0.03, 2.45], rearBottom = [side * 1.42, -0.03, 0.52];
+    const tipTop = [side * 0.20, 0.60, 2.20], rearTop = [side * 1.12, 0.68, 0.34];
+    const innerBottom = onDiagonal(tipBottom, rearBottom, side * CHEEK_X), innerTop = onDiagonal(tipTop, rearTop, side * CHEEK_X);
+    P.add('turret', convexSlab(
+      innerBottom, rearBottom, [side * CHEEK_X, -0.03, 0.52], onDiagonal(tipBottom, rearBottom, side * 0.9),
+      innerTop, rearTop, [side * CHEEK_X, 0.68, 0.34], onDiagonal(tipTop, rearTop, side * 0.9)));
+  }
+  // The gun housing between the cheeks, its face at the mantlet's back wall (gun-relative z 0.277, turret z 2.0)
   P.add('turret', slab(
-    [-0.26, -0.03, 2.45], [0.26, -0.03, 2.45], [1.42, -0.03, 0.52], [-1.42, -0.03, 0.52],
-    [-0.20, 0.60, 2.20], [0.20, 0.60, 2.20], [1.12, 0.68, 0.34], [-1.12, 0.68, 0.34]));
+    [-CHEEK_X, -0.03, 2.0], [CHEEK_X, -0.03, 2.0], [CHEEK_X, -0.03, 0.52], [-CHEEK_X, -0.03, 0.52],
+    [-CHEEK_X, 0.60, 2.0], [CHEEK_X, 0.60, 2.0], [CHEEK_X, 0.68, 0.34], [-CHEEK_X, 0.68, 0.34]));
   P.add('turret', slab(
     [-1.42, -0.03, 0.52], [1.42, -0.03, 0.52], [1.31, 0.02, -2.05], [-1.31, 0.02, -2.05],
     [-1.12, 0.68, 0.34], [1.12, 0.68, 0.34], [1.10, 0.62, -1.91], [-1.10, 0.62, -1.91]));
@@ -172,11 +192,10 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   addOpenYokeAuxRWS(P);
   addRoofWhips(P, 0.64, -1.72, 1030, 1.00);
 
-  // Closed 120-mm gun plant: faceted mask, oval collar, clamp and bore cue.
-  P.addGunExtra(box(0.72, 0.48, 0.28), 0, -0.01, 0.38);
-  P.addGunExtra(cylZ(0.20, 0.38, 18, 0.16), 0, 0, 0.68);
-  P.addGunExtraDark(cylZ(0.035, 0.10, 10), 0.28, 0.08, 0.58);
-  P.addGunExtraDark(cylZ(0.035, 0.10, 10), -0.28, 0.08, 0.58);
+  // The K2's gun front (the K2 X measured mantlet, sight hood and collar) on the K2B's trunnion
+  const gunFrontPort = P as ProceduralBuilderPort & Partial<Pick<TankBuilderPort, 'addEquipment'>>;
+  if (!gunFrontPort.addEquipment) throw new Error('K2B gun front requires the builder equipment slots');
+  addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>);
   P.add('turretDetail', cylY(0.11, 0.12, 0.08, 14), 0.56, 0.73, -0.22);
   P.decal('hull', 'number', 'K2B', 0.24, [-1.90, 1.18, -0.42], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);

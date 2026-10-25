@@ -6,7 +6,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { efficientReturnRoller } from '../efficientReturnRoller.ts';
-import { K2_ROAD_WHEELS } from './k2RoadWheels.ts';
+import { K2_ROAD_WHEELS, k2WheelGear } from './k2RoadWheels.ts';
 import type { RunningGearConfig, TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
@@ -396,7 +396,14 @@ function gunPrism(x0: number, x1: number, outline: readonly (readonly [number,nu
   return sectionSolid([{z:x0,ring},{z:x1,ring}]).rotateY(Math.PI/2);
 }
 
-function addGunMantlet(P: TankBuilderPort): void {
+/** The builder calls the K2's gun front makes (the K2B's prototype front draws it too: korea.ts). */
+type GunFrontPort = Pick<TankBuilderPort, 'add' | 'addEquipment'>;
+
+/** The K2's measured gun front on any K2 trunnion (gun-relative): the raked mantlet, the gunner's sight hood and the
+ * collar. The K2B's prototype front (korea.ts) seats the same stock in its well. */
+export function addK2GunFront(P: GunFrontPort): void { addGunMantlet(P); }
+
+function addGunMantlet(P: GunFrontPort): void {
   // The source face retreats at its top and bottom; the old full-height box
   // protruded 0.28 m above the real forward face at canonical Z2.36.
   P.add('gunMount',gunPrism(-.3162,.4319,[
@@ -412,7 +419,7 @@ function addGunMantlet(P: TankBuilderPort): void {
   P.addEquipment('gunMountDark',cylZ(.188,.026,28),0,.01045,2.184-GUN_Z);
 }
 
-function addGunHood(P: TankBuilderPort): void {
+function addGunHood(P: GunFrontPort): void {
   // Two differently sloped cover sheets with real side reveals, thin skins
   // and a positive-X optical opening. No box fills the space under the lid.
   P.addEquipment('gunMount',gunPrism(-.2898,.4028,[
@@ -433,7 +440,7 @@ function addGunHood(P: TankBuilderPort): void {
   addGunOptic(P);
 }
 
-function addGunOptic(P: TankBuilderPort): void {
+function addGunOptic(P: GunFrontPort): void {
   // Four enclosing rails and recessed glazing; a solid dark cuboid would
   // occlude the window and erase the actual cavity under the hood.
   for(const x of[.07925,.34335]) {
@@ -498,6 +505,8 @@ export function buildK2X(P: TankBuilderPort): void {
   returnStock.spindle.dispose();
   const gearConfig: RunningGearConfig = {
     style: 'rubber', ...K2_ROAD_WHEELS, wheelY: .405 + GROUND,
+    // 2026-10-25: the source twin wheel itself (k2RoadWheels.ts), not the generic flanged disc
+    ...k2WheelGear(!!P.q, P.mats.wheels),
     wheelZs: K2_X_DATUMS.wheelStations.map(z => z - CENTER_Z),
     xc: 1.407, trackW: .619, trackTh: .066,
     rollers: [-1.77835,.013,1.8319].map(z=>({z,y:1.005725,r:.095175})),
@@ -536,7 +545,7 @@ export function buildK2X(P: TankBuilderPort): void {
   P.add('turret', cylY(1.12, .085, 48), 0, .030, 0);
   armorModules(P);
   roofFurniture(P);
-  addGunMantlet(P);
+  addK2GunFront(P);
   buildMeasuredGun(P);
   P.muzzleZ = K2_X_DATUMS.muzzleZ - GUN_Z;
   P.topY = 3.05 - YAW_Y;
