@@ -63,25 +63,6 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
   box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
-/* ---- stat chips: a value with its kind (a round and its penetration), or a fitting's glyph named by its tip ---- */
-.cot-c-statchip{box-sizing:border-box;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:var(--chip-radius);
-  background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);white-space:nowrap}
-.cot-c-statchip svg{width:14px;height:14px;color:var(--ink-3)}
-.cot-c-statchip__label{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
-.cot-c-statchip b{font-weight:600}
-.cot-c-statchip small{font-size:inherit;margin-left:-2px;color:var(--ink-3)}
-.cot-c-statchip--glyph{width:24px;padding:0;justify-content:center}
-/* ---- stat tiles (one figure with its name) and empty states (one line, one way forward) ---- */
-.cot-c-tile{display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:var(--s3);border-radius:var(--control-radius);
-  background:var(--surface-page);box-shadow:var(--ring-1);overflow-wrap:anywhere}
-.cot-c-tile__label{display:flex;align-items:center;gap:6px;color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body)}
-.cot-c-tile__label svg{flex:none;width:16px;height:16px;color:var(--text-accent)}
-.cot-c-tile__value{display:flex;align-items:center;min-height:24px;color:var(--ink-1);font:600 var(--fs-20)/1.2 var(--font-display)}
-.cot-c-tile__note{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
-.cot-c-empty{display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:var(--s6) var(--s4);border-radius:var(--control-radius);
-  box-shadow:var(--ring-1);text-align:center;color:var(--ink-3);font:400 var(--fs-14)/1.5 var(--font-body)}
-.cot-c-empty p{margin:0;max-width:44ch}
-.cot-c-empty svg{width:24px;height:24px;color:var(--ink-4)}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}
 .cot-c-tag--warn{color:var(--text-warn);box-shadow:var(--ring-warn)}

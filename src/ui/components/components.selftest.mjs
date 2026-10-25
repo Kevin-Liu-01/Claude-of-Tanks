@@ -149,22 +149,32 @@ assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 /* 3. styles -------------------------------------------------------------------------------------------------- */
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
 // stays out of the boot script.
-const sheet = readFileSync(new URL('./components.css', import.meta.url), 'utf8');
-assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
-  'the kit declares into the components layer, below every surface');
-assert.match(readFileSync(new URL('../../main.ts', import.meta.url), 'utf8'), /import '\.\/ui\/components\/components\.css';/,
-  'the game imports the sheet');
-assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
-  'no second copy of the sheet in the script');
-const css = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
-assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, 'no colour literal: tokens only');
-assert.doesNotMatch(css, /z-index:\s*\d|!important/, 'no z-index or !important');
-assert.doesNotMatch(css, /letter-spacing:\s*-?\.?\d/, 'tracking reads the tracking tokens');
-assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, 'type sizes read the type scale');
-assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, 'durations read the motion tokens');
-for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
-  if (name === 'h' || name === 'sil') continue;
-  assert.match(readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8'), new RegExp(`--${name}:`), `--${name} is a design token`);
+// The kit's two sheets: components.css (every page that uses the kit) and figures.css (the stat chips, stat tiles and
+// empty states the data surfaces draw), each tokens-only in the components layer.
+const tokensCss = readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8');
+for (const file of ['./components.css', './figures.css']) {
+  const sheet = readFileSync(new URL(file, import.meta.url), 'utf8');
+  assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
+    `${file} declares into the components layer, below every surface`);
+  const css = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, `${file}: no colour literal: tokens only`);
+  assert.doesNotMatch(css, /z-index:\s*\d|!important/, `${file}: no z-index or !important`);
+  assert.doesNotMatch(css, /letter-spacing:\s*-?\.?\d/, `${file}: tracking reads the tracking tokens`);
+  assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, `${file}: type sizes read the type scale`);
+  assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, `${file}: durations read the motion tokens`);
+  for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
+    if (name === 'h' || name === 'sil') continue;
+    assert.match(tokensCss, new RegExp(`--${name}:`), `${file}: --${name} is a design token`);
+  }
 }
+const mainSource = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
+assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';/, 'the game imports both sheets');
+assert.match(readFileSync(new URL('../../gallery/gallery.css', import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/figures\.css'\);/,
+  'the Gallery imports the figures it draws');
+for (const page of ['../../docs/docs.css', '../../presentation/home.css', '../../presentation/notFound.css']) {
+  assert.doesNotMatch(readFileSync(new URL(page, import.meta.url), 'utf8'), /figures\.css/, `${page} draws no figure and loads none`);
+}
+assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
+  'no second copy of the sheets in the script');
 
-console.log('components: markup, ARIA and escaping for every factory; roving focus; one tokens-only sheet in the components layer');
+console.log('components: markup, ARIA and escaping for every factory; roving focus; two tokens-only sheets in the components layer');
