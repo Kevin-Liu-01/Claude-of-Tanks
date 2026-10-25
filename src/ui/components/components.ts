@@ -216,22 +216,43 @@ export function wireRoving(host: HTMLElement, onSelect: (value: string, item: HT
     if (item && host.contains(item) && !item.hasAttribute('disabled')) select(item, false);
   };
   const onKey = (event: KeyboardEvent): void => {
-    const list = items();
-    const at = list.indexOf(document.activeElement as HTMLElement);
-    if (at < 0) return;
-    const vertical = host.getAttribute('aria-orientation') === 'vertical';
-    const step = (vertical ? { ArrowUp: -1, ArrowDown: 1 } : { ArrowLeft: -1, ArrowRight: 1 }) as Readonly<Record<string, number>>;
-    let to = -1;
-    if (event.key === 'Home') to = 0;
-    else if (event.key === 'End') to = list.length - 1;
-    else if (step[event.key]) to = (at + step[event.key] + list.length) % list.length;
-    if (to < 0) return;
+    const to = rovingTarget(host, items(), event);
+    if (!to) return;
     event.preventDefault();
-    select(list[to], true);
+    select(to, true);
   };
   host.addEventListener('click', onClick);
   host.addEventListener('keydown', onKey);
   return () => { host.removeEventListener('click', onClick); host.removeEventListener('keydown', onKey); };
+}
+
+/** The item an arrow, Home or End moves to from the focused one (null for any other key). */
+function rovingTarget(host: HTMLElement, list: readonly HTMLElement[], event: KeyboardEvent): HTMLElement | null {
+  const at = list.indexOf(document.activeElement as HTMLElement);
+  if (at < 0) return null;
+  const vertical = host.getAttribute('aria-orientation') === 'vertical';
+  const step = (vertical ? { ArrowUp: -1, ArrowDown: 1 } : { ArrowLeft: -1, ArrowRight: 1 }) as Readonly<Record<string, number>>;
+  if (event.key === 'Home') return list[0] ?? null;
+  if (event.key === 'End') return list.at(-1) ?? null;
+  return step[event.key] ? list[(at + step[event.key] + list.length) % list.length] : null;
+}
+
+/**
+ * Arrow keys for a radio group or tab list whose items already handle their own clicks (a surface that built them
+ * itself): arrows (and Home / End) move focus to the next item and press it, so the item's click does the selection.
+ * The arrows stay inside the group. Returns a function that removes the listener.
+ */
+export function wireRovingKeys(host: HTMLElement): () => void {
+  const onKey = (event: KeyboardEvent): void => {
+    const to = rovingTarget(host, [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled')), event);
+    if (!to) return;
+    event.preventDefault();
+    event.stopPropagation();
+    to.focus();
+    to.click();
+  };
+  host.addEventListener('keydown', onKey);
+  return () => host.removeEventListener('keydown', onKey);
 }
 
 interface ToggleOptions {

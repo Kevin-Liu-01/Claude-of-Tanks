@@ -18,7 +18,8 @@ registerHooks({
 });
 
 const {
-  button, chip, esc, keycap, scale20, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
+  button, chip, emptyState, esc, keycap, scale20, scaleCells, segmented, statChip, statRow, statTile, tabs, tag, toggle, vehicle, wireRoving,
+  wireRovingKeys,
 } = await import('./components.ts');
 
 /* 1. markup -------------------------------------------------------------------------------------------------- */
@@ -62,6 +63,19 @@ assert.match(bar, /^<span class="cot-c-scale" aria-hidden="true"><i class="f"><\
 assert.match(scale20(5, 3), /<i class="f r"><\/i>/, 'a rival tick inside the lit run');
 const row = statRow({ label: 'Reload', value: '5.7', unit: 's', icon: 'reload', cells: 14, rivalCells: 13, delta: '−0.3', better: true });
 assert.match(row, /<b class="num">5\.7<\/b><small>s<\/small><em class="cot-c-stat__delta is-better">−0\.3<\/em>/, 'raw value, unit and worded delta');
+// stat chips, stat tiles and empty states (250): escaped text, sprite glyphs, the tip as data-tip
+const round = statChip({ icon: 'shellApfsds', label: 'APFSDS', value: '855', unit: 'mm', tip: 'M829A4 <sabot>' });
+assert.match(round, /^<span class="cot-c-statchip" data-tip="M829A4 &lt;sabot&gt;"><svg [^>]*><use href="#i-shellApfsds(?:-s)?"\/><\/svg>/);
+assert.match(round, /<span class="cot-c-statchip__label">APFSDS<\/span><b class="num">855<\/b><small>mm<\/small><\/span>$/);
+const fitting = statChip({ icon: 'eqRammer', tip: 'Rammer' });
+assert.match(fitting, /^<span class="cot-c-statchip cot-c-statchip--glyph" data-tip="Rammer" role="img" aria-label="Rammer">/, 'a glyph-only chip is named');
+const tile = statTile({ label: 'Battles', value: '12', icon: 'battleRecord', note: '3 / 4', className: 'host-hook' });
+assert.match(tile, /^<div class="cot-c-tile host-hook"><span class="cot-c-tile__label"><svg [^>]*><use href="#i-battleRecord(?:-s)?"\/><\/svg>Battles<\/span>/);
+assert.match(tile, /<strong class="cot-c-tile__value">12<\/strong><small class="cot-c-tile__note">3 \/ 4<\/small><\/div>$/);
+assert.match(statTile({ label: 'Survived', valueIcon: 'shield' }), /<strong class="cot-c-tile__value"><svg [^>]*><use href="#i-shield"\/>/, 'a status glyph in the figure');
+const empty = emptyState({ text: 'No <match>', icon: 'search', action: { label: 'Clear', attrs: { 'data-clear-filters': true } } });
+assert.match(empty, /<p>No &lt;match&gt;<\/p><button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press" data-clear-filters>Clear<\/button><\/div>$/);
+assert.doesNotMatch(button({ label: 'Close', iconOnly: true, icon: 'close' }), /title=/, 'icon-only controls name themselves for the hover tip, not the browser');
 const veh = vehicle({ id: 'challenger3', nation: 'uk', name: 'Challenger 3' });
 assert.match(veh, /<img class="cot-c-flag cot-c-flag--sm"[^>]*alt="" aria-hidden="true"/, 'the flag is decorative beside the name');
 assert.match(veh, /--sil:url\(\/icons\/challenger3_side_silhouette\.png\)/, 'the silhouette is the tank\'s own');
@@ -114,6 +128,23 @@ wireRoving(radios.host, () => {});
 radios.items[0].focus();
 radios.listeners.keydown({ key: 'ArrowRight', preventDefault() {} });
 assert.equal(radios.items[1].getAttribute('aria-checked'), 'true', 'a radio group checks what it moves to');
+// wireRovingKeys: a group whose items handle their own clicks (the Studio's segmented controls) gets the arrows only
+const own = stubList(['p', 'q', 'r'], 'radio');
+const pressed = [];
+for (const item of own.items) item.click = () => pressed.push(item.dataset.value);
+const unkey = wireRovingKeys(own.host);
+assert.deepEqual(Object.keys(own.listeners), ['keydown'], 'keys only: the items keep their own click handlers');
+own.items[0].focus();
+let stopped = false;
+own.listeners.keydown({ key: 'ArrowRight', preventDefault() {}, stopPropagation() { stopped = true; } });
+assert.equal(document.activeElement, own.items[1], 'the arrow moves focus');
+assert.deepEqual(pressed, ['q'], 'and presses the item, whose click selects it');
+assert.ok(stopped, 'the arrows stay inside the group');
+own.listeners.keydown({ key: 'End', preventDefault() {}, stopPropagation() {} });
+own.listeners.keydown({ key: 'Tab', preventDefault() { throw new Error('Tab is not the group\'s'); }, stopPropagation() {} });
+assert.deepEqual(pressed, ['q', 'r'], 'End presses the last; other keys pass');
+unkey();
+assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 
 /* 3. styles -------------------------------------------------------------------------------------------------- */
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
