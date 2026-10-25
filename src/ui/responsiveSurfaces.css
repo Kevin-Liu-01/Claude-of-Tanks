@@ -225,13 +225,14 @@ body[data-cot-width='compact'] .cot-play .room-failure-actions,
 body[data-cot-width='phone'] .cot-play .room-failure-actions{display:grid;grid-template-columns:1fr}
 body[data-cot-width='compact'] .cot-play .player,
 body[data-cot-width='phone'] .cot-play .player{
-  display:flex;flex-wrap:wrap;align-items:baseline;min-height:0;gap:0 8px;padding-block:var(--s3);
+  display:flex;flex-wrap:wrap;align-items:baseline;min-height:0;gap:0 8px;padding-block:var(--s2);
 }
+/* both lines are a fixed 22 px (room for the 20 px HOST tag), so a host's, a player's and a spectator's rows are one height */
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player>*{min-height:22px;line-height:22px}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .name{order:1;flex:1 1 0}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player :is(.ready,.wait){order:2}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player::after{content:'';order:3;flex-basis:100%}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .vehicle{order:4;flex:1 1 0;margin-top:4px;
-  min-height:calc(1.3 * max(var(--fs-floor-12),var(--fs-13)))}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .vehicle{order:4;flex:1 1 0;margin-top:4px}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .team{order:5;margin-top:4px}
 body[data-cot-width='compact'] .cot-play .player .vehicle,
 body[data-cot-width='phone'] .cot-play .player .vehicle{grid-column:1;grid-row:2}
