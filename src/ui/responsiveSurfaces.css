@@ -29,7 +29,7 @@ body[data-cot-width='tablet'] .cot-top{max-width:calc(100vw - 120px);padding:var
 /* (a tablet's rosters hold a 13-character callsign: at 160 px they cut it to 11, gauntlet r2) */
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{width:180px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:var(--battle-fs-11)}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .ic{width:25px;height:13px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{--ear-ic-w:25px}body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .ic{height:13px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .nick{font-size:var(--battle-fs-11)}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .veh{font-size:var(--battle-fs-11)}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-killfeed{
@@ -339,6 +339,10 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{height:26px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
 body[data-cot-height='short'] .cot-bl .row .tier{flex-basis:20px;font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .row .sil{flex-basis:38px;max-height:14px}
+/* (a long side's 15 px rows: the name and the flag alone, the side render a smudge at 14 px, gauntlet r5) */
+body[data-cot-height='short'] .cot-bl .team.long .row .sil{display:none}
+body[data-cot-height='short'] .cot-bl .team.long .row .fl[data-nation]{width:12px;height:9px}
+body[data-cot-height='short'] .cot-bl .team.long .row{gap:var(--s2)}
 body[data-cot-height='short'] .cot-bl .row .nm{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .foot{padding-top:5px}
 body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}

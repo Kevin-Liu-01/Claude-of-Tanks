@@ -303,6 +303,7 @@ export const TOKENS = {
   'battle-edge-own': '0 0 0 1px oklch(from #f0a030 l c h / .5),0 6px 18px rgba(0,0,0,.35)',
   'battle-veil': 'rgba(5,6,8,.6)',
   'battle-nv': '#b4ee8c',
+  'battle-pen': '#7ee87e',
   'battle-ring-ammo': 'inset 0 0 0 1px oklch(from #c4573f l c h / .6)',
   'battle-text-halo': '0 1px 2px oklch(from #050608 l c h / .9),0 0 3px oklch(from #050608 l c h / .65)',
   'battle-mark-ring': '0 0 0 2px oklch(from #050608 l c h / .55)',

@@ -51,7 +51,8 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .fl .cot-flag{display:block;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-ribbon .sil{flex:none;width:40px;height:13px;color:var(--team-enemy);transform:scaleX(-1);filter:var(--sil-shadow)}
 .cot-ribbon .sil[hidden]{display:none}
-.cot-ribbon .cot-c-chip{flex:none;height:26px;padding:0 9px;font-size:var(--battle-fs-12)}
+/* (the cause in the banner's capitals, as its word and the streak's: a title-case "Fire" beside them, gauntlet r5) */
+.cot-ribbon .cot-c-chip{flex:none;height:26px;padding:0 var(--s2);font-size:var(--battle-fs-12);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-ribbon .cot-c-chip[data-cause='ammorack']{color:var(--sys-ammo);box-shadow:var(--battle-ring-ammo)}
 .cot-ribbon .cot-c-chip[data-cause='fire']{color:var(--danger);box-shadow:var(--ring-danger)}
 .cot-ribbon .x{flex:none;margin-left:auto;align-self:stretch;min-width:58px;padding:0 14px;display:flex;flex-direction:column;
@@ -59,8 +60,9 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .x small{font:600 var(--battle-fs-11)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-ribbon .x[hidden]{display:none}
 /* (a ribbon in a narrow gap keeps the callsign: the cause chip and the streak's word give way, battleHudLayout.ts
-   RIBBON_TIGHT; at 1024x600 the callsign read "Command…" beside them, gauntlet r4) */
-.cot-ribbon.tight .cause,.cot-ribbon.tight .x small{display:none}
+   RIBBON_TIGHT; at 1024x600 the callsign read "Command…" beside them, gauntlet r4; the silhouette too, the flag naming
+   the side: at 900x700 it read "Commander…", r5) */
+.cot-ribbon.tight .cause,.cot-ribbon.tight .x small,.cot-ribbon.tight .sil{display:none}
 .cot-ribbon.tight .x{min-width:44px;padding:0 10px}
 .cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}

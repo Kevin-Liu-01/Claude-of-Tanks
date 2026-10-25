@@ -94,7 +94,9 @@ body.cot-touch-layout .cot-watch-rail{display:flex}
 html:not([data-watch=drone]) .cot-watch-rail{display:none}
 .cot-watch-rail .wb{position:relative;display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:var(--r1);
  background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-2);pointer-events:auto;touch-action:none}
-.cot-watch-rail .wb.on,.cot-watch .wb.lock.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
+/* (on: the selected slot's look, the accent's ring on its wash, gauntlet r5: a ring alone was a fourth selected state) */
+.cot-watch-rail .wb.on,.cot-watch .wb.lock.on{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);
+ box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
 html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none}
 html[data-watch=ride] body .cot-touch .joy{display:none}
@@ -141,7 +143,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
     + `<button type="button" class="wb next" data-tip data-ui-sound="tick" aria-label="${t('watch.next')}">${icon('chevronRight', { size: 20 })}${keycap('E')}</button>`
     + `<button type="button" class="wb drone" data-tip data-ui-sound="back" aria-label="${t('watch.drone')}">${icon('modeDrone', { size: 20 })}${keycap('V')}</button>`
     + `<button type="button" class="wb lock" data-tip data-ui-sound="tick" aria-pressed="false" aria-label="${t('watch.lock')}">${icon('autoAim', { size: 20 })}${keycap('T')}</button>`
-    + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('Enter')}</button>`;
+    + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('ENTER')}</button>`;
   const rail = document.createElement('div');
   rail.className = 'cot-watch-rail';
   rail.innerHTML =

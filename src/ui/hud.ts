@@ -842,6 +842,7 @@ const FONT_SCOPE_TYPE = `700 11px ${FONT_COND}`;
 const FONT_RANGE_TAG = `600 11.5px ${FONT_COND}`;
 // (the mouse layout's chip at 13 px, a step under the centre notices' 15 and over their 11 px touch type, battleHudLayout.css)
 const FONT_AIM_WARNING = `700 13px ${FONT_COND}`;
+const AIM_WARNING_TRACK_PX = 13 * 0.08;
 const FONT_RACK_OVERFLOW = `700 11px ${FONT_COND}`;
 /** A lane marker's letter is part of its 11 px minimap glyph (drawLaneGlyph), sized with the glyph like the hex badges'
  *  letters, not reading text (the 11 px type floor is for labels a player reads). */
@@ -1512,6 +1513,8 @@ const HUD_CSS = `
 .cot-top .fg{color:var(--hud-own);text-align:right;}
 /* (the Horde's wave is no side's score: in the ink, the hostiles left beside it in the enemy's, gauntlet r4) */
 .cot-top .fg.wave{color:var(--ink-1);}
+/* (and no side's gauge beside it: a team-blue dash by the wave number measured nothing, gauntlet r5) */
+.cot-top .sc.ally:has(>.fg.wave) .bar{display:none;}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
    transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
@@ -1639,7 +1642,7 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
    row metrics identical. */
 .cot-ear.r .cot-er{padding:3px var(--s2) var(--s1) 10px;
   border-right:2px solid var(--hud-enemy);flex-direction:row-reverse;}
-.cot-er .ic{width:29px;height:14px;flex:0 0 auto;display:block;
+.cot-er .ic{width:var(--ear-ic-w,29px);height:14px;flex:0 0 auto;display:block;
   filter:drop-shadow(0 1px 1px oklch(from var(--surface-scene) l c h / .78));}
 /* Generated side silhouettes face right. Mirror only the enemy ear so both
    rosters point inward toward the battlefield instead of toward the bezel. */
@@ -1696,7 +1699,7 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 .cot-ear.dense .hd{padding:3px var(--s2);}
 .cot-ear.dense .cot-er{padding:1px var(--s2) 2px 6px;font-size:var(--battle-fs-11);}
 .cot-ear.dense.r .cot-er{padding:1px 6px 2px var(--s2);}
-.cot-ear.dense .cot-er .ic{width:22px;height:11px;}
+.cot-ear.dense{--ear-ic-w:22px}.cot-ear.dense .cot-er .ic{height:11px;}
 .cot-ear.dense .cot-er .n .nick{font-size:var(--battle-fs-11);}
 .cot-ear.dense .cot-er .n .veh{font-size:var(--battle-fs-11);}
 .cot-er.dead .n .nick,.cot-er.dead .n .veh .vn{
@@ -1787,7 +1790,7 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
 /* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
    beside the media queries that size it) keeps the glyph */
 .cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
-.cot-aim-warning .g{display:flex;flex:none;color:var(--notice-tone)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
+.cot-aim-warning .g{display:flex;flex:none;color:var(--notice-tone)}.cot-aim-warning .g svg{display:block;width:16px;height:16px}
 /* a compact alert keeps its words, two 11 px lines in the touch planner's compact width (battleHudLayout.css
    alert-compact: gauntlet r3 found a notice reduced to its glyph in a square); a mouse window that seats its alert in the
    9 px type's reserves (mouseNoticePlan.ts ALERT_RESERVE_9) is its glyph beside that media query in battleHudLayout.css */
@@ -1810,15 +1813,15 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   font-size:var(--battle-fs-11);font-weight:700;letter-spacing:var(--battle-track-status);color:var(--accent);margin:0;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
-.cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
-  display:flex;align-items:center;justify-content:center;gap:var(--s3);padding:0 var(--s4) 0 var(--s3);
-  transform:translate(-50%,7px);font-family:var(--hud-font);font-size:var(--battle-fs-15);font-weight:700;
+.cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:28px;
+  display:flex;align-items:center;justify-content:center;gap:var(--s2);padding:var(--s1) var(--s3);box-sizing:border-box;
+  transform:translate(-50%,7px);font-family:var(--hud-font);font-size:var(--battle-fs-13);font-weight:700;
   letter-spacing:var(--track-label-s);text-align:center;text-transform:uppercase;color:var(--ink-1);white-space:nowrap;
   text-shadow:0 1px 3px oklch(from var(--surface-scene) l c h / .9);opacity:0;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);}
-.cot-alert-icon{width:19px;height:19px;display:grid;place-items:center;flex:0 0 auto;color:var(--notice-tone);}
-.cot-alert-icon svg{display:block;width:19px;height:19px;}
+.cot-alert-icon{width:16px;height:16px;display:grid;place-items:center;flex:0 0 auto;color:var(--notice-tone);}
+.cot-alert-icon svg{display:block;width:16px;height:16px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-alert-bound{white-space:nowrap;}
 .cot-alert-count{flex:none;color:var(--ink-3);font:600 var(--battle-fs-12)/1 var(--font-data);letter-spacing:0;}
@@ -1938,6 +1941,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   transition:border-color var(--dur-instant),background var(--dur-instant),transform var(--dur-instant) ease-out;}
 .cot-shell:active{transform:scale(.97);}
 .cot-shell.sel .ty{color:var(--accent);}
+.cot-shell .tchev{display:none;}
 .cot-shell.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);
   box-shadow:var(--ring-accent),var(--hud-plate-ring);}
@@ -2112,18 +2116,20 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 /* Detection is one compact instrument, revealed after the authoritative
    sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
    bulb, keeping motion quiet while the state remains active. */
+/* (the centre notices' one plate, the alert's and the gun chip's: 28 px, the 13 px label, a 16 px glyph, each as wide as
+   its words; DETECTED stood 32 px over a 38 px alert and a 24 px chip in three type styles, gauntlet r5) */
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
-  width:min(248px,calc(100vw - 28px));min-height:32px;transform:translate(-50%,-6px);
-  display:grid;grid-template-columns:24px auto;justify-content:center;gap:10px;align-items:center;
-  padding:var(--s1) 22px;box-sizing:border-box;color:var(--ink-1);
+  width:max-content;max-width:min(248px,calc(100vw - 28px));min-height:28px;transform:translate(-50%,-6px);
+  display:grid;grid-template-columns:16px auto;justify-content:center;gap:var(--s2);align-items:center;
+  padding:var(--s1) var(--s3);box-sizing:border-box;color:var(--ink-1);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
 .cot-sixth.on{opacity:1;transform:translate(-50%,0);
   animation:cotDetectedIn var(--cot-motion-slow) var(--cot-ease-out) 1;}
 .cot-sixth .sig{display:grid;place-items:center;color:var(--notice-tone);}
-.cot-sixth .sig svg{width:24px;height:24px;display:block;}
+.cot-sixth .sig svg{width:16px;height:16px;display:block;}
 .cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
-.cot-sixth .lb{font:700 var(--battle-fs-15)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1);}
+.cot-sixth .lb{font:700 var(--battle-fs-13)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1);}
 /* the lamp and its label read alone (owner 2026-10-22: no secondary labels); the line stays for a screen reader */
 .cot-sixth .sub{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* The battle's notices on the kit's notice grammar (components/notice.ts; owner 2026-10-25: "make notifications a lot
@@ -2940,7 +2946,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const s = el('button', 'cot-shell', shellBox) as ShellSlotButton;
     s.type = 'button';
     s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
-      `<div class="clr"></div>` +
+      `<div class="clr"></div><span class="tchev" aria-hidden="true">${uiIconSVG('chevronLeft', 14)}</span>` +
       `<div class="tip"><div class="tnm"></div>${t('hud.shell.pen')} <b class="p"></b> &nbsp;&middot;&nbsp; ${t('hud.shell.dmg')} <b class="d"></b></div>` +
       `<div class="cool"></div>`;
     s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
@@ -3487,7 +3493,12 @@ export function initHud(bus: EventBus): HudRuntime {
     const vehicle = vehicleName(tank);
     // the silhouette takes its ear's team ink from the sheet (.cot-ear.l / .r .cot-er .ic)
     if (aircraft) iconEl.innerHTML = uiIconSVG(aircraft.icon, 24, 'currentColor');
-    else maskIcon(iconEl, spec.id, 'side_silhouette', 'currentColor');
+    else {
+      maskIcon(iconEl, spec.id, 'side_silhouette', 'currentColor');
+      // (each silhouette ends at its box's inner edge, by the name, whatever its length: centred, a long hull started 5 px
+      // further out than the short ones under it, gauntlet r5; the enemy ear's mirror turns the inner edge to its left)
+      iconEl.style.maskPosition = iconEl.style.webkitMaskPosition = 'right center';
+    }
     const me = !!tank.isPlayer || tank.id === riddenId();
     if (me) rootEl.classList.add('me');
     requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
@@ -5339,7 +5350,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (touch) draw.warningW = w < 375 && h >= w ? TOUCH_WARNING_NARROW_W : TOUCH_WARNING_W;
     else {
       ctx.font = FONT_AIM_WARNING;
-      draw.warningW = ctx.measureText(warning.text).width + 62;
+      // (the label's tracking too, the centre notices' .08em: battleHudLayout.css .cot-aim-warning)
+      draw.warningW = Math.ceil(ctx.measureText(warning.text).width + warning.text.length * AIM_WARNING_TRACK_PX) + 62;
     }
     draw.warningX = draw.cx;
     const marks = Math.max(draw.magazineBottomY ? draw.magazineBottomY + (draw.dry ? 3 : 2) + 3 + AIM_WARNING_CHIP_ABOVE : 0,

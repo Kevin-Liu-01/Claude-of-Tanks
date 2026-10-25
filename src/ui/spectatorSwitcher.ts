@@ -64,7 +64,7 @@ export function spectatorSwitcherMarkup(): string {
  */
 export const spectatorSwitcherStyles = `
 .cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,12px);
- display:none;grid-template-columns:minmax(0,1fr) 144px 88px;align-items:stretch;gap:var(--s2);
+ display:none;grid-template-columns:minmax(0,1fr) auto 88px;align-items:stretch;gap:var(--s2);
  width:min(620px,calc(100vw - 32px));min-width:0;padding:0;border:0;background:none;box-shadow:none;
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
@@ -83,15 +83,17 @@ export const spectatorSwitcherStyles = `
 .cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}
 /* (the cycle and garage buttons stand as tall as the plate beside them: 48 px keys under a 64 px plate read as two kits,
    gauntlet r3) */
-.cot-spec .switch{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
+.cot-spec .switch{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
 .cot-spec .idx{align-self:center;font:500 var(--battle-fs-12)/1.5 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap;text-shadow:var(--battle-text-halo)}
 .cot-spec :is(.cycle,.gar){position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;margin:0;
  padding:var(--s1) var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);color:var(--ink-1);
  font:inherit;cursor:pointer;pointer-events:auto;transition:box-shadow var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
-.cot-spec .cycle{flex-direction:column;gap:var(--s1)}
+/* (the chevron and its key cap side by side, the Watch bar's cycle pair's form and its 20 px cap: stacked under the
+   chevron here and beside it there read as two kits, gauntlet r5) */
+.cot-spec .cycle{flex-direction:row;gap:var(--s2);min-width:44px;padding-inline:var(--s3)}
 .cot-spec .cycle-icon{display:flex;color:var(--accent-hi)}.cot-spec .cycle-icon svg{width:14px;height:14px;display:block}
-.cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:16px;padding:0 var(--s1);border:0;
- border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-11)/1 var(--font-data)}
+.cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border:0;
+ border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-fig-11)/1 var(--font-data)}
 .cot-spec .gar{flex-direction:column;gap:var(--s1);color:var(--accent-hi);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
  letter-spacing:var(--track-label-s);box-shadow:var(--ring-accent)}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:20px;height:20px}
@@ -102,14 +104,14 @@ export const spectatorSwitcherStyles = `
 @keyframes cotSpecSw{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
 @media(max-width:900px){
- .cot-spec{grid-template-columns:minmax(0,1fr) 144px 64px;gap:8px}
+ .cot-spec{grid-template-columns:minmax(0,1fr) auto 64px;gap:8px}
  .cot-spec .subject{grid-template-columns:48px minmax(0,1fr);gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}
  .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:var(--battle-fs-15)}
  .cot-spec .gar{letter-spacing:0}
 }
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
 body.cot-touch-layout .cot-spec .cursor-hint{display:none}
-@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) 144px 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
+@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) auto 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
  .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
  /* (the cycle group fills its column from the plate's edge: centred in it, it stood on nothing, gauntlet r3) */

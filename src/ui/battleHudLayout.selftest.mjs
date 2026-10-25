@@ -501,9 +501,12 @@ try {
     }, 366);
     const centre = 844 / 2;
     assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
-    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [12, 366], '390x844: whole, where it was across');
+    // (on the window's centre line by its rendered width, 364 px: gauntlet r5 found it pressed to the right edge)
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [13, 366], '390x844: whole, on the centre line');
     // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
-    assert.equal(phone.px('kill-left-top'), 211, 'the left lane starts under the map');
+    // (under the map on the right lane's 29 px row pitch, 163 + 2 x 29: the lanes' rows interleaved 10-14 px apart,
+    // gauntlet r5)
+    assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
     assert.equal(phone.px('kill-right-height'), 5 * 29 - 3, '390x844: the right kill lane stops above the moved row');
@@ -519,8 +522,9 @@ try {
     assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
     assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
       'tall: level with the tray, the row sits left of it, whole within the space');
-    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408
-    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 408], 'tall: under the map and the chrome');
+    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408, the
+    // right lane's moved 3 px down onto the left's row (one pitch: their rows sat 3 px apart, gauntlet r5)
+    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
     assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
   } finally {

@@ -43,6 +43,9 @@ installResponsiveLayout();
 const bus = createBus();
 const input = createInput();
 const hud = initHud(bus);
+// (a gentle field under the battle, as a battle's map hands the HUD one: the minimap draws its relief and the drone reads
+// its altitude off it; without one the altitude read a dash, gauntlet r5)
+hud.buildMinimap({size:1024, minY:0, maxY:24, getHeightAt:(x,z)=>8+6*Math.sin(x/140)*Math.cos(z/170), getGroundType:()=>'grass'});
 installMedalToasts(bus);
 createEndOverlayRuntime({bus,onReturnToGarage:()=>hud.setMode('hidden')});
 // ?masks: the damage panel's plan. Its top-down masks need a renderer (main.ts hands the game's over at boot); review
