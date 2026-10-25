@@ -299,8 +299,8 @@ function boot(): void {
         createPeerConnection,
         ...(canHost ? { createHostPort: createBrowserHostPort } : {}),
         manifestBase: COLLISION_MANIFEST_ROUTE,
-        // ?simKernels=wasm (workstream #3): a host builds its world on the WebAssembly kernels, as the game's flag does
-        ...(param('simKernels', '') === 'wasm' ? { simKernelsUrl: SIM_KERNELS_URL } : {}),
+        // the world kernels as the game has them (on unless ?simKernels=ts): a host builds its world on them
+        simKernelsUrl: SIM_KERNELS_URL,
         tier: 'desktop',
         countdownS,
         ...(snapshotHzParam > 0 ? { snapshotHz: snapshotHzParam } : {}),

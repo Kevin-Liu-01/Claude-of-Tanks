@@ -2,7 +2,7 @@
 
 The authority can answer its world queries on a WebAssembly build of `crates/cot-sim`. The kernels change no bit of
 the simulation: a match on them keeps every state digest of the same match on the TypeScript, so hosts and servers may
-mix them. They are off by default.
+mix them. They are on by default since 2026-10-25 (RUST-ENGINE-DECISION §9.3), with the TypeScript as the fallback.
 
 ## What runs on them
 
@@ -18,13 +18,14 @@ mix them. They are off by default.
 (`createHeadlessCollisionWorld`) gets its own instance: its own lattice, overlay and record table. The module imports one
 function, `env.terrain_height`, the map's height function.
 
-## Turning them on
+## Turning them off
 
-- **Dedicated server:** `COT_SIM_KERNELS=wasm` (`server/match/simKernels.ts`). The server compiles
-  `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once per process, so the deploy image must carry that file.
-- **Browser host and solo battles:** `?simKernels=wasm`. The lazy chunks read the flag and carry the asset URL; nothing
-  loads at boot.
-  - A multiplayer host's Worker fetches and compiles the module. The flag stays with the host: it is never sealed into
+- **Dedicated server:** on unless `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). The server compiles
+  `crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm` once per process, so the deploy image must carry that file; one it lacks,
+  or that does not compile, logs `world kernels did not load` and the server plays on the TypeScript.
+- **Browser host and solo battles:** on unless `?simKernels=ts`. The lazy chunks read the flag and carry the asset URL;
+  nothing loads at boot. A module that does not arrive or compile leaves that host or battle on the TypeScript.
+  - A multiplayer host's Worker fetches and compiles the module. The choice stays with the host: it is never sealed into
     the migration config.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the

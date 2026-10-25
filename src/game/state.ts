@@ -2800,7 +2800,7 @@ function resolveTankImpacts(
 const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
 
 /**
- * The world kernels for solo battles (?simKernels=wasm; world/soloWorldKernels.ts, docs/RUST-KERNELS.md): a world whose
+ * The world kernels for solo battles (on unless ?simKernels=ts; world/soloWorldKernels.ts, docs/RUST-KERNELS.md): a world whose
  * hulls first need their support while they are set rides them for its lifetime — its ground mirrored onto them (the
  * stamps laid so far, then every change) and its hulls' support answered there, the same values as the TypeScript's —
  * and any other world stays on the TypeScript.

@@ -2622,7 +2622,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
-          // the world kernels under ?simKernels=wasm (src/mp/host/browserHostPort.ts, docs/RUST-KERNELS.md)
+          // the world kernels, on unless ?simKernels=ts (src/mp/host/browserHostPort.ts, docs/RUST-KERNELS.md)
           simKernelsUrl: SIM_KERNELS_URL,
           tier: getDeviceTier(),
           // a seat linking without a relay (a fallback, or a grant with no TURN server) leaves one `ice_degraded` note per reason
