@@ -1624,9 +1624,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const gap = parseFloat(cs.columnGap) || 0;
     const room = cardsEl.clientWidth - 2 * (parseFloat(cs.paddingLeft) || 0); // the right pad's base is the left's
     const base = card.offsetWidth;
-    const count = Math.max(1, Math.round((room + gap) / (base + gap)));
-    const width = (room - (count - 1) * gap) / count;
-    if (width > base * 0.8 && width < base * 1.25) {
+    // the whole count either side of the natural fit, whichever keeps the cards nearest their own width
+    const exact = (room + gap) / (base + gap);
+    let width = 0;
+    for (const count of [Math.floor(exact), Math.ceil(exact)]) {
+      if (count < 1) continue;
+      const fit = (room - (count - 1) * gap) / count;
+      if (fit > base * 0.8 && fit < base * 1.3 && (!width || Math.abs(fit - base) < Math.abs(width - base))) width = fit;
+    }
+    if (width) {
       cardsEl.style.setProperty('--card-fit', `${width.toFixed(2)}px`);
       cardsEl.setAttribute('data-fit', '');
     }
@@ -1677,6 +1683,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const queueCarouselAffordances = () => requestAnimationFrame(syncCarouselAffordances);
   cardsEl.addEventListener('scroll', syncCarouselAffordances, { passive: true });
   window.addEventListener('resize', queueCarouselAffordances);
+  // the strip's own width also settles without a window resize (the bar's fonts, the battle card beside it), and the fit
+  // follows it
+  if (typeof ResizeObserver === 'function') new ResizeObserver(queueCarouselAffordances).observe(cardsEl);
   // a resize (a phone turned, a window dragged) re-snaps each rail to its first item; the selected tank and its flag
   // come back into view once it settles
   let resizeRevealTimer = 0;
