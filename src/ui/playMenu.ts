@@ -220,9 +220,11 @@ const CSS = `
 .cot-play .panel::before,.cot-play .panel::after{content:'';position:sticky;z-index:var(--z-lift);flex:0 0 var(--s6);background:var(--play-plate);
   pointer-events:none;opacity:0;animation-timeline:scroll(nearest)}
 .cot-play .panel::before{order:-1;top:calc(-1 * var(--s5));margin-bottom:calc(-1 * var(--s6));mask-image:linear-gradient(var(--surface-scene),transparent);
-  animation-name:cotPlayEdge;animation-direction:reverse;animation-fill-mode:both;animation-timing-function:linear;animation-range:0 var(--s6)}
+  animation-name:cotPlayEdge;animation-direction:reverse;animation-fill-mode:both;animation-timing-function:linear;
+  animation-range:var(--s5) calc(var(--s5) + var(--s6))}
 .cot-play .panel::after{order:99;bottom:calc(-1 * var(--s5));margin-top:calc(-1 * var(--s6));mask-image:linear-gradient(transparent,var(--surface-scene));
-  animation-name:cotPlayEdge;animation-fill-mode:both;animation-timing-function:linear;animation-range:calc(100% - var(--s6)) 100%}
+  animation-name:cotPlayEdge;animation-fill-mode:both;animation-timing-function:linear;
+  animation-range:calc(100% - var(--s5) - var(--s6)) calc(100% - var(--s5))}
 }
 @keyframes cotPlayEdge{from{opacity:1}to{opacity:0}}
 /* the sticky head and foot: what scrolls under them fades into their plate while they stand stuck (scroll-state queries;
@@ -447,10 +449,11 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-art .random-map-count b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-data)}
 .cot-play .battlefield-art .random-map-count span{margin-top:2px;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
   letter-spacing:var(--track-label-s);text-transform:uppercase}
+.cot-play:where(:has(.control-options>.field[hidden])) .battlefield-card{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) minmax(82px,auto);align-items:center;
+.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
