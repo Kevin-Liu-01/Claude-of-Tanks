@@ -3331,7 +3331,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const head = headlineOf(spec, eqM.reload, eqM.turret);
     setHotspotFacts({
       gun: { lead: `${spec.gun.caliberMm} mm`, more: t('garage.hotspot.reload', { value: head.reload.toFixed(1) }) },
-      turret: { lead: `${head.turret.toFixed(0)}°/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
+      turret: { lead: `${head.turret.toFixed(0)} °/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
       engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
       tracks: { lead: `${Math.round(spec.topSpeedKmh)} km/h`, more: `${spec.weightTons.toFixed(0)} t` },
     });

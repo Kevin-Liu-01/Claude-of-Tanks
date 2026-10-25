@@ -116,9 +116,9 @@ function bodyBounds(frame: Object3D, out: Box3, names: readonly string[], skip: 
 
 interface Spot {
   readonly el: HTMLElement; readonly dot: HTMLElement; readonly lead: HTMLElement;
-  readonly value: HTMLElement; readonly more: HTMLElement;
-  /** The plate's measured width; whether it reads leftward from its numeral; last frame's place (-1: none). */
-  width: number; left: boolean; place: number;
+  readonly value: HTMLElement; readonly more: HTMLElement; readonly num: HTMLElement;
+  /** The plate's measured width; whether it reads leftward from its numeral; last frame's place (-1: none); its numeral. */
+  width: number; left: boolean; place: number; shownAs: number;
 }
 
 /** `room` says where plates may stand (read again when the stage resizes or the values change); without it, anywhere.
@@ -139,7 +139,7 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     el.dataset.hotspot = id;
     el.innerHTML = `<span class="n">${index + 1}</span><span class="v">${uiIconSVG(ICONS[id], 16)}<b></b><small class="num"></small></span>`;
     return { el, dot, lead, value: el.querySelector('b') as HTMLElement, more: el.querySelector('small') as HTMLElement,
-      width: PLATE_PX, left: false, place: -1 };
+      num: el.querySelector('.n') as HTMLElement, width: PLATE_PX, left: false, place: -1, shownAs: index + 1 };
   });
   // the hairlines and dots under every plate
   for (const spot of spots) layer.append(spot.lead, spot.dot);
@@ -324,6 +324,8 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
         spot.place = _try[2];
         const left = (spot.place & 1) === 1;
         const x0 = left ? bx - spot.width + BADGE : bx - BADGE;
+        // the plates that show count 1, 2, 3 in order, never with a gap where one found no room
+        if (spot.shownAs !== count + 1) { spot.shownAs = count + 1; spot.num.textContent = String(count + 1); }
         const at = count++ * 4;
         _placed[at] = x0;
         _placed[at + 1] = by - PLATE_H / 2;
