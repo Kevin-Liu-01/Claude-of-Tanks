@@ -88,7 +88,7 @@ import {
 import { crewName, moduleName } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { iconUrl } from '../ui/icons.ts';
-import { tierNumeral } from '../ui/battleLoad.ts';
+import { tierNumeral } from '../vehicles/tier.ts';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.ts';
 import {
   addInternalCrewModel,
