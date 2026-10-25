@@ -755,10 +755,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
     if (slotKey === 'pad') {
       const label = input.padLabelFor(input.getPadBinding(actionId));
-      return label === '—' ? t('settings.bind.empty') : label;
+      return label === '—' ? '' : label;
     }
     const label = input.labelFor(input.getBinding(actionId, slotKey));
-    return label === '—' ? t('settings.bind.empty') : label;
+    return label === '—' ? '' : label; // the input layer's '—' is an unbound slot: an empty cap
   }
 
   function makeChip(
@@ -828,7 +828,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         const chip = r.chips[slotKey];
         if (capture && capture.chip === chip) continue; // keep listening label
         const text = chipText(def.id, slotKey);
-        const empty = text === t('settings.bind.empty');
+        const empty = text === '';
         const arrow = ARROW_KEY_GLYPHS[text];
         // an unbound slot is an empty cap (no dash in view) and an arrow key the sprite's arrow, each named for
         // assistive tech
@@ -1714,8 +1714,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const defA = input.actionDefs.find((d) => d.id === c.actionId);
     const defB = input.actionDefs.find((d) => d.id === c.otherId);
     const codeLabel = c.pad
-      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })()
-      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })();
+      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })()
+      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })();
     const slotTag = c.pad ? '' : ` (${SLOT_NAME[c.otherSlot]})`;
     conflictMsg.innerHTML =
       t('settings.conflict.message', {
