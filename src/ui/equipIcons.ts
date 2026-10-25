@@ -1,8 +1,8 @@
 // Equipment icons (brand-ui BUI-F4). Copyright © 2026 Kevin B. Liu.
 //
 // One glyph per catalog item, drawn in the shared sprite (./icons/sprite.svg, ids eq*) with the house stroke, caps and
-// joins. From 20 px up the glyph sits on a chamfered plate keyed to its category (firepower, recon, mobility,
-// survival); the compact battle readout below 20 px draws the bare glyph for legibility.
+// joins. From 20 px up the glyph sits on a chamfered plate keyed to its category (firepower, mobility, protection,
+// survival, recon); the compact battle readout below 20 px draws the bare glyph for legibility.
 // Consumers: the garage slot boxes and picker grid (garage.ts) and the battle HUD loadout readout (damagePanel.ts).
 
 import { icon, iconInSvg, type IconId } from './icons/icon.ts';
@@ -10,29 +10,41 @@ import { icon, iconInSvg, type IconId } from './icons/icon.ts';
 /** Default ink, matching the HUD tray. */
 const EQUIP_INK = 'rgba(238,244,250,0.86)';
 
-type EquipmentIconCategory = 'firepower' | 'recon' | 'mobility' | 'survival';
+type EquipmentIconCategory = 'firepower' | 'recon' | 'mobility' | 'protection' | 'survival';
 
 const EQUIPMENT: Readonly<Record<string, readonly [IconId, EquipmentIconCategory]>> = Object.freeze({
   rammer: ['eqRammer', 'firepower'],
   vstab: ['eqVstab', 'firepower'],
   gld: ['eqGld', 'firepower'],
   vents: ['eqVents', 'firepower'],
-  optics: ['eqOptics', 'recon'],
-  binoculars: ['eqBinoculars', 'recon'],
-  camo_net: ['eqCamoNet', 'recon'],
+  ready_rack: ['eqReadyRack', 'firepower'],
+  fire_control: ['eqFireControl', 'firepower'],
+  loader_kit: ['eqLoaderKit', 'firepower'],
   rotation: ['eqRotation', 'mobility'],
   susp: ['eqSusp', 'mobility'],
+  turret_drive: ['eqTurretDrive', 'mobility'],
+  drivetrain: ['eqDrivetrain', 'mobility'],
+  spall_liner: ['eqSpallLiner', 'protection'],
+  skirts: ['eqSkirts', 'protection'],
+  ring_guard: ['eqRingGuard', 'protection'],
+  mantlet_shield: ['eqMantletShield', 'protection'],
   toolbox: ['eqToolbox', 'survival'],
-  spall_liner: ['eqSpallLiner', 'survival'],
   wet_rack: ['eqWetRack', 'survival'],
   fuel_safety: ['eqFuelSafety', 'survival'],
   auto_ext: ['eqAutoExt', 'survival'],
+  fire_blankets: ['eqFireBlankets', 'survival'],
+  optics: ['eqOptics', 'recon'],
+  binoculars: ['eqBinoculars', 'recon'],
+  camo_net: ['eqCamoNet', 'recon'],
+  exhaust_baffles: ['eqExhaustBaffles', 'recon'],
+  thermal_sight: ['eqThermalSight', 'recon'],
 });
 
 const CATEGORY_ACCENT: Readonly<Record<EquipmentIconCategory, string>> = {
   firepower: '#d9a451',
   recon: '#79afc0',
   mobility: '#a4b66d',
+  protection: '#9ea7c4',
   survival: '#c48e70',
 };
 
