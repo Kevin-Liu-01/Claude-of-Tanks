@@ -2956,27 +2956,6 @@ function beginBattleEntry(
  * intentionally absent here: loading them for a local battle duplicated work
  * without adding any useful authority boundary.
  */
-// RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a solo battle on a local host — a room in
-// the page whose only seat hosts its match, the authority in the browser host's Worker (mp/session/soloHostEntry.ts).
-const SOLO_ON_LOCAL_HOST = typeof location === 'object' && new URLSearchParams(location.search).get('soloAuthority') === 'host';
-
-async function beginSoloOnLocalHostBattle(specId: string, mapId: string, gameMode: string): Promise<boolean> {
-  const [{ beginSoloOnLocalHost }, { readSides }] = await Promise.all([
-    import('./mp/session/soloHostEntry.ts'),
-    import('./game/teamArrangement.ts'),
-  ]);
-  const sides = readSides();
-  return beginSoloOnLocalHost({
-    specId, mapId, gameMode,
-    // the room seats symmetric sides: the larger of the stored ones, the player included
-    teamSize: Math.max(sides.allies + 1, sides.enemies),
-    equipment: loadSelectedEquipment(specId, getSpec(specId)),
-    camo: getMultiplayerCamoSelection(specId),
-    player: { id: 'solo-commander', name: 'Commander' },
-    clientBuild: import.meta.env.MODE,
-  }, beginMultiplayerV2Battle);
-}
-
 async function beginSoloBattle({
   specId,
   mapId,
@@ -2984,8 +2963,14 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  if (SOLO_ON_LOCAL_HOST && !campaignOperationId) {
-    return beginSoloOnLocalHostBattle(specId ?? garage.getSelected(), mapId ?? garage.getSelectedMap(), gameMode);
+  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
+  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
+  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
+    const chosen = specId ?? garage.getSelected();
+    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    }, beginMultiplayerV2Battle));
   }
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it

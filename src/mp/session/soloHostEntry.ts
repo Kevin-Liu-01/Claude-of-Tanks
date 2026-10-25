@@ -11,17 +11,16 @@ import { ROOM_SOLO_MAX_TEAM_SIZE } from '../room/protocol.ts';
 import type { InPageRoomService } from '../room/inPageRoom.ts';
 import { createRoomConnectionAdapter } from './playMenuAdapter.ts';
 import type { BrowserLaunchRequest } from './browserComposition.ts';
+import { readSides } from '../../game/teamArrangement.ts';
 
 export interface SoloHostRequest {
   specId: string;
   mapId: string;
   gameMode: string;
-  /** Hulls a side, the player's included (the room's bots fill the rest; 1..21). */
-  teamSize: number;
+  /** Hulls a side, the player's included (the room's bots fill the rest; 1..21): the stored sides' larger by default. */
+  teamSize?: number;
   equipment: string[];
   camo: string;
-  player: { id: string; name: string };
-  clientBuild?: string;
 }
 
 let service: InPageRoomService | null = null;
@@ -35,8 +34,11 @@ export async function beginSoloOnLocalHost(request: SoloHostRequest, launch: (re
   const rooms = service;
   let handOff: ((entered: Promise<boolean>) => void) | null = null;
   const launched = new Promise<Promise<boolean>>((resolve) => { handOff = resolve; });
+  // the room seats symmetric sides: the larger of the stored ones, the player included
+  const sides = readSides();
+  const teamSize = request.teamSize ?? Math.max(sides.allies + 1, sides.enemies);
   const adapter = createRoomConnectionAdapter({
-    ...(request.clientBuild ? { clientBuild: request.clientBuild } : {}),
+    clientBuild: import.meta.env.MODE,
     createRoomClient: (options) => new RoomClient({ ...options, transport: { ...options.transport, createSocket: rooms.createSocket } }),
     onHostStart: (lobbyState, connection) => {
       // the composition owns the seat from here on
@@ -45,9 +47,9 @@ export async function beginSoloOnLocalHost(request: SoloHostRequest, launch: (re
     },
   });
   const connection = await adapter.connect({
-    kind: 'create', mode: 'lan', roomsUrl: IN_PAGE_ROOM_ENDPOINT, solo: true, player: request.player,
+    kind: 'create', mode: 'lan', roomsUrl: IN_PAGE_ROOM_ENDPOINT, solo: true, player: { id: 'solo-commander', name: 'Commander' },
     selection: { specId: request.specId, mapId: request.mapId, gameMode: request.gameMode, equipment: request.equipment, camo: request.camo },
-    teamSize: Math.max(1, Math.min(ROOM_SOLO_MAX_TEAM_SIZE, Math.round(request.teamSize))),
+    teamSize: Math.max(1, Math.min(ROOM_SOLO_MAX_TEAM_SIZE, Math.round(teamSize))),
   });
   if (!connection) return false;
   try {
