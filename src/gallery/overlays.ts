@@ -3,7 +3,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
 import { t } from '../ui/i18n.ts';
-import { TECHNICAL_LEGENDS } from '../ui/technicalDiagramLabels.ts';
+import { TECHNICAL_LEGENDS } from '../ui/technicalDiagramLegend.ts';
 import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
@@ -603,7 +603,7 @@ export function createInspectionOverlay(
 }
 
 export function inspectionLegend(mode: InspectionMode): Array<readonly [string, string]> {
-  // one table with the technical diagrams' DOM legend (src/ui/technicalDiagramLabels.ts)
+  // one table with the technical diagrams' DOM legend (src/ui/technicalDiagramLegend.ts)
   if (mode === 'armor' || mode === 'modules' || mode === 'crew') return TECHNICAL_LEGENDS[mode].map(([key, color]) => [t(key), color] as const);
   return [];
 }

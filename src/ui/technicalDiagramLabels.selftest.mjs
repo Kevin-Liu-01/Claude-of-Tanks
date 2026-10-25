@@ -53,6 +53,9 @@ try {
   const markup = technicalLabelsMarkup({ schema: 1, id: 'x', size: [1024, 512], armor, modules: [], crew: [] }, 'armor', { width: 512, height: 256 }, { rowPx: 18 });
   assert.equal((markup.match(/class="cot-tdl-chip/g) || []).length, layoutTechnicalCallouts(armor, 'armor', { width: 512, height: 256 }, { rowPx: 18 }).length);
   assert.ok(markup.includes('H01 · 400 mm') && markup.includes('--tdl-tone:#e96959') && markup.includes('cot-tdl-legend'));
+  // its places are percentages of the fluid box, every one inside it
+  const places = [...markup.matchAll(/--tdl-[xy]:(-?[\d.]+)%/g)].map((m) => Number(m[1]));
+  assert.ok(places.length >= 4 && places.every((v) => v >= 0 && v <= 100), 'static places are percentages inside the box');
   assert.ok(!/<script|on[a-z]+=/i.test(technicalLabelsMarkup({ schema: 1, id: 'x', size: [1024, 512], modules: [callout('M1', .2, .5, .1, { module: 'x', title: '<script>' })], armor: [], crew: [] }, 'modules', { width: 512, height: 256 })), 'text is escaped');
   assert.equal(technicalKindOfView('armor_side'), 'armor');
   assert.equal(technicalKindOfView('modules_side'), 'modules');

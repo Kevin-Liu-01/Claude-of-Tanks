@@ -1,7 +1,7 @@
 import { createGuidePhoto } from './infoGuidePhoto.ts';
 import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
-import { iconUrl, technicalLabelsUrl } from './icons.ts';
-import { mountTechnicalDiagramLabels, parseTechnicalLabels, technicalKindOfView, type TechnicalLabelData } from './technicalDiagramLabels.ts';
+import { iconUrl } from './icons.ts';
+import type { TechnicalLabelData } from './technicalDiagramLabels.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
@@ -133,17 +133,21 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
     diagramBox.append(vehicleImage);
     let view = views[0]!, labelData: Promise<TechnicalLabelData | null> | null = null;
     let mounted: { dispose(): void } | null = null;
+    // (the labels' module loads with the panel, not with the guide)
+    const labelsModule = (): Promise<typeof import('./technicalDiagramLabels.ts')> => import('./technicalDiagramLabels.ts');
     const mountLabels = (): void => {
       mounted?.dispose(); mounted = null;
-      const kind = technicalKindOfView(view);
-      if (!kind || !technicalDetails!.open) return;
-      labelData ??= fetch(technicalLabelsUrl(vehicle.id)).then((response) => (response.ok ? response.json() : null))
-        .then((json) => (json ? parseTechnicalLabels(json, vehicle.id) : null)).catch(() => null);
+      if (!technicalDetails!.open) return;
       const shown = view;
-      void labelData.then((data) => {
+      void labelsModule().then(async (labels) => {
+        const kind = labels.technicalKindOfView(shown);
+        if (!kind) return;
+        labelData ??= fetch(labels.technicalLabelsUrl(vehicle.id)).then((response) => (response.ok ? response.json() : null))
+          .then((json) => (json ? labels.parseTechnicalLabels(json, vehicle.id) : null)).catch(() => null);
+        const data = await labelData;
         if (!data || shown !== view || !technicalDetails!.open) return;
         mounted?.dispose();
-        mounted = mountTechnicalDiagramLabels(diagramBox, data, kind, null, { header: false, image: vehicleImage });
+        mounted = labels.mountTechnicalDiagramLabels(diagramBox, data, kind, null, { header: false, image: vehicleImage });
       });
     };
     technicalDetails.addEventListener('toggle', mountLabels);

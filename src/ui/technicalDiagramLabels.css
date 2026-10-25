@@ -11,6 +11,8 @@
 .cot-tdl-leaders{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .cot-tdl-leader{color:var(--tdl-tone);fill:none;stroke:currentColor;stroke-width:1}
 .cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}
+/* a static overlay's anchor dot (technicalLabelsMarkup: its leaders scale with a fluid box, a circle would not stay round) */
+.cot-tdl-pin{position:absolute;left:var(--tdl-x);top:var(--tdl-y);width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--tdl-tone)}
 .cot-tdl-chip{position:absolute;left:var(--tdl-x);top:var(--tdl-y);transform:translateY(-50%);padding:1px 6px;white-space:nowrap;pointer-events:none;
   background:var(--hud-plate);box-shadow:var(--ring-2);border-radius:var(--r1);border-inline-start:2px solid var(--tdl-tone)}
 .cot-tdl-chip--end{transform:translate(-100%,-50%);border-inline-start:0;border-inline-end:2px solid var(--tdl-tone)}

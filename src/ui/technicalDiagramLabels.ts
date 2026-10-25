@@ -7,8 +7,9 @@
 // mountTechnicalDiagramLabels touches the DOM.
 // First-party: Kevin B. Liu (NOTICE.md).
 import { formatNumber, onLocaleChange, t } from './i18n.ts';
+import { TECHNICAL_LEGENDS, type TechnicalKind } from './technicalDiagramLegend.ts';
 
-export type TechnicalKind = 'armor' | 'modules' | 'crew';
+export { TECHNICAL_LEGENDS, type TechnicalKind };
 
 export interface TechnicalCallout {
   /** The inspection id: H01/T03 (armour plates), M02 (modules), C01 (crew), W1 (external weapons). */
@@ -35,24 +36,6 @@ export interface TechnicalLabelData {
   readonly crew: readonly TechnicalCallout[];
 }
 
-/** Each kind's legend: an i18n key and its swatch (the inspection overlay's colours, src/gallery/overlays.ts). */
-export const TECHNICAL_LEGENDS: Readonly<Record<TechnicalKind, readonly (readonly [key: string, color: string])[]>> = Object.freeze({
-  armor: Object.freeze([
-    ['gallery.legend.armor.0', '#e96959'], ['gallery.legend.armor.1', '#f39a45'], ['gallery.legend.armor.2', '#f2cf5b'],
-    ['gallery.legend.armor.3', '#a8d85d'], ['gallery.legend.armor.4', '#50d890'], ['gallery.legend.armor.era', '#c18cff'],
-  ] as const),
-  modules: Object.freeze([
-    ['gallery.legend.modules.ammunition', '#ff4d5f'], ['gallery.legend.modules.fuel', '#e76f51'],
-    ['gallery.legend.modules.engine', '#f0a23a'], ['gallery.legend.modules.optics', '#5ee1d2'],
-    ['gallery.legend.modules.other', '#78a9ff'],
-  ] as const),
-  crew: Object.freeze([
-    ['gallery.legend.crew.driver', '#63d6ff'], ['gallery.legend.crew.gunner', '#ffd166'],
-    ['gallery.legend.crew.commander', '#b9f18c'], ['gallery.legend.crew.loader', '#ff8fab'],
-    ['gallery.legend.crew.specialist', '#9eb7ff'],
-  ] as const),
-});
-
 /** The diagram's title key a kind (the dossier's own captions). */
 export const TECHNICAL_TITLES: Readonly<Record<TechnicalKind, string>> = Object.freeze({
   armor: 'garage.dossier.image.armorSide',
@@ -63,6 +46,9 @@ export const TECHNICAL_TITLES: Readonly<Record<TechnicalKind, string>> = Object.
 const VIEW_KINDS: Readonly<Record<string, TechnicalKind>> = Object.freeze({
   armor_side: 'armor', modules_side: 'modules', crew_side: 'crew',
 });
+
+/** URL of a tank's technical-diagram label sidecar (tools/genIcons.mjs writes it beside the diagrams). */
+export const technicalLabelsUrl = (id: string): string => `/icons/${id}_technical.json`;
 
 /** The kind an icon view shows ('armor_side' -> 'armor'), or null for any other view. */
 export function technicalKindOfView(view: string): TechnicalKind | null {
@@ -95,7 +81,9 @@ export function technicalLabelText(callout: TechnicalCallout, kind: TechnicalKin
   }
   const name = kind === 'modules' ? callout.module : callout.crew;
   const fallback = humanized(callout.title || name || '');
-  const text = name ? translated(`garage.${kind === 'modules' ? 'module' : 'crew'}.${name}`, fallback) : fallback;
+  // (two templates, so the page-catalog scan keeps garage.module.* and garage.crew.*, not every garage.* key)
+  const key = kind === 'modules' ? `garage.module.${name}` : `garage.crew.${name}`;
+  const text = name ? translated(key, fallback) : fallback;
   return `${callout.key} · ${text}`;
 }
 
@@ -115,6 +103,10 @@ export interface TechnicalLayoutOptions {
   readonly rowPx?: number;
   /** Labels a rail at most. Default: 6 at the 1x width (512 px) and under, up to 10 as the box grows. */
   readonly perRail?: number;
+  /** The band the rows' centres stay inside (px). Default: the 1x composition's, under the header and over the legend;
+   * a mounted overlay narrows it to clear its measured header and legend (a wrapped legend). */
+  readonly top?: number;
+  readonly bottom?: number;
 }
 
 // The 1x composition's geometry as fractions of the box (the raster's framing keeps it): the rails' outer edges, the
@@ -151,7 +143,7 @@ export function layoutTechnicalCallouts(
   options: TechnicalLayoutOptions = {},
 ): TechnicalLayoutRow[] {
   const { width, height } = box, rowPx = options.rowPx ?? 18;
-  const minY = ROWS.top * height, maxY = ROWS.bottom * height;
+  const minY = Math.max(ROWS.top * height, options.top ?? -Infinity), maxY = Math.max(minY, Math.min(ROWS.bottom * height, options.bottom ?? Infinity));
   const fit = Math.max(1, Math.floor((maxY - minY) / rowPx) + 1);
   const perRail = Math.min(fit, options.perRail ?? Math.round(Math.min(10, Math.max(6, 6 * width / 512))));
   const rows: TechnicalLayoutRow[] = [];
@@ -194,25 +186,30 @@ let sheet: Promise<unknown> | null = null;
 const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /**
- * The same overlay as static HTML at a fixed displayed size, for a page prerendered in Node (the Field Manual): the
- * markup goes inside a positioned box holding the image at `box`, its stylesheet is technicalDiagramLabels.css, and the
- * text is the active locale's. Pure.
+ * The same overlay as static HTML, for a page prerendered in Node (the Field Manual), where the image's box is fluid: the
+ * rows are packed at a `reference` box (the smallest the page shows it at, so they fit there and only spread as the box
+ * grows) and every place is a percentage of the box; the leaders scale with it. The markup goes inside a positioned box
+ * holding the image, its stylesheet is technicalDiagramLabels.css, and the text is the active locale's. Pure.
  */
 export function technicalLabelsMarkup(
-  data: TechnicalLabelData, kind: TechnicalKind, box: { readonly width: number; readonly height: number },
+  data: TechnicalLabelData, kind: TechnicalKind, reference: { readonly width: number; readonly height: number },
   { rowPx = 20, legend = true }: { readonly rowPx?: number; readonly legend?: boolean } = {},
 ): string {
-  const rows = layoutTechnicalCallouts(data[kind], kind, box, { rowPx });
-  const px = (value: number): string => `${value.toFixed(1)}px`;
-  const lines = rows.map((row) => `<polyline class="cot-tdl-leader" style="--tdl-tone:${escapeHtml(row.callout.color)}" points="${
-    row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/><circle class="cot-tdl-dot" style="--tdl-tone:${
-    escapeHtml(row.callout.color)}" cx="${row.leader[0]![0].toFixed(1)}" cy="${row.leader[0]![1].toFixed(1)}" r="2"/>`).join('');
-  const chips = rows.map((row) => `<span class="cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}" style="--tdl-tone:${
-    escapeHtml(row.callout.color)};--tdl-x:${px(row.edgeX)};--tdl-y:${px(row.y)}">${escapeHtml(row.text)}</span>`).join('');
+  // (a static page cannot measure its legend: the rows keep a two-row legend's height clear)
+  const { width, height } = reference;
+  const rows = layoutTechnicalCallouts(data[kind], kind, reference, { rowPx, ...(legend ? { bottom: height - 2.5 * rowPx } : {}) });
+  const pct = (value: number, of: number): string => `${(100 * value / of).toFixed(2)}%`;
+  const tone = (color: string): string => `--tdl-tone:${escapeHtml(color)}`;
+  const lines = rows.map((row) => `<polyline class="cot-tdl-leader" style="${tone(row.callout.color)}" vector-effect="non-scaling-stroke" points="${
+    row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/>`).join('');
+  const dots = rows.map((row) => `<span class="cot-tdl-pin" style="${tone(row.callout.color)};--tdl-x:${pct(row.leader[0]![0], width)};--tdl-y:${
+    pct(row.leader[0]![1], height)}"></span>`).join('');
+  const chips = rows.map((row) => `<span class="cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}" style="${tone(row.callout.color)};--tdl-x:${
+    pct(row.edgeX, width)};--tdl-y:${pct(row.y, height)}">${escapeHtml(row.text)}</span>`).join('');
   const legendRow = legend ? `<div class="cot-tdl-legend">${TECHNICAL_LEGENDS[kind].map(([key, color]) =>
-    `<span><i class="cot-tdl-swatch" style="--tdl-tone:${escapeHtml(color)}"></i>${escapeHtml(t(key))}</span>`).join('')}</div>` : '';
-  return `<div class="cot-tdl" aria-hidden="true"><svg class="cot-tdl-leaders" xmlns="${SVG}" viewBox="0 0 ${box.width} ${box.height}">${
-    lines}</svg>${chips}${legendRow}</div>`;
+    `<span><i class="cot-tdl-swatch" style="${tone(color)}"></i>${escapeHtml(t(key))}</span>`).join('')}</div>` : '';
+  return `<div class="cot-tdl" aria-hidden="true"><svg class="cot-tdl-leaders" xmlns="${SVG}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${
+    lines}</svg>${dots}${chips}${legendRow}</div>`;
 }
 
 /** The image's rendered content box inside the host (object-fit: contain of the raster's aspect), host-relative px. */
@@ -254,33 +251,9 @@ export function mountTechnicalDiagramLabels(
     root.style.setProperty('--tdl-box-y', `${box.y.toFixed(1)}px`);
     root.style.setProperty('--tdl-box-w', `${box.width.toFixed(1)}px`);
     root.style.setProperty('--tdl-box-h', `${box.height.toFixed(1)}px`);
-    const fontPx = parseFloat(getComputedStyle(root).fontSize) || 12;
-    const rows = layoutTechnicalCallouts(data[kind], kind, box, { rowPx: Math.ceil(fontPx * 1.65) });
-    const svg = doc.createElementNS(SVG, 'svg');
-    svg.setAttribute('class', 'cot-tdl-leaders');
-    svg.setAttribute('viewBox', `0 0 ${box.width.toFixed(1)} ${box.height.toFixed(1)}`);
-    for (const row of rows) {
-      const line = doc.createElementNS(SVG, 'polyline');
-      line.setAttribute('class', 'cot-tdl-leader');
-      line.setAttribute('points', row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
-      line.style.setProperty('--tdl-tone', row.callout.color);
-      const dot = doc.createElementNS(SVG, 'circle');
-      dot.setAttribute('class', 'cot-tdl-dot');
-      dot.setAttribute('cx', row.leader[0]![0].toFixed(1));
-      dot.setAttribute('cy', row.leader[0]![1].toFixed(1));
-      dot.setAttribute('r', '2');
-      dot.style.setProperty('--tdl-tone', row.callout.color);
-      svg.append(line, dot);
-    }
-    root.append(svg);
-    for (const row of rows) {
-      const chip = doc.createElement('span');
-      chip.className = `cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}`;
-      place(chip, row.edgeX, row.y);
-      chip.style.setProperty('--tdl-tone', row.callout.color);
-      chip.textContent = row.text;
-      root.append(chip);
-    }
+    const fontPx = parseFloat(getComputedStyle(root).fontSize) || 12, rowPx = Math.ceil(fontPx * 1.65);
+    // the header and the legend first: the rows stay between their measured heights (a wrapped legend included)
+    let headBottom = 0, legendTop = box.height;
     if (showHeader && header) {
       const head = doc.createElement('div');
       head.className = 'cot-tdl-head';
@@ -301,6 +274,7 @@ export function mountTechnicalDiagramLabels(
         head.append(designation);
       }
       root.append(head);
+      headBottom = head.offsetHeight;
     }
     if (showLegend) {
       const legend = doc.createElement('div');
@@ -314,6 +288,33 @@ export function mountTechnicalDiagramLabels(
         legend.append(item);
       }
       root.append(legend);
+      legendTop = box.height - legend.offsetHeight;
+    }
+    const rows = layoutTechnicalCallouts(data[kind], kind, box, { rowPx, top: headBottom + rowPx / 2, bottom: legendTop - rowPx / 2 });
+    const svg = doc.createElementNS(SVG, 'svg');
+    svg.setAttribute('class', 'cot-tdl-leaders');
+    svg.setAttribute('viewBox', `0 0 ${box.width.toFixed(1)} ${box.height.toFixed(1)}`);
+    for (const row of rows) {
+      const line = doc.createElementNS(SVG, 'polyline');
+      line.setAttribute('class', 'cot-tdl-leader');
+      line.setAttribute('points', row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
+      line.style.setProperty('--tdl-tone', row.callout.color);
+      const dot = doc.createElementNS(SVG, 'circle');
+      dot.setAttribute('class', 'cot-tdl-dot');
+      dot.setAttribute('cx', row.leader[0]![0].toFixed(1));
+      dot.setAttribute('cy', row.leader[0]![1].toFixed(1));
+      dot.setAttribute('r', '2');
+      dot.style.setProperty('--tdl-tone', row.callout.color);
+      svg.append(line, dot);
+    }
+    root.prepend(svg);
+    for (const row of rows) {
+      const chip = doc.createElement('span');
+      chip.className = `cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}`;
+      place(chip, row.edgeX, row.y);
+      chip.style.setProperty('--tdl-tone', row.callout.color);
+      chip.textContent = row.text;
+      root.append(chip);
     }
   };
   render();

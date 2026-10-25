@@ -20,9 +20,6 @@
 export const iconUrl = (id: string, view: string): string => `/icons/${id}_${view}.${
   /silhouette$/.test(view) ? 'png' : 'webp'}`;
 
-/** URL of a tank's technical-diagram label sidecar (src/ui/technicalDiagramLabels.ts). */
-export const technicalLabelsUrl = (id: string): string => `/icons/${id}_technical.json`;
-
 /**
  * Turn a DOM element into a tinted silhouette via CSS mask: the element's
  * background color shows through the icon's alpha. Give the element explicit
