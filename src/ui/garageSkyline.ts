@@ -424,7 +424,9 @@ function addJebel(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: number
  * picks out one face of each), bedding tiers and varnish, then a beehive-banded rounded cap; a talus skirt at its foot. */
 function addInselberg(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: number): Projection {
   const pr = project(ctx.style, mark, { minElevDeg: 2.4, minHalfDeg: 2.2, maxHalfDeg: 26 });
-  const lobes: Array<[number, number, number]> = [[0, 1, 1], [0.62 + 0.2 * hash1(salt, 5), 0.66, 0.58]];
+  // a knoll past 2 km stands as its main lobe alone (garage 252: its shoulder is under a degree across there)
+  const lobes: Array<[number, number, number]> = mark.distM > 2000 && mark.heightM < 200
+    ? [[0, 1, 1]] : [[0, 1, 1], [0.62 + 0.2 * hash1(salt, 5), 0.66, 0.58]];
   const colour = new THREE.Color();
   const near = mark.distM < 1200;
   lobes.forEach(([offset, hScale, wScale], lobe) => {
@@ -434,7 +436,7 @@ function addInselberg(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: nu
     const depth = half * 0.85;
     const F = ringFrame(mark.azDeg, pr.R + (offset ? half * 0.4 : 0));
     const P = (phi: number, radius: number, y: number): THREE.Vector3 => F(cx + Math.sin(phi) * half * radius, y, -Math.cos(phi) * depth * radius, new THREE.Vector3());
-    const columns = near ? 14 : 8;
+    const columns = near ? 14 : mark.distM > 2000 ? 6 : 8;
     // rows: the wall's foot, two tiers of cliff, the cap's shoulder, the dome
     const ROWS: ReadonlyArray<readonly [number, number]> = [[0.12, 1], [0.4, 0.97], [0.66, 0.93], [0.84, 0.74], [1, 0.3]];
     for (let c = 0; c < columns; c += 1) {
@@ -494,9 +496,16 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     return pr;
   }
   // the ribs: columns across the face, each a rib standing forward of its couloirs
-  const columns = THREE.MathUtils.clamp(Math.round(half / 2.6), 8, 18);
-  // the far ranges (past 5 km, hazed) take the low form's rows: the near walls carry the detail
-  const ROWS = low || mark.distM > 5000 ? [0, 0.3, 0.6, 0.82, 1] : [0, 0.16, 0.32, 0.48, 0.62, 0.75, 0.87, 1];
+  // detail by range (garage 252: the regenerated hinterland landmarks took the alpine and winter Garages over their
+  // triangle targets): the near walls carry the ribs and rows, a range past 2.5 km takes the low form's rows, one past
+  // 6 km (hazed, a few degrees across) its silhouette in fewer ribs and four rows; a ridge past 2 km its ribs wider
+  const far = mark.distM > 6000;
+  const columns = far ? THREE.MathUtils.clamp(Math.round(half / 5), 4, 8)
+    : low && mark.distM > 2000 ? THREE.MathUtils.clamp(Math.round(half / 4.8), 5, 12)
+      : mark.distM > 2500 ? THREE.MathUtils.clamp(Math.round(half / 3.8), 6, 16)
+        : THREE.MathUtils.clamp(Math.round(half / 2.6), 8, 18);
+  const ROWS = far ? [0, 0.45, 0.8, 1]
+    : low || mark.distM > 2500 ? [0, 0.3, 0.6, 0.82, 1] : [0, 0.16, 0.32, 0.48, 0.62, 0.75, 0.87, 1];
   const P = (x: number, y: number, z: number): THREE.Vector3 => F(x, y, z, new THREE.Vector3());
   const colour = new THREE.Color();
   const back = 0.62 * H + 4; // the face's run back from its foot to its crest
@@ -758,7 +767,8 @@ const LAYERS = [
   { radius: 44, base: -5.4, slant: 5, segments: 112, rows: 8 },
   { radius: 54, base: -6.2, slant: 7, segments: 96, rows: 7 },
   { radius: 66, base: -7.0, slant: 9, segments: 80, rows: 6 },
-  { radius: 80, base: -8.0, slant: 11, segments: 64, rows: 5 },
+  // (the farthest band takes four rows, its 64 segments keep the silhouette: garage 252, the triangle targets)
+  { radius: 80, base: -8.0, slant: 11, segments: 64, rows: 4 },
 ] as const;
 
 export interface GarageSkylineLandmarkReceipt {
