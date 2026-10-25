@@ -24,7 +24,7 @@
  * a crushable tree (a fall death: the presented pose is mid-air one interpolation step before the landing). Effects are
  * attributed by the obstacle index the presentation names; a box centre two records share attributes nothing.
  *
- *   node tools/mp-world-events-audit.mjs                       # ~2 min wall
+ *   node tools/mp-world-events-audit.mjs                       # ~2 min wall (its windows are host ticks: a slower machine takes longer, never fails sooner)
  *   node tools/mp-world-events-audit.mjs --play=30 --after=12 --out=/path --label=before
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -50,13 +50,39 @@ import { craterFor, munitionChargeKg, munitionClassForShell } from '../src/sim/m
 import { isHeClass } from '../src/sim/damage.ts';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const until = async (predicate, label, timeoutMs) => {
+/**
+ * (mp-scale-251, the coordinator's determinism ask) The audit waits on the host's authority, never on the wall clock: a
+ * starved machine runs the same ticks, only slower. A wait with a tick budget (`{ ticks, core }`) fails once that host has
+ * played `ticks` past the wait's start without the condition; a wait no authority paces (the room's sockets before a
+ * host exists, a migration's election and boot) fails only past HANG_MS — a dead run's guard, never a slow one's window.
+ */
+const HANG_MS = 300_000;
+const until = async (predicate, label, budget = {}) => {
   const started = Date.now();
+  const tickOf = () => budget.core?.()?.core.actor?.tick ?? null;
+  const startTick = tickOf();
   while (!predicate()) {
-    if (Date.now() - started > timeoutMs) throw new Error(`timeout: ${label}`);
-    await sleep(25);
+    const tick = tickOf();
+    if (budget.ticks != null && tick != null && startTick != null && tick - startTick > budget.ticks) {
+      throw new Error(`no ${label} within ${budget.ticks} host ticks`);
+    }
+    if (Date.now() - started > HANG_MS) throw new Error(`hung: ${label} (${HANG_MS / 1000} s without progress)`);
+    await sleep(10);
   }
 };
+/** The host's battle ticks: its authority's time in play (timeS only advances while the match plays). */
+const playTickOf = (entry) => Math.round((entry?.core.actor?.authority.timeS ?? 0) * TICK_HZ);
+/** Wait until `entry`'s host has played to battle tick `playTick` (a dead host fails the hang guard). */
+const untilPlayTick = (entry, playTick, label) => until(() => playTickOf(entry) >= playTick || entry.core.stopped, label);
+/** Wait for `ticks` more ticks of `entry`'s host. */
+const hostTicks = async (entry, ticks, label) => {
+  const target = (entry.core.actor?.tick ?? 0) + ticks;
+  await until(() => (entry.core.actor?.tick ?? 0) >= target || entry.core.stopped, label);
+};
+/** Whether a shell is fired by the gun (a missile launcher's round is not: it may need a lock and never digs ground). */
+const gunRound = (shell) => shell && shell.guided !== true;
+/** The scripted cases start at this battle tick on the host, the same tick every run (the world does not step before play). */
+const SCRIPT_PLAY_TICK = 30;
 const now = () => performance.now();
 const TRACKED_BUS = new Set(['prop:crushed', 'shell:expired', 'shell:hit', 'tank:destroyed', 'tank:ram', 'tank:impact', 'tank:fire', 'shell:fired', 'weapon:predicted', 'structure:stage', 'structure:breach', 'terrain:crater']);
 // destruction (2026-10-07): a structure's stage is world state like a prop's fall: keyed by what it names, not by its host
@@ -223,6 +249,18 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     entry.hooked = true;
     entry.bootTick = actor.tick;
     const authority = actor.authority;
+    // (mp-scale-251) the scripted cases run inside the host's step at a fixed battle tick (SCRIPT_PLAY_TICK), never when the
+    // harness happens to get to them: the world they meet is the same every run
+    const step = authority.step.bind(authority);
+    authority.step = (options) => {
+      // the actor tick at battle tick 0 (whenever the harness first saw the match play)
+      if (authority.phase === 'playing' && entry.playStartTick == null) entry.playStartTick = actor.tick - playTickOf(entry);
+      if (entry.script && !entry.scriptedAt && authority.phase === 'playing' && playTickOf(entry) >= SCRIPT_PLAY_TICK) {
+        entry.scriptedAt = { tick: actor.tick, playTick: playTickOf(entry) };
+        entry.script();
+      }
+      step(options);
+    };
     const original = authority.eventsForViewer.bind(authority);
     authority.eventsForViewer = (viewerId) => {
       const events = original(viewerId);
@@ -399,22 +437,22 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     await p1.room.setTeam('bravo');
     await p2.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
     await p3.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
-    await until(() => p1.room.room?.players.length === 3, 'three seats', 10_000);
+    await until(() => p1.room.room?.players.length === 3, 'three seats');
     await Promise.all(peers.map((peer) => peer.room.setReady(true)));
-    await until(() => p1.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);
+    await until(() => p1.room.room?.players.every((player) => player.ready), 'everyone ready');
     await p1.room.start();
-    await until(() => peers.every((peer) => peer.session.round), 'every seat entered the match', 15_000);
-    await until(() => peers.every(welcomed), 'every seat welcomed', 60_000);
-    await until(() => peers.every((peer) => (peer.rounds.at(-1)?.frames ?? 0) > 10), 'frames flowing on every seat', 30_000);
-    await until(() => peers.every(playing), 'the countdown ended', 20_000);
-    const core1 = hostCores.find((entry) => entry.id === 'p1');
-    await until(() => core1?.hooked, 'the host authority hooked', 5_000);
+    await until(() => peers.every((peer) => peer.session.round), 'every seat entered the match');
+    const hostOf = (id) => () => hostCores.find((entry) => entry.id === id);
+    // the host's authority hooked at its boot, before the countdown: the scripted cases are registered before the match plays
+    await until(() => hostOf('p1')()?.hooked, 'the host authority hooked');
+    const core1 = hostOf('p1')();
     report.steps.start = { host: p1.session.role, entities: core1.core.actor.authority.entities.length, obstacles: referenceObstacles.length, crushable: referenceObstacles.filter((o) => o.crushable).length };
     log(`start: p1 hosts ${report.steps.start.entities} entities on ${MAP_ID} (${report.steps.start.obstacles} obstacles, ${report.steps.start.crushable} crushable)`);
 
     // ---- 1. live play (the scripted cases first: a bot into the shared-centre prop, a bot falling to its death by a tree)
-    marks.playStart = now();
-    if (scripted) {
+    // (mp-scale-251) registered before the match plays and run by the host's step at battle tick SCRIPT_PLAY_TICK; the
+    // actors are chosen by fixed rules (the heaviest gun-armed hulls, never a missile launcher's round)
+    if (scripted) core1.script = () => {
       const authority = core1.core.actor.authority;
       const bots = authority.entities.filter((entity) => entity.bot && !entity.combat.destroyed);
       const groundAt = (x, z) => authority.heightField.getHeightAt(x, z);
@@ -437,8 +475,23 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         bots[1].combat.hp = 1;
         report.steps.scripted.fall = { botId: bots[1].id, tree: scriptedSites.tree.index };
       }
-      // (perf-254) the rammer is the heaviest of the bots left: a light tank (an M551 the fill drew) only damages the house
-      const rammer = bots.slice(2).reduce((best, bot) => (!best || bot.spec.weightTons > best.spec.weightTons ? bot : best), null);
+      // (mp-scale-251) the scripted actors by fixed rules: the heaviest hull first (ties by id), gun-armed only (a missile
+      // launcher's round may need a lock and never digs ground: an M6 Linebacker's Stinger once dug the audit's 0 craters)
+      const heaviestFirst = (list) => [...list].sort((a, b) => b.spec.weightTons - a.spec.weightTons || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const gunArmed = (bot) => bot.spec.gun.shells.some(gunRound);
+      /** The bot's gun-fired HE round that digs deepest (its slot), or null. */
+      const gunHeRound = (bot) => {
+        let best = null;
+        bot.spec.gun.shells.forEach((shell, slot) => {
+          if (!gunRound(shell) || !isHeClass(shell.type)) return;
+          const munition = munitionClassForShell(shell);
+          const radiusM = craterFor(munitionChargeKg(shell, munition), munition, 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM;
+          if (!best || radiusM > best.radiusM) best = { slot, radiusM };
+        });
+        return best;
+      };
+      // the rammer: the heaviest gun-armed hull of the bots left (a light tank, an M551 the fill drew, only damages the house)
+      const rammer = heaviestFirst(bots.slice(2).filter(gunArmed))[0] ?? null;
       if (scriptedSites.ram && rammer) {
         const [x, z] = scriptedSites.ram.start;
         rammer.state.pos.set(x, groundAt(x, z) + 0.05, z);
@@ -451,14 +504,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         report.steps.scripted.ram = { botId: rammer.id, specId: rammer.specId, weightTons: rammer.spec.weightTons, structureId: scriptedSites.ram.structureId };
       }
       const free = bots.slice(2).filter((bot) => bot !== rammer);
-      // craters (2026-10-08, crater-render-spec §F): the remaining bot with the round that digs deepest fires it into open
-      // ground 22 m ahead, its AI off and its gun reloaded; with the switch off the case records that nothing was dug
-      const diggers = free.map((bot) => {
-        const slot = bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type));
-        if (slot < 0) return null;
-        const shell = bot.spec.gun.shells[slot], munition = munitionClassForShell(shell);
-        return { bot, slot, radiusM: craterFor(munitionChargeKg(shell, munition), munition, 1, { radiusM: 0, depthM: 0, rimM: 0 }).radiusM };
-      }).filter(Boolean).sort((a, b) => b.radiusM - a.radiusM);
+      // craters (2026-10-08, crater-render-spec §F): the heaviest remaining bot with a gun-fired HE round fires its deepest
+      // digging one into open ground 22 m ahead, its AI off and its gun reloaded; with the switch off the case records that
+      // nothing was dug
+      const diggers = heaviestFirst(free).map((bot) => ({ bot, ...gunHeRound(bot) })).filter((entry) => entry.slot != null);
       const digger = scriptedSites.crater ? (diggers[0]?.bot ?? null) : null;
       if (scriptedSites.crater && diggers[0]) {
         const { bot, slot, radiusM } = diggers[0];
@@ -475,7 +524,8 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       }
       // sections (P2): a bot shells another house's wall with its HE round, its AI off and its gun reloaded (with the
       // switch off it only damages the house)
-      const sheller = free.filter((bot) => bot !== digger).map((bot) => ({ bot, slot: bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type)) }))
+      // the sheller: the heaviest bot left with a gun-fired HE round
+      const sheller = heaviestFirst(free.filter((bot) => bot !== digger)).map((bot) => ({ bot, slot: gunHeRound(bot)?.slot ?? -1 }))
         .find((entry) => entry.slot >= 0);
       if (scriptedSites.breach && sheller) {
         const { bot, slot } = sheller;
@@ -491,30 +541,38 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         report.steps.scripted.breach = { botId: bot.id, structureId: scriptedSites.breach.structureId, shell: bot.spec.gun.shells[slot].name };
       }
       log(`scripted: ${JSON.stringify(report.steps.scripted)}`);
-    }
-    await sleep(playMs);
-    // The live window is wall-clock, and a starved host runs fewer ticks in it (the receipt's 8 s window produced 1-2
-    // crushes in about one run in five under load, 2026-10-03). Extend it, up to three times its length, until the
-    // host has produced the few crushes the judgement below needs; an idle machine never waits past playMs.
-    const liveCrushCount = () => uniqueBy(hostEventsBetween(marks.playStart, now(), 'world_prop_destroyed'), (e) => `${e.tick}:${e.index}`);
-    for (let waited = playMs; waited < playMs * 3 && liveCrushCount() < minLiveCrushes; waited += 1000) await sleep(1000);
+    };
+    await until(() => peers.every(welcomed), 'every seat welcomed', { ticks: 3600, core: hostOf('p1') });
+    await until(() => peers.every((peer) => (peer.rounds.at(-1)?.frames ?? 0) > 10), 'frames flowing on every seat', { ticks: 1800, core: hostOf('p1') });
+    await until(() => peers.every(playing), 'the countdown ended', { ticks: 1200, core: hostOf('p1') });
+    marks.playStart = now();
+    // the live window is battle ticks on the host: the same play however slowly this machine runs it
+    const playTicks = Math.round((playMs / 1000) * TICK_HZ);
+    const afterTicks = Math.round((afterMs / 1000) * TICK_HZ);
+    await untilPlayTick(core1, SCRIPT_PLAY_TICK + playTicks, 'the live window');
+    if (scripted && core1.scriptedAt?.playTick !== SCRIPT_PLAY_TICK) failures.push(`the scripted cases ran at battle tick ${core1.scriptedAt?.playTick ?? 'never'}, not ${SCRIPT_PLAY_TICK}`);
+    if (report.steps.scripted) report.steps.scripted.atPlayTick = core1.scriptedAt?.playTick ?? null;
     marks.playEnd = now();
-    const liveCrushes = hostEventsBetween(marks.playStart, marks.playEnd, 'world_prop_destroyed');
-    report.steps.live = { seconds: Math.round(marks.playEnd - marks.playStart) / 1000, hostCrushes: uniqueBy(liveCrushes, (e) => `${e.tick}:${e.index}`), hostImpacts: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_impact'), (e) => e.key), hostHits: uniqueBy(hostEventsBetween(marks.playStart, marks.playEnd, 'shell_hit'), (e) => e.key), hostTick: core1.core.actor.tick };
+    // the live window in the host's ticks: battle tick 0 to the window's end, whatever wall time the harness saw them at
+    const liveFrom = core1.playStartTick, liveTo = core1.playStartTick + SCRIPT_PLAY_TICK + playTicks;
+    const liveEvents = (type) => hostLog.filter((e) => e.host === 'p1' && e.type === type && e.tick >= liveFrom && e.tick <= liveTo);
+    const liveCrushes = liveEvents('world_prop_destroyed');
+    if (uniqueBy(liveCrushes, (e) => `${e.tick}:${e.index}`) < minLiveCrushes) log(`live: under the ${minLiveCrushes} crushes the judgement wants`);
+    report.steps.live = { seconds: Math.round(marks.playEnd - marks.playStart) / 1000, ticks: liveTo - liveFrom, hostCrushes: uniqueBy(liveCrushes, (e) => `${e.tick}:${e.index}`), hostImpacts: uniqueBy(liveEvents('shell_impact'), (e) => e.key), hostHits: uniqueBy(liveEvents('shell_hit'), (e) => e.key), hostTick: core1.core.actor.tick };
     log(`live: ${report.steps.live.hostCrushes} crushes, ${report.steps.live.hostImpacts} shell impacts, ${report.steps.live.hostHits} hits on the host in ${report.steps.live.seconds} s`);
 
     // ---- 2. p3 leaves the battle to the Garage and rejoins (a fresh presentation on the running match)
     const rejoinPayload = p3.session.round.matchStart;
     const destroyedBeforeRejoin = destroyedOf(core1).indices;
     await p3.session.leaveMatch('garage');
-    await sleep(1500);
+    await hostTicks(core1, 90, 'the Garage pause');
     marks.rejoinAt = now();
     const rejoinRound = p3.rounds.length;
     await p3.session.enterMatch(rejoinPayload);
-    await until(() => p3.rounds.length > rejoinRound && p3.rounds.at(-1).welcomeTick !== null, 'p3 welcomed again', 30_000);
-    await until(() => (p3.rounds.at(-1)?.frames ?? 0) > 5, 'frames flow to p3 again', 15_000);
+    await until(() => p3.rounds.length > rejoinRound && p3.rounds.at(-1).welcomeTick !== null, 'p3 welcomed again', { ticks: 1800, core: hostOf('p1') });
+    await until(() => (p3.rounds.at(-1)?.frames ?? 0) > 5, 'frames flow to p3 again', { ticks: 900, core: hostOf('p1') });
     marks.rejoinFramesAt = now();
-    await sleep(afterMs);
+    await hostTicks(core1, afterTicks, 'after the rejoin');
     marks.rejoinEnd = now();
     const rejoin = p3.rounds.at(-1);
     const rejoinCrushes = rejoin.applied.filter((e) => e.kind === 'crush');
@@ -530,10 +588,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     let rewelcomed = false;
     const offWelcome = p2.session.match.onWelcome(() => { rewelcomed = true; });
     p2.session.match.transport.reconnect('network', 'audit reconnect');
-    await until(() => rewelcomed, 'p2 welcomed again after the reconnect', 20_000);
+    await until(() => rewelcomed, 'p2 welcomed again after the reconnect', { ticks: 1200, core: hostOf('p1') });
     offWelcome();
     marks.reconnectLiveAt = now();
-    await sleep(afterMs);
+    await hostTicks(core1, afterTicks, 'after the reconnect');
     marks.reconnectEnd = now();
     const outageCrushes = hostEventsBetween(marks.reconnectAt, marks.reconnectLiveAt, 'world_prop_destroyed').filter((e) => e.viewerId === 'p2');
     report.steps.reconnect = { outageMs: Math.round(marks.reconnectLiveAt - marks.reconnectAt), snapshotsBefore: welcomesBefore, crushEventsSentDuringOutage: uniqueBy(outageCrushes, (e) => e.key), crushesAfter: p2Round.applied.filter((e) => e.kind === 'crush').length - p2CrushesBefore };
@@ -545,7 +603,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     marks.hostClosedAt = now();
     p1.room.disconnect('tab closed');
     retire(p1);
-    await until(() => core1.core.stopped, 'the old host stopped', 5_000);
+    await until(() => core1.core.stopped, 'the old host stopped');
     // What the elected seat knows fell, read here independently of the boot (nothing new arrives on the dead link): the
     // newer of the sealed keyframe (opened with the room's host secret, as the seat will) and its own newest frame, plus
     // every fall the old host sent it — a fall's event reaches the seat the tick it happens, its frame up to two ticks later,
@@ -564,13 +622,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const fallsSentToSeat = new Set(hostLog.filter((e) => e.host === 'p1' && e.viewerId === 'p2' && e.type === 'world_prop_destroyed').map((e) => e.index));
     const knownBySeat = new Set([...(bootBase?.destroyed ?? []), ...fallsSentToSeat]);
     const knownFromEventsOnly = [...knownBySeat].filter((index) => !(bootBase?.destroyed ?? []).includes(index));
-    await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace', hostGraceMs + 15_000);
-    await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts', 30_000);
+    await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace');
+    await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts');
     const core2 = hostCores.find((entry) => entry.id === 'p2');
-    await until(() => core2?.hooked, 'the new host authority hooked', 5_000);
+    await until(() => core2?.hooked, 'the new host authority hooked');
     marks.newHostLiveAt = now();
     const destroyedNew = destroyedOf(core2);
-    await until(() => live(p3) && p3.session.stats().p2p?.migrating === false, 'p3 live on p2', 30_000);
+    await until(() => live(p3) && p3.session.stats().p2p?.migrating === false, 'p3 live on p2', { ticks: 1800, core: hostOf('p2') });
     const oldSet = new Set(destroyedOld.indices);
     const newSet = new Set(destroyedNew.indices);
     report.steps.migration = {
@@ -581,7 +639,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       restored: destroyedOld.indices.filter((i) => newSet.has(i)).length, lostOnMigration: destroyedOld.indices.filter((i) => !newSet.has(i)).length, inventedOnMigration: destroyedNew.indices.filter((i) => !oldSet.has(i)).length,
     };
     log(`migration: old host had ${report.steps.migration.destroyedOld} destroyed (revision ${report.steps.migration.revisionOld}); the seat knew ${report.steps.migration.knownBySeat} (its ${report.steps.migration.bootBase} at tick ${report.steps.migration.baseTick}: ${report.steps.migration.baseDestroyed}, ${report.steps.migration.knownFromEventsOnly} more from events); the new host booted with ${report.steps.migration.destroyedNewAtBoot} (revision ${report.steps.migration.revisionNewAtBoot}): ${report.steps.migration.restored} restored, ${report.steps.migration.lostOnMigration} lost`);
-    await sleep(afterMs);
+    await hostTicks(core2, afterTicks, 'after the migration');
     marks.migrationPlayEnd = now();
     const recrushed = hostEventsBetween(marks.newHostLiveAt, marks.migrationPlayEnd, 'world_prop_destroyed').filter((e) => e.host === 'p2' && oldSet.has(e.index));
     report.steps.migration.recrushEvents = uniqueBy(recrushed, (e) => e.key);
@@ -608,10 +666,10 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const destroyedBeforeReturn = destroyedOf(core2).indices;
     const p1b = spawn('p1', 'Creator', p1.storage, 0);
     await p1b.room.join({ roomCode: code });
-    await until(() => p1b.session.round && welcomed(p1b), 'p1 welcomed again as a peer', 30_000);
+    await until(() => p1b.session.round && welcomed(p1b), 'p1 welcomed again as a peer', { ticks: 1800, core: hostOf('p2') });
     marks.returnAt = now();
-    await until(() => (p1b.rounds.at(-1)?.frames ?? 0) > 5, 'frames flow to p1 again', 15_000);
-    await sleep(Math.min(afterMs, 6000));
+    await until(() => (p1b.rounds.at(-1)?.frames ?? 0) > 5, 'frames flow to p1 again', { ticks: 900, core: hostOf('p2') });
+    await hostTicks(core2, Math.min(afterTicks, 360), 'after the return');
     marks.end = now();
     const returned = p1b.rounds.at(-1);
     const returnCrushes = returned.applied.filter((e) => e.kind === 'crush');
