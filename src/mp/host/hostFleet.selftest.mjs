@@ -60,7 +60,10 @@ const sourceBytes = closure.reduce((sum, file) => sum + statSync(resolve(root, f
 // combined (2026-10-05); 7.07 MB at e65122a84 through the horizon chain, 5.13 MB once terrain.ts stopped importing the
 // horizon (2026-10-08). 7.23 MB at main 5010f76522 (deploy 250), the simulation and the world grown past the old 7 MB line
 // (this receipt read red on main); the bound moves to 8 MB (mp-scale-251), still 18.9 MB short of one stray fleet import.
-assert.ok(sourceBytes < 8e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
+// 7.37 MB at integ/231 for release 252 (pinned math's detMath and the world-kernel bindings, rust-support-solve-253, on
+// mp-scale's wire): the coordinator's ruling re-pins the bound to that measure plus 2 % (7.52 MB); the host Worker's
+// size goes to the lockdown budgets next.
+assert.ok(sourceBytes < 7.52e6, `the host Worker's static source stays spec-sized (${(sourceBytes / 1e6).toFixed(2)} MB)`);
 
 // Behaviour, in this fresh process: nothing loaded until the roster asks.
 const { createMatchActor } = await import('../../../server/match/matchActor.ts');
