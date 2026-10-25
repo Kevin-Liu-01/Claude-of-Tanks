@@ -44,6 +44,8 @@ import {
 import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
+  CLEARANCE_SKIP_BRIDGE,
+  CLEARANCE_SKIP_CRUSHABLE,
   collisionClearanceContainsPoint,
   hullYieldingRecord,
   rayCollisionClearanceEntry2,
@@ -379,6 +381,8 @@ const TAU = Math.PI * 2;
 const DEFAULT_SEED = 7001;
 /** The widest box (in obstacle-grid cells) the bots' box queries walk on the grid (ai.ts obstaclesInBox). */
 const BOX_GRID_MAX_CELLS = 256;
+/** What the solids' clearance walks pass over (solidWithin, laneMeetsSolid, solidAhead): crushables and bridge decks. */
+const SOLID_SKIPS = CLEARANCE_SKIP_CRUSHABLE | CLEARANCE_SKIP_BRIDGE;
 const ascending = (a: number, b: number): number => a - b;
 
 /**
@@ -1488,6 +1492,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const vantageBias = (rng() - 0.5) * 0.9;
   let obstacles = deps.getObstacles();
   const nearbyObstacles: AiObstacle[] = [];
+  // (the Rust lane, step 4: the clearance loops were ~4 % of a 16 v 16 step) the world kernels' clearance walk, when the
+  // obstacle grid carries it: the loops below then read only the records the kernel finds within their margin, in the
+  // grid's order, keep their own tests of a record's state and stop where they always did (collision.ts ClearanceScan)
+  const clearanceScan = (deps.queryObstacles as Partial<ObstacleQuery> | null | undefined)?.clearance ?? null;
   let nowS = 0;                              // last timeS seen by update()
 
   resampleAimError();
@@ -2277,6 +2285,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const px = st.pos.x + fx * look;
     const pz = st.pos.z + fz * look;
     const margin = spec.dims.widthM * 0.5 + 1.2;
+    if (clearanceScan) {
+      // (the kernels' walk: the records within the margin, bridge decks aside, in the grid's order)
+      clearanceScan.begin(px - margin, pz - margin, px + margin, pz + margin);
+      for (let o = clearanceScan.point(px, pz, margin, CLEARANCE_SKIP_BRIDGE); o; o = clearanceScan.point(px, pz, margin, CLEARANCE_SKIP_BRIDGE)) {
+        if (!o.crushed && steerAroundObstacle(input, o, fx, fz)) return;
+      }
+      return;
+    }
     const candidates = deps.queryObstacles
       ? deps.queryObstacles(px - margin, pz - margin, px + margin, pz + margin, nearbyObstacles)
       : obstacles;
@@ -2285,23 +2301,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (o.crushed || o.kind === 'bridge') continue; // decks are road; edge safety owns parapets
       // gameplay_feel r6: felled crushables don't block
       if (!collisionClearanceContainsPoint(o as CollisionRecord, px, pz, margin)) continue;
-      // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
-      // and with authority. The old ×0.6 damping (and the ease-in) parked
-      // bots at 0.4 throttle against saplings forever, just under the
-      // held-press crush threshold (coastal trace: spawn-exit wedge, 30 s at
-      // spd 0). WoT hulls flatten small trees on the move. A pillbox is no
-      // crushable to a hull (world/collision.ts hullYieldingRecord): around it.
-      if (hullYieldingRecord(o)) {
-        if (input.throttle > 0.05) input.throttle = Math.max(input.throttle, 0.7);
-        continue;
-      }
-      const cx = (o.min[0] + o.max[0]) * 0.5 - st.pos.x;
-      const cz = (o.min[2] + o.max[2]) * 0.5 - st.pos.z;
-      const crossY = fz * cx - fx * cz;          // >0 → obstacle to the right
-      input.steer = clamp(input.steer - Math.sign(crossY || 1) * 1.0, -1, 1);
-      input.throttle *= 0.6;
-      return;
+      if (steerAroundObstacle(input, o, fx, fz)) return;
     }
+  }
+
+  /** An obstacle in the look-ahead (along (fx, fz)): driven through when it yields, else steered around (true). */
+  function steerAroundObstacle(input: AiInput, o: AiObstacle, fx: number, fz: number): boolean {
+    // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
+    // and with authority. The old ×0.6 damping (and the ease-in) parked
+    // bots at 0.4 throttle against saplings forever, just under the
+    // held-press crush threshold (coastal trace: spawn-exit wedge, 30 s at
+    // spd 0). WoT hulls flatten small trees on the move. A pillbox is no
+    // crushable to a hull (world/collision.ts hullYieldingRecord): around it.
+    if (hullYieldingRecord(o)) {
+      if (input.throttle > 0.05) input.throttle = Math.max(input.throttle, 0.7);
+      return false;
+    }
+    const st = entity.state;
+    const cx = (o.min[0] + o.max[0]) * 0.5 - st.pos.x;
+    const cz = (o.min[2] + o.max[2]) * 0.5 - st.pos.z;
+    const crossY = fz * cx - fx * cz;          // >0 → obstacle to the right
+    input.steer = clamp(input.steer - Math.sign(crossY || 1) * 1.0, -1, 1);
+    input.throttle *= 0.6;
+    return true;
   }
 
   /**
@@ -2923,6 +2945,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   /** A solid (not crushed, crushable or a bridge deck) within `margin` of (x, z). */
   function solidWithin(x: number, z: number, margin: number): boolean {
+    if (clearanceScan) {
+      clearanceScan.begin(x - margin, z - margin, x + margin, z + margin);
+      for (let o = clearanceScan.point(x, z, margin, SOLID_SKIPS); o; o = clearanceScan.point(x, z, margin, SOLID_SKIPS)) {
+        if (!o.crushed) return true;
+      }
+      return false;
+    }
     const candidates = solidsAround(x - margin, z - margin, x + margin, z + margin);
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
@@ -2941,18 +2970,32 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const length = detMath.hypot(dx, dz);
     if (length < 1e-6) return false;
     dx /= length; dz /= length;
-    const candidates = solidsAround(Math.min(sx, ex) - margin, Math.min(sz, ez) - margin,
-      Math.max(sx, ex) + margin, Math.max(sz, ez) + margin);
+    const minX = Math.min(sx, ex) - margin, minZ = Math.min(sz, ez) - margin;
+    const maxX = Math.max(sx, ex) + margin, maxZ = Math.max(sz, ez) + margin;
+    if (clearanceScan) {
+      clearanceScan.begin(minX, minZ, maxX, maxZ);
+      for (let o = clearanceScan.lane(sx, sz, dx, dz, length, margin, SOLID_SKIPS); o;
+        o = clearanceScan.lane(sx, sz, dx, dz, length, margin, SOLID_SKIPS)) {
+        if (o !== skip && !o.crushed && laneSolidBlocks(o, sx, sz, ex, ez, margin)) return true;
+      }
+      return false;
+    }
+    const candidates = solidsAround(minX, minZ, maxX, maxZ);
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
       if (o === skip || o.crushed || o.crushable || o.kind === 'bridge') continue;
       const record = o as CollisionRecord;
       if (rayCollisionClearanceEntry2(record, sx, sz, dx, dz, length, margin) == null) continue;
-      if (!collisionClearanceContainsPoint(record, sx, sz, margin)) return true;
-      if (collisionClearanceContainsPoint(record, (sx + ex) * 0.5, (sz + ez) * 0.5, margin)
-        || collisionClearanceContainsPoint(record, ex, ez, margin)) return true;
+      if (laneSolidBlocks(record, sx, sz, ex, ez, margin)) return true;
     }
     return false;
+  }
+
+  /** A solid the lane (sx, sz) -> (ex, ez) enters blocks it unless the start already stands within it and the rest does not. */
+  function laneSolidBlocks(record: CollisionRecord, sx: number, sz: number, ex: number, ez: number, margin: number): boolean {
+    return !collisionClearanceContainsPoint(record, sx, sz, margin)
+      || collisionClearanceContainsPoint(record, (sx + ex) * 0.5, (sz + ez) * 0.5, margin)
+      || collisionClearanceContainsPoint(record, ex, ez, margin);
   }
 
   /**
@@ -2961,13 +3004,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    */
   function solidAhead(sx: number, sz: number, dirX: number, dirZ: number, reach: number, margin: number): boolean {
     const ex = sx + dirX * reach, ez = sz + dirZ * reach;
-    const candidates = solidsAround(Math.min(sx, ex) - margin, Math.min(sz, ez) - margin,
-      Math.max(sx, ex) + margin, Math.max(sz, ez) + margin);
+    const minX = Math.min(sx, ex) - margin, minZ = Math.min(sz, ez) - margin;
+    const maxX = Math.max(sx, ex) + margin, maxZ = Math.max(sz, ez) + margin;
+    if (clearanceScan) {
+      clearanceScan.begin(minX, minZ, maxX, maxZ);
+      for (let o = clearanceScan.lane(sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS); o;
+        o = clearanceScan.lane(sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS)) {
+        if (!o.crushed && clearanceScan.entry > 0) return true;
+      }
+      return false;
+    }
+    const candidates = solidsAround(minX, minZ, maxX, maxZ);
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
       if (o.crushed || o.crushable || o.kind === 'bridge') continue;
-      const record = o as CollisionRecord;
-      const entry = rayCollisionClearanceEntry2(record, sx, sz, dirX, dirZ, reach, margin);
+      const entry = rayCollisionClearanceEntry2(o as CollisionRecord, sx, sz, dirX, dirZ, reach, margin);
       if (entry != null && entry > 0) return true;
     }
     return false;
