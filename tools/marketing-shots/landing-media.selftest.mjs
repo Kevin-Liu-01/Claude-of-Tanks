@@ -103,7 +103,9 @@ assert.match(heroMarkup, /<button class="cot-c-btn cot-c-btn--64 hero__trailer" 
 assert.match(heroMarkup, /data-reel-toggle hidden aria-label="[^"]+" data-i18n-aria-label="publicPages\.reel\.pauseAria"/, 'the reel has its pause control');
 const heroReel = await readFile(resolve(root, 'src/presentation/heroReel.ts'), 'utf8');
 assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return null;/, 'no clip moves under reduced motion or data saving');
-assert.match(publicPages, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
+const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
+assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
+assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) void import\('\.\/homePage\.ts'\);/, 'the landing\'s behaviour loads with the landing alone');
 
 // the features: in their rows, each its poster (lazy, sized, described) and, where the slot has motion, its loop
 const featureMarkup = home.match(/<!--home:features-->([\s\S]*?)<!--\/home:features-->/)?.[1] || '';

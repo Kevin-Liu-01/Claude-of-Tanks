@@ -12,11 +12,12 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
+import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
 import { vehicleFacetSearchWords, vehicleFacetsForId } from '../src/vehicles/vehicleFacets.ts';
-import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../src/sim/gameModeCatalog.ts';
+import { GAME_MODE_DEFINITIONS, MODE_PRESENTATION_ORDER } from '../src/sim/gameModeCatalog.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = (path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
@@ -92,6 +93,10 @@ function ladder(clip) {
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
+/** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
+// a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
+const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
+  + ` aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${iconMarkup(icon, 20)}${alt ? iconMarkup(alt, 20).replace('class="cot-i', 'class="cot-i film-alt') : ''}</button>`;
 function heroBlock() {
   if (!REEL.hero?.length) throw new Error('home-premiere: public/media/home-r2/manifest.json names no hero clip');
   if (!TRAILER) throw new Error('home-premiere: the trailer is missing from the site manifest');
@@ -112,25 +117,33 @@ function heroBlock() {
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
     // duplicate it in hero"); the page's h1 names the game for assistive tech and search
     + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
-    + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}<kbd class="cot-c-kbd" lang="en">Enter</kbd></a>`
+    + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
-    + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${t('home.hero.trailer')}`
-    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></button></div></div>`
-    + `<button class="${btn('icon', '36')} hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
-    + `${iconMarkup('pause', 18)}</button>`
+    + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}${t('home.hero.trailer')}`
+    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></button></div>`
+    + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
+    // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
+    + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div>`
     + `<ul class="hero__stats">`
     + `<li>${iconMarkup('gallery', 18)}<b>{{COT_PRODUCTION_VEHICLES}}</b>${t('home.stats.tanks')}</li>`
     + `<li>${iconMarkup('map', 18)}<b>{{COT_BATTLEFIELDS}}</b>${t('home.stats.battlefields')}</li>`
     + `<li>${iconMarkup('modeStandard', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`
-    + `<li>${iconMarkup('team', 18)}<b lang="en">7v7</b>${t('home.stats.rooms')}</li>`
-    + `<li>${iconMarkup('globe', 18)}<b lang="en">EN</b><b lang="zh-CN">中文</b></li></ul>`
-    // the trailer plays in a dialog with its sound, on the viewer's press: nothing of it loads before then
+    + `<li>${iconMarkup('team', 18)}<b lang="en">7v7</b>${t('home.stats.rooms')}</li></ul>`
+    // the trailer plays in a dialog with its sound, on the viewer's press: nothing of it loads before then. Its controls are
+    // the kit's (ghost icon buttons, the Studio's scrubber), never the browser's own (publicPages.ts mountFilm)
     + `<dialog class="hero__film" data-trailer-dialog aria-label="${esc(text('home.hero.trailer'))}" data-i18n-aria-label="home.hero.trailer">`
-    + `<video controls playsinline preload="none" data-trailer data-poster="${C}/films/trailer.jpg" aria-label="${esc(text('home.trailers.trailerAria').replace('{seconds}', String(Math.round(TRAILER.seconds))))}"`
+    + `<video playsinline preload="none" data-trailer data-poster="${C}/films/trailer.jpg" aria-label="${esc(text('home.trailers.trailerAria').replace('{seconds}', String(Math.round(TRAILER.seconds))))}"`
     + ` data-i18n-aria-label="home.trailers.trailerAria" data-i18n-vars='{"seconds":"${Math.round(TRAILER.seconds)}"}'>`
     + `${trailer ? `<source data-src="/${trailer.path}" type="video/webm">` : ''}<source data-src="/${TRAILER.path}" type="video/mp4"></video>`
-    + `<button class="${btn('icon', '36')} hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
-    + `${iconMarkup('close', 18)}</button></dialog>`
+    + `<div class="film-bar">`
+    + filmButton('play', 'play', 'publicPages.film.play', 'pause')
+    + `<input class="film-scrub" type="range" min="0" max="1000" step="1" value="0" data-film-scrub aria-label="${esc(text('publicPages.film.seek'))}" data-i18n-aria-label="publicPages.film.seek">`
+    + `<span class="film-time num" lang="en" data-film-time>0:00 / ${clock(TRAILER.seconds)}</span>`
+    + filmButton('mute', 'sound', 'publicPages.film.mute', 'soundOff')
+    + filmButton('full', 'fullscreen', 'publicPages.film.fullscreen')
+    + `</div>`
+    + `<button class="${btn('icon', '36')} cot-c-btn--ghost hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
+    + `${iconMarkup('close', 20)}</button></dialog>`
     + `</header>`;
 }
 
@@ -140,8 +153,6 @@ const C = '/media/site50-r14';
 const FEATURE_ROWS = [['battlefields'], ['killcam', 'destruction'], ['watch'], ['studio', 'multiplayer'], ['fleet', 'garage']];
 const FEATURE_LINKS = { watch: '/docs/modes', killcam: '/docs/combat', destruction: '/docs/battlefields', studio: '/studio',
   multiplayer: '/docs/multiplayer', garage: '/', battlefields: '/docs/battlefields', fleet: '/gallery' };
-/** A number the build fills ({{COT_*}}, src/productStats.ts) leads the feature's name. */
-const FEATURE_COUNT = { battlefields: '{{COT_BATTLEFIELDS}}', fleet: '{{COT_PRODUCTION_VEHICLES}}' };
 function featureTile(slot, wide) {
   const clip = REEL.features?.[slot];
   if (!clip) throw new Error(`home-premiere: public/media/home-r2/manifest.json has no ${slot} feature`);
@@ -155,9 +166,8 @@ function featureTile(slot, wide) {
     ? `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${esc(text(`home.features.${slot}`))}"`
       + ` data-i18n-label="home.features.${slot}" data-duration="${seconds(clip)}">${ladder(clip)}</video>`
     : '';
-  const count = FEATURE_COUNT[slot] ? `<b class="num">${FEATURE_COUNT[slot]}</b> ` : '';
   return `<figure class="feat${wide ? ' feat--wide' : ''} cot-c-media" data-feature="${slot}">${picture}${film}`
-    + `<figcaption class="feat__cap"><a class="feat__link" href="${FEATURE_LINKS[slot]}">${count}${t(`home.features.${slot}`)}${iconMarkup('chevronRight', 24)}</a></figcaption></figure>`;
+    + `<figcaption class="feat__cap"><a class="feat__link" href="${FEATURE_LINKS[slot]}">${t(`home.features.${slot}`)}${iconMarkup('chevronRight', 24)}</a></figcaption></figure>`;
 }
 function featuresBlock() {
   const tiles = FEATURE_ROWS.flatMap((row) => row.map((slot) => featureTile(slot, row.length === 1))).join('');
@@ -205,8 +215,7 @@ function modeTile(id) {
 const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`mechanics/${id}`, `media.home.mechanics.${camel(id)}`)}`
   + `<figcaption class="play-tile__nm">${t(`home.mechanics.${camel(id)}.title`, 'b')}</figcaption></figure>`;
 function playBlock() {
-  const count = (n) => `<span class="cot-c-tabs__count num" lang="en">${n}</span>`;
-  const tabs = [['modes', 'modeStandard', 'home.stats.modes', count('{{COT_BATTLE_MODES}}')],
+  const tabs = [['modes', 'modeStandard', 'home.stats.modes', ''],
     ...MECHANICS.map(([group, icon]) => [group, icon, `home.mechanics.group.${group}`, ''])]
     .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="radio" data-play-tab="${value}" aria-checked="${i === 0}">`
       + `${iconMarkup(icon, 16)}${t(key)}${extra}</button>`).join('');
@@ -214,10 +223,10 @@ function playBlock() {
     + `${iconMarkup(dir === 'prev' ? 'chevronLeft' : 'chevronRight', 18)}</button>`;
   const panel = (value, tiles, hidden) => `<div class="play-rail" data-play-panel="${value}" tabindex="0" role="group" aria-labelledby="play-title"${hidden ? ' hidden' : ''}>${tiles.join('')}</div>`;
   return `<section class="play" id="modes" aria-labelledby="play-title"><div class="home-shell">`
-    + `<header class="home-head"><h2 class="home-h2" id="play-title">${t('home.play.title')}</h2>`
+    + `<header class="home-head"><h2 class="home-h2" id="play-title">${t('home.play.title', 'span', 't-hollow')}</h2>`
     + `<div class="play-acts"><div class="cot-c-seg" role="radiogroup" aria-labelledby="play-title">${tabs}</div>`
     + `${arrow('prev', 'home.play.previousAria')}${arrow('next', 'home.play.nextAria')}</div></header>`
-    + panel('modes', BATTLE_MODE_IDS.map(modeTile), false)
+    + panel('modes', MODE_PRESENTATION_ORDER.map(modeTile), false)
     + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
     + `</div></section>`;
 }

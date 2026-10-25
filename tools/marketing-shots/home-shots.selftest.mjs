@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../../src/sim/matchModes.ts';
+import { MODE_PRESENTATION_ORDER } from '../../src/sim/gameModeCatalog.ts';
 import { renderProductStats } from '../../src/productStats.ts';
 import { replaceAppVersionTokens } from '../appVersion.ts';
 
@@ -69,7 +70,8 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 const playSection = home.match(/<!--home:play-->([\s\S]*?)<!--\/home:play-->/)?.[1] ?? '';
 const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" data-play-panel="${name}" tabindex="0" role="group" aria-labelledby="play-title"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
 const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)">([\s\S]*?)<\/figure>/g)];
-assert.deepEqual(cards.map((c) => c[1]), [...BATTLE_MODE_IDS], 'one tile per battle mode, in BATTLE_MODE_IDS order (the practice modes are not battles)');
+assert.deepEqual(cards.map((c) => c[1]), [...MODE_PRESENTATION_ORDER], 'one tile per battle mode, in the one presentation order Deploy and the rooms show (the practice modes are not battles)');
+assert.deepEqual([...MODE_PRESENTATION_ORDER].sort(), [...BATTLE_MODE_IDS].sort(), 'the presentation order holds every battle mode once');
 assert.deepEqual(picks.home.modes.map((m) => m.id), [...BATTLE_MODE_IDS], 'one mode shot per battle mode');
 for (const [, id, body] of cards) {
   assert.match(body, new RegExp(`<use href="#i-${GAME_MODE_DEFINITIONS[id].icon}(?:-s)?"/>`), `${id} wears the battle setup's icon`);
@@ -78,8 +80,9 @@ for (const [, id, body] of cards) {
   assert.doesNotMatch(body, /<p\b/, `${id} carries its name only`);
 }
 assert.equal((panel('modes').match(/play-tile--lead/g) || []).length, 0, 'every mode card is a large card: no lead');
-assert.match(playSection, /data-play-tab="modes" aria-checked="true">[^]*?<span class="cot-c-tabs__count num" lang="en">\{\{COT_BATTLE_MODES\}\}<\/span>/,
-  'the modes switch counts the registry (productStats.ts, BATTLE_MODE_IDS) and opens first');
+assert.match(playSection, /data-play-tab="modes" aria-checked="true">/, 'the modes open first');
+// (2026-10-25 gauntlet) the hero's counts carry the numbers; the switch names its sets only
+assert.doesNotMatch(playSection, /cot-c-tabs__count/, 'the switch repeats no count');
 
 // --- the mechanics: three sets of nine behind the switch, each tile named in both languages ----------------------------
 const sets = ['gunnery', 'battlefield', 'beyond'];
@@ -103,7 +106,7 @@ assert.match(playSection, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the r
   const served = renderProductStats(replaceAppVersionTokens(home, 'v0.0.0+selftest'));
   const left = [...new Set(served.match(/\{\{[^{}]*\}\}/g) ?? [])];
   assert.deepEqual(left, [], `site/home.html as served carries no unresolved token (${left.join(', ')})`);
-  const modesCount = served.match(/data-play-tab="modes"[^]*?<span class="cot-c-tabs__count num" lang="en">([^<]*)</)?.[1] ?? '';
-  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the modes switch as served counts the modes (${modesCount})`);
+  const modesCount = served.match(/<li>[^]*?<b>([^<]*)<\/b><span data-i18n="home\.stats\.modes">/)?.[1] ?? '';
+  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the hero's mode count as served counts the modes (${modesCount})`);
 }
 console.log(`home-shots.selftest: ${picked.length} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);

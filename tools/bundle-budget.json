@@ -13,7 +13,7 @@
     },
     "home": {
       "requests": 8,
-      "raw": 110724,
+      "raw": 111012,
       "gzip": 31838,
       "brotli": 28311,
       "inlineCss": 702
@@ -27,14 +27,14 @@
     },
     "gallery": {
       "requests": 76,
-      "raw": 2544967,
-      "gzip": 771901,
+      "raw": 2545266,
+      "gzip": 771916,
       "brotli": 649626,
       "inlineCss": 846
     },
     "notFound": {
       "requests": 7,
-      "raw": 56423,
+      "raw": 56711,
       "gzip": 17935,
       "brotli": 15882,
       "inlineCss": 702

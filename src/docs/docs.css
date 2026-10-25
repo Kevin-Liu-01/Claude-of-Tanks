@@ -355,9 +355,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
    words, not inside one; the index search's results sit over the page's cards and its floating button; touch controls
    meet 44 px */
 @media (height < 520px){.dm-banner__cap{display:none}}
-:lang(zh) .docs-evidence :is(dt,dd){word-break:keep-all}
+:lang(zh) .docs-evidence :is(dt,dd){line-break:strict}
 .dm-keys .cot-c-kbd{vertical-align:middle}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
-@media (pointer:coarse){.public-nav__cta{--h:var(--btn-h-m)}}
 }

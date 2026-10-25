@@ -51,61 +51,10 @@ if (document.querySelector('[data-media-archive]')) {
 
 
 
-// The landing's segmented control (the kit's cot-c-seg, a radio group): a click or an arrow key picks an option, the
-// group keeps one tab stop on the picked option.
-function mountSegment(group: HTMLElement, pick: (option: HTMLButtonElement) => void): void {
-  const options = [...group.querySelectorAll<HTMLButtonElement>('.cot-c-seg__opt')];
-  const choose = (option: HTMLButtonElement, focus = false): void => {
-    for (const other of options) {
-      other.setAttribute('aria-checked', String(other === option));
-      other.tabIndex = other === option ? 0 : -1;
-    }
-    if (focus) option.focus();
-    pick(option);
-  };
-  options.forEach((option, i) => {
-    option.tabIndex = option.getAttribute('aria-checked') === 'true' ? 0 : -1;
-    option.addEventListener('click', () => choose(option));
-    option.addEventListener('keydown', (event) => {
-      const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
-      if (!step) return;
-      event.preventDefault();
-      choose(options[(i + step + options.length) % options.length], true);
-    });
-  });
-}
 
-// How it plays: the switch shows one rail (the modes or a set of mechanics); the arrows step the shown rail by most of a
-// screen and rest at its ends. The markup opens with the previous arrow disabled; the rail's own scroll keeps both current,
-// so nothing reads layout as the page loads.
-function mountPlay(section: HTMLElement): void {
-  const group = section.querySelector<HTMLElement>('.cot-c-seg');
-  const rails = [...section.querySelectorAll<HTMLElement>('[data-play-panel]')];
-  const previous = section.querySelector<HTMLButtonElement>('[data-rail-prev]');
-  const next = section.querySelector<HTMLButtonElement>('[data-rail-next]');
-  if (!group || !previous || !next) return;
-  let shown = rails.find((rail) => !rail.hidden) ?? rails[0];
-  let frame = 0;
-  const update = (): void => {
-    frame = 0;
-    previous.disabled = shown.scrollLeft <= 2;
-    next.disabled = shown.scrollLeft >= shown.scrollWidth - shown.clientWidth - 2;
-  };
-  const step = (direction: number): void => shown.scrollBy({ left: direction * shown.clientWidth * 0.8,
-    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  previous.addEventListener('click', () => step(-1));
-  next.addEventListener('click', () => step(1));
-  for (const rail of rails) rail.addEventListener('scroll', () => { if (rail === shown && !frame) frame = requestAnimationFrame(update); }, { passive: true });
-  mountSegment(group, (option) => {
-    const tab = option.dataset.playTab || 'modes';
-    for (const rail of rails) rail.hidden = rail.dataset.playPanel !== tab;
-    shown = rails.find((rail) => !rail.hidden) ?? shown;
-    shown.scrollLeft = 0;
-    update();
-  });
-}
-
-document.querySelectorAll<HTMLElement>('#modes').forEach(mountPlay);
+// The landing's own behaviour (homePage.ts: the reel, the trailer's controls, the modes rail) loads with the landing
+// alone, so the manual, the Gallery and the other public pages carry neither its code nor its strings.
+if (document.querySelector('[data-hero-reel]')) void import('./homePage.ts');
 
 // Play now (Enter): Enter anywhere on the landing that is not a control follows the hero's Play link.
 const heroPlay = document.querySelector<HTMLAnchorElement>('[data-hero-play]');
@@ -116,43 +65,6 @@ if (heroPlay) {
     if (target && target !== document.body && target.closest('a,button,input,select,textarea,summary,video,[contenteditable],[tabindex]')) return;
     heroPlay.click();
   });
-}
-
-// The hero reel (heroReel.ts): its clips take their turns once the page has loaded and gone idle, so the poster, the
-// page's LCP picture, never shares the pipe with a clip.
-const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');
-if (reelHero) {
-  const start = (): void => {
-    void import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
-      () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') })));
-  };
-  const idle = (): void => {
-    if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
-    else setTimeout(start, 200);
-  };
-  if (document.readyState === 'complete') idle();
-  else addEventListener('load', idle, { once: true });
-}
-
-// The trailer plays in the hero's dialog with its sound, on the viewer's press: its files are named only then.
-const trailerDialog = document.querySelector<HTMLDialogElement>('[data-trailer-dialog]');
-const trailerVideo = trailerDialog?.querySelector<HTMLVideoElement>('video[data-trailer]') ?? null;
-if (trailerDialog && trailerVideo) {
-  document.querySelectorAll<HTMLButtonElement>('[data-trailer-open]').forEach((button) => button.addEventListener('click', () => {
-    const named = [...trailerVideo.querySelectorAll<HTMLSourceElement>('source[data-src]')];
-    for (const source of named) {
-      source.src = source.dataset.src || '';
-      delete source.dataset.src;
-    }
-    if (trailerVideo.dataset.poster && !trailerVideo.poster) trailerVideo.poster = trailerVideo.dataset.poster;
-    if (named.length) trailerVideo.load();
-    trailerDialog.showModal();
-    void trailerVideo.play().catch(() => {});
-  }));
-  trailerDialog.querySelector('[data-trailer-close]')?.addEventListener('click', () => trailerDialog.close());
-  // a press on the backdrop closes it too
-  trailerDialog.addEventListener('click', (event) => { if (event.target === trailerDialog) trailerDialog.close(); });
-  trailerDialog.addEventListener('close', () => trailerVideo.pause());
 }
 
 function mountDeferredImage(image: HTMLImageElement): void {

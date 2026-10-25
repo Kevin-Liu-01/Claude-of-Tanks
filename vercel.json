@@ -36,7 +36,7 @@
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Content-Security-Policy-Report-Only", "value": "script-src 'self' https://www.googletagmanager.com 'sha256-6Lbq/OKo8dJin8aR0nrHGu6dsK+t683BjcGBnyUkMK8=' 'sha256-6zfTrAqLkbi6tvQUwgS/FLSWSfC70U5KtA+PGnHRaak=' 'sha256-9hp0bsvVx2INaIyIWRuGIUbWZHRwkEhBWDxec8mH+XY=' 'sha256-QAnL1dg4IWjq0cnw3S+SeAuZ+Fl7D4knnx8zbsg4wog=' 'sha256-T9tpAzxtJFbelvZ/7pBBG4jhkT9DOHdLz+ty/qq4vQU=' 'sha256-fInKe7RAsgeUneh2dwkUhPQZVCB23HlTdVpDBuJw0/E=' 'sha256-kmEsAlzgflC8xE27syBwl1XrDXNJUKPAgTHUndjMolc=' 'sha256-sAB19f6Yc4czmYchZcKL4U5/EvVHs5fw80NLXAD6DzQ=' 'sha256-ycAInyfvipaaR/Vv/OAYwo0ipoJ5Lk/wammuOx/SL8c='; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" }
+        { "key": "Content-Security-Policy-Report-Only", "value": "script-src 'self' https://www.googletagmanager.com 'sha256-6zfTrAqLkbi6tvQUwgS/FLSWSfC70U5KtA+PGnHRaak=' 'sha256-9hp0bsvVx2INaIyIWRuGIUbWZHRwkEhBWDxec8mH+XY=' 'sha256-T9tpAzxtJFbelvZ/7pBBG4jhkT9DOHdLz+ty/qq4vQU=' 'sha256-fInKe7RAsgeUneh2dwkUhPQZVCB23HlTdVpDBuJw0/E=' 'sha256-iMne+5k7gAh++x3K/AcfX5iSnuWNb6B86zbo+iWkg0A=' 'sha256-kmEsAlzgflC8xE27syBwl1XrDXNJUKPAgTHUndjMolc=' 'sha256-nZYFnBIs4uRc4M7PqZWx8OWyLSOEGLts7DMp9j9fYCY=' 'sha256-sAB19f6Yc4czmYchZcKL4U5/EvVHs5fw80NLXAD6DzQ=' 'sha256-ycAInyfvipaaR/Vv/OAYwo0ipoJ5Lk/wammuOx/SL8c='; worker-src 'self' blob:; object-src 'none'; base-uri 'self'" }
       ]
     },
     { "source": "/gallery", "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }] },

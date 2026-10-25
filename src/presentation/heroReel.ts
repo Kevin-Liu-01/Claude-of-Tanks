@@ -11,7 +11,7 @@
  * the tab is hidden, and has a pause control (WCAG 2.2.2). The Play hand-off (mediaPlayer.ts abortPageMedia) ends it.
  * Copyright © 2026 Kevin B. Liu.
  */
-import { autoplayAllowed, chooseSource, ladderFromMarkup } from './mediaPlayer.ts';
+import { MEDIA_PAUSE_ICON, MEDIA_PLAY_ICON, autoplayAllowed, chooseSource, ladderFromMarkup } from './mediaPlayer.ts';
 
 /** A clip's turn when its file does not say how long it runs. */
 const TURN_MS = 6000;
@@ -153,7 +153,7 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
     const text = paused ? labels().play : labels().pause;
     toggle.setAttribute('aria-label', text);
     toggle.setAttribute('aria-pressed', String(paused));
-    toggle.querySelector('use')?.setAttribute('href', paused ? '#i-play' : '#i-pause');
+    toggle.querySelector('path')?.setAttribute('d', paused ? MEDIA_PLAY_ICON : MEDIA_PAUSE_ICON);
   };
   const onToggle = (): void => {
     paused = !paused;
