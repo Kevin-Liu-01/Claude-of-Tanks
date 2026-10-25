@@ -1916,6 +1916,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', syncScrollFades);
   statsEl.addEventListener('scroll', syncScrollFades, { passive: true });
   requestAnimationFrame(syncScrollFades);
+  // A scrolling paint grid stands a whole number of rows tall, so the sheet never ends on a sliced row (the gauntlet
+  // 10-25); the fade on its last row says more waits below. Read when the sheet or the window changes size, and after
+  // the grid is drawn, never in a scroll.
+  const fitCamoRows = (): void => {
+    const cg = root.querySelector<HTMLElement>('.cot-camos .cgrid.camo');
+    if (!cg) return;
+    cg.style.maxHeight = '';
+    const card = [...cg.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0);
+    if (card && cg.scrollHeight > cg.clientHeight + 1 && getComputedStyle(cg).overflowY !== 'visible') {
+      const gap = parseFloat(getComputedStyle(cg).rowGap) || 0;
+      const rows = Math.floor((cg.clientHeight + gap) / (card.offsetHeight + gap));
+      if (rows >= 1) cg.style.maxHeight = `${rows * (card.offsetHeight + gap) - gap}px`;
+    }
+    cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
+  };
+  window.addEventListener('resize', fitCamoRows);
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
   // so window resize alone is insufficient to keep the fade affordance true.
@@ -1936,6 +1952,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   //               localStorage inside opts.camo.set.
   const camoOpts = opts.camo || null;
   const camosEl = requiredElement<HTMLElement>(root, '.cot-camos');
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(fitCamoRows)).observe(camosEl);
   const promoteCamoSwatches = () => {
     scheduleCamoSwatchLoad(true).catch(() => { /* next interaction retries */ });
   };
@@ -2535,6 +2552,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.dataset.tip = label;
     }
     requestAnimationFrame(syncScrollFades);
+    requestAnimationFrame(fitCamoRows);
   }
 
   function syncCamoCardSelection(selectedPatternId: string): void {
