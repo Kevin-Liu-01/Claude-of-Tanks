@@ -185,6 +185,7 @@ body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
 body[data-cot-width='phone'] :is(.cot-set-seg button,.cot-set-seg .cot-time-choice){flex:1 1 auto}
+body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
 body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
