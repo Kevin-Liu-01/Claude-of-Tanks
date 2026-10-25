@@ -1,10 +1,10 @@
 {
  "binary": "cot_sim_wasm.wasm",
  "bytes": 61524,
- "sha256": "92f2d5eacbaedf1c1020dbd5290034e8339206ec694dc76cf3b54dfe85ce112e",
+ "sha256": "7c7dae8c050f0be456ccf908ae97fb2406bbe7e0e187f75232195c27412e6075",
  "sources": {
   "crates/cot-sim/src/ballistics.rs": "3eb8df5b5ea57b0a1d84c2e15e2e48a593ac7e6f4016f4316cf79cbf56b7da22",
-  "crates/cot-sim/src/contact.rs": "0d12731cec53d0aa39b28526703e33c8ebdf6c1e324e6e049a71ec92f3b9e1dd",
+  "crates/cot-sim/src/contact.rs": "bafc93f5ea30c0d0e097451136ccf88a402ac11cf285a7c628a452175fb9f9c6",
   "crates/cot-sim/src/grid.rs": "bef7cfb43a9843379472f82e6c5983f55f66726b940a66a1b5a54fdcecc32da2",
   "crates/cot-sim/src/jsmath.rs": "b2991a53298bce4c8b8e61ee03ccb44078a521148838c227309327e920cca156",
   "crates/cot-sim/src/lib.rs": "48f8dcf5626211af284b4ec10a43989aef222b3ace05965c604d933cb87d947d",

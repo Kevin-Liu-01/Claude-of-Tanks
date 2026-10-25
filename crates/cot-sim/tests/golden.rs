@@ -11,6 +11,8 @@ use cot_sim::ballistics::{
     aim_elevation_rad, apply_dispersion, create_shell, guide_shell_toward, pen_at_distance_mm,
     shell_gravity_mps2, solve_ballistic_gun_lay, step_shell, ShellSpec,
 };
+use cot_sim::contact::{ContactLattice, Sample};
+use cot_sim::jsmath;
 use cot_sim::math::Vec3;
 use cot_sim::rng::Mulberry32;
 use serde::Deserialize;
@@ -437,5 +439,76 @@ fn dispersion_matches() {
             ledger.check_vec(&dir, shot, &format!("seed {} sigma {} shot {i}", case.seed.f64(), case.sigma_rad.f64()));
         }
     }
+    ledger.finish();
+}
+
+// -------------------------------------------------------------- contact ----
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ContactGolden {
+    flipped_samples: usize,
+    cases: Vec<ContactCase>,
+}
+
+#[derive(Deserialize)]
+struct ContactCase {
+    x: JsNum,
+    z: JsNum,
+    expect: JsNum,
+    flipped: bool,
+}
+
+/// The golden tool's steep surface, in its operation order, on the pinned math.
+fn steep_height(x: f64, z: f64) -> f64 {
+    30.0 * jsmath::sin(x * 0.05) * jsmath::cos(z * 0.04) - 12.0 * jsmath::abs(jsmath::sin((x - z) * 0.9)) + 0.25 * x
+}
+
+/// Supply what the lattice reported missing, from the surface, as the TypeScript's lazy vertices and fold splits do.
+fn supply(lattice: &mut ContactLattice, missing: Sample) {
+    match missing {
+        Sample::MissingVertex(ix, iz) => {
+            for (vx, vz) in [(ix, iz), (ix + 1, iz), (ix, iz + 1), (ix + 1, iz + 1)] {
+                if !lattice.vertex_ready(vx, vz) {
+                    let h = steep_height(lattice.vertex_coordinate(vx), lattice.vertex_coordinate(vz));
+                    lattice.set_vertex(vx, vz, h);
+                }
+            }
+        }
+        Sample::MissingFlip(ix, iz) => {
+            let (cx, cz) = lattice.cell_centre(ix, iz);
+            lattice.set_flip_from_centre(ix, iz, steep_height(cx, cz));
+        }
+        other => panic!("nothing to supply for {other:?}"),
+    }
+}
+
+#[test]
+fn contact_lattice_matches() {
+    let g: ContactGolden = serde_json::from_str(&golden("contact")).unwrap();
+    assert!(g.flipped_samples > 0, "the steep surface must exercise the a-d split");
+    let mut ledger = Ledger::new("contact");
+    let mut lattice = ContactLattice::new();
+    let mut flips = 0;
+    for (i, case) in g.cases.iter().enumerate() {
+        let (x, z) = (case.x.f64(), case.z.f64());
+        let height = loop {
+            match lattice.sample(x, z) {
+                Sample::Height(h) => break h,
+                Sample::OffSquare => break steep_height(x, z),
+                missing => supply(&mut lattice, missing),
+            }
+        };
+        ledger.check(height, case.expect.f64(), || format!("case {i} ({x}, {z})"));
+        let flipped = loop {
+            match lattice.cell_flipped_at(x, z) {
+                Ok(f) => break f,
+                Err(missing) => supply(&mut lattice, missing),
+            }
+        };
+        assert_eq!(flipped, case.flipped, "case {i} ({x}, {z}): the split");
+        flips += flipped as usize;
+    }
+    assert_eq!(flips, g.flipped_samples);
     ledger.finish();
 }

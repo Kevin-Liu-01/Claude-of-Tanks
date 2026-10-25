@@ -163,6 +163,28 @@ impl ContactLattice {
         i
     }
 
+    /// `cellFlippedAt`: whether the cell under (x, z) takes the a–d split (false off the square and for non-finite
+    /// input); `Err` names what is missing to decide it.
+    pub fn cell_flipped_at(&self, x: f64, z: f64) -> Result<bool, Sample> {
+        if !x.is_finite() || !z.is_finite() || x < -HALF || x > HALF || z < -HALF || z > HALF {
+            return Ok(false);
+        }
+        let (ix, iz) = (self.cell(x), self.cell(z));
+        for (vx, vz) in [(ix, iz), (ix + 1, iz), (ix, iz + 1), (ix + 1, iz + 1)] {
+            if !self.vertex_ready(vx, vz) {
+                return Err(Sample::MissingVertex(ix, iz));
+            }
+        }
+        let (a, b, c, d) = self.corners(ix, iz);
+        if !fold_candidate(a, b, c, d) {
+            return Ok(false);
+        }
+        match self.flips[iz * CELLS + ix] {
+            0 => Err(Sample::MissingFlip(ix, iz)),
+            state => Ok(state == 2),
+        }
+    }
+
     /// The height at (x, z), or what is missing to compute it. Mirrors the TypeScript `sample`, last-cell cache included
     /// (the cache never changes an answer: a known corner and a decided split never change).
     pub fn sample(&mut self, x: f64, z: f64) -> Sample {

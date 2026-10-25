@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { Vector3 } from 'three';
 import { mulberry32 } from '../src/game/stateCore.ts';
 import { loadCotSimWasmNode, pinMath } from './cot-sim-wasm.mjs';
+import { createTerrainContactSampler } from '../src/world/terrainContactSurface.ts';
 import {
   GRAVITY_SCALE,
   GUIDED_MISSILE_TURN_RATE_RAD_S,
@@ -193,8 +194,32 @@ function ballisticsVectors() {
   };
 }
 
+// ------------------------------------------------------------ contact ------
+// A steep analytic surface (crests along x - z = const, cusped, so many cells are steep convex folds and some take the
+// a-d split): the Rust test evaluates the same expression on its pinned math and fills its lattice lazily from it.
+const steepHeight = (x, z) => 30 * Math.sin(x * 0.05) * Math.cos(z * 0.04) - 12 * Math.abs(Math.sin((x - z) * 0.9)) + 0.25 * x;
+function contactVectors() {
+  const sampler = createTerrainContactSampler(steepHeight);
+  const points = [];
+  for (let i = 0; i < 6000; i++) points.push([-60 + ((i * 0.6180339887498949) % 1) * 120, -40 + ((i * 0.7548776662466927) % 1) * 80]);
+  // the square's edges and corners, just off it, chunk seams, vertices, cell seams in Float32 and non-finite input
+  for (const v of [-512, 512, -512.0000001, 512.0000001, -384, 0, 128, 255.99999999999997, 256, 1.3333333333333333, 1.3333333730697632, 1.333333]) {
+    points.push([v, 10.1], [10.1, v], [v, v]);
+  }
+  points.push([NaN, 1], [1, Infinity], [-Infinity, 0], [600, -700]);
+  let flipped = 0;
+  const cases = points.map(([x, z]) => {
+    const expect = sampler(x, z);
+    const flip = sampler.cellFlippedAt(x, z);
+    if (flip) flipped++;
+    return { x: num(x), z: num(z), expect: num(expect), flipped: flip };
+  });
+  return { source: 'src/world/terrainContactSurface.ts', sourceSha256: sha('src/world/terrainContactSurface.ts'),
+    surface: steepHeight.toString(), flippedSamples: flipped, cases };
+}
+
 // --------------------------------------------------------------- main ------
-const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors() });
+const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors() });
 const engineModules = generate();
 const restoreMath = pinMath(await loadCotSimWasmNode());
 let modules;
