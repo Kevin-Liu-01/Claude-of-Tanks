@@ -450,25 +450,36 @@
       }
     },
     "garage": {
-      "id": "garage",
-      "altKey": "media.homeR2.garage",
+      "id": "garage-merkava4-barak",
       "title": {
-        "en": "The Garage: a KF51 Panther on the turntable with its firepower figures, paint band and the vehicle rail",
-        "zh": "车库：转台上的 KF51 Panther，旁边是它的火力数据、涂装栏与车辆列表"
+        "en": "A Merkava Mk 4 Barak on the Garage's turntable under the hangar lights, the motor pool's gantries and walkways behind",
+        "zh": "机库灯光下，一辆 Merkava Mk 4 Barak 停在车库的转台上，身后是车场的龙门架与走道"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/ui-246/garage-640.webp",
+            "path": "/media/home-r2/garage-merkava4-barak-640.webp",
             "width": 640,
             "height": 360,
-            "bytes": 43192
+            "bytes": 37422
           },
           {
-            "path": "/media/ui-246/garage.webp",
+            "path": "/media/home-r2/garage-merkava4-barak-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70138
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 107840
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 223646
+            "bytes": 194418
           }
         ]
       }
@@ -526,30 +537,55 @@
       }
     },
     "fleet": {
-      "id": "s04-column-under-fire",
-      "altKey": "media.site50.title.s04ColumnUnderFire",
+      "id": "fleet-montage",
       "title": {
-        "en": "A T-90M column drives into the fight on the country road",
-        "zh": "一支 T-90M 纵队沿乡间公路驶入战斗"
+        "en": "Nine vehicles from eight nations in quick cuts, each on its own battlefield: Merkava Mk 4, Type 10, Stridsvagn 122, M1A2 Abrams, ZTZ-99A2, KV-2, Leclerc, CV90 and KF51 Panther",
+        "zh": "八个国家的九辆战车快速剪辑，各在自己的战场上：Merkava Mk 4、Type 10、Stridsvagn 122、M1A2 Abrams、ZTZ-99A2、KV-2、Leclerc、CV90 与 KF51 Panther"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/site50-r14/loops/s04-column-under-fire.jpg",
+            "path": "/media/home-r2/fleet-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 30928
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56464
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 84044
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 568956
+            "bytes": 146822
           }
         ]
       },
-      "wide": {
-        "path": "/media/site50-r14/loops/s04-column-under-fire.webm",
-        "type": "video/webm",
-        "width": 1920,
-        "height": 1080,
-        "seconds": 6.0,
-        "bytes": 7741899,
-        "rung": "wide"
+      "film": {
+        "path": "/media/home-r2/fleet-montage.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 9.9,
+        "bytes": 2814227
+      },
+      "mobile": {
+        "path": "/media/home-r2/fleet-montage-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 9.9,
+        "bytes": 1217691,
+        "rung": "phone"
       }
     }
   }
