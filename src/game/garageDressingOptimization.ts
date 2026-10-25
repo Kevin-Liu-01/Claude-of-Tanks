@@ -45,6 +45,8 @@ export interface GarageDressingOptimizationReceipt {
 }
 
 const _worldScale = new THREE.Vector3();
+const _worldPosition = new THREE.Vector3();
+const _worldQuaternion = new THREE.Quaternion();
 const _rootWorldInverse = new THREE.Matrix4();
 const _instanceMatrix = new THREE.Matrix4();
 
@@ -651,7 +653,9 @@ export function optimizeGarageDressing(
   let shadowCastersBefore = 0;
   let shadowCastersAfter = 0;
 
-  root.updateMatrixWorld(true);
+  // (2026-10-25, lockdown-251) ancestors too, so each caster's world matrix below is what getWorldScale's own walk up
+  // its parents would compose: that walk, per caster, was most of the Garage's idle optimize task (169 ms)
+  root.updateWorldMatrix(true, true);
   root.traverse((object) => {
     if (object !== root && object.matrixAutoUpdate) {
       object.updateMatrix();
@@ -664,7 +668,7 @@ export function optimizeGarageDressing(
     shadowCastersBefore += 1;
     if (!isAuthoredShadowOwner(mesh)) {
       if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-      mesh.getWorldScale(_worldScale);
+      mesh.matrixWorld.decompose(_worldPosition, _worldQuaternion, _worldScale);
       const radius = (mesh.geometry.boundingSphere?.radius ?? Infinity)
         * Math.max(_worldScale.x, _worldScale.y, _worldScale.z);
       if (Number.isFinite(radius) && radius < cutoff) mesh.castShadow = false;

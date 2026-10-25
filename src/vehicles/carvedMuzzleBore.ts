@@ -4,6 +4,13 @@ import { bakeWeaponEdgeWear, WEAPON_EDGE_BARY } from './weaponFinish.ts';
 
 type Vertex = { p: THREE.Vector3; data: number[] };
 type Plane = readonly [number, number, number, number];
+type PointReader = (index: number, target: THREE.Vector3) => THREE.Vector3;
+
+// (2026-10-25, lockdown-251) a gun's triangles are read by position first: only a face on a cap plane, or one that
+// meets the bore, becomes vertex records. A tank switch's carve read every triangle of its gun twice as fresh vectors,
+// arrays and a bounds box (a long task's leaf in the spike census); the corners, tests and written values are the same.
+const CORNER_A = new THREE.Vector3(), CORNER_B = new THREE.Vector3(), CORNER_C = new THREE.Vector3();
+const EDGE_U = new THREE.Vector3(), EDGE_V = new THREE.Vector3();
 
 /** Subtract a small convex bore from native gun stock. No shader hole, depth
  * offset, hidden cap, CSG dependency, or change to the muzzle's outer outline. */
@@ -23,11 +30,19 @@ export function carveMuzzleGeometry(
   const output: number[] = [], groups: { start: number; count: number; materialIndex: number }[] = [];
   const count = source.index?.count ?? position.count;
   let changed = false, removed = 0, added = 0;
+  const point: PointReader = (index, target) => target.fromBufferAttribute(position, index).applyMatrix4(toBore);
   const vertex = (index: number): Vertex => ({
-    p: new THREE.Vector3().fromBufferAttribute(position, index).applyMatrix4(toBore),
+    p: point(index, new THREE.Vector3()),
     data: layout.flatMap(([, attribute]) => Array.from({ length: attribute.itemSize }, (_, k) => attribute.getComponent(index, k))),
   });
-  const fans = planarCapRings(source, vertex, radius, depth, segments);
+  const fans = planarCapRings(source, vertex, point, radius, depth, segments);
+  const closeRun = (start: number, materialIndex: number): void => {
+    const emitted = output.length / size - start;
+    if (!emitted) return;
+    const last = groups.at(-1);
+    if (last?.materialIndex === materialIndex) last.count += emitted;
+    else groups.push({ start, count: emitted, materialIndex });
+  };
   const emit = (polygon: Vertex[], materialIndex: number) => {
     const start = output.length / size;
     for (let i = 1; i + 1 < polygon.length; i++) {
@@ -35,11 +50,20 @@ export function carveMuzzleGeometry(
       if (b.p.clone().sub(a.p).cross(c.p.clone().sub(a.p)).lengthSq() < 1e-20) continue;
       output.push(...a.data, ...b.data, ...c.data);
     }
-    const emitted = output.length / size - start;
-    if (!emitted) return;
-    const last = groups.at(-1);
-    if (last?.materialIndex === materialIndex) last.count += emitted;
-    else groups.push({ start, count: emitted, materialIndex });
+    closeRun(start, materialIndex);
+  };
+  /** emit() of one source triangle (indices ia, ib, ic at corners pa, pb, pc), from its attributes as they are. */
+  const emitSource = (ia: number, ib: number, ic: number, pa: THREE.Vector3, pb: THREE.Vector3, pc: THREE.Vector3,
+    materialIndex: number): void => {
+    const start = output.length / size;
+    if (!(EDGE_U.copy(pb).sub(pa).cross(EDGE_V.copy(pc).sub(pa)).lengthSq() < 1e-20)) {
+      pushSource(ia); pushSource(ib); pushSource(ic);
+    }
+    closeRun(start, materialIndex);
+  };
+  /** A vertex's record (vertex().data), written straight to the output. */
+  const pushSource = (index: number): void => {
+    for (const [, attribute] of layout) for (let k = 0; k < attribute.itemSize; k++) output.push(attribute.getComponent(index, k));
   };
   for (let t = 0; t < count; t += 3) {
     const fan = fans.get(t);
@@ -48,12 +72,13 @@ export function carveMuzzleGeometry(
       added += fan.triangles.length;
     }
     if (fan) { changed = true; removed++; continue; }
-    const original = [0, 1, 2].map(k => vertex(source.index?.getX(t + k) ?? t + k));
+    const ia = source.index?.getX(t) ?? t, ib = source.index?.getX(t + 1) ?? t + 1, ic = source.index?.getX(t + 2) ?? t + 2;
     const materialIndex = source.groups.find(g => t >= g.start && t < g.start + g.count)?.materialIndex ?? 0;
-    const bounds = new THREE.Box3().setFromPoints(original.map(v => v.p));
-    if (outsideBore(bounds, radius, depth)) {
-      emit(original, materialIndex); continue;
+    const pa = point(ia, CORNER_A), pb = point(ib, CORNER_B), pc = point(ic, CORNER_C);
+    if (outsideBoreCorners(pa, pb, pc, radius, depth)) {
+      emitSource(ia, ib, ic, pa, pb, pc, materialIndex); continue;
     }
+    const original = [vertex(ia), vertex(ib), vertex(ic)];
     const pieces = subtractPrism(original, planes);
     if (!pieces) { emit(original, materialIndex); continue; }
     changed = true; removed++;
@@ -69,6 +94,13 @@ function outsideBore(bounds: THREE.Box3, radius: number, depth: number): boolean
   return bounds.max.z < -depth || bounds.min.z > .00001
     || bounds.min.x >= radius || bounds.max.x <= -radius
     || bounds.min.y >= radius || bounds.max.y <= -radius;
+}
+
+/** The triangle's bounds (Box3.setFromPoints's own min and max) miss the bore's prism. */
+function outsideBoreCorners(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, radius: number, depth: number): boolean {
+  return Math.max(a.z, b.z, c.z) < -depth || Math.min(a.z, b.z, c.z) > .00001
+    || Math.min(a.x, b.x, c.x) >= radius || Math.max(a.x, b.x, c.x) <= -radius
+    || Math.min(a.y, b.y, c.y) >= radius || Math.max(a.y, b.y, c.y) <= -radius;
 }
 
 function subtractPrism(original: Vertex[], planes: Plane[]): Vertex[][] | null {
@@ -107,10 +139,10 @@ type Face = { t: number; vertices: Vertex[]; material: number; sign: number };
 /** Rebuild a regular fan as one ring. Boolean clipping every fan sector
  * independently creates unnecessary cuts along the old radial spokes. */
 function planarCapRings(
-  geometry: THREE.BufferGeometry, read: (index: number) => Vertex,
+  geometry: THREE.BufferGeometry, read: (index: number) => Vertex, point: PointReader,
   radius: number, depth: number, segments: number,
 ): Map<number, Fan> {
-  const groups = planarFaceGroups(geometry, read, depth);
+  const groups = planarFaceGroups(geometry, read, point, depth);
   const result = new Map<number,Fan>();
   for (const faces of groups.values()) appendPlanarRings(faces, radius, segments, result);
   return result;
@@ -137,13 +169,16 @@ function appendPlanarRings(faces: Face[], radius: number, segments: number, resu
     }
 }
 
-function planarFaceGroups(geometry: THREE.BufferGeometry, read: (index: number) => Vertex, depth: number): Map<string,Face[]> {
+function planarFaceGroups(geometry: THREE.BufferGeometry, read: (index: number) => Vertex, point: PointReader,
+  depth: number): Map<string,Face[]> {
   const groups = new Map<string, Face[]>();
   const count = geometry.index?.count ?? geometry.getAttribute('position').count;
   for (let t = 0; t < count; t += 3) {
-    const vertices = [0,1,2].map(k => read(geometry.index?.getX(t+k) ?? t+k));
+    const ia = geometry.index?.getX(t) ?? t, ib = geometry.index?.getX(t+1) ?? t+1, ic = geometry.index?.getX(t+2) ?? t+2;
+    const za = point(ia, CORNER_A).z, zb = point(ib, CORNER_B).z, zc = point(ic, CORNER_C).z;
+    if (za < -depth || za > .00001 || Math.abs(zb-za)>1e-6 || Math.abs(zc-za)>1e-6) continue;
+    const vertices = [read(ia), read(ib), read(ic)];
     const [a,b,c] = vertices, z = a.p.z;
-    if (z < -depth || z > .00001 || Math.abs(b.p.z-z)>1e-6 || Math.abs(c.p.z-z)>1e-6) continue;
     const sign = Math.sign((b.p.x-a.p.x)*(c.p.y-a.p.y)-(b.p.y-a.p.y)*(c.p.x-a.p.x));
     if (!sign) continue;
     const material = geometry.groups.find(g => t>=g.start && t<g.start+g.count)?.materialIndex ?? 0;

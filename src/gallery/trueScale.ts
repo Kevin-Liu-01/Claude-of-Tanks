@@ -33,6 +33,24 @@ interface Mask { readonly image: HTMLImageElement; readonly x: number; readonly 
 const HUMAN_M = 1.75;
 const masks = new Map<string, Promise<Mask | null>>();
 const draws = new WeakMap<HTMLCanvasElement, number>();
+// (2026-10-25, lockdown-251) a canvas with no CSS box (the stage's inset, hidden on a phone) keeps its latest drawing
+// here until it gets one. Its width used to fall back to the backing store's, which the device ratio then doubled at
+// every selection: 268 px to 17 152 px in six picks, and a 49 s task on the 4x phone census.
+const deferred = new WeakMap<HTMLCanvasElement, () => void>();
+let boxes: ResizeObserver | null = null;
+function drawWhenBoxed(canvas: HTMLCanvasElement, redraw: () => void): void {
+  deferred.set(canvas, redraw);
+  boxes ??= new ResizeObserver((records) => {
+    for (const record of records) {
+      const target = record.target as HTMLCanvasElement;
+      const pending = record.contentRect.width > 0 ? deferred.get(target) : undefined;
+      if (!pending) continue;
+      deferred.delete(target);
+      pending();
+    }
+  });
+  boxes.observe(canvas);
+}
 
 function loadMask(id: string): Promise<Mask | null> {
   let pending = masks.get(id);
@@ -77,7 +95,12 @@ export async function drawTrueScale(canvas: HTMLCanvasElement, entries: readonly
   if (draws.get(canvas) !== draw) return; // a newer drawing replaced this one
   const aspect = Number(canvas.dataset.aspect) || canvas.height / Math.max(1, canvas.width);
   canvas.dataset.aspect = String(aspect);
-  const cssWidth = canvas.clientWidth || canvas.width;
+  const cssWidth = canvas.clientWidth;
+  if (!cssWidth) {
+    drawWhenBoxed(canvas, () => { void drawTrueScale(canvas, entries, options); });
+    return;
+  }
+  deferred.delete(canvas);
   const cssHeight = cssWidth * aspect;
   const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
   canvas.width = Math.max(1, Math.round(cssWidth * ratio));

@@ -169,6 +169,7 @@ export function createBattleFrameRuntime({
     countdown.second?.(whole);
   };
 
+  // hot-path: every battle frame
   const applyPauseEdge = (livePaused: boolean, dtSeconds: number): number => {
     let appliedDtSeconds = dtSeconds;
     if (livePaused === pauseInfo.paused) return appliedDtSeconds;
@@ -182,6 +183,7 @@ export function createBattleFrameRuntime({
     return appliedDtSeconds;
   };
 
+  // hot-path: every battle frame
   const pollFrameInput = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -199,6 +201,7 @@ export function createBattleFrameRuntime({
     input.poll(inputSample);
   };
 
+  // hot-path: every countdown frame
   const advanceCountdown = (wallDtSeconds: number): void => {
     // armed, not yet opened: a new battle's count
     if (game.preBattleS === Infinity) { resetCountdownEdges(); return; }
@@ -221,6 +224,7 @@ export function createBattleFrameRuntime({
    * rolls the battle out; a battle first seen already at 0 was joined after its count and rolls out late. Infinity is a
    * round armed before its first snapshot.
    */
+  // hot-path: every networked countdown frame
   const followNetworkCountdown = (): void => {
     const seconds = game.preBattleS;
     if (seconds === Infinity) { resetCountdownEdges(); return; }
@@ -229,6 +233,7 @@ export function createBattleFrameRuntime({
     if (!rolledOut) rollout(!countSeen);
   };
 
+  // hot-path: every solo battle frame
   const advanceSoloSimulation = (appliedDtSeconds: number): void => {
     simulationAccumulator = Math.min(
       simulationAccumulator + appliedDtSeconds,
@@ -242,6 +247,7 @@ export function createBattleFrameRuntime({
     }
   };
 
+  // hot-path: every battle frame
   const advanceLiveBattle = (
     appliedDtSeconds: number,
     wallDtSeconds: number,
@@ -262,6 +268,7 @@ export function createBattleFrameRuntime({
     presentation.updateResult();
   };
 
+  // hot-path: every battle frame
   const updatePresentation = (
     appliedDtSeconds: number,
     networkActive: boolean,
@@ -274,6 +281,7 @@ export function createBattleFrameRuntime({
     return alpha;
   };
 
+  // hot-path: every frame
   const writeReceipt = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -291,6 +299,7 @@ export function createBattleFrameRuntime({
     return receipt;
   };
 
+  // hot-path: every frame (the battle frame owner)
   const advance = (
     dtSeconds: number,
     wallDtSeconds: number,
