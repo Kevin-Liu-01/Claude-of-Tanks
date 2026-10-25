@@ -631,6 +631,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('deploy', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.battle')}</span>${keycap('B')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}">` +
     `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.gallery')}</span>${keycap('V')}</button>` +
+    `<button class="nv cot-nav-desktop cot-techtree-trigger" data-nav="techTree" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="${t('techTree.open')}">` +
+    `${uiIconSVG('techTree', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('techTree.open')}</span>${keycap('T')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}">` +
     `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.studio')}</span>${keycap('F8')}</button>` +
     `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
@@ -674,6 +676,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="gallery">` +
     `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.gallery')}</strong></span></button>` +
+    `<button type="button" data-mobile-nav="techTree" aria-haspopup="dialog">` +
+    `${uiIconSVG('techTree', 20)}<span class="cot-mobile-nav-copy">` +
+    `<strong>${t('techTree.open')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
     `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong></span></button>` +
@@ -4201,6 +4206,41 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     studioIntent.addEventListener('focusin', signalStudioIntent);
     studioIntent.addEventListener('touchstart', signalStudioIntent, { passive: true });
   }
+  // The tech tree (252): every national tree over the Garage, read-only. The screen, its sheet, its strings and the tree
+  // data load on the first open (no boot cost); Select takes the node's build into the Garage.
+  const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
+  let techTreeOpening = false;
+  const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
+    if (techTreeOpening) return;
+    emit('ui:click', {});
+    techTreeOpening = true;
+    closeMobileNavigation();
+    setGaragePanel('');
+    try {
+      const [{ createTechTreeScreen }, { TECH_TREES }] = await Promise.all([
+        import('./techTree.ts'), import('../techTree/trees.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
+      ]);
+      const screen = createTechTreeScreen({
+        trees: TECH_TREES,
+        vehicles: specById,
+        selectedId,
+        onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
+        onClose: () => {
+          techTreeTrigger.setAttribute('aria-expanded', 'false');
+          screen.dispose();
+        },
+      });
+      screen.open(opener);
+      techTreeTrigger.setAttribute('aria-expanded', 'true');
+    } catch (err) {
+      // a failed chunk fetch: the next press retries
+      console.error('[garage] tech tree failed to open:', err);
+    } finally {
+      techTreeOpening = false;
+    }
+  };
+  techTreeTrigger.addEventListener('click', () => { void openTechTree(techTreeTrigger); });
   for (const item of root.querySelectorAll<HTMLElement>('[data-mobile-nav]')) {
     item.addEventListener('click', () => {
       const destination = item.dataset.mobileNav;
@@ -4209,6 +4249,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else if (destination === 'garage') emit('ui:click', {});
       else if (destination === 'studio') openStudio();
       else if (destination === 'gallery') openSelectedInGallery();
+      else if (destination === 'techTree') void openTechTree(mobileNavTrigger);
       else if (destination === 'docs') openDocs();
       else if (destination === 'locale') switchLocale();
       else if (destination === 'record') {
@@ -4260,6 +4301,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
       if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {

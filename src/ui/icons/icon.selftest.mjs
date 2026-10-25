@@ -14,7 +14,7 @@ const tool = (name) => new URL(`../../../tools/${name}`, import.meta.url).pathna
 const census = JSON.parse(execFileSync(process.execPath, [tool('icon-stroke-census.mjs'), '--json'], { encoding: 'utf8' }));
 assert.deepEqual(census.strokeValues, [1.5], 'one stroke literal across the icon files (the 16-unit 1.25 lives in the host)');
 assert.deepEqual(census.problems, [], 'the sprite keeps its drawing rules');
-assert.ok(census.sizes.spriteGzip <= 10 * 1024, `full sprite ${census.sizes.spriteGzip} B gzip within 10 KB`);
+assert.ok(census.sizes.spriteGzip <= 10.25 * 1024, `full sprite ${census.sizes.spriteGzip} B gzip within 10.25 KB`);
 assert.ok(census.sizes.bootBrotli <= 3 * 1024, `boot slice ${census.sizes.bootBrotli} B brotli within 3 KB`);
 execFileSync(process.execPath, [tool('gen-icon-sprite.mjs'), '--check'], { stdio: 'pipe' });
 
@@ -22,7 +22,7 @@ const sprite = readIconSprite();
 assert.deepEqual([...ICON_IDS], [...sprite.large.keys()], 'the generated id list is the sprite in order');
 for (const id of SMALL_MASTERS.trim().split(' ')) assert.ok(sprite.small.has(id), `${id} owns a 16-unit master`);
 for (const id of ACTIVE_MASTERS.trim().split(' ')) assert.ok(sprite.large.has(id), `${id} is drawn`);
-assert.equal((BOOT_SYMBOLS.match(/<symbol id="i-[A-Za-z]+"/g) || []).length, 12, 'about a dozen boot glyphs');
+assert.equal((BOOT_SYMBOLS.match(/<symbol id="i-[A-Za-z]+"/g) || []).length, 13, 'about a dozen boot glyphs (the game bar\'s tech tree is the 13th)');
 
 // Host markup: optical master by size, the house stroke, decorative by default, named when labelled.
 const large = icon('garage', { size: 24 });

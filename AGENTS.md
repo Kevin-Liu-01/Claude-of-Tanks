@@ -89,6 +89,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 | `src/game/` | [`src/game/SKILL.md`](src/game/SKILL.md) | Work on battle integration, bots, input, garage dressing, progression, replays, and studio state. |
 | `src/presentation/` | [`src/presentation/SKILL.md`](src/presentation/SKILL.md) | Maintain lightweight public navigation, media loading, archive presentation, and public-site contracts. |
 | `src/sim/` | [`src/sim/SKILL.md`](src/sim/SKILL.md) | Work on deterministic movement, armor, ballistics, damage, and spotting simulation. |
+| `src/techTree/` | [`src/techTree/SKILL.md`](src/techTree/SKILL.md) | Maintain the read-only national tech trees the Garage draws - tree data, lineage, tiers as columns and the connector layout. |
 | `src/ui/` | [`src/ui/SKILL.md`](src/ui/SKILL.md) | Work on garage, HUD, settings, mobile controls, transitions, and battle presentation UI. |
 | `src/vehicles/` | [`src/vehicles/SKILL.md`](src/vehicles/SKILL.md) | Work on first-party procedural tank specs, builders, materials, profiles, ordering, and asset provenance. |
 | `src/world/` | [`src/world/SKILL.md`](src/world/SKILL.md) | Work on terrain, maps, collision, vegetation, props, destructibles, and world streaming. |

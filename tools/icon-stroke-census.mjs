@@ -31,8 +31,12 @@ const MARK_DIRS = ['public/brand/nav', 'public/brand/features'];
 /** CSS that strokes an icon family drawn inline (the Gallery camera-view glyphs). */
 const ICON_CSS = [['src/gallery/gallery.css', /\.camera-view-glyph[^{]*\{[^}]*\}/g]];
 
-/** Full sprite and boot-slice budgets (SPEC 7 and 16.1). */
-const SPRITE_GZIP_MAX = 10 * 1024;
+/**
+ * Full sprite and boot-slice budgets (SPEC 7 and 16.1). 252 (tech-tree view): the full sprite (a lazy chunk) rose from
+ * 10 KB to 10.25 KB for the tech tree's two glyphs (the game bar's tree and the board's fit), about 32 B gzip each; the
+ * sprite stood within 20 B of the old cap. The boot slice keeps its budget.
+ */
+const SPRITE_GZIP_MAX = 10.25 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;
