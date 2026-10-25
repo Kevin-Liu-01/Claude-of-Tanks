@@ -187,6 +187,12 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);padding-bottom:28px}
 .take{position:relative;aspect-ratio:16/9;flex:none;overflow:hidden;background:var(--surface-raised)}
+/* the page's notices (gallery.ts) never cover a control: beside the panes at the foot of the dossier's film, on a stacked
+   page at the window's foot above the dossier's actions; each on an opaque plate */
+.cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:var(--s3);z-index:var(--z-toast);width:min(420px,calc(100% - 24px));
+  transform:translateX(-50%)}
+.cot-c-notices.gallery-notices--stack{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
 .take-media .fleet-take-video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}

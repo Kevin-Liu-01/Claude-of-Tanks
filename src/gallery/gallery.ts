@@ -335,27 +335,30 @@ function anatomyVehicle(): AnatomyVehicle | null {
   };
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
-  const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
+  // the loading notice covers a slow build only, and leaves the moment the layer shows (it outlived the render before)
+  let loading: ReturnType<typeof showToast> = null;
+  const slow = setTimeout(() => { loading = showToast(t('gallery.anatomy.loading'), { severity: 'progress' }); }, 250);
+  const settle = (): void => { clearTimeout(slow); loading?.dismiss(); loading = null; };
   anatomyReady = loadAnatomy().then(async (module) => {
     // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
     // microtask and held its paint (click-perf-244). The layer shows once its programs are linked (click-perf-248: its
     // first frame compiled them); the loading toast covers a slow build or link.
     await afterNextPaint();
     let vehicle = anatomyVehicle();
-    if (!vehicle || activeMode !== mode) { clearTimeout(slow); return; }
+    if (!vehicle || activeMode !== mode) { settle(); return; }
     if (!anatomyView) {
       anatomyView = module.createAnatomyView(anatomyHost());
       anatomyView.setMetric(armorMetric);
     }
     await anatomyView.prepare(vehicle);
-    clearTimeout(slow);
+    settle();
     vehicle = anatomyVehicle();
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
     if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
   }, () => {
-    clearTimeout(slow);
+    settle();
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
@@ -440,8 +443,12 @@ function frameView(requestedName = 'hero'): void {
   });
 }
 
-// the page's notices stand at the top of the window, under the bar and over the stage's open middle
-noticeRegion('gallery', { placement: 'top', limit: 2 });
+// the page's notices never cover a control: beside the panes they stand at the foot of the dossier's film (decorative),
+// and on a stacked page at the window's foot above the dossier's actions
+const take = document.querySelector<HTMLElement>('.take');
+if (take) noticeRegion('gallery', { placement: 'host', host: take, limit: 2, className: 'gallery-notices' });
+noticeRegion('gallery-stack', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--stack' });
+const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
  * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
@@ -449,7 +456,7 @@ noticeRegion('gallery', { placement: 'top', limit: 2 });
  */
 const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2060').replace(/ (?=\S{1,4}$)/, '\u00a0');
 
-function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): void {
+function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): ReturnType<typeof notify> | null {
   if (!visual) {
     // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
     const toast = $('#toast');
@@ -457,11 +464,11 @@ function showToast(message: string, { visual = true, severity = 'info' as Notice
     toast.classList.add('sr', 'show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
-    return;
+    return null;
   }
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
-  notify({ text: message, severity, region: 'gallery', dedupeKey: message });
+  return notify({ text: message, severity, region: take && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
