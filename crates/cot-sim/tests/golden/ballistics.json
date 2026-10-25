@@ -2,7 +2,7 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/sim/ballistics.ts",
- "sourceSha256": "b5c5add32bf5a58525276609dabd2d211083123a7b820b6bcfc3dee556de099d",
+ "sourceSha256": "99623632cc9fb7a181108df832eaf35bd96a8bf8b5116a1f96daf3013955d934",
  "constants": {
   "GRAVITY_SCALE": 1,
   "SHELL_MAX_LIFETIME_S": 6,

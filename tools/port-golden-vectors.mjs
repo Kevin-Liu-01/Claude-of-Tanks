@@ -33,6 +33,7 @@ import { Vector3 } from 'three';
 import { mulberry32 } from '../src/game/stateCore.ts';
 import { loadCotSimWasmNode, pinMath } from './cot-sim-wasm.mjs';
 import { createTerrainContactSampler } from '../src/world/terrainContactSurface.ts';
+import { createTerrainDeformation } from '../src/sim/terrainDeformation.ts';
 import {
   GRAVITY_SCALE,
   GUIDED_MISSILE_TURN_RATE_RAD_S,
@@ -218,8 +219,54 @@ function contactVectors() {
     surface: steepHeight.toString(), flippedSamples: flipped, cases };
 }
 
+// -------------------------------------------------------- deformation ------
+// A battle's ground as a script: craters (overlapping ones that fill a bucket, one refused for a zero radius, some at the
+// map's edge), heaps on and off the clock, two graded courses, the clock stepped while heaps rise, a reset and a crater
+// after it. After each phase every point reads offsetAt and contactOffsetAt both ways; the Rust replays the script.
+function deformationVectors() {
+  const overlay = createTerrainDeformation();
+  const rng = mulberry32(253);
+  const ops = [];
+  const reads = [];
+  const points = [];
+  for (let i = 0; i < 700; i++) points.push([-140 + rng() * 280, -120 + rng() * 240]);
+  for (const v of [-512, 512, -511.9, 511.9, -512.0000001, 512.0000001, 0, 1.3333333333333333, 16, -16, 15.999999999999998]) points.push([v, 3.3], [3.3, v], [v, v]);
+  points.push([NaN, 1], [1, NaN], [Infinity, 2], [2, -Infinity], [600, -700]);
+  const read = (phase) => {
+    for (const [x, z] of points) {
+      reads.push({ phase, x: num(x), z: num(z), offset: num(overlay.offsetAt(x, z)), contact: num(overlay.contactOffsetAt(x, z, false)),
+        contactFlipped: num(overlay.contactOffsetAt(x, z, true)), near: overlay.near(x, z) });
+    }
+  };
+  const op = (entry, run) => { const result = run(); ops.push({ ...entry, result: typeof result === 'boolean' ? result : null }); };
+  op({ op: 'setTime', t: 5 }, () => overlay.setTime(5));
+  for (let i = 0; i < 48; i++) {
+    const x = i < 10 ? 20.5 + rng() * 3 : -120 + rng() * 240, z = i < 10 ? -10.5 + rng() * 3 : -100 + rng() * 200;
+    const radius = i === 11 ? 0 : 0.5 + rng() * 3.5, depth = 0.2 + rng() * 1.4, rim = rng() * 0.6, seed = Math.floor(rng() * 4294967296);
+    op({ op: 'crater', x, z, radius, depth, rim, seed }, () => overlay.addCrater(x, z, radius, depth, rim, seed));
+  }
+  for (const [x, z] of [[509.5, 3], [-510.25, -509], [3, 511.75]]) op({ op: 'crater', x, z, radius: 2.5, depth: 0.8, rim: 0.3, seed: 77 }, () => overlay.addCrater(x, z, 2.5, 0.8, 0.3, 77));
+  read(0);
+  const heaps = [[60, 40, 6, 9, 0.4, 1.8, 4.5], [-70, 55, 12, 7.5, -1.1, 2.6, undefined], [10, -80, 4, 4, 2.9, 0.9, 5.2], [-30, -40, 15, 20, 0.05, 3.2, undefined], [90, -60, 7, 3, 1.57, 1.2, 4.9]];
+  for (const [cx, cz, hw, hd, yaw, h, t0] of heaps) op({ op: 'rubble', cx, cz, hw, hd, yaw, h, t0: t0 === undefined ? null : t0 }, () => overlay.addRubble(cx, cz, hw, hd, yaw, h, t0));
+  const course = (cx, cz, yaw, hw, skirtM, profile) => {
+    const stamp = { kind: 'course', cx, cz, yaw, c: Math.cos(yaw), s: Math.sin(yaw), hw, skirtM, profile: Float64Array.from(profile) };
+    op({ op: 'course', cx, cz, c: stamp.c, s: stamp.s, hw, skirtM, profile }, () => overlay.addCourse(stamp));
+  };
+  course(-100, 90, 0.7, 4, 3, [-30, 0, -20, 1.5, -10, 1.5, -5, -0.8, 0, 0.6, 6, 0.6, 12, 2.5, 30, 0]);
+  course(110, 100, -2.2, 2.5, 6, [-12, 0, 12, 0.4]);
+  read(1);
+  for (const t of [5.6, 6.3, 6.3, 7.1, 9]) { op({ op: 'setTime', t }, () => overlay.setTime(t)); read(2); }
+  op({ op: 'reset' }, () => overlay.reset());
+  read(3);
+  op({ op: 'crater', x: 4, z: 4, radius: 3, depth: 1, rim: 0.4, seed: 4242 }, () => overlay.addCrater(4, 4, 3, 1, 0.4, 4242));
+  read(4);
+  return { source: 'src/sim/terrainDeformation.ts', sourceSha256: sha('src/sim/terrainDeformation.ts'), ops, reads,
+    revision: overlay.revision, maxRaiseM: num(overlay.maxRaiseM) };
+}
+
 // --------------------------------------------------------------- main ------
-const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors() });
+const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors(), deformation: deformationVectors() });
 const engineModules = generate();
 const restoreMath = pinMath(await loadCotSimWasmNode());
 let modules;

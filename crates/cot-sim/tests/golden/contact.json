@@ -2,7 +2,7 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/world/terrainContactSurface.ts",
- "sourceSha256": "7a049ced040e542fe787c552379e142b2a442a006dd1e69c2fb288cd49d92e5b",
+ "sourceSha256": "0e5e8d3a84015231f6a9e8d84a57fff93db1b9d7de25c8e06c4d04f520940173",
  "surface": "(x, z) => 30 * Math.sin(x * 0.05) * Math.cos(z * 0.04) - 12 * Math.abs(Math.sin((x - z) * 0.9)) + 0.25 * x",
  "flippedSamples": 2790,
  "cases": [

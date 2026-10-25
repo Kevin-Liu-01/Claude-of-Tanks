@@ -19,6 +19,7 @@
 
 pub mod ballistics;
 pub mod contact;
+pub mod deformation;
 pub mod grid;
 pub mod jsmath;
 pub mod math;

@@ -50,6 +50,21 @@ pub fn to_int32(n: f64) -> i32 {
     (m as u32) as i32
 }
 
+/// `Math.round(x)`: the nearest integer, a tie toward +∞; `-0` from `[-0.5, -0]`, and NaN and the infinities as they are.
+pub fn round(x: f64) -> f64 {
+    if !x.is_finite() || x == 0.0 {
+        return x;
+    }
+    if x > 0.0 && x < 0.5 {
+        return 0.0;
+    }
+    if x < 0.0 && x >= -0.5 {
+        return -0.0;
+    }
+    let floor = x.floor();
+    if x - floor >= 0.5 { floor + 1.0 } else { floor }
+}
+
 /// `Math.imul(a, b)`: 32-bit wrapping multiply.
 #[inline]
 pub fn imul(a: i32, b: i32) -> i32 {

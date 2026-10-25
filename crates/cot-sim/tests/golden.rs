@@ -512,3 +512,107 @@ fn contact_lattice_matches() {
     assert_eq!(flips, g.flipped_samples);
     ledger.finish();
 }
+
+// ---------------------------------------------------------- deformation ----
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeformationGolden {
+    ops: Vec<DeformationOp>,
+    reads: Vec<DeformationRead>,
+    revision: u32,
+    max_raise_m: JsNum,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "op", rename_all = "camelCase")]
+enum DeformationOp {
+    SetTime { t: JsNum },
+    Crater { x: JsNum, z: JsNum, radius: JsNum, depth: JsNum, rim: JsNum, seed: u32, result: Option<bool> },
+    Rubble { cx: JsNum, cz: JsNum, hw: JsNum, hd: JsNum, yaw: JsNum, h: JsNum, t0: Option<JsNum> },
+    #[serde(rename_all = "camelCase")]
+    Course { cx: JsNum, cz: JsNum, c: JsNum, s: JsNum, hw: JsNum, skirt_m: JsNum, profile: Vec<JsNum> },
+    Reset,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeformationRead {
+    phase: u32,
+    x: JsNum,
+    z: JsNum,
+    offset: JsNum,
+    contact: JsNum,
+    contact_flipped: JsNum,
+    near: bool,
+}
+
+#[test]
+fn deformation_matches() {
+    use cot_sim::deformation::TerrainDeformation;
+    let g: DeformationGolden = serde_json::from_str(&golden("deformation")).unwrap();
+    let mut ledger = Ledger::new("deformation");
+    let mut overlay = TerrainDeformation::new();
+    let mut reads = g.reads.iter().peekable();
+    let mut phase = 0;
+    // the script's reads follow the op that ends each phase: replay ops, and after each op the reads that are due
+    let mut read_phase = |overlay: &mut TerrainDeformation, ledger: &mut Ledger, phase: u32, reads: &mut std::iter::Peekable<std::slice::Iter<DeformationRead>>, take: usize| {
+        for _ in 0..take {
+            let read = reads.next().expect("a read is due");
+            assert_eq!(read.phase, phase);
+            let (x, z) = (read.x.f64(), read.z.f64());
+            ledger.check(overlay.offset_at(x, z), read.offset.f64(), || format!("phase {phase} offsetAt({x}, {z})"));
+            ledger.check(overlay.contact_offset_at(x, z, false), read.contact.f64(), || format!("phase {phase} contactOffsetAt({x}, {z})"));
+            ledger.check(overlay.contact_offset_at(x, z, true), read.contact_flipped.f64(), || format!("phase {phase} contactOffsetAt({x}, {z}, flipped)"));
+            assert_eq!(overlay.near(x, z), read.near, "phase {phase} near({x}, {z})");
+        }
+    };
+    let points = g.reads.iter().take_while(|r| r.phase == 0).count();
+    // phase boundaries in the script: after the edge craters (0), after the courses (1), after each clock step (2),
+    // after the reset (3), after the last crater (4)
+    let mut craters = 0;
+    let mut steps = 0;
+    for op in &g.ops {
+        match op {
+            DeformationOp::SetTime { t } => {
+                overlay.set_time(t.f64());
+                if phase == 2 {
+                    steps += 1;
+                    read_phase(&mut overlay, &mut ledger, 2, &mut reads, points);
+                }
+            }
+            DeformationOp::Crater { x, z, radius, depth, rim, seed, result } => {
+                let admitted = overlay.add_crater(x.f64(), z.f64(), radius.f64(), depth.f64(), rim.f64(), *seed);
+                assert_eq!(Some(admitted), *result, "crater {craters}");
+                craters += 1;
+                if craters == 51 {
+                    read_phase(&mut overlay, &mut ledger, 0, &mut reads, points);
+                    phase = 1;
+                } else if phase == 3 {
+                    phase = 4;
+                    read_phase(&mut overlay, &mut ledger, 4, &mut reads, points);
+                }
+            }
+            DeformationOp::Rubble { cx, cz, hw, hd, yaw, h, t0 } => {
+                overlay.add_rubble(cx.f64(), cz.f64(), hw.f64(), hd.f64(), yaw.f64(), h.f64(), t0.map(JsNum::f64));
+            }
+            DeformationOp::Course { cx, cz, c, s, hw, skirt_m, profile } => {
+                overlay.add_course(cx.f64(), cz.f64(), c.f64(), s.f64(), hw.f64(), skirt_m.f64(), profile.iter().map(|v| v.f64()).collect());
+                if phase == 1 && overlay.stamps().iter().filter(|s| matches!(s, cot_sim::deformation::Stamp::Course { .. })).count() == 2 {
+                    read_phase(&mut overlay, &mut ledger, 1, &mut reads, points);
+                    phase = 2;
+                }
+            }
+            DeformationOp::Reset => {
+                overlay.reset();
+                read_phase(&mut overlay, &mut ledger, 3, &mut reads, points);
+                phase = 3;
+            }
+        }
+    }
+    assert_eq!(steps, 5, "five clock steps while the heaps rise");
+    assert!(reads.peek().is_none(), "every read replayed");
+    assert_eq!(overlay.revision(), g.revision);
+    ledger.check(overlay.max_raise_m(), g.max_raise_m.f64(), || "maxRaiseM".into());
+    ledger.finish();
+}
