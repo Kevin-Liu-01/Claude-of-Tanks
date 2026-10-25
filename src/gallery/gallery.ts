@@ -38,6 +38,7 @@ import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { noticeRegion, notify, type NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
@@ -355,7 +356,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
   }, () => {
     clearTimeout(slow);
-    showToast(t('gallery.anatomy.loadFailed'));
+    showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
 
@@ -439,14 +440,21 @@ function frameView(requestedName = 'hero'): void {
   });
 }
 
-function showToast(message: string, { visual = true } = {}): void {
-  const toast = $('#toast');
-  toast.textContent = message;
-  // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
-  toast.classList.toggle('sr', !visual);
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+// the page's notices stand at the top of the window, under the bar and over the stage's open middle
+noticeRegion('gallery', { placement: 'top', limit: 2 });
+function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): void {
+  if (!visual) {
+    // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
+    const toast = $('#toast');
+    toast.textContent = message;
+    toast.classList.add('sr', 'show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    return;
+  }
+  // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
+  // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
+  notify({ text: message, severity, region: 'gallery', dedupeKey: message });
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
@@ -1331,9 +1339,9 @@ function pickInspection(clientX: number, clientY: number): void {
 async function writeClipboard(text: string, successMessage: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    showToast(successMessage);
+    showToast(successMessage, { severity: 'success' });
   } catch (_) {
-    showToast(t('gallery.toast.clipboardUnavailable'));
+    showToast(t('gallery.toast.clipboardUnavailable'), { severity: 'warning' });
   }
 }
 
