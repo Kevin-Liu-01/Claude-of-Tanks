@@ -12,11 +12,12 @@
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { NationTree, TreeNode } from '../techTree/model.ts';
 import { layoutTree, type GridPoint, type TreeLayout } from '../techTree/layout.ts';
-import { rootOf, vehiclesOf } from '../techTree/trees.ts';
-import { button, flag, scaleCells, silhouette, statRow } from './components/components.ts';
+import { TECH_TREES, rootOf, vehiclesOf } from '../techTree/trees.ts';
+import { esc, flag, scaleCells, silhouette, statRow } from './components/components.ts';
 import { decorateHeroTile } from './heroCard.ts';
 import { iconUrl } from './icons.ts';
 import { icon } from './icons/icon.ts';
+import type { IconId } from './icons/spriteIndex.ts';
 import { containModalTab } from './modal.ts';
 import { ensureFonts } from './fonts.ts';
 import { formatNumber, t } from './i18n.ts';
@@ -47,7 +48,8 @@ interface TechTreeVehicle extends FleetTankSpec {
 }
 
 interface TechTreeOptions {
-  readonly trees: readonly NationTree[];
+  /** The trees to draw (every national tree by default). */
+  readonly trees?: readonly NationTree[];
   readonly vehicles: ReadonlyMap<string, TechTreeVehicle>;
   /** The vehicle to open on (the Garage's selection); its tree opens, else the first tree's root. */
   readonly selectedId?: string | null;
@@ -76,13 +78,28 @@ interface Geometry {
 const displayName = (spec: TechTreeVehicle | undefined, id: string): string => spec?.label?.displayName || spec?.name || id;
 const shortName = (spec: TechTreeVehicle | undefined, id: string): string => spec?.label?.shortName || displayName(spec, id);
 const bestPen = (spec: TechTreeVehicle): number => Math.max(0, ...spec.gun.shells.map((shell) => shell.pen100Mm || 0));
+/**
+ * The kit's buttons (components.css), written from its classes rather than its factory: the factory would join the
+ * kit's shared boot chunk only for this lazy screen. An icon-only button names itself for the hover tip and readers.
+ */
+function kitButton(label: string, options: { readonly glyph?: IconId; readonly variant: 'primary' | 'secondary' | 'ghost';
+  readonly size: 36 | 48 | 56; readonly sound: string; readonly className?: string; readonly zoom?: string }): string {
+  const iconOnly = !!options.glyph;
+  const cls = ['cot-c-btn', `cot-c-btn--${options.variant}`, `cot-c-btn--${options.size}`, iconOnly ? 'cot-c-btn--icon' : '',
+    options.className ?? ''].filter(Boolean).join(' ');
+  const name = iconOnly ? ` aria-label="${esc(label)}"` : '';
+  const zoom = options.zoom ? ` data-zoom="${options.zoom}"` : '';
+  const body = iconOnly ? icon(options.glyph!, { size: 18 }) : `<span class="cot-c-btn__label">${esc(label)}</span>`;
+  return `<button type="button" class="${cls}" data-ui-sound="${options.sound}"${name}${zoom}>${body}</button>`;
+}
+
 /** A node's name follows its column: the type scale's label steps (zh-CN documents lift 11 and 12 to 13). */
 const nameSize = (col: number): string =>
   `var(--fs-${col < 132 ? 11 : col < 148 ? 12 : col < 164 ? 13 : col < 200 ? 14 : col < 240 ? 16 : 18})`;
 
 export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   ensureFonts();
-  const { trees, vehicles } = options;
+  const { trees = TECH_TREES, vehicles } = options;
   const startTree = trees.find((tree) => tree.nodes.some((node) => vehiclesOf(node).includes(options.selectedId ?? ''))) ?? trees[0];
   let tree: NationTree = startTree;
   let layout: TreeLayout = layoutTree(tree);
@@ -119,16 +136,16 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<header class="tt-head">` +
     `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"></h1></div>` +
     `<nav class="tt-rail" aria-label="${t('techTree.nations')}"></nav>` +
-    button({ label: t('techTree.close'), iconOnly: true, icon: 'close', size: 48, sound: 'back', className: 'tt-close' }) +
+    kitButton(t('techTree.close'), { glyph: 'close', variant: 'secondary', size: 48, sound: 'back', className: 'tt-close' }) +
     `</header>` +
     `<div class="tt-stage">` +
     `<div class="tt-board">` +
     `<div class="tt-grid"><div class="tt-tiers" aria-hidden="true"></div>` +
     `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true"></div></div></div>` +
     `<div class="tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
-    button({ label: t('techTree.zoomOut'), iconOnly: true, icon: 'zoomOut', size: 36, variant: 'ghost', attrs: { 'data-zoom': 'out' } }) +
-    button({ label: t('techTree.zoomFit'), iconOnly: true, icon: 'zoomFit', size: 36, variant: 'ghost', attrs: { 'data-zoom': 'fit' } }) +
-    button({ label: t('techTree.zoomIn'), iconOnly: true, icon: 'zoomIn', size: 36, variant: 'ghost', attrs: { 'data-zoom': 'in' } }) +
+    kitButton(t('techTree.zoomOut'), { glyph: 'zoomOut', variant: 'ghost', size: 36, sound: 'press', zoom: 'out' }) +
+    kitButton(t('techTree.zoomFit'), { glyph: 'zoomFit', variant: 'ghost', size: 36, sound: 'press', zoom: 'fit' }) +
+    kitButton(t('techTree.zoomIn'), { glyph: 'zoomIn', variant: 'ghost', size: 36, sound: 'press', zoom: 'in' }) +
     `</div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
@@ -137,7 +154,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<span class="tt-detail-special" aria-label="${t('techTree.special')}" hidden>${icon('star', { size: 18 })}</span></div>` +
     `<div class="tt-builds" role="radiogroup" aria-label="${t('techTree.builds')}"></div></div>` +
     `<div class="tt-stats"></div>` +
-    `<div class="tt-act">${button({ label: t('techTree.select'), variant: 'primary', size: 56, className: 'tt-select' })}</div>` +
+    `<div class="tt-act">${kitButton(t('techTree.select'), { variant: 'primary', size: 56, sound: 'confirm', className: 'tt-select' })}</div>` +
     `</section>`;
   const board = root.querySelector<HTMLElement>('.tt-board')!;
   const grid = root.querySelector<HTMLElement>('.tt-grid')!;

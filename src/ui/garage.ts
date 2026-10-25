@@ -4217,12 +4217,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     try {
-      const [{ createTechTreeScreen }, { TECH_TREES }] = await Promise.all([
-        import('./techTree.ts'), import('../techTree/trees.ts'), import('./techTree.css'), import('./heroCard.css'),
+      const [{ createTechTreeScreen }] = await Promise.all([
+        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
       const screen = createTechTreeScreen({
-        trees: TECH_TREES,
         vehicles: specById,
         selectedId,
         onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },

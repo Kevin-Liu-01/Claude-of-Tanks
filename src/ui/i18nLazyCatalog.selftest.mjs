@@ -291,7 +291,7 @@ for (const module of ['src/ui/techTree.ts', 'src/ui/techTreeStrings.ts', 'src/te
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
-  /import\('\.\/techTree\.ts'\), import\('\.\.\/techTree\/trees\.ts'\), import\('\.\/techTree\.css'\), import\('\.\/heroCard\.css'\),\s*import\('\.\/techTreeStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTechTreeStrings\(\)\)/,
+  /import\('\.\/techTree\.ts'\), import\('\.\/techTree\.css'\), import\('\.\/heroCard\.css'\),\s*import\('\.\/techTreeStrings\.ts'\)\.then\(\(strings\) => strings\.ensureTechTreeStrings\(\)\)/,
   'the tech tree opens once its strings are resident');
 
 // Runtime: outside Vite the loaders resolve at once (the full catalogs are resident); inside, one request per slice.
