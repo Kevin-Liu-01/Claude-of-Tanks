@@ -190,9 +190,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .take{position:relative;aspect-ratio:16/9;flex:none;overflow:hidden;background:var(--surface-raised)}
 /* the page's notices (gallery.ts) never cover a control: beside the panes at the foot of the dossier's film, on a stacked
    page at the window's foot above the dossier's actions; each on an opaque plate */
-.cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:var(--s3);z-index:var(--z-toast);width:min(420px,calc(100% - 24px));
+.cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:64px;z-index:var(--z-toast);width:min(420px,calc(100% - 24px));
   transform:translateX(-50%)}
-.cot-c-notices.gallery-notices--stack{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.cot-c-notices.gallery-notices--stack{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom,0px))}
 .gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -336,6 +336,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 /* a layer's count, read out to assistive technology alone (the visible notices are the kit's, above) */
 .toast{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
+/* the site bar spans the page's own columns (a boxed bar floated over the stage on wide windows) */
+.public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}
 /* ---------------------------------------------------------------------------------------------------- responsive */
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
   .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - 56px)}
@@ -347,6 +349,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 }
 @media (width < 1100px){
   body{overflow-x:hidden;overflow-y:auto}
+  /* a part brought into view clears the sticky site bar */
+  html{scroll-padding-top:56px}
   .gallery-shell{height:auto;overflow:visible;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"stage stage" "browse dossier"}
   .stage{height:clamp(360px,58svh,620px)}
   .browse{position:sticky;top:0;align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - 56px);border-top:1px solid var(--line-1)}
@@ -365,10 +369,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .browse{position:static;max-height:none;padding:var(--s3) var(--s3) 0;border-right:0}
   /* the phone's filter rows wrap: every nation and class shows whole (a faded chip at the edge still read as cut) */
   .flags,#classFacets,.toggles--glyphs{flex-wrap:wrap}
-  .flags{display:flex}
-  .flags button{flex:none;width:44px;height:40px}
-  .toggles .cot-c-chip{flex:none;height:36px}
-  .toggles .cot-c-chip--compact{width:36px}
+  /* the flags and the class chips fill the column's width, as the search above them does */
+  .flags button{height:40px}
+  .toggles .cot-c-chip{flex:1 0 auto;height:36px}
+  .toggles .cot-c-chip--compact{flex:none;width:36px}
   .toggles--glyphs .toggles{flex-wrap:wrap}
   .layout-switch{display:none}
   .fam,.fam[data-layout=grid]{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(150px,42%);
@@ -407,5 +411,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
 #dossier-anatomy figure.is-zoomed img{width:auto;max-width:100%;max-height:100%;height:auto;cursor:zoom-out}
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
-@media (height < 520px){.acts{position:static}.browse{position:static;max-height:none}.inset{display:none}}
+@media (height < 520px){.acts{position:static}.browse{position:static;max-height:none}.inset{display:none}
+  /* the stage and its turntable fit under the site bar */
+  .stage{max-height:calc(var(--cot-viewport-height,100dvh) - 56px)}
+  .cot-c-notices.gallery-notices--stack{bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}}
 }

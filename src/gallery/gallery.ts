@@ -210,6 +210,7 @@ let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let dossierShownId = '';
 
 const damageHost = document.createElement('div');
 damageHost.className = 'damage-workbench-host';
@@ -443,10 +444,10 @@ function frameView(requestedName = 'hero'): void {
   });
 }
 
-// the page's notices never cover a control: beside the panes they stand at the foot of the dossier's film (decorative),
-// and on a stacked page at the window's foot above the dossier's actions
-const take = document.querySelector<HTMLElement>('.take');
-if (take) noticeRegion('gallery', { placement: 'host', host: take, limit: 2, className: 'gallery-notices' });
+// the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
+// the turntable and photo buttons, and on a stacked page at the window's foot above the dossier's actions
+const stage = document.querySelector<HTMLElement>('#viewport');
+if (stage) noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
 noticeRegion('gallery-stack', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--stack' });
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
 /**
@@ -467,7 +468,7 @@ function showToast(message: string, { visual = true, severity = 'info' as Notice
   }
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
-  return notify({ text: message, severity, region: take && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+  return notify({ text: message, severity, region: stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
@@ -793,13 +794,16 @@ Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
   })
   .catch(() => { /* the packaged angle icons stay */ });
 
+/** A row names a long designation by its short form (the full name on its tip) so the list keeps one row height. */
+const rowName = (record: GalleryRecord): string => record.displayName.length > 20 && record.shortName ? record.shortName : record.displayName;
+const rowTip = (record: GalleryRecord): string => rowName(record) === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`;
 /** A fleet row (07-gallery .fam .it): flag, silhouette, name and the sort's value. */
 function rowMarkup(record: GalleryRecord): string {
   const selected = record.id === selectedId;
   const dev = record.developmentOnly ? `<b class="it__dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
     + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
-    + `<span class="it__name">${esc(keepDesignation(record.displayName))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
+    + `<span class="it__name"${rowTip(record)}>${esc(keepDesignation(rowName(record)))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {
   const layout = effectiveLayout();
@@ -1144,8 +1148,11 @@ function setRival(id: string | null, pinned: boolean): void {
 }
 
 function renderDossier(record: GalleryRecord): void {
+  // a newly chosen vehicle opens at its film and name, not at the last one's scroll
+  if (record.id !== dossierShownId) { dossierShownId = record.id; $('.dossier-scroll').scrollTop = 0; }
   $('#dossierName').textContent = keepDesignation(record.displayName);
-  $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
+  // a long name takes a second line before it gives up size: one title scale across the fleet
+  $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.85, Math.min(1, 24 / Math.max(1, record.displayName.length)))));
   const flagImage = $<HTMLImageElement>('#dossierFlag');
   flagImage.src = flagIconUrl(record.nation);
   flagImage.dataset.tip = nationName(record.nation);

@@ -91,28 +91,31 @@ export interface AnatomyHost {
 const STYLE = `
 .subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
 .subs[hidden]{display:none}
-.subs .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
-.subs .cot-c-seg{padding:2px;background:var(--hud-plate)}
-.subs .cot-c-seg__opt{height:24px;padding:0 10px;font-size:var(--fs-12)}
+.subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate)}
+.subs .cot-c-seg{align-items:stretch;padding:2px;background:var(--hud-plate)}
+/* the segments fill their frame when a touch row stretches it to the chips' height */
+.subs .cot-c-seg__opt{height:auto;min-height:24px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-12))}
 #viewport .legend.anatomy-legend{gap:6px}
 #viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(160px,260px);align-items:center;gap:8px}
-#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+/* a stacked stage is a third of the window's height: the ramp keeps to the size of a chip row so it stays off the model */
+@media (width < 1100px){#viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(96px,140px)}}
+#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:8px;box-shadow:var(--ring-1)}
 #viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:4px}
-#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);
   white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
 /* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
 #viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
-#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
+#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
 .co,.co-crew{position:absolute;left:0;top:0;padding:0;border:0;pointer-events:auto;will-change:transform}
 .co{display:flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e1);
-  color:var(--ink-1);font:600 var(--fs-12)/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
+  color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
 .co svg{width:15px;height:15px;color:var(--co-tone)}
 .co::before{content:'';position:absolute;left:50%;top:100%;width:1px;height:var(--co-len);background:var(--ink-3)}
 .co::after{content:'';position:absolute;left:50%;top:calc(100% + var(--co-len));width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
@@ -123,7 +126,7 @@ const STYLE = `
 .co[aria-pressed="true"]{background:var(--gallery-callout-on);box-shadow:var(--ring-accent)}
 .co[aria-pressed="true"]::after{background:var(--accent)}
 .co-crew{display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--co-tone);border-radius:50%;
-  background:var(--hud-plate);color:var(--co-tone);font:600 max(11px,var(--fs-11))/1 var(--font-data)}
+  background:var(--hud-plate);color:var(--co-tone);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .co-crew[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-hi);color:var(--ink-on-accent)}
 .co.is-off,.co-crew.is-off{display:none}
 @media (pointer:coarse){.subs .cot-c-chip{height:40px}.co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
@@ -720,11 +723,17 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
             placed[i].length = Math.max(CALLOUT_MIN_PX, labelY(placed[j]) + clear - placed[i].y - CALLOUT_HEIGHT_PX / 2);
           }
         }
-        // a label pushed down onto the turntable and photo buttons stands above its anchor on the shortest leader
-        if (!placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width)
-          && placed[i].y - CALLOUT_MIN_PX - CALLOUT_HEIGHT_PX >= toolbarFoot) {
-          placed[i].up = true;
-          placed[i].length = CALLOUT_MIN_PX;
+        // a label pushed down onto the turntable and photo buttons stands above its anchor on the shortest leader, when
+        // that spot is clear of the chips and of every label already placed
+        if (!placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width)) {
+          const liftY = placed[i].y - CALLOUT_MIN_PX - CALLOUT_HEIGHT_PX / 2;
+          let free = liftY - CALLOUT_HEIGHT_PX / 2 >= toolbarFoot;
+          for (let j = 0; free && j < i; j++) {
+            const reach = placed[i].item.width && placed[j].item.width
+              ? (placed[i].item.width + placed[j].item.width) / 2 + CALLOUT_GAP_PX : CALLOUT_WIDTH_PX;
+            if (Math.abs(placed[i].x - placed[j].x) < reach && Math.abs(liftY - labelY(placed[j])) < clear) free = false;
+          }
+          if (free) { placed[i].up = true; placed[i].length = CALLOUT_MIN_PX; }
         }
         const { item, up, length } = placed[i];
         const rounded = Math.round(length);
