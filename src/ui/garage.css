@@ -1107,6 +1107,16 @@ body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;pa
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
 /* the nav's keys read in its hover tips (owner 10-24: labels kept, key caps folded into the tips) */
 .cot-header-nav .cot-c-kbd{display:none}
+/* the bar's measured folds (fitBar in garage.ts), whatever the width band: 1 the key caps, 2 the locale and GitHub to
+   their glyphs, 3 the secondary destinations to their glyphs, 4 every destination and the wordmark's name */
+.cot-garage[data-bar-fit~='1'] .cot-header-nav .cot-c-kbd{display:none}
+.cot-garage[data-bar-fit~='2'] .cot-header-nav :is(.cot-github,.cot-locale-switcher) .nav-label{display:none}
+.cot-garage[data-bar-fit~='2'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
+.cot-garage[data-bar-fit~='2'] .cot-header-nav .cot-locale-options{display:none}
+.cot-garage[data-bar-fit~='3'] .cot-gbar :is([data-nav='gallery'],[data-nav='techTree'],[data-nav='studio'],.cot-record-trigger,[data-nav='docs']) .nav-label{display:none}
+.cot-garage[data-bar-fit~='3'] .cot-gbar .nv{padding-inline:var(--s2)}
+.cot-garage[data-bar-fit~='4'] .cot-gbar .nv .nav-label{display:none}
+.cot-garage[data-bar-fit~='4'] .cot-wordmark .wm{display:none}
 body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-garage-variant-menu{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-featured{display:none}

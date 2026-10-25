@@ -1172,6 +1172,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   window.addEventListener('resize', () => queueReadoutFit());
   window.addEventListener('cot:layoutchange', () => queueReadoutFit(true));
+
+  // The bar folds by what it measures, not by a width band (release 252: once the tech tree's destination joined, Docs ran
+  // over the language switch at 1440 x 900): the brand rail and the tools keep a 16 px gutter, the bar stepping through
+  // its folds (1 the key caps, 2 the locale and GitHub to glyphs, 3 the secondary destinations to glyphs, 4 every
+  // destination and the wordmark's name) until they do. Each pass starts unfolded, so a wider window unfolds again.
+  const BAR_FIT = Object.freeze(['', '1', '1 2', '1 2 3', '1 2 3 4']);
+  const BAR_GUTTER_PX = 16;
+  const brandRail = requiredElement<HTMLElement>(root, '.cot-brand-rail');
+  const barTools = requiredElement<HTMLElement>(root, '.cot-nav');
+  function fitBar(): void {
+    if (document.body.dataset.cotPanels !== 'persistent') { delete root.dataset.barFit; return; }
+    let step = 0;
+    root.dataset.barFit = BAR_FIT[step];
+    while (step < BAR_FIT.length - 1 && barTools.getBoundingClientRect().left - brandRail.getBoundingClientRect().right < BAR_GUTTER_PX) {
+      root.dataset.barFit = BAR_FIT[++step];
+    }
+  }
+  let barFitQueued = false;
+  const queueBarFit = (): void => {
+    if (barFitQueued) return;
+    barFitQueued = true;
+    requestAnimationFrame(() => { barFitQueued = false; fitBar(); });
+  };
+  window.addEventListener('resize', queueBarFit);
+  window.addEventListener('cot:layoutchange', queueBarFit);
+  void document.fonts?.ready.then(queueBarFit);
+  // a label that changes length (the locale, Record's count, a destination joining) refits it too
+  if (typeof ResizeObserver === 'function') {
+    const barObserver = new ResizeObserver(queueBarFit);
+    barObserver.observe(brandRail);
+    barObserver.observe(barTools);
+  }
   // the technical drawing loads after its station opens: its arrival is measured afresh
   statsEl.addEventListener('load', () => queueReadoutFit(true), true);
   // the display and data faces settle the readout's line heights: what was fitted before they arrived is fitted again
@@ -4586,6 +4618,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
      * @param {string} [selectedId] - initially highlighted tank id.
      */
     show(selected = selectedId) {
+      queueBarFit();
       // The full play menu also owns mode selection; reconcile it on return.
       try {
         const remembered = localStorage.getItem('cot.game.mode.v1');
