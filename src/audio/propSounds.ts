@@ -116,6 +116,10 @@ const KIND_SOUNDS: Readonly<Record<string, PropSoundRecipe>> = Object.freeze({
   // Tidegate Polders' Bosman windmotor (the maps-polders lane, named at its merge of the PR head): the Dutch steel
   // windmotor on its lattice tower goes over as the wind pump does
   windmotor: recipe(layer('hedgehog_clang', 0, -2), layer('metal_topple', TOPPLE_LAND_S, 0, 0.06), layer('debris_metal', TOPPLE_LAND_S + 0.15, -6)),
+  // Saltmere Bay's strand (the coastal lane's kinds, 0d57985fa5; named by the world-receipts lane, 251): the kelp
+  // kiln's dry-stone trench breaks at a crawl as a field wall does; the wet seaweed stack goes down under a hull with a
+  // dull thump and a quieter crush than dry hay
+  kelpkiln: STONE, weedstack: recipe(layer('sandbag_thump', 0, -3), layer('straw_crush', 0.05, -6)),
   // --- loose dressing (cls 'physics'): knocked about, never destroyed
   drum: KNOCK, churn: KNOCK, trashcan: KNOCK, gasbottle: KNOCK, bucket: KNOCK, jerrycan: KNOCK,
   // a loose wheel and tyre: a dull rubber thump

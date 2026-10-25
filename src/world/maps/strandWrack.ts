@@ -254,11 +254,16 @@ function clearAt(p: Placement, x: number, z: number): boolean {
 
 /** Dry sand within the high-water mark's reach of the water: never in the water (the whole footprint, so a frond's
  * corner cannot cross a pond's edge or a cove the marched band interpolates across), never on the bank above the beach. */
-function dryAt(p: Placement, x: number, z: number, half: number): boolean {
+function dryAt(p: Placement, x: number, z: number, half: number, markFootprint = false): boolean {
   const field = p.ctx.heightField;
   if (field.getWaterMaskAt(x, z) !== 0 || field.getHeightAt(x, z) - p.level > MAX_ABOVE_WATER_M) return false;
+  // (251) the wrack line's whole footprint under the high-water mark: a piece seated at the mark had its uphill half on
+  // the bank above the beach where the graded banks (2807b6d767) steepened Nordhavn's strand (fjord/7719: 0.64 m up).
+  // The landings' larger pieces and the driftwood keep the centre's rule (a timber's 1.8 m reach spans the strand there)
+  const above = (px: number, pz: number): boolean => markFootprint && field.getHeightAt(px, pz) - p.level > MAX_ABOVE_WATER_M;
   return half <= 0 || (field.getWaterMaskAt(x + half, z) === 0 && field.getWaterMaskAt(x - half, z) === 0
-    && field.getWaterMaskAt(x, z + half) === 0 && field.getWaterMaskAt(x, z - half) === 0);
+    && field.getWaterMaskAt(x, z + half) === 0 && field.getWaterMaskAt(x, z - half) === 0
+    && !(above(x + half, z) || above(x - half, z) || above(x, z + half) || above(x, z - half)));
 }
 
 function flatAt(p: Placement, x: number, z: number, half: number): boolean {
@@ -270,8 +275,8 @@ function flatAt(p: Placement, x: number, z: number, half: number): boolean {
 }
 
 /** `half` is the piece's half-extent plus a margin: the footprint it must keep dry and flat. */
-function admits(p: Placement, x: number, z: number, half: number): boolean {
-  return insideExtent(p, x, z) && dryAt(p, x, z, half) && clearAt(p, x, z) && flatAt(p, x, z, half);
+function admits(p: Placement, x: number, z: number, half: number, markFootprint = false): boolean {
+  return insideExtent(p, x, z) && dryAt(p, x, z, half, markFootprint) && clearAt(p, x, z) && flatAt(p, x, z, half);
 }
 
 /** The same admission the wrack line uses, for a kit piece re-derived onto the strand (the coastal driftwood). */
@@ -367,7 +372,7 @@ function pebblePatch(p: Placement, x: number, z: number, rng: Rng): number {
     const yaw = rng() * Math.PI, tilt = (rng() - 0.5) * 0.4;
     const warm = rng() < 0.2;
     const rgb = warm ? tint(0.09, 0.12, 0.36 + rng() * 0.10) : tint(0.58 + rng() * 0.05, 0.03 + rng() * 0.05, 0.30 + rng() * 0.20);
-    if (!insideExtent(p, px, pz) || !dryAt(p, px, pz, 0.2) || !clearAt(p, px, pz)) continue;
+    if (!insideExtent(p, px, pz) || !dryAt(p, px, pz, 0.2, true) || !clearAt(p, px, pz)) continue;
     const pebble = box(w, h, d, 1);
     pebble.rotateZ(tilt);
     pebble.rotateY(yaw);
@@ -538,20 +543,20 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
         t = t < 0 ? 0 : t > 1 ? 1 : t;
         const r = band[0] + width * t, x = lake.x + cos * r, z = lake.z + sin * r;
         const yaw = tangent + (rng() - 0.5) * 1.0;
-        if (admits(p, x, z, 0.7) && kelpMat(p, x, z, yaw, rng)) census.mats++;
+        if (admits(p, x, z, 0.7, true) && kelpMat(p, x, z, yaw, rng)) census.mats++;
       }
       if (rng() < STICK_CHANCE * density) {
         const r = band[0] + width * (0.3 + rng() * 0.7), x = lake.x + cos * r, z = lake.z + sin * r;
         const yaw = tangent + (rng() - 0.5) * 1.4;
-        if (admits(p, x, z, 1.3) && driftStick(p, x, z, yaw, rng)) census.sticks++;
+        if (admits(p, x, z, 1.3, true) && driftStick(p, x, z, yaw, rng)) census.sticks++;
       }
       if (rng() < PEBBLE_CHANCE * (1 - density * 0.5)) {
         const r = band[0] + width * rng() * 0.45, x = lake.x + cos * r, z = lake.z + sin * r;
-        if (admits(p, x, z, 1.0)) census.pebbles += pebblePatch(p, x, z, rng);
+        if (admits(p, x, z, 1.0, true)) census.pebbles += pebblePatch(p, x, z, rng);
       }
       if (rng() < SHELL_CHANCE) {
         const r = band[0] + width * rng(), x = lake.x + cos * r, z = lake.z + sin * r;
-        if (admits(p, x, z, 0.2) && shell(p, x, z, rng)) census.shells++;
+        if (admits(p, x, z, 0.2, true) && shell(p, x, z, rng)) census.shells++;
       }
     }
     // the larger pieces beside each landing on this shore: a timber baulk, a broken crate, a rope coil, a second baulk

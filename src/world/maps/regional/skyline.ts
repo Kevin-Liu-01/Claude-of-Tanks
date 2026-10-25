@@ -106,6 +106,8 @@ interface TowerFacade {
   glazing: 'bays' | 'ribbon';
   /** mullions per bay (fine joinery) and their colour */
   mullions: number;
+  /** (251) the joinery drawn only on the storeys under this height (the street's reach); every storey when absent */
+  joineryTop?: number;
   mullion: Rgb;
   /**
    * the mullions and transom drawn at any range, not as fine joinery (the map-revival lane, mr1, 2026-10-07: the station's
