@@ -99,10 +99,11 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
    menu repeats it in full */
 @media (width < 520px){
   .public-nav__cta{width:var(--btn-h-s);padding:0}
+  .public-nav .cot-wordmark{--wordmark-h:11px}
   .public-nav__cta span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (width <= 380px){
-  .public-nav .cot-wordmark{--wordmark-h:12px}
+  .public-nav .cot-wordmark{--wordmark-h:10px}
 }
 @media (prefers-reduced-motion:reduce){
   .public-nav__links a,.public-nav__lang a,.public-footer__lang a,.public-nav__icon-link{transition:none}
