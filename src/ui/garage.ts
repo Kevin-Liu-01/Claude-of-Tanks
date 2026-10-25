@@ -839,7 +839,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('chevronLeft', 15)}</button>` +
     `<div class="cot-cards" role="listbox" tabindex="0" aria-label="${t('garage.carousel.listAria')}"></div>` +
     `<div class="cot-cards-empty" role="status" hidden><span>${t('garage.roster.empty')}</span>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--36" data-roster-clear>${t('garage.roster.clear')}</button></div>` +
+    `<button type="button" class="cot-c-chip" data-roster-clear><span class="cot-c-chip__label">${t('garage.roster.clear')}</span></button></div>` +
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +

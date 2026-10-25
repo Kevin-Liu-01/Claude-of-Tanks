@@ -583,7 +583,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-cards-empty{display:flex;flex:1 1 auto;align-items:center;justify-content:center;gap:var(--s3);min-width:0;
   color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-ui);}
 .cot-cards-empty[hidden],.cot-carousel.is-empty .cot-cards{display:none;}
-.cot-cards-empty .cot-c-btn{padding:0 var(--s4);}
+.cot-cards-empty .cot-c-chip{padding:0 var(--s3);}
+/* an empty strip shows no arrows: there is nothing either side to move to */
+.cot-carousel.is-empty .cot-car-arrow{visibility:hidden;}
 .cot-garage .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11));}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
