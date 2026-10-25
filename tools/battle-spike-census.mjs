@@ -450,7 +450,7 @@ async function pageDrawAttribution(frames) {
       const key = `${band}|${pass}`;
       bands[key] = (bands[key] ?? 0) + 1;
       (tanksSeen[band] ??= new Set()).add(root);
-      if (pass === 'main') { const pk = `${band}|${partOf(object, root)}`; parts[pk] = (parts[pk] ?? 0) + 1; }
+      const pk = `${band}|${pass}|${partOf(object, root)}`; parts[pk] = (parts[pk] ?? 0) + 1;
     } else {
       let top = object;
       while (top.parent && top.parent !== scene) top = top.parent;
@@ -485,7 +485,7 @@ async function pageDrawAttribution(frames) {
   const topParts = Object.entries(parts).map(([k, v]) => {
     const band = k.split('|')[0];
     return [k, Math.round(v / frames / Math.max(1, tanksIn[band] ?? 1) * 100) / 100];
-  }).sort((a, b) => b[1] - a[1]).slice(0, 40);
+  }).sort((a, b) => b[1] - a[1]).slice(0, 60);
   return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
