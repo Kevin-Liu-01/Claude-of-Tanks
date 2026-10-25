@@ -4,7 +4,7 @@
 // running-gear course, then adds source-specific supported armor/equipment.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, convexSlab } from './kit.ts';
+import { KIT, FITTINGS, convexSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
@@ -134,26 +134,6 @@ function mount(
   owner: VehicleAssemblyOwner = 'turret',
 ): void {
   mountFitting(P, owner, fitting, x, y, z, rotation);
-}
-
-function cassette(
-  P: JapaneseBuilderPort,
-  owner: VehicleAssemblyOwner,
-  x: number,
-  y: number,
-  z: number,
-  w: number,
-  h: number,
-  d: number,
-  rotation: Vec3Tuple | null = null,
-  fastener = true,
-): void {
-  const r = rotation || [0, 0, 0];
-  const armor = owner === 'hull' ? 'hull' : 'turret';
-  const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
-  P.add(armor, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
-  if (fastener) P.add(detail, KIT.box(w * 0.68, 0.014, Math.max(0.025, d * 0.07)),
-    x, y + h * 0.5 + 0.009, z + d * 0.25, r[0], r[1], r[2]);
 }
 
 function seatedArmorCassette(
@@ -713,36 +693,39 @@ function buildSTB1(P: JapaneseBuilderPort): void {
   addSTB1GunAndFinish(P);
 }
 
-function addType90APackage(P: JapaneseBuilderPort): void {
-  const { box, cylY, cylZ, torus } = KIT;
-  // Replace the quiet cheek read with joined, faceted NERA carriers and
-  // shallow service cassettes. Every carrier overlaps the donor turret core.
-  for (const side of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [side * 0.22, 0.02, 1.22], [side * 1.50, 0.02, 0.78],
-      [side * 1.45, 0.03, -0.40], [side * 0.42, 0.03, 0.24],
-      [side * 0.20, 0.57, 1.03], [side * 1.31, 0.60, 0.58],
-      [side * 1.28, 0.55, -0.48], [side * 0.39, 0.59, 0.16]));
-    for (let i = 0; i < 4; i++) cassette(P, 'turret', side * (0.58 + i * 0.25),
-      0.60 - i * 0.018, 0.89 - i * 0.17, 0.22, 0.18, 0.21,
-      [-0.14, side * (0.04 + i * 0.04), side * 0.02], false);
-    // Armored skirt modules remain outside the hull side but above the linked
-    // shoe course; they do not replace or hide donor running gear.
-    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.70, 1.07,
-      1.78 - i * 0.70, 0.055, 0.40, 0.62, null, false);
-  }
-  // Large panoramic thermal head. 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on
-  // the lane's audit): the package's shielded roof MAG and its ring are gone. A Type 90 carries one roof weapon, the
-  // M2 on its pintle between the commander's and gunner's hatches, beside the Type 74 coax, and the MAG stood 0.7 m from it.
-  P.add('turret', box(0.48, 0.075, 0.46), -0.55, 0.86, -0.22);
-  P.add('turretDetail', box(0.38, 0.34, 0.35), -0.55, 1.04, -0.18, -0.05, 0, 0);
-  P.add('turretDark', box(0.28, 0.18, 0.032), -0.55, 1.06, 0.03);
-  P.add('turretGlass', box(0.20, 0.11, 0.022), -0.55, 1.06, 0.055);
+function addSTC2TrialsPackage(P: JapaneseBuilderPort): void {
+  const { box, cylY, torus } = KIT;
+  // owner 2026-10-25 ("change the type 90a and type 90 kyu maru into prototype-named vriants"): type90a is the second
+  // TK-X prototype, STC-2 (TK-X-0002, June 1985), not a Kai upgrade. The Kai package's NERA cheek carriers, skirt
+  // cassettes, panoramic thermal head, flank modules, camera/APS heads and up-armour gun collar are gone. What the
+  // second prototype carried instead: a commander's sight of its own design, a covered gunner's sight and blackout
+  // lamps on the bow. The roof plate's top is y 0.94 in this builder frame (the donor's buildType90Turret); every
+  // addition below seats 5 mm into the surface under it.
 
-  // The donor's broad welded roof remains the correct Type 90 family mass,
-  // but the A package needs a visible service grammar at garage distance.
-  // Keep every addition shallow and seated: split hatch, vision blocks,
-  // weld courses and access plates all overlap the existing roof plane.
+  // The prototype commander's independent sight: a drum head on a pedestal ahead-outboard of the commander's hatch
+  // (x 0.34..0.78, z -0.39..0.05), clear of the cupola's outboard segment (z -0.28..-0.06).
+  P.add('turret', box(0.22, 0.065, 0.22), 0.80, 0.9675, 0.30);                 // pedestal 0.935..1.00 on the 0.94 roof
+  P.add('turretDetail', cylY(0.125, 0.125, 0.20, 18), 0.80, 1.095, 0.30);       // drum 0.995..1.195
+  P.add('turretDark', torus(0.125, 0.010, 18), 0.80, 1.195, 0.30);
+  P.add('turret', cylY(0.115, 0.13, 0.025, 18), 0.80, 1.205, 0.30);             // cap
+  P.add('turretDark', box(0.16, 0.10, 0.024), 0.80, 1.11, 0.415);               // window frame on the drum's front
+  P.add('turretGlass', box(0.13, 0.075, 0.012), 0.80, 1.11, 0.428);
+
+  // The gunner's sight under its own hinged armoured cover: a plate over the donor hood (top 1.09, x 0.10..0.445,
+  // z 0.79..1.48), seated 3 mm into it, with the hinge bar at its rear edge.
+  P.add('turret', box(0.38, 0.026, 0.42), 0.2725, 1.100, 1.25, -0.035, 0, 0);
+  P.add('turretDark', box(0.36, 0.030, 0.035), 0.2725, 1.096, 1.03);
+  for (const x of [0.13, 0.415]) P.add('turretDetail', box(0.025, 0.05, 0.10), x, 1.09, 1.42);
+
+  // blackout lamps on the front fender run (flat top 1.181, x 1.22..1.64, z 2.58..3.20), outboard of the headlights
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.10, 0.07, 0.08), side * 1.46, 1.212, 3.06);
+    P.add('hullDark', box(0.08, 0.05, 0.010), side * 1.46, 1.215, 3.102);
+    P.add('hullGlass', box(0.06, 0.020, 0.006), side * 1.46, 1.222, 3.108);
+  }
+
+  // The roof's service grammar (split hatch with vision blocks, weld courses, access plates) as the Kai package seated
+  // it: the prototypes carried the same hatches and plates.
   P.add('turret', cylY(0.27, 0.29, 0.065, 18), -0.43, 0.87, -0.71);
   P.add('turretDark', torus(0.255, 0.014, 18), -0.43, 0.91, -0.71);
   P.add('turret', cylY(0.23, 0.245, 0.030, 18), -0.43, 0.93, -0.71);
@@ -764,44 +747,10 @@ function addType90APackage(P: JapaneseBuilderPort): void {
     P.add('turret', box(w, 0.045, d), x, 0.892, z, -0.035, 0, 0);
     P.add('turretDetail', box(w * 0.68, 0.014, 0.025), x, 0.923, z + d * 0.22);
   }
-
-  // Joined flank modules and 360-degree camera/APS heads replace the quiet
-  // slab read.  These are NERA/service faces, not a second track or skirt
-  // course; their inner faces are buried into the turret shoulders.
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 5; i++) {
-      const z = 0.35 - i * 0.38;
-      P.add('turretDark', box(0.035, 0.30, 0.33), side * 1.305, 0.48, z,
-        0, side * 0.09, 0);
-      P.add('turret', box(0.050, 0.26, 0.30), side * 1.325, 0.49, z,
-        0, side * 0.09, 0);
-      P.add('turretDetail', box(0.054, 0.018, 0.22), side * 1.353, 0.57, z,
-        0, side * 0.09, 0);
-    }
-    P.add('turret', box(0.21, 0.16, 0.23), side * 1.17, 0.69, 0.49,
-      -0.06, side * 0.12, 0);
-    P.add('turretDark', box(0.022, 0.10, 0.14), side * 1.285, 0.70, 0.51,
-      -0.06, side * 0.12, 0);
-    P.add('turretGlass', box(0.015, 0.060, 0.080), side * 1.300, 0.71, 0.52,
-      -0.06, side * 0.12, 0);
-  }
   smoke(P, 1.23, 0.65, 0.08, 5, 9020, -0.44);
   joinedBasket(P, 2.48, 0.47, -1.72, 0.62, 9030);
   whips(P, 0.73, -1.86, 9040, 1.08);
-  // Revised Rh-120 plant — §5.364 re-seat in the donor's new trunnion frame
-  // (buildType90 now pitches about the turret-face trunnion: gunExtra world
-  // = local + (0, 1.686, 1.30); the old 0.38/0.67 stations, authored for the
-  // retired scale-preserving seat, would float 0.4 m ahead of the new
-  // mantlet). The A-mark identity keeps its BEEFIER mask read as layered
-  // applique ON the donor's wide plate: an up-armor collar frame proud of
-  // the face, a fatter sleeve root over the donor's recoil step, and the
-  // long coax sleeve wrapping the donor port.
-  P.addGunExtra(box(0.92, 0.44, 0.06), 0, 0, 0.245);                          // A-mark applique collar frame (z_w 1.515..1.575, seated 5 mm into the donor face plate — §B2)
-  P.addGunExtra(cylZ(0.15, 0.34, 18, 0.12), 0, 0, 0.60);                      // strengthened sleeve root (z_w 1.73..2.07, overlapping the donor step 1.55..1.85)
-  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.36, 0.105, 0.28);                // coax sleeve wrapping the donor port (same face station, 8 cm longer)
-  // (decal seats on the unscaled rig_turret after the donor's postAssemble
-  // shell regroup — 0.2856/−0.6396 = 0.42/−0.78 through the shell scale.)
-  P.decal('turret', 'number', '90-A', 0.20, [1.48, 0.2856, -0.6396], Math.PI / 2);
+  // the turret flanks carry STC-2 from the donor (spec.visual.number), the glacis TK-X-0002
   P.topY = Math.max(P.topY || 0, 0.9928);                                     // rig_turretTop world 2.3928 unchanged = the old 1.46 through the 0.68 shell scale
 }
 
@@ -809,7 +758,7 @@ function buildType90A(P: JapaneseBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   buildType90(P);
-  addType90APackage(P);
+  addSTC2TrialsPackage(P);
 }
 
 function addType10BPackage(P: JapaneseBuilderPort): void {
