@@ -524,22 +524,21 @@
     .cot-boot-meta { position: relative; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta::before {
       content: ''; position: absolute; inset: -9px 0; z-index: -1; border-radius: var(--plate-radius);
       background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate)); box-shadow: var(--ring-2);
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 12px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 21px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-bar { margin-inline: 14px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
+    /* a slow load's bar stays live 8 px under its plate, in the same 21 px the other stops leave below the row */
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 17px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 0; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
     #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { background: var(--surface-plate); }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta::before { background: var(--surface-plate); }
     /* the kit's glyph per severity: an error and an offline warning the alert, a slow load (progress) the clock */
     .cot-boot-alert svg + svg { display: none; }
     #cot-boot[data-stop='slow'] .cot-boot-alert svg:first-child { display: none; }
@@ -941,7 +940,17 @@
         if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
         if (document.querySelector('.cot-boot-gate.on')) return;
         const stage = document.getElementById('cot-boot-stage');
-        if (stage) stage.textContent = `${MESSAGES.downloading} · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        if (!stage) return;
+        const counted = `${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        // the count ticks in place, so it wears the data face (.num); an engine without replaceChildren keeps plain text
+        if (typeof stage.replaceChildren !== 'function' || typeof document.createElement !== 'function') {
+          stage.textContent = `${MESSAGES.downloading} · ${counted}`;
+          return;
+        }
+        const count = document.createElement('span');
+        count.className = 'num';
+        count.textContent = counted;
+        stage.replaceChildren(`${MESSAGES.downloading} · `, count);
       }
       function noteNetworkProgress(entries) {
         let bytes = 0;
