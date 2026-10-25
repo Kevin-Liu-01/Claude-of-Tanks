@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {
-  createBackgroundYielder,
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
   nextFrame,
@@ -8,6 +7,7 @@ import {
   onPaintStall,
   PAINT_WAIT_BUDGET_MS,
 } from './frameScheduler.ts';
+import { createBackgroundYielder } from './backgroundYield.ts';
 
 async function withFrameHost({ animationFrame = true, taskScheduler = false,
   hidden = false, documentAvailable = true, frameError = null } = {}, run) {
