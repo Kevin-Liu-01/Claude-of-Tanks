@@ -114,14 +114,15 @@ for (const hero of heroVideos) {
 }
 
 // --- the topic headers: the 960 rung leads on a desktop, the 1920 loop only on a wide screen -------------------------
-const { topics, TOPIC_HERO_RUNGS } = await topicData();
+const { topics, TOPIC_HERO_RUNGS, topicHeroLadder } = await topicData();
 const TOPIC_960_GAP = /^(?:s04-column-under-fire|s20-road-return-fire|s21-fields-assault|s23-village-crossroads|s24-ice-duel|s33-water-tower|s34-furnace-salvo|s39-lakeside-village)$/;
 let topic960 = 0, topicGaps = 0;
 for (const topic of Object.values(topics)) {
-  const take = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(topic.hero)?.[1];
-  if (!take) continue;
-  if (TOPIC_HERO_RUNGS[take]?.r960) {
-    assert.ok(bytesOf(`/media/site50-r14/loops/${take}-960.webm`) <= 1.8 * MB, `${take}-960.webm: 1.8 MB at most`);
+  const ladder = topicHeroLadder(topic.hero);
+  if (!ladder) continue;
+  const take = ladder.take;
+  if (ladder.r960) {
+    assert.ok(bytesOf(ladder.r960) <= 1.8 * MB, `${ladder.r960}: 1.8 MB at most`);
     topic960++;
   } else {
     assert.match(take, TOPIC_960_GAP, `${take}: a topic header leads with its 960 rung (SHOWCASE §4.7)`);
