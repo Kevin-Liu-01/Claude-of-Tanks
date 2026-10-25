@@ -447,11 +447,10 @@ export default defineConfig({
             // source already imports it and only the game boots it (in the ui icon library's it reached every docs page;
             // with the loading roster it added preload edges); the group takes exactly these two modules, none of their
             // dependencies.
-            // 2026-10-25 (premiere-site, the owner's primitives pass): the component kit (components.ts, its escape helper and identity.ts)
-            // rides here too. It imports the icon helpers and loads on exactly the pages they do (the game, the Gallery, /cn);
-            // once the Record, the Studio and the Garage filter panel imported it from their lazy chunks it split into a chunk
-            // of its own, one more boot request on the game and the Gallery.
-            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity|components[\\/](?:components|escape|identity))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (premiere-site, the owner's primitives pass): the kit's vehicle identity (components/identity.ts: flag,
+            // silhouette, vehicle) rides here too. It imports the icon helpers and the flags, and loads where they do (the Gallery,
+            // the game's lazy screens); on its own it was one more Gallery boot request.
+            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity|components[\\/]identity)\.ts$/, includeDependenciesRecursively: false },
             // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
             // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
             { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },
@@ -460,6 +459,11 @@ export default defineConfig({
             // already: on its own it became one more boot request on the game and Gallery pages for 0.3 KB, and beside
             // dom.ts it made every fonts importer preload the DOM helpers too. Exactly these two modules.
             { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (tech-tree view 252): the kit's markup factories (src/ui/components/components.ts and its escape
+            // helper) ride in the chunk the game and the Gallery share at boot with the test-drive link, where they sat
+            // before. The tech tree's lazy chunk is their third importer; on their own they became one more boot request on
+            // both pages. Exactly these three modules, none of their dependencies.
+            { name: 'testDriveLink', test: /[\\/]src[\\/](?:game[\\/]testDriveLink|ui[\\/]components[\\/](?:components|escape))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F7): the site's one playback policy (src/presentation/mediaPlayer.ts, which imports
             // nothing) rides in the fleet takes' chunk. As a chunk of its own it became one more entry in the game entry's
             // preload list for the Garage's import('./fleetTakes.ts'), new bytes on every game boot; grouped with the
