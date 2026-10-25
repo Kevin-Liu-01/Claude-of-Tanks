@@ -419,7 +419,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* the kit draws its buttons inline-flex, which outranks the hidden attribute (Rejoin, Retry) */
 .cot-play .action[hidden]{display:none}
 .cot-play button[data-action="ready"]{min-height:44px}
-.cot-play .status{margin-top:var(--s3)}
+.cot-play .status{margin-top:var(--s3);scroll-margin-block:var(--s6)}
 .cot-play .status.is-empty{height:0;min-height:0;margin:0;padding:0;overflow:hidden;background:none;box-shadow:none}
 .cot-play .status-legacy{min-height:18px;margin-top:var(--s3);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .status.err{color:var(--text-danger)}.cot-play .status[hidden]{display:none}
