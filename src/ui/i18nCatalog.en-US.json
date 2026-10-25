@@ -4518,7 +4518,7 @@
   "studio.sceneLink.replace": "Replace the current scene with the scene in this link?",
   "studio.sceneLink.dismiss": "Dismiss",
   "studio.sceneLink.details": "Details",
-  "garage.dossier.testDrive": "Proving ground",
+  "garage.dossier.testDrive": "Test drive",
   "garage.dossier.testDrive.aria": "Take the {name} to the proving ground",
   "shotInfo.armorRicochet": "{mm} mm · ricochet at {angle}°",
   "shotInfo.penLegend": "roll {roll} of the round's {nominal} average at this range (±25 %)",

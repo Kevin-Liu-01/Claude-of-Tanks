@@ -148,6 +148,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 /* Overview: the rival picker, six headline rows on the 20-cell scale with the rival's tick, the rounds */
 .cot-garage .cot-compare{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);margin-bottom:var(--s3);}
 .cot-garage .cot-compare-toggle{flex:none;padding:0 var(--s3);}
+/* the readout's chips keep the label floor (13 px in Chinese): the kit chip's scaled 13 fell to about 10.5 px at 1280 */
+.cot-garage :is(.cot-action,.cot-compare-toggle){font-size:max(var(--fs-floor-11),var(--fs-13));}
 .cot-garage .cot-rival{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);height:var(--btn-h-s);padding:0 var(--s3);
   border:1px solid var(--line-2);border-radius:var(--control-radius);color:var(--ink-3);cursor:pointer;}
 .cot-garage .cot-rival select{flex:1;min-width:0;appearance:none;border:0;background:transparent;color:var(--ink-1);cursor:pointer;
@@ -484,6 +486,10 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-thir
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   bottom:calc(var(--cot-side-panel-bottom) + var(--cot-figures-h) + var(--s2));pointer-events:none;}
 body[data-cot-panels='overlay'] .cot-lt-head{flex-direction:row;align-items:center;gap:var(--s2);}
+/* a phone's name row and band captions stand over the bright floor: the head takes the stage's local shade and each
+   caption a glyph plate, so neither reads light on light */
+body[data-cot-panels='overlay'] .cot-lt-head{padding:var(--s1) var(--s2);margin:calc(-1 * var(--s1)) calc(-1 * var(--s2));background:var(--stage-scrim);}
+body[data-cot-panels='overlay'] .cot-lt-cap{padding:1px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{min-width:0;overflow:hidden;white-space:nowrap;
   text-overflow:ellipsis;font-size:var(--fs-24);line-height:1.1;}
 body[data-cot-panels='overlay'] .cot-lt-id{display:flex;order:-1;flex-wrap:nowrap;gap:var(--s2);font-size:max(var(--fs-floor-11),var(--fs-13));}
