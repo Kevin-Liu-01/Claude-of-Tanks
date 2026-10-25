@@ -1344,6 +1344,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/wire/matchBuild.selftest.mjs',
     'src/mp/wire/destroyedSet.selftest.mjs',
     'src/mp/wire/viewerMask.selftest.mjs', // 2026-10-15 MP stream: wire 7, a delta's movement checkpoint as a changed-value mask
+    'src/mp/wire/eventPayload.selftest.mjs', // mp-scale-251: wire 8, event payloads in binary decode to their JSON
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
@@ -1374,6 +1375,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
+    'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
     'src/mp/room/roomWorkerProgram.selftest.mjs',
@@ -1446,6 +1448,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/matchActor.selftest.mjs',
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
+    'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
