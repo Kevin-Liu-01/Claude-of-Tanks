@@ -300,7 +300,7 @@ export const TOKENS = {
   'studio-frame-mask': '0 0 0 1px oklch(from #f6f3ec l c h / .18),0 0 0 2000px rgba(5,6,8,.72)',
   'studio-clip-fx': 'rgba(255,90,78,.16)',
   'battle-plate-shadow': '0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
-  'battle-edge-own': 'inset 3px 0 0 #f0a030,0 0 0 1px oklch(from #f0a030 l c h / .35),0 6px 18px rgba(0,0,0,.35)',
+  'battle-edge-own': '0 0 0 1px oklch(from #f0a030 l c h / .5),0 6px 18px rgba(0,0,0,.35)',
   'battle-veil': 'rgba(5,6,8,.6)',
   'battle-nv': '#b4ee8c',
   'battle-ring-ammo': 'inset 0 0 0 1px oklch(from #c4573f l c h / .6)',

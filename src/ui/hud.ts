@@ -599,6 +599,12 @@ interface ShellSlotButton extends HTMLButtonElement {
 }
 
 interface AlertOptions { tone?: string; icon?: string }
+/** An alert's tone as the kit's notice severities name it (components/notice.ts). */
+const ALERT_SEVERITY: Readonly<Record<string, 'info' | 'success' | 'warning' | 'error'>> = {
+  danger: 'error', warning: 'warning', success: 'success', info: 'info',
+};
+/** How long an alert shows (ms). */
+const ALERT_HOLD_MS = 2400;
 
 /** Watch mode's drone on the minimap (watch-mode-243): its ground point and the lens's heading. */
 export interface HudWatchDrone {
@@ -1715,8 +1721,8 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kill-lane.r .cot-kf .k,.cot-kill-lane.l .cot-kf .v{color:var(--text-enemy);}
 .cot-kill-lane.l .cot-kf .ksi,.cot-kill-lane.r .cot-kf .vsi{color:var(--hud-own);}
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
-/* the player's own kills and deaths ride on the tungsten edge */
-.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){box-shadow:inset 3px 0 0 var(--accent);}
+/* the player's own kills and deaths sit on the accent's wash (the kit's notice grammar: no stripe) */
+.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){background:var(--accent-wash);}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:var(--battle-fs-11);letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
@@ -1762,7 +1768,7 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
 /* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
    beside the media queries that size it) keeps the glyph */
 .cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
-.cot-aim-warning .g{display:flex;flex:none;color:var(--notice-edge)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
+.cot-aim-warning .g{display:flex;flex:none;color:var(--notice-tone)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
 /* a compact alert is its glyph on its severity's plate, its words in the live region and its title: the touch planner's
    compact form here; the smallest touch screens and a mouse window that seats its alert in the 9 px type's reserves
    (mouseNoticePlan.ts ALERT_RESERVE_9) beside their media queries in battleHudLayout.css */
@@ -1789,18 +1795,16 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
   display:flex;align-items:center;justify-content:center;gap:var(--s3);padding:0 var(--s4) 0 var(--s3);
   transform:translate(-50%,7px);font-family:var(--hud-font);font-size:var(--battle-fs-15);font-weight:700;
-  letter-spacing:var(--track-label-s);text-align:center;text-transform:uppercase;color:var(--notice-edge);white-space:nowrap;
-  --notice-edge:var(--warn);
+  letter-spacing:var(--track-label-s);text-align:center;text-transform:uppercase;color:var(--ink-1);white-space:nowrap;
   text-shadow:0 1px 3px oklch(from var(--surface-scene) l c h / .9);opacity:0;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);}
-.cot-alert-icon{width:19px;height:19px;display:grid;place-items:center;flex:0 0 auto;color:var(--notice-edge);}
+.cot-alert-icon{width:19px;height:19px;display:grid;place-items:center;flex:0 0 auto;color:var(--notice-tone);}
 .cot-alert-icon svg{display:block;width:19px;height:19px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-alert-bound{white-space:nowrap;}
-.cot-alert.danger{--notice-edge:var(--danger);}
-.cot-alert.success{--notice-edge:var(--ok);}
-.cot-alert.info{--notice-edge:var(--info);}
+.cot-alert-count{flex:none;color:var(--ink-3);font:600 var(--battle-fs-12)/1 var(--font-data);letter-spacing:0;}
+.cot-alert-count:empty{display:none;}
 /* respawn (owner 2026-09-15): in a mode that revives the player the death is a count, not a
    hand-off — kicker + numeral in the pre-battle style, a little lower so the wreck stays visible.
    Hidden the instant the revive lands (mode:respawn) or the battle ends. */
@@ -2082,20 +2086,29 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
   width:min(248px,calc(100vw - 28px));min-height:32px;transform:translate(-50%,-6px);
   display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;
-  padding:var(--s1) 22px;box-sizing:border-box;color:var(--warn);--notice-edge:var(--warn);
+  padding:var(--s1) 22px;box-sizing:border-box;color:var(--ink-1);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
 .cot-sixth.on{opacity:1;transform:translate(-50%,0);
   animation:cotDetectedIn var(--cot-motion-slow) var(--cot-ease-out) 1;}
-.cot-sixth .sig{display:grid;place-items:center;color:var(--warn);}
+.cot-sixth .sig{display:grid;place-items:center;color:var(--notice-tone);}
 .cot-sixth .sig svg{width:24px;height:24px;display:block;}
 .cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
-.cot-sixth .lb{font:700 var(--battle-fs-15)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--warn);}
+.cot-sixth .lb{font:700 var(--battle-fs-15)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1);}
 /* the lamp and its label read alone (owner 2026-10-22: no secondary labels); the line stays for a screen reader */
 .cot-sixth .sub{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-/* Every notice is one strong HUD plate: a hairline and a 3 px bar in its severity's ink on the leading edge. */
-.cot-sixth,.cot-alert{border:0;border-radius:var(--r1);background:var(--hud-plate-strong);
-  box-shadow:inset 3px 0 0 var(--notice-edge),var(--hud-plate-ring);}
+/* The battle's notices on the kit's notice grammar (components/notice.ts; owner 2026-10-25: "make notifications a lot
+   better...stop using the box with one border colored"): one strong HUD plate ringed all round, the severity in its
+   glyph's tone and, for a warning or an error, a faint wash of it on the plate; the words keep the plate's ink. No
+   stripe and no one-sided border (hudNotices.selftest.mjs holds the HUD to it). */
+.cot-hud [data-severity]{--notice-tone:var(--text-accent);}
+.cot-hud [data-severity=success]{--notice-tone:var(--text-ok);}
+.cot-hud [data-severity=warning]{--notice-tone:var(--text-warn);}
+.cot-hud [data-severity=error]{--notice-tone:var(--text-danger);}
+.cot-hud [data-severity=info]{--notice-tone:var(--text-accent);}
+.cot-sixth,.cot-alert,.cot-aim-warning{border:0;border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--hud-plate-ring);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{background:color-mix(in srgb,var(--text-warn) 9%,var(--hud-plate-strong));}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{background:color-mix(in srgb,var(--text-danger) 11%,var(--hud-plate-strong));}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){.cot-sixth.on{animation:none}}
 
@@ -2593,6 +2606,8 @@ export function initHud(bus: EventBus): HudRuntime {
   alertEl.setAttribute('aria-live', 'polite');
   const alertIconEl = el('span', 'cot-alert-icon', alertEl);
   const alertCopyEl = el('span', 'cot-alert-copy', alertEl);
+  const alertCountEl = el('span', 'cot-alert-count num', alertEl);
+  alertEl.dataset.severity = 'warning';
 
   // ========================= SPOTTING SECTION ===============================
   // Sixth-sense lamp: 'player:spotted' (src/game/state.ts spotting wiring)
@@ -2601,6 +2616,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // volume and mute settings). Battle restarts reset the lamp (sim clock
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
+  sixthEl.dataset.severity = 'warning';
   sixthEl.innerHTML = `<span class="sig">${uiIconSVG('lightbulb', 24)}</span>` +
     `<span class="copy"><span class="lb">${t('hud.sixth.label')}</span>` +
     `<span class="sub">${t('hud.sixth.sub')}</span></span>`;
@@ -3052,6 +3068,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let forced: HudAimInput | null = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells: HudShellCard[] = DEFAULT_SHELLS;
   let alertTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The alert's words, its repeats while it shows, and its time (held through the game's pause). */
+  let alertText = '', alertRepeat = 0, alertPaused = false, alertLeftMs = 0, alertStartedAt = 0;
   let heightFieldRef: HudHeightField | null = null; // for spotting line-of-sight tests
   const nameById = new Map<string, string>();
   const teamById = new Map<string, string | undefined>();
@@ -5328,6 +5346,7 @@ export function initHud(bus: EventBus): HudRuntime {
       }
       if (touchAimWarning.dataset.kind !== warning.kind) {
         touchAimWarning.dataset.kind = warning.kind;
+        touchAimWarning.dataset.severity = warning.kind === 'blocked' ? 'error' : warning.kind === 'rollover' ? 'warning' : 'info';
         touchAimWarningGlyph.innerHTML = uiIconSVG(warning.kind === 'rollover' ? 'rematch' : 'turretRing', 14);
       }
       seatTouchWarning(seated, draw);
@@ -7286,12 +7305,33 @@ export function initHud(bus: EventBus): HudRuntime {
       alertCopyEl.append(' ', bound, space < 0 ? '' : parts[i].slice(space));
     }
     alertIconEl.innerHTML = uiIconSVG(icon, 18);
-    alertEl.classList.remove('danger', 'warning', 'success', 'info');
-    alertEl.classList.add(tone);
+    // (the kit's notice grammar: the severity is the glyph's tone and the plate's wash; an error is assertive. A repeat
+    // while it shows raises its count and restarts its time; the game's pause holds that time.)
+    const severity = ALERT_SEVERITY[tone] ?? 'warning';
+    alertRepeat = alertEl.classList.contains('show') && text === alertText && severity === alertEl.dataset.severity ? alertRepeat + 1 : 1;
+    alertText = text;
+    setText(alertCountEl, alertRepeat > 1 ? `×${alertRepeat}` : '');
+    setData(alertEl, 'severity', severity);
+    setAttr(alertEl, 'role', severity === 'error' ? 'alert' : 'status');
     alertEl.classList.add('show');
-    if (alertTimer) clearTimeout(alertTimer);
-    alertTimer = setTimeout(() => alertEl.classList.remove('show'), 2400);
+    holdAlert(ALERT_HOLD_MS);
   }
+  /** (Re)starts the alert's time: `ms` to run, held while the game is paused. */
+  function holdAlert(ms: number): void {
+    if (alertTimer) clearTimeout(alertTimer);
+    alertTimer = null;
+    alertLeftMs = ms;
+    if (alertPaused) return;
+    alertStartedAt = performance.now();
+    alertTimer = setTimeout(() => { alertTimer = null; alertRepeat = 0; alertEl.classList.remove('show'); }, ms);
+  }
+  on('ui:pause', ({ on: paused }) => {
+    alertPaused = !!paused;
+    if (!alertEl.classList.contains('show')) return;
+    if (alertPaused) {
+      if (alertTimer) { clearTimeout(alertTimer); alertTimer = null; alertLeftMs = Math.max(0, alertLeftMs - (performance.now() - alertStartedAt)); }
+    } else holdAlert(alertLeftMs);
+  });
 
   let playerRef: HudTank | null = null;
   // watch mode (watch-mode-243): flying the drone, no tank is the HUD's own; riding along, the ridden one is

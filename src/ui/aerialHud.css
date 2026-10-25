@@ -12,7 +12,7 @@
  linear-gradient(currentColor,currentColor) right bottom/12px 1px,
  linear-gradient(currentColor,currentColor) right bottom/1px 12px;background-repeat:no-repeat}
 .flight-sight::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor}
-.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);border-top:2px solid var(--accent);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
+.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
 .flight-heading{display:flex;align-items:center;gap:10px;min-height:38px}
 .flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:var(--accent-hi);background:oklch(from var(--accent-lo) l c h / .169);clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
 .flight-emblem svg{width:23px;height:23px}

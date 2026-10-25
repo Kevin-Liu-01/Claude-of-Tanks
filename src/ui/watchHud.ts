@@ -69,7 +69,7 @@ const STYLE = `
 html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
 .cot-watch .who{--tone:var(--accent);display:grid;grid-template-columns:auto 56px minmax(0,1fr);align-items:center;gap:var(--s2);
  width:300px;height:48px;padding:0 var(--s3);background:var(--hud-plate);border-radius:var(--r1);
- border-left:3px solid var(--tone);box-shadow:var(--ring-1);pointer-events:auto}
+ box-shadow:var(--ring-1);pointer-events:auto}
 .cot-watch .who[data-side=own]{--tone:var(--team-own)}.cot-watch .who[data-side=enemy]{--tone:var(--team-enemy)}
 .cot-watch .who .cot-c-flag{width:24px;height:16px}
 .cot-watch .who .cot-c-sil{width:56px;height:20px;color:var(--tone)}

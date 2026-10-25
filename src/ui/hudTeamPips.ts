@@ -48,7 +48,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
    the accent, a destroyed tank's hollow. Seven a side keep the plate to its scores' width, sixteen inside its 400 px. */
 .cot-top .cot-pips-row{grid-column:1/-1;grid-row:2;display:none;justify-content:center;gap:var(--s3);min-width:0}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-top .cot-pips-row:not([hidden]){display:flex}
-:is(.range-mode,.aerial-active) .cot-top .cot-pips-row{display:none!important}
+body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) :is(.range-mode,.aerial-active) .cot-top .cot-pips-row:not([hidden]){display:none}
 .cot-top .cot-pips-row .side{flex:0 1 auto;min-width:0;gap:3px}
 .cot-top .cot-pips-row .pip{flex:0 1 10px;min-width:5px;height:5px;filter:none}
 .cot-top .cot-pips-row .pip::before{-webkit-mask:none;mask:none;transform:skewX(-24deg)}

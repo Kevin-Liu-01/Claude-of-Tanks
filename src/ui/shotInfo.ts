@@ -364,7 +364,7 @@ const SI_CSS = `
 .cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-card-top,var(--cot-si-roster-bottom,272px));width:320px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
 .cot-si-card{position:relative;min-height:0;overflow:hidden;contain:layout paint style;
-  background:var(--hud-plate);border:1px solid transparent;border-right:3px solid var(--line-3);border-radius:var(--r1);
+  background:var(--hud-plate);border:1px solid transparent;border-radius:var(--r1);
   box-shadow:var(--battle-plate-shadow);
   padding:0 0 var(--s1);transition:opacity var(--dur-stage) ease;}
 .cot-si-card.out{opacity:0;}
@@ -465,8 +465,8 @@ const SI_CSS = `
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(90deg,var(--hud-plate) 40%,oklch(from var(--hud-plate) l c h / 0));
-  border:0;border-left:2px solid var(--danger);border-radius:var(--r1) 0 0 var(--r1);padding:var(--s1) 6px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--text-danger) 14%,var(--hud-plate)) 40%,oklch(from var(--hud-plate) l c h / 0));
+  border:0;border-radius:var(--r1) 0 0 var(--r1);padding:var(--s1) 6px;
   transition:opacity var(--dur-stage) ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;

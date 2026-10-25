@@ -351,11 +351,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
    to layout checks and directly over the system buttons on short phones. */
-.cot-aim-warning{--notice-edge:var(--ink-2);position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);background:var(--hud-plate-strong);border:1px solid transparent;border-radius:var(--r1);box-shadow:inset 3px 0 0 var(--notice-edge),var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
+.cot-aim-warning{position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
 .cot-aim-warning[hidden]{display:none}
-/* the notice grammar: a plate, the severity's bar on the leading edge and its ink */
-.cot-aim-warning[data-kind='blocked']{--notice-edge:var(--danger);color:var(--danger)}
-.cot-aim-warning[data-kind='rollover']{--notice-edge:var(--warn);color:var(--warn)}
+/* the kit's notice grammar (hud.ts): the plate, the severity on the glyph and the wash (hud.ts aimWarningState sets it) */
 /* Owner 2026-10-17 (out of ammo, critic r9): where the chip sits under the sight, the reticle seats it (hud.ts
    placeAimWarning) under the rack, the countdown and the ring, as the mouse layout's canvas chip, and the scope's readouts
    start under it; its box is the canvas chip's ink, 24 px tall. A short landscape keeps it in the left lane (below). */

@@ -2270,6 +2270,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
+    // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
+    'src/ui/hudNotices.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
