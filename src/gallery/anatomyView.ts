@@ -271,7 +271,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   let visiblePickables: THREE.Object3D[] = [];
   const hidden = new Map<THREE.Object3D, { mask: number; visible: boolean }>();
   // `length` is the callout's leader in px as last written (0: not yet), so a frame only writes the ones that move
-  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number }> = [];
+  // `width` is the plate's measured width (0 until it first shows), read once, never in a frame's layout
+  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number; width: number }> = [];
+  // the stage's toolbar foot (the layer chips), read again only when the stage changes size: no label stands above it
+  let toolbarFoot = 0, footFor = '';
   const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
 
   function hideExterior(root: THREE.Object3D): void {
@@ -516,7 +519,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         element.title = crewName(pick.station.crew);
       }
       badges.append(element);
-      badgeItems.push({ element, anchor, kind: pick.kind, length: 0 });
+      badgeItems.push({ element, anchor, kind: pick.kind, length: 0, width: 0 });
     }
   }
 
@@ -662,6 +665,11 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       }
       if (badges.hidden) return;
       const width = host.renderer.domElement.clientWidth, height = host.renderer.domElement.clientHeight;
+      if (footFor !== `${width}x${height}`) {
+        footFor = `${width}x${height}`;
+        toolbarFoot = bar.offsetHeight ? bar.offsetTop + bar.offsetHeight + CALLOUT_GAP_PX : 0;
+        for (const item of badgeItems) item.width = 0;
+      }
       placed.length = 0;
       let callout = 0;
       for (const item of badgeItems) {
@@ -673,9 +681,13 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         const x = (scratch.x + 1) / 2 * width, y = (1 - scratch.y) / 2 * height;
         item.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         if (item.kind !== 'module') continue;
-        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep
-        const up = callout % 2 === 0;
-        placed.push({ item, x, y, up, length: CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX });
+        if (!item.width) item.width = item.element.offsetWidth;
+        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep; one that would
+        // reach over the layer chips stands below its anchor instead
+        let up = callout % 2 === 0;
+        const length = CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX;
+        if (up && y - length - CALLOUT_HEIGHT_PX < toolbarFoot) up = false;
+        placed.push({ item, x, y, up, length });
         callout++;
       }
       // and its greedy separation, top to bottom: a label that would overlap one placed above it moves down (a label above
@@ -687,7 +699,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       for (let i = 0; i < placed.length; i++) {
         for (let j = 0; j < i; j++) {
           const dy = labelY(placed[i]) - labelY(placed[j]);
-          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= clear) continue;
+          const reach = placed[i].item.width && placed[j].item.width
+            ? (placed[i].item.width + placed[j].item.width) / 2 + CALLOUT_GAP_PX : CALLOUT_WIDTH_PX;
+          if (Math.abs(placed[i].x - placed[j].x) >= reach || dy >= clear) continue;
           const push = clear - dy;
           if (!placed[i].up) placed[i].length += push;
           else if (placed[i].length - push >= CALLOUT_MIN_PX) placed[i].length -= push;

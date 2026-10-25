@@ -402,4 +402,6 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 #dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;margin:0;padding:var(--s5);
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
 #dossier-anatomy figure.is-zoomed img{width:auto;max-width:100%;max-height:100%;height:auto;cursor:zoom-out}
+/* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
+@media (height < 520px){.acts{position:static}}
 }
