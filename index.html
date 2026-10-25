@@ -338,7 +338,8 @@
       display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px;
       font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: pretty;
     }
-    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
+    .cot-boot-pct, .cot-boot-stage .num { font-size: 13px; font-weight: 500; color: var(--ink-3); }
+    .cot-boot-pct { width: 64px; flex: 0 0 64px; text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
     .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .37); }
     .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
@@ -461,7 +462,7 @@
       font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
-    .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
+    .cot-credits-actions .cot-boot-link:last-child{margin-left:auto;padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
     .cot-credits-close{position:absolute;z-index:2;top:32px;right:32px;display:grid;place-items:center;
       width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--btn-secondary-ring);color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
@@ -478,6 +479,7 @@
       .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:32px;margin-bottom:20px}
       .cot-credits-actions{flex-direction:column;align-items:stretch}
+      .cot-credits-actions .cot-boot-link:last-child{margin-left:0}
       .cot-credits-close{top:24px;right:24px}
     }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
@@ -515,7 +517,7 @@
     #cot-boot:has(.cot-boot-gate.on) .cot-boot-fill::after { animation: none; opacity: 0; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
     .cot-boot-load { position: relative; }
     .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
     .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -532,12 +534,6 @@
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
-    /* a slow load's plate wraps its row and its live bar: the bar keeps the place it had while loading (9 px under the
-       row), and the plate ends 8 px under it, inside the 21 px every stop leaves below its row */
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 9px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 8px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-bar { margin-inline: 14px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta::before { inset: -9px 0 -21px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
     #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
