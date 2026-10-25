@@ -611,7 +611,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
   /* a card off the strip's view skips its style, layout and paint (perf 249: 221 cards under All) */
   content-visibility:auto;contain-intrinsic-size:auto 156px auto 150px;
-  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:11px;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:var(--fs-floor-11);
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid var(--line-3);
@@ -1263,6 +1263,8 @@ body[data-cot-panels='overlay'] .cot-eqpick.open{
   padding:10px;
 }
 body[data-cot-panels='overlay'] .cot-eqpick .pgrid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
+/* a Chinese effect line keeps its terms whole: the tiles take two to a phone's row, so no line starts with a comma */
+html[lang^='zh'] body[data-cot-panels='overlay'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body[data-cot-panels='overlay'] .cot-garage .cot-technical-section{
   min-height:0;margin:0;padding:0;background:none;border:0;box-shadow:none;
 }
@@ -1327,7 +1329,7 @@ body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px;padding-inline:5px calc(5px + var(--rail-end,0px));scroll-padding-inline:5px}
 body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
-  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:11px;--hc-tier:11px;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:11px;--hc-tier:var(--fs-floor-11);
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:none}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
