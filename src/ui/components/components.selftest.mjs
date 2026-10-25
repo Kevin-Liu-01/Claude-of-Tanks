@@ -18,9 +18,10 @@ registerHooks({
 });
 
 const {
-  button, chip, emptyState, esc, keycap, scale20, scaleCells, segmented, statChip, statRow, statTile, tabs, tag, toggle, vehicle, wireRoving,
+  button, chip, emptyState, esc, keycap, scale20, scaleCells, segmented, statChip, statRow, statTile, tabs, tag, toggle, wireRoving,
   wireRovingKeys,
 } = await import('./components.ts');
+const { nationChip, vehicle } = await import('./identity.ts');
 
 /* 1. markup -------------------------------------------------------------------------------------------------- */
 assert.equal(esc(`<a href="x">'&'</a>`), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;', 'text and attributes are escaped');
@@ -36,7 +37,7 @@ assert.match(button({ label: 'Back', attrs: { disabled: true, 'data-x': 1, hidde
   'extra attributes: true is bare, false is omitted');
 assert.match(chip({ label: 'MBT', pressed: true }), /^<button type="button" class="cot-c-chip" aria-pressed="true" data-ui-sound="toggle">/);
 assert.match(chip({ label: 'MBT' }), /^<span class="cot-c-chip">/, 'a static chip is not a control');
-assert.match(chip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }), /aria-label="Germany"[^>]*><img class="cot-c-flag/,
+assert.match(nationChip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }), /aria-label="Germany"[^>]*><img class="cot-c-flag/,
   'a compact flag chip is named by its nation');
 assert.equal(tag('New', 'accent'), '<span class="cot-c-tag cot-c-tag--accent">New</span>');
 const seg = segmented({ label: 'Sides', value: 'b', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }, { value: 'c', label: 'C', disabled: true }] });
@@ -176,5 +177,7 @@ for (const page of ['../../docs/docs.css', '../../presentation/home.css', '../..
 }
 assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
   'no second copy of the sheets in the script');
+assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /from '\.\.\/(?:flags|icons)\.ts'/,
+  'the core kit imports no asset: the flags and silhouettes are identity.ts');
 
 console.log('components: markup, ARIA and escaping for every factory; roving focus; two tokens-only sheets in the components layer');

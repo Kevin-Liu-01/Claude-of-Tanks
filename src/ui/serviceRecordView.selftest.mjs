@@ -1,15 +1,4 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-
-// The view draws its figures and empty states with the kit (components.ts), whose flag SVGs import as Vite asset URLs:
-// they resolve to their public path, as the build does.
-registerHooks({
-  resolve(specifier, context, next) {
-    const flag = /flags\/4x3\/([a-z]+)\.svg\?url$/.exec(specifier);
-    if (flag) return { url: `data:text/javascript,export default '/flags/${flag[1]}.svg'`, shortCircuit: true };
-    return next(specifier, context);
-  },
-});
 
 const store = new Map();
 globalThis.localStorage = {

@@ -447,11 +447,11 @@ export default defineConfig({
             // source already imports it and only the game boots it (in the ui icon library's it reached every docs page;
             // with the loading roster it added preload edges); the group takes exactly these two modules, none of their
             // dependencies.
-            // 2026-10-25 (premiere-site, the owner's primitives pass): the component kit (components.ts and its escape helper)
+            // 2026-10-25 (premiere-site, the owner's primitives pass): the component kit (components.ts, its escape helper and identity.ts)
             // rides here too. It imports the icon helpers and loads on exactly the pages they do (the game, the Gallery, /cn);
             // once the Record, the Studio and the Garage filter panel imported it from their lazy chunks it split into a chunk
             // of its own, one more boot request on the game and the Gallery.
-            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity|components[\\/](?:components|escape))\.ts$/, includeDependenciesRecursively: false },
+            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity|components[\\/](?:components|escape|identity))\.ts$/, includeDependenciesRecursively: false },
             // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
             // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
             { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },

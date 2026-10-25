@@ -8,12 +8,11 @@
 //
 // The kit is deliberately small (owner 2026-10-22: less is more). It holds what the rebuilt surfaces use: buttons,
 // key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed
-// 20-cell scale, stat tiles, empty states and the vehicle identity (flag, silhouette, name). Plates are classes.
+// 20-cell scale, stat tiles and empty states. The vehicle identity (flag, silhouette, name) is identity.ts: its flags are
+// asset imports, and the core imports none. Plates are classes.
 // Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
-import { flagIconUrl } from '../flags.ts';
-import { iconUrl } from '../icons.ts';
 import { esc } from './escape.ts';
 /** Text and attribute values are escaped once (escape.ts). */
 export { esc };
@@ -73,11 +72,11 @@ export function keycap(key: string): string {
 
 /* ------------------------------------------------------------------------------------------------- chips and tags */
 
-interface ChipOptions {
+export interface ChipOptions {
   readonly label: string;
   readonly icon?: IconId;
-  /** A flag in place of the icon (nation filters). */
-  readonly nation?: string;
+  /** A kit-drawn lead in place of the icon (identity.ts nationChip passes a flag). */
+  readonly glyph?: string;
   /** A toggle chip (filters): aria-pressed carries the state. Omit for a static chip. */
   readonly pressed?: boolean;
   /** Show only the glyph or flag; the label becomes the accessible name, which the hover tip shows. */
@@ -88,7 +87,7 @@ interface ChipOptions {
 }
 
 export function chip(options: ChipOptions): string {
-  const lead = options.nation ? flag(options.nation, 'sm') : options.icon ? icon(options.icon, { size: 16 }) : '';
+  const lead = options.glyph ?? (options.icon ? icon(options.icon, { size: 16 }) : '');
   const cls = `cot-c-chip${options.compact ? ' cot-c-chip--compact' : ''}${options.className ? ` ${options.className}` : ''}`;
   const count = options.count === undefined ? '' : `<span class="cot-c-chip__count num">${esc(options.count)}</span>`;
   const text = options.compact ? '' : `<span class="cot-c-chip__label">${esc(options.label)}</span>`;
@@ -200,7 +199,7 @@ const ROVING_STATE: Readonly<Record<string, string>> = { tab: 'aria-selected', r
  * selection, a click selects; `onSelect` hears the value. Returns a function that removes the listeners.
  */
 export function wireRoving(host: HTMLElement, onSelect: (value: string, item: HTMLElement) => void): () => void {
-  const items = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled'));
+  const items = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled') && !item.hidden);
   const select = (item: HTMLElement, focus: boolean): void => {
     const state = ROVING_STATE[item.getAttribute('role') ?? 'tab'];
     for (const other of items()) {
@@ -244,7 +243,7 @@ function rovingTarget(host: HTMLElement, list: readonly HTMLElement[], event: Ke
  */
 export function wireRovingKeys(host: HTMLElement): () => void {
   const onKey = (event: KeyboardEvent): void => {
-    const to = rovingTarget(host, [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled')), event);
+    const to = rovingTarget(host, [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled') && !item.hidden), event);
     if (!to) return;
     event.preventDefault();
     event.stopPropagation();
@@ -358,37 +357,6 @@ export function emptyState(options: EmptyStateOptions): string {
     ? `<button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press"${attrs(options.action.attrs)}>${esc(options.action.label)}</button>` : '';
   return `<div class="cot-c-empty${options.className ? ` ${options.className}` : ''}">${options.icon ? icon(options.icon, { size: 24 }) : ''}`
     + `<p>${esc(options.text)}</p>${action}</div>`;
-}
-
-/* ----------------------------------------------------------------------------------------- vehicle identity */
-
-type FlagSize = 'sm' | 'md' | 'lg';
-/** Each size's box (components.css .cot-c-flag--*), as the image's own size so the first layout reserves it. */
-const FLAG_BOX: Readonly<Record<FlagSize, readonly [number, number]>> = { sm: [16, 12], md: [22, 17], lg: [30, 23] };
-/** A nation flag chip (3:2 hairline frame, SPEC §6.2 badge). Decorative: the nation is named beside it. */
-export function flag(nation: string, size: FlagSize = 'md'): string {
-  const [width, height] = FLAG_BOX[size];
-  return `<img class="cot-c-flag cot-c-flag--${size}" src="${esc(flagIconUrl(nation))}" alt="" aria-hidden="true" width="${width}" height="${height}" draggable="false">`;
-}
-
-/** A vehicle's side silhouette, tinted by the text colour (team colours come from the host). */
-export function silhouette(id: string, facing: 'left' | 'right' = 'left'): string {
-  return `<span class="cot-c-sil${facing === 'right' ? ' cot-c-sil--right' : ''}" aria-hidden="true" `
-    + `style="--sil:url(${esc(iconUrl(id, 'side_silhouette'))})"></span>`;
-}
-
-interface VehicleOptions {
-  readonly id: string;
-  readonly nation: string;
-  readonly name: string;
-  readonly facing?: 'left' | 'right';
-  readonly className?: string;
-}
-
-/** Flag, silhouette and name: how every vehicle is named on screen (owner UI rule 3). */
-export function vehicle(options: VehicleOptions): string {
-  return `<span class="cot-c-veh${options.className ? ` ${options.className}` : ''}">${flag(options.nation, 'sm')}`
-    + `${silhouette(options.id, options.facing)}<b>${esc(options.name)}</b></span>`;
 }
 
 /* ---------------------------------------------------------------------------------------------------- rules */
