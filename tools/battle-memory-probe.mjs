@@ -32,7 +32,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -45,6 +45,8 @@ export function parseMemoryArgs(argv) {
       case 'port': o.port = Number(value); break;
       case 'out': o.out = path.resolve(value); break;
       case 'retained': o.retained = value !== '0'; break;
+      case 'census': o.census = value !== '0'; break;
+      case 'dump': o.dump = value !== '0'; break;
       case 'gate': o.gate = value !== '0'; break;
       case 'viewport': o.viewport = value; break;
       case 'preset': o.preset = value; break;
@@ -77,6 +79,108 @@ export function rssByKind(rootPid) {
   }
   for (const key of Object.keys(out)) out[key] = Math.round(out[key]);
   out.total = out.browser + out.renderer + out.gpu + out.other;
+  return out;
+}
+
+/**
+ * (--census) The CPU-side bytes the page keeps beside the GPU's copies, by owner: each top-level child of the world's
+ * group (its geometries' attribute and index arrays, its instance matrices and colours, its materials' texture pixels:
+ * a canvas or an image at 4 bytes a texel, a data texture's array; each counted once), the height field's typed arrays,
+ * and the scene outside the world. Run in the page (no closures).
+ */
+function pageMemoryCensus() {
+  const seenGeo = new Set(), seenTex = new Set(), seenArr = new Set();
+  const arrBytes = (a) => { if (!a || seenArr.has(a.buffer ?? a)) return 0; seenArr.add(a.buffer ?? a); return a.byteLength ?? 0; };
+  const geoBytes = (g) => {
+    let b = 0;
+    for (const attr of Object.values(g.attributes ?? {})) b += arrBytes(attr.array ?? attr.data?.array);
+    if (g.index) b += arrBytes(g.index.array);
+    for (const list of Object.values(g.morphAttributes ?? {})) for (const attr of list) b += arrBytes(attr.array);
+    return b;
+  };
+  const texBytes = (t) => {
+    const img = t.image;
+    if (!img) return 0;
+    if (img.data) return arrBytes(img.data);
+    if (Array.isArray(img)) return img.reduce((sum, face) => sum + (face?.width ?? 0) * (face?.height ?? 0) * 4, 0);
+    return (img.width ?? 0) * (img.height ?? 0) * 4;
+  };
+  const tally = (root) => {
+    const out = { geoMB: 0, instMB: 0, texMB: 0, geometries: 0, textures: 0 };
+    root.traverse((o) => {
+      if (o.geometry && !seenGeo.has(o.geometry)) { seenGeo.add(o.geometry); out.geoMB += geoBytes(o.geometry); out.geometries++; }
+      if (o.instanceMatrix) out.instMB += arrBytes(o.instanceMatrix.array);
+      if (o.instanceColor) out.instMB += arrBytes(o.instanceColor.array);
+      const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of mats) {
+        for (const v of Object.values(m)) if (v && v.isTexture && !seenTex.has(v)) { seenTex.add(v); out.texMB += texBytes(v); out.textures++; }
+        for (const u of Object.values(m.uniforms ?? {})) {
+          const v = u?.value;
+          if (v && v.isTexture && !seenTex.has(v)) { seenTex.add(v); out.texMB += texBytes(v); out.textures++; }
+        }
+      }
+    });
+    for (const k of ['geoMB', 'instMB', 'texMB']) out[k] = Math.round(out[k] / 1e5) / 10;
+    return out;
+  };
+  const world = window.__DEBUG?.world;
+  const result = { world: null, heightFieldMB: 0, outsideWorld: null };
+  if (world?.group) {
+    result.world = {};
+    for (const child of world.group.children) result.world[`${child.name || child.type}#${child.id}`] = tally(child);
+    let hf = 0;
+    const field = world.heightField ?? {};
+    for (const v of Object.values(field)) {
+      if (ArrayBuffer.isView(v)) hf += arrBytes(v);
+      else if (v && typeof v === 'object') for (const w of Object.values(v)) if (ArrayBuffer.isView(w)) hf += arrBytes(w);
+    }
+    result.heightFieldMB = Math.round(hf / 1e5) / 10;
+  }
+  const scene = window.__DEBUG?.scene;
+  if (scene) {
+    const outside = { geoMB: 0, instMB: 0, texMB: 0, geometries: 0, textures: 0 };
+    for (const child of scene.children) {
+      if (world?.group && child === world.group) continue;
+      const t = tally(child);
+      for (const k of Object.keys(outside)) outside[k] += t[k];
+    }
+    result.outsideWorld = outside;
+  }
+  return result;
+}
+
+/**
+ * (--dump) Chrome's memory-infra dump of every process (a browser-level trace, disabled-by-default-memory-infra, one
+ * detailed dump): per process its top-level allocators past 5 MB (v8 with each isolate — the page's and its workers' —
+ * partition_alloc, malloc, blink_gc, gpu, skia, cc, web_cache ...). What the resident set the census cannot see is made of.
+ */
+async function memoryInfraDump(browser) {
+  const cdp = await browser.target().createCDPSession();
+  const events = [];
+  cdp.on('Tracing.dataCollected', ({ value }) => { for (const e of value) events.push(e); });
+  const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+  await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig: {
+    includedCategories: ['disabled-by-default-memory-infra'], memoryDumpConfig: { triggers: [] }, recordMode: 'recordUntilFull' } });
+  await sleep(500);
+  await cdp.send('Tracing.requestMemoryDump', { deterministic: true, levelOfDetail: 'detailed' }).catch(() => null);
+  await sleep(2000);
+  await cdp.send('Tracing.end');
+  await complete;
+  await cdp.detach().catch(() => {});
+  const names = new Map();
+  for (const e of events) if (e.ph === 'M' && e.name === 'process_name') names.set(e.pid, e.args?.name ?? '?');
+  const out = {};
+  for (const e of events) {
+    const allocators = e.ph === 'v' ? e.args?.dumps?.allocators : null;
+    if (!allocators) continue;
+    const rows = {};
+    for (const [name, dump] of Object.entries(allocators)) {
+      if (name.split('/').length > 2) continue;
+      const size = dump?.attrs?.size?.value ? parseInt(dump.attrs.size.value, 16) : 0;
+      if (size >= 5e6) rows[name] = Math.round(size / 1e6);
+    }
+    out[`${names.get(e.pid) ?? 'process'} ${e.pid}`] = Object.fromEntries(Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 40));
+  }
   return out;
 }
 
@@ -153,10 +257,20 @@ async function probeScenario(options, scenario) {
       const inBattle = rssByKind(pid);
       await driveBattle(page, { seconds: options.seconds, mode: gameMode });
       const atEnd = rssByKind(pid);
+      const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
       const row = { label: `garage after battle ${battle}`, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      if (options.dump) {
+        row.memoryInfra = await memoryInfraDump(browser);
+        for (const [proc, rows] of Object.entries(row.memoryInfra)) log(`dump ${proc}: ${JSON.stringify(rows).slice(0, 900)}`);
+      }
+      if (options.census) {
+        row.census = { inBattle: inBattleCensus, garage: await page.evaluate(pageMemoryCensus) };
+        log(`census in battle ${JSON.stringify(inBattleCensus).slice(0, 1500)}`);
+        log(`census in the garage ${JSON.stringify(row.census.garage).slice(0, 600)}`);
+      }
       returns.push(row);
       log(`${keyOf(scenario, options.size)} battle ${battle}: heap ${row.jsHeapMB} MB, nodes ${row.nodes}, listeners ${row.listeners}, `
         + `textures ${row.textures}, geometries ${row.geometries}, programs ${row.programs}, rss ${row.rss.total} MB (gpu ${row.rss.gpu}, renderer ${row.rss.renderer}); `
