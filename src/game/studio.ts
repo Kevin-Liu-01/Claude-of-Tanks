@@ -108,7 +108,9 @@ import type {
   Storyboard,
   StoryboardInput,
 } from './studioTimeline.ts';
-import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
+import { createFrameBudgetYielder, nextFrame } from '../engine/frameScheduler.ts';
+import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { createStudioCinematics } from '../fx/cinematicFx.ts';
 import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
 import type { SmokeScreenWalls } from '../fx/cinematicRecipes.ts';
@@ -243,11 +245,9 @@ interface StudioContext {
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
-  /**
-   * (lockdown-251) Link and reflect the lit world's programs between frames, so the first Studio frame binds them
-   * ready (613 ms of uniform reflection waiting on links in one task of the spike census). `current` false stops it.
-   */
-  prepareWorldPrograms?(current: () => boolean): Promise<void>;
+  /** The renderer's forward program warm (main.ts): the lit world's programs are prepared with it before the first
+   *  Studio frame (prepareWorldPrograms). */
+  programWarm?: Pick<ForwardProgramWarmOwner, 'prepareSceneSteps'>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -5565,6 +5565,27 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return mine;
   }
 
+  /**
+   * (2026-10-25, lockdown-251) The lit world's programs link and reflect between frames, on the gameplay targets, as the
+   * Garage mode preview's do: a first entry bound programs whose links were pending, and the first frame's uniform
+   * reflection waited 613 ms inside one task in the spike census. One that cannot finish leaves its links to that frame.
+   */
+  async function prepareWorldPrograms(current: () => boolean): Promise<void> {
+    const root = getWorld()?.group;
+    if (!ctx.programWarm || !root || !current()) return;
+    const lateMask = 1 << LATE_FX_LAYER;
+    const passes = post.composer ? [
+      { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+      { layerMask: lateMask, target: post.lateFx.target },
+    ] : undefined;
+    const steps = ctx.programWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 });
+    try {
+      while (current() && !steps.next().done) await nextFrame();
+    } catch (error) {
+      console.warn('[studio] world program preparation stopped:', error);
+    } finally { steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' }); }
+  }
+
   async function doEnter(opts: EnterOptions): Promise<void> {
     const generation = ++entryGeneration;
     const owns = (): boolean => generation === entryGeneration;
@@ -5648,7 +5669,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       stillOwned();
       // the programs the applied light keys, ready before the first Studio frame binds them
-      await ctx.prepareWorldPrograms?.(owns);
+      await prepareWorldPrograms(owns);
       stillOwned();
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage

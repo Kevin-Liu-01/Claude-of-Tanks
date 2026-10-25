@@ -3791,24 +3791,7 @@ const studioAccess = createStudioAccess({
       mapAmbience.setEnabled(true);
     },
     getStudioLight: () => studioLightLive,
-    // (lockdown-251) the lit Studio world's programs link and reflect between frames before its first frame (studio.ts
-    // doEnter), on the gameplay targets, as the Garage mode preview's do; one that cannot finish leaves its links to
-    // that frame, as before
-    prepareWorldPrograms: async (current: () => boolean) => {
-      const root = currentWorld()?.group;
-      if (!root || !current()) return;
-      const lateMask = 1 << LATE_FX_LAYER;
-      const passes = post?.composer ? [
-        { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
-        { layerMask: lateMask, target: post.lateFx.target },
-      ] : undefined;
-      const steps = forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 });
-      try {
-        while (current() && !steps.next().done) await nextFrame();
-      } catch (error) {
-        console.warn('[studio] world program preparation stopped:', error);
-      } finally { steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' }); }
-    },
+    programWarm: forwardProgramWarm,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
