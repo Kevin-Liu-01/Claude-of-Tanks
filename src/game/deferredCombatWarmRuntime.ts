@@ -34,15 +34,10 @@ interface WarmableWorld {
   warmTerrainLookahead?(cameraPosition: RuntimeValue, bandCount: number): number;
 }
 
-/** The frames the background warm waits at most for its last render's fence (about 1.5 s at 60 fps). */
-const GPU_PACE_MAX_FRAMES = 90;
-
 interface WarmTrace {
   done: boolean;
   generation: number;
   stages: Record<string, number>;
-  /** (battle-spikes-253) the frames the background warm waited for the GPU to finish its last render. */
-  gpuPacedFrames?: number;
   enemyProgramUniformWarm?: RuntimeValue;
   /** The stages whose programs were still linking when their window closed (the warm went on past them). */
   unfinishedLinks?: Record<string, RuntimeValue>;
@@ -91,8 +86,6 @@ interface DeferredCombatWarmRuntimeOptions<
   now?: () => number;
   yieldFrame?: () => Promise<void>;
   createYielder?: (budgetMs: number) => WorkYielder;
-  /** Whether the GPU has finished the last warm render (engine/offscreenWarm.ts gpuSettled); always, without one. */
-  gpuSettled?: () => boolean;
 }
 
 export interface DeferredCombatWarmRuntime {
@@ -131,7 +124,6 @@ export function createDeferredCombatWarmRuntime<
   createYielder = (budgetMs) => createFrameBudgetYielder(budgetMs, {
     yieldFrame: nextPaintFrame,
   }),
-  gpuSettled = () => true,
 }: DeferredCombatWarmRuntimeOptions<Game, Entity, World>): DeferredCombatWarmRuntime {
   const host = globalThis as DeferredWarmHost;
   let pendingPromise: Promise<void> | null = null;
@@ -168,19 +160,8 @@ export function createDeferredCombatWarmRuntime<
       if (generation !== getGeneration() || game.phase !== 'battle') return;
 
       const visibleYield = createYielder(6);
-      // (battle-spikes-253) once the countdown's hold is released the warm runs under the live battle: each of its renders
-      // waits for the GPU to finish the one before (warmRender.gpuSettled), real frames between, so one render's
-      // pipelines are in flight at a time — never a slice's dozen in one flush. A fence that never signals is waited
-      // GPU_PACE_MAX_FRAMES at most.
       const guardedYield: WorkYielder = async (force = false) => {
         await visibleYield(force);
-        if (released) {
-          for (let frame = 0; frame < GPU_PACE_MAX_FRAMES && !gpuSettled(); frame++) {
-            if (generation !== getGeneration() || game.phase !== 'battle') break;
-            await yieldFrame();
-            trace.gpuPacedFrames = (trace.gpuPacedFrames ?? 0) + 1;
-          }
-        }
         if (generation !== getGeneration() || game.phase !== 'battle') {
           throw Object.assign(new Error('deferred combat warm cancelled'), {
             code: 'combat_warm_cancelled',

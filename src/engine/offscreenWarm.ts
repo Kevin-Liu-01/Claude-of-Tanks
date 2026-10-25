@@ -41,14 +41,6 @@ export interface OffscreenSceneWarmer {
   (): void;
   compileAsync(compileScene?: Object3D, targetScene?: Scene | null): Promise<void>;
   prepareProgramsSteps(objects: readonly Object3D[], timing?: ForwardProgramCompileTiming): Generator<void, ProgramPreparationResult, void>;
-  /**
-   * Whether the GPU has finished the last warm render (battle-spikes-253): a fence follows each render, read without
-   * waiting. A first-bind render's real cost is the GPU process's — it builds each new program's pipeline on its main
-   * thread — and a warm paced by the main thread's slices alone queued a dozen of them into one flush (a 500-800 ms
-   * stall in a cold battle's first seconds). A warm that waits for this between renders has one render's pipelines in
-   * flight at a time, frames between them. True without fences (WebGL 1, a lost context) or with no render pending.
-   */
-  gpuSettled(): boolean;
   dispose(): void;
 }
 
@@ -77,11 +69,6 @@ interface OffscreenSceneWarmerOptions {
    * target bound the programs but left the multisampled scene pass's pipelines to the first live frame that drew them.
    */
   samples?: (() => number) | null;
-  /**
-   * Fence each render (battle-spikes-253; gpuSettled): the combat warm's, which runs under a live battle once the
-   * countdown's hold is released. The warms behind the veil need none.
-   */
-  fence?: boolean;
 }
 
 interface WarmBatchSelection {
@@ -102,7 +89,7 @@ export function createOffscreenSceneWarmer(
   scene: Scene,
   camera: Camera,
   scale = 0.25,
-  { samples = null, fence = false }: OffscreenSceneWarmerOptions = {},
+  { samples = null }: OffscreenSceneWarmerOptions = {},
 ): OffscreenSceneWarmer {
   const size = new Vector2();
   let target: WebGLRenderTarget | null = null;
@@ -136,29 +123,6 @@ export function createOffscreenSceneWarmer(
     return target;
   };
 
-  // the fence after the last warm render (gpuSettled): only the latest is kept; the context read at the first render
-  // (a renderer with none, or a WebGL 1 one, has no fences: its warm is never held)
-  let fenceContext: WebGL2RenderingContext | null | undefined;
-  const fencing = (): WebGL2RenderingContext | null => {
-    if (!fence) return null;
-    if (fenceContext === undefined) {
-      const gl = typeof renderer.getContext === 'function' ? renderer.getContext() as WebGL2RenderingContext : null;
-      fenceContext = gl && typeof gl.fenceSync === 'function' && typeof gl.getSyncParameter === 'function' ? gl : null;
-    }
-    return fenceContext;
-  };
-  let lastFence: WebGLSync | null = null;
-  const dropFence = (): void => {
-    if (lastFence) { try { fenceContext?.deleteSync(lastFence); } catch { /* a lost context */ } }
-    lastFence = null;
-  };
-  const fenceLastRender = (): void => {
-    const gl = fencing();
-    if (!gl) return;
-    dropFence();
-    try { lastFence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); } catch { lastFence = null; }
-  };
-
   const warmSceneOffscreen = function warmSceneOffscreen(): void {
     const warmTarget = ensureTarget();
 
@@ -173,18 +137,8 @@ export function createOffscreenSceneWarmer(
       renderer.render(scene, camera);
     } finally {
       renderer.setRenderTarget(priorTarget, priorFace, priorMip);
-      fenceLastRender();
     }
   } as OffscreenSceneWarmer;
-
-  warmSceneOffscreen.gpuSettled = (): boolean => {
-    const gl = fenceContext;
-    if (!lastFence || !gl) return true;
-    let status: number;
-    try { status = gl.getSyncParameter(lastFence, gl.SYNC_STATUS) as number; } catch { dropFence(); return true; }
-    if (gl.isContextLost?.() || status === gl.SIGNALED) { dropFence(); return true; }
-    return false;
-  };
 
   let programWarm: ForwardProgramWarmOwner | undefined;
   warmSceneOffscreen.prepareProgramsSteps = (objects, timing) => {
@@ -217,7 +171,6 @@ export function createOffscreenSceneWarmer(
   warmSceneOffscreen.dispose = () => {
     programWarm?.invalidate();
     programWarm = undefined;
-    dropFence();
     if (target) target.dispose();
     target = null;
   };
