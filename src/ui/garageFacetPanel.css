@@ -93,6 +93,10 @@ body[data-cot-panels='overlay'] .cot-facet-rowwrap{margin-inline:-10px;}
 body[data-cot-panels='overlay'] .cot-facet-row{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
   scrollbar-width:none;padding-inline:10px;scroll-padding-inline:10px;}
 body[data-cot-panels='overlay'] .cot-facet-row::-webkit-scrollbar{display:none;}
+/* a portrait phone wraps each facet's chips: every chip whole (the fade over a cut chip read as clipped); a landscape
+   phone keeps its swipeable lines under the edge cue for the height it lacks */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-row{flex-wrap:wrap;overflow-x:visible;}
+.cot-facet-panel:focus{outline:none;}
 /* the side with more chips fades out (the gauntlet 10-25: an orange arrow over a solid wash read as a chip cut mid-word);
    the row's end pad lets its last chip scroll clear of the fade */
 body[data-cot-panels='overlay'] .cot-facet-row{padding-inline-end:var(--s6);}

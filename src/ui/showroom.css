@@ -180,7 +180,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-hrow .v{display:inline-flex;align-items:baseline;gap:var(--s1);white-space:nowrap;}
 .cot-garage .cot-hrow .v b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1);}
 .cot-garage .cot-hrow .v small{font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
-.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v{display:grid;grid-template-columns:auto auto 5ch;justify-content:end;align-items:baseline;}
+/* comparing, the figures share one right edge: the unit and the gap each keep a fixed column */
+.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v{display:grid;grid-template-columns:auto 4ch 5ch;justify-content:end;align-items:baseline;}
+.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v b{justify-self:end;}
 .cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v em{justify-self:start;}
 .cot-garage .cot-hrow .v em{margin-left:var(--s1);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);font-style:normal;color:var(--ink-3);}
 .cot-garage .cot-hrow .v em.up{color:var(--ok);}
@@ -502,6 +504,10 @@ body[data-cot-panels='overlay'] .cot-lt-head{padding:var(--s1) var(--s2);margin:
 body[data-cot-panels='overlay'] .cot-lt-cap{padding:1px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{min-width:0;overflow:hidden;white-space:nowrap;
   text-overflow:ellipsis;font-size:var(--fs-24);line-height:1.1;}
+/* a portrait phone shows a long name whole: it steps down a size and takes a second line (the gauntlet 10-25: the
+   ellipsis cut "TYPE 96-72 LÓNG (CONC…") */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-name{overflow:visible;white-space:normal;text-overflow:clip;text-wrap:balance;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-name.is-long{font-size:var(--fs-20);}
 body[data-cot-panels='overlay'] .cot-lt-id{display:flex;order:-1;flex-wrap:nowrap;gap:var(--s2);font-size:max(var(--fs-floor-11),var(--fs-13));}
 body[data-cot-panels='overlay'] .cot-lt-id>span:not(.lt-nation,.lt-tier){display:none;}
 body[data-cot-panels='overlay'] .cot-lt-id .lt-nation>span{display:none;}

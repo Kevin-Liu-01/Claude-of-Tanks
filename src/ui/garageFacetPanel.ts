@@ -100,6 +100,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   panel.id = 'cot-garage-facets';
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', t('fleet.filter.panelAria'));
+  panel.tabIndex = -1;
   panel.hidden = true;
 
   // Head: the shown count, solid, over the fleet total in the landing's hollow outline; clear; close.
@@ -280,6 +281,9 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) {
         if (input.getClientRects().length) input.focus();
         else panel.querySelector<HTMLElement>('.cot-facet-option')?.focus();
+      } else {
+        // the panel itself holds focus, so no control it covers keeps a focus ring under it
+        panel.focus({ preventScroll: true });
       }
     } else if (restoreFocus) {
       host.toggle.focus();

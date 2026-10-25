@@ -1120,7 +1120,6 @@ body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-garage{
   --cot-garage-sidebar-width:clamp(204px,21vw,236px);
 }
 body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .nv{padding-inline:var(--s2)}
-body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .cot-record-trigger .nav-label{display:none}
 body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-wordmark .wm{display:none}
 body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='tablet'][data-cot-panels='persistent'] .cot-header-nav .cot-locale-options{display:none}
@@ -1542,7 +1541,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-
   color:var(--ink-1);text-wrap:balance;text-shadow:var(--stage-halo);}
 .cot-lt-name.is-long{font-size:var(--fs-60);}
 .cot-lt-name .acc{color:var(--accent);}
-.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-1);
+.cot-lt-id{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-1);
   text-shadow:var(--stage-halo);}
 .cot-lt-id>span{display:inline-flex;align-items:center;gap:var(--s2);}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
@@ -1666,6 +1665,9 @@ body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:aut
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
 body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
+/* a portrait phone wraps its picker and paint chip rows: every chip whole (an edge fade over a cut chip read as clipped) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-eqpick .chips,.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;
+  overflow:visible;padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 /* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
    the screen */

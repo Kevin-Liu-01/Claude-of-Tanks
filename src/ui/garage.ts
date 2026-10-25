@@ -1132,6 +1132,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // can grow after it was fitted (its actions row, a late key cap), and one that no longer fits steps on from there
     let density = known ?? 0;
     statsEl.dataset.density = READOUT_DENSITY[density];
+    // and a remembered density steps back while a looser one fits (it was fitted in a shorter column: a panel open, a late
+    // drawing), so a sparse station keeps its headings rather than a density the column no longer needs
+    while (density > 0) {
+      statsEl.dataset.density = READOUT_DENSITY[density - 1];
+      if (statsEl.scrollHeight > statsEl.clientHeight + 1) { statsEl.dataset.density = READOUT_DENSITY[density]; break; }
+      density--;
+    }
     while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
     if (readoutDensities.size > 64) readoutDensities.clear();
     readoutDensities.set(key, density);
@@ -1242,7 +1249,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       row('clock', spec.gun.autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload'), 'reload', 's', 1, true) +
       row('speed', t('garage.dossier.stat.speed'), 'speed', 'km/h', 0) +
       row('engine', t('garage.dossier.stat.hpt'), 'hpt', 'hp/t', 1) +
-      row('shield', t('garage.dossier.stat.hp'), 'hp', '', 0) +
+      row('shield', t('garage.dossier.stat.hp'), 'hp', 'hp', 0) +
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
       `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
