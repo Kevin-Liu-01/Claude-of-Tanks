@@ -102,12 +102,14 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
 .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
   .cot-technical-gallery,.cot-stat-title){display:none;}
 .cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
-.cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
+.cot-garage .stats[data-density~='2'] :is(.cot-module-grid,.cot-crew-grid){display:flex;flex-wrap:wrap;gap:var(--s1);}
+/* the dense crew chips are the module chips' kind: one height, glyph beside the role */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-crew-chip{min-height:0;height:26px;padding:0 var(--s2) 0 var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-crew-chip{padding:var(--s1) 2px;}
 .cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.cot-mag){display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
+body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-ammo-tiles){display:none;}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
 .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
 /* the densest overview keeps its figures, deltas and actions and drops the headline bars (1024x600 overflowed by 26 px) */

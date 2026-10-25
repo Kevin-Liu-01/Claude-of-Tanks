@@ -3059,7 +3059,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || t('garage.card.devTag')}</span>` : '') +
         `<div class="nm"><span class="nmt"></span></div><span class="cot-fav" aria-hidden="true">${uiIconSVG('star', 14)}</span>`;
-      requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
+      // a model number keeps its hyphen's halves on one line (a narrow card broke "Type 96-" / "72 Lóng")
+      requiredElement<HTMLElement>(card, '.nmt').textContent = shortName.replace(/-(?=\S)/g, '-\u2060');
       cardsEl.appendChild(card);
       cardById.set(spec.id, card);
       const countryCards = cardsByCountry.get(cardCountry) || [];
