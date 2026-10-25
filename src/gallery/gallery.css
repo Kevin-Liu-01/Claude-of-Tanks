@@ -162,7 +162,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 /* the anatomy view's chips (anatomyView.ts .subs) sit under the layers, its callouts (.co) on the model */
 .viewer-bottom-console{display:contents}
 .stage .subs{position:absolute;z-index:var(--z-hud-controls);left:16px;top:60px;max-width:calc(100% - 180px)}
-.readout{left:16px;top:104px;width:min(280px,40%);padding:var(--s3);border-left:2px solid var(--accent)}
+/* a plate with its whole ring, never one coloured edge (the gauntlet's notification line) */
+.readout{left:16px;top:104px;width:min(280px,40%);padding:var(--s3);border-radius:var(--plate-radius);box-shadow:var(--ring-2)}
 .readout>div{display:flex;justify-content:space-between;gap:var(--s2);color:var(--accent-hi);font:500 var(--fs-11)/1 var(--font-data)}
 .readout small{color:var(--ink-3);font:inherit}
 .readout strong{display:block;margin:var(--s2) 0 var(--s1);color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-display)}
@@ -277,7 +278,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .damage-targets small{flex:none;color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
 .damage-targets [data-condition=yellow] small{color:var(--text-warn)}
 .damage-targets :is([data-condition=red],[data-condition=removed]) small{color:var(--text-danger)}
-.damage-condition{margin:0;padding:var(--s2) var(--s3);border-left:2px solid var(--accent);color:var(--ink-1);font:500 var(--fs-12)/1.45 var(--font-body);overflow-wrap:anywhere}
+.damage-condition{margin:0;padding:var(--s2) var(--s3);border-radius:var(--control-radius);background:var(--fill-quiet);color:var(--ink-1);font:500 var(--fs-12)/1.45 var(--font-body);overflow-wrap:anywhere}
 .damage-tools{padding-top:var(--s3);border-top:1px solid var(--line-1)}
 .damage-ray{margin:0;padding-left:var(--s5);max-height:220px;overflow:auto;color:var(--ink-2);font:500 var(--fs-12)/1.6 var(--font-data);overflow-wrap:anywhere}
 .damage-ray:empty{display:none}
