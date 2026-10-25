@@ -555,6 +555,10 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
    classes are synchronized from scrollLeft/scrollWidth in JS, so a fleet that
    fits gets no arrows or shadows, the first page has no false left shadow,
    and the final page has no false right shadow. */
+/* the Garage's clipped plates and strips keep their layout, style and paint inside (perf 249); the open ones their layout */
+.cot-garage .stats,.cot-leftcol,.cot-eqpick,.cot-cards{contain:content}
+/* (not the lower third: a folded layout fixes its acts to the viewport, which layout containment would re-anchor) */
+.cot-stations,.cot-country-rail{contain:layout style}
 .cot-cards{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;
   /* Horizontal scrolling computes overflow-y:auto too; reserve real headroom
      so the selected card's upward lift keeps its entire top border visible. */
@@ -584,6 +588,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
    HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
 .cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
+  /* a card off the strip's view skips its style, layout and paint (perf 249: 221 cards under All) */
+  content-visibility:auto;contain-intrinsic-size:auto 156px auto 150px;
   --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:11px;
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);

@@ -116,9 +116,13 @@ for (const id of ids) {
           // Cannon mouths can have a measured cosmetic lip offset. Launcher
           // anchors have no such tolerance: their world pose is the spec pose.
           if (launcher) {
-            // a squashed turret's anchor rides its turretSection (turretRigScale.ts): one more matrix, 0.03 mm of float
-            const anchor = tank.root.getObjectByName(`rig_launcher_tip_${Math.max(0, event.muzzleIndex)}`);
-            const tolerance = anchor?.parent?.userData.turretSection ? 1e-4 : 1e-7;
+            // the combat-rig row (combatGunRigs.generated.ts) rounds the seated pivot to 0.1 mm: the authority launches
+            // from that pivot, the drawn tube hangs off the drawn rig (fv510_milan: 1.862 against 1.8619700, 0.03 mm)
+            const drawnPivot = tank.root.getObjectByName('rig_turret').position.toArray();
+            const rounded = source.armor.turretPivot.some((v, k) => Math.abs(v - drawnPivot[k]) > 1e-9);
+            assert.ok(source.armor.turretPivot.every((v, k) => Math.abs(v - drawnPivot[k]) <= 5e-5),
+              `${id}: the combat pivot is the drawn ring within the rig row's rounding`);
+            const tolerance = rounded ? 1e-4 : 1e-7;
             assert(point.distanceTo(new Vector3(event.x, event.y, event.z)) < tolerance,
               `${id}/${quality}/${round.name}: authority and native tube launch origin agree`);
             tank.gunDirWorld(direction, event.muzzleIndex, true);
