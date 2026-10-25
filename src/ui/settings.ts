@@ -216,8 +216,9 @@ const SETTINGS_CSS = `
   background:oklch(from var(--scrim) l c h / .7);font-family:var(--font-ui);color:var(--ink-1);
   -webkit-user-select:none;user-select:none;}
 .cot-settings.open{display:flex;animation:cotSetVeil var(--dur-base) var(--ease-enter);}
-/* the panel's reset spares the kit's buttons, whose layer the surfaces layer would otherwise override */
-.cot-settings :where(:not(.cot-c-btn)){box-sizing:border-box;margin:0;padding:0;}
+/* the panel's reset spares every kit element (buttons, notices, swatches), whose components layer the surfaces layer
+   would otherwise override */
+.cot-settings :where(:not([class*="cot-c-"])){box-sizing:border-box;margin:0;padding:0;}
 .cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
   display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
 .cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
@@ -348,6 +349,16 @@ const SETTINGS_CSS = `
 .cot-set-seg button.sel{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
 .cot-set-seg button:disabled{color:var(--ink-4);cursor:not-allowed;}
 .cot-set-seg.onoff button{min-width:48px;}
+/* time of day (battleTimeChoices.ts): checkboxes in the segmented look, a checked one lit; the legend names the group */
+.cot-settings .cot-battle-times{flex-wrap:nowrap;margin:0;padding:3px;border:0;min-width:0;}
+.cot-settings .cot-battle-times legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.cot-settings .cot-time-choice{flex:none;min-width:0;}
+.cot-settings .cot-time-content{min-height:0;height:32px;padding:0 13px;background:transparent;box-shadow:none;color:var(--ink-3);
+  font:500 max(13px,var(--fs-13))/1 var(--font-body);}
+.cot-settings .cot-time-check{display:none;}
+@media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+.cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
 .cot-set-preview{margin:10px 10px 4px;max-width:640px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
@@ -357,11 +368,11 @@ const SETTINGS_CSS = `
 .cot-set-note.folded{display:none;}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
-.cot-set-info{order:2;display:inline-grid;place-items:center;width:28px;height:28px;flex:none;margin:-6px -4px -6px 0;padding:0;
-  border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);cursor:pointer;}
+/* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
+   heading's line so every heading keeps one height */
+.cot-set-info{--h:var(--cot-control-floor,36px);order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+.cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
-@media (hover:hover){.cot-set-info:hover{color:var(--ink-1);background:var(--fill-quiet);}}
-.cot-set-info:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
    paused lamp and listening pulse all freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
@@ -802,9 +813,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       for (const slotKey of [0, 1, 'pad'] as const satisfies readonly BindingSlotKey[]) {
         const chip = r.chips[slotKey];
         if (capture && capture.chip === chip) continue; // keep listening label
-        const t = chipText(def.id, slotKey);
-        chip.textContent = t;
-        chip.classList.toggle('empty', t === '—');
+        const text = chipText(def.id, slotKey);
+        const empty = text === t('settings.bind.empty');
+        // an unbound slot is an empty cap (no dash in view), named for assistive tech
+        chip.textContent = empty ? '' : text;
+        chip.classList.toggle('empty', empty);
+        if (empty) chip.setAttribute('aria-label', t('settings.bind.unbound'));
+        else chip.removeAttribute('aria-label');
       }
     }
   }
@@ -1034,7 +1049,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     syncBrain();
 
-    const times = el('fieldset', 'cot-battle-times', battle);
+    // time of day: a row like the others, its choices (any one or more) in the segmented look
+    const timesRow = el('div', 'cot-set-row', battle);
+    settingLabel(timesRow, t('garage.battle.timeOfDay'), SETTINGS_OPTION_ICONS.battleTimes).setAttribute('aria-hidden', 'true');
+    const times = el('fieldset', 'cot-battle-times cot-set-seg', timesRow);
     times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
@@ -1213,7 +1231,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.type = 'button';
       b.textContent = name === 'auto'
         ? t('settings.preset.auto')
-        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
+        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra');
       b.dataset.name = name;
       b.addEventListener('click', () => {
         stagedPreset = name; // applied when the panel closes (commitGraphics)
@@ -1522,7 +1540,31 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
+    nameSegments();
     scheduleScrollFades(); // fades follow the fresh content's real overflow
+  }
+
+  // every segmented picker is a named group whose options say which one is on: a group without its own name takes its
+  // row's label, and one observer mirrors each option's .sel into aria-pressed (the pickers' handlers toggle the class)
+  const syncPressed = (option: Element): void => {
+    if (option instanceof HTMLButtonElement && !option.hasAttribute('role')) {
+      option.setAttribute('aria-pressed', String(option.classList.contains('sel')));
+    }
+  };
+  function nameSegments(): void {
+    for (const seg of body.querySelectorAll<HTMLElement>('div.cot-set-seg')) {
+      if (!seg.hasAttribute('role')) seg.setAttribute('role', 'group');
+      const label = seg.closest('.cot-set-row')?.querySelector('.cot-setting-label-text')?.textContent;
+      if (label && !seg.hasAttribute('aria-label')) seg.setAttribute('aria-label', label);
+      for (const option of seg.children) syncPressed(option);
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.target instanceof Element && record.target.parentElement?.classList.contains('cot-set-seg')) syncPressed(record.target);
+      }
+    }).observe(body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 
   // (owner, the 10-24 UI sweep: no helper text in view) a card's explanations fold behind one info button in its
@@ -1538,7 +1580,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (!card || !group) continue;
       let info = group.querySelector<HTMLButtonElement>('.cot-set-info');
       if (!info) {
-        const button = el('button', 'cot-set-info', group) as HTMLButtonElement;
+        const button = el('button', 'cot-set-info cot-c-btn cot-c-btn--icon cot-c-btn--ghost', group) as HTMLButtonElement;
         button.type = 'button';
         button.setAttribute('aria-expanded', 'false');
         button.setAttribute('aria-label', t('settings.notes.toggle'));

@@ -49,7 +49,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   settingsMenu: { id: 'settings' },
 } satisfies Readonly<Record<ActionId, SettingsIconSpec>>);
 
-type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality';
+type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality' | 'battleTimes';
 
 export const SETTINGS_OPTION_ICONS = Object.freeze({
   sensitivity: { id: 'mouse' },
@@ -75,4 +75,5 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   crewVoice: { id: 'radio', tone: 'amber' },
   audioConcussion: { id: 'sound', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
+  battleTimes: { id: 'timeDay', tone: 'amber' },
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);

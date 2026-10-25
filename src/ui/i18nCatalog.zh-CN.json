@@ -1132,6 +1132,7 @@
   "settings.bind.pressPad": "请按手柄键…",
   "settings.bind.colAction": "操作",
   "settings.bind.empty": "—",
+  "settings.bind.unbound": "未绑定",
   "settings.bind.key": "键",
   "settings.bind.rightClickClear": "右键点击可清除绑定。",
   "settings.bind.unbound": "未绑定",

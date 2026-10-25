@@ -162,6 +162,7 @@ body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
 /* Phone tabs size to their labels and share the spare width; a row too wide for a narrow phone scrolls instead of
    letting a label run past its plate. */
+body[data-cot-width='phone'] .cot-set-tabs{gap:0}
 body[data-cot-width='phone'] .cot-set-tab{flex:1 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 body[data-cot-width='phone'] .cot-set-tab.sel::after{left:3px;right:3px}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
@@ -183,7 +184,7 @@ body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 auto}
+body[data-cot-width='phone'] :is(.cot-set-seg button,.cot-set-seg .cot-time-choice){flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}

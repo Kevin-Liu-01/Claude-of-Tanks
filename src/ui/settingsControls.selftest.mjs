@@ -33,9 +33,10 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
 assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 37,
   'every remappable action has a settings icon');
-// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
+// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab; the time of day
+// is a row of its own (gauntlet 250)
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
-  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'crewVoice',
+  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'battleTimes', 'crewVoice',
   'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',

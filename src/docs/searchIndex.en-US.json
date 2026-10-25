@@ -51,13 +51,13 @@
   "href": "/docs/controls#keys",
   "title": "Keys, mouse and gamepad",
   "chapter": "Controls and Watch",
-  "text": "Every action and its default keys, named as the settings list them. Change any of them in Settings. Movement Action Keys Gamepad Move Forward W ↑ — Move Back S ↓ — Steer Left A ← — Steer Right D → — Handbrake SPACE A Flip Tank F — Combat Action Keys Gamepad Fire Gun LMB RT Sniper Mode L-SHIFT LT Shell Slot 1 1 D-UP Shell Slot 2 2 D-LEFT Shell Slot 3 3 D-RIGHT Drop ammunition supplies J — Drop health supplies K — Cycle sensor view I — Drone V — Smoke G — Lights N — Auto gun B — Special Action E LB Reload Magazine C D-DOWN Auto-Aim Lock T — Armor Overlay (Hitboxes) H — Consumables Action Keys Gamepad Repair Kit 4 X First Aid Kit 5 Y Fire Extinguisher 6 B Camera Action Keys Gamepad Gun Hold (Free Aim) CAPS L-ALT RB Aim / Free Look (RMB) RMB — Zoom In WHEEL ↑ — Zoom Out WHEEL ↓ — Interface Action Keys Gamepad Minimap Zoom M BACK Shot Info Log L — Performance Overlay F8 — Network Details F3 — Leave Battle F4 — Reset Range R — Moving Targets Y — Settings Menu ESC START"
+  "text": "Every action and its default keys, named as the settings list them. Change any of them in Settings. Movement Action Keys Gamepad Move forward W ↑ — Move back S ↓ — Steer left A ← — Steer right D → — Handbrake SPACE A Flip tank F — Combat Action Keys Gamepad Fire gun LMB RT Sniper mode L-SHIFT LT Shell slot 1 1 D-UP Shell slot 2 2 D-LEFT Shell slot 3 3 D-RIGHT Drop ammunition supplies J — Drop health supplies K — Cycle sensor view I — Drone V — Smoke G — Lights N — Auto gun B — Special action E LB Reload magazine C D-DOWN Auto-aim lock T — Armor overlay (hitboxes) H — Consumables Action Keys Gamepad Repair kit 4 X First aid kit 5 Y Fire extinguisher 6 B Camera Action Keys Gamepad Gun hold (free aim) CAPS L-ALT RB Aim / free look (RMB) RMB — Zoom in WHEEL ↑ — Zoom out WHEEL ↓ — Interface Action Keys Gamepad Minimap zoom M BACK Shot info log L — Performance overlay F8 — Network details F3 — Leave battle F4 — Reset Range R — Moving Targets Y — Settings menu ESC START"
  },
  {
   "href": "/docs/controls#hold",
   "title": "Hold or toggle",
   "chapter": "Controls and Watch",
-  "text": "Settings › Accessibility can switch each of these between holding the key and pressing it once. Fire Gun Handbrake Gun Hold (Free Aim) Aim / Free Look (RMB) Team rosters"
+  "text": "Settings › Accessibility can switch each of these between holding the key and pressing it once. Fire gun Handbrake Gun hold (free aim) Aim / free look (RMB) Team rosters"
  },
  {
   "href": "/docs/controls#touch",
