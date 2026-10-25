@@ -3541,7 +3541,7 @@
   "atmosphere.dawn": "Dawn",
   "atmosphere.morning": "Morning",
   "atmosphere.golden": "Golden hour",
-  "atmosphere.dusk": "Dusk (blue hour)",
+  "atmosphere.dusk": "Blue hour",
   "studioPanel.light.bearing": "Bearing",
   "studioPanel.light.bearingAria": "Sun bearing. Drag around the compass or use the arrow keys.",
   "studioPanel.light.bearingValue": "{deg} degrees",

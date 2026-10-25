@@ -794,7 +794,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
   // the times of day: a segmented row (09-studio .seg), the times this map has enabled
-  const timeSeg = el('div', 'cot-c-seg');
+  const timeSeg = el('div', 'cot-c-seg times');
   timeSeg.setAttribute('role', 'radiogroup');
   wireRovingKeys(timeSeg);
   timeSeg.setAttribute('aria-label', t('studioPanel.timeOfDay'));

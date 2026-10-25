@@ -3565,7 +3565,7 @@
   "atmosphere.dawn": "黎明",
   "atmosphere.morning": "上午",
   "atmosphere.golden": "黄金时刻",
-  "atmosphere.dusk": "黄昏（蓝调时刻）",
+  "atmosphere.dusk": "蓝调时刻",
   "studioPanel.light.bearing": "方位",
   "studioPanel.light.bearingAria": "太阳方位。沿罗盘拖动，或使用方向键调整。",
   "studioPanel.light.bearingValue": "{deg} 度",
