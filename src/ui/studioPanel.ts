@@ -1408,6 +1408,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the map's air (world/mapAmbience.ts): pollen, leaves, snow, dust, embers by map
   const airBtn = chipButton(t('studioPanel.fx.ambience'), null, true);
   airBtn.addEventListener('click', () => { S.setAmbience(!S.ambience); refreshCinematicToggles(); });
+  // the third switch takes the row the first two leave (a lone half-width chip read as a stray)
+  airBtn.style.gridColumn = '1 / -1';
   cineToggles.append(cineBtn, dustBtn, airBtn);
   cineGroup.appendChild(cineToggles);
   secBoard.appendChild(cineGroup);
@@ -2032,7 +2034,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const queuePop = el('div', 'st-queue');
   queuePop.hidden = true;
   queuePop.setAttribute('role', 'dialog');
-  queuePop.setAttribute('aria-label', t('studio.ws.queueTitle'));
   const queuePresets = el('div', 'qp');
   const queueList = el('div', 'ql');
   const queueEmpty = el('p', 'qe', t('studio.ws.queue.empty'));
@@ -2046,7 +2047,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   queueFoot.append(queueClear, queueStart);
   queueFoot.hidden = true;
-  queuePop.append(queuePresets, queueList, queueEmpty, queueFoot);
+  const queueHead = el('h3', 'qh', t('studio.ws.queueTitle'));
+  queueHead.id = 'st-queue-title';
+  queuePop.setAttribute('aria-labelledby', queueHead.id);
+  queuePop.append(queueHead, queuePresets, queueList, queueEmpty, queueFoot);
   head.appendChild(queuePop);
   queuePop.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -2072,6 +2076,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function toggleQueue(open = queuePop.hidden): void {
     queuePop.hidden = !open;
     queueBtn.setAttribute('aria-expanded', String(open));
+    // the popover opens under its button (a phone opens it from the palette, its button hidden: the stylesheet places it)
+    if (open && queueBtn.offsetParent) {
+      queuePop.style.right = `${Math.max(8, Math.round(head.getBoundingClientRect().right - queueBtn.getBoundingClientRect().right))}px`;
+    }
     if (open) refreshQueue();
   }
   function refreshQueue(): void {
