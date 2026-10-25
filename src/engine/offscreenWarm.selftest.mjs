@@ -214,3 +214,37 @@ for (const failure of [null, 'render', 'yield']) {
 }
 
 console.log('offscreenWarm self-test passed');
+
+// (battle-spikes-253) a fenced warmer (the combat warm's) leaves a GPU fence after each render, keeps only the latest,
+// and reports settled once it signals; an unfenced one never touches the GL context
+{
+  const created = [], deleted = [];
+  let status = 0x9118; // UNSIGNALED
+  const gl = {
+    SYNC_GPU_COMMANDS_COMPLETE: 0x9117, SYNC_STATUS: 0x9114, SIGNALED: 0x9119,
+    fenceSync() { const sync = { id: created.length }; created.push(sync); return sync; },
+    getSyncParameter(sync, name) { assert.equal(name, 0x9114); assert.ok(sync === created.at(-1), 'the latest fence is read'); return status; },
+    deleteSync(sync) { deleted.push(sync); },
+    flush() {}, isContextLost: () => false,
+  };
+  const renderer = { ...fakeRenderer(), getContext: () => gl };
+  const fenced = createOffscreenSceneWarmer(renderer, { name: 'scene' }, { name: 'camera' }, 0.25, { fence: true });
+  assert.equal(fenced.gpuSettled(), true, 'nothing rendered: settled');
+  fenced();
+  assert.equal(created.length, 1, 'a fence after the render');
+  assert.equal(fenced.gpuSettled(), false, 'the GPU has not finished it');
+  fenced();
+  assert.equal(created.length, 2);
+  assert.deepEqual(deleted, [created[0]], 'only the latest fence is kept');
+  status = 0x9119;
+  assert.equal(fenced.gpuSettled(), true, 'settled once it signals');
+  assert.deepEqual(deleted, [created[0], created[1]], 'and the signalled fence is let go');
+  fenced.dispose();
+
+  const plain = createOffscreenSceneWarmer({ ...fakeRenderer(), getContext() { assert.fail('an unfenced warmer reads no GL context'); } },
+    { name: 'scene' }, { name: 'camera' });
+  plain();
+  assert.equal(plain.gpuSettled(), true, 'an unfenced warmer is always settled');
+  plain.dispose();
+  console.log('offscreenWarm: the fenced warmer reports the GPU settled once its last render\'s fence signals; the unfenced reads no context passed');
+}

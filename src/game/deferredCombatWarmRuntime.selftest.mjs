@@ -345,3 +345,47 @@ for (const thrown of ['budget', 'other']) {
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;
 console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, revision ownership, and warming on past a stage\'s unfinished links (enemy uniforms, vision) passed');
+
+// (battle-spikes-253) once the countdown's hold is released the warm runs under the live battle, so each yield waits real
+// frames until the GPU has finished the warm's last render (gpuSettled: its fence): one render's pipelines in flight at a
+// time. Before the release (the held count) nothing waits; a fence that never signals is waited 90 frames at most.
+{
+  let held = true, settleIn = 0, heldChecks = 0, frames = 0;
+  const pacedGame = { phase: 'battle', preBattleS: 4 };
+  const paced = createDeferredCombatWarmRuntime({
+    game: pacedGame, renderer, camera: { position: { x: 0, y: 0, z: 0 } },
+    getBattleVisuals: () => ({ async stream(_predicate, yieldForBudget) { await yieldForBudget(true); } }),
+    *warmVisionSteps() { settleIn = 3; yield; },
+    combatWarm: {
+      cancelRare() {},
+      async warmOpeningChunked(_budget, yieldForBudget) { settleIn = 2; await yieldForBudget(true); },
+      async warmRareChunked(_budget, yieldForBudget) { settleIn = 4; await yieldForBudget(true); },
+    },
+    async warmBattleTerrainTiles(yieldForBudget) { await yieldForBudget(true); },
+    getWorld: () => ({ warmTerrainLookahead: () => 0 }),
+    getGeneration: () => 11, setPending(value) { held = value; }, prepareNextOpeningRoute: () => false,
+    now: () => ++clock, yieldFrame: async () => { frames++; }, createYielder: () => async () => {},
+    gpuSettled: () => { if (held) heldChecks++; if (settleIn > 0) { settleIn--; return false; } return true; },
+  });
+  await paced.schedule(11);
+  assert.equal(heldChecks, 0, 'the held count never waits on the GPU');
+  // the tiles' yield waits out the opening's 2, the rare effects' 4, the sights' 3
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.gpuPacedFrames, 9, 'each released yield waited for the last render\'s fence');
+  assert.equal(frames, 1 + 9, 'the first frame and the paced ones');
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.done, true);
+
+  // a fence that never signals: each released yield waits 90 frames, then the warm goes on and completes
+  const stuck = createDeferredCombatWarmRuntime({
+    game: { phase: 'battle', preBattleS: 4 }, renderer, camera: { position: { x: 0, y: 0, z: 0 } },
+    getBattleVisuals: () => ({ async stream() {} }),
+    *warmVisionSteps() { yield; },
+    combatWarm: { cancelRare() {}, async warmOpeningChunked() {}, async warmRareChunked(_budget, yieldForBudget) { await yieldForBudget(true); } },
+    async warmBattleTerrainTiles() {}, getWorld: () => ({ warmTerrainLookahead: () => 0 }),
+    getGeneration: () => 12, setPending() {}, prepareNextOpeningRoute: () => false,
+    now: () => ++clock, yieldFrame: async () => {}, createYielder: () => async () => {}, gpuSettled: () => false,
+  });
+  await stuck.schedule(12);
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.gpuPacedFrames, 2 * 90, 'two released yields, 90 frames each at most');
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.done, true, 'and the warm completes');
+  console.log('deferredCombatWarmRuntime: the released warm paced by the GPU (its last render\'s fence), the held count never, a stuck fence capped passed');
+}

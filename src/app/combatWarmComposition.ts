@@ -123,7 +123,8 @@ export function createCombatWarmComposition({
 }: CombatWarmCompositionOptions): CombatWarmComposition {
   const thermalVehicles = createThermalVehicles();
   let destructionWarmed = false;
-  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { samples: () => post.msaaSamples ?? 0 });
+  // fenced (battle-spikes-253): the deferred warm runs under the live battle and paces its renders by the GPU
+  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { samples: () => post.msaaSamples ?? 0, fence: true });
   const deploymentShadowWarm = createDeploymentShadowWarmOwner({
     renderer,
     scene,
@@ -215,6 +216,8 @@ export function createCombatWarmComposition({
     setPending,
     prepareNextOpeningRoute,
     devTrace,
+    // (battle-spikes-253) the background warm paced by the GPU: its next render waits for the last one's fence
+    gpuSettled: () => warmRender.gpuSettled(),
   };
   let deferredRuntime: DeferredCombatWarmRuntime | null = null;
   let deferredModule: Promise<typeof import('../game/deferredCombatWarmRuntime.ts')> | null = null;
