@@ -339,6 +339,7 @@
       font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: pretty;
     }
     .cot-boot-pct, .cot-boot-stage .num { font-size: 13px; font-weight: 500; color: var(--ink-3); }
+    .cot-boot-stage .num { line-height: 0; }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
     .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .37); }
@@ -504,7 +505,7 @@
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: center; justify-self: center; display: none;
-      height: 44px; margin: 0; padding: 0 18px; white-space: nowrap;
+      height: 44px; margin: 2px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -526,7 +527,7 @@
     #cot-boot[data-stop='slow'] .cot-boot-alert { color: var(--ink-2); }
     .cot-boot-meta { position: relative; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; align-self: center; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta::before {
       content: ''; position: absolute; inset: -9px 0; z-index: -1; border-radius: var(--plate-radius);
       background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate)); box-shadow: var(--ring-2);
@@ -578,8 +579,9 @@
       #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
-      .cot-boot-gate, .cot-boot-retry { margin-top: 12px; }
-      .cot-boot-retry { align-self: start; }
+      .cot-boot-gate { margin-top: 12px; }
+      /* Retry sits under the notice, centred between it and the row: 26 px each side */
+      .cot-boot-retry { align-self: start; margin-top: 14px; }
       .cot-boot-links { margin-top: 24px; }
     }
     }
