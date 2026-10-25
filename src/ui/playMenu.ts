@@ -243,8 +243,8 @@ const CSS = `
 
 /* labels: 12 px at the label tracking */
 .cot-play :is(.rule-heading b,.arrange-head b,.campaign-heading b,.field-label,.roommeta,.arrange-sides-label){
-  font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
-.cot-play label{display:grid;gap:var(--s2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);
+  font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
+.cot-play label{display:grid;gap:var(--s2);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
 .cot-play :is(.arrange-head span,.arrange-cap,.brain-note,.note,.op-hint){
   color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.4}
@@ -473,12 +473,11 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* Room rules: a disclosure under the room */
 .cot-play .room-rules{order:2;margin-top:var(--s4);padding-top:var(--s3);border-top:1px solid var(--line-1)}
 .cot-play:not(.multiplayer-entry) .room-rules>summary{display:none}
-.cot-play .room-rules>summary{display:flex;align-items:center;gap:var(--s3);min-height:44px;color:var(--ink-2);
+.cot-play .room-rules>summary{display:flex;align-items:center;gap:var(--s2);min-height:44px;color:var(--ink-2);
   font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);list-style:none;cursor:pointer}
 .cot-play .room-rules>summary::-webkit-details-marker{display:none}
-.cot-play .room-rules>summary::before{order:1;content:'';width:8px;height:8px;margin:0 var(--s1);border-right:1.5px solid var(--ink-3);
-  border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform var(--dur-fast) var(--ease-move)}
-.cot-play .room-rules[open]>summary::before{transform:rotate(45deg)}
+.cot-play .room-rules>summary>.cot-i{transition:transform var(--dur-fast) var(--ease-move)}
+.cot-play .room-rules[open]>summary>.cot-i{transform:rotate(90deg)}
 .cot-play [data-selected-rule]{order:2;margin-left:auto;color:var(--ink-2)}
 .cot-play.multiplayer-entry :is(.brain,.campaign){display:none}
 .cot-play.multiplayer-entry .arrange>.arrange-head,.cot-play .room-rules .rule-heading{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -909,7 +908,7 @@ export function createPlayMenu({
           <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}</button></div>
       </div><div class="note"></div>
     </div></section>
-    <details class="room-rules"><summary>${t('playMenu.roomRules')}<span data-selected-rule></span></summary>
+    <details class="room-rules"><summary>${t('playMenu.roomRules')}${uiIconSVG('chevronRight', 16)}<span data-selected-rule></span></summary>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
@@ -1744,11 +1743,9 @@ export function createPlayMenu({
     }
     const team = document.createElement('span');
     team.className = 'team';
-    if (player.team !== 'spectator') {
-      const mark = document.createElement('i');
-      mark.className = `team-mark ${player.team}`;
-      team.append(mark);
-    }
+    const mark = document.createElement('i');
+    mark.className = `team-mark ${player.team}`;
+    team.append(mark);
     team.append(lobbyTeamLabel(player.team));
     const ready = document.createElement('span');
     ready.className = player.connected && (player.ready || player.team === 'spectator') ? 'ready' : 'wait';
