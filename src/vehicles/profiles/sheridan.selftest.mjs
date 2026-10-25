@@ -350,11 +350,12 @@ try {
     remoteAutocannonCaliberMm: 30,
     remoteAutocannonBarrelDiameterM: 0.094,
     largeGunRightSearchlight: true,
-    additionalEraCassettes: 80,
+    additionalEraCassettes: 72,
     skirtArmorPanelsPerSide: 6,
     skirtEraRows: 2,
-    skirtEraCassettesPerSide: 24,
-    skirtCageStations: 8,
+    skirtEraCassettesPerSide: 20,
+    // (release 240: the profile skirts' courses and cage, the raked ends leave out four cassettes and a station a side)
+    skirtCageStations: 7,
     turretCheekEraCassettesPerSide: 6,
     turretCheekContactEmbedM: 0.012,
     bustleConstruction: 'armored-core-open-cage',
@@ -506,10 +507,12 @@ try {
   const era = ttsTank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
   assert.equal(era?.bodyAndCoverUseVehiclePaint, true);
-  assert.equal(era?.layeredCassettes, 118,
+  // (release 240: the profile skirts' two courses keep 20 of their 24 cassettes a side: 118 -> 110)
+  assert.equal(era?.layeredCassettes, 110,
     'TTS adds two full-length skirt courses without changing the donor running gear');
-  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_L, 48);
-  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_R, 48);
+  // (release 240: 20 profile-skirt cassettes a side, two parts each)
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_L, 40);
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_R, 40);
   assert.equal(era?.partsBySector?.m551a1_tts_turret_era_L, 12);
   assert.equal(era?.partsBySector?.m551a1_tts_turret_era_R, 12);
   assert.deepEqual(new Set(era?.gameplaySectors), new Set([

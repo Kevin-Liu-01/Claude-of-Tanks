@@ -8,6 +8,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { profileSkirtGeometry, skirtBottomAt, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
@@ -899,18 +900,32 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
 }
 
 
+// 2026-10-25 (the owner: "update the sideskirts of tanks like ... merkava mk 4 trophy to not be just rectangles, and
+// instead match the geometries of their upperglacis and hull side profile (like the m6 linebacker)"): the wide course
+// is one profile plate (profileSkirt.ts). Its 1.36 top holds aft and, from z 2.76, falls with the hull's glacis edge and
+// the front mudguard under it (1.347 at 2.80, 1.284 at 3.00, 1.229 at 3.40), running on to 3.50 over the sprocket; its
+// bottom rakes up over the sprocket (from 2.55) and the rear idler (aft of -2.55), where the box ended square.
+const TROPHY_SKIRT: ProfileSkirt = { inner: 1.865, outer: 2.165, stations: [
+  [-3.10, 0.95, 1.36], [-2.55, 0.515, 1.36], [2.55, 0.515, 1.36], [2.76, 0.60, 1.36], [2.80, 0.62, 1.347],
+  [3.00, 0.72, 1.284], [3.40, 0.98, 1.229], [3.50, 1.05, 1.215],
+] };
+
 function addTrophyWideSkirts(P: TankBuilderPort): void {
-  for(const side of[-1,1]){
+  for(const side of[-1,1] as const){
     // This supplied Mk.4 study carries a continuous outboard protection run
     // beneath the Trophy pedestals. Keep it a thin, seated external plate—not
     // a second track course or a duplicate hull shell.
     // Canonical source skirt envelope after its certified transform:
     // y .515..1.360, z -3.100..3.264. Keep the broad Trophy course on those
     // planes; the draft's 1.16 m-high aft-shifted slab polluted every side.
-    P.addExternalArmor('hull',box(.30,.845,6.364),side*2.015,.938,.082);
-    P.addExternalArmor('hull',box(.18,.12,6.30),side*1.80,1.37,.082);
-    for(const z of[-2.85,-1.95,-1.05,-.15,.75,1.65,2.55])
-      P.addEquipment('hullDark',box(.015,.82,.035),side*2.173,1.02,z);
+    P.addExternalArmor('hull',profileSkirtGeometry(TROPHY_SKIRT,side));
+    // the shelf from the hull side onto the plate's level top, ending where the top falls with the glacis
+    P.addExternalArmor('hull',box(.18,.12,2.75+3.068),side*1.80,1.37,(2.75-3.068)/2);
+    // the straps run from over the plate's bottom line onto the shelf
+    for(const z of[-2.85,-1.95,-1.05,-.15,.75,1.65,2.55]){
+      const bottom=skirtBottomAt(TROPHY_SKIRT,z)+.095,top=skirtTopAt(TROPHY_SKIRT,z)+.07;
+      P.addEquipment('hullDark',box(.015,top-bottom,.035),side*2.173,(top+bottom)/2,z);
+    }
   }
 }
 
