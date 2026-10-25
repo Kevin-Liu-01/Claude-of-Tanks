@@ -1608,20 +1608,28 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-dossier-close{display:none}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-compact-equipment-trigger{display:none}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-dossier-close{
-  display:inline-flex;--h:44px;position:absolute;top:0;right:0;}
+  display:inline-flex;--h:44px;position:absolute;top:var(--s1);right:var(--s1);}
+/* the sheet's head: the info trigger beside the close button (inset, so neither focus ring is cut by the sheet's edge) */
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-dossier-title{padding-right:calc(88px + var(--s3))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>.cot-stat-section{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>:not(.cot-dossier-head){display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-performance-grid>.srow:nth-child(n){display:block}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title{display:flex;min-height:44px;gap:var(--s2)}
-body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title>.cot-info-trigger{display:inline-flex}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title>.cot-info-trigger{display:inline-flex;align-items:center;justify-content:center}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats h3{font-size:max(16px,var(--fs-16))}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats .sub{font-size:max(var(--fs-floor-11),var(--fs-11));margin:6px 0}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.srow .lr){font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{min-height:44px;padding:var(--s2)}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* the Gallery and proving-ground links keep their row (glyph, label, chevron at the end) over the sheet's block reset */
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-gallery-link{display:flex}
 body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
-body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;place-items:center}
+/* a 44 px touch target that draws only its glyph (the glyph carries its own ring; the 20 px plate stretched to 44 read
+   as a second, off-centre ring) */
+body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;place-items:center;border-color:transparent;background:transparent}
+body[data-cot-input='coarse'] .cot-garage .cot-info-trigger:focus-visible{box-shadow:var(--focus-ring)}
+body[data-cot-input='coarse'] .cot-garage .cot-info-trigger__icon{width:18px;height:18px}
 body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
 body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
@@ -1657,7 +1665,8 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b,.armorline b){font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 54px 48px;gap:5px;padding-inline:5px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellrow .nm small){white-space:normal;overflow-wrap:anywhere}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;position:static;margin-top:var(--s1)}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;align-items:center;justify-content:center;
+  position:absolute;top:var(--s1);right:calc(44px + var(--s2))}
 body[data-cot-input='coarse'] .cot-custom-color{grid-template-columns:44px 1fr}
 body[data-cot-input='coarse'] .cot-custom-color input{width:44px;height:44px}
 body[data-cot-input='coarse'] .cot-custom-repeat input{min-width:44px;height:44px}
