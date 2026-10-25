@@ -98,12 +98,13 @@ for (const hostile of ['constructor', '__proto__', 'toString', '<img src=x onerr
   assert.equal(vehicleRoleGlyphSVG(hostile), '', `no role glyph for ${JSON.stringify(hostile)}`);
 }
 
-// The panel writes markup only from the glyph builders and the icon table; every label, count and search string is text.
+// The panel writes markup only from the glyph builders, the icon table and the kit (whose factories escape their text);
+// every label, count and search string is text.
 const panelSource = readFileSync(new URL('./garageFacetPanel.ts', import.meta.url), 'utf8');
 const markupWrites = [...panelSource.matchAll(/\.innerHTML = ([^;]+);/g)].map((match) => match[1].trim());
 assert.ok(markupWrites.length >= 4, 'the panel draws its glyphs');
 for (const rhs of markupWrites) {
-  assert.match(rhs, /^(?:view\.glyph|(?:facetControlGlyphSVG|uiIconSVG)\('[a-z-]+', \d+\)|vehicleClassGlyphSVG\(CONCEPT_PROTOTYPE_CLASS_FILTER, \d+\))$/,
+  assert.match(rhs, /^(?:view\.glyph|(?:facetControlGlyphSVG|uiIconSVG)\('[a-z-]+', \d+\)|vehicleClassGlyphSVG\(CONCEPT_PROTOTYPE_CLASS_FILTER, \d+\)|emptyState\(\{ text: t\('[\w.]+'\)[^)]*\}\))$/,
     `panel markup comes from a glyph builder: ${rhs}`);
 }
 assert.doesNotMatch(panelSource, /insertAdjacentHTML|outerHTML/, 'no other markup sink in the panel');
