@@ -96,6 +96,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow{min-height:62px;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow .lr b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-stat-section{margin-bottom:var(--s4);}
+/* the roomy overview opens its figures' pitch and its rounds' plates into the column's height */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-headline{row-gap:clamp(var(--s4),4vh,var(--s8));}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-ammo-tile{min-height:88px;align-content:space-between;}
 .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
 .cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
 .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
@@ -106,7 +109,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 .cot-garage .stats[data-density~='1'] .cot-mag-cell{padding-block:var(--s1);}
 .cot-garage[data-station] .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
 .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
-  .cot-technical-gallery,.cot-stat-title){display:none;}
+  .cot-technical-gallery){display:none;}
+/* the section headings go a step later than the drawing: a station that dropped its drawing for room keeps its labels
+   (the gauntlet 10-25: unlabeled module and crew clusters over a half-empty column) */
+.cot-garage .stats[data-density~='3'] .cot-stat-title{display:none;}
 .cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
 .cot-garage .stats[data-density~='2'] :is(.cot-module-grid,.cot-crew-grid){display:flex;flex-wrap:wrap;gap:var(--s1);}
 /* the dense crew chips are the module chips' kind: one height, glyph beside the role */
@@ -139,8 +145,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .
 .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* a Chinese label keeps its words whole on one line and its figure steps under it when the two do not fit (the gauntlet
    10-25: 车体转 / 向散布); the label breaks only at its phrase marks when the tile is narrower than the label itself */
-html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 0 auto;max-width:100%;word-break:keep-all;}
-html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr b{margin-left:auto;}
+body .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 0 auto;max-width:100%;}
+body .cot-garage .stats[data-density~='2'] .srow .lr b{margin-left:auto;}
+html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{word-break:keep-all;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
@@ -230,8 +237,8 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :
 /* a window 520-719 px tall keeps the nations and the kinds on one strip each (under an edge fade), so the sheet's room
    goes to whole rows of paint rather than wrapped chips over a sliced one */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){
-  flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);}
+  flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s8);
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections)>*{flex:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
   grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}

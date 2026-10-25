@@ -258,13 +258,16 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     if (!open) return;
     const top = host.anchor.getBoundingClientRect().top;
     // docked, the header keeps its row (the gauntlet 10-25: at 1024 x 600 the panel rode up over the nav)
-    const ceiling = document.body.dataset.cotPanels === 'persistent'
-      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 0) + 8 : 16;
+    // and on a phone held upright it stops under the header too (wrapped facet rows made it tall enough to cover the
+    // mark and the settings); only a short landscape phone takes the header's height (below)
+    const short = document.body.dataset.cotHeight === 'short';
+    const ceiling = !short
+      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 8) + 8 : 16;
     const fitHeight = Math.round(Math.max(160, Math.min(520, top - ceiling)));
     panel.style.maxHeight = `${fitHeight}px`;
     // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a
     // few px under the top and slicing through its letters (critic 236)
-    panel.style.minHeight = document.body.dataset.cotHeight === 'short' ? `${fitHeight}px` : '';
+    panel.style.minHeight = short ? `${fitHeight}px` : '';
     updateCues();
   }
 
