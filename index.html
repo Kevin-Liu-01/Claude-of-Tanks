@@ -324,7 +324,7 @@
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(8px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { grid-area: load; margin-top: 26px; }
+    .cot-boot-load { grid-area: load; margin-top: 44px; }
     #cot-boot.cot-boot-enter .cot-boot-load {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
     }
@@ -339,7 +339,7 @@
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .42); }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .37); }
     .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
@@ -352,7 +352,7 @@
 
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
-      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
+      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px auto 0; overflow: hidden;
       font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
@@ -446,7 +446,7 @@
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
-    #cot-boot.credits-open .cot-boot-inner { visibility: hidden; }
+    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot) { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
@@ -458,7 +458,7 @@
     .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
     .cot-credits p{max-width:64ch;margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
     /* zh: a line breaks between any two characters, never before closing or after opening punctuation */
-    .cot-credits p:lang(zh-CN){line-break:strict}
+    .cot-credits p:lang(zh-CN){line-break:strict;text-spacing-trim:trim-both}
     .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
     .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:0 18px;
       font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
@@ -495,7 +495,7 @@
       .cot-credits-close{top:12px;right:12px}
     }
     .cot-boot-gate {
-      grid-area: slot; align-self: start; margin-top: 34px; height: 22px;
+      grid-area: slot; align-self: start; margin-top: 24px; height: 22px;
       font-family: var(--font-ui);
       font-size: 14px; font-weight: 500;
       color: var(--ink-2); opacity: 0;
@@ -505,7 +505,7 @@
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: start; justify-self: center; display: none;
-      height: 44px; margin: 34px 0 0; padding: 0 18px; white-space: nowrap;
+      height: 44px; margin: 24px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -532,8 +532,8 @@
       content: ''; position: absolute; inset: -8px 0; z-index: -1; border-radius: var(--plate-radius);
       background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 0; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 8px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
     #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
     #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
@@ -563,18 +563,20 @@
     }
     @media (width < 768px) {
       .cot-boot-mark { width: 164px; }
-      .cot-boot-load { margin-top: 24px; }
+      .cot-boot-load { margin-top: 44px; }
       .cot-boot-tip { height: 144px; }
       .cot-boot-links { width: 100%; }
+      .cot-boot-retry { justify-self: stretch; }
     }
     @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot { zoom: 1.3; } }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
       .cot-boot-invite { margin-top: 20px; }
-      .cot-boot-load { margin-top: 24px; }
-      .cot-boot-tip { height: 48px; margin-top: 24px; visibility: hidden; }
-      .cot-boot-gate, .cot-boot-retry { margin-top: 24px; }
+      #cot-boot.has-invite .cot-boot-mark { height: min(28vh, 120px); }
+      .cot-boot-load { margin-top: 32px; }
+      .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
+      .cot-boot-gate, .cot-boot-retry { margin-top: 12px; }
       .cot-boot-links { margin-top: 24px; }
     }
     }
