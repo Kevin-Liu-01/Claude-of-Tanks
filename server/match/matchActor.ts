@@ -21,6 +21,7 @@ import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
+import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
   CLOSE_REASON, HELLO_CAPABILITY, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MAX_ENTITIES, MAX_SEATS, MESSAGE_TYPE,
   NO_ENTITY, NO_SEAT, NO_TICK, PROTOCOL_VERSION, SHELL_FLAGS, SNAPSHOT_HZ, TEAM, TICK_HZ,
@@ -111,6 +112,8 @@ export interface MatchActorOptions {
    * receipts); an object is a ready world (the browser host builds it from the fetched manifest).
    */
   world?: 'dedicated' | 'terrain' | ActorWorldCollision;
+  /** A 'dedicated' world's WebAssembly kernels (server/match/simKernels.ts, COT_SIM_KERNELS=wasm); off when absent. */
+  worldKernels?: WorldKernelModule | null;
   resume?: MatchActorResume | null;
   log?: Logger;
   onVerdict?: (verdict: MatchVerdict) => void;
@@ -362,7 +365,7 @@ function clampI16(value: number): number {
 
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
-    roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated',
+    roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
@@ -429,7 +432,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   // ---- authority and world
   const collision: ActorWorldCollision | null = typeof world === 'object' && world !== null ? world
-    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true, variant: terrainVariantFor(mode) }) : null;
+    : world === 'dedicated' ? createDedicatedWorldCollision(mapId, { retain: true, variant: terrainVariantFor(mode), kernels: worldKernels }) : null;
   const releaseWorld = () => { if (collision && typeof collision.release === 'function') collision.release(); };
   let authority: AuthoritativeMatch;
   let lagComp: LagCompensation;

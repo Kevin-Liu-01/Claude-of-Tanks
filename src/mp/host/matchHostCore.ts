@@ -31,6 +31,7 @@ import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
+import { compileWorldKernels, type WorldKernelModule } from '../../world/wasmWorldKernels.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
 
@@ -71,9 +72,23 @@ export interface MatchHostCoreOptions {
 export const RESUME_HOLD_MS = 3_000;
 
 /** What a world build reads from a boot or a preparation. */
-type WorldConfig = Pick<HostBootConfig, 'mapId' | 'mode' | 'manifestBase'>;
-/** The world a preparation built serves the boot of the same battlefield, variant and manifests only. */
-const worldKey = (config: WorldConfig): string => `${config.mapId}|${terrainVariantFor(config.mode) ?? ''}|${config.manifestBase ?? ''}`;
+type WorldConfig = Pick<HostBootConfig, 'mapId' | 'mode' | 'manifestBase' | 'simKernelsUrl'>;
+/** The world a preparation built serves the boot of the same battlefield, variant, manifests and kernels only. */
+const worldKey = (config: WorldConfig): string => `${config.mapId}|${terrainVariantFor(config.mode) ?? ''}|${config.manifestBase ?? ''}|${config.simKernelsUrl ?? ''}`;
+/** The world kernels' module, fetched and compiled once per thread and URL (a failed fetch is retried by the next world). */
+const kernelModules = new Map<string, Promise<WorldKernelModule>>();
+function worldKernelModule(url: string): Promise<WorldKernelModule> {
+  let module = kernelModules.get(url);
+  if (!module) {
+    module = fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`world kernels: HTTP ${response.status}`);
+      return response.arrayBuffer();
+    }).then(compileWorldKernels);
+    module.catch(() => kernelModules.delete(url));
+    kernelModules.set(url, module);
+  }
+  return module;
+}
 
 export interface MatchHostCore {
   readonly actor: MatchActor | null;
@@ -123,7 +138,10 @@ export function createMatchHostCore({
   port,
   // the mode's battlefield variant (Frontline's carved trenches) is the world the authority plays: its own manifest
   buildWorld = async (config) => (config.manifestBase
-    ? loadCollisionWorld(config.mapId, config.manifestBase, { variant: terrainVariantFor(config.mode) }) : 'terrain'),
+    ? loadCollisionWorld(config.mapId, config.manifestBase, {
+      variant: terrainVariantFor(config.mode),
+      kernels: config.simKernelsUrl ? await worldKernelModule(config.simKernelsUrl) : null,
+    }) : 'terrain'),
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
   schedule,

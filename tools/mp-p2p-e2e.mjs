@@ -74,6 +74,11 @@ const roomKind = argValue('mode', 'lan') === 'private' ? 'private' : 'lan';
 const gameModeOption = argValue('game-mode', '');
 const mapOption = argValue('map', '');
 const phoneSeat = ['b', 'c'].includes(argValue('phone', '')) ? argValue('phone', '') : '';
+// --sim-kernels=<seats> (workstream #3, 2026-10-25): those seats open with ?simKernels=wasm, so a host among them builds its
+// world on the WebAssembly kernels (src/world/wasmWorldKernels.ts); report.simKernels records, for each host, whether its
+// page asked for them and whether its Worker fetched the module. `a`: a kernel host with TypeScript peers, then (A gone)
+// a TypeScript host resuming its keyframe.
+const simKernelSeats = new Set(argValue('sim-kernels', '').toLowerCase().split('').filter((seat) => 'abc'.includes(seat)));
 const phoneViewport = { width: 844, height: 390, deviceScaleFactor: 1, isMobile: true, hasTouch: true };
 // the side-by-side measurement (MP-SINCE-0930 §7): CPU throttling on the host's page alone, or on C's (CDP rates)
 const hostThrottle = Number(argValue('host-throttle', 0));
@@ -749,10 +754,21 @@ const sample = (page, otherId) => page.evaluate((id) => {
   };
 }, otherId);
 
+/** Whether a hosting page asked for the world kernels, and whether one of its Workers fetched the module. */
+async function hostKernels(page, label) {
+  const asked = await page.evaluate(() => new URLSearchParams(location.search).get('simKernels') === 'wasm');
+  let fetched = false;
+  for (const worker of page.workers()) {
+    if (await worker.evaluate(() => performance.getEntriesByType('resource').some((entry) => /cot_sim_wasm/.test(entry.name))).catch(() => false)) fetched = true;
+  }
+  return { label, asked, fetched };
+}
+
 async function joinAsAlly(page, label, invite) {
   // the phone seat loads the mobile tier (it never hosts); every other seat keeps the host-capable desktop tier
   const url = new URL(invite.href);
   if (label.toLowerCase() === phoneSeat) url.searchParams.set('tier', 'mobile');
+  if (simKernelSeats.has(label.toLowerCase())) url.searchParams.set('simKernels', 'wasm');
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 240_000);
   await waitFor(page, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), `${label} joined the lobby`, 60_000);
@@ -862,7 +878,7 @@ try {
   }
 
   // ---- A: boot, create the LAN room with three seats per side
-  await pages.a.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  await pages.a.goto(`${origin}/?${BOOT_QUERY}${simKernelSeats.has('a') ? '&simKernels=wasm' : ''}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
@@ -883,6 +899,8 @@ try {
   report.room = { code: roomCode, mode: invite.searchParams.get('mode'), inviteVersion: invite.searchParams.get('v') };
   step('a-room-created', report.room);
   for (const [key, value] of new URLSearchParams(BOOT_QUERY)) invite.searchParams.set(key, value);
+  // (each seat's own kernel flag: joinAsAlly and A's return add it)
+  invite.searchParams.delete('simKernels');
 
   // ---- B and C join A's side; everyone readies; A starts
   await joinAsAlly(pages.b, 'B', invite);
@@ -1021,6 +1039,11 @@ try {
     if (!entry.welcomed) failures.push(`${label.toUpperCase()} was not welcomed`);
   }
   if (!stripA.host) failures.push(`A's strip shows no HOST badge: ${stripA.text}`);
+  if (simKernelSeats.size) {
+    report.simKernels = { seats: [...simKernelSeats], hosts: [await hostKernels(pages.a, 'A')] };
+    const host = report.simKernels.hosts[0];
+    if (host.asked !== host.fetched) failures.push(`A hosts ${host.asked ? 'with' : 'without'} ?simKernels=wasm, and its Worker ${host.fetched ? 'fetched' : 'never fetched'} the kernels`);
+  }
   await Promise.all([screenshot(pages.a, 'a-hosting.png'), screenshot(pages.b, 'b-peer.png'), screenshot(pages.c, 'c-peer.png')]);
 
   // ---- play: B drives, C sees B move, every seat keeps receiving snapshots
@@ -1184,6 +1207,11 @@ try {
   if (cAfter.phase !== 'battle' || cAfter.result) failures.push(`C's battle ended in the migration (${cAfter.phase}, ${cAfter.result})`);
   if (!live && reportsFromB < 1) failures.push('the room heard no report from B');
   if (!stripB.host) failures.push("B's strip shows no HOST badge after the election");
+  if (report.simKernels) {
+    const host = await hostKernels(pages.b, 'B');
+    report.simKernels.hosts.push(host);
+    if (host.asked !== host.fetched) failures.push(`B hosts ${host.asked ? 'with' : 'without'} ?simKernels=wasm, and its Worker ${host.fetched ? 'fetched' : 'never fetched'} the kernels`);
+  }
   await Promise.all([screenshot(pages.b, 'b-hosting-after-migration.png'), screenshot(pages.c, 'c-after-migration.png')]);
 
   // ---- A returns: a fresh page in its context (the resume capability in localStorage), the running match as a peer of B.

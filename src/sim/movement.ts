@@ -230,7 +230,7 @@ interface GunLaySolution {
   gunPitch: number;
 }
 
-interface SupportSamples {
+export interface SupportSamples {
   halfLength: number;
   centerZ: number;
   lineCount: number;
@@ -450,6 +450,38 @@ export interface MovementHeightField {
   readonly standingDeck?: boolean;
   /** Where a top's outline crosses under the hull's box (structureSupport.ts topEdgeStationsIn; structureBoxSupportY). */
   topEdgeStations?(quad: ArrayLike<number>, out: Float64Array, max: number): number;
+  /** A field on the WebAssembly kernels samples a hull's outer track lines and support fan itself (world/wasmWorldKernels.ts):
+   * the samples sampleOuterTrackLines and sampleSupportFan would take, the same values, written into the job. */
+  sampleSupportLines?(job: SupportLineJob): void;
+}
+
+/** One hull's outer lines and fan for a field that samples them (MovementHeightField.sampleSupportLines): the samples
+ * as resetSupportSamples began them, the contact's track ends, the reach and track-line contexts (beginReachableGround,
+ * beginReachableTrackGround), and the station arrays the fit reads. */
+export interface SupportLineJob {
+  samples: SupportSamples;
+  endRise: MovementContactGeometry['endRise'] | null;
+  halfWidth: number;
+  gearBottomY: number;
+  rigidGear: boolean;
+  refY: number;
+  rootX: number;
+  rootZ: number;
+  lineY: number;
+  risePerM: number;
+  trackSinRoll: number;
+  forwardX: number;
+  forwardZ: number;
+  fitZ: Float64Array;
+  fitX: Float64Array;
+  fitH: Float64Array;
+  fitD: Float64Array;
+  bedX: Float64Array;
+  bedZ: Float64Array;
+  bedD: Float64Array;
+  innerX: Float64Array;
+  innerZ: Float64Array;
+  innerH: Float64Array;
 }
 
 export type MovementCollisionResolver = (
@@ -1586,6 +1618,13 @@ const INNER_MAX = 8 * SUPPORT_MAX_N;
 const _innerX = new Float64Array(INNER_MAX);
 const _innerZ = new Float64Array(INNER_MAX);
 const _innerH = new Float64Array(INNER_MAX);
+/** The field's own outer-line and fan sampler for the tank being stepped (updateTank), or null. */
+let _supportLines: MovementHeightField['sampleSupportLines'] | null = null;
+const _supportLineJob: SupportLineJob = {
+  samples: null as unknown as SupportSamples, endRise: null, halfWidth: 0, gearBottomY: 0, rigidGear: false, refY: 0, rootX: 0,
+  rootZ: 0, lineY: 0, risePerM: 0, trackSinRoll: 0, forwardX: 0, forwardZ: 1, fitZ: _fitZ, fitX: _fitX, fitH: _fitH, fitD: _fitD,
+  bedX: _bedX, bedZ: _bedZ, bedD: _bedD, innerX: _innerX, innerZ: _innerZ, innerH: _innerH,
+};
 const _driveStep: DriveStep = {
   grounded: true,
   throttle: 0,
@@ -4843,8 +4882,17 @@ function solveSupportHeight(
   const groundAt = reachableGroundAt;
   // (the tracks climb no sheer face taller than FACE_CLIMB_MAX_M: reachableTrackGroundAt)
   beginReachableTrackGround(state, gearBottomY, pitch, roll);
-  sampleOuterTrackLines(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY);
-  sampleSupportFan(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY, rigidGear);
+  if (_supportLines) {
+    // (a field on the kernels takes the same samples on its own samplers, the wall rules included: one call a hull)
+    const job = _supportLineJob;
+    job.samples = samples; job.endRise = contact?.endRise ?? null; job.halfWidth = halfWidth; job.gearBottomY = gearBottomY;
+    job.rigidGear = rigidGear; job.refY = _reachRefY; job.rootX = _reachRootX; job.rootZ = _reachRootZ; job.lineY = _trackLineY;
+    job.risePerM = _trackRisePerM; job.trackSinRoll = _trackSinRoll; job.forwardX = _trackForwardX; job.forwardZ = _trackForwardZ;
+    _supportLines(job);
+  } else {
+    sampleOuterTrackLines(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY);
+    sampleSupportFan(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY, rigidGear);
+  }
   const shellSupportY = rigidBodySupport(
     spec,
     state,
@@ -5316,6 +5364,7 @@ export function updateTank(
   const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
   const terrainAt = heightField.getTerrainContactHeightAt ?? hAt;
   if (!(dt > 0)) return;
+  _supportLines = heightField.sampleSupportLines ?? null;
   const spec = entity.spec;
   const state = entity.state;
   const debuff = readDebuffs(entity.combat, state._debuff);

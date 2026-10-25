@@ -24,6 +24,8 @@ import { createLocalRoomService, type LocalRoomOptions, type LocalRoomService } 
 import { verifySeatToken } from './seatToken.ts';
 import { createMatchControl } from './control.ts';
 import type { MatchStartRequest } from './control.ts';
+import { serverWorldKernels } from './simKernels.ts';
+import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 
 const HELLO_TIMEOUT_MS = 5000;
 const WS_PATH = '/match';
@@ -54,6 +56,8 @@ interface MatchServiceOptions {
    * helper serves rooms and the match on one port this way).
    */
   server?: http.Server;
+  /** Every dedicated world's WebAssembly kernels; by default COT_SIM_KERNELS decides (simKernels.ts). */
+  worldKernels?: WorldKernelModule | null;
 }
 
 interface MatchServiceStats {
@@ -246,6 +250,7 @@ export async function createMatchService({
   now = () => performance.now(),
   wallClock = () => Date.now(),
   server: externalServer,
+  worldKernels: kernelOption,
 }: MatchServiceOptions): Promise<MatchService> {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   if (typeof controlSecret !== 'string' || controlSecret.length < 16) throw new TypeError('controlSecret must be at least 16 characters');
@@ -255,6 +260,8 @@ export async function createMatchService({
   }
   const origins = parseAllowedOrigins(allowedOrigins);
   await ensureAuthorityFleet();
+  const worldKernels = kernelOption === undefined ? await serverWorldKernels() : kernelOption;
+  if (worldKernels) log.info('world kernels', { kernels: 'wasm' });
   const actors = new Map<string, MatchActor>();
   const startedAt = wallClock();
   const counters = { connections: 0, rejectedUpgrades: 0, rejectedHellos: 0 };
@@ -306,7 +313,7 @@ export async function createMatchService({
     for (const [roomId, actor] of actors) if (actor.stopped) actors.delete(roomId);
     if (actors.has(options.roomId)) throw new Error(`room ${options.roomId} already has a match`);
     if (actors.size >= maxActors) throw new Error(`match service is full (${maxActors})`);
-    const actor = createMatchActor({ log, now, ...options });
+    const actor = createMatchActor({ log, now, worldKernels, ...options });
     actors.set(options.roomId, actor);
     log.info('actor created', { room: options.roomId, map: options.mapId, seats: options.seats.length, bots: options.bots?.length ?? 0 });
     return actor;

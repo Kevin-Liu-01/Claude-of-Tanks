@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../src/runtimeTypes.ts';
 import { createHeadlessCollisionWorld } from '../src/world/headlessCollisionWorld.ts';
+import type { WorldKernelModule } from '../src/world/wasmWorldKernels.ts';
 import { getMapConfig } from '../src/world/maps/index.ts';
 import { createHeightField } from '../src/world/terrain.ts';
 import { createCollisionManifestLoader } from './collisionManifestLoader.ts';
@@ -37,7 +38,7 @@ function variantMapConfig(id: string, variant: string | null) {
  */
 export function createDedicatedWorldCollision(
   mapId: RuntimeValue,
-  { retain = false, variant = null }: { retain?: boolean; variant?: string | null } = {},
+  { retain = false, variant = null, kernels = null }: { retain?: boolean; variant?: string | null; kernels?: WorldKernelModule | null } = {},
 ) {
   const id = String(mapId || 'verdant');
   const manifest = manifests().get(id, variant); // validate the ID before config fallback
@@ -45,7 +46,7 @@ export function createDedicatedWorldCollision(
   const lease = retain ? terrain().acquire(key) : null;
   try {
     const heightField = lease ? lease.value : terrain().get(key);
-    const world = createHeadlessCollisionWorld({ mapId: id, heightField, manifest });
+    const world = createHeadlessCollisionWorld({ mapId: id, heightField, manifest, kernels });
     return Object.assign(world, { release: () => { lease?.release(); } });
   } catch (error) {
     lease?.release();
