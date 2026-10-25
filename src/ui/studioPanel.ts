@@ -2893,7 +2893,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const frame = Math.min(frames, Math.round(S.fxTimeMs / 1000 * 30));
       const camera = S.getCamera();
       frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })),
-        ...(proControls ? [` · ${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`] : []));
+        ...(proControls ? [el('span', 'co', `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`)] : []));
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
