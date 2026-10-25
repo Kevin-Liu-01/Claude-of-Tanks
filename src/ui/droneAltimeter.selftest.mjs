@@ -8,13 +8,13 @@ import { formatDroneAltitude } from './aerialHud.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { readIconSprite } from '../../tools/icon-sprite-lib.mjs';
 
-assert.equal(formatDroneAltitude(0.15), '0.1m', 'a skimming pilot reads tenths');
-assert.equal(formatDroneAltitude(0.16), '0.2m');
-assert.equal(formatDroneAltitude(4.04), '4.0m');
-assert.equal(formatDroneAltitude(9.94), '9.9m', 'tenths up to the 10 m band edge');
-assert.equal(formatDroneAltitude(9.96), '10m', 'whole metres above it (no "10.0m" step)');
-assert.equal(formatDroneAltitude(57.4), '57m');
-assert.equal(formatDroneAltitude(-0.03), '0.0m', 'a probe a few centimetres under the ground never reads negative');
+assert.equal(formatDroneAltitude(0.15), '0.1\u202fm', 'a skimming pilot reads tenths');
+assert.equal(formatDroneAltitude(0.16), '0.2\u202fm');
+assert.equal(formatDroneAltitude(4.04), '4.0\u202fm');
+assert.equal(formatDroneAltitude(9.94), '9.9\u202fm', 'tenths up to the 10 m band edge');
+assert.equal(formatDroneAltitude(9.96), '10\u202fm', 'whole metres above it (no "10.0m" step)');
+assert.equal(formatDroneAltitude(57.4), '57\u202fm');
+assert.equal(formatDroneAltitude(-0.03), '0.0\u202fm', 'a probe a few centimetres under the ground never reads negative');
 
 assert.ok(uiIconIds().includes('altitude') && uiIconSVG('altitude', 24).includes('href="#i-altitude"')
   && readIconSprite().large.get('altitude').includes('<path'), 'the altimeter has its own glyph');

@@ -184,6 +184,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:specialAction', {});
   });
 
+  // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (hud.ts: the guided
+  // round, then back to the cannon round it left)
+  onAction('atgm', () => {
+    if (!battleInputAllowed()) return;
+    bus.emit('ui:atgmToggle', {});
+    bus.emit('ui:click', {});
+  });
+
   for (const action of ['smoke','lights','roofGun'] as const) {
     onAction(action, () => { if (battleInputAllowed()) bus.emit(action === 'lights' ? 'ui:lightsToggle' : `ui:${action}`, {}); });
   }

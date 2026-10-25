@@ -31,7 +31,6 @@ interface AmmunitionSlotOptions {
   typeLabel(type: string): string;
   count(shell: AmmunitionCard): number;
   selectionLabel(name: string, count: number, selected: boolean, pending: boolean): string;
-  typeColors: Readonly<Record<string, string>>;
   underlineColors: Readonly<Record<string, string>>;
 }
 
@@ -51,7 +50,7 @@ export interface RetainedAmmunitionSlot {
  */
 export function createRetainedAmmunitionSlot({
   index, elements, locale, drawIcon, typeLabel, count, selectionLabel,
-  typeColors, underlineColors,
+  underlineColors,
 }: AmmunitionSlotOptions): RetainedAmmunitionSlot {
   let initialized = false;
   let lastLocale = '';
@@ -102,7 +101,6 @@ export function createRetainedAmmunitionSlot({
   const renderType = (type: string, currentLocale: string): void => {
     if (!initialized || type !== lastType) {
       drawIcon(type);
-      elements.type.style.color = typeColors[type] || '#9fb0bf';
       elements.underline.style.background = underlineColors[type] || 'rgba(146,164,180,.4)';
     }
     if (!initialized || type !== lastType || currentLocale !== lastLocale) {

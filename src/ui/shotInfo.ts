@@ -310,6 +310,9 @@ function presentationSpec(id: string): PresentationTankSpec {
 
 
 // every use is a CSS value (the sheet, inline colours): the battle surface's status and ink tokens
+/** The log's cue under its last whole row (fitLog). */
+const LOG_CUE_H = 18;
+
 const COL = {
   green: 'var(--ok)',
   red: 'var(--danger)',
@@ -318,10 +321,6 @@ const COL = {
   dim: 'var(--ink-3)',
 };
 
-const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
-  AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e',
-  APFSDS: '#ffc46b', HESH: '#ffb02e',
-};
 
 // Module names come from ui/moduleRegistry.ts moduleName() (the glossary-bound catalog; single source —
 // this file's local copy had already drifted to 'Fuel' vs the killcam's
@@ -364,7 +363,7 @@ const SI_CSS = `
 .cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-card-top,var(--cot-si-roster-bottom,272px));width:320px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
 .cot-si-card{position:relative;min-height:0;overflow:hidden;contain:layout paint style;
-  background:var(--hud-plate);border:1px solid transparent;border-right:3px solid var(--line-3);border-radius:var(--r1);
+  background:var(--hud-plate);border:1px solid transparent;border-radius:var(--r1);
   box-shadow:var(--battle-plate-shadow);
   padding:0 0 var(--s1);transition:opacity var(--dur-stage) ease;}
 .cot-si-card.out{opacity:0;}
@@ -380,8 +379,8 @@ const SI_CSS = `
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
 @container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
-.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:var(--battle-fs-20);
-  color:var(--warn);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
+.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
+  color:var(--accent-hi);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
@@ -390,13 +389,15 @@ const SI_CSS = `
 .cot-si-sub>span:last-child{justify-content:flex-end;}
 .cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-sub .cot-si-subtext{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.cot-si-sub .ty{font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.02em;
+.cot-si-sub .ty{font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.02em;color:var(--accent-hi);
   font-family:${FONT_COND};display:inline-flex;align-items:center;gap:3px;}
 .cot-si-sub .ty svg{color:inherit;}
 .cot-si-body{display:flex;flex-direction:column;gap:3px;padding:var(--s1) 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
-.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:center;font-size:var(--battle-fs-11);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
+/* (one rhythm: every row 2 px over and under a hairline, the subtitle's included; the pen row's own gap and the armor row's
+   own rules read as one-offs, gauntlet r3) */
+.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
+  align-items:center;font-size:var(--battle-fs-12);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
 .cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
@@ -406,12 +407,12 @@ const SI_CSS = `
    qualifier is an unbreakable suffix chip and a dim caption legends the
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
-.cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid var(--line-2);}
 .cot-si-kv.pen b{white-space:nowrap;}
-.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.04em;
-  vertical-align:1px;line-height:1.25;font-weight:700;}
-.cot-si-kv.armor{padding:2px 0;border-top:1px solid var(--line-1);border-bottom:1px solid var(--line-1);}
+.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 5px 1px;
+  /* (the kit's chip, in sentence case, its ink the qualifier's: an outlined capitals chip beside the ribbon's sentence-case
+     one read as two chip styles, gauntlet r4) */
+  border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
+  text-transform:none;vertical-align:1px;line-height:1.25;font-weight:700;}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
@@ -449,6 +450,11 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
+/* (a chevron on the plate under the last whole row while more lies below, the plate's own edge kept: a mask erased it,
+   a fade lay across a sliced row) */
+.cot-si-log .more-cue{display:none}
+.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;height:18px;
+  border-top:1px solid var(--line-1);background:var(--hud-plate);color:var(--ink-3);pointer-events:none}
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -457,23 +463,25 @@ const SI_CSS = `
   color:var(--ink-2);border-bottom:1px solid var(--line-1);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
-.cot-si-lrow .d{font-weight:700;color:var(--warn);width:36px;flex:0 0 auto;text-align:right;
+.cot-si-lrow .d{font-weight:700;color:var(--accent-hi);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
-.cot-si-empty{padding:6px 9px;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(90deg,var(--hud-plate) 40%,oklch(from var(--hud-plate) l c h / 0));
-  border:0;border-left:2px solid var(--danger);border-radius:var(--r1) 0 0 var(--r1);padding:var(--s1) 6px;
+  /* (no plate: a row of the left column as the kill rows over it are, its figure in the danger ink; a wash flush with the
+     screen's edge was the column's one plate off its 10 px line, gauntlet r3) */
+  background:none;border:0;padding:var(--s1) 6px;
   transition:opacity var(--dur-stage) ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
-.cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
+/* (the damage follows its attacker, and the name stands on the rosters' line: a silhouette as wide as theirs, gauntlet r4
+   read "−2520 ×6" 70 px adrift on a phone and the name 6 px off the rosters') */
+.cot-si-toast .l1{height:100%;display:flex;justify-content:flex-start;align-items:center;gap:5px;
   font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-1);}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-toast .l1 .attacker{flex:1;}
-.cot-si-toast .l1 .si{display:inline-block;width:22px;height:12px;flex:0 0 22px;}
+.cot-si-toast .l1 .attacker{flex:0 1 auto;}
+.cot-si-toast .l1 .si{display:inline-block;width:29px;height:12px;flex:0 0 29px;}
 .cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
   font-size:var(--battle-fs-11);display:flex;align-items:center;gap:var(--s1);
   white-space:nowrap;}
@@ -730,7 +738,7 @@ function setShotCardTrace(
   card.dataset.angle = String(Math.round(ev.impactAngleDeg || 0));
   card.dataset.zone = ev.zone || '';
   card.dataset.outcome = cls.id;
-  card.style.borderRightColor = cls.color;
+  // (the outcome's ink is its title's and glyph's: the card keeps its ring all round, no coloured edge, owner 2026-10-25)
 }
 
 function appendShotCardHeader(
@@ -757,10 +765,9 @@ const shellTypeClass = (missile: boolean): string => (missile ? 'ty missile' : '
 
 function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
   const subtitle = el('div', 'cot-si-sub', card);
-  const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
   const missile = weaponHitKind(ev) === 'missile';
   subtitle.innerHTML =
-    `<span><span class="${shellTypeClass(missile)}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
+    `<span><span class="${shellTypeClass(missile)}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
     `<span class="cot-si-subtext">${escapeHtml(shellDisplayName(ev))}</span></span>` +
     `<span>${GLYPH.target}<span class="cot-si-subtext">${escapeHtml(ev.targetName || '')}</span></span>`;
 }
@@ -783,7 +790,7 @@ function armorPresentation(ev: ShotHitEvent): string {
   }
   const external = !!ev.zone
     && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
-  return external ? t('killcam.externalNoArmor') : '—';
+  return external ? t('killcam.externalNoArmor') : '–';
 }
 
 function penetrationQualifier(
@@ -820,7 +827,7 @@ function penetrationPresentation(
     : roll > 0 && nominal > 0 ? t('killcam.legend.roll') : '';
   if (roll <= 0 || nominal <= 0) {
     return {
-      html: roll > 0 ? `${arrow}${roll} mm` : '—',
+      html: roll > 0 ? `${arrow}${roll} mm` : '–',
       qualifier,
       legend,
     };
@@ -1010,6 +1017,30 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   cardHost.setAttribute('role', 'status');
   cardHost.setAttribute('aria-live', 'polite');
   const logPanel = el('div', 'cot-si-log', root);
+  /** The log shows its cue at its foot while rows lie under it: measured as it scrolls (gauntlet r3: set once on the
+   *  first fill, the fade stayed on six rows that fit at 1920 and off the bottom). */
+  const markLogMore = (): void => {
+    logPanel.classList.toggle('more', logPanel.scrollTop + logPanel.clientHeight < logPanel.scrollHeight - 1);
+  };
+  /** A log taller than its dock ends on a whole row, its cue under it (--si-log-fit caps it at the last row its dock holds
+   *  whole: gauntlet r4 found a row sliced through its glyphs at 1280, 1024 and 900 wide); measured as it fills and as the
+   *  planner resizes its dock, never on a scroll. */
+  const fitLog = (): void => {
+    logPanel.style.removeProperty('--si-log-fit');
+    const room = logPanel.clientHeight;
+    if (logPanel.scrollHeight - room > 1) {
+      const top = logPanel.getBoundingClientRect().top - logPanel.scrollTop;
+      let fit = 0;
+      for (const part of logPanel.querySelectorAll<HTMLElement>('.sec,.cot-si-lrow')) {
+        const bottom = part.getBoundingClientRect().bottom - top;
+        if (bottom <= room - LOG_CUE_H && bottom > fit) fit = bottom;
+      }
+      if (fit > 0) logPanel.style.setProperty('--si-log-fit', `${Math.ceil(fit + LOG_CUE_H)}px`);
+    }
+    markLogMore();
+  };
+  logPanel.addEventListener('scroll', markLogMore, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(fitLog).observe(logPanel);
   logPanel.tabIndex = 0;
   const toastHost = el('div', 'cot-si-toasthost', root);
   toastHost.setAttribute('role', 'status');
@@ -1328,7 +1359,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
     sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
-    if (!shotLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyShots');
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
@@ -1339,8 +1369,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
-    sec2.innerHTML = `<span>${t('endScreen.damageReceived')}</span><span>${t('shotInfo.damageAmount', { amount: Math.round(total) })}</span>`;
-    if (!receivedLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyReceived');
+    // (an empty section is its header's count alone, no sentence; nothing received reads 0, never "−0")
+    sec2.innerHTML = `<span>${t('endScreen.damageReceived')}</span><span class="num">${Math.round(total) > 0 ? t('shotInfo.damageAmount', { amount: Math.round(total) }) : '0'}</span>`;
     for (let i = receivedLog.length - 1; i >= 0; i--) {
       const e = receivedLog[i];
       const r = el('div', 'cot-si-lrow', logPanel);
@@ -1351,6 +1381,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="n">${escapeHtml(e.attacker)}</span>` +
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
+    // a log taller than its dock fades its last row out rather than cutting it (measured a frame later, off any press)
+    el('div', 'more-cue', logPanel).innerHTML = uiIconSVG('chevronDown', 12);
+    requestAnimationFrame(fitLog);
   }
 
   function toggleLog(): void {
@@ -1399,8 +1432,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         '<span class="attacker"></span><b></b></div>';
       const silhouette = toast.querySelector<HTMLElement>('.si')!;
       const specId = ev.attackerSpecId || attacker?.specId;
-      if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, '#f28f8f');
-      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
+      // (the attacker's silhouette in the enemy ink the rosters and lanes use: a pink of its own, gauntlet r4)
+      if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, 'var(--hud-enemy)');
+      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', 'var(--hud-enemy)');
       else silhouette.remove();
       toastHost.prepend(toast);
     }
@@ -1415,7 +1449,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.dataset.outcome = group.outcome?.id || 'mixed';
     toast.classList.toggle('deflected', !damaging);
     toast.classList.remove('out');
-    toast.style.borderLeftColor = color;
     toast.querySelector('.attacker')!.textContent = name;
     const value = toast.querySelector<HTMLElement>('.l1 b')!;
     value.style.color = color;

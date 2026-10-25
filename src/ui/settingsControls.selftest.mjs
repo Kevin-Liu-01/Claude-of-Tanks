@@ -4,6 +4,7 @@ import { getLocale, setLocale, t } from './i18n.ts';
 import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { FLIGHT_ACTIONS, VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
 
 const originalLocale = getLocale();
 setLocale('en-US');
@@ -31,8 +32,14 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 // six battle modes (2026-10-02): the drone launch (V) joins them; the proving ground (2026-10-20): its reset (R) and
 // moving targets (Y) join them
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 37,
+// the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
+// flight action wears the table's glyph, as the HUD's controls row and the Garage do
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 38,
   'every remappable action has a settings icon');
+for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
+  assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
+  assert.ok(iconIds.has(def.glyph), `${def.glyph} is in the shared set`);
+}
 // sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab; the time of day
 // is a row of its own (gauntlet 250)
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
@@ -69,6 +76,20 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
     'the rollout shows the first battles\' strip');
   assert.match(source, /if \(input\.isTouchLayout\?\.\(\) \|\| input\.isPadConnected\(\)\) return false;/,
     'a touch layout and a pad show no keyboard caps');
+  // (owner 2026-10-25: "only make it come up when its needed") the strip shows the groups still unused; each leaves as
+  // its control is pressed and stays learned; the strip leaves at the player's first engagement and with a kill cam
+  assert.match(source, /const HINT_GROUP_IDS = \['move', 'fire', 'aim', 'sniper', 'menu'\] as const;/, 'one id per group, in the strip\'s order');
+  assert.match(source, /if \(record\.battles >= HINT_BATTLES \|\| HINT_GROUP_IDS\.every\(\(id\) => record\.learned\.has\(id\)\)\) return false;/,
+    'a player who has used every control sees no strip');
+  assert.match(source, /\.filter\(\(\{ id \}\) => !record\.learned\.has\(id\)\)/, 'only the groups still unused show');
+  assert.match(source, /hintListeners\.push\(input\.onAction\(action, \(\) => learnHint\(id\)\)\)/, 'a group leaves as its control is pressed');
+  assert.match(source, /bus\.on\('ui:playerEngaged', \(\) => fadeHints\(\)\);/, 'the first engagement ends the strip');
+  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*kcReplay = true;\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
+  // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
+  // (gauntlet r3: the planner's place, over the rack's centre or beside the speedometer, battleHudLayout.ts hintsPlace)
+  assert.match(source, /\.cot-hints\{position:fixed;left:var\(--hud-hints-x,50%\);top:var\(--hud-hints-bottom,calc\(var\(--hud-systems-top,/, 'the strip seats over the controls row');
+  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
+    'the scope, a flight, Watch and spectating hide the strip');
 }
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');

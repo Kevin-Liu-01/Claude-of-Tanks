@@ -1,6 +1,6 @@
 /** Versioned player layout. Default entries never override responsive HUD placement. */
 export const HUD_PARTS = [
-  { id:'score', selector:'.cot-top', x:.5, y:.06, w:360, h:70 },
+  { id:'score', selector:'.cot-top', x:.5, y:.025, w:270, h:44 },
   { id:'objective', selector:'.cot-mode-status', x:.5, y:.125, w:290, h:32 },
   { id:'allies', selector:'.cot-ear.l', x:.12, y:.23, w:230, h:200 },
   { id:'enemies', selector:'.cot-ear.r', x:.88, y:.23, w:230, h:200 },

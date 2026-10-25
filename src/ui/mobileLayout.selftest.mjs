@@ -131,7 +131,7 @@ assert.match(touch,
   /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
   'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
 assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells\{[^}]*width:48px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
+  /body\.cot-touch-layout \.cot-shells\{[^}]*width:52px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
   'mobile ammunition must collapse to one trigger and expand sideways for selection');
 assert.match(hud,
   /const s = el\('button', 'cot-con', conBox\)[\s\S]*bus\.emit\('ui:consumable'[\s\S]*addEventListener\('pointerdown'/,
@@ -158,9 +158,10 @@ assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
 // owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
-// the corner controls leave it, instead of a fixed 294 px set 18 px off centre
+// the corner controls leave it, instead of a fixed 294 px set 18 px off centre; since 2026-10-25 ("less so big and wide")
+// it hugs its scores and clock inside that lane
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;max-width:calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
@@ -289,9 +290,10 @@ assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
 assert.match(shotInfo,
   /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
-// (bc8de4d713: the rule is the Premiere plates' line token)
+// (bc8de4d713: the rule is the Premiere plates' line token; gauntlet r3: every row on one rhythm, each over its own
+// hairline, the penetration row included, so no row's gap is a one-off)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
+  /\.cot-si-kv\{[^}]*padding:2px 0;border-top:1px solid var\(--line-1\);/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
