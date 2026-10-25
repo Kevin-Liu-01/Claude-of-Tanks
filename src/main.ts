@@ -3391,6 +3391,8 @@ const battleFrame = createBattleFrameRuntime({
   network: {
     isActive: networkMatchActive,
     pump: networkPump.pump,
+    // a solo battle on a local host holds its authority as the page's solo simulation holds (soloHostEntry.ts)
+    setHeld: (held: boolean) => { multiplayerV2.current?.setPaused(held); },
   },
   countdown: {
     isWarmPending: () => battleWarmPending,
@@ -3418,11 +3420,7 @@ const battleFrame = createBattleFrameRuntime({
   stepSimulation: () => simStep(
     game, bus, currentWorld(), rig, worldRuntime.collider,
   ),
-  emitPause: (paused: boolean) => {
-    bus.emit('ui:pause', { on: paused });
-    // a solo battle on a local host pauses its authority as the page's solo simulation pauses (soloHostEntry.ts)
-    multiplayerV2.current?.setPaused(paused);
-  },
+  emitPause: (paused: boolean) => bus.emit('ui:pause', { on: paused }),
   simulationDt: SIM_DT,
 });
 const pauseInfo = battleFrame.pauseInfo;

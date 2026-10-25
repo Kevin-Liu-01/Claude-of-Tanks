@@ -69,8 +69,9 @@ async function run(mode, size) {
   await waitFor('the battle', () => window.__DEBUG?.game?.phase === 'battle'
     && ((window.__DEBUG.game.rosterTanks ?? window.__DEBUG.game.tanks)?.length ?? 0) > 1, 180_000);
   const entryMs = Math.round(performance.now() - started);
-  // the countdown and the first seconds' warm-up
-  await new Promise((done) => setTimeout(done, 8_000));
+  // past the countdown (the battle clock running), then the first seconds' warm-up
+  await waitFor('the battle clock', () => (window.__DEBUG.game.timeS ?? 0) > 2, 120_000);
+  await new Promise((done) => setTimeout(done, 3_000));
   const cdp = await page.target().createCDPSession();
   if (cpuThrottle > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottle });
   await cdp.send('Performance.enable');
@@ -80,9 +81,10 @@ async function run(mode, size) {
     const count = () => { window.__soloProbeFrames++; requestAnimationFrame(count); };
     requestAnimationFrame(count);
   });
-  const task0 = await metric('TaskDuration'), frames0 = await page.evaluate(() => window.__soloProbeFrames), t0 = performance.now();
+  const clock = () => page.evaluate(() => window.__DEBUG.game.timeS ?? 0);
+  const task0 = await metric('TaskDuration'), frames0 = await page.evaluate(() => window.__soloProbeFrames), t0 = performance.now(), sim0 = await clock();
   await new Promise((done) => setTimeout(done, seconds * 1000));
-  const task1 = await metric('TaskDuration'), frames1 = await page.evaluate(() => window.__soloProbeFrames), t1 = performance.now();
+  const task1 = await metric('TaskDuration'), frames1 = await page.evaluate(() => window.__soloProbeFrames), t1 = performance.now(), sim1 = await clock();
   const frames = Math.max(1, frames1 - frames0);
   const state = await page.evaluate(() => {
     const game = window.__DEBUG.game, network = window.__DEBUG.network;
@@ -93,7 +95,9 @@ async function run(mode, size) {
   const workers = page.workers().map((worker) => worker.url().replace(/^.*\//, ''));
   const latency = latencyTrials > 0 ? await measureLatency(page, latencyTrials) : null;
   const result = { mode, size, tanks: state.tanks, network: state.network, entryMs, frames, fps: frames / ((t1 - t0) / 1000),
-    mainMsPerFrame: ((task1 - task0) * 1000) / frames, battleTimeS: state.timeS, workers, latency, errors: errors.slice(0, 6) };
+    mainMsPerFrame: ((task1 - task0) * 1000) / frames, battleTimeS: state.timeS,
+    // battle seconds a real second over the window (1: the simulation keeps real time)
+    simRate: (sim1 - sim0) / ((t1 - t0) / 1000), workers, latency, errors: errors.slice(0, 6) };
   await page.close();
   return result;
 }
