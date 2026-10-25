@@ -363,19 +363,19 @@
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-links {
       grid-area: links; display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
-      gap: 10px; margin: 14px auto 0;
+      gap: 12px; margin: 14px auto 0;
     }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 118px; padding: 10px 15px; border: 0; border-radius: 2px;
+      min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
       background: var(--btn-secondary-fill); box-shadow: var(--btn-secondary-ring); color: var(--ink-1); cursor: pointer;
-      font: 700 13px/1 var(--font-ui);
-      letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
+      font: 700 max(var(--fs-floor-12), var(--fs-13))/1 var(--font-ui);
+      letter-spacing: var(--track-label-s); text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
         color .14s ease, background-color .14s ease, box-shadow .14s ease;
     }
     .cot-boot-links > .cot-boot-link {
-      width: auto; min-width: 0; height: 44px; padding: 0 14px;
+      width: auto; min-width: 0; height: 44px; padding: 0 18px;
     }
     #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
       animation: cot-boot-rise .26s cubic-bezier(.16,1,.3,1) backwards;
@@ -455,16 +455,16 @@
       object-fit:cover;object-position:center;border-radius:var(--control-radius);background:var(--surface-raised)}
     .cot-credits-copy{min-width:0;padding:34px;text-align:left}
     .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
-    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
-    /* zh: a word never splits across lines (the credits script wraps each in .cot-nb on /cn) */
-    .cot-credits .cot-nb{white-space:nowrap}
-    .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:var(--s2) var(--s3);
-      font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
+    .cot-credits p{max-width:64ch;margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
+    /* zh: lines break at the punctuation and the spaces, never inside a word */
+    .cot-credits p:lang(zh-CN){word-break:keep-all;overflow-wrap:anywhere}
+    .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:0 18px;
+      font-size:max(var(--fs-floor-12), var(--fs-13));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
     .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
-    .cot-credits-close{position:absolute;z-index:2;top:12px;right:12px;display:grid;place-items:center;
+    .cot-credits-close{position:absolute;z-index:2;top:22px;right:22px;display:grid;place-items:center;
       width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
@@ -480,6 +480,7 @@
       .cot-credits-copy{padding:24px 22px}
       .cot-credits h2{font-size:32px;margin-bottom:20px}
       .cot-credits-actions{flex-direction:column;align-items:stretch}
+      .cot-credits-close{top:10px;right:10px}
     }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (max-height: 520px) {
@@ -490,6 +491,7 @@
       .cot-credits h2{font-size:28px;margin-bottom:12px}
       .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
       .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
+      .cot-credits-close{top:10px;right:10px}
     }
     .cot-boot-gate {
       grid-area: slot; align-self: start; margin-top: 34px; height: 22px;
@@ -502,11 +504,11 @@
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: start; justify-self: center; display: none;
-      height: 44px; margin: 34px 0 0; padding: 0 22px; white-space: nowrap;
+      height: 44px; margin: 34px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
-      font: 700 15px/1 var(--font-ui);
-      letter-spacing: .06em; text-transform: uppercase;
+      font: 700 max(var(--fs-floor-12), var(--fs-13))/1 var(--font-ui);
+      letter-spacing: var(--track-label-s); text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
     .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -516,8 +518,20 @@
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { max-width: 60ch; text-align: center; text-wrap: balance; }
+    .cot-boot-load { position: relative; }
+    .cot-boot-alert { display: none; flex: none; width: 20px; height: 20px; color: var(--text-danger); }
+    .cot-boot-alert svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
+    #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: flex-start; gap: 12px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load::before {
+      content: ''; position: absolute; inset: -12px -14px; z-index: -1; border-radius: var(--plate-radius);
+      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
+    }
+    #cot-boot:is([data-stop='slow'], [data-stop='offline']):has(.cot-boot-retry.on) .cot-boot-load::before {
+      background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
+    }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
@@ -1096,6 +1110,7 @@
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
+          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
           <div class="cot-boot-pct num" id="cot-boot-pct">0%</div>
         </div>
@@ -1139,8 +1154,8 @@
         <p data-i18n="credits.body1">I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.</p>
         <p data-i18n="credits.body2">The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
         <div class="cot-credits-actions">
-          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer" data-i18n="credits.links.github">Kevin on GitHub</a>
-          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer" aria-label="Claude of Tanks source code on GitHub"><span data-i18n="credits.links.source">Source code</span><span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.github">Kevin on GitHub</span></a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer" aria-label="Claude of Tanks source code on GitHub"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.source">Source code</span><span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/NOTICE.md" target="_blank" rel="noopener noreferrer" data-i18n="credits.links.notice">Authorship notice</a>
         </div>
       </div>
@@ -1180,25 +1195,8 @@
       for (const type of ['keydown', 'keyup']) {
         dialog.addEventListener(type, (event) => event.stopPropagation());
       }
-      const holdWords = () => {
-        if (!chineseRoute || typeof Intl.Segmenter !== 'function') return;
-        const words = new Intl.Segmenter('zh-CN', { granularity: 'word' });
-        for (const p of dialog.querySelectorAll('p')) {
-          if (p.querySelector('.cot-nb')) continue;
-          const parts = document.createDocumentFragment();
-          for (const { segment, isWordLike } of words.segment(p.textContent || '')) {
-            if (!isWordLike || segment.length < 2) { parts.append(segment); continue; }
-            const word = document.createElement('span');
-            word.className = 'cot-nb';
-            word.textContent = segment;
-            parts.append(word);
-          }
-          p.replaceChildren(parts);
-        }
-      };
       open.addEventListener('click', (event) => {
         event.stopPropagation();
-        holdWords();
         if (!dialog.open) dialog.showModal();
       });
       close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });

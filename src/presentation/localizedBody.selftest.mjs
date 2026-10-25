@@ -64,10 +64,11 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
   }
 }
 // (246: the landing's legacy sections and the manual index's card copy left on purpose: 612 text hosts, 609 change;
-// 2026-10-25: the landing's walls became the reel, the features, the modes rail and the press band: 524)
-assert.ok(textHosts > 500, `every public page's text hosts are checked (${textHosts})`);
+// 2026-10-25: the landing's walls became the reel, the features, the modes rail and the press band: 524; the UI
+// gauntlet's cuts of taglines and helper lines on the landing, the manual and the 404: 499)
+assert.ok(textHosts > 470, `every public page's text hosts are checked (${textHosts})`);
 assert.ok(attributeHosts > 190, `and attribute hosts (${attributeHosts})`);
-assert.ok(changed > 500, `most hosts change language (${changed})`);
+assert.ok(changed > 470, `most hosts change language (${changed})`);
 
 // Synthetic edges.
 const doc = (inner) => `<!doctype html><html><head><title data-i18n="x">Head stays</title></head><body>${inner}</body></html>`;
