@@ -172,10 +172,11 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
   border-radius:var(--control-radius);background:var(--btn-secondary-fill);}
 .cot-garage .cot-ammo-tile:first-child{border-color:var(--accent);background:var(--accent-wash);}
 .cot-garage .cot-ammo-tile svg{width:40px;height:16px;color:var(--ink-1);}
-.cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1);}
+.cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-data);color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 var(--s1);min-width:0;white-space:nowrap;
   font:400 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
+.cot-garage .cot-ammo-tile .ft small{margin-left:2px;font:inherit;}
 .cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;}
 
 /* ---- every paint: the band's last swatch opens the whole catalog over the stage and the fleet, left of the column; each

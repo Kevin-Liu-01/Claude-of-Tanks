@@ -1236,7 +1236,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
       `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
-        `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div>` +
+        `<span class="num" data-tip="${t('garage.dossier.stat.damage')}">${shell.dmg}<small>hp</small></span></span></div>`).join('')}</div>` +
       // a folded layout shows three of the rows; this opens the whole dossier
       `<button type="button" class="cot-overview-more" data-garage-panel="equipment" aria-expanded="false" aria-controls="cot-garage-dossier" ` +
       `aria-label="${t('garage.dossier.vehicleDossier')}">${uiIconSVG('chevronRight', 18)}</button></section>`;

@@ -1591,6 +1591,10 @@ body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 
 /* the selected vehicle's actions (overview): kit chips with the glyph, the name and the key; they wrap, never truncate */
 .cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3);}
+/* the docked readout sets the actions two to a row (four never leave one alone on a line), the key cap at each end */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{justify-content:flex-start;min-width:0;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
 .cot-garage .cot-action{padding:0 var(--s1) 0 var(--s2);gap:var(--s1);color:var(--ink-1);}
 .cot-garage .cot-action>span{white-space:nowrap;}
 .cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
