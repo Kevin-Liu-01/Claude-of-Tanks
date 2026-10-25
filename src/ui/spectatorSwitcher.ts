@@ -84,7 +84,10 @@ export const spectatorSwitcherStyles = `
 /* (the cycle and garage buttons stand as tall as the plate beside them: 48 px keys under a 64 px plate read as two kits,
    gauntlet r3) */
 .cot-spec .switch{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
-.cot-spec .idx{align-self:center;font:500 var(--battle-fs-12)/1.5 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap;text-shadow:var(--battle-text-halo)}
+/* (the count on a plate of its own between the cycle pair, the kit's stat: bare on the battlefield it read as a leftover,
+   gauntlet r6) */
+.cot-spec .idx{align-self:stretch;display:grid;place-items:center;padding:0 var(--s2);border-radius:var(--r1);background:var(--hud-plate);
+ box-shadow:var(--ring-1);font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap}
 .cot-spec :is(.cycle,.gar){position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;margin:0;
  padding:var(--s1) var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);color:var(--ink-1);
  font:inherit;cursor:pointer;pointer-events:auto;transition:box-shadow var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
@@ -94,13 +97,15 @@ export const spectatorSwitcherStyles = `
 .cot-spec .cycle-icon{display:flex;color:var(--accent-hi)}.cot-spec .cycle-icon svg{width:14px;height:14px;display:block}
 .cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border:0;
  border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-fig-11)/1 var(--font-data)}
-.cot-spec .gar{flex-direction:column;gap:var(--s1);color:var(--accent-hi);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
- letter-spacing:var(--track-label-s);box-shadow:var(--ring-accent)}
+/* (the way out is the bar's primary action, the Watch bar's seat button's fill: an accent outline read as a selected tile,
+   gauntlet r6) */
+.cot-spec .gar{flex-direction:column;gap:var(--s1);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
+ letter-spacing:var(--track-label-s);background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:20px;height:20px}
 .cot-spec :is(.cycle,.gar):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-spec :is(.cycle,.gar):active{transform:translateY(var(--btn-press-drop))}
 .cot-spec .cycle:disabled{opacity:.35;cursor:default;transform:none}
-@media(hover:hover){.cot-spec :is(.cycle,.gar):hover:not(:disabled){box-shadow:var(--ring-3)}.cot-spec .gar:hover{background:var(--accent-wash)}}
+@media(hover:hover){.cot-spec :is(.cycle,.gar):hover:not(:disabled){box-shadow:var(--ring-3)}.cot-spec .gar:hover{background:var(--btn-primary-hover)}}
 @keyframes cotSpecSw{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
 @media(max-width:900px){

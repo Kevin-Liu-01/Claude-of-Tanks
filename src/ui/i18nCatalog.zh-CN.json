@@ -1455,7 +1455,7 @@
   "battleLoad.countdown": "距离开战还有 <b>{n}</b> 秒",
   "battleLoad.go": "开战！",
   "battleLoad.sides": "{allies} 对 {enemies}",
-  "battleLoad.rule.respawnValue": "{s} 秒",
+  "battleLoad.rule.respawnValue": "{s} 秒",
   "battleLoad.rule.respawn": "复活",
   "battleLoad.rule.clock": "战斗时限",
   "battleLoad.ready": "准备就绪",

@@ -1431,7 +1431,7 @@
   "battleLoad.countdown": "Battle begins in <b>{n}</b>",
   "battleLoad.go": "Battle!",
   "battleLoad.sides": "{allies} v {enemies}",
-  "battleLoad.rule.respawnValue": "{s} s",
+  "battleLoad.rule.respawnValue": "{s} s",
   "battleLoad.rule.respawn": "Respawn",
   "battleLoad.rule.clock": "Battle clock",
   "battleLoad.ready": "Ready",

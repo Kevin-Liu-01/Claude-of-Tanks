@@ -30,7 +30,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   lights: { id: 'lightbulb', tone: 'amber' },
   roofGun: { id: 'roofGun', tone: 'amber' },
   aerialVision: { id: 'visionInfrared', tone: 'green' },
-  supplyAmmo: {id:'shell',tone:'amber'},
+  supplyAmmo: {id:'ammoRack',tone:'amber'},
   supplyHeal: {id:'medkit',tone:'green'},
   consumable1: { id: 'repair', tone: 'amber' },
   consumable2: { id: 'medkit', tone: 'green' },

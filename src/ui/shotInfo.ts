@@ -54,7 +54,7 @@ import {
   type EndScreenTeamRow,
 } from './endScreen.ts';
 import type { EventBus } from '../game/stateCore.ts';
-import { t } from './i18n.ts';
+import { formatNumber, t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
@@ -412,7 +412,7 @@ const SI_CSS = `
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
 .cot-si-kv.pen b{white-space:nowrap;}
-.cot-si-kv b .q{display:inline-flex;align-items:center;height:16px;box-sizing:border-box;margin-left:5px;padding:0 5px;
+.cot-si-kv b .q{display:inline-flex;align-items:center;min-height:16px;box-sizing:border-box;margin-left:5px;padding:1px 5px;
   /* (the kit's chip, in sentence case, its ink the qualifier's: an outlined capitals chip beside the ribbon's sentence-case
      one read as two chip styles, gauntlet r4) */
   border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
@@ -422,8 +422,7 @@ const SI_CSS = `
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
-/* (the plan at the card's width over the map: battleHudLayout.ts --hud-report-zoom) */
-.cot-si-diag{zoom:var(--hud-report-zoom,1);display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
+.cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
   justify-content:center;width:100%;margin:0;padding:var(--s1) 5px;border:1px solid var(--line-1);border-radius:var(--r1);}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .box:first-child{width:90px!important;height:90px!important;}
@@ -462,7 +461,9 @@ const SI_CSS = `
 .cot-si-log .more-cue{display:none}
 .cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:flex-end;justify-content:center;
   height:var(--si-cue-h,18px);margin-top:calc(-1 * var(--si-cue-h,18px));padding-bottom:3px;box-sizing:border-box;
-  border-top:1px solid var(--line-2);background:var(--hud-plate-strong);color:var(--ink-2);pointer-events:none}
+  border-top:1px solid var(--line-2);background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--hud-plate-strong);
+  color:var(--ink-2);pointer-events:none}
+/* (the plate twice, so the band is opaque over the rows it covers: once, the 96 % plate let them ghost through, gauntlet r6) */
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -764,7 +765,7 @@ function appendShotCardHeader(
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
   const damage = el('span', 'cot-si-dmg', header);
-  damage.innerHTML = `${GLYPH.damage}<span>${ev.damage > 0 ? `−${Math.round(ev.damage)}` : '0'}</span>`;
+  damage.innerHTML = `${GLYPH.damage}<span>${ev.damage > 0 ? `−${formatNumber(Math.round(ev.damage))}` : '0'}</span>`;
   if (!(ev.damage > 0)) damage.style.color = COL.dim;
 }
 
@@ -1372,9 +1373,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
         `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
-        `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
+        `<span class="d">${(it.ev.damage || 0) > 0 ? `−${formatNumber(Math.round(it.ev.damage))}` : '·'}</span>` +
         `<span class="n">${escapeHtml(it.ev.targetName || it.ev.targetId || '')}</span>` +
-        `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
+        `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}\u202fm</span>`;
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
@@ -1386,7 +1387,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       r.innerHTML =
         `<span class="b" style="color:${e.dmg > 0 ? COL.red : e.outcome.color}">` +
         `${e.dmg > 0 ? fmtTime(e.t) : e.outcome.label}</span>` +
-        `<span class="d">${e.dmg > 0 ? `−${Math.round(e.dmg)}` : '·'}</span>` +
+        `<span class="d">${e.dmg > 0 ? `−${formatNumber(Math.round(e.dmg))}` : '·'}</span>` +
         `<span class="n">${escapeHtml(e.attacker)}</span>` +
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
@@ -1457,7 +1458,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     latestToast = { element: toast, group };
     const damaging = group.damage > 0;
-    const summary = damaging ? `−${Math.round(group.damage)}` :
+    const summary = damaging ? `−${formatNumber(Math.round(group.damage))}` :
       group.outcome?.label || t('hud.incoming.mixedHits');
     const color = damaging ? COL.red : (group.outcome?.color || COL.dim);
     toast.dataset.damage = String(Math.round(group.damage));

@@ -187,12 +187,13 @@ const RIBBON_W = 520;
 /** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
 const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 /** How near the rack's width a centred strip or ribbon snaps to the rack's edges. */
-const RACK_SNAP = 40;
+const RACK_SNAP = 40, RACK_SNAP_INSET = 4;
+/** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 12px))). */
+const RIBBON_LIFT = 12;
 /** A portrait phone's personal feed under the global one: at most this wide. */
 const KILL_LANE_MAX_W = 400;
-/** The shot card's plan (shotInfo.ts .cot-si-diag, 90 + 9 + 172 px) and the card's insets round it; the narrowest map whose
- *  width the report takes. */
-const REPORT_DIAG_W = 271, REPORT_INSET_W = 20, REPORT_MIN_W = 220;
+/** The narrowest map whose width the report over it takes. */
+const REPORT_MIN_W = 220;
 /** What the shot report docked under the right roster leaves the global feed between them: one kill row and its gaps
  *  (at 32 px the row did not fit, and the feed vanished while a report showed, gauntlet r3 at 1280x720 down to 900x700). */
 const REPORT_FEED_ROOM = 8 + 26 + 8;
@@ -1129,7 +1130,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-roster-wide-right', wideRight < Infinity ? `${Math.floor(wideRight)}px` : '');
     }
     // A portrait phone's global feed (the right lane, level with the map) takes the width right of the map where the rows
-    // that end above the personal lane are two or more, and holds those rows: in half the window its two callsigns read
+    // that end above the personal lane are two or more, and holds those rows (one wide row would cost the lane the rows it
+    // holds beside the personal lane down to the systems row): in half the window its two callsigns read
     // "Command…", gauntlet r3 at 390x844. Its depth follows the lanes' anchors, never their rows, so nothing moves as kills
     // come and go.
     // (a touch layout's two lanes keep one 29 px row pitch, each lane's first row a whole number of rows from the other's,
@@ -1294,7 +1296,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     // A short landscape parks the warning chip under the map; beside the objective's side seat at its top, below the
     // network button where that stands there.
-    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : 8;
+    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : touch && map ? Math.round(map.left) : 8;
     let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
     if (side) {
       chipTop = side.top;
@@ -1314,14 +1316,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // gap: at 1024x600 both stood 2-3 px inside the row under them, gauntlet r5)
     const onRack = (place: { width: number; x: number; bottom: number }, cap: number) => {
       const w = Math.min(cap, place.width);
-      const inside = systemsLeft >= place.x - place.width / 2 - 1 && systemsLeft + systemsWidth <= place.x + place.width / 2 + 1;
+      const inside = systemsLeft >= place.x - place.width / 2 - RACK_SNAP_INSET && systemsLeft + systemsWidth <= place.x + place.width / 2 + RACK_SNAP_INSET;
       return fillRack && inside && Math.abs(w - systemsWidth) <= RACK_SNAP
         ? { ...place, width: systemsWidth, x: rackCentre } : { ...place, width: w };
     };
     const hints = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8), Infinity);
     // (the kill ribbon in the same gap, at most its 520 px: on a 900 px window it would cross the speedometer; under
     // RIBBON_TIGHT it drops its cause chip, the streak's word and the silhouette, under RIBBON_LEAST it does not show)
-    const ribbonGap = onRack(hintsPlace(width, height, lowerCorners, rackCentre, 0), RIBBON_W);
+    const ribbonGap = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - RIBBON_LIFT), RIBBON_W);
     // (over a flight's console where that stands higher, centred on it and as wide: gauntlet r4 at 900x700 set it 57 px
     // off the drone's console under it; r5 found it narrower than the gunship's console from 1440 and the drone's at 900)
     const flightConsole = read('.cot-flight-hud:not([hidden]) .flight-console');
@@ -1337,9 +1339,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const reportWidth = !touch && map && map.left > width / 2 && map.bottom > height / 2 && map.width >= REPORT_MIN_W
       ? Math.floor(Math.min(map.width, 300, width / 2 - 24)) : 0;
     // (the report and the log over a mouse layout's map take its width, their left edges on its edge, the card's plan
-    // scaled to it: 50 px wider, they stood 50 px left of the map under them, gauntlet r5)
+    // sized within it: 50 px wider, they stood 50 px left of the map under them, gauntlet r5)
     setBodyVar('--hud-report-width', reportWidth ? `${reportWidth}px` : '');
-    setBodyVar('--hud-report-zoom', reportWidth ? Math.min(1, (reportWidth - REPORT_INSET_W) / REPORT_DIAG_W).toFixed(3) : '');
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
@@ -1356,7 +1357,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
-      'ribbon-top': Math.min(systemsTop, flightConsole?.top ?? Infinity),
+      'ribbon-top': Math.min(ribbonGap.bottom + RIBBON_LIFT, flightConsole?.top ?? Infinity),
       'ribbon-x': ribbon.x, 'ribbon-w': ribbon.width,
       // the first battles' controls strip (settings.ts) stays on the centre line between the lower corners' instruments
       // (the hull panel and the dial left, the map right) and wraps its groups to fit (gauntlet r1: 900x700 ran it over

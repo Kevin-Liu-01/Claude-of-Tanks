@@ -103,11 +103,12 @@ body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:var(--s3) 14px;bord
 body[data-cot-width] .cot-es.cot-es--record .es-mini .mv{font-size:24px}
 body[data-cot-width] .cot-es.cot-es--record .es-blow{padding:var(--s3) var(--s4);margin:var(--s4) 20px;border:0;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1);line-height:1.5;font-size:var(--battle-fs-13);color:var(--ink-2)}
 @media(min-width:1000px){body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:1.15fr 1fr;align-content:start;min-height:100%;gap:0}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-grid,body[data-cot-width] .cot-es.cot-es--record .personal>.es-combat-details{grid-column:1/-1}body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1/-1;border-top:1px solid var(--line-1)}body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-best,.es-blow){grid-column:1/-1}}
-@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:var(--s3);margin-bottom:var(--s2)}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{margin:14px;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:10px}body[data-cot-width] .cot-es.cot-es--record .es-blow{margin:14px}}
-@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px var(--s3);margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:var(--s3) 0;margin-bottom:var(--s2)}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{margin:14px;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:10px}body[data-cot-width] .cot-es.cot-es--record .es-blow{margin:14px}}
+@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px 0;margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* the rosters as the direction's tables (11-end-screen .row): zebra rows, the player's own on the tungsten edge */
 body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campaign){border:0;border-radius:var(--r1);box-shadow:var(--ring-1)}
-body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even){background:var(--fill-faint)}
+/* (the stripe on the living rows alone: it overrode the destroyed rows' tint on every other one, gauntlet r6) */
+body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even):not(.dead,.me){background:var(--fill-faint)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{background:var(--accent-wash);box-shadow:var(--battle-row-me)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:var(--line-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:0;box-shadow:var(--ring-2)}
@@ -146,7 +147,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-more{display:none}
 body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report).more>.es-more{position:sticky;bottom:0;z-index:var(--z-lift);display:flex;
   align-items:flex-end;justify-content:center;height:var(--es-cue-h,22px);margin-top:calc(-1 * var(--es-cue-h,22px));
   padding-bottom:var(--s1);box-sizing:border-box;
-  border-top:1px solid var(--line-2);background:var(--hud-plate-strong);color:var(--ink-2);pointer-events:none}
+  border-top:1px solid var(--line-2);background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--hud-plate-strong);
+  color:var(--ink-2);pointer-events:none}
 /* (the wide windows' report is the two columns' grid, each column with its own cue) */
 @media(min-width:1280px) and (min-height:700px){body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-more{display:none}}
 /* every vehicle carries its flag beside its silhouette (11-end-screen .who) */
@@ -176,6 +178,15 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .si{flex:0 0 28px;heigh
 body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12px;left:0;transform:translateX(-50%);
   font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-3)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
+/* (the result's chip in the headline's capitals: "Alpha" under "ALPHA WINS", gauntlet r6) */
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:uppercase;letter-spacing:var(--track-label-s)}
+/* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6) */
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
+/* (a watched battle's two rosters at a reading width on the widest windows: 1,230 px rows set the callsigns 750 px from
+   their figures at 2560, gauntlet r6) */
+body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:1640px;margin-inline:auto;width:100%;box-sizing:border-box}
+/* (a Latin callsign keeps the Latin size in Chinese, whose lift is for Chinese labels: endScreen.ts marks it .lat) */
+:lang(zh-CN) .cot-es .es-tr .nm.lat{--battle-fs-12:12px}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
 /* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
    Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's

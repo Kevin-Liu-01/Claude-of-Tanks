@@ -53,8 +53,13 @@ const hud = read('./hud.ts');
 for (const [severity, tone] of [['success', 'ok'], ['warning', 'warn'], ['error', 'danger'], ['info', 'accent']]) {
   assert.match(hud, new RegExp(`\\.cot-hud \\[data-severity=${severity}\\]\\{--notice-tone:var\\(--text-${tone}\\);\\}`), `${severity} takes the ${tone} tone`);
 }
-assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=warning\]\{background:color-mix\(in srgb,var\(--text-warn\) 7%,var\(--hud-plate-strong\)\);\}/);
-assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=error\]\{background:color-mix\(in srgb,var\(--text-danger\) 9%,var\(--hud-plate-strong\)\);\}/);
+assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=warning\]\{--notice-fill:color-mix\(in srgb,var\(--text-warn\) 7%,var\(--hud-plate-strong\)\);\}/);
+assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=error\]\{--notice-fill:color-mix\(in srgb,var\(--text-danger\) 9%,var\(--hud-plate-strong\)\);\}/);
+// (owner 2026-10-25, "make notificatison special shapes, like hexagons, again": the HUD's notices share one long hexagon,
+// its line all round as the layer under the fill, never one edge)
+assert.match(hud, /\.cot-sixth,\.cot-alert,\.cot-aim-warning\{--notice-cut:polygon\(/, 'the notices share one angled plate');
+assert.match(hud, /::before\{inset:0;background:var\(--notice-line\);\}/, 'its line runs all round, under the fill');
+assert.match(hud, /::after\{inset:1px;background:var\(--notice-fill\);\}/, 'its fill 1 px inside the line');
 assert.doesNotMatch(hud, /--notice-edge/, 'the old edge variable is gone');
 
 // --- the alert, live: severity, role, a repeat's count, the pause holding its time ---

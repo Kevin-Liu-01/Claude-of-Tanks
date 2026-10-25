@@ -88,7 +88,8 @@ html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch,html[data-wat
 .cot-watch .wb:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media(hover:hover){.cot-watch .wb:not(:disabled):hover{box-shadow:var(--ring-3)}.cot-watch .wb.seat:not(:disabled):hover{background:var(--btn-primary-hover)}}
 .cot-watch .wb:not(:disabled):active{transform:translateY(var(--btn-press-drop))}
-.cot-watch-rail{position:absolute;right:calc(var(--inset-right) + 4px);top:50%;transform:translateY(-50%);z-index:var(--z-hud-controls);
+/* (on the touch layout's right column, the tray's and the consumables' 14 px: further in, it stood off them, gauntlet r6) */
+.cot-watch-rail{position:absolute;right:max(14px,env(safe-area-inset-right));top:50%;transform:translateY(-50%);z-index:var(--z-hud-controls);
  display:none;flex-direction:column;gap:var(--s2);pointer-events:none}
 body.cot-touch-layout .cot-watch-rail{display:flex}
 html:not([data-watch=drone]) .cot-watch-rail{display:none}

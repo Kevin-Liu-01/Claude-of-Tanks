@@ -631,6 +631,8 @@ function vehicleName(specId: string | null | undefined): string {
 const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
   + '.es-stat-secondary,.es-kill-block,.es-rematch';
 const FIT_CUE_H = 22;
+/** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
+const LATIN_NAME = /^[\x20-\x7e]+$/;
 
 function dotLine(text: string): string {
   return text.split(' · ').map((part, index) => `<span class="seg">${index ? '<span class="sep">·\u00a0</span>' : ''}${escapeHtml(part)}</span>`).join(' ');
@@ -945,7 +947,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="nm${LATIN_NAME.test(result.name || result.id) ? ' lat' : ''}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
@@ -1431,7 +1433,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `<div class="sl">${watchedView ? sideFlag('alpha') : uiIconSVG('team', 16)}<span>${allyTitle()}</span></div>` +
       `<div class="ss">${dotLine(t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) }))}</div>` +
       `</div><div class="sn">${fmtN(allyStats.kills)}</div></div>` +
-      '<div class="es-score-dash">—</div>' +
+      '<div class="es-score-dash">:</div>' +
       `<div class="es-score-side foe"><div class="sn">${fmtN(enemyStats.kills)}</div>` +
       `<div class="es-score-copy"><div class="sl"><span>${enemyTitle()}</span>${watchedView ? sideFlag('bravo') : uiIconSVG('team', 16)}</div>` +
       `<div class="ss">${dotLine(t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) }))}</div>` +

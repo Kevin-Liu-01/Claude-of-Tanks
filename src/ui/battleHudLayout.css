@@ -29,7 +29,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{h
 /* A narrow mouse window (480-640 px; the HUD follow-up of 2026-10-21): the shot report and the open log stop short of the
    sight's widest ring and its range tag (the scope-vision seat's clearance) instead of reaching over the sight. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-si-cardhost,.cot-si-log){
-  width:min(var(--hud-side-width),max(176px,calc(50vw - max(15vmin + 8px,80px) - var(--hud-report-right,12px))))}
+  width:min(var(--hud-report-width,var(--hud-side-width)),max(176px,calc(50vw - max(15vmin + 8px,80px) - var(--hud-report-right,12px))))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:var(--s2);flex-wrap:wrap}
@@ -189,16 +189,27 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
    (gauntlet r3: three cap styles on one screen) */
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
-/* (a mouse layout's tile centres its glyph, its count and its key cap as one group, the glyph at 18 px: the smoke glyph
-   sat against the cell's left edge and its count mid-cell, gauntlet r4; a slot-wide tile's cap stood at its far edge
-   away from its glyph, and the glyph was half a slot glyph's size, r5: 18 px, the slots' 20) */
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:18px}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button{grid-template-columns:minmax(0,1fr) auto auto minmax(0,1fr);column-gap:var(--s1)}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .si{grid-column:2}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .sk{grid-column:3}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)){grid-template-columns:minmax(0,1fr) auto auto auto minmax(0,1fr)}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)) :is(.sl[data-count],.system-status){grid-column:3}
-body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)) .sk{grid-column:4}
+/* (owner 2026-10-25: "in both desktop and mobile, the 'abilities' need to be represented better"): a mouse layout's
+   abilities are the rack's own tiles over its slots, the slot's plate, its key cap in the slot number's corner, a count
+   (the smoke's charges, a wait's seconds) where a slot counts its rounds and the glyph at the centre, 40 px tall: a 32 px
+   underlined strip of tabs read as the rack's header, not its abilities */
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:20px;--hud-tile-h:40px;--hud-tile-radius:var(--r1)}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);column-gap:0;padding:3px;border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
+  background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .si{grid-column:2;grid-row:1;align-self:center}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .sk{grid-column:1;grid-row:1;justify-self:start;align-self:start}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button :is(.sl[data-count],.system-status){grid-column:3;grid-row:1;
+  justify-self:end;align-self:start;font:700 var(--battle-fs-fig-11)/15px var(--font-data);color:var(--ink-1)}
+/* (a wait: the glyph dimmed under its seconds, as a cooling slot's round) */
+body[data-cot-battle-layout] .cot-vehicle-controls>button:has(.sl[data-count]) .si{color:var(--ink-3)}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button.active{border-color:var(--accent);
+  background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);box-shadow:var(--ring-accent)}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button.empty{background:var(--hud-plate);border-bottom-color:var(--hud-danger)}
+@media(hover:hover){body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:hover:not(:disabled){box-shadow:var(--ring-3)}}
+/* (a recalled drone's tile keeps its returning cue over the tile's plate, aerialHud.css; droneReturningCascade.selftest) */
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;
+  color:var(--accent-hi);box-shadow:inset 0 -2px oklch(from var(--accent-hi) l c h / .6)}
 /* (an engaged control wears the selected slot's look on every layout, the accent's inset ring on its wash, its glyph lit:
    an underline here, a ring alone on the watch bar and the touch row read as four selected states, gauntlet r5) */
 /* (one key cap size for the HUD's own caps beside a label, 20 px, the tiles' in-cell caps 15: three sizes read as three
@@ -303,7 +314,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    the consumables' form that never scroll, each its icon alone (its name is its label; a keycap means nothing on glass),
    with a count in its corner while it has one (a cooldown, the smoke charges); the More tile pages through what the row
    cannot hold (battleHudLayout.ts data-off, hud.ts) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px;--hud-tile-icon:22px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px;--hud-tile-icon:24px}
 /* (the consumables' tile, hud.ts .cot-con: the HUD plate, its line-2 edge, ring and radius) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button{--hud-tile-w:44px;--hud-tile-h:44px;flex:0 0 44px;min-width:44px;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);place-items:center;padding:0;--hud-tile-radius:var(--r1);border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.active{border-color:var(--hud-tile-on-edge);
@@ -357,7 +368,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r:not(.ic
    13 px head grew 26 px tall and the seventh row lost its baseline to the ear's edge at 1024x600, gauntlet r3) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .hd{height:21px;box-sizing:border-box;align-items:center;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{--roster-row-height:30px;width:min(320px,calc(50vw - 184px))}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-rows{display:none}
+/* (a tight dock keeps the card's figures, its plan giving way: at 1280x720 and 1024x600 the angle, armor, damage and pen
+   rows went while the plan stayed, gauntlet r5 and r6) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .compact-shot-report .cot-si-rows{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .tight-shot-report:not(.compact-shot-report) .cot-si-diag{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .micro-shot-report :is(.cot-si-sub,.cot-si-body){display:none}
 /* Clip diagrams inside the card, not its outer shadow at the lane edges.
    Card sizing below still keeps its contents inside the measured HUD budget. */
