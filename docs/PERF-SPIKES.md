@@ -123,27 +123,38 @@ Causes:
 The A/B ran base 3852a725d4 against the lane: the heat stand-ins and the bots' first-step fix (runtime as
 ffa2158835).
 
-- **What was played:** 35 complete pairs over Verdant (standard), Steinburg (zone control), Cinder Junction (capture
-  the flag), Sirocco Wadi (AC-130), Amberford (drone), Ironworks (frontline assault) and Suzhou Creek (standard), at
+- **What was played:** all 42 pairs over Verdant (standard), Steinburg (zone control), Cinder Junction (capture the
+  flag), Sirocco Wadi (AC-130), Amberford (drone), Ironworks (frontline assault) and Suzhou Creek (standard), at
   7/14/21 v 21, cold and warm.
-- **Conditions:** 35 s of combat each; the governor pinned; the loaded Mac (load 30–60, other sessions' Chromes on
+- **Conditions:** 35 s of combat each; the governor pinned; the loaded Mac (load 10–60, other sessions' Chromes on
   the GPU).
-- **Evidence:** `~/cot-lanes/battle-spikes-253-evidence/ab1`.
+- **Evidence:** `~/cot-lanes/battle-spikes-253-evidence/ab1`, with `census-ab.json` there.
 
-| Over the 35 pairs | Base | Lane | Change |
+| Over the 42 pairs | Base | Lane | Change |
 |---|---|---|---|
-| Hitches (whole battle) | 835 | 616 | −26 % |
-| Hitches, live combat | 607 | 391 | −36 % |
-| GPU-busy hitches | 69 | 37 | −46 % |
-| Program links in live combat | 714 | 359 | −50 % |
-| Cold battles' hitches | 515 | 383 | −26 % |
-| Warm battles' hitches | 320 | 233 | −27 % |
+| Hitches (whole battle) | 1,080 | 810 | −25 % |
+| Hitches, live combat | 767 | 524 | −32 % |
+| GPU-busy hitches | 88 | 48 | −45 % |
+| Program links in live combat | 830 | 406 | −51 % |
+| 7 v 7 / 14 v 14 / 21 v 21 hitches | 410 / 388 / 282 | 318 / 303 / 189 | |
 
-The hitch threshold follows each battle's median. As a check free of it, the 21 pairs whose live medians agree within
-2 ms:
+**By map:**
 
-- live frames past 100 ms: 51 → 32 (−37 %);
-- live frames past 50 ms: 1,166 → 1,107 (−5 %; that band is mostly the machine's load).
+| Map | Hitches, base → lane |
+|---|---|
+| Verdant | 146 → 70 |
+| Ironworks | 105 → 67 |
+| Amberford | 163 → 112 |
+| Cinder Junction | 171 → 120 |
+| Suzhou Creek | 211 → 170 |
+| Steinburg | 171 → 149 |
+| Sirocco Wadi (AC-130) | 113 → 122 |
+
+The hitch threshold follows each battle's median. As a check free of it, the 26 pairs whose live medians agree
+within 2 ms:
+
+- live frames past 100 ms: 54 → 38 (−30 %);
+- live frames past 50 ms: 1,406 → 1,321 (−6 %; that band is mostly the machine's load).
 
 **Memory.** The browser's resident set (renderer and GPU process) peaks at 5.0–6.1 GB in the heavier maps, on both
 builds alike:
@@ -152,7 +163,43 @@ builds alike:
 - a page's second battle peaks 0.3–0.6 GB over its first.
 
 The census's 6 GB guard sits at that footprint: it stopped base Steinburg 21 v 21's warm battle and base Cinder
-Junction 7 v 7's first try. The growth between battles is its own finding for the memory lockdown, not this lane's.
+Junction 7 v 7's first try (both measured on resume). The growth between battles is its own finding for the memory
+lockdown, not this lane's.
+
+## The budget
+
+`npm run perf:spikes:check` (`tools/battle-spike-budget.mjs --gate`) replays the budget's battles on the production
+build and fails a battle past its limits (`tools/battle-spike-budget.json`):
+
+- **The battles:** watched (every seat a bot's, the camera riding the human seat's hull) on a fresh profile with a
+  pinned roster, so a build plays the same battle tick for tick. Verdant standard and Steinburg zone control, 14 v 14,
+  cold and warm, 40 s each.
+- **Judged under any load:**
+  - `links`: programs linked in live combat (cold ≤ 20, warm ≤ 16);
+  - `allocMBPerS`: the allocation rate from the trace's scavenges (≤ 400).
+- **Judged only while load1 ≤ 0.75 × cores, else HELD:** long tasks, hitches a minute, frames past 33 ms a minute.
+
+Calibrated 2026-10-25 on the lane's head, at load 10–12 on 18 cores with other sessions' GPU processes near 86 % CPU,
+with headroom over the measurements. The time limits catch a regression of today's state; the reference machine
+tightens them (owed). `tools/battle-spike-budget.selftest.mjs` (core) holds the judge and the shipped budget's shape.
+
+## Follow-ups (not done here)
+
+- **The cold session's first-use GPU work (an owner decision).** The deferred warm's first-bind renders after the
+  countdown's hold leave 100 ms – 1.1 s GPU-process stalls in a session's first battle. They are gone in its later
+  battles. Options:
+  - finish the GPU-heavy stages (rare effects, sights) behind the entry veil on a session's first battle, at a few
+    seconds' longer entry;
+  - or accept them.
+- **The watched battle's thermal relink.** A watched battle's second battle links its 11 heat programs again: their
+  stand-ins go with the first battle's materials, and the watch drone draws them live. Keeping the heat programs
+  across battles would remove it.
+- **Dynamic resolution without reallocation.** Each governor step reallocates the composer: a GPU stall on the
+  machines that need the governor. Proposed: viewport scaling through the post chain, its own lane with a capture A/B.
+- **The HUD's layout pass.** Proposals above, through the UI gauntlet.
+- **The deferred warm's opening-route jobs, split by leg.** The countdown's 30–290 ms microtask bursts.
+- **The simulation in a Worker.** A frame-rate lever at 21 v 21 (above), its own lane.
+- **The browser's growth between battles** (0.3–0.6 GB a battle). For the memory lockdown.
 
 ## Hitches, not frames past 33 ms
 

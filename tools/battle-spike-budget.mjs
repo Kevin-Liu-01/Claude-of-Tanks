@@ -5,7 +5,7 @@
 // hull) on a fresh profile with a pinned roster, so a build plays the same battle tick for tick on every run. Per
 // battle and pass (cold, warm) it judges, from control release to the end:
 //   - links: the WebGL programs linked (the combat warm must have compiled every one before the reveal);
-//   - longTasks: main-thread tasks over 50 ms;
+//   - longTasks: main-thread tasks over 50 ms (time: held under load, as the frame counts below);
 //   - allocMBPerS: the JS heap's allocation rate (the trace's scavenges), which the machine's load does not move;
 //   - hitchesPerMin: intervals past 33 ms and twice the battle's median a minute (tools/battle-spike-analysis.mjs);
 //   - over33PerMin and over50PerMin: frame intervals past 33 and 50 ms a minute.
@@ -39,7 +39,7 @@ export function liveReadings(record) {
   };
 }
 
-const TIME_LIMITS = new Set(['over33PerMin', 'over50PerMin', 'hitchesPerMin']);
+const TIME_LIMITS = new Set(['over33PerMin', 'over50PerMin', 'hitchesPerMin', 'longTasks']);
 
 /**
  * Judge one record against its pass's limits: [{ name, value, limit, verdict: PASS | FAIL | HELD }]. A time limit

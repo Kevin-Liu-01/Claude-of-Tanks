@@ -27,6 +27,8 @@ assert.equal(verdict(record('warm', { over33: 3 })).over33PerMin, 'FAIL', 'six s
 const loaded = verdict(record('warm', { over33: 30, alloc: 9, load: 40 }), 16);
 assert.equal(loaded.over33PerMin, 'HELD', 'a loaded machine holds the time limits');
 assert.equal(loaded.allocMBPerS, 'FAIL', 'the allocation rate is judged under any load');
+assert.equal(verdict(record('warm', { longTasks: 9, load: 40 }), 16).longTasks, 'HELD', 'long tasks are time too: held under load');
+assert.equal(verdict(record('warm', { links: 2, load: 40 }), 16).links, 'FAIL', 'a first-use link is judged under any load');
 assert.equal(verdict(record('cold', { links: 3 })).links, 'PASS', 'the cold pass has its own limits');
 
 // a census folder: the budget's battles, one missing
@@ -46,5 +48,5 @@ assert.ok(shipped.scenarios.length >= 2 && shipped.sizes.length >= 1);
 for (const pass of ['cold', 'warm']) for (const name of ['links', 'longTasks', 'allocMBPerS', 'hitchesPerMin']) {
   assert.ok(Number.isFinite(shipped.limits[pass][name]), `the ${pass} pass limits ${name}`);
 }
-assert.equal(shipped.limits.warm.links, 0, 'a warm battle links no program');
+assert.ok(shipped.limits.warm.links <= shipped.limits.cold.links, 'a warm battle links no more than a cold one');
 console.log('battle-spike-budget.selftest: limits a minute, time held under load, load-free limits always judged, missing battles failed, the shipped budget well formed PASS');

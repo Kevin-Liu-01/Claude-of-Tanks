@@ -111,6 +111,8 @@
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:public": "node tools/public-page-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",
+    "perf:spikes": "node tools/battle-spike-census.mjs",
+    "perf:spikes:check": "node tools/battle-spike-budget.mjs --gate",
     "perf:resources": "node tools/phase-resource-probe.mjs --production",
     "perf:resources:gate": "node tools/phase-resource-probe.mjs --production --gate",
     "world:props:pack": "node tools/pack-prop-models.mjs",
