@@ -65,7 +65,7 @@ img{display:block;max-width:100%}
 .hero__stats .cot-i{align-self:center;width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
-.hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
+.hero__film{width:min(1280px,calc(100vw - 2 * var(--home-gutter) - 2px));max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
 .hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);box-shadow:var(--btn-secondary-ring);color:var(--ink-1)}
@@ -115,7 +115,7 @@ img{display:block;max-width:100%}
 /* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-head>.home-h2{text-box:trim-end cap alphabetic}
-:lang(zh-CN) :is(.home-head>.home-h2,.press__title){text-box:trim-end cap text}
+:lang(zh-CN) :is(.home-head>.home-h2,.press__title){margin-bottom:.12em}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -144,7 +144,7 @@ img{display:block;max-width:100%}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
 .press{padding:var(--s7) 0 var(--s9)}
-.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s5) var(--s7)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "stats" "quotes" "sources" "date";gap:var(--s5)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
@@ -155,10 +155,10 @@ img{display:block;max-width:100%}
 .press__title{grid-area:title;text-box:trim-end cap alphabetic}
 .press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
 .press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
-.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0;text-align:right}
-.press__stats dt{justify-content:flex-end}
+.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5) var(--s3);margin:0}
 .press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
+:lang(zh-CN) :is(.press__stats dt,.hero__stats li){font-family:var(--font-cjk)}
 .press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1);text-box:trim-end cap alphabetic}
 .press__sources{grid-area:sources;display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:var(--s5) 0 0;list-style:none;border-top:1px solid var(--line-1)}
 .press__src{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
@@ -218,10 +218,6 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
 @media (width < 1100px){
   .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 2)}
-  .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
-  .press__stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5) var(--s3);text-align:left}
-  .press__stats dt{justify-content:flex-start}
-  .press__inner{grid-template-areas:"title" "stats" "quotes" "sources" "date"}
   .press__quotes{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 /* the phone landing: the poster and the clips over the first 640 px, the headline in its sky, the counts, and one Play
