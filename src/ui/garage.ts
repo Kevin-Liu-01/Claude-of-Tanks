@@ -3083,7 +3083,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The fixed 20-cell scale (brand-ui SPEC 6.2): the raw value above, the peer-normalised rating as lit cells.
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b>${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
+      `<b class="num">${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
   }
 
   function activateTechnicalTab(tab: HTMLButtonElement): void {
@@ -3138,8 +3138,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return `<div class="shellrow" style="--shell-color:${color}">` +
         `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shell.type}</span></span>` +
         `<span class="nm">${shell.name}<small>${detail}</small></span>` +
-        `<span class="shellmetric"><b>${penetration}</b>mm</span>` +
-        `<span class="shellmetric"><b>${shell.dmg}</b>hp</span></div>`;
+        `<span class="shellmetric"><b class="num">${penetration}</b>mm</span>` +
+        `<span class="shellmetric"><b class="num">${shell.dmg}</b>hp</span></div>`;
     }).join('');
   }
 
@@ -3373,7 +3373,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-label="${t('garage.dossier.expand.aria', { name: spec.label?.displayName || spec.name, view: initialTechnicalViewLabel })}">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
       `data-technical-image draggable="false" loading="lazy" decoding="async" fetchpriority="low">` +
-      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}</span></button>` +
+      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}<span>${t('garage.dossier.drawing')}</span></span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalViewCaption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
@@ -3428,8 +3428,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       shellRows + `</section>` +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b class="num">${spec.gun.caliberMm} mm</b></div>` +
+      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b class="num">&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
       `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
@@ -3453,8 +3453,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `</div></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
-      `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
+      `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b class="num">${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
+      `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b class="num">${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +

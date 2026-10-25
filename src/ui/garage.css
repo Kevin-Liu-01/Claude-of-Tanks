@@ -450,6 +450,16 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-technical-expand-label svg{width:13px;height:13px;color:var(--text-accent);}
 .cot-technical-expand:hover .cot-technical-expand-label,.cot-technical-expand:focus-visible .cot-technical-expand-label{
   color:var(--ink-1);background:var(--accent-wash);border-color:var(--accent);}
+/* The readout's drawing: its labels are drawn into the image (in English, about 5 px at a column's width), so the
+   readout offers it as a button that opens the full viewer, where it reads (the UI gauntlet 10-25). */
+.cot-garage .stats .cot-technical-figure{background:none;border:0;box-shadow:none;}
+.cot-garage .stats .cot-technical-figure::after{display:none;}
+.cot-garage .stats .cot-technical-expand{background:none;cursor:pointer;}
+.cot-garage .stats .cot-technical-expand img{display:none;}
+.cot-garage .stats .cot-technical-expand-label{position:static;justify-content:center;min-height:var(--btn-h-s);
+  text-transform:none;font-size:max(var(--fs-floor-11),var(--fs-13));}
+.cot-technical-expand-label>span{display:none;}
+.cot-garage .stats .cot-technical-expand-label>span{display:inline;}
 /* the tabs name the view; the caption stays for assistive technology (brand-ui S2) */
 .cot-technical-figure figcaption{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;min-height:26px;padding:7px var(--s2);color:var(--ink-3);background:var(--side-plate);
   border-top:1px solid var(--line-1);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
@@ -573,6 +583,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-cards-empty{display:flex;flex:1 1 auto;align-items:center;justify-content:center;gap:var(--s3);min-width:0;
   color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-ui);}
 .cot-cards-empty[hidden],.cot-carousel.is-empty .cot-cards{display:none;}
+.cot-cards-empty .cot-c-btn{padding:0 var(--s4);}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards:is(.dragging,.free),.cot-country-chips.free{scroll-snap-type:none;}
@@ -1609,6 +1620,8 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
+body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;place-items:center}
+body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
 body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
@@ -1625,7 +1638,8 @@ body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-rail{--cou
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-width:44px;flex-basis:44px}
 
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cgrid.camo{max-height:none;overflow:visible;flex:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cgrid.camo{max-height:none;overflow:visible;flex:none;
+  grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}
 body[data-cot-input='coarse'] :is(.cot-camo-tag,.cot-camo-collection){font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:80}
 

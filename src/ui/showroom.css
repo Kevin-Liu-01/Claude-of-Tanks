@@ -175,9 +175,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-ammo-tile svg{width:40px;height:16px;color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
-.cot-garage .cot-ammo-tile .ft{display:flex;justify-content:space-between;gap:var(--s1);min-width:0;white-space:nowrap;
+.cot-garage .cot-ammo-tile .ft{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 var(--s1);min-width:0;white-space:nowrap;
   font:400 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--ink-3);}
-.cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;}
 
 /* ---- every paint: the band's last swatch opens the whole catalog over the stage and the fleet, left of the column; each
    paint is its swatch alone (its name in the tooltip and for assistive technology), so the hundred-odd fit at 1280 x 720 ---- */
@@ -186,7 +186,8 @@ body[data-cot-panels='persistent'] .cot-leftcol{display:none;}
    so the tank stays in view above it as it is painted; an opaque plate, so nothing ghosts through */
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{display:flex;z-index:var(--z-drawer);
   left:var(--edge);right:var(--fleet-right);top:auto;bottom:var(--edge);width:auto;
-  max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh);
+  max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh,
+    calc(var(--band-bottom) + var(--slot) + max(var(--fs-floor-11),var(--fs-11)) + var(--s1) + var(--s2) - var(--edge)));
   border-radius:var(--plate-radius);background:var(--plate-highlight),var(--surface-menu);box-shadow:var(--plate-shadow);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{overflow-y:auto;overscroll-behavior:contain;}
 body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
@@ -436,7 +437,7 @@ body[data-cot-panels='overlay'] .cot-garage .stats .cot-headline{display:grid;gr
 body[data-cot-panels='overlay'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .k{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow>.cot-i{display:none;}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-overview-more{display:none;}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats .cot-overview-more{display:none;}
 .cot-overview-more{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more{display:grid;place-items:center;align-self:stretch;width:40px;padding:0;border:0;
   border-left:1px solid var(--line-1);background:transparent;color:var(--ink-2);cursor:pointer;}
