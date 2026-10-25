@@ -84,7 +84,8 @@ expect('griffin_viper', 'm1a1_abrams_hc'); expect('griffin50mm', 'm1a1_abrams_hc
 expect('type59', 'ztz100'); expect('ztz100_prototype', 'ztz100'); expect('aft10', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv121'); expect('strv103b', 'strv121'); expect('strv121', 'strv121'); expect('cv90', 'cv90_mk4');
-expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
+expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther', 'donor'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
+// 252: buildK2 draws the K2 source wheel natively for K2B as for XK2, so K2B is a donor self, not a fitted standard
 expect('k21', 'bmp3m_dragun125'); // owner 2026-09-23 (round 46): the K21 takes the BMP-3 ROK wheel construction
 expect('pt91m', 't90_1992'); // owner 2026-10-06: actual T-72BU donor running gear
 assert.equal(resolveNationWheel(TANK_SPECS.pt91m).donor, resolveNationWheel(TANK_SPECS.t72bu).donor);
@@ -170,7 +171,7 @@ assert.deepEqual(NATION_WHEEL_AXIAL_FIT, { min: 0.85, max: 1.15 }, 'no construct
   assert.ok(proud < .025 && proud > .010, `rim protrusion ${proud.toFixed(4)} stays seated`);
 }
 assert.throws(() => buildNationWheel('namer-stepped-hub', { radiusM: .3, tireWidthM: .3, maxWidthM: .44, high: true, segments: 20 }), /donor-only/);
-assert.throws(() => buildNationWheel('k2-flanged', { radiusM: 0, tireWidthM: .3, maxWidthM: .44, high: true, segments: 20 }), /Invalid nation wheel request/);
-assert.throws(() => buildNationWheel('k2-flanged', { radiusM: .3, tireWidthM: .3, maxWidthM: .2, high: true, segments: 20 }), /Invalid nation wheel request/);
+assert.throws(() => buildNationWheel('k2-dished-hub', { radiusM: 0, tireWidthM: .3, maxWidthM: .44, high: true, segments: 20 }), /Invalid nation wheel request/);
+assert.throws(() => buildNationWheel('k2-dished-hub', { radiusM: .3, tireWidthM: .3, maxWidthM: .2, high: true, segments: 20 }), /Invalid nation wheel request/);
 
 console.log(`nationWheelSets.selftest: ${ALL_TANK_IDS.length} hulls — ${kinds.donor.length} donor, ${kinds.standard.length} standardized, ${kinds.keep.length} period; ${BUILDABLE_WHEEL_CONSTRUCTIONS.length} constructions build at foreign sizes`);
