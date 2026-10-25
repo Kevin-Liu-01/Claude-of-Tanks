@@ -241,6 +241,9 @@
   <style>
     @layer reset,tokens,base,components,surfaces,utilities,overrides;
     @layer surfaces {
+    /* The game document declares the weight-voiced 'Cot UI' family alone (src/ui/fonts.ts, its cot:type marker): the
+       display voice is that family at 600/700 (Chakra Petch), so no surface's --font-display falls to a fallback face. */
+    :root { --font-display: var(--font-ui); }
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
@@ -271,7 +274,7 @@
         radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
     .cot-boot-inner {
-      position: relative; z-index: 2; width: min(760px, 86vw); text-align: center;
+      position: relative; z-index: 2; width: min(760px, calc(100vw - 32px)); text-align: center;
       display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "mark" "invite" "load" "slot" "links";
     }
 
@@ -336,7 +339,7 @@
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .3); }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .42); }
     .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
@@ -364,15 +367,15 @@
     }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 118px; padding: 10px 15px; border: 1px solid var(--line-3); border-radius: 2px;
-      background: var(--surface-raised); color: var(--ink-1); cursor: pointer;
+      min-width: 118px; padding: 10px 15px; border: 0; border-radius: 2px;
+      background: var(--btn-secondary-fill); box-shadow: var(--btn-secondary-ring); color: var(--ink-1); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
         color .14s ease, background-color .14s ease, box-shadow .14s ease;
     }
     .cot-boot-links > .cot-boot-link {
-      width: auto; min-width: 0; height: 36px; padding: 0 14px;
+      width: auto; min-width: 0; height: 44px; padding: 0 14px;
     }
     #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
       animation: cot-boot-rise .26s cubic-bezier(.16,1,.3,1) backwards;
@@ -413,9 +416,6 @@
     @media (width <= 380px) {
       :root body .cot-boot-links { gap: 8px; }
       :root body .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
-    }
-    @media (pointer: coarse) {
-      :root body .cot-boot-links > .cot-boot-link { height: 44px; }
     }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
@@ -459,7 +459,7 @@
     /* zh: a word never splits across lines (the credits script wraps each in .cot-nb on /cn) */
     .cot-credits .cot-nb{white-space:nowrap}
     .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:44px;border:0;padding:var(--s2) var(--s3);
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:var(--s2) var(--s3);
       font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
@@ -469,17 +469,22 @@
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
     .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{width:100px;flex:none}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-copy{padding:24px 22px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits h2{font-size:32px;margin-bottom:20px}
+    /* a phone (the responsiveLayout.ts phone and compact bands, < 768 px): the splash's own media query, since the
+       credits can open before any module writes body[data-cot-width] */
+    @media (width < 768px) {
+      .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
+      .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
+      .cot-credits-grid{grid-template-columns:1fr}
+      .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
+      .cot-credits-portrait{width:100px;flex:none}
+      .cot-credits-copy{padding:24px 22px}
+      .cot-credits h2{font-size:32px;margin-bottom:20px}
+      .cot-credits-actions{flex-direction:column;align-items:stretch}
+    }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (max-height: 520px) {
       .cot-credits-grid{grid-template-columns:132px minmax(0,1fr)}
-      .cot-credits-profile{flex-direction:column;padding:20px 0 20px 20px;border-right:0;border-bottom:0}
+      .cot-credits-profile{flex-direction:column;padding:20px;border-right:1px solid var(--line-1);border-bottom:0}
       .cot-credits-portrait{width:100%}
       .cot-credits-copy{padding:20px 22px}
       .cot-credits h2{font-size:28px;margin-bottom:12px}
@@ -497,7 +502,7 @@
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: start; justify-self: center; display: none;
-      height: 48px; margin: 34px 0 0; padding: 0 22px; white-space: nowrap;
+      height: 44px; margin: 34px 0 0; padding: 0 22px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 15px/1 var(--font-ui);
@@ -507,11 +512,13 @@
     .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
+    #cot-boot:has(.cot-boot-gate.on) .cot-boot-fill::after { animation: none; opacity: 0; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { max-width: 60ch; text-align: center; color: var(--ink-1); text-wrap: balance; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { max-width: 60ch; text-align: center; text-wrap: balance; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
     .cot-boot-notice {
@@ -539,6 +546,7 @@
          frame, so the centred splash never re-centres around it */
       .cot-boot-stage { min-height: calc(3 * 1.3em); line-height: 1.3; }
     }
+    @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits { zoom: 1.3; } }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (max-height: 520px) {
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
@@ -547,7 +555,7 @@
       .cot-boot-stage { min-height: calc(2 * 1.4em); line-height: 1.4; }
       .cot-boot-tip { height: 48px; margin-top: 14px; visibility: hidden; }
       .cot-boot-gate, .cot-boot-retry { margin-top: 14px; }
-      .cot-boot-links { margin-top: 14px; }
+      .cot-boot-links { margin-top: 24px; }
       .cot-boot-foot { left: auto; right: 16px; bottom: 10px; }
     }
     }
