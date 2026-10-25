@@ -25,7 +25,7 @@ const SHELL: readonly string[] = [
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",
   '.cot-map-card .mname', '.cot-camo-tag span', '.cot-camo-collection', '.cot-camo-card .cl',
   '.cot-garage .sub>span', '.cot-garage .srow .lr>span', "body[data-cot-panels='persistent'] .cot-garage .srow .lr>span",
-  '.cot-garage .eqslot .sl', '.cot-system-control>span',
+  '.cot-garage .eqslot .sl', '.cot-action>span',
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',
   // Deploy
   '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',

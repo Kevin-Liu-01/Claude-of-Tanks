@@ -65,6 +65,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats>*{flex-shrink:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations]{flex:1 0 auto;display:flex;
   flex-direction:column;margin-bottom:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations] .cot-ammo-tiles{margin-top:auto;}
+/* a tall column opens the figures' pitch a little (capped), at full density only */
+body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density~='1']) .cot-headline{row-gap:clamp(var(--s3),2.2vh,var(--s5));}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-ammo-tiles{padding-top:var(--s3);}
 body[data-cot-panels='persistent'] .cot-garage .stats [data-stations]{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats [data-stations~='overview'],
@@ -88,8 +90,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    3 keeps the figures and the tables alone: the technical drawing gives up its room last;
    4 (a short docked window) keeps each station's first plate only, without the rival. */
 .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
-.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-special-section,
-  .cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
+.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
 .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
 .cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
 .cot-garage .stats[data-density~='1'] .srow{padding:3px 6px var(--s1);}
@@ -126,6 +127,7 @@ body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
   display:block;margin:0;padding:var(--s2) var(--s2) var(--s3);border-bottom:1px solid var(--line-1);}
 body[data-cot-panels='overlay'] .cot-garage :is(.cot-compare,.cot-ammo-tiles,.cot-mag,.cot-hrow .v em){display:none;}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-actions{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale i.r{border:0;background:var(--line-2);}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale i.f.r{background:var(--ink-2);}
 body[data-cot-panels='overlay'] .cot-garage .cot-headline{gap:var(--s3);}

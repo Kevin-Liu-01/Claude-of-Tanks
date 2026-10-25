@@ -1556,16 +1556,11 @@ body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 
 .cot-battle-menu .cot-battle-choice[aria-pressed="true"]{border-color:var(--mode-color);background:color-mix(in srgb,var(--mode-color) 15%,var(--surface-menu));color:var(--mode-color);}
 
-.cot-system-preview{display:flex;gap:var(--s1);overflow-x:auto;scrollbar-width:none;}
-.cot-system-preview::-webkit-scrollbar{display:none;}
-.cot-system-preview button{flex:1;min-width:42px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);padding:5px 3px;border:1px solid var(--line-control);background:var(--surface-menu);color:var(--text-accent);font-family:inherit;font-weight:700;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.2;cursor:help;}
-.cot-system-preview button:hover,.cot-system-preview button:focus-visible{border-color:var(--accent);background:var(--accent-wash);}
-
-.cot-system-preview>.cot-system-control{width:auto;max-width:none;max-height:none;min-width:44px;min-height:48px;border-radius:3px;}
-/* These full-size controls sit inside a scroll clip: keep the help button's
-   hover lift and press shrink from cutting their borders or shifting the row. */
-.cot-system-preview>.cot-system-control:is(:hover,:focus-visible,:active,[aria-expanded='true']){transform:none;}
-.cot-system-preview>.cot-system-control::after{display:none;}
+/* the selected vehicle's actions (overview): kit chips with the glyph, the name and the key; they wrap, never truncate */
+.cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3);}
+.cot-garage .cot-action{padding:0 var(--s1) 0 var(--s2);gap:var(--s1);color:var(--ink-1);}
+.cot-garage .cot-action>span{white-space:nowrap;}
+.cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
 
 /* Short landscape drawers need their own reading space: fixed filters must
    never consume the entire scrollable camouflage catalog. */

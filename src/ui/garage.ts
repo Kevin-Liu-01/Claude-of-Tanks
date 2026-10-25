@@ -1,8 +1,8 @@
 import type { CustomSelectController } from './customSelect.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
-import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
-import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
+import { vehicleActionsFor } from './vehicleActionList.ts';
+import type { VehicleActionBinding } from '../game/vehicleActions.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
@@ -45,7 +45,7 @@ import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSu
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup,
   garageTechnicalViews, shellTypeLabel, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
@@ -206,6 +206,8 @@ interface GarageOptions {
   /** The stage's overlay (the callouts) changed while the showroom is still: one frame places it (main.ts: the Garage
    *  renders on demand, so a still stage draws nothing until asked). */
   readonly onOverlayChange?: () => void;
+  /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
+  readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
 }
 
 export interface GarageRuntime {
@@ -1226,7 +1228,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       row('engine', t('garage.dossier.stat.hpt'), 'hpt', 'hp/t', 1) +
       row('shield', t('garage.dossier.stat.hp'), 'hp', '', 0) +
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
-      `</div>${magazineFigures(spec.gun, eqM.reload)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
+      `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
         `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div>` +
       // a folded layout shows three of the rows; this opens the whole dossier
@@ -3160,19 +3162,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return slots.join('');
   }
 
-  function specialSystemSection(spec: GarageTankSpec, reloadS: number): string {
-    const special = garageSpecialSystem(spec, reloadS);
-    const [smokeLaunchers = 0, drivingLights = 0, roofGuns = 0] = GARAGE_AUXILIARY_SUMMARY[spec.id] ?? [];
-    const controls: {label:string;icon:string;detail:string}[] = [];
-    if(special) controls.push({label:special.shortLabel,icon:special.icon,detail:special.detail});
-    if(guidedMissileSlot(spec)>=0&&specialActionKind(spec)!==SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&spec.gun.shells.some(shell=>!shell.guided))controls.push({label:'ATGM',icon:'missileRack',detail:t('systems.atgm.help')});
-    if(smokeLaunchers) controls.push({label:t('systems.smoke'),icon:'smoke',detail:t('systems.smoke.help')});
-    if(drivingLights) controls.push({label:t('systems.lights'),icon:'lightbulb',detail:t('systems.lights.help')});
-    if(roofGuns) controls.push({label:t('systems.roofGun'),icon:'roofGun',detail:t('systems.roofGun.help')});
-    if(!controls.length)return '';
-    return `<section class="cot-stat-section cot-special-section">` +
-      statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +
-      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" data-guide="${control.icon==='smoke'?'smoke':'special'}" data-tip="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
+  /**
+   * The selected vehicle's actions (owner 10-25: "be able to see the actions u can do with tank"): the battle's
+   * vehicle-action table read for it (vehicleActionsFor), each with its glyph, name and key in the table's order, its
+   * use in the hover tip. The chips wrap, never truncate.
+   */
+  function actionsRow(spec: GarageTankSpec): string {
+    const keyFor = (binding: VehicleActionBinding): string | null | undefined => {
+      try { return opts.actionKeyFor?.(binding); } catch (_) { return null; } // the input layer boots after the Garage
+    };
+    const actions = vehicleActionsFor(spec, {}, keyFor);
+    if (!actions.length) return '';
+    return `<div class="cot-actions" role="list" aria-label="${t('garage.actions.heading')}">` + actions.map((action) =>
+      `<span class="cot-c-chip cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
+      `${uiIconSVG(action.glyph, 15)}<span>${action.label}</span><kbd class="cot-c-kbd">${action.key}</kbd></span>`).join('') +
+      `</div>`;
   }
 
   /**
@@ -3336,7 +3340,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const eqTitle = (base: string): string => `Stock ${base} &middot; ${eqNames}`;
     const movingDispersion = (coefficient: number, rate: number) => spec.gun.baseAccuracy *
       movementDispersionFactor(coefficient, 0, 0, rate, 0, 0, eqM.bloom);
-    const specialCard = specialSystemSection(spec, reloadS);
     const initialTechnicalView = technicalViews[0];
     const initialTechnicalViewLabel = translateTechnicalView(initialTechnicalView).label;
     const initialTechnicalViewCaption = translateTechnicalView(initialTechnicalView).caption;
@@ -3420,7 +3423,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         1 / (1 + movingDispersion(spec.gun.bloom.turret, 20)), { icon: 'turretRing', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') })) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       `</div></section>` +
-      specialCard.replace('<section class="cot-stat-section', '<section data-stations="firepower" class="cot-stat-section') +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
       `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
@@ -3487,12 +3489,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
         guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
-    });
-    statsEl.querySelectorAll<HTMLButtonElement>('.cot-system-preview button').forEach(button=>{
-      const info=createInfoButton({title:button.textContent||'',text:button.dataset.tip||'',guide:button.dataset.guide==='smoke'?'smoke':'special',
-        vehicle:{id:spec.id,name:spec.label?.displayName||spec.name},className:'cot-system-control'});
-      info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
-      button.replaceWith(info);
     });
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
     else queueReadoutFit(false, vehicleChanged);
