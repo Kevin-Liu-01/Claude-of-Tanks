@@ -173,6 +173,34 @@ Two further first uses:
 The recorder now names raw programs by their uniforms and records every program's first draw into each framebuffer, to
 attribute these.
 
+#### The warm under the live battle, paced by the GPU
+
+The first A/B pairs (`ab1`: base 3852a725d4, lane with the stand-ins) bore the stand-in fix out:
+
+| Measure | Base | Lane |
+|---|---|---|
+| Live thermal links (Verdant 7 v 7 cold) | 25 | 9 |
+| The vision warm | 7.2 s | 4.7 s |
+| GPU-busy hitches, 7 v 7 cold | 6 | 2 |
+| GPU-busy hitches, 14 v 14 cold | 5 | 0 |
+
+The worst GPU stall did not shrink, though: 800 ms in the lane's 7 v 7. The deferred warm's own record placed it inside
+the **rare effects'** window, not the sights'.
+
+- Everything after the countdown's hold runs under the live battle for its first 5–10 s: wreck variants, scars,
+  shadows, hidden variants, rare effects, the sights.
+- The warm is paced by 6 ms main-thread slices, but a first-bind render costs the main thread almost nothing: the link
+  is polled and the draw only queued.
+- So one slice issued a dozen renders, and the GPU process built all their pipelines in one flush.
+
+**Fix:**
+
+- The combat warm's renderer fences each render (`engine/offscreenWarm.ts` `fence: true`, `gpuSettled`).
+- After the hold's release, each yield of the deferred warm waits real frames until the last render's fence has
+  signalled, at most 90 frames a yield (`game/deferredCombatWarmRuntime.ts`, `trace.gpuPacedFrames`).
+- One render's pipelines are in flight at a time, frames between them.
+- The held count and the warms behind the veil are unchanged.
+
 ### The bots' first step (cold)
 
 At rollout the first simulation step ran 33 ms at 14 v 14 and 42 ms at 21 v 21 (the authority on thread CPU; the
