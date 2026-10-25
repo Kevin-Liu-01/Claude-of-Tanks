@@ -17,10 +17,18 @@ const SHELL_ALIAS: Readonly<Record<string, string>> = Object.freeze({
   HESH: 'HE', BEEHIVE: 'HE', APC: 'AP', APBC: 'AP', APCBC: 'AP', APHE: 'AP', HVAP: 'APCR', APDS: 'APFSDS', 'HEAT-FS': 'HEAT',
 });
 
-/** The sprite glyph of a shell class (an alias draws its sibling's; an unknown type the AP envelope). */
+/** The sprite glyph of a shell class: its own, an alias's sibling's, a tracer's base round's (APFSDS-T), else by family
+ *  (a missile, any HEAT, a sabot, a composite-rigid or a high-explosive round), else the AP envelope. */
 export function shellIconId(type: string): IconId {
-  const code = String(type || '').toUpperCase();
-  return SHELL_ICON[code] ?? SHELL_ICON[SHELL_ALIAS[code] ?? ''] ?? (/ATGM|MISSILE/.test(code) ? 'shellAtgm' : 'shellAp');
+  const code = String(type || '').toUpperCase().replace(/-T$/, '');
+  const known = SHELL_ICON[code] ?? SHELL_ICON[SHELL_ALIAS[code] ?? ''];
+  if (known) return known;
+  if (/ATGM|MISSILE/.test(code)) return 'shellAtgm';
+  if (/HEAT/.test(code)) return 'shellHeat';
+  if (/FSDS|APDS/.test(code)) return 'shellApfsds';
+  if (/APCR|HVAP/.test(code)) return 'shellApcr';
+  if (/^HE|HESH/.test(code)) return 'shellHe';
+  return 'shellAp';
 }
 
 /** Return a crisp inline SVG whose silhouette is specific to a shell class. */
