@@ -458,8 +458,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
-/* a co-op foot has two columns (1.6fr 1fr, 2.6 shares): the team words stand on its second */
-.cot-play:where(:has(.control-options>.field[hidden])) .player{--foot-track:calc((100% + 2 * var(--s4) - var(--s3)) / 2.6)}
+/* a co-op room has every player on one side: their team words would repeat down the roster, so only a spectator's show */
+.cot-play:where(:has(.control-options>.field[hidden])) .player:not(.spectator) .team{visibility:hidden}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
@@ -496,7 +496,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
 .cot-play :is(.room-failure,.version-refusal,.status){flex-wrap:wrap;padding:var(--s3) var(--s4);outline-offset:4px}
-.cot-play .room-failure{margin-top:var(--s4);scroll-margin-block:var(--s6)}
+.cot-play .room-failure{margin-top:var(--s3);scroll-margin-block:var(--s6)}
 .cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--play-gutter) - var(--play-head-end)) 0 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/calc(var(--s4) + var(--s1)) var(--font-ui)}
