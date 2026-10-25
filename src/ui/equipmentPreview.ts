@@ -73,6 +73,13 @@ interface EquipmentStatSnapshot {
   splashCrewHitPct: number;
   ammoRackDurabilityPct: number;
   fuelTankDurabilityPct: number;
+  engineDurabilityPct: number;
+  transmissionDurabilityPct: number;
+  turretRingDurabilityPct: number;
+  gunMountDurabilityPct: number;
+  gunDurabilityPct: number;
+  opticsDurabilityPct: number;
+  autoloaderDurabilityPct: number;
   engineFireChancePct: number;
   fireDurationPct: number;
   selfExtinguishRatePct: number;
@@ -190,6 +197,48 @@ const METRICS: readonly MetricDefinition[] = [
     format: (snapshot) => pct(snapshot.fuelTankDurabilityPct),
   },
   {
+    id: 'engineDurability', label: 'Engine durability', labelKey: 'garage.equipment.metric.engineDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.engineDurabilityPct],
+    format: (snapshot) => pct(snapshot.engineDurabilityPct),
+  },
+  {
+    id: 'transmissionDurability', label: 'Transmission durability', labelKey: 'garage.equipment.metric.transmissionDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.transmissionDurabilityPct],
+    format: (snapshot) => pct(snapshot.transmissionDurabilityPct),
+  },
+  {
+    id: 'turretRingDurability', label: 'Turret-ring durability', labelKey: 'garage.equipment.metric.turretRingDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.turretRingDurabilityPct],
+    format: (snapshot) => pct(snapshot.turretRingDurabilityPct),
+  },
+  {
+    id: 'gunMountDurability', label: 'Gun-mount durability', labelKey: 'garage.equipment.metric.gunMountDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.gunMountDurabilityPct],
+    format: (snapshot) => pct(snapshot.gunMountDurabilityPct),
+  },
+  {
+    id: 'gunDurability', label: 'Gun durability', labelKey: 'garage.equipment.metric.gunDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.gunDurabilityPct],
+    format: (snapshot) => pct(snapshot.gunDurabilityPct),
+  },
+  {
+    id: 'opticsDurability', label: 'Optics durability', labelKey: 'garage.equipment.metric.opticsDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.opticsDurabilityPct],
+    format: (snapshot) => pct(snapshot.opticsDurabilityPct),
+  },
+  {
+    id: 'autoloaderDurability', label: 'Autoloader durability', labelKey: 'garage.equipment.metric.autoloaderDurability',
+    higherIsBetter: true,
+    values: (snapshot) => [snapshot.autoloaderDurabilityPct],
+    format: (snapshot) => pct(snapshot.autoloaderDurabilityPct),
+  },
+  {
     id: 'engineFire', label: 'Engine-fire chance modifier', labelKey: 'garage.equipment.metric.engineFire',
     higherIsBetter: false,
     values: (snapshot) => [snapshot.engineFireChancePct],
@@ -214,16 +263,27 @@ const ITEM_METRICS: Readonly<Record<string, readonly string[]>> = Object.freeze(
   vstab: ['bloom'],
   gld: ['aim'],
   vents: ['reload', 'aim', 'view', 'camo'],
-  optics: ['view'],
-  binoculars: ['view'],
-  camo_net: ['camo'],
+  ready_rack: ['reload', 'ammoRackDurability'],
+  fire_control: ['aim', 'bloom'],
+  loader_kit: ['reload', 'autoloaderDurability'],
   rotation: ['hullTraverse', 'turretTraverse'],
   susp: ['trackDurability'],
-  toolbox: ['repair'],
+  turret_drive: ['turretTraverse'],
+  drivetrain: ['engineDurability', 'transmissionDurability'],
   spall_liner: ['heSplash', 'crewHe'],
+  skirts: ['heSplash', 'trackDurability'],
+  ring_guard: ['turretRingDurability', 'gunMountDurability'],
+  mantlet_shield: ['gunDurability', 'opticsDurability'],
+  toolbox: ['repair'],
   wet_rack: ['ammoRackDurability'],
   fuel_safety: ['fuelTankDurability', 'engineFire'],
   auto_ext: ['fireDuration', 'extinguish'],
+  fire_blankets: ['fireDuration', 'extinguish'],
+  optics: ['view'],
+  binoculars: ['view'],
+  camo_net: ['camo'],
+  exhaust_baffles: ['camo'],
+  thermal_sight: ['view'],
 });
 
 function snapshotFor(spec: EquipmentPreviewSpec, loadout: readonly string[]): EquipmentStatSnapshot {
@@ -247,6 +307,14 @@ function snapshotFor(spec: EquipmentPreviewSpec, loadout: readonly string[]): Eq
     splashCrewHitPct: multipliers.crewHe * 100,
     ammoRackDurabilityPct: (multipliers.moduleHp.ammoRack || 1) * 100,
     fuelTankDurabilityPct: (multipliers.moduleHp.fuelTank || 1) * 100,
+    engineDurabilityPct: (multipliers.moduleHp.engine || 1) * 100,
+    transmissionDurabilityPct: (multipliers.moduleHp.transmission || 1) * 100,
+    turretRingDurabilityPct: (multipliers.moduleHp.turretRing || 1) * 100,
+    gunMountDurabilityPct: (multipliers.moduleHp.gunMount || 1) * 100,
+    gunDurabilityPct: (multipliers.moduleHp.gun || 1) * 100,
+    opticsDurabilityPct: (multipliers.moduleHp.optics || 1) * 100,
+    // the kit treats the magazine and its feed together
+    autoloaderDurabilityPct: (multipliers.moduleHp.autoloader || 1) * 100,
     engineFireChancePct: multipliers.engineFire * 100,
     fireDurationPct: multipliers.fireTicks * 100,
     selfExtinguishRatePct: multipliers.extinguish * 100,

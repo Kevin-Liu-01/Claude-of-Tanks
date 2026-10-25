@@ -33,7 +33,7 @@ import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
 // with the battle sim.
 import {
   EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
-  loadEquipment, saveEquipment, equipEligible, computeEquipMults,
+  loadEquipment, saveEquipment, equipEligible, equipIneligibility, computeEquipMults,
 } from '../game/equipment.ts';
 import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
@@ -300,10 +300,13 @@ function equipmentAvailabilityCopy(
   openSlot: number,
 ): string {
   if (!locked) return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
-  if (itemId === 'rammer' && spec?.gun?.autoloader) {
-    return t('garage.equipment.unavailable.autoloader');
+  switch (equipIneligibility(itemId, spec)) {
+    case 'manualLoader':
+      return t(itemId === 'rammer' ? 'garage.equipment.unavailable.autoloader' : 'garage.equipment.unavailable.manualLoader');
+    case 'autoloader': return t('garage.equipment.unavailable.needsAutoloader');
+    case 'turret': return t('garage.equipment.unavailable.turret');
+    default: return t('garage.equipment.unavailable.modernOnly');
   }
-  return t('garage.equipment.unavailable.modernOnly');
 }
 
 function equipmentMetricIcon(metricId: string): string {
@@ -321,6 +324,13 @@ function equipmentMetricIcon(metricId: string): string {
     crewHe: 'crew',
     ammoRackDurability: 'ammoRack',
     fuelTankDurability: 'fuelTank',
+    engineDurability: 'engine',
+    transmissionDurability: 'transmission',
+    turretRingDurability: 'turretRing',
+    gunMountDurability: 'gunMount',
+    gunDurability: 'gun',
+    opticsDurability: 'optics',
+    autoloaderDurability: 'autoloader',
     engineFire: 'engine',
     fireDuration: 'extinguisher',
     extinguish: 'extinguisher',
