@@ -289,12 +289,12 @@ const SETTINGS_CSS = `
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
-.cot-set-colhdr span{width:calc(92px * var(--cot-type-scale,1));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
+.cot-set-colhdr span{width:max(92px,calc(92px * var(--cot-type-scale,1)));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
-.cot-chip{width:calc(92px * var(--cot-type-scale,1));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
+.cot-chip{width:max(92px,calc(92px * var(--cot-type-scale,1)));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
