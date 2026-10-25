@@ -882,16 +882,18 @@ tabsHost.innerHTML = tabs({
 const markupTab = $<HTMLButtonElement>('#dossierTabs [data-tab="markup"]');
 function selectTab(tab: DossierTab, focus = false): void {
   activeTab = tab;
+  // the strip's geometry is read before any write, so a tab change costs at most one layout (not a read after writes)
+  const target = tabsHost.querySelector<HTMLElement>(`[role=tab][data-tab="${tab}"]`);
+  const list = target?.parentElement;
+  const scrollTo = target && list && (target.offsetLeft < list.scrollLeft
+    || target.offsetLeft + target.offsetWidth > list.scrollLeft + list.clientWidth) ? target.offsetLeft - 16 : null;
   for (const button of tabsHost.querySelectorAll<HTMLElement>('[role=tab]')) {
-    const on = button.dataset.tab === tab;
+    const on = button === target;
     button.setAttribute('aria-selected', String(on));
     button.tabIndex = on ? 0 : -1;
     if (on && focus) button.focus({ preventScroll: true });
-    const list = button.parentElement;
-    if (on && list && (button.offsetLeft < list.scrollLeft || button.offsetLeft + button.offsetWidth > list.scrollLeft + list.clientWidth)) {
-      list.scrollLeft = button.offsetLeft - 16;
-    }
   }
+  if (list && scrollTo !== null) list.scrollLeft = scrollTo;
   for (const id of DOSSIER_TABS) $<HTMLElement>(`#dossier-${id}`).hidden = id !== tab;
   const record = selectedId ? recordById.get(selectedId) : null;
   if (tab === 'overview' && record) renderVersus(record); // its canvas measures its box once it shows
