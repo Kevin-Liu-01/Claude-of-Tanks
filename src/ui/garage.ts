@@ -73,7 +73,7 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -252,13 +252,19 @@ const GARAGE_STATIONS = Object.freeze([
 ] as const);
 type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
-/** A core mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card). */
-const deployCardArt = (id: string): string =>
-  `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`;
+/** The modes public/media/deploy-r1 holds a 640 card picture for (the others have their 480 tile picture). */
+const DEPLOY_CARD_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
+/** A headline mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card): its 640
+ *  card picture, or its tile picture until a card one lands (Drone, 2026-10-25). */
+const deployCardArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
-/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range too). */
-const deployTileArt = (id: string): string =>
-  `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range
+ *  too); a mode that only has a card picture shows that one. */
+const deployTileArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
 /**
  * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
@@ -722,9 +728,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${deployCardArt('standard')}<span class="choice-icon">${uiIconSVG('modeStandard', 21)}</span>` +
     `<span class="cot-deploy-choice-t"><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
     `<span class="cot-deploy-chips" data-deploy-chips="standard"></span></span></button>` +
-    deployCardsHTML(['zone_control', 'capture_the_flag', 'frontline_assault'], true) +
+    // the presentation order (sim/gameModeCatalog.ts): Standard leads as the solo card above, then the other headline modes
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(1, HEADLINE_MODE_COUNT), true) +
     `</div><div class="cot-deploy-rows">` +
-    deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
     `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
