@@ -152,13 +152,19 @@ function bowLightPair(P: AfvBuilderPort, x: number, y: number, z: number, seed: 
 }
 
 function addBMP3Turret(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, torus, buildGun } = KIT;
+  const { box, cylY, cylZ, lathe, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.34, 0.62);
 
   // Broad, low BMP-3 turntable with a buried front saddle. The lower ring
   // overlaps the donor roof instead of exposing a neck or empty annulus.
-  P.add('turret', cylY(1.02, 1.16, 0.34, 26), 0, 0.18, -0.08);
+  // 2026-10-24 (the owner: "redesing the bmp-3 rok and bwp-1 turret bases. amke them better"): the turret stands on its
+  // ring, a 0.92 m collar sunk 4 cm into the roof, and the casting's rolled skirt over it (closed lathe) overhangs the
+  // collar by 21 cm, fullest 12-19 cm up, and rolls in under the dome's foot; the 1.16 m frustum read as a disc under
+  // the dome.
+  P.add('turret', cylY(0.92, 0.92, 0.12, 32), 0, 0.02, -0.08);
+  P.add('turret', lathe([[0, 0.06], [0.92, 0.06], [1.08, 0.075], [1.13, 0.12], [1.13, 0.19], [1.08, 0.27], [1.02, 0.33],
+    [0.94, 0.37], [0, 0.37]], 32), 0, 0, -0.08);
   P.add('turret', cylY(0.84, 1.02, 0.40, 24), 0, 0.48, -0.02);
   P.add('turret', orientedSlab(
     [-0.72, 0.22, 1.00], [0.72, 0.22, 1.00], [0.92, 0.22, 0.22], [-0.92, 0.22, 0.22],
@@ -456,10 +462,15 @@ function buildBMPT2(P: AfvBuilderPort): void {
 }
 
 function addBWP1Station(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, torus, buildGun } = KIT;
+  const { box, cylY, cylZ, lathe, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.40, 0.60);
-  P.add('turret', cylY(0.96, 1.08, 0.22, 24), 0, 0.10, -0.12);
+  // 2026-10-24 (the owner: "redesing the bmp-3 rok and bwp-1 turret bases. amke them better"): its ring, a 0.88 m collar
+  // sunk 5 cm into the roof, and over it a chamfered sixteen-facet armour base in the faceted body's own plates (closed
+  // lathe): out 19 cm over the collar, its band standing 5 cm, chamfered in under the body; in place of the 1.08 m frustum
+  P.add('turret', cylY(0.88, 0.88, 0.10, 32), 0, 0.0, -0.12);
+  P.add('turret', lathe([[0, 0.035], [0.88, 0.035], [1.03, 0.055], [1.07, 0.085], [1.07, 0.135], [0.96, 0.19],
+    [0, 0.19]], 16), 0, 0, -0.12);
   P.add('turret', orientedSlab(
     [-0.64, 0.12, 1.08], [0.64, 0.12, 1.08], [0.84, 0.14, -0.82], [-0.84, 0.14, -0.82],
     [-0.42, 0.68, 0.82], [0.42, 0.68, 0.82], [0.62, 0.70, -0.70], [-0.62, 0.70, -0.70]));
