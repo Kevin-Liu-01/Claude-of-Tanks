@@ -653,6 +653,23 @@ export const PATHS = [
         pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
       ]);
     } },
+  // the battle's HUD canvases (the minimap, the sights, the aerial HUD): a solo battle, its pause menu and live frames
+  { id: 'canvas-battle', doc: 'battle', reps: 1,
+    script: async (page, i, run, ctx) => {
+      await openDeploy(page, ctx);
+      await tapOrClick(page, await target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), ctx);
+      await waitFor(page, `!!window.__BATTLE_REVEAL`, 240000);
+      await settle(page, 800, 8000);
+      const wait = () => sleep(900);
+      const pause = async () => { await pressKey(page, 'Escape'); await waitFor(page, `shown('.cot-settings.open') || shown('.cot-pause')`, 10000).catch(() => {}); };
+      const resume = async () => { await closeSettings(page, ctx).catch(() => pressKey(page, 'Escape')); await sleep(600); };
+      await canvasProbe(page, ctx, 'battle-hud', [wait, wait, pause, resume, wait, wait, pause, resume, wait, wait]);
+      await page.evaluate(() => window.__DEBUG.slayEnemies());
+      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000).catch(() => {});
+      await canvasProbe(page, ctx, 'battle-end', []);
+      await tapOrClick(page, await target(page, '.cot-es.show [data-es-action="garage"]'), ctx).catch(() => {});
+      await waitFor(page, GARAGE_BACK, 120000).catch(() => {});
+    } },
   { id: 'canvas-gallery', doc: 'gallery', reps: 1,
     script: async (page, i, run, ctx) => {
       const pressOn = (selector, n = 0) => async () => { await tapOrClick(page, await target(page, selector, n), ctx); await sleep(600); };

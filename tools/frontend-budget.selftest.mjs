@@ -84,7 +84,8 @@ try {
   // misses come first, each with its lane
   const misses = rows.filter((r) => !r.pass);
   assert.ok(rows.slice(0, misses.length).every((r) => !r.pass), 'misses lead the table');
-  assert.deepEqual([...new Set(misses.map((r) => r.owner))].sort(), ['premiere-gallery-studio', 'premiere-site'], 'a leak is its screen\'s lane\'s');
+  assert.deepEqual([...new Set(misses.map((r) => r.owner))].sort(), ['canvas-ui', 'premiere-gallery-studio', 'premiere-site'],
+    'a leak is its screen\'s lane\'s; a canvas miss is the canvas migration\'s');
 
   // --check: everything is a regression with no known list; a known miss that held passes; one far worse fails
   assert.equal(compare(rows, {}).regressions.length, misses.length);

@@ -153,7 +153,8 @@ export function evaluate(values) {
     if (budget == null) continue;
     const value = entry.metric === 'inpP98Ms' ? quantile(entry.values, 0.98) : worst(entry.values);
     rows.push({ key, cls: entry.cls, surface: entry.surface, rig: entry.rig, metric: entry.metric, value, budget,
-      pass: value <= budget, samples: entry.values.length, owner: ownerOf(entry.surface) });
+      // canvas rule misses go to the canvas-ui migration (UI-LOCKDOWN A), not the surface's lane
+      pass: value <= budget, samples: entry.values.length, owner: entry.metric === 'canvasViolations' ? 'canvas-ui' : ownerOf(entry.surface) });
   }
   return rows.sort((a, b) => Number(a.pass) - Number(b.pass) || a.key.localeCompare(b.key));
 }
