@@ -248,6 +248,7 @@
   "techTree.select": "Select",
   "techTree.nations": "Nations",
   "techTree.builds": "Builds",
+  "techTree.buildsAria": "{count} builds",
   "techTree.stat.penetration": "Penetration",
   "techTree.stat.hp": "Hit points",
   "techTree.stat.speed": "Top speed",

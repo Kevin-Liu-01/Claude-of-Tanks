@@ -2,7 +2,8 @@
 // our current version, which is purely aesthetic for now"). A lazy chunk with techTree.css and its catalog slice
 // (techTreeStrings.ts); the Garage opens it from the game bar, the T key and the phone menu. Every vehicle is available:
 // a node selects, and Select takes the node's chosen build into the Garage.
-// Columns are the ten tiers; rows are the tree's lanes, the special lane under a rule. Nodes and connectors are placed
+// Columns are the tree's tiers (from its first to its last); rows are its lanes, the special lane under a rule. Nodes
+// show the hero render on the nation's flag and the name (two lines when it needs them). Nodes and connectors are placed
 // from src/techTree/layout.ts (the receipt checks the same routes): a connector runs along its parent's row and enters
 // its child from the left, or, for a second parent, from above or below; every connector ends in an arrowhead.
 // Zoom re-lays the grid at a scaled cell, so the type stays crisp (the buttons, ctrl/⌘ + wheel or a trackpad pinch,
@@ -23,14 +24,14 @@ import { ensureFonts } from './fonts.ts';
 import { formatNumber, t } from './i18n.ts';
 
 const NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'] as const;
-const TIERS = 10;
 const PAD_X = 28;
 const GAP_X = 18;
 const GAP_Y = 14;
 const SPECIAL_GAP = 24;
 const HEAD_H = 40;
 const MIN_COL = 112;
-const MAX_COL = 196;
+/** Wide screens fill with wider columns (the grid shares the title's and the detail's left edge) up to this. */
+const MAX_COL = 280;
 const MIN_ROW = 64;
 const ARROW = 6;
 const WIRE_KINDS = ['base', 'sel'] as const;
@@ -67,6 +68,11 @@ interface TechTreeScreen {
 }
 
 interface Geometry {
+  /** The tree's first tier and how many tiers it spans (a tree that opens at II has no empty column I). */
+  readonly first: number;
+  readonly count: number;
+  /** The tier row's height, which grows with the screen's type scale. */
+  readonly head: number;
   readonly col: number;
   readonly row: number;
   readonly lanes: number;
@@ -93,9 +99,19 @@ function kitButton(label: string, options: { readonly glyph?: IconId; readonly v
   return `<button type="button" class="${cls}" data-ui-sound="${options.sound}"${name}${zoom}>${body}</button>`;
 }
 
-/** A node's name follows its column: the type scale's label steps (zh-CN documents lift 11 and 12 to 13). */
-const nameSize = (col: number): string =>
-  `var(--fs-${col < 132 ? 11 : col < 148 ? 12 : col < 164 ? 13 : col < 200 ? 14 : col < 240 ? 16 : 18})`;
+/** A node's name follows its column on the type scale's steps; the label steps keep the kit's floor (zh lifts them to 13). */
+const nameSize = (col: number): string => {
+  const step = col < 132 ? 11 : col < 148 ? 12 : col < 164 ? 13 : col < 200 ? 14 : col < 240 ? 16 : 18;
+  return step <= 12 ? `max(var(--fs-floor-${step}),var(--fs-${step}))` : `var(--fs-${step})`;
+};
+/** The screen's type scale beside the grid (title, detail, stats, rail): 1 to 1440 px, growing to 1.5 at 2400 px. */
+const uiScale = (): number => Math.min(1.5, Math.max(1, (window.innerWidth || 1440) / 1600));
+/** The tiers a tree spans, first to last. */
+const tierSpan = (tree: NationTree): { readonly first: number; readonly count: number } => {
+  const tiers = tree.nodes.map((node) => node.tier);
+  const first = Math.min(...tiers);
+  return { first, count: Math.max(...tiers) - first + 1 };
+};
 
 export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   ensureFonts();
@@ -136,23 +152,26 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<header class="tt-head">` +
     `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"></h1></div>` +
     `<nav class="tt-rail" aria-label="${t('techTree.nations')}"></nav>` +
+    // zoom sits on its own opaque plate in the header, clear of every card
+    `<div class="tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
+    kitButton(t('techTree.zoomOut'), { glyph: 'zoomOut', variant: 'ghost', size: 36, sound: 'press', zoom: 'out' }) +
+    kitButton(t('techTree.zoomFit'), { glyph: 'zoomFit', variant: 'ghost', size: 36, sound: 'press', zoom: 'fit' }) +
+    kitButton(t('techTree.zoomIn'), { glyph: 'zoomIn', variant: 'ghost', size: 36, sound: 'press', zoom: 'in' }) +
+    `</div>` +
     kitButton(t('techTree.close'), { glyph: 'close', variant: 'secondary', size: 48, sound: 'back', className: 'tt-close' }) +
     `</header>` +
     `<div class="tt-stage">` +
     `<div class="tt-board">` +
     `<div class="tt-grid"><div class="tt-tiers" aria-hidden="true"></div>` +
-    `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true"></div></div></div>` +
-    `<div class="tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
-    kitButton(t('techTree.zoomOut'), { glyph: 'zoomOut', variant: 'ghost', size: 36, sound: 'press', zoom: 'out' }) +
-    kitButton(t('techTree.zoomFit'), { glyph: 'zoomFit', variant: 'ghost', size: 36, sound: 'press', zoom: 'fit' }) +
-    kitButton(t('techTree.zoomIn'), { glyph: 'zoomIn', variant: 'ghost', size: 36, sound: 'press', zoom: 'in' }) +
-    `</div></div>` +
+    `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true"></div></div></div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
     `<div class="tt-detail-id"><h2 class="tt-detail-name"></h2>` +
-    `<div class="tt-detail-meta"><span class="tt-detail-tier"></span>` +
-    `<span class="tt-detail-special" aria-label="${t('techTree.special')}" hidden>${icon('star', { size: 18 })}</span></div>` +
-    `<div class="tt-builds" role="radiogroup" aria-label="${t('techTree.builds')}"></div></div>` +
+    // the kit's tags (components.css .cot-c-tag): the tier, and Special for a vehicle outside the lines
+    `<div class="tt-detail-meta"><span class="cot-c-tag cot-c-tag--neutral tt-detail-tier"></span>` +
+    `<span class="cot-c-tag cot-c-tag--neutral tt-detail-special" hidden>${esc(t('techTree.special'))}</span></div>` +
+    // a node's twin builds: the kit's segmented control (components.css .cot-c-seg, the slate plate marks the choice)
+    `<div class="cot-c-seg tt-builds" role="radiogroup" aria-label="${t('techTree.builds')}"></div></div>` +
     `<div class="tt-stats"></div>` +
     `<div class="tt-act">${kitButton(t('techTree.select'), { variant: 'primary', size: 56, sound: 'confirm', className: 'tt-select' })}</div>` +
     `</section>`;
@@ -167,12 +186,17 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   const selectButton = root.querySelector<HTMLButtonElement>('.tt-select')!;
   const zoomButtons = root.querySelectorAll<HTMLButtonElement>('[data-zoom]');
 
-  for (let tier = 1; tier <= TIERS; tier++) {
-    const numeral = document.createElement('span');
-    numeral.className = 'tt-numeral';
-    numeral.dataset.tier = String(tier);
-    numeral.textContent = NUMERALS[tier];
-    tiersEl.append(numeral);
+  /** The open tree's tier numerals, first to last. */
+  function buildTiers(): void {
+    const { first, count } = tierSpan(tree);
+    tiersEl.replaceChildren();
+    for (let tier = first; tier < first + count; tier++) {
+      const numeral = document.createElement('span');
+      numeral.className = 'tt-numeral';
+      numeral.dataset.tier = String(tier);
+      numeral.textContent = NUMERALS[tier];
+      tiersEl.append(numeral);
+    }
   }
 
   // The nation rail: one flag per tree, the open tree's marked; the hover tip names each.
@@ -187,12 +211,19 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     item.addEventListener('click', () => showTree(entry.id));
     rail.append(item);
   }
+  /** The rail scrolls on narrow screens: it fades at the edges it scrolls toward. */
+  function markRail(): void {
+    rail.classList.toggle('is-more-left', rail.scrollLeft > 2);
+    rail.classList.toggle('is-more-right', rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2);
+  }
+  rail.addEventListener('scroll', markRail, { passive: true });
 
   const buttons = new Map<string, HTMLButtonElement>();
 
   function nodeAria(node: TreeNode): string {
     const parts = [displayName(vehicles.get(node.id), node.id), t('techTree.tierAria', { tier: NUMERALS[node.tier] })];
     if (node.slot === 'special') parts.push(t('techTree.special'));
+    if (node.builds?.length) parts.push(t('techTree.buildsAria', { count: node.builds.length + 1 }));
     return parts.join(', ');
   }
 
@@ -211,12 +242,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       item.dataset.tip = '';
       item.tabIndex = -1;
       item.setAttribute('aria-label', nodeAria(node));
-      item.innerHTML =
-        `<span class="tt-art"></span>` +
-        `<span class="tt-tag" aria-hidden="true">${flag(tree.flagNation, 'sm')}` +
-        (node.slot === 'special' ? icon('star', { size: 13, className: 'tt-star' }) : '') +
-        (node.builds?.length ? `<b class="tt-buildcount num">${node.builds.length + 1}</b>` : '') + `</span>` +
-        `<span class="tt-name" aria-hidden="true"></span>`;
+      // the hero card's own flag layer carries the nation (owner rule: every vehicle shows its flag and its render)
+      item.innerHTML = `<span class="tt-art"></span><span class="tt-name" aria-hidden="true"></span>`;
       item.addEventListener('click', () => select(node.id));
       item.addEventListener('dblclick', () => pick(node.id));
       grid.append(item);
@@ -250,24 +277,28 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   }
 
   function measure(): Geometry {
-    const available = board.clientWidth - PAD_X * 2 - GAP_X * (TIERS - 1);
-    const fitCol = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / TIERS)));
+    const { first, count } = tierSpan(tree);
+    const head = Math.round(HEAD_H * uiScale());
+    const available = board.clientWidth - PAD_X * 2 - GAP_X * (count - 1);
+    const fitCol = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / count)));
     const rows = layout.lineLanes + layout.specialLanes;
-    const boardHeight = board.clientHeight - HEAD_H - (layout.specialLanes ? SPECIAL_GAP : 0) - GAP_Y * (rows - 1) - 12;
+    const boardHeight = board.clientHeight - head - (layout.specialLanes ? SPECIAL_GAP : 0) - GAP_Y * (rows - 1) - 12;
     const fitRow = Math.max(MIN_ROW, Math.min(Math.round(fitCol * 0.72), Math.floor(boardHeight / Math.max(1, rows))));
     const col = Math.round(fitCol * zoom);
     const row = Math.round(fitRow * zoom);
-    const width = PAD_X * 2 + TIERS * col + (TIERS - 1) * GAP_X;
-    const height = HEAD_H + rows * row + (rows - 1) * GAP_Y + (layout.specialLanes ? SPECIAL_GAP : 0);
-    return { col, row, lanes: layout.lineLanes, specialLanes: layout.specialLanes, width, height };
+    const width = PAD_X * 2 + count * col + (count - 1) * GAP_X;
+    const height = head + rows * row + (rows - 1) * GAP_Y + (layout.specialLanes ? SPECIAL_GAP : 0);
+    return { first, count, head, col, row, lanes: layout.lineLanes, specialLanes: layout.specialLanes, width, height };
   }
 
   /** Grid units (layout.ts) to pixels: a cell is one column or row, a gutter one gap. */
   const px = (g: Geometry, point: GridPoint): [number, number] => {
-    const ix = Math.floor(point.x / 2), rx = point.x - 2 * ix;
+    // the grid starts at the tree's first tier: layout.ts counts columns from tier I
+    const gx = point.x - 2 * (g.first - 1);
+    const ix = Math.floor(gx / 2), rx = gx - 2 * ix;
     const iy = Math.floor(point.y / 2), ry = point.y - 2 * iy;
     const x = PAD_X + ix * (g.col + GAP_X) + (rx <= 1 ? rx * g.col : g.col + (rx - 1) * GAP_X);
-    const y = HEAD_H + iy * (g.row + GAP_Y) + (iy >= g.lanes ? SPECIAL_GAP : 0) + (ry <= 1 ? ry * g.row : g.row + (ry - 1) * GAP_Y);
+    const y = g.head + iy * (g.row + GAP_Y) + (iy >= g.lanes ? SPECIAL_GAP : 0) + (ry <= 1 ? ry * g.row : g.row + (ry - 1) * GAP_Y);
     return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
   };
 
@@ -277,10 +308,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       const i = Math.floor(value / (cell + gap)), rest = value - i * (cell + gap);
       return 2 * i + (rest <= cell ? rest / cell : 1 + (rest - cell) / gap);
     };
-    let down = y - HEAD_H;
+    let down = y - g.head;
     const lineEnd = g.lanes * (g.row + GAP_Y);
     if (g.specialLanes && down > lineEnd) down -= Math.min(SPECIAL_GAP, down - lineEnd);
-    return { x: axis(x - PAD_X, g.col, GAP_X), y: axis(down, g.row, GAP_Y) };
+    return { x: axis(x - PAD_X, g.col, GAP_X) + 2 * (g.first - 1), y: axis(down, g.row, GAP_Y) };
   };
 
   /** An SVG path through the route's points, each corner eased by a short quadratic turn. */
@@ -310,8 +341,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     grid.style.setProperty('--tt-col', `${g.col}px`);
     grid.style.setProperty('--tt-row', `${g.row}px`);
     grid.style.setProperty('--tt-pitch', `${g.col + GAP_X}px`);
-    grid.style.setProperty('--tt-band-x', `${PAD_X - GAP_X / 2}px`);
+    grid.style.setProperty('--tt-pad', `${PAD_X}px`);
+    grid.style.setProperty('--tt-head', `${g.head}px`);
     grid.style.setProperty('--tt-name-fs', nameSize(g.col));
+    root.style.setProperty('--tt-ui', uiScale().toFixed(3));
     grid.classList.toggle('is-compact', g.col < COMPACT_COL);
     for (const numeral of tiersEl.children) {
       const tier = Number((numeral as HTMLElement).dataset.tier);
@@ -328,6 +361,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     fitNames();
     paintWires();
     markOverflow();
+    markRail();
   }
 
   /** A board larger than its space fades at the edges it scrolls toward. */
@@ -337,11 +371,14 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   }
   board.addEventListener('scroll', markOverflow, { passive: true });
 
-  /** A name that does not fit its node falls back to the vehicle's short name (every write, then every read). */
+  /**
+   * A name takes two lines when it needs them; one that still does not fit falls back to the vehicle's short name, so a
+   * name is never cut to a string another node shares (every write, then every read: one layout).
+   */
   function fitNames(): void {
     const names = tree.nodes.map((node) => buttons.get(node.id)!.querySelector<HTMLElement>('.tt-name')!);
     tree.nodes.forEach((node, i) => { names[i].textContent = displayName(vehicles.get(node.id), node.id); });
-    const over = names.map((name) => name.scrollWidth > name.clientWidth + 1);
+    const over = names.map((name) => name.scrollHeight > name.clientHeight + 1);
     tree.nodes.forEach((node, i) => { if (over[i]) names[i].textContent = shortName(vehicles.get(node.id), node.id); });
   }
 
@@ -373,11 +410,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     const spec = vehicles.get(buildId);
     detail.dataset.slot = node.slot;
     detail.querySelector<HTMLElement>('.tt-detail-name')!.textContent = displayName(spec, buildId);
-    const numeral = NUMERALS[node.tier];
-    const tierText = t('garage.card.tier', { tier: numeral });
-    const at = tierText.lastIndexOf(numeral);
-    detail.querySelector<HTMLElement>('.tt-detail-tier')!.replaceChildren(
-      tierText.slice(0, at), Object.assign(document.createElement('b'), { textContent: numeral }), tierText.slice(at + numeral.length));
+    detail.querySelector<HTMLElement>('.tt-detail-tier')!.textContent = t('garage.card.tier', { tier: NUMERALS[node.tier] });
     detail.querySelector<HTMLElement>('.tt-detail-special')!.hidden = node.slot !== 'special';
     paintBuilds(node);
     detail.querySelector<HTMLElement>('.tt-stats')!.innerHTML = spec ? [
@@ -405,27 +438,50 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     }
   }
 
-  /** A node with twin builds offers each as a chip; the chosen build is what Select takes to the Garage. */
+  /**
+   * A node with twin builds offers each in the kit's segmented control (a radio group: arrows move the choice); the
+   * chosen build is what Select takes to the Garage.
+   */
+  const buildsHost = detail.querySelector<HTMLElement>('.tt-builds')!;
+  function chooseBuild(id: string, focus = false): void {
+    const node = nodeById.get(selectedId);
+    if (!node || !vehiclesOf(node).includes(id)) return;
+    chosenBuild.set(node.id, id);
+    paintDetail();
+    if (focus) buildsHost.querySelector<HTMLElement>(`[data-value="${CSS.escape(id)}"]`)?.focus();
+  }
   function paintBuilds(node: TreeNode): void {
-    const host = detail.querySelector<HTMLElement>('.tt-builds')!;
-    host.replaceChildren();
-    host.hidden = !node.builds?.length;
+    buildsHost.replaceChildren();
+    buildsHost.hidden = !node.builds?.length;
     if (!node.builds?.length) return;
     const chosen = buildOf(node);
     for (const id of vehiclesOf(node)) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'tt-build';
-      chip.dataset.uiSound = 'select';
-      chip.setAttribute('role', 'radio');
-      chip.setAttribute('aria-checked', String(id === chosen));
-      chip.setAttribute('aria-label', displayName(vehicles.get(id), id));
-      chip.innerHTML = `${silhouette(id)}<span aria-hidden="true"></span>`;
-      chip.querySelector('span:last-child')!.textContent = shortName(vehicles.get(id), id);
-      chip.addEventListener('click', () => { chosenBuild.set(node.id, id); paintDetail(); });
-      host.append(chip);
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'cot-c-seg__opt';
+      option.dataset.value = id;
+      option.dataset.uiSound = 'select';
+      option.setAttribute('role', 'radio');
+      option.setAttribute('aria-checked', String(id === chosen));
+      option.tabIndex = id === chosen ? 0 : -1;
+      option.setAttribute('aria-label', displayName(vehicles.get(id), id));
+      option.innerHTML = `${silhouette(id)}<span aria-hidden="true"></span>`;
+      option.querySelector('span:last-child')!.textContent = shortName(vehicles.get(id), id);
+      buildsHost.append(option);
     }
   }
+  buildsHost.addEventListener('click', (event) => {
+    const option = (event.target as Element | null)?.closest<HTMLElement>('[data-value]');
+    if (option) chooseBuild(option.dataset.value!);
+  });
+  buildsHost.addEventListener('keydown', (event) => {
+    const node = nodeById.get(selectedId);
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (!node || !step) return;
+    event.preventDefault();
+    const ids = vehiclesOf(node);
+    chooseBuild(ids[(ids.indexOf(buildOf(node)) + step + ids.length) % ids.length], true);
+  });
 
   function paintHeader(): void {
     const name = t(`nation.${tree.flagNation}`);
@@ -442,7 +498,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   function paintZoom(): void {
     for (const item of zoomButtons) {
       const kind = item.dataset.zoom;
-      item.disabled = kind === 'in' ? zoom >= ZOOM_MAX - 1e-3 : kind === 'out' ? zoom <= ZOOM_MIN + 1e-3 : Math.abs(zoom - 1) < 1e-3;
+      // fit stays live (it reads as stuck when disabled); in and out stop at their bounds
+      if (kind === 'in' || kind === 'out') item.disabled = kind === 'in' ? zoom >= ZOOM_MAX - 1e-3 : zoom <= ZOOM_MIN + 1e-3;
     }
   }
 
@@ -462,6 +519,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     nodeById = new Map(tree.nodes.map((node) => [node.id, node]));
     selectedId = rootOf(tree).id;
     zoom = 1;
+    buildTiers();
     buildNodes();
     board.scrollTo({ left: 0, top: 0 });
     layoutBoard();
@@ -659,6 +717,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     if (restoreFocus) trigger?.focus({ preventScroll: true });
   }
 
+  buildTiers();
   buildNodes();
   return {
     root,
