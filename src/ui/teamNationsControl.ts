@@ -37,7 +37,7 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
 .cot-teams button:disabled{cursor:default;color:var(--ink-4)}
 .cot-teams button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-teams .cot-flag{border-radius:1px;box-shadow:var(--flag-ring)}
-.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
 @media(pointer:coarse){.cot-teams button{height:auto;min-height:var(--cot-control-floor,44px)}}
