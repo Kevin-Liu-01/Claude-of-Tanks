@@ -2427,6 +2427,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     rebuildFxParams(effects);
     refreshCinematicToggles();
     outlineCount('effects', effects.length);
+    // nothing to clear reads as nothing to clear
+    clearStackBtn.disabled = resetFxBtn.disabled = !effects.length;
     if (!effects.length) {
       fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;
@@ -2862,12 +2864,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         : (rec.supported
           ? t('studio.recordReady')
           : t('studio.recordUnsupported'));
-      // the frame readout (09-studio .fc): the frame at 30 fps and the camera's place and aim
+      // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
+      // coordinates, which read as a debug overlay)
       const frames = Math.round(S.durationMs / 1000 * 30);
       const frame = Math.min(frames, Math.round(S.fxTimeMs / 1000 * 30));
       const camera = S.getCamera();
       frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })),
-        ` · ${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`);
+        ...(proControls ? [` · ${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`] : []));
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;

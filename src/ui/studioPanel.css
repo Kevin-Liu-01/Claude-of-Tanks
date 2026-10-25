@@ -160,7 +160,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .notice[data-tone=error] .ng svg{color:var(--text-danger)}
 
 /* ------------------------------------------------------------------------------- the inspector (09-studio .insp) */
-.st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:var(--s3) var(--s3) var(--s4);overflow-y:auto;
+.st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:var(--s3) var(--s3) var(--s6);overflow-y:auto;
+  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent);mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent);
   border-left:1px solid var(--line-1);scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .st-insp>[data-group]{display:flex;flex-direction:column;gap:var(--s4)}
 .st-insp .sec,.director>section{display:flex;flex-direction:column;gap:var(--s2);min-width:0}
@@ -414,6 +415,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
 .st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
+  max-height:min(70vh,560px,calc(100dvh - 64px));
   max-height:min(70vh,560px);padding:var(--s3);overflow-y:auto;border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2)}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
 .st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
@@ -467,6 +469,11 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio-archive>header strong{font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase}
 .cot-studio-archive>header :is(small,span){display:none}
 .cot-studio-archive .archiveBody{padding:var(--s5) var(--s5) var(--s5)}
+/* the Studio's frames: each card names its map once (no feature eyebrow, no second name, no per-map index that repeats
+   01, 02, 01), and the row fades where it continues */
+.cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
+.cot-studio-archive .media-archive-grid{padding-inline-end:var(--s6);
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent)}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
@@ -474,6 +481,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio[data-controls-collapsed=true] .st-vp{grid-column:1/-1;grid-row:2/-1}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 132px 160px}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.st-head .sv),body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
+/* a tablet's narrow viewport and bars keep every control on screen: the secondary chips keep their glyphs (their names stay
+   accessible), the header drops its key caps, and the viewport's two chip groups never meet */
+body[data-cot-width='tablet'] .st-head .r .cot-c-kbd{display:none}
+body[data-cot-width='tablet'] :is(.st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,
+  .st-tl .tp .r .cot-c-chip__label){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-cot-width='tablet'] .st-vpt{max-width:calc(100% - 156px);flex-wrap:wrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
   grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 128px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}
@@ -485,13 +498,16 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .og>:not(.g
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh{padding:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:first-child{white-space:nowrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-rows:50px 40dvh auto auto minmax(0,1fr)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out{padding-inline-end:var(--s6);
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-head .r .cmd,.st-head .r .gal,
   .st-head .r .studio-panel-toggle,.st-head .r .que,.st-head .r .cot-c-kbd,.st-tl .tp .sl){display:none}
 /* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
    the lanes keep their flags, silhouettes and glyphs */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .r .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
   .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
   height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 var(--s3)}
