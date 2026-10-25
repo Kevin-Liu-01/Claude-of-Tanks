@@ -1662,9 +1662,12 @@ body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:aut
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
 body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
+/* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
+   the screen */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick.open{
   position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
-  top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
+  top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
+  max-height:calc(100% - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));
   background:var(--surface-page);
 }
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-garage{--cot-country-height:48px}
