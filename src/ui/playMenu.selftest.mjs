@@ -10,7 +10,7 @@ assert.deepEqual([...source.matchAll(/class="mode" data-mode="([^"]+)"/g)].map(m
 assert.doesNotMatch(source, /rankedServiceClient|rankedQueueLifecycle|onRankedStart|data-ranked|data-mode="ranked"/,
   'the removed mode cannot warm, queue, or render through the Play menu');
 assert.match(source, /showRoomFailure\(reason: string, mode\?: PlayMode\): void/);
-assert.match(source, /class="room-failure" hidden role="alert" aria-atomic="true" tabindex="-1"/);
+assert.match(source, /class="room-failure cot-c-notice" data-severity="error" hidden role="alert" aria-atomic="true" tabindex="-1"/);
 assert.match(source, /aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail"/);
 for (const action of ['retry', 'code', 'garage']) {
   assert.match(source, new RegExp(`<button[^>]+data-room-failure="${action}"[^>]+type="button"`));
@@ -201,7 +201,7 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
 {
   const { readFile: read } = await import('node:fs/promises');
   assert.match(source, /const VERSION_REFUSAL_CODES: ReadonlySet<string> = new Set\(\['build_mismatch', 'build_host_older', 'build_host_newer'\]\);/);
-  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
+  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal cot-c-notice" data-severity="warning" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
     'the banner lives inside the menu header, above every room section');
   assert.match(source, /\.cot-play \.play-head\{position:sticky;/, 'which stays in view while the panel scrolls (nothing can cover its Refresh)');
   const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));
