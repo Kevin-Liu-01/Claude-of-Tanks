@@ -1391,14 +1391,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ]);
   // media r5 cinematic pyrotechnics: quality toggles + the new effect types
   const cineGroup = el('div', 'fxg');
-  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.cinematic')));
-  const cineToggles = el('div', 'grid3');
-  const cineBtn = chipButton(t('studioPanel.fx.cinematicOff'), null, false);
+  // the render switches: each chip names its layer and its pressed state says on or off
+  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.render')));
+  const cineToggles = el('div', 'grid');
+  const cineBtn = chipButton(t('studioPanel.fx.cinematic'), null, false);
   cineBtn.addEventListener('click', () => S.setFxQuality(S.fxQuality === 'cinematic' ? 'battle' : 'cinematic'));
-  const dustBtn = chipButton(t('studioPanel.fx.trackDustOff'), null, false);
+  const dustBtn = chipButton(t('studioPanel.fx.trackDust'), null, false);
   dustBtn.addEventListener('click', () => S.setTrackDust(!S.trackDust));
   // the map's air (world/mapAmbience.ts): pollen, leaves, snow, dust, embers by map
-  const airBtn = chipButton(t('studioPanel.fx.ambienceOn'), null, true);
+  const airBtn = chipButton(t('studioPanel.fx.ambience'), null, true);
   airBtn.addEventListener('click', () => { S.setAmbience(!S.ambience); refreshCinematicToggles(); });
   cineToggles.append(cineBtn, dustBtn, airBtn);
   cineGroup.appendChild(cineToggles);
@@ -1406,11 +1407,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function refreshCinematicToggles(): void {
     const on = S.fxQuality === 'cinematic';
     press(cineBtn, on);
-    setLabel(cineBtn, t(on ? 'studioPanel.fx.cinematicOn' : 'studioPanel.fx.cinematicOff'));
     press(dustBtn, S.trackDust);
-    setLabel(dustBtn, t(S.trackDust ? 'studioPanel.fx.trackDustOn' : 'studioPanel.fx.trackDustOff'));
     press(airBtn, S.ambience);
-    setLabel(airBtn, t(S.ambience ? 'studioPanel.fx.ambienceOn' : 'studioPanel.fx.ambienceOff'));
   }
   fxGroup(t('studioPanel.fxGroup.cinematic'), [
     [t('studioPanel.fx.smokeScreen'), () => withSelected((a) => S.effect({ type: 'smoke_screen', actor: a.uid }))],
@@ -2787,7 +2785,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
           .then(([cards]) => (hero.dataset.spec === specId
-            ? cards.decorateHeroTile(hero, specId, { tankSizes: '296px', flagSizes: '296px', priority: true }) : false))
+            ? cards.decorateHeroTile(hero, specId, { tankSizes: '340px', flagSizes: '340px', priority: true }) : false))
           .catch(() => false);
         repaintSwatches(a.spec.id);
       }

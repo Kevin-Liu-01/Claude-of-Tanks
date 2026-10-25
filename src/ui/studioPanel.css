@@ -43,7 +43,7 @@ body[data-studio-settling] #app{visibility:hidden}
 .st-load__bar{height:4px;overflow:hidden;background:var(--fill-scale)}
 .st-load__bar i{display:block;height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center;transition:transform var(--dur-fast) linear}
 @media (prefers-reduced-motion:reduce){.st-load__bar i,.st-app[aria-busy]>:not(.st-vp){transition:none}}
-.st-app{position:absolute;inset:0;display:grid;grid-template-columns:236px minmax(0,1fr) 296px;
+.st-app{position:absolute;inset:0;display:grid;grid-template-columns:236px minmax(0,1fr) 340px;
   grid-template-rows:50px minmax(0,1fr) 148px 176px}
 .st-app>*{pointer-events:auto}
 .st-app>.st-vp{pointer-events:none}
