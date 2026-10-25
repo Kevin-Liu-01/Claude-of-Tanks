@@ -155,7 +155,7 @@ async function settle(page, quietMs = 600, maxMs = 6000) {
 
 /** One measured press: INP, processing, input delay, the overlapping LoAF scripts, long tasks, time to shown / done. */
 async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null,
-  idleMs = 0 }) {
+  idleMs = 0, action = null }) {
   // --census: the JS Self-Profiler samples the whole window (press to settled) so each long task names its code
   // (the page must be served with Document-Policy: js-profiling: vercel-static-preview --document-policy=js-profiling)
   const census = flag('census');
@@ -185,6 +185,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   const t0 = await page.evaluate(() => { window.__click.layoutReads.length = 0; window.__click.layoutArmed = true; return performance.now(); });
   let error = null;
   if (idleMs) await sleep(idleMs);
+  else if (action) await action(page).catch((cause) => { error = firstLine(cause); });
   else if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
   else await press(page, selector, touch).catch((cause) => { error = firstLine(cause); });
   // the press's task and its next two frames: what the layout tracer (when on) attributes
@@ -388,6 +389,10 @@ const ROSTER_SHOWN = `document.querySelector('[data-click-target].sel, .cot-card
 const ROSTER_DONE = `(() => { const id = document.querySelector('[data-click-target]')?.dataset.specId
   || document.querySelector('.cot-cards .cot-card.sel')?.dataset.specId; const list = window.__GARAGE_SWITCH;
   const last = Array.isArray(list) ? list[list.length - 1] : null; return !!(last && last.id === id && last.revealMs != null); })()`;
+// (lockdown-251) roster-pick: the riding-station tanks (the RWS and M2 stations' sweeps), each between tanks far from it
+// in the roster so a neighbour prebuild never builds the next pick ahead
+const PICK_IDS = ['m1a1_abrams_hc', 't90m', 'm60a2', 'leo2a6', 'm1a1_abrams_aim', 'k2_black_panther', 'm551_sheridan', 'type10',
+  'm1a1_abrams_fep'];
 const GARAGE_BACK = `shown('.cot-garage') && window.__GAME_READY === true && (!window.__GARAGE_ENTRY || window.__GARAGE_ENTRY.presentationUnready === false)`;
 
 // Paths, after the 244 Garage (brand-ui Premiere). Doc 'game' runs the Garage, Deploy, settings and Studio presses;
@@ -500,6 +505,16 @@ export const PATHS = [
       if (sample.error) console.log(`    #${i} missed press, state: ${JSON.stringify(await studioState())}`);
       await leaveStudio(page, ctx);
       await sleep(1500);
+    } },
+  // (lockdown-251) a fixed list of tanks selected by id (the debug surface), the same cold builds on both sides of an A/B
+  { id: 'roster-pick', doc: 'battle', reps: 1,
+    script: async (page, i, run) => {
+      for (const id of PICK_IDS) {
+        await run(`pick:${id}`, async () => null, { action: (tab) => tab.evaluate((spec) => { window.__DEBUG.selectGarageTank(spec); }, id),
+          done: `(() => { const list = window.__GARAGE_SWITCH; const last = Array.isArray(list) ? list[list.length - 1] : null;
+            return !!(last && last.id === ${JSON.stringify(id)} && last.revealMs != null); })()`, doneTimeoutMs: 60000, quietMs: 600 });
+        await sleep(1500);
+      }
     } },
   // the Garage at rest: no frame or task may stall while nobody touches it
   { id: 'garage-idle', doc: 'game', reps: 1,
