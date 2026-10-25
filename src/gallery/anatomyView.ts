@@ -109,6 +109,8 @@ const STYLE = `
 /* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
 #viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
 #viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
+/* a short stage keeps the ramp alone (its key rows stood over the gun and the hull) */
+@media (height < 520px){#viewport .anatomy-legend .anatomy-key{display:none}}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
@@ -280,10 +282,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number; width: number }> = [];
   // the stage's toolbar foot (the layer chips), read again only when the stage changes size: no label stands above it
   let toolbarFoot = 0, footFor = '';
-  let toolsBox: { left: number; right: number; top: number } | null = null;
-  // a label below its anchor that would sit on the turntable and photo buttons
-  const crossesTools = (x: number, y: number, length: number, width: number): boolean => !!toolsBox
-    && x + width / 2 > toolsBox.left && x - width / 2 < toolsBox.right && y + length + CALLOUT_HEIGHT_PX > toolsBox.top;
+  let toolsBox: { left: number; right: number; top: number } | null = null, stageFoot = Infinity;
+  // a label below its anchor that would sit on the turntable and photo buttons, or run past the stage's foot
+  const crossesTools = (x: number, y: number, length: number, width: number): boolean => y + length + CALLOUT_HEIGHT_PX > stageFoot
+    || (!!toolsBox && x + width / 2 > toolsBox.left && x - width / 2 < toolsBox.right && y + length + CALLOUT_HEIGHT_PX > toolsBox.top);
   const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
 
   function hideExterior(root: THREE.Object3D): void {
@@ -680,6 +682,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         const tools = host.viewport.querySelector<HTMLElement>('.tools');
         const box = tools?.offsetHeight ? tools.getBoundingClientRect() : null, canvas = host.renderer.domElement.getBoundingClientRect();
         toolsBox = box ? { left: box.left - canvas.left - CALLOUT_GAP_PX, right: box.right - canvas.left + CALLOUT_GAP_PX, top: box.top - canvas.top - CALLOUT_GAP_PX } : null;
+        stageFoot = height - CALLOUT_GAP_PX / 2;
         for (const item of badgeItems) item.width = 0;
       }
       placed.length = 0;
@@ -735,6 +738,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
           }
           if (free) { placed[i].up = true; placed[i].length = CALLOUT_MIN_PX; }
         }
+        // one that still has no place clear of the bar and inside the stage is left out this frame (a small stage shows
+        // fewer callouts), never drawn under the buttons
+        const blocked = !placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width);
+        if (blocked) placed[i].item.element.style.visibility = 'hidden';
         const { item, up, length } = placed[i];
         const rounded = Math.round(length);
         if (rounded !== item.length) { item.length = rounded; item.element.style.setProperty('--co-len', `${rounded}px`); }

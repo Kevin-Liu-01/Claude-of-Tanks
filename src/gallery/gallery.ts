@@ -445,10 +445,12 @@ function frameView(requestedName = 'hero'): void {
 }
 
 // the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
-// the turntable and photo buttons, and on a stacked page at the window's foot above the dossier's actions
+// the turntable and photo buttons, and on a stacked page just above the dossier's actions (they ride its sticky bar,
+// where the copy and markup triggers sit)
 const stage = document.querySelector<HTMLElement>('#viewport');
 if (stage) noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
-noticeRegion('gallery-stack', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--stack' });
+const actions = document.querySelector<HTMLElement>('.acts');
+if (actions) noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
