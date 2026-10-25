@@ -169,16 +169,71 @@ pub fn exp(x: f64) -> f64 {
     libm::exp(x)
 }
 
-/// `Math.pow`.
+/// `Math.pow`: fdlibm's `e_pow.c` under ECMAScript's special cases (Number::exponentiate), where they depart from C:
+/// a NaN exponent gives NaN even on base 1, and base ±1 with an infinite exponent gives NaN.
 #[inline]
 pub fn pow(x: f64, y: f64) -> f64 {
+    if y.is_nan() || ((x == 1.0 || x == -1.0) && y.is_infinite()) {
+        return f64::NAN;
+    }
     libm::pow(x, y)
 }
 
-/// `Math.cbrt`.
-#[inline]
+/// `Math.cbrt`: FreeBSD's `s_cbrt.c` (Bruce D. Evans, error < 0.667 ulp). The libm crate's cbrt is CORE-MATH's,
+/// built on fused multiply-adds, which JavaScript cannot reproduce; this is the one the TypeScript port
+/// (`src/sim/detMath.ts`) carries line for line, so both sides give the same bits.
 pub fn cbrt(x: f64) -> f64 {
-    libm::cbrt(x)
+    const B1: u32 = 715_094_163; // (1023 - 1023/3 - 0.03306235651) * 2^20
+    const B2: u32 = 696_219_795; // (1023 - 1023/3 - 54/3 - 0.03306235651) * 2^20
+    const P0: f64 = 1.87595182427177009643;
+    const P1: f64 = -1.88497979543377169875;
+    const P2: f64 = 1.621429720105354466140;
+    const P3: f64 = -0.758397934778766047437;
+    const P4: f64 = 0.145996192886612446982;
+    let bits = x.to_bits();
+    let mut hx = (bits >> 32) as u32;
+    let low = bits as u32;
+    let sign = hx & 0x8000_0000;
+    hx ^= sign;
+    if hx >= 0x7ff0_0000 {
+        return x + x;
+    }
+    let mut t = if hx < 0x0010_0000 {
+        if (hx | low) == 0 {
+            return x;
+        }
+        let t = f64::from_bits(0x4350_0000u64 << 32) * x;
+        let high = (t.to_bits() >> 32) as u32;
+        f64::from_bits(((sign | ((high & 0x7fff_ffff) / 3 + B2)) as u64) << 32)
+    } else {
+        f64::from_bits(((sign | (hx / 3 + B1)) as u64) << 32)
+    };
+    let r = (t * t) * (t / x);
+    t *= (P0 + r * (P1 + r * P2)) + ((r * r) * r) * (P3 + r * P4);
+    t = f64::from_bits((t.to_bits().wrapping_add(0x8000_0000)) & 0xffff_ffff_c000_0000);
+    let s = t * t;
+    let r = x / s;
+    let w = t + t;
+    let r = (r - t) / (w + r);
+    t + t * r
+}
+
+/// `Math.tanh`.
+#[inline]
+pub fn tanh(x: f64) -> f64 {
+    libm::tanh(x)
+}
+
+/// `Math.cosh`.
+#[inline]
+pub fn cosh(x: f64) -> f64 {
+    libm::cosh(x)
+}
+
+/// `Math.expm1`.
+#[inline]
+pub fn expm1(x: f64) -> f64 {
+    libm::expm1(x)
 }
 
 /// `Math.PI`.

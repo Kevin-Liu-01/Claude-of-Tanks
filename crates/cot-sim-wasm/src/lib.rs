@@ -28,7 +28,7 @@ macro_rules! unary {
 unary! {
     js_sin => jsmath::sin, js_cos => jsmath::cos, js_tan => jsmath::tan, js_asin => jsmath::asin,
     js_acos => jsmath::acos, js_atan => jsmath::atan, js_exp => jsmath::exp, js_log => jsmath::log,
-    js_cbrt => jsmath::cbrt,
+    js_cbrt => jsmath::cbrt, js_tanh => jsmath::tanh, js_cosh => jsmath::cosh, js_expm1 => jsmath::expm1,
 }
 
 #[unsafe(no_mangle)]

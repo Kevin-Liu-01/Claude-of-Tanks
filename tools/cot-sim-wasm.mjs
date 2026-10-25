@@ -9,7 +9,7 @@
 // Safari the system libm, Firefox its own fdlibm hypot, and every V8 its platform's libc pow
 // (tools/jsmath-conformance.mjs measures them). It returns the function that puts the engine's own back.
 
-export const PINNED_MATH = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'exp', 'log', 'pow', 'cbrt'];
+export const PINNED_MATH = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2', 'exp', 'log', 'pow', 'cbrt', 'tanh', 'cosh', 'expm1'];
 
 export const COT_SIM_WASM_PATH = 'crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm';
 
