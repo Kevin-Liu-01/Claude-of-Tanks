@@ -68,7 +68,7 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
 // manual index's card taglines cut on the primitives lane, the merged pages hold 500)
 assert.ok(textHosts >= 500, `every public page's text hosts are checked (${textHosts})`);
 assert.ok(attributeHosts > 190, `and attribute hosts (${attributeHosts})`);
-assert.ok(changed > 500, `most hosts change language (${changed})`);
+assert.ok(changed >= textHosts - 2, `most hosts change language (${changed} of ${textHosts})`);
 
 // Synthetic edges.
 const doc = (inner) => `<!doctype html><html><head><title data-i18n="x">Head stays</title></head><body>${inner}</body></html>`;
