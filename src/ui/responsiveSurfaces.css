@@ -589,6 +589,11 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-tou
 body.cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-drive{
   left:max(126px,calc(env(safe-area-inset-left) + 126px));transform:scale(.68);
 }
+/* a dial scaled to .68-.75 sets its 11 px unit and end marks near 8 px: those dials keep the needle and the figure alone
+   (the 11 px floor; gauntlet r1) */
+body.cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-drive :is(.unit,.zero,.limit),
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive :is(.unit,.zero,.limit),
+body.cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-drive :is(.unit,.zero,.limit){display:none}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:92px!important;height:92px!important}
 /* touchControls is battle-lazy and injects its base placement after this
    stylesheet. These tight-height positions are deliberate cascade endpoints. */

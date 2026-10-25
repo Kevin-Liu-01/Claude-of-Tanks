@@ -1606,9 +1606,9 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:calc(var(--hud-band-h) + 8px);width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:var(--hud-ears-top,calc(var(--hud-band-h) + 8px));width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
 .cot-ear.l{left:0;}
-.cot-ear.r{right:0;top:var(--hud-roster-top-right,calc(var(--hud-band-h) + 8px));}
+.cot-ear.r{right:0;top:var(--hud-roster-top-right,var(--hud-ears-top,calc(var(--hud-band-h) + 8px)));}
 .cot-ear .hd{flex-shrink:0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;color:var(--ink-3);
   font-family:${FONT_COND};
   text-transform:uppercase;padding:var(--s1) 10px;display:flex;justify-content:space-between;
@@ -1721,8 +1721,12 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kill-lane.r .cot-kf .k,.cot-kill-lane.l .cot-kf .v{color:var(--text-enemy);}
 .cot-kill-lane.l .cot-kf .ksi,.cot-kill-lane.r .cot-kf .vsi{color:var(--hud-own);}
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
-/* the player's own kills and deaths sit on the accent's wash (the kit's notice grammar: no stripe) */
-.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){background:var(--accent-wash);}
+/* the player's own kills and deaths: the player's word in the accent's ink (no plate and no stripe: the feed is bare
+   text over the battlefield on both sides, as the rosters are) */
+.cot-kill-lane .cot-kf[data-relation=you] .k,.cot-kill-lane .cot-kf[data-relation=victim] .v,
+.cot-kill-lane .cot-kf[data-relation=ridden] :is(.k,.v){color:var(--accent-hi);}
+/* (the player's own word never gives way: the other callsign takes the cut, gauntlet r1 at 390 portrait read "Y.") */
+.cot-kf[data-relation=you] .k,.cot-kf[data-relation=victim] .v{flex:none;}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:var(--battle-fs-11);letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
@@ -1951,7 +1955,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    sit above it, as the consumables' do (critic r7: on the stacked and touch trays the count takes the top-right corner,
    under the shade's top-anchored edge, and a reloading 24 read about 2:1 on its panel while the ∞ beside it stayed
    white). */
-.cot-shell .key{position:absolute;top:2px;left:2px;font:500 var(--battle-fs-11)/13px var(--font-mono);color:var(--ink-3);
+.cot-shell .key{position:absolute;top:2px;left:2px;font:500 var(--battle-fs-fig-11)/13px var(--font-mono);color:var(--ink-3);
   letter-spacing:0;background:var(--hud-plate);
   border:1px solid var(--line-2);border-radius:var(--r1);padding:0 3px;z-index:4;}
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
@@ -1962,7 +1966,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
-.cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-11);font-weight:700;
+.cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-fig-11);font-weight:700;
   font-family:${FONT_COND};
   letter-spacing:-.02em;white-space:nowrap;z-index:4;}
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
@@ -2085,7 +2089,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
    bulb, keeping motion quiet while the state remains active. */
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
   width:min(248px,calc(100vw - 28px));min-height:32px;transform:translate(-50%,-6px);
-  display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;
+  display:grid;grid-template-columns:24px auto;justify-content:center;gap:10px;align-items:center;
   padding:var(--s1) 22px;box-sizing:border-box;color:var(--ink-1);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
@@ -2107,8 +2111,8 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-hud [data-severity=error]{--notice-tone:var(--text-danger);}
 .cot-hud [data-severity=info]{--notice-tone:var(--text-accent);}
 .cot-sixth,.cot-alert,.cot-aim-warning{border:0;border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--hud-plate-ring);}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{background:color-mix(in srgb,var(--text-warn) 9%,var(--hud-plate-strong));}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{background:color-mix(in srgb,var(--text-danger) 11%,var(--hud-plate-strong));}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{background:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong));}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{background:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong));}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){.cot-sixth.on{animation:none}}
 
@@ -2134,12 +2138,18 @@ const TAP_SLOP_PX = 10;
 const SCORE_BAR_STUB = 0.05;
 
 /** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
- *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). */
+ *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). A wrapped line starts with its part's
+ *  dot, never ends on one (gauntlet r1: "0 ALIVE ·" over "0/1 SAFE"). */
 function setObjectiveValue(target: HTMLElement, copy: string): void {
   target.replaceChildren();
   copy.split(' · ').forEach((part, index) => {
-    if (index) target.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '\u00a0· ' }));
-    target.append(Object.assign(document.createElement('span'), { className: 'seg', textContent: part.replace(/ \/ /g, ' / ') }));
+    const seg = Object.assign(document.createElement('span'), { className: 'seg' });
+    if (index) {
+      target.append(' ');
+      seg.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '·\u00a0' }));
+    }
+    seg.append(part.replace(/ \/ /g, ' / '));
+    target.append(seg);
   });
 }
 
@@ -2252,7 +2262,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
   // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
   modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"></b><span class="mv"></span></span>`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">Tab</kbd>`;
+    + `<kbd class="cot-c-kbd" aria-hidden="true">TAB</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
@@ -3611,9 +3621,10 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusEl.dataset.tip = modeName;
     modeStatusName.textContent = modeName;
     setObjectiveValue(modeStatusValue, copy);
-    // a Standard battle has no objective beyond the score: its plate shows only in the corner seat, where it is the
-    // mission plate (battleHudLayout.css .quiet), never as a second row under the score
-    modeStatusEl.classList.toggle('quiet', modeState.id === 'standard');
+    // A Standard battle has no objective beyond the score, and the Horde's score plate already reads the wave and those
+    // left (gauntlet r1: "WAVE 3 · 12 HOSTILES" under "WAVE 3 ... 12 LEFT"): either plate shows only in the corner seat,
+    // where it is the mission plate (battleHudLayout.css .quiet), never as a second row under the score
+    modeStatusEl.classList.toggle('quiet', modeState.id === 'standard' || modeState.id === 'endless_horde');
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }

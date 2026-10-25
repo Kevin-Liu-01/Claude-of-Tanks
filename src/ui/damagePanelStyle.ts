@@ -11,7 +11,7 @@ export const DAMAGE_PANEL_CSS = `
 .cot-dp .hprow{display:flex;align-items:baseline;gap:4px;margin-bottom:7px;white-space:nowrap;overflow:hidden;}
 .cot-dp .hplabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 .cot-dp .hpnum{font:500 var(--battle-fs-28)/.9 var(--font-mono);color:var(--ink-1);}
-.cot-dp .hpmax{min-width:0;overflow:hidden;text-overflow:clip;font:500 var(--battle-fs-12)/1 var(--font-mono);color:var(--ink-3);}
+.cot-dp .hpmax{min-width:0;overflow:hidden;text-overflow:clip;font:500 var(--battle-fs-fig-12)/1 var(--font-mono);color:var(--ink-3);}
 .cot-dp .hptrack{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:2px;height:7px;margin-bottom:9px;}
 .cot-dp .hptrack i{background:var(--fill-scale);}
 .cot-dp .hptrack i.on{background:var(--ink-1);}
@@ -35,7 +35,7 @@ export const DAMAGE_PANEL_CSS = `
 body.cot-touch-layout .cot-dp .hpnum{font-size:var(--battle-fs-18);}
 /* the narrow touch strip (112-150 px, the plan hidden there: touchControls.ts): the points and their maximum on one line */
 body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpnum{font-size:var(--battle-fs-15);}
-body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpmax{font-size:var(--battle-fs-11);}
+body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpmax{font-size:var(--battle-fs-fig-11);}
 :lang(zh-CN) .cot-dp .fire{font-size:var(--battle-fs-13);}
 @keyframes cotFirePulse{from{opacity:.55}to{opacity:1}}
 `;

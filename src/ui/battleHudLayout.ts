@@ -70,10 +70,23 @@ const NETWORK_CORNER_RIGHT = 10;
 /** A bottom-anchored report budget; notification counts never enter this policy. */
 /** The shortest dock the shot report is moved down to (a tight card: its rows hidden, its plans scaled to the dock). */
 const REPORT_DOCK_MIN = 140;
+/** A roster row's least height (its line and its gap: 12 px rows touched one another). */
+const ROSTER_ROW_MIN = 16;
 
 export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
   const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
   return { top: bottom - height, height, bottom };
+}
+
+/** The controls strip's widest centred box between the lower corners' instruments that rise into its band (at least
+ *  240 px: below that it wraps to three rows anyway). */
+function hintsWidth(width: number, height: number, corners: readonly (DOMRect | null)[]): number {
+  let half = width / 2 - 16;
+  for (const box of corners) {
+    if (!box || box.width < 1 || box.top < height / 2) continue;
+    half = Math.min(half, box.right < width / 2 ? width / 2 - box.right - 12 : box.left > width / 2 ? box.left - width / 2 - 12 : half);
+  }
+  return Math.max(240, Math.floor(half * 2));
 }
 
 /** The reticle's band around the screen-centre sight (hud.ts paints it at the centre): above, the dispersion ring
@@ -664,6 +677,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // map where the map would meet it. A centred bar of its own width: the box read here holds whatever seat it is given.
     const watchView = document.documentElement?.dataset?.watch ?? '';
     const watchBar = watchView ? read('.cot-watch:not([hidden])') : null;
+    const watchRail = watchView === 'drone' && touch ? read('.cot-watch-rail') : null;
     let watchBand = 0;
     /** A floor bar's top (flying), which the side lanes it crosses end above. */
     let watchFloorTop = Infinity;
@@ -690,6 +704,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     const top = Math.max(headTop, watchBand);
+    // the rosters start under a riding bar that crosses their columns (gauntlet r1: 900x700 hung the bar over both)
+    const earsBox = read('.cot-ear.l') ?? read('.cot-ear.r');
+    setBodyVar('--hud-ears-top', watchBand && watchBar && earsBox && (watchBar.left < earsBox.right || watchBar.right > width - earsBox.width)
+      ? `${Math.ceil(watchBand + 8)}px` : '');
     const telemetry = read('.cot-net');
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
@@ -867,10 +885,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
-      watchBar && watchBar.right > width - sideWidth ? watchFloorTop - 8 : height);
+      watchBar && watchBar.right > width - sideWidth ? watchFloorTop - 8 : height,
+      // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
+      watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
-    const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
+    // (a row is never squeezed under 16 px: at 12 px the enemy roster's lines touched, gauntlet r1 at 1280x720)
+    const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * ROSTER_ROW_MIN) : 0;
     // The shot report docks under the right roster. On the mouse layout, where its column would cross the centre notices'
     // widest slot, it starts below their stacked band (mouseNoticeStackBand) while that leaves it a tight card's height,
     // so the detection and the alert stack under the objective instead of splitting round it.
@@ -879,8 +900,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const noticeBand = reportHost ? mouseNoticeStackBand(width, height, top, height <= 550 || width <= 480) : null;
     const reportUnderBand = !!noticeBand && reportHost!.left < width / 2 + noticeBand.halfWidth
       && rightBottom - noticeBand.bottom >= REPORT_DOCK_MIN;
-    const report = battleReportDock(rightBottom, reportUnderBand ? Math.max(reportCeiling, noticeBand!.bottom) : reportCeiling,
-      root.classList.contains('compact-shot-report'));
+    // The dock is held only while a report or the open log fills it (the host's cards and the log are observed): an empty
+    // dock left the enemy roster 12 px rows and the right kill lane no height at all (gauntlet r1 at 1280x720).
+    const reportShown = !!document.querySelector('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
+    const report = reportShown ? battleReportDock(rightBottom, reportUnderBand ? Math.max(reportCeiling, noticeBand!.bottom) : reportCeiling,
+      root.classList.contains('compact-shot-report')) : { top: rightBottom, height: 0, bottom: rightBottom };
     const dockReport = !touch;
     const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
     const countdown = read('.cot-prebattle.on');
@@ -1127,6 +1151,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
       'ribbon-top': Math.min(systemsTop, read('.cot-flight-hud:not([hidden]) .flight-console')?.top ?? Infinity),
+      // the first battles' controls strip (settings.ts) stays on the centre line between the lower corners' instruments
+      // (the hull panel and the dial left, the map right) and wraps its groups to fit (gauntlet r1: 900x700 ran it over
+      // both)
+      'hints-width': hintsWidth(width, height, [read('.cot-dp'), read('.cot-drive'), map]),
       'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
       'notice-top': noticeTop, 'alert-top': alertTop,
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split; tops and widths

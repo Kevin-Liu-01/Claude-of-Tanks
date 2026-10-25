@@ -40,9 +40,11 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-ribbon .top{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 14px;min-width:0}
 .cot-ribbon .top>:is(.id,.cause){display:contents}
 .cot-ribbon .w{flex:none;font:700 var(--battle-fs-14)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent)}
-/* callsign first: the vehicle's name gives way before it (SPEC 12.2.3) */
+/* the callsign takes the row (SPEC 12.2.3) */
 .cot-ribbon .cs{flex:0 1 auto;min-width:6ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 var(--battle-fs-18)/1 var(--hud-font)}
-.cot-ribbon .vn{flex:0 6 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:500 var(--battle-fs-13)/1 var(--font-body);color:var(--ink-3);white-space:nowrap}
+/* the victim's vehicle is its silhouette beside the callsign; its name is spoken only (gauntlet r1: a long callsign cut it
+   to "T-9..." in zh and to nothing in en) */
+.cot-ribbon .vn{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-ribbon .fl{display:flex;flex:none}.cot-ribbon .fl:empty{display:none}
 .cot-ribbon .fl .cot-flag{display:block;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-ribbon .sil{flex:none;width:40px;height:13px;color:var(--team-enemy);transform:scaleX(-1);filter:var(--sil-shadow)}

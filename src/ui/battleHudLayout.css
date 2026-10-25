@@ -23,7 +23,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:var(--s2);flex-wrap:wrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:3px 6px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow :is(.d,.z){white-space:nowrap}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{width:auto;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{max-width:100%;overflow:hidden}
@@ -63,6 +64,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-drive{
   left:140px;bottom:80px;transform:scale(.75);transform-origin:left bottom;
 }
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-drive :is(.unit,.zero,.limit){display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-height='short'] .cot-dp canvas{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone']{--hud-side-width:calc(50vw - 20px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-diag{display:none}
@@ -158,7 +160,7 @@ body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibil
 .cot-vehicle-controls>button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
 .cot-vehicle-controls .si svg{width:var(--hud-tile-icon,13px)!important;height:var(--hud-tile-icon,13px)!important;}
-.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;background:var(--battle-veil);font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
+.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;background:var(--battle-veil);font:700 var(--battle-fs-fig-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
 .cot-vehicle-controls .system-status{display:none;grid-column:2;grid-row:1;font:600 var(--battle-fs-11)/1 var(--hud-font,system-ui);letter-spacing:var(--battle-track-status);color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
@@ -237,6 +239,9 @@ body[data-cot-battle-layout] .cot-kill-lane:empty{display:none}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:var(--s1) 6px;font-size:var(--battle-fs-11);gap:var(--s1)}
 
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .si{width:22px}
+/* a phone's lanes (two side by side under 200 px each): the callsigns keep the room, the silhouettes and the crew mark
+   give it up (gauntlet r1: 390x844 read "Com..." beside two 22 px silhouettes) */
+body[data-cot-battle-layout][data-cot-width='phone'] .cot-kill-lane .cot-kf :is(.si:not(.src),.relation){display:none}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:var(--battle-fs-11);letter-spacing:0}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 
@@ -257,6 +262,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl,.sk,.system-status){display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:var(--ink-1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
+/* a tile showing a count lifts its icon to the top, so the count under it never crosses the glyph (gauntlet r1: the
+   smoke's "3/3" sat on the cloud's base) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button:is(:has(>.sl[data-count]),:has(>.system-status:not(:empty))) .si{align-self:start;margin-top:4px;--hud-tile-icon:18px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
 /* (on the last page the chevron turns back to the first) */
 .cot-systems-more.last .si svg{transform:scaleX(-1)}
@@ -363,7 +371,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 }
 
 @media (max-height:549px) and (orientation:landscape){
-  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:var(--battle-fs-11);line-height:12px;padding:2px 10px}
+  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:auto;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:2px var(--s2)}
   .cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (max-height:340px) and (orientation:landscape){
@@ -373,7 +381,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
    where no seat by the sight kept clear of the left FIRE button, the map and the speedometer; the map's width, so it keeps
    8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:var(--battle-fs-11);line-height:12px;padding:2px var(--s2)}
+  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:auto;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:2px var(--s2)}
   .cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 
@@ -442,7 +450,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 
 /* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
 .cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:var(--accent-hi);font-weight:800;font-variant-numeric:tabular-nums;font-size:var(--battle-fs-11);line-height:1}
-.cot-hud .cot-er .kills[hidden]{display:none}
+/* (the count's column is held on every row, so every callsign has the same room and lines up: gauntlet r1) */
+.cot-hud .cot-er .kills[hidden]{display:block;visibility:hidden}
+.cot-hud .cot-ear.icon-grid .cot-er .kills[hidden]{display:none}
 .cot-hud .cot-ear.icon-grid .cot-er .kills{position:absolute;bottom:2px;right:3px;min-width:12px;padding:1px 2px;font-size:var(--battle-fs-11);background:var(--hud-plate-strong)}
 .cot-hud .cot-ear.icon-grid.r .cot-er .kills{right:auto;left:3px}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:var(--s1);color:var(--ink-2)}

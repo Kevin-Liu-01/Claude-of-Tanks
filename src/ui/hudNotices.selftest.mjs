@@ -13,9 +13,9 @@ import { initHud } from './hud.ts';
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
 // --- the scan: the notice surfaces' rules carry no stripe and no one-sided coloured border ---
-const NOTICE = /\.cot-(alert|sixth|aim-warning|kf|si-toast|si-card|ribbon|medal-toast|range-card|watch \.who)\b|\.flight-console/;
+const NOTICE = /\.cot-(alert|sixth|aim-warning|kf|si-toast|si-card|ribbon|medal-toast|range-card|watch \.who|spec)\b|\.flight-console/;
 const SOURCES = ['./hud.ts', './battleHudLayout.css', './shotInfo.ts', './hudKillRibbon.ts', './watchHud.ts', './provingRangeCard.ts',
-  './aerialHud.css', './medalToast.ts'];
+  './aerialHud.css', './medalToast.ts', './spectatorSwitcher.ts'];
 /** A one-sided border in a colour (neutral hairlines between a plate's own rows, var(--line-*), and transparent ones
  *  stay), or an inset bar on one edge. */
 const ONE_EDGE = /border-(left|right|top|bottom)(-color)?\s*:\s*(?![^;}]*(var\(--line-|transparent|none|0[;}]))[^;}]+/;
@@ -49,8 +49,8 @@ const hud = read('./hud.ts');
 for (const [severity, tone] of [['success', 'ok'], ['warning', 'warn'], ['error', 'danger'], ['info', 'accent']]) {
   assert.match(hud, new RegExp(`\\.cot-hud \\[data-severity=${severity}\\]\\{--notice-tone:var\\(--text-${tone}\\);\\}`), `${severity} takes the ${tone} tone`);
 }
-assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=warning\]\{background:color-mix\(in srgb,var\(--text-warn\) 9%,var\(--hud-plate-strong\)\);\}/);
-assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=error\]\{background:color-mix\(in srgb,var\(--text-danger\) 11%,var\(--hud-plate-strong\)\);\}/);
+assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=warning\]\{background:color-mix\(in srgb,var\(--text-warn\) 7%,var\(--hud-plate-strong\)\);\}/);
+assert.match(hud, /:is\(\.cot-sixth,\.cot-alert,\.cot-aim-warning\)\[data-severity=error\]\{background:color-mix\(in srgb,var\(--text-danger\) 9%,var\(--hud-plate-strong\)\);\}/);
 assert.doesNotMatch(hud, /--notice-edge/, 'the old edge variable is gone');
 
 // --- the alert, live: severity, role, a repeat's count, the pause holding its time ---

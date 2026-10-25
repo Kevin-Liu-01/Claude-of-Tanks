@@ -81,7 +81,7 @@ html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;t
 .cot-watch .wb{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-width:48px;height:48px;
  padding:0 var(--s3);border:0;border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-1);
  font:600 var(--fs-14)/1 var(--font-display);cursor:pointer;pointer-events:auto;transition:opacity var(--dur-fast) var(--ease-enter)}
-.cot-watch .wb .cot-c-kbd{position:absolute;right:3px;bottom:2px;font-size:var(--fs-11)}
+.cot-watch .wb .cot-c-kbd{font-size:var(--battle-fs-fig-11)}
 .cot-watch .wb.seat{min-width:132px;background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-watch .wb.seat .cot-c-kbd{position:static;color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 .cot-watch .wb:disabled{opacity:.34;cursor:default}
@@ -101,12 +101,14 @@ html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 @media(max-width:600px){
  .cot-watch{left:var(--inset-left);right:var(--inset-right);transform:none;justify-content:center;flex-wrap:wrap}
- .cot-watch .who{width:auto;flex:1 1 180px;grid-template-columns:auto 44px minmax(0,1fr)}
+ .cot-watch .who{width:auto;flex:1 1 100%;grid-template-columns:auto 44px minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
 }
-/* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear */
+/* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear; flying, the
+   climb rail stands in the bottom-right corner, under the right kill lane (battleHudLayout.ts ends the lane above it) */
 @media(max-height:500px){
+ .cot-watch-rail{top:auto;bottom:calc(var(--inset-bottom) + 12px);transform:none}
  html:is([data-watch=ride],[data-watch=drive]) .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px))}
  .cot-watch .who,.cot-watch .wb{height:38px}.cot-watch .wb{min-width:38px;padding:0 var(--s2)}
  .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}

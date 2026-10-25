@@ -15,6 +15,11 @@ import {
 } from '../engine/quality.ts';
 import type { TouchControlsOptions, TouchControlsRuntime } from './touchControlsAccess.ts';
 
+/** The tiered presets' Settings names (settings.ts's Graphics tab). */
+const TIERED_PRESET_KEYS: Readonly<Record<string, string>> = {
+  Ultra: 'settings.preset.ultra', High: 'settings.preset.high', Medium: 'settings.preset.medium', Low: 'settings.preset.low',
+};
+
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
@@ -63,7 +68,7 @@ const CSS = `
   background:radial-gradient(circle at 50% 48%,oklch(from var(--accent) l c h / .24),transparent 35%),
     radial-gradient(circle at 38% 27%,rgba(118,103,75,.88),rgba(36,31,24,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px oklch(from var(--surface-scene) l c h / .8));}
-.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;
+.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;line-height:1;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
@@ -151,8 +156,8 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›'
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-11);left:0;right:0;text-align:center;letter-spacing:-.04em}
-body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-11);}
+body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:0;right:0;text-align:center;letter-spacing:-.04em}
+body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-fig-11);}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
 body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom-color:var(--accent-hi);
@@ -752,11 +757,14 @@ export function createTouchControls({
   }
   function renderGraphicsButton(): void {
     const name = graphicsChoice();
-    const label = PRESETS[name]?.label || name;
-    const short = label === 'Performance' ? t('touch.gfx.perf')
-      : label === 'Balanced' ? t('touch.gfx.bal')
-        : label === 'Quality' ? t('touch.gfx.qual')
-          : label === 'Ultra Low' ? t('touch.gfx.ultraLow')
+    const english = PRESETS[name]?.label || name;
+    // (the four tiered presets read their Settings names in every locale: zh showed "HIGH", gauntlet r1)
+    const tiered = TIERED_PRESET_KEYS[english];
+    const label = tiered ? t(tiered) : english;
+    const short = english === 'Performance' ? t('touch.gfx.perf')
+      : english === 'Balanced' ? t('touch.gfx.bal')
+        : english === 'Quality' ? t('touch.gfx.qual')
+          : english === 'Ultra Low' ? t('touch.gfx.ultraLow')
             : label;
     graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = short;
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));

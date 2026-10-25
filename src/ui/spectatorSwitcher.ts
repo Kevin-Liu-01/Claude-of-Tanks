@@ -46,8 +46,8 @@ export function spectatorSwitcherMarkup(): string {
       '</button>' +
       `<b class="idx" aria-label="${t('spectator.idxAria')}" hidden></b>` +
       '<button type="button" class="cycle next" data-tip aria-keyshortcuts="D" aria-label="' + t('spectator.cycleNextAria') + '">' +
-        '<kbd aria-hidden="true">D</kbd>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
+        '<kbd aria-hidden="true">D</kbd>' +
       '</button>' +
     '</div>' +
     `<button type="button" class="gar" aria-label="${t('spectator.garageAria')}">` +
@@ -58,7 +58,7 @@ export function spectatorSwitcherMarkup(): string {
 
 /**
  * The Premiere direction's plates (the Watch bar's language, watchHud.ts): the watched tank's own 3/4 render on the HUD
- * plate on its side's ink edge, its commander in the display face and its vehicle under it; the cycle pair and the
+ * plate ringed all round (no edge stripe, owner 2026-10-25), its commander in the display face and its vehicle under it; the cycle pair and the
  * garage as the kit's square plates with their key caps. The SPECTATING line stays for assistive technology only (no
  * eyebrow over a name, owner UI rules), the scope glyph says it.
  */
@@ -71,13 +71,13 @@ export const spectatorSwitcherStyles = `
 .cot-spec.show{display:grid}.cot-spec.in{opacity:1;transform:translate(-50%,0)}
 .cot-spec .subject{position:relative;display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--s3);
  min-width:0;height:64px;padding:0 var(--s4) 0 var(--s2);pointer-events:auto;background:var(--hud-plate);border-radius:var(--r1);
- border-left:3px solid var(--team-own);box-shadow:var(--ring-1);}
+ box-shadow:var(--ring-1);}
 .cot-spec .portrait{display:grid;place-items:center;width:66px;height:52px;border:0;background:none;}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;}
 .cot-spec .identity{position:relative;display:flex;flex-direction:column;justify-content:center;gap:var(--s1);min-width:0;padding:0}
 .cot-spec .spec-status{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-spec .who{display:flex;flex-direction:column;gap:var(--s1);min-width:0;width:100%}
-.cot-spec .nick{font:600 var(--fs-18)/1.1 var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cot-spec .nick{font:700 var(--fs-18)/1.1 var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .veh{color:var(--ink-3);font:500 var(--battle-fs-12)/1.2 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .cursor-hint{color:var(--ink-3);font:500 var(--battle-fs-11)/1.3 var(--font-ui)}
 .cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}

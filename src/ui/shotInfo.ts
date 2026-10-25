@@ -449,6 +449,7 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
+.cot-si-log.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 20px),transparent);mask-image:linear-gradient(#000 calc(100% - 20px),transparent);}
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -461,11 +462,10 @@ const SI_CSS = `
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
-.cot-si-empty{padding:6px 9px;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--text-danger) 14%,var(--hud-plate)) 40%,oklch(from var(--hud-plate) l c h / 0));
+  background:linear-gradient(90deg,color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate)) 40%,oklch(from var(--hud-plate) l c h / 0));
   border:0;border-radius:var(--r1) 0 0 var(--r1);padding:var(--s1) 6px;
   transition:opacity var(--dur-stage) ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
@@ -783,7 +783,7 @@ function armorPresentation(ev: ShotHitEvent): string {
   }
   const external = !!ev.zone
     && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
-  return external ? t('killcam.externalNoArmor') : '—';
+  return external ? t('killcam.externalNoArmor') : '–';
 }
 
 function penetrationQualifier(
@@ -820,7 +820,7 @@ function penetrationPresentation(
     : roll > 0 && nominal > 0 ? t('killcam.legend.roll') : '';
   if (roll <= 0 || nominal <= 0) {
     return {
-      html: roll > 0 ? `${arrow}${roll} mm` : '—',
+      html: roll > 0 ? `${arrow}${roll} mm` : '–',
       qualifier,
       legend,
     };
@@ -1328,7 +1328,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
     sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
-    if (!shotLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyShots');
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
@@ -1339,8 +1338,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
-    sec2.innerHTML = `<span>${t('endScreen.damageReceived')}</span><span>${t('shotInfo.damageAmount', { amount: Math.round(total) })}</span>`;
-    if (!receivedLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyReceived');
+    // (an empty section is its header's count alone, no sentence; nothing received reads 0, never "−0")
+    sec2.innerHTML = `<span>${t('endScreen.damageReceived')}</span><span class="num">${Math.round(total) > 0 ? t('shotInfo.damageAmount', { amount: Math.round(total) }) : '0'}</span>`;
     for (let i = receivedLog.length - 1; i >= 0; i--) {
       const e = receivedLog[i];
       const r = el('div', 'cot-si-lrow', logPanel);
@@ -1351,6 +1350,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="n">${escapeHtml(e.attacker)}</span>` +
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
+    // a log taller than its dock fades its last row out rather than cutting it (measured a frame later, off any press)
+    requestAnimationFrame(() => logPanel.classList.toggle('more', logPanel.scrollHeight > logPanel.clientHeight + 1));
   }
 
   function toggleLog(): void {

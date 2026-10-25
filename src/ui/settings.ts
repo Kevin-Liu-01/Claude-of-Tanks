@@ -383,16 +383,19 @@ const SETTINGS_CSS = `
    notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
    max-content keeps one row until the edge clamps it. */
 .cot-hints{position:fixed;left:50%;top:calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2));
-  transform:translate(-50%,-100%);z-index:45;width:max-content;
-  display:none;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);pointer-events:none;
-  background:var(--hud-plate);box-shadow:var(--e1);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+  transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
+  display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
+  pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
+  font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
   text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints.show{display:flex;}
 .cot-hints.fade{opacity:0;}
 .cot-hints .hg{display:flex;align-items:center;gap:var(--s2);transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints .hg.done{opacity:0;}
 .cot-hints .hk{display:flex;gap:2px;}
+/* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
+.cot-hints .hk .cot-c-kbd{min-width:18px;height:18px;padding:0 var(--s1);border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;
+  background:var(--battle-veil);box-shadow:none;color:var(--ink-1);font:700 var(--battle-fs-fig-11)/1 var(--hud-font);letter-spacing:0;}
 /* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
    spectated battle (owner 2026-10-25) */
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
@@ -455,7 +458,8 @@ export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[strin
     [t('settings.group.fire'), ['fire']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
     [t('settings.group.sniper'), ['sniperToggle']],
-    [t('settings.group.menu'), ['settingsMenu']],
+    // (ESC opens the settings: the pause veil's cap names the same word, gauntlet r1)
+    [t('settings.title'), ['settingsMenu']],
   ];
 }
 
@@ -2087,6 +2091,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   function showHints() {
     hideHints();
+    // its caps name keyboard keys: a touch layout never shows it, whoever asks (takeFirstBattleHint guards the rollout)
+    if (input.isTouchLayout?.()) return;
     const record = hintsRecord();
     const groups = battleControlHintGroups(input.getSettings().rmbMode)
       .map(([label, actionIds], index) => ({ id: HINT_GROUP_IDS[index], label, actionIds }))

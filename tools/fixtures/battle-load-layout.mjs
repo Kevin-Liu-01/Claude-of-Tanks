@@ -6,6 +6,12 @@ import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { battleLoadModeLabel, createBattleLoadScreen } from '../../src/ui/battleLoad.ts';
+import { setLocale } from '../../src/ui/i18n.ts';
+import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
+
+// ?locale=zh-CN: the screen in Chinese, with the label floor a /cn/ document carries (the HUD fixture's)
+await setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
+if (document.documentElement.lang === 'zh-CN') document.head.insertAdjacentHTML('beforeend', zhTypeFloorStyle('game'));
 
 installResponsiveLayout();
 const screen = createBattleLoadScreen();

@@ -262,6 +262,9 @@ function roster(allies, enemies) {
 window.__HUD_LAYOUT = {multiplayer,state, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
+// (two more frames once layout settles: the HUD's size observers (the minimap's label size, 140 px and under none) land
+// after the state's frames, and a live battle's next frame repaints with them)
+setTimeout(() => { for (let i = 0; i < 2; i++) hud.update(frame); }, 250);
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));
 if(params.get('preview')==='1') {
   // Reissue real presentation events so a reviewer can keep a transient notice
