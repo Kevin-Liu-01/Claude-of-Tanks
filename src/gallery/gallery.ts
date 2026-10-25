@@ -1094,9 +1094,12 @@ function populateRivals(): void {
     return group;
   }));
 }
-/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, name; the rival's silhouette faces the selection. */
+/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip); the rival's
+ * silhouette faces the selection. */
 function versusSide(record: GalleryRecord, mirrored: boolean): string {
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}<b>${esc(keepDesignation(record.displayName))}</b>`;
+  const name = record.shortName || record.displayName;
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}`
+    + `<b${name === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`}>${esc(keepDesignation(name))}</b>`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;

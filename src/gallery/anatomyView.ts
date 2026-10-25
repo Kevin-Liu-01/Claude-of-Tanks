@@ -103,6 +103,8 @@ const STYLE = `
   white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
+/* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
+#viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
 #viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
@@ -275,6 +277,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number; width: number }> = [];
   // the stage's toolbar foot (the layer chips), read again only when the stage changes size: no label stands above it
   let toolbarFoot = 0, footFor = '';
+  let toolsBox: { left: number; right: number; top: number } | null = null;
+  // a label below its anchor that would sit on the turntable and photo buttons
+  const crossesTools = (x: number, y: number, length: number, width: number): boolean => !!toolsBox
+    && x + width / 2 > toolsBox.left && x - width / 2 < toolsBox.right && y + length + CALLOUT_HEIGHT_PX > toolsBox.top;
   const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
 
   function hideExterior(root: THREE.Object3D): void {
@@ -668,6 +674,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       if (footFor !== `${width}x${height}`) {
         footFor = `${width}x${height}`;
         toolbarFoot = bar.offsetHeight ? bar.offsetTop + bar.offsetHeight + CALLOUT_GAP_PX : 0;
+        const tools = host.viewport.querySelector<HTMLElement>('.tools');
+        const box = tools?.offsetHeight ? tools.getBoundingClientRect() : null, canvas = host.renderer.domElement.getBoundingClientRect();
+        toolsBox = box ? { left: box.left - canvas.left - CALLOUT_GAP_PX, right: box.right - canvas.left + CALLOUT_GAP_PX, top: box.top - canvas.top - CALLOUT_GAP_PX } : null;
         for (const item of badgeItems) item.width = 0;
       }
       placed.length = 0;
@@ -687,6 +696,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         let up = callout % 2 === 0;
         const length = CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX;
         if (up && y - length - CALLOUT_HEIGHT_PX < toolbarFoot) up = false;
+        if (!up && crossesTools(x, y, length, item.width) && y - length - CALLOUT_HEIGHT_PX >= toolbarFoot) up = true;
         placed.push({ item, x, y, up, length });
         callout++;
       }
@@ -709,6 +719,12 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
             placed[i].up = false;
             placed[i].length = Math.max(CALLOUT_MIN_PX, labelY(placed[j]) + clear - placed[i].y - CALLOUT_HEIGHT_PX / 2);
           }
+        }
+        // a label pushed down onto the turntable and photo buttons stands above its anchor on the shortest leader
+        if (!placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width)
+          && placed[i].y - CALLOUT_MIN_PX - CALLOUT_HEIGHT_PX >= toolbarFoot) {
+          placed[i].up = true;
+          placed[i].length = CALLOUT_MIN_PX;
         }
         const { item, up, length } = placed[i];
         const rounded = Math.round(length);
