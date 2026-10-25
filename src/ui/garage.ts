@@ -269,6 +269,8 @@ function fitWholeRows(grid: HTMLElement): void {
   grid.classList.toggle('can-scroll', grid.scrollHeight > grid.clientHeight + 1);
 }
 
+/** A docked picker tile's least width (showroom.css sets the same floor in its grid). */
+const EQ_TILE_MIN_PX = 84;
 const BAND_PAINT_PICKS: readonly string[] = Object.freeze(['factory', 'auto', 'summer', 'desert', 'winter', 'digital']);
 const GARAGE_STATIONS = Object.freeze([
   ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
@@ -1925,6 +1927,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // A scrolling paint grid stands a whole number of rows tall, so the sheet never ends on a sliced row (the gauntlet
   // 10-25); the fade on its last row says more waits below. Read when the sheet or the window changes size, and after
   // the grid is drawn, never in a scroll.
+  // The docked picker sets its tiles in balanced rows (the band's widest count, then as few columns as keep the rows that
+  // many: 27 tiles on 2 rows of 14, a category of six on one row of six), so it is never one long row over a nearly
+  // empty one, nor a tall column with one tile alone at its foot; the readout steps aside only when it reaches it.
+  const fitPickerGrid = (grid: HTMLElement): void => {
+    grid.style.gridTemplateColumns = '';
+    if (document.body.dataset.cotPanels === 'persistent') {
+      const tiles = grid.children.length;
+      // every tile on one row stretches the picker to its widest, which is the room the band gives the grid
+      grid.style.gridTemplateColumns = `repeat(${tiles},${EQ_TILE_MIN_PX}px)`;
+      const room = grid.clientWidth;
+      const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+      const most = Math.max(1, Math.floor((room + gap) / (EQ_TILE_MIN_PX + gap)));
+      const cols = Math.ceil(tiles / Math.ceil(tiles / most));
+      if (Number.isFinite(cols) && cols > 0) grid.style.gridTemplateColumns = `repeat(${cols},minmax(${EQ_TILE_MIN_PX}px,1fr))`;
+      const stats = statsEl.getBoundingClientRect();
+      root.classList.toggle('picker-over-readout', eqpickEl.getBoundingClientRect().right > stats.left - 1);
+    }
+    fitWholeRows(grid);
+  };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cgrid.camo');
     if (cg) fitWholeRows(cg);
@@ -1932,7 +1953,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
     const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .pgrid');
-    if (grid) fitWholeRows(grid);
+    if (grid) fitPickerGrid(grid);
   });
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
@@ -2383,7 +2404,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
     // a picker that scrolls ends on a whole row of tiles, never a sliced one
-    requestAnimationFrame(() => { const grid = eqpickEl.querySelector<HTMLElement>('.pgrid'); if (grid) fitWholeRows(grid); });
+    requestAnimationFrame(() => { const grid = eqpickEl.querySelector<HTMLElement>('.pgrid'); if (grid) fitPickerGrid(grid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
@@ -2406,7 +2427,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     hideEqTooltip(false);
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
-    root.classList.remove('picker-open');
+    root.classList.remove('picker-open', 'picker-over-readout');
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);

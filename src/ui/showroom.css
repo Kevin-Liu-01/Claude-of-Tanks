@@ -312,7 +312,7 @@ body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repe
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick{max-width:calc(100% - 2 * var(--edge));}
 /* the picker opens over the name's place: the name steps aside while it is open */
 body[data-cot-panels='persistent'] .cot-garage.picker-open .cot-lt-head{visibility:hidden;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage.picker-open :is(.stats,.cot-stations){visibility:hidden;}
+body[data-cot-panels='persistent'] .cot-garage.picker-open.picker-over-readout :is(.stats,.cot-stations){visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-eqpick{padding:var(--s2) var(--s3);}
 body[data-cot-panels='persistent'] .cot-eqpick :is(.ph,.chips){margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-eqtile{padding:var(--s2) 3px var(--s1);}
