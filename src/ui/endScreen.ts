@@ -418,11 +418,15 @@ body.cot-es-armed .cot-end{display:none !important;}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:.01em;margin-right:5px;vertical-align:1px;}
-.cot-es .es-tr .veh{display:block;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
+.cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
+.cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
 .cot-es .es-tr .veh b{color:${COL.gold};font-weight:700}
 .cot-es .es-tr .output{display:flex;flex:0 0 58px;min-width:0;flex-direction:column;gap:3px;align-items:stretch;}
-.cot-es .es-tr .ov{text-align:right;font:700 11.5px ${FONT_COND};line-height:1;color:var(--ink-1);
-  letter-spacing:-.01em;}
+/* (the figure in the mono, whose digits align down the column as the wide table's do: the display face's 7,160 ran 5 px
+   narrower than 6,850, gauntlet r3) */
+.cot-es .es-tr .ov{text-align:right;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-1);
+  letter-spacing:0;}
 .cot-es .es-tr .obar{display:block;height:2px;background:oklch(from var(--ink-3) l c h / .16);overflow:hidden;}
 .cot-es .es-tr .obar i{display:block;height:100%;background:var(--team-own);}
 .cot-es .es-tr.foe .obar i{background:var(--team-enemy);}.cot-es .es-tr.me .obar i{background:${COL.gold};}
@@ -611,7 +615,7 @@ function vehicleName(specId: string | null | undefined): string {
 /** A " · " line as its parts: a wrapped line starts with its dot, never ends on one (gauntlet r1: "5 / 21 survived ·" over
  *  "111,300 damage"). */
 function dotLine(text: string): string {
-  return text.split(' · ').map((part, index) => `<span class="seg">${index ? '·\u00a0' : ''}${escapeHtml(part)}</span>`).join(' ');
+  return text.split(' · ').map((part, index) => `<span class="seg">${index ? '<span class="sep">·\u00a0</span>' : ''}${escapeHtml(part)}</span>`).join(' ');
 }
 
 export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
@@ -889,7 +893,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
-      `<span class="veh">${escapeHtml(vehicle)}${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
+      `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
@@ -1194,14 +1198,20 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     el('i', 'ln', strip);
     const rows = [...sum.enemies, ...sum.allies];
     for (const beat of beats) {
-      const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
+      const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}${beat.labelled ? '' : ' minor'}`, strip);
       mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
-      if (beat.labelled) mark.style.setProperty('--room', beat.room.toFixed(3));
-      if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
-      else mark.dataset.tip = beatText(beat, rows);
+      // (a beat its neighbours leave no room to name is a minor tick across the line, named on hover: a bare diamond with
+      // neither its label nor its time read as a labelled beat missing its parts, gauntlet r3)
+      if (!beat.labelled) {
+        mark.dataset.tip = beatText(beat, rows);
+        el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
+        continue;
+      }
+      mark.style.setProperty('--room', beat.room.toFixed(3));
+      mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
       el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
-      if (beat.labelled) el('span', 't num', mark).textContent = fmtTime(beat.t);
-      if (beat.kind === 'kill' && beat.labelled) {
+      el('span', 't num', mark).textContent = fmtTime(beat.t);
+      if (beat.kind === 'kill') {
         const silhouette = mark.querySelector<HTMLElement>('.si');
         if (silhouette) maskIcon(silhouette, beat.specId || beat.id || '', 'side_silhouette', 'currentColor');
       }

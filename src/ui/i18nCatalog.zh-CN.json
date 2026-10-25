@@ -1357,7 +1357,7 @@
   "hud.net.ms": "毫秒",
   "hud.net.fps": "帧率",
   "hud.drive.hold": "保持",
-  "hud.drive.kmh": "公里/时",
+  "hud.drive.kmh": "km/h",
   "hud.drive.zero": "0",
   "hud.gunTravelLimit": "火炮已达到俯仰极限",
   "hud.hitOutcome.penetration": "击穿",

@@ -219,7 +219,9 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       setAttr(back,'aria-keyshortcuts',key);
       if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);designationIcon.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',22);}
       setText(title,drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship'));
-      setHidden(designation,false);setText(designationLabel,title.textContent||'');
+      // (the console's eyebrow only with its escort's role: alone it repeated the mode plate's "AC-130" and "Drone",
+      // gauntlet r3)
+      setHidden(designation,!designationLine);setText(designationLabel,title.textContent||'');
       const elapsed=now-priorTime;
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
       if(!wasActive)hintUntil=takeFlightHint(view.kind)?now+FLIGHT_HINT_S:-1;

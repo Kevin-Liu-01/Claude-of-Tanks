@@ -318,10 +318,6 @@ const COL = {
   dim: 'var(--ink-3)',
 };
 
-const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
-  AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e',
-  APFSDS: '#ffc46b', HESH: '#ffb02e',
-};
 
 // Module names come from ui/moduleRegistry.ts moduleName() (the glossary-bound catalog; single source —
 // this file's local copy had already drifted to 'Fuel' vs the killcam's
@@ -380,7 +376,7 @@ const SI_CSS = `
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
 @container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
-.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:var(--battle-fs-20);
+.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
   color:var(--warn);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
@@ -390,13 +386,15 @@ const SI_CSS = `
 .cot-si-sub>span:last-child{justify-content:flex-end;}
 .cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-sub .cot-si-subtext{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.cot-si-sub .ty{font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.02em;
+.cot-si-sub .ty{font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.02em;color:var(--accent-hi);
   font-family:${FONT_COND};display:inline-flex;align-items:center;gap:3px;}
 .cot-si-sub .ty svg{color:inherit;}
 .cot-si-body{display:flex;flex-direction:column;gap:3px;padding:var(--s1) 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
-.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:center;font-size:var(--battle-fs-11);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
+/* (one rhythm: every row 2 px over and under a hairline, the subtitle's included; the pen row's own gap and the armor row's
+   own rules read as one-offs, gauntlet r3) */
+.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
+  align-items:center;font-size:var(--battle-fs-12);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
 .cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
@@ -406,12 +404,10 @@ const SI_CSS = `
    qualifier is an unbreakable suffix chip and a dim caption legends the
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
-.cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid var(--line-2);}
 .cot-si-kv.pen b{white-space:nowrap;}
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
   border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.04em;
   vertical-align:1px;line-height:1.25;font-weight:700;}
-.cot-si-kv.armor{padding:2px 0;border-top:1px solid var(--line-1);border-bottom:1px solid var(--line-1);}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
@@ -449,7 +445,9 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
-.cot-si-log.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 20px),transparent);mask-image:linear-gradient(#000 calc(100% - 20px),transparent);}
+/* (the rows fade into the plate at its foot, the plate's own edge kept: a mask on the panel erased its bottom edge) */
+.cot-si-log.more::after{content:'';position:sticky;bottom:0;display:block;height:20px;margin-top:-20px;pointer-events:none;
+  background:linear-gradient(oklch(from var(--hud-plate) l c h / 0),var(--hud-plate));}
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -465,8 +463,9 @@ const SI_CSS = `
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate)) 40%,oklch(from var(--hud-plate) l c h / 0));
-  border:0;border-radius:var(--r1) 0 0 var(--r1);padding:var(--s1) 6px;
+  /* (no plate: a row of the left column as the kill rows over it are, its figure in the danger ink; a wash flush with the
+     screen's edge was the column's one plate off its 10 px line, gauntlet r3) */
+  background:none;border:0;padding:var(--s1) 6px;
   transition:opacity var(--dur-stage) ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
@@ -757,10 +756,9 @@ const shellTypeClass = (missile: boolean): string => (missile ? 'ty missile' : '
 
 function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
   const subtitle = el('div', 'cot-si-sub', card);
-  const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
   const missile = weaponHitKind(ev) === 'missile';
   subtitle.innerHTML =
-    `<span><span class="${shellTypeClass(missile)}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
+    `<span><span class="${shellTypeClass(missile)}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
     `<span class="cot-si-subtext">${escapeHtml(shellDisplayName(ev))}</span></span>` +
     `<span>${GLYPH.target}<span class="cot-si-subtext">${escapeHtml(ev.targetName || '')}</span></span>`;
 }
@@ -1010,6 +1008,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   cardHost.setAttribute('role', 'status');
   cardHost.setAttribute('aria-live', 'polite');
   const logPanel = el('div', 'cot-si-log', root);
+  /** The log fades its foot while rows lie under it: measured as it fills, as the planner resizes its dock and as it
+   *  scrolls (gauntlet r3: set once on the first fill, the fade stayed on six rows that fit at 1920 and off the bottom). */
+  const markLogMore = (): void => {
+    logPanel.classList.toggle('more', logPanel.scrollTop + logPanel.clientHeight < logPanel.scrollHeight - 1);
+  };
+  logPanel.addEventListener('scroll', markLogMore, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(markLogMore).observe(logPanel);
   logPanel.tabIndex = 0;
   const toastHost = el('div', 'cot-si-toasthost', root);
   toastHost.setAttribute('role', 'status');
@@ -1351,7 +1356,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
     // a log taller than its dock fades its last row out rather than cutting it (measured a frame later, off any press)
-    requestAnimationFrame(() => logPanel.classList.toggle('more', logPanel.scrollHeight > logPanel.clientHeight + 1));
+    requestAnimationFrame(markLogMore);
   }
 
   function toggleLog(): void {

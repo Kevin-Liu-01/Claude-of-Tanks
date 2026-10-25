@@ -382,7 +382,7 @@ const SETTINGS_CSS = `
    battleHudLayout.ts writes as --hud-systems-top (the tray's top less the row), on the centre line; under the sight's
    notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
    max-content keeps one row until the edge clamps it. */
-.cot-hints{position:fixed;left:50%;top:calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2));
+.cot-hints{position:fixed;left:var(--hud-hints-x,50%);top:var(--hud-hints-bottom,calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2)));
   transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
   display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
   pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
@@ -394,8 +394,7 @@ const SETTINGS_CSS = `
 .cot-hints .hg.done{opacity:0;}
 .cot-hints .hk{display:flex;gap:2px;}
 /* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
-.cot-hints .hk .cot-c-kbd{min-width:18px;height:18px;padding:0 var(--s1);border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;
-  background:var(--battle-veil);box-shadow:none;color:var(--ink-1);font:700 var(--battle-fs-fig-11)/1 var(--hud-font);letter-spacing:0;}
+.cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 /* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
    spectated battle (owner 2026-10-25) */
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
@@ -413,8 +412,7 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
    the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
 .cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
-.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);border:1px solid oklch(from var(--ink-3) .61 c h);
-  border-radius:3px;background:var(--battle-veil);box-shadow:none;color:var(--ink-1);font:700 var(--battle-fs-fig-11)/1 var(--hud-font);letter-spacing:0;}
+.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */

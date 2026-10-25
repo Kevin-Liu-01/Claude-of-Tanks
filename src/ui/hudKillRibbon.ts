@@ -29,11 +29,13 @@ function inWindow(times: Float64Array, now: number): number {
 }
 
 const CSS = `
-.cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:50%;top:var(--hud-ribbon-top,var(--hud-systems-top,80%));
-  transform:translate(-50%,calc(-100% - 12px));width:min(520px,calc(100vw - 32px));display:none;flex-direction:column;
+.cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:var(--hud-ribbon-x,50%);top:var(--hud-ribbon-top,var(--hud-systems-top,80%));
+  transform:translate(-50%,calc(-100% - 12px));width:var(--hud-ribbon-w,min(520px,calc(100vw - 32px)));display:none;flex-direction:column;
   background:var(--hud-plate-strong);border-radius:var(--r1);box-shadow:var(--battle-edge-own);color:var(--ink-1);
   pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--dur-base) var(--ease-exit),visibility var(--dur-base) step-end}
-body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-ribbon{display:flex}
+/* (a mouse layout from 768 px wide: centred over the systems row in the gap its lower corners leave, battleHudLayout.ts;
+   gauntlet r3 found no kill banner at 1024x600 and 900x700) */
+body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short']) .cot-ribbon{display:flex}
 .cot-ribbon.on{opacity:1;visibility:visible;transition:opacity var(--dur-fast) var(--ease-enter)}
 /* it steps aside for a notice that meets it, while spectating, and in the scope (the direction's 06b .sniper .ribbon) */
 .cot-ribbon.on.yield,body.cot-spectating .cot-ribbon.on,html[data-cot-scoped] .cot-ribbon.on{opacity:0;visibility:hidden}
@@ -58,7 +60,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-ribbon .x[hidden]{display:none}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}
 .cot-ribbon .stream>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
-.cot-ribbon .stream>span[hidden]{display:none}
+.cot-ribbon .stream>span[hidden],.cot-ribbon .stream[hidden]{display:none}
 /* Chinese labels keep the 13 px floor (the type rules) */
 :lang(zh-CN) .cot-ribbon :is(.x small,.cot-c-chip){font-size:var(--battle-fs-13)}
 .cot-ribbon .stream svg{width:14px;height:14px;flex:none}
@@ -147,6 +149,8 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
     zonesText.textContent = t('hud.ribbon.zones', { count: zones });
     spotsItem.hidden = spots <= 0;
     spotsText.textContent = t('hud.ribbon.spots', { count: spots });
+    // (a streak with nothing to add drops the band itself: an empty ruled strip hung under the plate, gauntlet r3)
+    stream.hidden = killsItem.hidden && damageItem.hidden && zonesItem.hidden && spotsItem.hidden;
   }
 
   return {

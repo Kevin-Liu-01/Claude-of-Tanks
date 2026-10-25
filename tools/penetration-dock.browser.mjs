@@ -36,7 +36,7 @@ try{
   for(const count of [1,7,14,21,41])for(const mapSize of [160,220,300]){
    await page.evaluate(({count,mapSize})=>{
     const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);
-    for(let i=0;i<3&&document.querySelector('.cot-minimap').style.width!==`${mapSize}px`;i++)f.bus.emit('ui:minimapZoom',{});
+    for(let i=0;i<3&&document.querySelector('.cot-minimap').dataset.zoom!==String([160,220,300].indexOf(mapSize));i++)f.bus.emit('ui:minimapZoom',{});
     if(count===21)f.multiplayer('healthy');
     if(count===41)f.multiplayer('reconnecting');
     f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);

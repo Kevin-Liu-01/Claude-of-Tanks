@@ -33,7 +33,8 @@
 .flight-weapon-icon{display:flex;flex:0 0 24px;color:var(--ink-2)}.flight-weapon-icon svg{width:24px;height:30px}
 .flight-weapon-copy{display:flex;flex-direction:column;min-width:0;gap:5px}
 .flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.15}.flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0em;color:var(--ink-3)}
-.flight-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 2px;border:1px solid var(--ink-3);border-radius:2px;font-family:inherit;font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-2);box-sizing:border-box}
+/* (the kit's key cap: battleHudLayout.css .sk) */
+.flight-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);box-sizing:border-box}
 .flight-weapon>.flight-key{position:absolute;top:4px;right:4px}
 .flight-weapon[aria-pressed=true]{border-color:var(--accent);background:linear-gradient(oklch(from var(--accent-lo) .42 .056 h),var(--surface-hover));color:var(--accent-hi);box-shadow:inset 0 0 12px oklch(from var(--accent) l c h / .071)}
 .flight-weapon[aria-pressed=true] .flight-weapon-icon,.flight-weapon[aria-pressed=true] small{color:var(--accent-hi)}
@@ -180,7 +181,9 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-view-track .scope-vision-step.active{background:var(--flight-accent);box-shadow:none}
 .cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:4;justify-content:center}
 .cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
-.cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:oklch(from var(--ink-1) l c h / .11);color:var(--ink-1);min-width:19px;height:20px}
+/* (the kit's cap in every console: a filled grey cap here and in the gunship's beside the ringed caps elsewhere read as
+   three styles, gauntlet r3) */
+.cot-flight-hud[data-kind=drone] .flight-key{min-width:19px;height:20px}
 .cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:var(--battle-fs-11);line-height:1.5;color:var(--ink-2)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .41 c h / .961),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
@@ -190,7 +193,9 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-sight{width:36px;height:18px;background:none;border-inline:1px solid oklch(from var(--ink-1) l c h / .6)}
 .cot-flight-hud[data-kind=drone] .flight-sight::before{content:'';position:absolute;width:9px;height:1px;left:50%;top:50%;transform:translate(-50%,-50%);background:currentColor}
 .cot-flight-hud[data-kind=drone] .flight-sight::after{width:1px;height:9px}
-html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:var(--hud-plate);box-shadow:inset 0 2px var(--accent-hi),inset 0 -2px var(--accent-lo)}
+/* (the climb key is the kit's square control, Watch's climb rail's: a striped hexagon matched nothing else, gauntlet r3) */
+html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-2);color:var(--ink-1)}
+html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-accent);color:var(--accent-hi)}
 @media(pointer:coarse){
  .cot-flight-hud[data-kind=drone] .flight-console{width:min(360px,calc(100% - 260px));gap:5px var(--s2)}
  .cot-flight-hud[data-kind=drone] .flight-designation{font-size:var(--battle-fs-11);line-height:16px;letter-spacing:.05em}
@@ -252,9 +257,10 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:var(--accent-hi);--control-fill:linear-gradient(135deg,oklch(from var(--accent-lo) .43 .072 h / .925),var(--hud-plate-strong));color:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] :is(.flight-weapon-icon,small){color:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:var(--accent-hi)}
-.cot-flight-hud[data-kind=gunship] .flight-key{border:0;border-radius:3px;background:oklch(from var(--ink-1) l c h / .125);color:var(--ink-1);min-width:17px;height:17px}
+.cot-flight-hud[data-kind=gunship] .flight-key{min-width:17px;height:17px}
 .cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:var(--battle-fs-11)}
-.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
+/* (its glyph and words centred in the tile, as the supplies' beside it: gauntlet r3 read Infrared set left) */
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,max-content);justify-content:center;grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
 .cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
@@ -356,12 +362,13 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-scope-vision:active::after{background:oklch(from var(--surface-hover) .38 c h)}
 .cot-scope-vision .scope-vision-emblem{display:flex;flex-shrink:0;color:var(--scope-accent)}
 .scope-vision-emblem svg{width:22px;height:22px}
-.cot-scope-vision .scope-vision-copy{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+/* (the view's name centred over its steps: a two-character zh name left a hole before the key, gauntlet r3) */
+.cot-scope-vision .scope-vision-copy{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
 .scope-vision-label{font-weight:700;letter-spacing:.04em;white-space:nowrap}
 .cot-scope-vision .scope-vision-track{display:flex;gap:var(--s1);width:100%;height:3px}
 .scope-vision-step{flex:1;min-width:9px;background:var(--ink-4);transform:skewX(-22deg)}
 .scope-vision-step.active{background:var(--scope-accent);box-shadow:0 0 5px color-mix(in srgb,var(--scope-accent) 55%,transparent)}
-.cot-scope-vision .flight-key{color:oklch(from var(--ink-2) .89 c h);border-color:oklch(from var(--ink-3) .61 c h);min-width:18px;height:19px}
+.cot-scope-vision .flight-key{min-width:18px;height:19px}
 .scope-vision-cycle{display:flex;color:var(--scope-accent)}.scope-vision-cycle svg{width:13px;height:13px}
 @media(pointer:coarse),(max-width:539px){
  .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}

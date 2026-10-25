@@ -105,6 +105,8 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
 }
+/* (the seat's word stays on one line: zh's 驾驶 broke a character a line at 1440, gauntlet r3) */
+.cot-watch .wb.seat .label{white-space:nowrap}
 /* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear; flying, the
    climb rail stands in the bottom-right corner, under the right kill lane (battleHudLayout.ts ends the lane above it) */
 @media(max-height:500px){

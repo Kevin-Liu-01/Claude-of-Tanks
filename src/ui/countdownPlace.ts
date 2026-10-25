@@ -1,7 +1,7 @@
 /**
  * The pre-battle countdown's place on both layouts (owner, 2026-10-21, over a Turbo Ball match whose count the notice
  * planners had sent to 31 % of the width: "the 3 2 1 area can be a lot better but regardless it needs to be in center
- * of screen"). The dial sits on the window's centre line just over the crosshair, its bottom a twentieth of the height
+ * of screen"). The dial sits on the window's centre line just over the crosshair, its bottom a twelfth of the height
  * over the aim point (at least clear of the resting sight), and slides up, then shrinks, only where a panel or the score
  * and objective would meet it; the rules panel sits on the same line under the sight's marks (or, where they leave it no
  * place, under the resting sight), sliding down, then shrinking to the 11 px type floor, and stays hidden where nothing
@@ -34,8 +34,9 @@ export const SIGHT_CLEAR_PX = 20;
 /** Under the aim point: the column of marks under the marker (the rack, the struck round, the reload count) and the
  *  gun-limit chip at 50 % + 48 px (battleHudLayout.css .cot-aim-warning, 24 px tall). */
 export const MARKS_BELOW_PX = 76;
-/** The dial's bottom over the aim point, as a share of the height. */
-const LIFT = 0.05;
+/** The dial's bottom over the aim point, as a share of the height (a twelfth: at a twentieth the dial's 6 o'clock tick met
+ *  the ring of a gun not yet aimed, gauntlet r3 from 1024x600 to 2560). */
+const LIFT = 0.08;
 const DIAL_SCALES = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4] as const;
 /** Over the sight, smaller still: a 100 px numeral at 26 px at the least (568x256 leaves the centre line 43 px). */
 const OVER_SIGHT_SCALES = [...DIAL_SCALES, 0.35, 0.3, 0.26] as const;
@@ -87,7 +88,7 @@ export function placeCountdown(width: number, height: number, top: number, dial:
     if (found) break;
     const w = dial.w * s, h = dial.h * s;
     if (w + 2 * gap > width || ceiling + h > height - gap) continue;
-    // (the rows nearest its own place, its bottom a twentieth over the aim point, first)
+    // (the rows nearest its own place, its bottom a twelfth over the aim point, first)
     const ideal = Math.floor(bottom - h);
     const rows: number[] = [];
     for (let y = ceiling; y <= Math.floor(cy); y += STEP_PX) rows.push(y);

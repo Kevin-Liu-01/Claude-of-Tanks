@@ -52,6 +52,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-vn{display:block;position:relati
   font:600 max(var(--battle-fs-18),var(--fs-18))/1.05 var(--font-ui);color:var(--ink-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 body[data-cot-width] .cot-es.cot-es--record .es-vn .hv{color:var(--hollow-fill);-webkit-text-stroke:var(--hollow-stroke) var(--hollow-accent);paint-order:stroke fill}
 }
+/* (Chinese drops the hollow outline, so its variant is the outline's accent, solid: zh's "HC" read plain white beside
+   en's accent outline, gauntlet r3) */
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-vn .hv{color:var(--hollow-accent)}
 /* the tallies as the direction's stat tiles (11-end-screen .me .k): a quiet tile on a hairline, the figure in the display voice */
 body[data-cot-width] .cot-es.cot-es--record .es-tal{background:var(--fill-quiet);border:0;border-radius:var(--r1);box-shadow:var(--ring-1);padding:var(--s3);gap:var(--s2)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font:700 var(--fs-40)/1.1 var(--font-ui);letter-spacing:var(--track-title);color:var(--ink-1)}
@@ -100,7 +103,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-mini .mv{font-size:24px}
 body[data-cot-width] .cot-es.cot-es--record .es-blow{padding:var(--s3) var(--s4);margin:var(--s4) 20px;border:0;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1);line-height:1.5;font-size:var(--battle-fs-13);color:var(--ink-2)}
 @media(min-width:1000px){body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:1.15fr 1fr;align-content:start;min-height:100%;gap:0}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-grid,body[data-cot-width] .cot-es.cot-es--record .personal>.es-combat-details{grid-column:1/-1}body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1/-1;border-top:1px solid var(--line-1)}body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-best,.es-blow){grid-column:1/-1}}
 @media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:var(--s3);margin-bottom:var(--s2)}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{margin:14px;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:10px}body[data-cot-width] .cot-es.cot-es--record .es-blow{margin:14px}}
-@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px var(--s3);margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block;margin-right:14px}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px var(--s3);margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* the rosters as the direction's tables (11-end-screen .row): zebra rows, the player's own on the tungsten edge */
 body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campaign){border:0;border-radius:var(--r1);box-shadow:var(--ring-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even){background:var(--fill-faint)}
@@ -150,6 +153,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .ev{position:absolute;top:3
 body[data-cot-width] .cot-es.cot-es--record .es-beat .d{position:absolute;left:-6px;top:-6px;width:12px;height:12px;transform:rotate(45deg);
   background:var(--accent);box-shadow:var(--battle-beat-ring)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .d.loss{background:var(--team-enemy)}
+/* a beat with no room for its label: a minor tick across the line, in its ink (named on hover) */
+body[data-cot-width] .cot-es.cot-es--record .es-beat .minor .d{left:-1px;top:-7px;width:2px;height:14px;transform:none;box-shadow:none}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .lb{position:absolute;bottom:14px;left:0;transform:translateX(-50%);display:flex;
   align-items:center;gap:6px;max-width:min(280px,calc(var(--room,.12) * 100cqi - 8px));padding:5px var(--s2);white-space:nowrap;border-radius:var(--chip-radius);
   background:var(--battle-tip-plate);box-shadow:var(--e1);font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-1)}
@@ -222,7 +227,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:var(--battle-fs
    headline carries the score) */
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{display:none}
 /* the record plate hugs what it holds (the rosters' plate beside it runs the column's height and scrolls) */
-body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal{align-self:start;max-height:100%;min-height:0}
+/* (both plates run the column's height, so their bottoms align: the record plate hugging its tiles left a void under it
+   beside the rosters' plate, gauntlet r3 at 1440 and up) */
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal{align-self:stretch;max-height:100%;min-height:0}
 body[data-cot-width] .cot-es.cot-es--record .es-rosters{padding:var(--s4);gap:var(--s4)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top:0;padding-top:0}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols{display:grid;grid-template-columns:var(--es-cols);grid-template-areas:var(--es-areas);
@@ -253,5 +260,53 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .output{grid-area:dg;flex:non
 body[data-cot-width] .cot-es.cot-es--record .es-tr .obar{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .ov{font:500 var(--battle-fs-13)/1 var(--font-data)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
+}
+/* --- the shorter windows (gauntlet r3): whole parts in the report's height, never a part cut at its foot --------- */
+/* a wide window under 800 px tall: the head a step smaller and the medals beside the best shot, so the record holds its
+   tiles, medals, best shot and details at 1280x720 (the best shot stood there as a bare hairline at the column's foot) */
+@media(min-width:1280px) and (min-height:700px) and (max-height:800px){
+  body[data-cot-width] .cot-es.cot-es--record .es-hero{padding-block:var(--s2);margin-bottom:var(--s2)}
+  body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:clamp(40px,min(8vw,12vh),140px)}
+}
+@media(min-width:1000px) and (max-height:800px){
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center}
+}
+/* a window under 1280 px wide and 760 tall (1024x600, 900x700, a short landscape): the six tiles in one row without the
+   vehicle's card (the headline's line names it), the medals beside the best shot (1024x600 faded its medals mid-tile and
+   844x390 cut its tiles' second row) */
+@media(min-width:701px) and (max-width:1279px) and (max-height:760px){
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
+  body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
+  body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-stat-grid,.es-combat-details,.es-blow){grid-column:1/-1}
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center}
+}
+@media(max-height:450px) and (orientation:landscape){
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding:10px 14px}
+  body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:10px 14px}
+}
+/* a phone's card names its vehicle as the wider ones do, under the tank (the 112 px card across the plate has the room) */
+@media(max-width:700px){
+  body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn){display:grid;grid-template-rows:1fr auto;align-content:end}
+  body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn) .hc-host{--hc-band:26px}
+  body[data-cot-width] .cot-es.cot-es--record .es-vn{display:block;position:relative;z-index:var(--battle-z-card-text);grid-row:2;padding:var(--s1) var(--s2) 6px;
+    font:600 max(var(--battle-fs-15),var(--fs-15))/1.05 var(--font-ui);color:var(--ink-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  body[data-cot-width] .cot-es.cot-es--record .es-vn .hv{color:var(--hollow-fill);-webkit-text-stroke:var(--hollow-stroke) var(--hollow-accent);paint-order:stroke fill}
+  /* five medals a row (64 px tiles wrapped the fifth alone at 390) */
+  body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{width:56px;height:56px;padding:5px}
+  body[data-cot-width] .cot-es.cot-es--record .es-awards .aw svg{width:46px;height:46px}
+  /* a side's summary a line a part (a wrapped line began with its separator) */
+  body[data-cot-width] .cot-es.cot-es--record .es-score-side .ss .seg{display:block}
+  body[data-cot-width] .cot-es.cot-es--record .es-score-side .ss .sep{display:none}
+}
+/* (a watched battle's score once: the summary card's where it shows under the wide windows, the headline's at a short
+   landscape, whose panel the card and the column heads filled to a row and a half, gauntlet r3) */
+@media (max-width:1279px) and (min-height:451px),(max-height:699px) and (min-height:451px){
+  body[data-cot-width] .cot-es.cot-es--record.watched .es-headline .es-score{display:none}
+}
+@media(max-height:450px) and (orientation:landscape){
+  body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{display:none}
 }
 }

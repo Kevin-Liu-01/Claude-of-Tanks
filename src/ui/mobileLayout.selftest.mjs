@@ -131,7 +131,7 @@ assert.match(touch,
   /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
   'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
 assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells\{[^}]*width:48px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
+  /body\.cot-touch-layout \.cot-shells\{[^}]*width:52px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
   'mobile ammunition must collapse to one trigger and expand sideways for selection');
 assert.match(hud,
   /const s = el\('button', 'cot-con', conBox\)[\s\S]*bus\.emit\('ui:consumable'[\s\S]*addEventListener\('pointerdown'/,
@@ -290,9 +290,10 @@ assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
 assert.match(shotInfo,
   /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
-// (bc8de4d713: the rule is the Premiere plates' line token)
+// (bc8de4d713: the rule is the Premiere plates' line token; gauntlet r3: every row on one rhythm, each over its own
+// hairline, the penetration row included, so no row's gap is a one-off)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
+  /\.cot-si-kv\{[^}]*padding:2px 0;border-top:1px solid var\(--line-1\);/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,

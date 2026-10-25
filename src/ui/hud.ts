@@ -22,7 +22,7 @@ import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } 
 import { createElement as el } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
-import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
+import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
@@ -808,12 +808,15 @@ const AIM_WARNING_CHIP_BELOW = 10;
  *  a mouse layout, 46 on touch). The warning chip set above the sight keeps over its band (sniperChipAboveY): a wide
  *  chip reaches past the switch's inner edge (80 px from the marker on a short window). */
 const SCOPE_VISION_HALF_H = 24;
+/** How far right of the aim point the hit confirmation's 4:30 shard reaches once settled (hitConfirmVisualState). */
+const HIT_SHARD_CLEAR = Math.ceil(0.7071 * (18.5 + 13) + 3.5);
 /** How the scope's readout row sets its zoom plate and the warning chip, and where its line goes (sniperReadoutStack). */
 type SniperRowMode = 'stack' | 'zoomBeside' | 'chipBeside' | 'rowBeside' | 'rowAbove';
 /** The touch warning chip the reticle seats under the sight (placeAimWarning): its width (a portrait under 375 px wide
  *  narrows it, clear of the speedometer beside the sight at 360x640), its height the canvas chip's
  *  (AIM_WARNING_CHIP_ABOVE + _BELOW, 24 px; battleHudLayout.css data-seat). */
-const TOUCH_WARNING_W = 180;
+// (the detection's width, so the chip and the notices stacked under the sight are one column: gauntlet r3)
+const TOUCH_WARNING_W = 214;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
  *  the column or beside the line), the zoom plate left out; the last flag marks a place only a chip makes different.
@@ -1271,9 +1274,6 @@ const DEFAULT_SHELLS: HudShellCard[] = [
   { name: 'M1147', type: 'HE', dmg: 600, penLabel: '60 mm' },
 ];
 
-const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
-  AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
-};
 // slot underline per shell CLASS (r6-2): silver = kinetic (AP/APCR/APFSDS),
 // orange = chemical (HEAT), olive = high-explosive — WoT's ammo color read
 const SHELL_CLASS_UNDERLINE: Readonly<Record<string, string>> = {
@@ -1713,7 +1713,10 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
   box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;}
 .cot-kf.out{opacity:0;}
-.cot-kf .k,.cot-kf .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* (the names take their own width, so a row's marks follow its callsigns: a flex-filling victim pushed the crew mark
+   90 px off its row, gauntlet r3; the right lane packs to its edge) */
+.cot-kf .k,.cot-kf .v{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-kill-lane.r .cot-kf{justify-content:flex-end;}
 /* callsigns in the display voice at the row's size; the docked desktop feed sets the direction's 13 px */
 .cot-kf .k,.cot-kf .v{font-family:${FONT_COND};font-weight:600;line-height:1;}
 body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-layout) .cot-kf :is(.k,.v){font-size:var(--battle-fs-13);}
@@ -1752,9 +1755,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:i
    (rosters-expanded) adds each vehicle and its tier */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .veh{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .nick{font-size:var(--battle-fs-12)}
-/* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
-   the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
-html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
+/* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rests on the floor (a watcher spectates: the
+   virtual stick it once rode 170 px above is hidden, battleHudLayout.css .cot-spectating, and the bar floated over 170 px of
+   nothing, gauntlet r3); a short landscape tucks it under the score, as riding does */
 html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px));bottom:auto}
 /* the coordinator's 11 px floor (246): no HUD text under 11 px on any device. A label that cannot fit there reads as its
    glyph or its state's ink, its words in its title and for a screen reader; a figure stays visible (.num). The systems
@@ -1773,10 +1776,9 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
    beside the media queries that size it) keeps the glyph */
 .cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
 .cot-aim-warning .g{display:flex;flex:none;color:var(--notice-tone)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
-/* a compact alert is its glyph on its severity's plate, its words in the live region and its title: the touch planner's
-   compact form here; the smallest touch screens and a mouse window that seats its alert in the 9 px type's reserves
-   (mouseNoticePlan.ts ALERT_RESERVE_9) beside their media queries in battleHudLayout.css */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* a compact alert keeps its words, two 11 px lines in the touch planner's compact width (battleHudLayout.css
+   alert-compact: gauntlet r3 found a notice reduced to its glyph in a square); a mouse window that seats its alert in the
+   9 px type's reserves (mouseNoticePlan.ts ALERT_RESERVE_9) is its glyph beside that media query in battleHudLayout.css */
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
@@ -1953,9 +1955,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    sit above it, as the consumables' do (critic r7: on the stacked and touch trays the count takes the top-right corner,
    under the shade's top-anchored edge, and a reloading 24 read about 2:1 on its panel while the ∞ beside it stayed
    white). */
-.cot-shell .key{position:absolute;top:2px;left:2px;font:500 var(--battle-fs-fig-11)/13px var(--font-mono);color:var(--ink-3);
+.cot-shell .key{position:absolute;top:2px;left:2px;font:500 var(--battle-fs-fig-11)/13px var(--font-data);color:var(--ink-2);
   letter-spacing:0;background:var(--hud-plate);
-  border:1px solid var(--line-2);border-radius:var(--r1);padding:0 3px;z-index:4;}
+  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);padding:0 3px;z-index:4;}
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
@@ -1967,7 +1969,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 /* (the type code is Latin in every locale, so it is set in the display face whose Latin it is: a zh document's UI stack
    drew it a fallback face wider, past its tile, gauntlet r2) */
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-fig-11);font-weight:700;
-  font-family:var(--font-display);
+  font-family:var(--font-display);color:var(--ink-2);
   letter-spacing:-.02em;white-space:nowrap;z-index:4;}
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
 .cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;}
@@ -2001,9 +2003,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){.cot-con:hover{border-color:var(--line-control);}}
-.cot-con .key{position:absolute;top:3px;left:4px;font:500 var(--battle-fs-11)/12px var(--font-mono);color:var(--ink-3);
+.cot-con .key{position:absolute;top:3px;left:4px;font:500 var(--battle-fs-fig-11)/12px var(--font-data);color:var(--ink-2);
   letter-spacing:0;
-  border:1px solid var(--line-2);border-radius:var(--r1);padding:0 3px;z-index:2;}
+  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);padding:0 3px;z-index:2;}
 .cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
   font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
@@ -2073,12 +2075,23 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   box-shadow:var(--battle-mark-ring);}
 /* The tactical map on its plate (brand-ui H3, the direction's .mm). On the wide mouse layouts the plate's padding holds a
    header over the map, the battlefield's name beside the map key's cap, so the map itself keeps its square. */
-.cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:220px;height:220px;
+/* (the plate's size steps with the map key, --mm-k (the zoom below); its insets are --mm-p*, and a map shown large
+   enough to hold them keeps its grid's coordinates in a gutter outside the grid (.grid): numbers along the top, letters
+   down the left, gauntlet r3 found "1" and "A" sharing the corner cell and the range ring through the numbers) */
+.cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:calc(220px * var(--mm-k,1));height:calc(220px * var(--mm-k,1));
+  --mm-pt:0px;--mm-pr:0px;--mm-pb:0px;--mm-pl:0px;--mm-g:0px;
+  padding:calc(var(--mm-pt) + var(--mm-g)) var(--mm-pr) var(--mm-pb) calc(var(--mm-pl) + var(--mm-g));
   border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
+.cot-mm-gx,.cot-mm-gy{display:none}
+.cot-minimap.grid{--mm-g:14px}
+.cot-minimap.grid :is(.cot-mm-gx,.cot-mm-gy){position:absolute;display:grid;place-items:center;pointer-events:none;
+  font:600 var(--battle-fs-fig-11)/1 var(--hud-font);color:var(--ink-3)}
+.cot-mm-gx{left:calc(var(--mm-pl) + var(--mm-g));right:var(--mm-pr);top:var(--mm-pt);height:var(--mm-g);grid-template-columns:repeat(10,minmax(0,1fr))}
+.cot-mm-gy{top:calc(var(--mm-pt) + var(--mm-g));bottom:var(--mm-pb);left:var(--mm-pl);width:var(--mm-g);grid-template-rows:repeat(10,minmax(0,1fr))}
 .cot-mm-hd{display:none}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-minimap{
-  box-sizing:content-box;padding:var(--s6) var(--s2) var(--s2);}
+  box-sizing:content-box;--mm-pt:var(--s6);--mm-pr:var(--s2);--mm-pb:var(--s2);--mm-pl:var(--s2);}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-mm-hd{
   position:absolute;left:8px;right:8px;top:6px;height:20px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);white-space:nowrap;}
@@ -2157,14 +2170,8 @@ function setObjectiveValue(target: HTMLElement, copy: string): void {
   // unchanged)
   target.closest?.('.cot-mode-status')?.classList.toggle('stacked', copy.includes(' · ') && objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W);
 }
-/** The objective panel's default width and its padding and glyph's share of it (battleHudLayout.css). */
-const OBJECTIVE_DEFAULT_W = 278, OBJECTIVE_CHROME_W = 70;
-/** A copy's width at the objective's 11 px caps: about 7.5 px a Latin letter or figure, 13 a Chinese character. */
-function objectiveCopyWidth(copy: string): number {
-  let width = 0;
-  for (const char of copy) width += /[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 13 : char === ' ' ? 3.5 : 7.5;
-  return width;
-}
+/** The objective panel's default width (battleHudLayout.css). */
+const OBJECTIVE_DEFAULT_W = 278;
 
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
   const horde = modeState.horde;
@@ -2823,10 +2830,11 @@ export function initHud(bus: EventBus): HudRuntime {
       if(action!=='smoke')setAttr(button,'aria-pressed',String(active));
       setDisabled(button,!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
       const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
-      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0\u202f/\u202f3'
+      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0'
         : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);
-      // (a fraction reads as the HUD's others do, "7 / 7", in narrow spaces: gauntlet r2)
-      setText(status,action==='smoke'?`${state?.smokeCharges??3}\u202f/\u202f3`:'');
+      // (the charges left, as a shell slot counts its rounds: "3 / 3" would not fit a tile sharing a 900 px window's
+      // rack six ways, gauntlet r3)
+      setText(status,action==='smoke'?String(state?.smokeCharges??3):'');
       if(action==='smoke')setAttr(button,'aria-label',`${help} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
     const descriptor = readSpecialAction(player?.spec);
@@ -2941,7 +2949,6 @@ export function initHud(bus: EventBus): HudRuntime {
       typeLabel: shellTypeCode,
       count: shellCount,
       selectionLabel: ammunitionSelectionLabel,
-      typeColors: SHELL_TYPE_COLOR,
       underlineColors: SHELL_CLASS_UNDERLINE,
     }));
     s.addEventListener('pointerdown', (event) => {
@@ -3044,6 +3051,11 @@ export function initHud(bus: EventBus): HudRuntime {
   mmHead.innerHTML = `<span class="nm"></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
   const mmName = requireElement<HTMLElement>(mmHead, '.nm');
   const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
+  // the grid's coordinates, WoT's convention: numbers are the columns (1 west to 0 east, along the top), letters the rows
+  // (A north to K south, down the left), in the plate's gutter (the CSS above)
+  const mmCols = el('div', 'cot-mm-gx', mmWrap), mmRows = el('div', 'cot-mm-gy', mmWrap);
+  mmCols.setAttribute('aria-hidden', 'true'); mmRows.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 10; i++) { el('span', '', mmCols).textContent = String((i + 1) % 10); el('span', '', mmRows).textContent = GRID_LETTERS[i]; }
   const MM = 220;
   // Follow the phone's native DPR (bounded by the shared output policy) so a
   // DPR-3 browser never stretches a DPR-2 tactical map.
@@ -3062,15 +3074,15 @@ export function initHud(bus: EventBus): HudRuntime {
   let directionalHitValuesEnabled = false;
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 15 Hz, 30 Hz while the view turns; updateMinimapIfDue)
   let mmDirty = true; // force an immediate minimap paint on the next update()
-  // The grid's coordinates read at the HUD's 11 px floor on the map as shown (the coordinator, 246): their type scales
-  // against the plate's shown width, and a plate too small for a cell to hold one (under 140 px, the phones') keeps its
-  // grid lines alone. Its observer keeps layout reads out of the frame loop.
-  let mmLabelPx = 11;
+  // The grid's coordinates show on a plate large enough for a cell to hold one at the HUD's 11 px floor (the coordinator,
+  // 246): under 140 px (the phones') the grid keeps its lines alone. The gutter they take shrinks a border-box plate's map,
+  // so the plate shows them from 150 px and drops them under 140 (no flicker at the edge). Its observer keeps layout reads
+  // out of the frame loop.
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver((entries) => {
-      const shown = entries[entries.length - 1]?.contentRect.width ?? MM;
-      const next = shown >= 140 ? 11 * MM / shown : 0;
-      if (Math.abs(next - mmLabelPx) > 0.05) { mmLabelPx = next; mmDirty = true; }
+      const shown = entries[entries.length - 1]?.borderBoxSize?.[0]?.inlineSize ?? MM;
+      const grid = mmWrap.classList.contains('grid');
+      if (grid ? shown < 140 : shown >= 150) mmWrap.classList.toggle('grid', !grid);
     }).observe(mmWrap);
   }
   let mmBuildGeneration = 0;
@@ -5185,7 +5197,9 @@ export function initHud(bus: EventBus): HudRuntime {
       tag.metres = metres;
       tag.text = `${metres} m`;
     }
-    tag.x0 = draw.cx + Math.max(offset, rackClear) + 4;
+    // (and past the hit confirmation's settled shards, which reach 0.7071 x (18.5 + 13) px along the diagonal and 3.5 px
+    // across: on a phone's small ring the 4:30 shard met the tag's first digit, gauntlet r3)
+    tag.x0 = draw.cx + Math.max(offset, rackClear, HIT_SHARD_CLEAR) + 4;
     tag.y = draw.cy + offset + 12;
     ctx.font = FONT_RANGE_TAG;
     tag.x1 = tag.x0 + ctx.measureText(tag.text).width;
@@ -5215,7 +5229,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
     ctx.fillText(label, x, y);
     ctx.font = FONT_SCOPE_TYPE;
-    ctx.fillStyle = SHELL_TYPE_COLOR[type] || 'rgba(159,176,191,0.9)';
+    ctx.fillStyle = 'rgba(159,176,191,0.9)';
     ctx.fillText(type, x + countW, y);
     ctx.textAlign = 'center';
   }
@@ -5278,15 +5292,16 @@ export function initHud(bus: EventBus): HudRuntime {
     // (a short landscape parks it beside the map, and so does a portrait phone 340 px wide or less, where every seat by
     // the sight met the left FIRE button, the map or the speedometer: r10g, the coordinator; the struck round or rack
     // still shows the empty gun there)
-    return document.body.classList.contains('cot-touch-layout') && !(w > h && h < 550) && !(h >= w && w <= 340);
+    // (a mouse layout always seats it there)
+    return !document.body.classList.contains('cot-touch-layout') || (!(w > h && h < 550) && !(h >= w && w <= 340));
   }
 
   /**
    * Where the aim warning sits this frame: its baseline under the marker, and its chip 3 px under the rack or an empty
    * mark that dropped below a small ring (sightMarkTop; a strike reaches 3 px under it, a live rack's contour 2), the
    * countdown and, on the scope, the range tag, and 3 px from the ring. The scope's readout line and zoom plate then
-   * start under the chip. A mouse layout paints the chip on the canvas; a touch layout shows a DOM chip, which the
-   * reticle seats in the same place, the same height (critic r9: at 50% + 48 px the phone's chip met the scope's
+   * start under the chip. Every layout shows the DOM chip (the kit's notice plate), which the reticle seats there, the
+   * canvas chip's height (critic r9: at 50% + 48 px the phone's chip met the scope's
    * countdown and a rack dropped below a wide ring), unless a short landscape or a portrait phone 340 px wide or less
    * parks it under the map.
    */
@@ -5349,7 +5364,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);
-    const touchWarning = document.body.classList.contains('cot-touch-layout') && warning.visible;
+    // (the chip is the kit's notice plate in every layout, the DOM chip the reticle seats: a mouse layout's canvas drew a
+    // pointed hex with its own stroke and glyph beside the touch layout's plate, gauntlet r3)
+    const touchWarning = warning.visible;
     const seated = touchWarning && draw.warningY > 0 && touchWarningSeated();
     // A seated chip yields to the sixth-sense notice (sightFurniture.ts sightNotice, published on a touch layout only):
     // where its place runs into the notice it waits hidden until the notice goes. The notice never moves it: it comes and
@@ -5377,39 +5394,6 @@ export function initHud(bus: EventBus): HudRuntime {
       seatTouchWarning(seated, draw);
       return;
     }
-    if (!warning.visible) return;
-    const y = draw.warningY; // placeAimWarning
-    const danger = warning.kind === 'blocked';
-    const recovery = warning.kind === 'rollover';
-    ctx.font = FONT_AIM_WARNING;
-    const chipW = draw.warningW;
-    const chipX = draw.warningX - chipW * 0.5;
-    ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
-      recovery ? 'rgba(33,22,8,.94)' : 'rgba(12,17,22,.9)';
-    ctx.beginPath();
-    ctx.moveTo(chipX + 8, y - AIM_WARNING_CHIP_ABOVE + 0.5);
-    ctx.lineTo(chipX + chipW - 8, y - AIM_WARNING_CHIP_ABOVE + 0.5);
-    ctx.lineTo(chipX + chipW - 0.5, y - 2);
-    ctx.lineTo(chipX + chipW - 8, y + AIM_WARNING_CHIP_BELOW - 0.5);
-    ctx.lineTo(chipX + 8, y + AIM_WARNING_CHIP_BELOW - 0.5);
-    ctx.lineTo(chipX + 0.5, y - 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = danger ? 'rgba(240,90,90,.78)' :
-      recovery ? 'rgba(240,160,48,.88)' : 'rgba(170,180,190,.55)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(chipX + 18, y - 8);
-    ctx.lineTo(chipX + 24, y + 3);
-    ctx.lineTo(chipX + 12, y + 3);
-    ctx.closePath();
-    ctx.strokeStyle = danger ? PEN_RED : recovery ? RELOAD_ACCENT : 'rgba(190,201,210,.92)';
-    ctx.stroke();
-    ctx.fillStyle = danger ? '#ff9b91' : recovery ? '#ffd17b' : 'rgba(205,216,224,.96)';
-    ctx.textAlign = 'left';
-    ctx.fillText(warning.text, chipX + 36, y + 1);
-    ctx.textAlign = 'center';
   }
 
   function drawReticle(view: HudAimView, dt: number): void {
@@ -6573,33 +6557,7 @@ export function initHud(bus: EventBus): HudRuntime {
       octx.moveTo(0, i * MM / 10 + 0.5); octx.lineTo(MM, i * MM / 10 + 0.5);
     }
     octx.stroke();
-    // grid coordinates, WoT convention (r5-2 round critique — the old build
-    // had the axes TRANSPOSED): LETTERS are the ROWS (A north → K south,
-    // down the left edge), NUMBERS are the COLUMNS (1 west → 0 east, along
-    // the top). Labels render as translucent shadowed text INSIDE the edge
-    // cells — the old solid dark gutter strips ate map area.
-    // The label voice (Chakra Petch SemiBold) at the 11 px floor, inset from the frame so the corner pair (1 / A)
-    // never touches the keyline, and a touch more translucent so the map stays the subject.
-    if (mmLabelPx > 0) {
-      // (the insets scale with the type, so the corner pair keeps its room at every shown size)
-      const k = mmLabelPx / 11;
-      octx.font = `600 ${mmLabelPx.toFixed(1)}px ${FONT_COND}`;
-      octx.textAlign = 'center';
-      octx.textBaseline = 'middle';
-      octx.save();
-      octx.shadowColor = 'rgba(0,0,0,0.9)';
-      octx.shadowBlur = 2.5;
-      octx.fillStyle = 'rgba(255,255,255,0.66)';
-      for (let i = 0; i < 10; i++) {
-        const c = i * MM / 10 + MM / 20;
-        // column numbers across the top edge (WoT prints "0" for the 10th)
-        octx.fillText(String((i + 1) % 10), i === 0 ? Math.max(c, 14 * k) : c, 8.5 * k);
-        // row letters down the left edge (skip the corner-sharing squeeze:
-        // A's cell also hosts the "1", so it sits a touch lower)
-        octx.fillText(GRID_LETTERS[i], 8 * k, i === 0 ? Math.max(c, 17 * k) : c + 0.5);
-      }
-      octx.restore();
-    }
+    // (the grid's coordinates are the plate's, in its gutter: .cot-mm-gx/.cot-mm-gy)
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
     // corner vignette (cached gradient): the plate darkens toward the frame
@@ -7626,13 +7584,15 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
   // resolution; CSS scales it, so blips/labels stay proportionate.
-  const MM_SIZES = [160, 220, 300];
+  // (the steps scale every layout's own plate size, --mm-k: a fixed 300 px lost to the phones' sizes and the 32vh cap, so
+  // gauntlet r3's large map grew 10 px at 1280 and not at all at 1024x600; data-zoom names the step for the probes)
+  const MM_SCALES = [0.75, 1, 1.5];
   let mmSizeIdx = 1;
+  mmWrap.dataset.zoom = String(mmSizeIdx);
   on('ui:minimapZoom', () => {
-    mmSizeIdx = (mmSizeIdx + 1) % MM_SIZES.length;
-    const px = `${MM_SIZES[mmSizeIdx]}px`;
-    mmWrap.style.width = px;
-    mmWrap.style.height = px;
+    mmSizeIdx = (mmSizeIdx + 1) % MM_SCALES.length;
+    mmWrap.style.setProperty('--mm-k', String(MM_SCALES[mmSizeIdx]));
+    mmWrap.dataset.zoom = String(mmSizeIdx);
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;

@@ -64,7 +64,7 @@ export function spectatorSwitcherMarkup(): string {
  */
 export const spectatorSwitcherStyles = `
 .cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,12px);
- display:none;grid-template-columns:minmax(0,1fr) 144px 88px;align-items:center;gap:var(--s2);
+ display:none;grid-template-columns:minmax(0,1fr) 144px 88px;align-items:stretch;gap:var(--s2);
  width:min(620px,calc(100vw - 32px));min-width:0;padding:0;border:0;background:none;box-shadow:none;
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
@@ -81,8 +81,10 @@ export const spectatorSwitcherStyles = `
 .cot-spec .veh{color:var(--ink-3);font:500 var(--battle-fs-12)/1.2 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .cursor-hint{color:var(--ink-3);font:500 var(--battle-fs-11)/1.3 var(--font-ui)}
 .cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}
-.cot-spec .switch{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
-.cot-spec .idx{font:500 var(--battle-fs-12)/1.5 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap;text-shadow:var(--battle-text-halo)}
+/* (the cycle and garage buttons stand as tall as the plate beside them: 48 px keys under a 64 px plate read as two kits,
+   gauntlet r3) */
+.cot-spec .switch{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
+.cot-spec .idx{align-self:center;font:500 var(--battle-fs-12)/1.5 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap;text-shadow:var(--battle-text-halo)}
 .cot-spec :is(.cycle,.gar){position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;margin:0;
  padding:var(--s1) var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);color:var(--ink-1);
  font:inherit;cursor:pointer;pointer-events:auto;transition:box-shadow var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
@@ -110,7 +112,8 @@ body.cot-touch-layout .cot-spec .cursor-hint{display:none}
 @media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) 144px 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
  .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
- .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:144px;justify-self:center}
+ /* (the cycle group fills its column from the plate's edge: centred in it, it stood on nothing, gauntlet r3) */
+ .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:auto;justify-self:stretch}
  .cot-spec .gar>span:last-child{display:block}
 }
 @media(prefers-reduced-motion:reduce){.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{animation:none;transition:none}}

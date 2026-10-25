@@ -210,7 +210,8 @@ try {
   assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
   listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the corner-row strip leaves the enemies roster on its own lane');
-  assert.equal(properties.get('--hud-right-top'),'106px','the report budget keeps the default roster start');
+  // (the report leaves the feed one row under the roster: REPORT_FEED_ROOM, gauntlet r3)
+  assert.equal(properties.get('--hud-right-top'),'116px','the report budget keeps the default roster start');
   assert.equal(properties.get('--hud-network-corner-right'),'10px','without the fps/ping plate the strip takes the corner itself');
   plateShown=true;plate.getBoundingClientRect=()=>rect(8,36,1248,1356);
   callbacks.resize();flush();
@@ -233,7 +234,7 @@ try {
   strip.getBoundingClientRect=()=>rect(140,168,20,180);
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
-  assert.equal(properties.get('--hud-right-top'),'106px','the report budget returns to the default roster start');
+  assert.equal(properties.get('--hud-right-top'),'116px','the report budget returns to the default roster start');
   // A phone-width mouse window has no roster: the folded strip takes the right lane under the objective, and the
   // right kill feed starts below it.
   body.dataset.cotWidth='phone';mounted['.cot-ear.r']=()=>null;

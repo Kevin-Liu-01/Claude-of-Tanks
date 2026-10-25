@@ -72,7 +72,8 @@ const CSS = `
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
-.cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
+/* (the left FIRE names itself as every round control does: unnamed, it read as an odd amber button, gauntlet r3) */
+.cot-touch .fire.alt svg{width:20px;height:34px}
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
    buttons dim to a muted shell on a danger rim, in colour only */
 body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:oklch(from var(--danger) l c h / .5);opacity:.62;
@@ -139,14 +140,16 @@ body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%)
 body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;}
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
-body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
+/* (the rail stands on the equipment column's edge, its tiles the column's 52 px: a 48 px tile 4 px right of a 48 px column
+   cut "APFSDS" at both borders, gauntlet r3) */
+body.cot-touch-layout .cot-shells{left:auto;right:max(14px,env(safe-area-inset-right));
   top:auto;bottom:calc(max(22px,env(safe-area-inset-bottom)) + 302px);
-  width:48px;height:52px;display:block;transform:none;z-index:24;overflow:visible;}
-body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:48px;height:52px;
+  width:52px;height:52px;display:block;transform:none;z-index:24;overflow:visible;}
+body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:52px;height:52px;
   opacity:0;pointer-events:none;transform:scale(.94);transform-origin:right center;
   transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
-body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left:2px;top:50%;
+body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left:4px;top:40%;
   transform:translateY(-50%);font:700 var(--battle-fs-13)/1 ${FONT_COND};color:oklch(from var(--accent-hi) l c h / .9);}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
@@ -156,14 +159,16 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›'
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:0;right:0;text-align:center;letter-spacing:-.04em}
+body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:-.06em}
 body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-fig-11);}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
 body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom-color:var(--accent-hi);
   background:linear-gradient(180deg,oklch(from var(--accent-lo) .30 .045 h / .97),var(--hud-plate-strong));
   box-shadow:inset 0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 16px oklch(from var(--accent) l c h / .5);}
-body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-11);}
+/* (the selected tile's code is the figures' 11 px in every locale, a hair tighter so a six-letter code clears both
+   borders: at 13 px in zh it ran past them, gauntlet r3) */
+body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:-.06em;}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
@@ -181,7 +186,7 @@ body.cot-touch-layout .cot-consep{display:none;}
 body.cot-touch-layout .cot-cons{display:flex;flex-direction:column;gap:9px;position:fixed;
   left:auto;right:max(14px,env(safe-area-inset-right));
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 124px);z-index:24;}
-body.cot-touch-layout .cot-con{width:48px;height:52px;}
+body.cot-touch-layout .cot-con{width:52px;height:52px;}
 body.cot-touch-layout .cot-con svg{transform:none;}
 /* The HUD's context-aware Special Action remains the one canonical button on
    touch. Recompose it into the fire cluster instead of adding a second mobile
@@ -192,7 +197,7 @@ body.cot-touch-layout .cot-net{top:max(8px,env(safe-area-inset-top));
    battle exit living in Settings, let the minimap own the safe-area top row. */
 body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;
   top:max(8px,env(safe-area-inset-top));bottom:auto;
-  width:116px!important;height:116px!important;opacity:.86;z-index:24;}
+  width:calc(116px * var(--mm-k,1))!important;height:calc(116px * var(--mm-k,1))!important;opacity:.86;z-index:24;}
 body.cot-touch-layout .cot-drive{display:block!important;left:calc(max(14px,env(safe-area-inset-left)) + 150px);
   bottom:max(16px,env(safe-area-inset-bottom));transform:scale(.82);transform-origin:left bottom;z-index:24;}
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-drive{
@@ -231,7 +236,8 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:var(--battle-fs-11);white-space:normal;}
 body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
-  min-height:32px;grid-template-columns:21px minmax(0,1fr);gap:var(--s2);}
+  min-height:32px;grid-template-columns:21px minmax(0,max-content);gap:var(--s2);}
+/* (its glyph and word centred on the plate as the alert's and the chip's are: a filling column set DETECTED left, gauntlet r3) */
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
 body.cot-touch-layout .cot-sixth .copy{padding:0;}
 body.cot-touch-layout .cot-sixth .lb{font-size:var(--battle-fs-11);}

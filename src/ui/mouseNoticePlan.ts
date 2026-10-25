@@ -160,9 +160,10 @@ export const MOUSE_RETICLE = Object.freeze({
    *  (TAG_GROUP_GAP), 11.9 px over its baseline and 1.3 under, about 105 px wide. */
   readoutHalfWidthPx: 62, readoutAbovePx: 14.7, readoutBelowPx: 4.7, zoomHalfWidthPx: 53, zoomWidthPx: 105,
   zoomAbovePx: 11.9, zoomBelowPx: 1.3, rowGroupPx: 16,
-  /** sniperDistanceTag: "1500 m" off the ring's 4:30 point, past a rack (its half width + 6: 25 px), or hung at the 1:30
-   *  (3.5 px over the marker's offset) where the furniture sits at the 4:30. */
-  rangeWidthPx: 60, rangeAbovePx: 13, rangeBelowPx: 6, rangeRackPx: 25, rangeOverPx: 3.5,
+  /** sniperDistanceTag: "1500 m" off the ring's 4:30 point, past a rack (its half width + 6: 25 px) and the hit
+   *  confirmation's settled shard (hud.ts HIT_SHARD_CLEAR, 26 px), or hung at the 1:30 (3.5 px over the marker's offset)
+   *  where the furniture sits at the 4:30. */
+  rangeWidthPx: 60, rangeAbovePx: 13, rangeBelowPx: 6, rangeRackPx: 25, rangeShardPx: 26, rangeOverPx: 3.5,
   /** .cot-scope-vision (aerialHud.css): beside the sight, level with the marker (48 px tall, SCOPE_VISION_HALF_H), its
    *  left edge at min(50% + max(15vmin + 8px, 80px), 100% - 180px) (100% - 112px for the 104 px plate under 540 px wide),
    *  or the mirror seat left of the sight (battleHudLayout seatScopeVision). */
@@ -241,7 +242,7 @@ function sightMarks(boxes: number[], width: number, height: number, r: number, s
   push(cx - half, top - g, cx + half, top + markH, 1);
   const markBottom = top + markH;
   // the range tag (sniperDistanceTag): the countdown, the chip and the row keep off it
-  const offset = .7071 * (r + 9), tagX = cx + Math.max(offset, R.rangeRackPx) + 4;
+  const offset = .7071 * (r + 9), tagX = cx + Math.max(offset, R.rangeRackPx, R.rangeShardPx) + 4;
   let tagY = cy + offset + 12, tagTop = Infinity;
   if (scope) {
     if (choose) {
@@ -459,7 +460,7 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
     // the range tag rides the ring outward as it blooms (past a rack, or not): four boxes span each sweep; hung at the
     // 1:30 too where the heaviest case hangs it there
     if (!scope) continue;
-    const tagX = (r: number, rack: boolean) => cx + Math.max(.7071 * (r + 9), rack ? R.rangeRackPx : 0) + 4;
+    const tagX = (r: number, rack: boolean) => cx + Math.max(.7071 * (r + 9), rack ? R.rangeRackPx : 0, R.rangeShardPx) + 4;
     for (const up of tagUp ? [false, true] : [false]) {
       const tagY = (r: number) => up ? cy - .7071 * (r + 9) - R.rangeOverPx - 1 : cy + .7071 * (r + 9) + 12;
       for (let k = 0; k < 4; k++) {

@@ -165,7 +165,8 @@ function stageAmmo(name) {
 function hit(incoming=false, attackerIndex=8) {
   bus.emit('shell:hit',{attackerId:incoming?tanks[attackerIndex].id:player.id,targetId:incoming?player.id:tanks[8].id,
     attackerName:'Commander_Long_Name_8',targetName:'Leopard 2A5',targetSpecId:'leo2a4_v',attackerSpecId:'t90am',
-    kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,
+    // (the event's own field names: the card read effectiveArmor/baseArmor/penRoll as missing, "Armor –", gauntlet r3)
+    kind:'pen',damage:420,dmgRoll:460,penRollMm:560,penRollFreshMm:560,effectiveMm:350,nominalMm:220,impactAngleDeg:34,
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
 let network=null;
@@ -236,7 +237,8 @@ function state(name) {
   }
   if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
-  if(name==='sniper')hud.setMode('sniper');
+  // (the frame carries the sight too: a mode set alone was undone by the next frame's 'battle', gauntlet r3 read idle)
+  if(name==='sniper'){frame.mode='sniper';hud.setMode('sniper');for(let i=0;i<4;i++)hud.update(frame);}
   if(name==='large-map'){
     hit(); hud.shotInfo.toggleLog();
     bus.emit('ui:minimapZoom',{});

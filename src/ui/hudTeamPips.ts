@@ -21,14 +21,19 @@ import type { ObjectiveMarker } from './minimapObjectives.ts';
 const MAX_TEAM_PIPS = 16;
 /** A chip's box (CSS px) and its hexagon's radius: the direction's 38 x 42 sector glyph. */
 const CHIP_W = 38, CHIP_H = 42, CHIP_R = 15;
+/** A chip's scale where the top is not wide (a smaller window, a short one, touch). */
+const NARROW_CHIP = 0.72;
 const CHIP_FONT = `700 14px ${FONT_COND}`;
 
 const CSS = `
 .cot-pips{position:absolute;z-index:var(--hud-layer-score);left:50%;top:var(--hud-pips-top,82px);transform:translateX(-50%);
   display:none;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
-body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-pips.show{display:flex}
+/* (the strip holds the zone chips alone, the pips riding the score plate: it shows at every size, its chips smaller where
+   the top is not wide, hung under the objective there (battleHudLayout.ts): gauntlet r3 found zone state on the map's
+   markers alone at 1024x600, 900x700 and the phones) */
+.cot-pips.show{display:flex}
 /* the proving ground has no sides and a flight hides the tank's chrome */
-body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) :is(.range-mode,.aerial-active) .cot-pips.show{display:none}
+:is(.range-mode,.aerial-active) .cot-pips.show{display:none}
 .cot-pips-row{display:flex;gap:22px;align-items:center}
 .cot-pips-row[hidden],.cot-pips-row .side:empty,.cot-pips-sectors:empty{display:none}
 .cot-pips-row .side{display:flex;gap:4px;align-items:center}
@@ -57,8 +62,10 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-top .cot-pips-row .enemy .pip i{transform:skewX(24deg)}
 .cot-top .cot-pips-row .pip.me{outline:0;color:var(--accent)}
 .cot-top .cot-pips-row .pip.dead::after{display:none}
-.cot-pips-sectors{display:flex;gap:16px}
-.cot-pips-sectors canvas{display:block;width:${CHIP_W}px;height:${CHIP_H}px}
+.cot-pips-sectors{display:flex;gap:10px}
+.cot-pips-sectors canvas{display:block;width:${Math.round(CHIP_W * NARROW_CHIP)}px;height:${Math.round(CHIP_H * NARROW_CHIP)}px}
+body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-pips-sectors{gap:16px}
+body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-pips-sectors canvas{width:${CHIP_W}px;height:${CHIP_H}px}
 `;
 
 /** What the strip reads of a roster entry (the HUD's tanks satisfy it). */
