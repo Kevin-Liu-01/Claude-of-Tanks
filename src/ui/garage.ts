@@ -1194,15 +1194,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const gap = (other: GarageTankSpec) => Math.abs(other.weightTons - spec.weightTons) / spec.weightTons
       + Math.abs(other.gun.caliberMm - spec.gun.caliberMm) / spec.gun.caliberMm;
     const foreign = peers.filter((other) => other.nation !== spec.nation);
-    // ...that differs in at least two headline figures (the gauntlet 10-25: a sibling on the same template compared
-    // even on every row, so Compare showed nothing)
+    // ...that differs on most headline rows, better on some and worse on others (the gauntlet 10-25: a sibling on the
+    // same template compared even on every row, and a near-twin showed two red figures and four blank rows)
     const mine = headlineOf(spec);
-    const differs = (other: GarageTankSpec): number => {
+    const contrast = (other: GarageTankSpec): number => {
       const theirs = headlineOf(other);
-      return (['dmg', 'reload', 'speed', 'hpt', 'hp', 'turret'] as const).filter((key) => Math.abs(theirs[key] - mine[key]) > 1e-3).length;
+      let better = 0, worse = 0;
+      for (const key of ['dmg', 'reload', 'speed', 'hpt', 'hp', 'turret'] as const) {
+        const d = mine[key] - theirs[key];
+        if (Math.abs(d) <= Math.max(1e-3, Math.abs(mine[key]) * 0.005)) continue;
+        if ((key === 'reload' ? -d : d) > 0) better++; else worse++;
+      }
+      return better && worse ? better + worse : Math.min(better + worse, 2);
     };
     const pool = (foreign.length ? foreign : peers).slice().sort((a, b) => gap(a) - gap(b));
-    return pool.find((other) => differs(other) >= 2) ?? pool[0] ?? null;
+    return pool.find((other) => contrast(other) >= 4) ?? pool.find((other) => contrast(other) >= 3)
+      ?? pool.find((other) => contrast(other) >= 2) ?? pool[0] ?? null;
   };
   const headlineOf = (spec: GarageTankSpec, reloadMult = 1, turretMult = 1) => ({
     dmg: Math.max(0, ...(spec.gun.shells || []).map((shell) => shell.dmg || 0)),
