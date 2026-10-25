@@ -459,7 +459,19 @@ async function pageDrawAttribution(frames) {
     }
     return orig.apply(this, arguments);
   };
-  await new Promise((resolve) => { let n = 0; const tick = () => { if (++n >= frames) resolve(); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  // the static shadow cache's decision a frame (engine/shadowStaticCache.ts frameRecord): its cascades rebuilt, reused,
+  // rendered whole or still settling, and why
+  const cache = { frames: 0, rebuilt: 0, reused: 0, full: 0, unsettled: 0, reasons: {}, content: {} };
+  const bits = (mask) => { let n = 0; for (let m = mask >>> 0; m; m &= m - 1) n++; return n; };
+  const readCache = () => {
+    const r = D.lighting?.staticCacheFrame;
+    if (!r) return;
+    cache.frames++; cache.rebuilt += bits(r.rebuildMask); cache.reused += bits(r.reuseMask); cache.full += bits(r.fullMask);
+    cache.unsettled += bits(r.unsettledMask);
+    if (r.reason) cache.reasons[r.reason] = (cache.reasons[r.reason] ?? 0) + 1;
+    if (r.content) { const key = `${r.content}:${r.changed}`; cache.content[key] = (cache.content[key] ?? 0) + 1; }
+  };
+  await new Promise((resolve) => { let n = 0; const tick = () => { readCache(); if (++n >= frames) resolve(); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
   R.renderBufferDirect = orig;
   const per = (count) => Math.round(count / frames * 10) / 10;
   const tanksIn = Object.fromEntries(Object.entries(tanksSeen).map(([band, set]) => [band, set.size]));
@@ -476,7 +488,7 @@ async function pageDrawAttribution(frames) {
   }).sort((a, b) => b[1] - a[1]).slice(0, 40);
   return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
-    tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size };
+    tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
 }
 
 /**
@@ -632,7 +644,8 @@ async function playScenario(options, side, scenario, size, done, abort) {
         + `${draws.programSwitches.median}, submission ${draws.submitMs.median} ms (p90 ${draws.submitMs.p90}), ${draws.usPerDraw} µs a draw`);
       const da = record.drawAttribution;
       if (da && !da.error) log(`${key}: tanks by band ${JSON.stringify(da.tanksIn)}, a tank's draws ${JSON.stringify(da.perTank)}; passes `
-        + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms})`);
+        + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms}); `
+        + `shadow cache ${JSON.stringify(da.shadowCache)}`);
       const dc = record.domCensus;
       if (dc && !dc.error) log(`${key}: DOM reads ${dc.callsPerFrame} a frame, ${dc.perFrameMs.median} ms (p90 ${dc.perFrameMs.p90}, max ${dc.perFrameMs.max}); `
         + `${dc.sites.slice(0, 6).map(([site, calls, ms]) => `${site} ${calls}x ${ms} ms`).join('; ')}`);
