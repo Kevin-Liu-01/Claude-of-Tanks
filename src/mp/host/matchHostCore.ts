@@ -570,6 +570,13 @@ export function createMatchHostCore({
       }
       case 'link_pressure': links.get(message.peer)?.setPressure(message.bufferedAmount); return;
       case 'stop': stop(message.reason, message.detail); return;
+      case 'pause': {
+        if (!actor) return;
+        if (message.paused) actor.pause();
+        else actor.resume();
+        post({ type: 'paused', paused: actor.paused, tick: actor.tick });
+        return;
+      }
       case 'stats': { const summary = stats(); if (summary) post({ type: 'stats', stats: summary }); return; }
       default: return;
     }

@@ -29,6 +29,7 @@
     "server/match/interestTiers.selftest.mjs": 16000,
     "server/match/loop.selftest.mjs": 1000,
     "server/match/matchActor.selftest.mjs": 17000,
+    "server/match/matchActorPause.selftest.mjs": 9000,
     "server/match/matchActorResume.selftest.mjs": 10000,
     "server/match/seatToken.selftest.mjs": 1000,
     "server/match/service.selftest.mjs": 9000,

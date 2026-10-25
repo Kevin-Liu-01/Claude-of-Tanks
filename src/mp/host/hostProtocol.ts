@@ -151,6 +151,8 @@ export type HostToWorkerMessage =
   /** The room removed this player mid-match: drop its seat and refuse its token (MatchActor.revokeSeat). */
   | { type: 'seat_revoke'; playerId: string }
   | { type: 'stop'; reason: CloseReasonId; detail: string }
+  /** The page's pause of its own solo match (MatchActor.pause: a match with one human seat; host-local, never on the wire). */
+  | { type: 'pause'; paused: boolean }
   | { type: 'stats' };
 
 export type WorkerToHostMessage =
@@ -163,6 +165,8 @@ export type WorkerToHostMessage =
   | { type: 'link_close'; peer: number; reason: CloseReasonId; detail: string }
   | { type: 'report'; report: HostMatchReport }
   | { type: 'stats'; stats: HostCoreStats }
+  /** The actor's pause as it stands after a `pause` message, at the tick it holds or resumed from. */
+  | { type: 'paused'; paused: boolean; tick: number }
   | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string; fields?: Record<string, unknown> };
 
 /** One end of the main ↔ Worker channel (a Worker / `self` in the browser, an in-process pair in the receipts). */
