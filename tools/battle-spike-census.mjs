@@ -128,7 +128,7 @@ export function parseCensusArgs(argv) {
 // ---------------------------------------------------------------------------------------------- page side
 
 /** Before boot: the preset, every mode's team arrangement, and the long-task, long-animation-frame and decode observers. */
-function installCensusObservers({ preset, allies, enemies }) {
+export function installCensusObservers({ preset, allies, enemies }) {
   const census = { tasks: [], loaf: [], decodes: [] };
   window.__CENSUS = census;
   try {
@@ -176,7 +176,7 @@ function installCensusObservers({ preset, allies, enemies }) {
 }
 
 /** The player drives and fires (the perf probe's drive: W held, A/D alternating, forceFire); drone mode launches its drone. */
-async function driveBattle(page, { seconds, mode }) {
+export async function driveBattle(page, { seconds, mode }) {
   await page.evaluate(() => { window.__DEBUG.flags.forceFire = true; });
   await page.keyboard.down('KeyW');
   const until = Date.now() + seconds * 1000;
@@ -384,7 +384,7 @@ export function summarizeCpuProfile(profile, seconds, { resolve = null, top = 40
 }
 
 /** Resolve a dist script position to its source through the script's own map (dist/assets/<file>.map), when present. */
-async function sourceResolver(root) {
+export async function sourceResolver(root) {
   let TraceMap, originalPositionFor;
   try { ({ TraceMap, originalPositionFor } = await import('@jridgewell/trace-mapping')); } catch { return null; }
   const maps = new Map();
@@ -594,6 +594,14 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     const deferredWarm = await page.evaluate(() => {
       try { return JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM ?? null)); } catch { return null; }
     });
+    // a session's first battle's covered warm (combatWarmComposition warmFirstBattleCovered) and the entry's own trace
+    const entryWarm = await page.evaluate(() => {
+      try {
+        const load = window.__BATTLE_LOAD ?? null;
+        return JSON.parse(JSON.stringify({ firstBattleWarm: window.__BATTLE_FIRST_WARM ?? null, loadTotalMs: load?.totalMs ?? null,
+          loadingElapsedMs: load?.loadingElapsedMs ?? null, stages: load?.stages ?? null }));
+      } catch { return null; }
+    });
     const observers = await page.evaluate(() => window.__CENSUS);
     let trace = null, traceInfo = null;
     if (tracer) {
@@ -612,7 +620,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live, heapProfile, cpuProfile, deferredWarm,
+      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };

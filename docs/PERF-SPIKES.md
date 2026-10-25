@@ -185,21 +185,99 @@ tightens them (owed). `tools/battle-spike-budget.selftest.mjs` (core) holds the 
 
 ## Follow-ups (not done here)
 
-- **The cold session's first-use GPU work (an owner decision).** The deferred warm's first-bind renders after the
-  countdown's hold leave 100 ms – 1.1 s GPU-process stalls in a session's first battle. They are gone in its later
-  battles. Options:
-  - finish the GPU-heavy stages (rare effects, sights) behind the entry veil on a session's first battle, at a few
-    seconds' longer entry;
-  - or accept them.
 - **The watched battle's thermal relink.** A watched battle's second battle links its 11 heat programs again: their
   stand-ins go with the first battle's materials, and the watch drone draws them live. Keeping the heat programs
   across battles would remove it.
 - **Dynamic resolution without reallocation.** Each governor step reallocates the composer: a GPU stall on the
   machines that need the governor. Proposed: viewport scaling through the post chain, its own lane with a capture A/B.
-- **The HUD's layout pass.** Proposals above, through the UI gauntlet.
-- **The deferred warm's opening-route jobs, split by leg.** The countdown's 30–290 ms microtask bursts.
-- **The simulation in a Worker.** A frame-rate lever at 21 v 21 (above), its own lane.
-- **The browser's growth between battles** (0.3–0.6 GB a battle). For the memory lockdown.
+- **The HUD's layout pass.** Proposals above, through the UI gauntlet (premiere-battle's).
+- **The simulation in a Worker.** A frame-rate lever at 21 v 21 (below), its own lane.
+- **The entry's other long tasks** (below, "The entry's long tasks"): the roster's tank builds at the battle's start
+  (one 1.5 s task on Steinburg) and the lazy audio's first decode (0.3 s). Not map kits: routed to their owners.
+
+## The first battle's covered warm (option a)
+
+The coordinator's call (2026-10-25): a session's first battle finishes the GPU-heavy warm stages behind the entry veil;
+later battles skip it. `runFirstBattleCoveredWarm` (game/deferredCombatWarmRuntime.ts, the lazy deferred-warm chunk),
+once a renderer through `warmFirstBattleCovered` (app/combatWarmComposition.ts), between the deployment's warm and the
+reveal (game/soloBattleLoadingRuntime.ts): the hidden enemies' visuals and their programs, the opening and rare effects
+as a covered load renders them, the sights' heat stand-ins. Its record is `window.__BATTLE_FIRST_WARM`.
+
+- **The A/B** (ab-firstwarm: Verdant standard and Steinburg zone control, 7 v 7 and 14 v 14, cold and warm, base
+  3852a725d4 against the lane, load 35–75). A cold battle's live program links fell from 27–28 to 4 on Steinburg; the
+  warm cost 0.9–2.3 s of entry once. Base Verdant twice passed the 6 GB guard and has no row.
+- **Unfinished links.** Seven of eight warms in that A/B stopped at the sights' stage on "Program uniform preparation
+  incomplete: budget" (links still pending under load), so the once flag stayed down and later battles paid again.
+  Each stage now leaves links still linking to their first draw and the next stage goes on, as the deferred warm does
+  (`unfinishedLinks` names the stage); the flag is set after any attempt (3b3e01ba49). The memory probe's three battles
+  in one page then show it once (2.2 s, the sights' links unfinished) and skipped after.
+- **The late pass's target.** The opening and destruction volleys drew their soft-particle layer into the multisampled
+  warm target; a live frame draws that layer through the late-FX pass (single-sample, a depth texture), and a GPU
+  pipeline is made per program and attachment set. The volleys now draw it a second time through the late pass's own
+  target, two effects at a time (`post.warmLateFxDraw`, as the deployment's warm does; 009cebba90). A capture A/B of
+  the cold battles' "gpu busy" hitches is owed.
+
+## The entry's long tasks (the map kits)
+
+nav-perf's entry census (lockdown #2, main 250): deploy-to-battle 21 s on a desktop, 63–77 long tasks (the worst
+844 ms); program links, tank-build sweeps (nav-perf's) and the map kits. The map kits' and the links' share is this
+lane's: no single task past 50 ms behind the loader, the world byte-identical.
+
+**Method.** `tools/tmp-perf253-entry-profile.mjs` (lane-local) enters one cold battle on a sourcemap build with the CPU
+profiler at 500 µs and keeps the long tasks; `tools/tmp-perf253-entry-resolve.mjs` resolves each task's samples through
+the build's sourcemaps (by self time and by owner frame). In Node, a map's props build alone, each generator slice
+timed (the evidence folder's `props-slices.mjs`), ranks the props' slices fast; it overstates what the browser does in
+workers (the wreck bakes, the rock and detail prints).
+
+**Steinburg's entry** (cold, load 37–56): 17.8 s, 49 tasks past 50 ms, 7.2 s in all. By source:
+
+| Task | ms | Source | Fix |
+|---|---|---|---|
+| Roster tank builds at the battle's start | 1515 | state.ts setupBattle, tankFactoryCore | nav-perf's (routed) |
+| The horizon's farmsteads | 486 | borderFarmsteads.ts, the regional houses | a farmstead a step |
+| Lazy audio's first decode | 344 | audio/lazyAudio.ts | routed |
+| A first render's link wait | 308 | getProgramParameter under the post chain | the late-pass warm; link census owed |
+| The field works' footprints | 304 | props destructibleFootprint (the pillbox's whole work) | measured a step a slice before the works |
+| Civic pathways | 296 | civic/pathwayKit.ts | a street a step |
+| The pillbox's pool | 182 | finalizeDestructiblePool (build, refit, broken) | build, refit and broken form each a slice |
+| A light wreck's settle | 161 | lightWreck / fractureSettle in a pool | its own slice (the broken form's) |
+| The vehicle roles' footprints | 144 | civilianVehicleKit roleFootprint (8 roles in one task) | a role a slice ahead of the table |
+| Street rubble | 141 | rubblePile collision | a pile a slice |
+
+The Node ranking adds, on Alpine and Badlands: the battle scars' ejecta (every lump a new welded icosahedron: the
+welded templates are built once and cloned; a scar a slice), the carts' seating (every stone's plan drawn up front:
+drawn now only when a cart's reach meets its box; a cart a slice), and the field mud and grime prints (main-thread
+paints the surface-paint worker does not plan yet).
+
+**Byte-identical.** Every change only moves a slice boundary or skips work whose result was not read: the same calls
+in the same order, the same streams. In Node the props output (every mesh's attribute bytes, matrix and program key;
+the obstacle, collider, crushable, loose, wreck-spot, utility, grounding and feature records; each destructible's pose,
+state and boxes; the carts' seating receipt) is hashed before (HEAD, through a load hook) and after on Alpine and
+Steinburg. The scheduling receipts (propsScheduling) walk the new slices against a synchronous control.
+
+## Memory across battles
+
+`tools/battle-memory-probe.mjs` plays N battles in one page (the census's battle driver) and measures the garage after
+each, after two collections: the JS heap, DOM nodes, listeners, the renderer's textures, geometries and programs, the
+game's residency, and the browser's resident set by process (browser, renderer, GPU, other); `--retained` samples the
+heap from the second battle on, `--census` sums what each world child keeps on the CPU beside the GPU's copy.
+`tools/battle-memory-probe.selftest.mjs` holds its growth arithmetic and judge.
+
+**Steinburg 14 v 14, three battles** (memory2, the lane at 009cebba90): the garage at boot 1.7 GB (renderer 0.93,
+GPU 0.37); after each battle 4.62, 4.60, 4.64 GB (renderer 3.09–3.11, GPU 0.98); in battle 5.0–5.1 GB. The growth from
+the first return to the last is 10 MB a battle (heap +35 MB a battle, textures and geometries flat, listeners +1):
+on one map the page does not grow. The census's "0.3–0.6 GB a battle" was a page's second battle against its first:
+the garage that came back keeps the cached battle world (`worldCacheIds ["urban"]`, desktop keeps two). Its 2.9 GB
+is the level to cut: the renderer process +2.2 GB (of which the JS heap is 0.19) and the GPU process +0.6 GB.
+
+**What the page can see** (memory3, `--census`, the same scenario): the cached world keeps 0.35 GB on the CPU beside
+its GPU copies — the props' geometry 223 MB and their textures 30 MB, the terrain 17 + 21 MB, the vegetation's and the
+tall grass's instance matrices 21 + 14 MB — and the scene outside it 0.09 GB in the garage (0.21 GB in battle). With
+the heap that is about 0.7 GB of the renderer's 3.0 GB. The other 1.5 GB is out of the page's sight: the workers'
+heaps (the paint, wreck, shell and vehicle pools), WebAssembly memory, decoded audio, or the allocator's high water
+after the build's transient arrays. Chrome's memory-infra dump by allocator (`--dump`) is the next probe; then the
+fix — dropping the dormant world's CPU copies where nothing reads them, releasing its GPU buffers, or ending the
+build's workers — and the receipt (`--gate`, tools/battle-memory-budget.json).
 
 ## Hitches, not frames past 33 ms
 
