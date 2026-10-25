@@ -150,7 +150,8 @@ img{display:block;max-width:100%}
 :lang(zh-CN) .home-h2 .t-hollow{opacity:1}
 /* zh quotes break at their punctuation, never inside a word */
 :lang(zh-CN) .press__quotes blockquote{line-break:strict}
-.press__title{grid-area:title}
+/* the press head ends on its baseline like the modes head, so both sit 24 px over their content */
+.press__title{grid-area:title;text-box:trim-end cap alphabetic}
 .press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
 .press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
 .press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0;text-align:right}
