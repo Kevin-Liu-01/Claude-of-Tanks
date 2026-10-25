@@ -522,4 +522,29 @@ await withFrameHost({}, async ({ frames, timers }) => {
   }
 });
 
+// (battle-spikes-253) a background-priority task that never runs (a covered load keeping the thread busy) never stalls
+// the work: it resumes after the bounded wait
+await withFrameHost({}, async ({ timers }) => {
+  const priorScheduler = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+  const posted = [];
+  Object.defineProperty(globalThis, 'scheduler', { configurable: true, writable: true,
+    value: { postTask(_callback, options) { posted.push(options.priority); return new Promise(() => {}); } } });
+  try {
+    let clock = 0;
+    const yieldWork = createBackgroundYielder(4, { now: () => clock });
+    clock = 4;
+    let resumed = false;
+    const pending = yieldWork().then(() => { resumed = true; });
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.deepEqual(posted, ['background'], 'the work asks for a background-priority task');
+    const bound = timers.find((timer) => timer.delay === 50);
+    assert.ok(bound, 'with a bounded wait beside it');
+    assert.equal(resumed, false);
+    bound.callback(); await pending;
+    assert.equal(resumed, true, 'the bound resumes the work when the background task never runs');
+  } finally {
+    if (priorScheduler) Object.defineProperty(globalThis, 'scheduler', priorScheduler); else delete globalThis.scheduler;
+  }
+});
+
 console.log('[frameScheduler] all tests passed');

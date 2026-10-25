@@ -38,13 +38,21 @@ function inputPending(): boolean {
   try { return host?.scheduling?.isInputPending?.({ includeContinuous: false }) === true; } catch { return false; }
 }
 
-/** A background-priority task (scheduler.postTask's 'background', where it exists; else a task). */
+/**
+ * A background-priority task (scheduler.postTask's 'background', where it exists; else a task), never later than
+ * BACKGROUND_TASK_MAX_WAIT_MS: a background task waits for the thread to have nothing else, and under a covered load
+ * that keeps it busy (a battle entry that has just promoted this build to the foreground) it can wait indefinitely.
+ */
+const BACKGROUND_TASK_MAX_WAIT_MS = 50;
 function backgroundTaskYield(): Promise<void> {
   const host = globalThis as typeof globalThis & {
     scheduler?: { postTask?: (callback: () => void, options: { priority: string }) => Promise<unknown> };
   };
   if (typeof host.scheduler?.postTask === 'function') {
-    return host.scheduler.postTask(() => undefined, { priority: 'background' }).then(() => undefined);
+    return Promise.race([
+      host.scheduler.postTask(() => undefined, { priority: 'background' }).then(() => undefined, () => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, BACKGROUND_TASK_MAX_WAIT_MS)),
+    ]);
   }
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
