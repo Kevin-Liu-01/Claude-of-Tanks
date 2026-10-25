@@ -800,4 +800,33 @@ await defaultForegroundUsesShortPaintBudget();
 }
 console.log('worldBuildCoordinator.selftest: a loading-paced intent prefetch takes the covered slices under its lease and is promoted; passive speculation keeps its budget');
 
+// (battle-spikes-253, the memory lockdown) releaseCached: a dormant cached world released now (its dispose and its
+// resources), never the current one and never one still building
+{
+  let current = null;
+  const released = [];
+  const local = createWorldBuildCoordinator({
+    engineContext: {}, scene: new THREE.Scene(), renderer: { renderLists: { dispose() {} } }, deviceTier: 'desktop',
+    getCurrentWorld: () => current, getGarageActivity: () => ({ phase: 'garage', transitionActive: false, lastActivityAt: 0 }),
+    releaseShadowMaterial() {},
+    loadModule: async () => ({ async createMapAsync(_engine, { mapId }) {
+      const group = new THREE.Group();
+      group.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+      return { group, dispose() { released.push(mapId); } };
+    } }),
+    now: () => 0, foregroundYielder: () => async () => {}, backgroundYielder: () => async () => {},
+  });
+  const a = await local.beginBuild('urban').promise;
+  const pending = local.beginBuild('verdant');
+  assert.equal(local.releaseCached('verdant'), false, 'a world still building is never released');
+  await pending.promise;
+  current = a;
+  assert.equal(local.releaseCached('urban'), false, 'the current world is never released');
+  current = null;
+  assert.equal(local.releaseCached('urban'), true);
+  assert.deepEqual(released, ['urban'], 'its own dispose ran');
+  assert.equal(local.cache.has('urban'), false);
+  assert.equal(local.lastRelease?.id, 'urban', 'and its resources went through the release receipt');
+  assert.equal(local.releaseCached('urban'), false, 'nothing left to release');
+}
 console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup, cancellation and default foreground 6/16 policy passed');

@@ -32,7 +32,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, walk: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, walk: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -48,6 +48,8 @@ export function parseMemoryArgs(argv) {
       case 'census': o.census = value !== '0'; break;
       case 'dump': o.dump = value !== '0'; break;
       case 'walk': o.walk = value !== '0'; break;
+      // a battle per entry, in order, in the one page (a player on the random rotation): the scenario names the first
+      case 'sequence': o.sequence = value.split(',').filter(Boolean); break;
       case 'gate': o.gate = value !== '0'; break;
       case 'viewport': o.viewport = value; break;
       case 'preset': o.preset = value; break;
@@ -56,7 +58,7 @@ export function parseMemoryArgs(argv) {
     }
   }
   if (!(o.battles >= 2)) throw new Error('--battles: at least 2 (the growth is from the first return to the last)');
-  for (const s of o.scenarios) if (!/^[a-z_]+:[a-z_0-9]+$/.test(s)) throw new Error(`--scenarios: <map>:<mode>, not ${s}`);
+  for (const s of [...o.scenarios, ...(o.sequence ?? [])]) if (!/^[a-z_]+:[a-z_0-9]+$/.test(s)) throw new Error(`--scenarios/--sequence: <map>:<mode>, not ${s}`);
   o.out ??= path.join(os.homedir(), 'cot-lanes', 'battle-memory', new Date().toISOString().slice(0, 16).replace(/[:T]/g, ''));
   return o;
 }
@@ -299,7 +301,8 @@ async function probeScenario(options, scenario) {
         sampling = true;
       }
       const entryStarted = Date.now();
-      await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
+      const [battleMap, battleMode] = options.sequence ? options.sequence[(battle - 1) % options.sequence.length].split(':') : [mapId, gameMode];
+      await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId: battleMap, gameMode: battleMode });
       await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 250 });
       const entryMs = Date.now() - entryStarted;
       // the entry's covered first-battle warm (once a session; window.__BATTLE_FIRST_WARM) and its load stages
@@ -307,13 +310,13 @@ async function probeScenario(options, scenario) {
         loadStages: window.__BATTLE_LOAD?.stages ?? null }));
       await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
       const inBattle = rssByKind(pid);
-      await driveBattle(page, { seconds: options.seconds, mode: gameMode });
+      await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
-      const row = { label: `garage after battle ${battle}`, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      const row = { label: `garage after battle ${battle} (${battleMap})`, map: battleMap, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
       if (options.walk) {
         row.bufferWalk = await page.evaluate(pageBufferWalk);
         log(`walk ${row.bufferWalk.visited} objects, ${row.bufferWalk.buffers} buffers, ${row.bufferWalk.totalMB} MB: ${JSON.stringify(row.bufferWalk.rows.slice(0, 40))}`);
