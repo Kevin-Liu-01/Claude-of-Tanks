@@ -127,10 +127,13 @@ export interface SeatTurretOverDeckOptions {
   turretG: THREE.Object3D;
   gunG: THREE.Object3D | null;
   disposables: GeometryDisposables;
+  /** Each geometry the seat replaced with its seated copy: whatever holds the built one's attributes (the ERA clusters'
+   * vertex spans) follows the copy. */
+  onSeated?: (built: THREE.BufferGeometry, seated: THREE.BufferGeometry) => void;
 }
 
 /** Seat the turret's surfaces over the deck round its ring (see the header); the count of meshes moved. */
-export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables }: SeatTurretOverDeckOptions): number {
+export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated }: SeatTurretOverDeckOptions): number {
   const receipt = combatAnatomyCalibration(specId)?.turretRing;
   if (!receipt || !(receipt.rimR > 0.3) || !Number.isFinite(receipt.deckY)) return 0;
   const own = (key: string, fallback: number): number =>
@@ -240,6 +243,7 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables }
     seated.computeBoundingSphere();
     disposables.push(seated);
     mesh.geometry = seated;
+    onSeated?.(source, seated);
     moved++;
   }
   return moved;

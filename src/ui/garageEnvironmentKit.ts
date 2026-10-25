@@ -66,6 +66,7 @@ import {
   buildGarageKitDressing, garageKitPads, pinGarageKitMap, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement,
 } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
+import { prepareGarageAtmosphere } from './garageAtmosphereKit.ts';
 import {
   createGarageSkylineBackdrop, garageSkylineEnabled, pinGarageSkyline, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
 } from './garageSkyline.ts';
@@ -1189,6 +1190,55 @@ function samplePatchSurface(
   return tx + tz <= 1 ? a + (b - a) * tx + (c - a) * tz : d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
 }
 
+/**
+ * The patch's heights as the pack shapes them before any structure stands on them: the battlefield excerpt, its relief
+ * compressed to the showroom's range and Saltmere's quay and shore cut back. The pack's bake and its prepare share it.
+ */
+function garageEnvironmentHeights(recipe: GarageEnvironmentRecipe, patch: GarageTerrainPatch): Float32Array {
+  const heights = decodePatch(patch);
+  const reliefScale = recipe.reliefScale ?? 1;
+  const applyReliefScale = (): void => {
+    if (reliefScale === 1) return;
+    // Battlefield height is measured at kilometer scale. A Garage excerpt is
+    // less than one hundred meters wide, so preserve the exact sampled shape
+    // while compressing extreme vertical relief into the showroom camera's
+    // readable range. This avoids snowbanks swallowing roofs or blocking the
+    // hero without reverting to a fabricated flat plane.
+    for (let index = 0; index < heights.length; index += 1) {
+      heights[index] *= reliefScale;
+    }
+  };
+  applyReliefScale();
+  // Saltmere's quay and shore (2026-10-11, waves 393, 398 and 402: "Saltmere never shows its sea", "a featureless green
+  // bank hides the sea"): behind the yard the bank is cut back to a level quay at the datum, and past the quay edge the
+  // ground falls to the waterline under the coastal backdrop's sea, so the opening view looks over the quay to open
+  // water. A building standing past the edge keeps the quay's level under it (the lighthouse on its point).
+  const shapeQuayAndShore = (): void => {
+    if (recipe.horizonStyle !== 'coastal') return;
+    const keep = recipe.structures.filter((placement) => placement.depth > 12);
+    for (let row = 0; row < patch.height; row += 1) {
+      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+      for (let column = 0; column < patch.width; column += 1) {
+        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+        const { side, depth } = garageWorldPointToView(x, z);
+        // (garage r9, the brief's "grass mounds on the quay": the quay runs on to the patch's sides, and the apron right
+        // of the turntable, where the downs' shoulder stood 3-6 m over the dock's head, is levelled to the quay too)
+        const apron = THREE.MathUtils.smoothstep(side, 9, 15) * THREE.MathUtils.smoothstep(depth, -18, -11);
+        if ((depth < 9 && apron <= 0) || Math.abs(side) > 60) continue;
+        const index = row * patch.width + column;
+        const quay = Math.max(apron, THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60)));
+        const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
+        const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
+        const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
+        const target = THREE.MathUtils.lerp(0, -3.4, drop);
+        heights[index] = THREE.MathUtils.lerp(heights[index], target, Math.max(quay, drop));
+      }
+    }
+  };
+  shapeQuayAndShore();
+  return heights;
+}
+
 function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
   return garageViewPoint(side, depth);
 }
@@ -1275,6 +1325,77 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean, 
   return geometry;
 }
 
+/** One authored structure of a Garage pack: its geometry buckets, footprint audits and seat on the shaped patch. */
+function buildStructureRecord(
+  placement: GarageEnvironmentRecipe['structures'][number],
+  structureIndex: number,
+  rng: () => number,
+  patch: GarageTerrainPatch,
+  heights: Float32Array,
+) {
+  // These are authored world-space perimeter stations, not five buildings
+  // squeezed into one camera-facing strip. The shared coordinates keep
+  // every footprint inside the compact patch while giving the environment
+  // a readable 220-degree built horizon from both the hero view and orbit.
+  const { x, z } = cameraPoint(placement.side, placement.depth);
+  const local = createBuckets();
+  const dimensions = placement.builder(rng, local);
+  addCatalogExterior(local, {
+    id: placement.catalogId,
+    info: dimensions,
+    variant: structureIndex,
+  });
+  if (placement.catalogId === 'containerrow') weatherLiveries(local);
+  const supports: Array<{ gap: number }> = [];
+  for (const value of Object.values(local)) {
+    if (!Array.isArray(value)) continue;
+    for (const geometry of value) {
+      const support = geometry.userData.structureSupport as { gap?: number } | undefined;
+      if (support && Number.isFinite(support.gap)) {
+        supports.push({ gap: Number(support.gap) });
+      }
+    }
+  }
+  const exteriorParts = supports.length;
+  const exteriorSupportGap = Math.max(0, ...supports.map((support) => support.gap));
+  const collisionAudit = auditStructureCollision(local, dimensions, 'movement', placement.catalogId);
+  const assemblyAudit = auditStructureAssembly(local);
+  const y = samplePatch(patch, heights, x, z);
+  return {
+    placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap,
+    collisionAudit, assemblyAudit,
+  };
+}
+type GarageStructureRecord = ReturnType<typeof buildStructureRecord>;
+
+function skipDraws(rng: () => number, draws: number): void {
+  for (let draw = 0; draw < draws; draw += 1) rng();
+}
+
+/**
+ * A Garage's structures and biome backdrop built ahead of its pack's bake, in slices (garage-architecture budget, 248:
+ * the bake's synchronous build had grown to 115-119 ms with the nine place-truth Garages); the bake takes them whole.
+ * The structures drew `rngDraws` from the pack's seeded sequence.
+ */
+interface PreparedGarageStructures {
+  readonly records: readonly GarageStructureRecord[];
+  readonly rngDraws: number;
+  readonly backdrop: THREE.BufferGeometry | null;
+}
+const preparedStructures = new Map<string, PreparedGarageStructures>();
+
+function disposePreparedStructures(id: string): void {
+  const prepared = preparedStructures.get(id);
+  if (!prepared) return;
+  preparedStructures.delete(id);
+  prepared.backdrop?.dispose();
+  for (const record of prepared.records) {
+    for (const value of Object.values(record.local)) {
+      if (Array.isArray(value)) for (const geometry of value as THREE.BufferGeometry[]) geometry.dispose();
+    }
+  }
+}
+
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
   outerEngineCtx: GarageEnvironmentEngineContext,
@@ -1299,47 +1420,10 @@ export function buildGarageEnvironment(
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
-  const heights = decodePatch(patch);
-  const reliefScale = recipe.reliefScale ?? 1;
-  const applyReliefScale = (): void => {
-    if (reliefScale === 1) return;
-    // Battlefield height is measured at kilometer scale. A Garage excerpt is
-    // less than one hundred meters wide, so preserve the exact sampled shape
-    // while compressing extreme vertical relief into the showroom camera's
-    // readable range. This avoids snowbanks swallowing roofs or blocking the
-    // hero without reverting to a fabricated flat plane.
-    for (let index = 0; index < heights.length; index += 1) {
-      heights[index] *= reliefScale;
-    }
-  };
-  applyReliefScale();
-  // Saltmere's quay and shore (2026-10-11, waves 393, 398 and 402: "Saltmere never shows its sea", "a featureless green
-  // bank hides the sea"): behind the yard the bank is cut back to a level quay at the datum, and past the quay edge the
-  // ground falls to the waterline under the coastal backdrop's sea, so the opening view looks over the quay to open
-  // water. A building standing past the edge keeps the quay's level under it (the lighthouse on its point).
-  const shapeQuayAndShore = (): void => {
-    if (recipe.horizonStyle !== 'coastal') return;
-    const keep = recipe.structures.filter((placement) => placement.depth > 12);
-    for (let row = 0; row < patch.height; row += 1) {
-      const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
-      for (let column = 0; column < patch.width; column += 1) {
-        const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
-        const { side, depth } = garageWorldPointToView(x, z);
-        // (garage r9, the brief's "grass mounds on the quay": the quay runs on to the patch's sides, and the apron right
-        // of the turntable, where the downs' shoulder stood 3-6 m over the dock's head, is levelled to the quay too)
-        const apron = THREE.MathUtils.smoothstep(side, 9, 15) * THREE.MathUtils.smoothstep(depth, -18, -11);
-        if ((depth < 9 && apron <= 0) || Math.abs(side) > 60) continue;
-        const index = row * patch.width + column;
-        const quay = Math.max(apron, THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60)));
-        const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
-        const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
-        const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
-        const target = THREE.MathUtils.lerp(0, -3.4, drop);
-        heights[index] = THREE.MathUtils.lerp(heights[index], target, Math.max(quay, drop));
-      }
-    }
-  };
-  shapeQuayAndShore();
+  const heights = garageEnvironmentHeights(recipe, patch);
+  // what its prepare built ahead of the bake, taken whole: the pack owns and disposes it from here
+  const prepared = preparedStructures.get(variant.id) ?? null;
+  preparedStructures.delete(variant.id);
   const root = new THREE.Group();
   root.name = `garage_environment_${variant.architecture}`;
   root.userData.perfOwner = 'garage/environment';
@@ -1389,7 +1473,7 @@ export function buildGarageEnvironment(
   const horizon = new THREE.Mesh(
     track(skyline
       ? createGarageSkylineBackdrop(variant.mapId)
-      : createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture)),
+      : prepared?.backdrop ?? createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -1431,40 +1515,11 @@ export function buildGarageEnvironment(
 
   const combined = createBuckets();
   const rng = mulberry32(seed);
-  const structureRecords = recipe.structures.map((placement, structureIndex) => {
-    // These are authored world-space perimeter stations, not five buildings
-    // squeezed into one camera-facing strip. The shared coordinates keep
-    // every footprint inside the compact patch while giving the environment
-    // a readable 220-degree built horizon from both the hero view and orbit.
-    const { x, z } = cameraPoint(placement.side, placement.depth);
-    const local = createBuckets();
-    const dimensions = placement.builder(rng, local);
-    addCatalogExterior(local, {
-      id: placement.catalogId,
-      info: dimensions,
-      variant: structureIndex,
-    });
-    if (placement.catalogId === 'containerrow') weatherLiveries(local);
-    const supports: Array<{ gap: number }> = [];
-    for (const value of Object.values(local)) {
-      if (!Array.isArray(value)) continue;
-      for (const geometry of value) {
-        const support = geometry.userData.structureSupport as { gap?: number } | undefined;
-        if (support && Number.isFinite(support.gap)) {
-          supports.push({ gap: Number(support.gap) });
-        }
-      }
-    }
-    const exteriorParts = supports.length;
-    const exteriorSupportGap = Math.max(0, ...supports.map((support) => support.gap));
-    const collisionAudit = auditStructureCollision(local, dimensions, 'movement', placement.catalogId);
-    const assemblyAudit = auditStructureAssembly(local);
-    const y = samplePatch(patch, heights, x, z);
-    return {
-      placement, local, dimensions, x, z, y, exteriorParts, exteriorSupportGap,
-      collisionAudit, assemblyAudit,
-    };
-  });
+  // the structures prepared ahead of the bake (prepareGarageEnvironmentAssets, in slices) are taken whole, and the
+  // seeded sequence steps past the draws they made, so everything after them builds exactly as before
+  const structureRecords = prepared
+    ? (skipDraws(rng, prepared.rngDraws), prepared.records)
+    : recipe.structures.map((placement, structureIndex) => buildStructureRecord(placement, structureIndex, rng, patch, heights));
 
   // Cut a compact, feathered service terrace beneath each real structure.
   // This preserves the sampled battlefield relief between buildings while
@@ -2835,7 +2890,8 @@ export function buildGarageEnvironment(
 export function pinGarageEnvironmentCaches(variant: GarageVariant): () => void {
   const releaseKit = pinGarageKitMap(variant.mapId);
   const releaseSkyline = pinGarageSkyline(variant.mapId);
-  return () => { releaseKit(); releaseSkyline(); };
+  // the bake takes its prepared structures; a prepare whose bake never ran (a disposed controller) drops them here
+  return () => { releaseKit(); releaseSkyline(); disposePreparedStructures(variant.id); };
 }
 
 /**
@@ -2860,4 +2916,35 @@ export async function prepareGarageEnvironmentAssets(
   // its kit's pieces into the session cache, in slices, so the pack's bake only places them (garage r9)
   const kitPlacement = GARAGE_KIT_PLACEMENTS[variant.architecture];
   if (kitPlacement) await prepareGarageKitPieces(variant, kitPlacement);
+  // the shared atmosphere strips paint once, in their own slice, rather than inside the first bake that shows them
+  await nextSlice();
+  prepareGarageAtmosphere();
+  await prepareGarageStructures(variant, recipe);
+}
+
+const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+
+/** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
+async function prepareGarageStructures(variant: GarageVariant, recipe: GarageEnvironmentRecipe): Promise<void> {
+  if (preparedStructures.has(variant.id)) return;
+  const patch = getGarageTerrainPatch(variant.mapId);
+  const heights = garageEnvironmentHeights(recipe, patch);
+  const seed = hashVariant(variant.id);
+  let backdrop: THREE.BufferGeometry | null = null;
+  if (!garageSkylineEnabled(variant.mapId)) {
+    await nextSlice();
+    backdrop = createBackdropGeometry(patch, heights, seed, atmospherePalette(variant.weather), recipe,
+      GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture);
+  }
+  // the pack's own seeded sequence, counted, so the bake can step past the draws the structures made
+  const sequence = mulberry32(seed);
+  let rngDraws = 0;
+  const rng = (): number => { rngDraws += 1; return sequence(); };
+  const records: GarageStructureRecord[] = [];
+  for (let index = 0; index < recipe.structures.length; index += 1) {
+    await nextSlice();
+    records.push(buildStructureRecord(recipe.structures[index], index, rng, patch, heights));
+  }
+  disposePreparedStructures(variant.id);
+  preparedStructures.set(variant.id, { records, rngDraws, backdrop });
 }

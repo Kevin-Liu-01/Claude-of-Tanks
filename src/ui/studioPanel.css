@@ -513,4 +513,6 @@ body[data-cot-input='coarse'] .st-tl .tp .cot-c-chip{min-height:36px}
 body[data-cot-input='coarse'] .cot-studio .cot-info-trigger{min-height:20px}
 body[data-cot-input='coarse'] .cot-studio .cot-info-trigger::after{inset:-12px -6px}
 body[data-cot-input='coarse']:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl{max-height:142px}
+/* the Studio's scrolling panels keep their layout, style and paint inside (perf 249: a playhead step redraws one of them) */
+.cot-studio :is(.st-out,.st-insp,.production-library,.st-lanes){contain:content}
 }
