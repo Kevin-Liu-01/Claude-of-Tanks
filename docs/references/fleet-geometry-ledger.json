@@ -430,12 +430,12 @@
    "low": {"meshes":63,"vertices":240991,"triangles":81142,"digest":"579086e4b241d5e3","groups":{"hull":"dd6a2952b7fe5f31","turret":"f1f7d162a80e4afe","gun":"c7a13469068d8e88","runningGear":"57ed6990f8830a53","other":"e3b0c44298fc1c14"}}
   },
   "m60a2": {
-   "high": {"meshes":70,"vertices":274752,"triangles":92292,"digest":"aa3a5700ea7f3e49","groups":{"hull":"e4b6161ede40b8c5","turret":"f7e59fe6266aec36","gun":"10adf7f2474df0a3","runningGear":"b5da01e9d3095a68","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":68,"vertices":250488,"triangles":84076,"digest":"2273d732cced8a1f","groups":{"hull":"002fabc35cd97591","turret":"7f03aeae0efb550d","gun":"4bc6b1816327f5dd","runningGear":"1f336290f3da38c7","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":70,"vertices":274752,"triangles":92292,"digest":"0a934f6f85e3296b","groups":{"hull":"e4b6161ede40b8c5","turret":"9710c33476e44f46","gun":"10adf7f2474df0a3","runningGear":"b5da01e9d3095a68","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":68,"vertices":250488,"triangles":84076,"digest":"c3f870c7d378332b","groups":{"hull":"002fabc35cd97591","turret":"048f45e91b546820","gun":"4bc6b1816327f5dd","runningGear":"1f336290f3da38c7","other":"e3b0c44298fc1c14"}}
   },
   "m60a3": {
-   "high": {"meshes":71,"vertices":272044,"triangles":91621,"digest":"643a196b6dae5ef2","groups":{"hull":"5ce3a0d1cbb0365c","turret":"843ba2317b22485e","gun":"7087cde3637e8250","runningGear":"bd55b9bb25d6c6a1","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":69,"vertices":241876,"triangles":81437,"digest":"adbdc0a5a1d2aba9","groups":{"hull":"19c0f2979df2428e","turret":"1b20382c4dfa7151","gun":"f3729d579a3d0590","runningGear":"f773dc5539e277b6","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":71,"vertices":272044,"triangles":91621,"digest":"8c734fa3091168db","groups":{"hull":"5ce3a0d1cbb0365c","turret":"4973b06a67d8b7f4","gun":"7087cde3637e8250","runningGear":"bd55b9bb25d6c6a1","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":69,"vertices":241876,"triangles":81437,"digest":"1c64356afc3719d3","groups":{"hull":"19c0f2979df2428e","turret":"24b8efdd428fee95","gun":"f3729d579a3d0590","runningGear":"f773dc5539e277b6","other":"e3b0c44298fc1c14"}}
   },
   "m6_linebacker": {
    "high": {"meshes":64,"vertices":279691,"triangles":99593,"digest":"afb8a105d59f0b39","groups":{"hull":"2cc7f55c05478682","turret":"af6f70ce2162a5c5","gun":"c0913bb884125d69","runningGear":"6c261db1c4d00a72","other":"e3b0c44298fc1c14"}},
@@ -454,16 +454,16 @@
    "low": {"meshes":66,"vertices":225103,"triangles":85630,"digest":"2c09478770d8cf02","groups":{"hull":"1399deff7b88313c","turret":"c7b1b6b73249a113","gun":"33fae91b0a7ef059","runningGear":"224b7cee00401e0a","other":"e3b0c44298fc1c14"}}
   },
   "merkava1b": {
-   "high": {"meshes":65,"vertices":341089,"triangles":115996,"digest":"0a11e427f8e250a8","groups":{"hull":"264d98c0664ec308","turret":"2a847bdceef3911e","gun":"1f04c29060254936","runningGear":"9245eb8f44177326","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":64,"vertices":298501,"triangles":101288,"digest":"005ba87c8327c11a","groups":{"hull":"47cf47d7481b6782","turret":"2a98606886f55e57","gun":"b6e7a4b6ddeeac47","runningGear":"2be28a3bb0c9376f","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":65,"vertices":341089,"triangles":115996,"digest":"de59858ea564b1f4","groups":{"hull":"264d98c0664ec308","turret":"769f520b9e50ddd7","gun":"1f04c29060254936","runningGear":"9245eb8f44177326","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":64,"vertices":298501,"triangles":101288,"digest":"ebf4f173a81c527e","groups":{"hull":"47cf47d7481b6782","turret":"f0f15722cd83c2e1","gun":"b6e7a4b6ddeeac47","runningGear":"2be28a3bb0c9376f","other":"e3b0c44298fc1c14"}}
   },
   "merkava2b": {
    "high": {"meshes":57,"vertices":323935,"triangles":110278,"digest":"ac3467778a6f9016","groups":{"hull":"b19bde71894ac6a9","turret":"f5845aaeae61a9f7","gun":"dba588c39de925e3","runningGear":"74a4168d23d11531","other":"e3b0c44298fc1c14"}},
    "low": {"meshes":56,"vertices":281731,"triangles":95698,"digest":"e405c7e46b3a3f7f","groups":{"hull":"65effa43d566c65e","turret":"1237cb36686319e6","gun":"0f49bd82b0c48c26","runningGear":"91f1f8f3b645fc09","other":"e3b0c44298fc1c14"}}
   },
   "merkava2d": {
-   "high": {"meshes":57,"vertices":330067,"triangles":112322,"digest":"08a547d9b7581031","groups":{"hull":"6bfa647b8f23b900","turret":"f8a2139acc250aae","gun":"5c72e1c89f533991","runningGear":"1bb79884719dedcb","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":56,"vertices":287863,"triangles":97742,"digest":"3b7eaee12b0244aa","groups":{"hull":"f2bca0b43fe38659","turret":"1638e202011ab5ec","gun":"6f4677597539474e","runningGear":"600a97d5170198c9","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":57,"vertices":330067,"triangles":112322,"digest":"a787a2f3ecb45eed","groups":{"hull":"6bfa647b8f23b900","turret":"421d86b8bb85d7c7","gun":"5c72e1c89f533991","runningGear":"1bb79884719dedcb","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":56,"vertices":287863,"triangles":97742,"digest":"707dc8d4f1a4f42d","groups":{"hull":"f2bca0b43fe38659","turret":"71d57098726c8bcb","gun":"6f4677597539474e","runningGear":"600a97d5170198c9","other":"e3b0c44298fc1c14"}}
   },
   "merkava3_baz": {
    "high": {"meshes":62,"vertices":359533,"triangles":122144,"digest":"1e6512830f063fd2","groups":{"hull":"db5bc0afacf1f42e","turret":"df90d9e59d60a779","gun":"0742ee214fbbe88b","runningGear":"cff0cf984ad305d0","other":"e3b0c44298fc1c14"}},
@@ -562,8 +562,8 @@
    "low": {"meshes":42,"vertices":286537,"triangles":116123,"digest":"4748a7c9c75a391b","groups":{"hull":"18db9b2fe230ee7b","turret":"615376d5c3e3346e","gun":"cf896491fab54e22","runningGear":"8b790e1b3572d808","other":"e3b0c44298fc1c14"}}
   },
   "strv81": {
-   "high": {"meshes":77,"vertices":236164,"triangles":93021,"digest":"40a975c3f45c9c5b","groups":{"hull":"522be974e91d613e","turret":"5997702ffff18ba8","gun":"2b7052591dc1544c","runningGear":"01bafbfbaff7af42","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":69,"vertices":218812,"triangles":79725,"digest":"7def7d4b53e9786c","groups":{"hull":"ab83e8dc2544e1a0","turret":"58c09d53b1234cbe","gun":"4f9f3b5e845e8c78","runningGear":"a4959dd60e9fc9b7","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":77,"vertices":236164,"triangles":93021,"digest":"ff95fe26ec58ae36","groups":{"hull":"522be974e91d613e","turret":"9fc9c62537b9d0e2","gun":"2b7052591dc1544c","runningGear":"01bafbfbaff7af42","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":69,"vertices":218812,"triangles":79725,"digest":"3cbf32f512006615","groups":{"hull":"ab83e8dc2544e1a0","turret":"5747cb4571b89e49","gun":"4f9f3b5e845e8c78","runningGear":"a4959dd60e9fc9b7","other":"e3b0c44298fc1c14"}}
   },
   "t14_armata": {
    "high": {"meshes":47,"vertices":245920,"triangles":83676,"digest":"f819a5442f3b2113","groups":{"hull":"ee16758e59f8b60d","turret":"edd7a393d3383bcf","gun":"4281b35901b3a6f9","runningGear":"067166b9a9f8fdb9","other":"e3b0c44298fc1c14"}},
@@ -578,20 +578,20 @@
    "low": {"meshes":50,"vertices":204723,"triangles":69165,"digest":"377fb22eca287d73","groups":{"hull":"d9deb76df62a2146","turret":"1baa0b54f668ce51","gun":"e20e4ec2467c6b34","runningGear":"a7be07cdaf279837","other":"e3b0c44298fc1c14"}}
   },
   "t64bv1": {
-   "high": {"meshes":48,"vertices":303456,"triangles":107328,"digest":"adb86dad1b8c0fd2","groups":{"hull":"f097d9d6e1b9b152","turret":"77473725a79e94f9","gun":"6989ca94851a835b","runningGear":"5eea3161356001a1","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":44,"vertices":199860,"triangles":67696,"digest":"5ae8a6a2aa35d46d","groups":{"hull":"13e99b3d3044d10d","turret":"b6ed51166793ea8e","gun":"a451bc307ce01d5a","runningGear":"33fc985929cfefa4","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":48,"vertices":303456,"triangles":107328,"digest":"ffa0f8bb1751ec04","groups":{"hull":"f097d9d6e1b9b152","turret":"4df6b9d9c4b7a6c8","gun":"6989ca94851a835b","runningGear":"5eea3161356001a1","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":44,"vertices":199860,"triangles":67696,"digest":"c5e5d9a3ccd8944f","groups":{"hull":"13e99b3d3044d10d","turret":"5a15e03db11291fb","gun":"a451bc307ce01d5a","runningGear":"33fc985929cfefa4","other":"e3b0c44298fc1c14"}}
   },
   "t64bv_donbas": {
-   "high": {"meshes":52,"vertices":309975,"triangles":109501,"digest":"f238a52e835c3ae5","groups":{"hull":"c3559e4f416069b2","turret":"aed95fde798a5c72","gun":"f5d54a8e6fac8825","runningGear":"09a397d7202cc84e","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":48,"vertices":207087,"triangles":70105,"digest":"832f51697125e76a","groups":{"hull":"8084f75c4a602b1f","turret":"c6d2840adaaa25a6","gun":"6d45d6d80c066858","runningGear":"fe55c62ed628047f","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":52,"vertices":309975,"triangles":109501,"digest":"6e9ee7afe4bb2468","groups":{"hull":"c3559e4f416069b2","turret":"9014a25fe51622c9","gun":"f5d54a8e6fac8825","runningGear":"09a397d7202cc84e","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":48,"vertices":207087,"triangles":70105,"digest":"d6bc822260ebc9a4","groups":{"hull":"8084f75c4a602b1f","turret":"8ffebd22a4ea4966","gun":"6d45d6d80c066858","runningGear":"fe55c62ed628047f","other":"e3b0c44298fc1c14"}}
   },
   "t72_rys": {
    "high": {"meshes":43,"vertices":214356,"triangles":72160,"digest":"8b0d94f1bf5858cd","groups":{"hull":"5485a9042b31a703","turret":"820824a8df0cce0a","gun":"19928470e2c2af86","runningGear":"78864fdd1eb7597a","other":"e3b0c44298fc1c14"}},
    "low": {"meshes":42,"vertices":185316,"triangles":62352,"digest":"bdad0f6540764dd5","groups":{"hull":"5f082160d3bb87bb","turret":"a3a0cdca95615358","gun":"856200c2b55b70fc","runningGear":"78feba763969dc0e","other":"e3b0c44298fc1c14"}}
   },
   "t72b3": {
-   "high": {"meshes":46,"vertices":282948,"triangles":100444,"digest":"5668b0880bd4cc0f","groups":{"hull":"6849677d2fbccdb4","turret":"f44314bdd278cd1d","gun":"3e3dd36dc2a83b90","runningGear":"5c338a118747113b","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":42,"vertices":194520,"triangles":65868,"digest":"bb9fd119fb69ceb2","groups":{"hull":"6f66d8ef8dac3307","turret":"3a83e58b2b33e61e","gun":"098a3b09a8d8495f","runningGear":"6b4b6ff4edbbcd22","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":46,"vertices":282948,"triangles":100444,"digest":"c374a33c0994c67c","groups":{"hull":"6849677d2fbccdb4","turret":"b01f1fa928d412c0","gun":"3e3dd36dc2a83b90","runningGear":"5c338a118747113b","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":42,"vertices":194520,"triangles":65868,"digest":"24cd809e9151f3fb","groups":{"hull":"6f66d8ef8dac3307","turret":"5ed96f85c10aab48","gun":"098a3b09a8d8495f","runningGear":"6b4b6ff4edbbcd22","other":"e3b0c44298fc1c14"}}
   },
   "t72b3_bastion_m": {
    "high": {"meshes":59,"vertices":307531,"triangles":108709,"digest":"7d97138a43fb52ec","groups":{"hull":"65c18358e7c080fe","turret":"c8363450c73fdbc8","gun":"865aebcaaf993b47","runningGear":"9285ad5b52bd4bd7","other":"e3b0c44298fc1c14"}},
@@ -602,8 +602,8 @@
    "low": {"meshes":63,"vertices":225577,"triangles":76452,"digest":"d5425410a0ba89c9","groups":{"hull":"9474d6896831849c","turret":"1d8087f3f0d7c0ff","gun":"3e8dad3889f8f41e","runningGear":"19344956a27f5f18","other":"e3b0c44298fc1c14"}}
   },
   "t72b3_sich": {
-   "high": {"meshes":63,"vertices":376087,"triangles":131561,"digest":"a5ddd57a8c5c1aed","groups":{"hull":"91d7aec3d8d972c4","turret":"a3cb72ff75b1589f","gun":"a8ed0899d2babff3","runningGear":"7840aea8d16a1f51","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":59,"vertices":283387,"triangles":95561,"digest":"f6dd1a13c6fedbd6","groups":{"hull":"2e3cc5182bbade9d","turret":"7d213638642b8607","gun":"d198edd9098f57fd","runningGear":"4ab00770a62d4338","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":63,"vertices":376087,"triangles":131561,"digest":"fa60f6367f4be952","groups":{"hull":"91d7aec3d8d972c4","turret":"158067a1a086170c","gun":"a8ed0899d2babff3","runningGear":"7840aea8d16a1f51","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":59,"vertices":283387,"triangles":95561,"digest":"ae9ebbe8719232c6","groups":{"hull":"2e3cc5182bbade9d","turret":"8f9d20d570d1292c","gun":"d198edd9098f57fd","runningGear":"4ab00770a62d4338","other":"e3b0c44298fc1c14"}}
   },
   "t72b3_zubr": {
    "high": {"meshes":64,"vertices":374881,"triangles":131159,"digest":"6daa03ff5401f667","groups":{"hull":"f23d073f65a67e0a","turret":"f6947510f5a96fc2","gun":"8571f4b65b54deec","runningGear":"0ed0f635e8d96009","other":"e3b0c44298fc1c14"}},
@@ -654,8 +654,8 @@
    "low": {"meshes":43,"vertices":196917,"triangles":66667,"digest":"cbe1326dc707f8bd","groups":{"hull":"7107c2ef65502816","turret":"1c46498a6d795205","gun":"b00ce304db0d5ab0","runningGear":"52baef116534973d","other":"e3b0c44298fc1c14"}}
   },
   "t72m1_jaguar": {
-   "high": {"meshes":43,"vertices":228069,"triangles":76731,"digest":"e1eedacdf45c13a9","groups":{"hull":"616e592e7edd1800","turret":"a070396b0e715548","gun":"bd6dce0ec654f3bd","runningGear":"0d162b5aee1d41af","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":42,"vertices":199461,"triangles":67067,"digest":"43116a3895e33916","groups":{"hull":"652cc56801f158de","turret":"e6795bdb838b6d6d","gun":"5d706deccc248fbd","runningGear":"cda345d1ae3df48b","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":43,"vertices":228069,"triangles":76731,"digest":"5f1e6893809fbe96","groups":{"hull":"616e592e7edd1800","turret":"aa47f00f139b570f","gun":"bd6dce0ec654f3bd","runningGear":"0d162b5aee1d41af","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":42,"vertices":199461,"triangles":67067,"digest":"d183b76705ab4d70","groups":{"hull":"652cc56801f158de","turret":"2f4e5fbdd53f2288","gun":"5d706deccc248fbd","runningGear":"cda345d1ae3df48b","other":"e3b0c44298fc1c14"}}
   },
   "t80": {
    "high": {"meshes":64,"vertices":279478,"triangles":99519,"digest":"71dfba4239f1d9ab","groups":{"hull":"822ddb541ce088c7","turret":"6735bbec2f27c278","gun":"d89274cfd6f67d6c","runningGear":"a4e5985debf3a969","other":"e3b0c44298fc1c14"}},
@@ -678,8 +678,8 @@
    "low": {"meshes":59,"vertices":241810,"triangles":81702,"digest":"35a8b017a5d06b3a","groups":{"hull":"2d6bb9f6535d99ec","turret":"7ee8868455e490bc","gun":"f03ed84fdaae45d0","runningGear":"9f07a06c4ef6cd38","other":"e3b0c44298fc1c14"}}
   },
   "t80u_husarz": {
-   "high": {"meshes":68,"vertices":408679,"triangles":142425,"digest":"66d9b721fd6602f7","groups":{"hull":"3efbbfe7da5a961f","turret":"e844a03928362a30","gun":"766af5bf89128a14","runningGear":"cebfe330e1aa05b1","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":64,"vertices":310603,"triangles":104633,"digest":"b19496006696b3f8","groups":{"hull":"58549a6a66607776","turret":"cefe4edf8cb1d8ad","gun":"a28304a60b696f21","runningGear":"7d219819fdd48f0c","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":68,"vertices":406711,"triangles":141769,"digest":"23961d68e344a46e","groups":{"hull":"f6ae5ea3b7b05a3f","turret":"8af5a962e2d00b26","gun":"766af5bf89128a14","runningGear":"cebfe330e1aa05b1","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":64,"vertices":310267,"triangles":104521,"digest":"116b317c790b2c8b","groups":{"hull":"4b206aa3da3a0a68","turret":"2b34c11d618e2046","gun":"a28304a60b696f21","runningGear":"7d219819fdd48f0c","other":"e3b0c44298fc1c14"}}
   },
   "t80u_kursk": {
    "high": {"meshes":64,"vertices":297283,"triangles":105454,"digest":"acb68f2badd45447","groups":{"hull":"c991244a73cf267e","turret":"c9d28e113b6fec50","gun":"be7d4746d0e64c14","runningGear":"6c987a1baa6dd435","other":"e3b0c44298fc1c14"}},
@@ -702,8 +702,8 @@
    "low": {"meshes":53,"vertices":229735,"triangles":77838,"digest":"7e873b2ce3d91c37","groups":{"hull":"4fa048ccbebc6c7c","turret":"4dca21d84602ee4f","gun":"ecc0753831f7365e","runningGear":"84ccee0f078c4fa0","other":"e3b0c44298fc1c14"}}
   },
   "t84bm_oplot_m": {
-   "high": {"meshes":78,"vertices":356487,"triangles":125274,"digest":"11491ad609359b96","groups":{"hull":"84cc8b214b76471c","turret":"b7d8928e6ac6a354","gun":"bd1e7d0ca3540cd0","runningGear":"acdfa3af065f44f6","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":74,"vertices":264711,"triangles":89582,"digest":"aa6e39bfc4e59e61","groups":{"hull":"69cf332a42bcbd7e","turret":"c9b72a361478b3c3","gun":"c5536337a5a765a9","runningGear":"76863c694739b936","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":78,"vertices":356487,"triangles":125274,"digest":"19b8e8268d2b09b6","groups":{"hull":"84cc8b214b76471c","turret":"da4e257a8286380d","gun":"bd1e7d0ca3540cd0","runningGear":"acdfa3af065f44f6","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":74,"vertices":264711,"triangles":89582,"digest":"d67aa192828e73a7","groups":{"hull":"69cf332a42bcbd7e","turret":"ef31c8cb195ebc9c","gun":"c5536337a5a765a9","runningGear":"76863c694739b936","other":"e3b0c44298fc1c14"}}
   },
   "t90": {
    "high": {"meshes":49,"vertices":352991,"triangles":123853,"digest":"8ae4434c1c907da0","groups":{"hull":"7a7d949494e49e04","turret":"ddd549345734b455","gun":"ad7f948f7c0c73a6","runningGear":"11ca2482f85ea3b9","other":"e3b0c44298fc1c14"}},
