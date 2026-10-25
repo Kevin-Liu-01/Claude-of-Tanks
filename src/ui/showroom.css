@@ -58,7 +58,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats.has-scroll-mask{mask-image
 /* one plate for the whole column at every station (the gauntlet 10-25: each section's own plate left the column jumping
    in height from station to station); the sections stand on it unboxed, the overview's ammunition at its foot */
 body[data-cot-panels='persistent'] .cot-garage .stats{display:flex;flex-direction:column;border-radius:var(--plate-radius);
-  background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);box-shadow:var(--e1);}
+  background:var(--plate-highlight),var(--surface-page);border:1px solid var(--line-1);box-shadow:var(--e1);}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-stat-section{background:none;border:0;box-shadow:none;}
 /* a section never shrinks to fit: the column overflows instead, and fitReadout steps to the next density */
 body[data-cot-panels='persistent'] .cot-garage .stats>*{flex-shrink:0;}
