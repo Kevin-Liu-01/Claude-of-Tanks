@@ -37,7 +37,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero .shell{padding:50px 0 36px;display:block}
 .docs-hero h1{font-size:var(--fs-52)}
 .docs-evidence dl{grid-template-columns:repeat(2,minmax(0,1fr))}
-.docs-evidence dl>div:nth-child(odd){border-left:0}
+.docs-evidence dl>div:nth-child(odd){border-left:0;padding-left:0}
 .docs-evidence dl>div:nth-child(n+3){border-top:1px solid var(--line)}
 .docs-layout{display:block;padding-top:24px}
 .docs-toc{top:70px;z-index:calc(var(--z-shell) - var(--z-lift));margin-bottom:30px}
@@ -73,6 +73,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media(hover:hover) and (pointer:fine){.docs-chapter-grid a:hover{background:var(--surface-menu)}.docs-chapter-grid a:hover img{filter:saturate(1.06) contrast(1.03)}}
 @media (width < 1100px){.docs-chapter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (pointer:coarse){.dm-side a{min-height:var(--cot-control-floor,44px)}}
+@media (width < 520px){.footer-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--s4)}.footer-links a{min-height:var(--btn-h-m)}}
+@media (pointer:coarse){.footer-links a{min-height:var(--cot-control-floor,44px)}}
 @media (width < 768px){
 .docs-chapters{padding:52px 0 58px}
 .docs-chapter-grid{grid-template-columns:1fr}
@@ -110,9 +112,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-chapter-grid{grid-template-columns:1fr}
 .docs-chapter-grid a,.docs-chapter-grid a:first-child,.docs-chapter-grid a:nth-child(2),.docs-chapter-grid a:nth-child(n+9){grid-template-rows:54vw auto auto}
 }
-@media (width < 520px){:root body .docs-evidence dl>div{display:flex;flex-wrap:wrap;min-width:0}
-/* a phone stacks every fact the same way: its label, then its value */
-@media (width < 520px){.docs-evidence dl>div{display:grid;align-content:start;gap:4px}}}@media (width < 520px){:root body .docs-evidence dd{margin-top:0}}
+/* a phone stacks every fact the same way (its label, room for two lines, then its value), so a row shares one line */
+@media (width < 520px){:root body .docs-evidence dl>div{display:grid;grid-template-rows:minmax(2.6em,auto) auto;align-content:start;gap:4px;min-width:0}}@media (width < 520px){:root body .docs-evidence dd{margin-top:0}}
 @media (width < 520px){:root body .doc-section h2{align-items:flex-start;gap:10px}}@media (width < 520px){:root body .doc-section-icon{width:34px;height:34px;flex-basis:34px;padding:7px}}
 @media(prefers-reduced-motion:reduce){.docs-chapter-grid a:hover,.docs-chapter-grid a:hover .docs-chapter-media img{transform:none}}
 
@@ -156,6 +157,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-side.is-searching>.dm-grp,.dm-side.is-searching>a:not(.dm-home){display:none}
 .dm-main{min-width:0}
 .dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
+.dm-banner{margin-inline-end:min(0px,calc((var(--shell-max) + var(--shell-gutter) * 2 - 100vw) / 2))}
 .dm-banner>picture,.dm-banner>picture>img,.dm-banner>img,.dm-banner>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%}
 .dm-banner>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .dm-banner>video.has-frame{opacity:1}
@@ -167,6 +169,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (pointer:coarse){.dm-crumb a{min-height:var(--cot-control-floor,44px)}}
 .dm-crumb a:hover{color:var(--ink-1)}
 .dm-crumb i{display:inline-flex;font-style:normal;color:var(--ink-3)}
+/* a step keeps its chevron: a long name wraps to the next line with it, never leaving a chevron dangling */
+.dm-crumb__step{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .dm-banner h1{margin:0;font:700 var(--docs-banner-h1)/.92 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--hollow-shadow);text-wrap:balance}
 .dm-banner h1 .t-hollow{color:var(--ink-1)}
 :lang(zh-CN) .dm-banner h1 .t-hollow{color:var(--ink-1);-webkit-text-stroke:0}

@@ -157,7 +157,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op-index{font:700 var(--fs-44)/1 var(--font-display);color:var(--ink-3);}
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--ink-1);}
 .cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
+.cot-garage .cot-deploy-op-meta{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s2);}
 .cot-garage .cot-deploy-op-meta svg{color:var(--ink-3);}
 .cot-garage .cot-deploy-op-stars{display:inline-flex;gap:var(--s1);color:var(--ink-4);}
@@ -227,10 +227,12 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:56px 120px minmax(0,1fr) auto;}
 /* the battlefield (.bfield): its art, name and region over a fade, the count to pick from, the tactical map beside it */
 /* the field grows into the plate's free height; its floor is low enough that a 768 px screen keeps the options in view */
+/* the field clips nothing (its picker opens past its box): its art and its map clip themselves to its corners */
 .cot-garage .cot-deploy-field{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;flex:1 0 auto;
-  min-height:clamp(112px,15vh,240px);overflow:hidden;border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--e1);}
-.cot-garage .cot-deploy-field-card{position:relative;display:block;min-width:0;height:100%;padding:0;border:0;background:none;
-  color:var(--ink-1);cursor:pointer;text-align:left;overflow:hidden;}
+  min-height:clamp(112px,15vh,240px);border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--e1);}
+.cot-garage .cot-deploy-field-card{position:relative;display:block;min-width:0;height:100%;padding:0;border:0;border-radius:var(--control-radius) 0 0 var(--control-radius);
+  background:none;color:var(--ink-1);cursor:pointer;text-align:left;overflow:hidden;}
+.cot-garage .cot-deploy-field:has(.cot-deploy-field-mm img[hidden]) .cot-deploy-field-card{border-radius:var(--control-radius);}
 .cot-garage .cot-deploy-field-card[aria-expanded='true']{outline:2px solid var(--accent);outline-offset:-2px;}
 .cot-garage .cot-deploy-field-thumb{position:absolute;inset:0;display:block;background:var(--surface-hover) center/cover no-repeat;}
 .cot-garage .cot-deploy-field-thumb::after{content:'';position:absolute;inset:0;background:var(--media-fade-soft);}
@@ -240,7 +242,8 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-deploy-field-name{font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;text-shadow:var(--hollow-shadow);}
 .cot-garage .cot-deploy-field-tags .cot-c-rules{gap:var(--s3);font-family:var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-field-all{position:absolute;z-index:var(--z-lift);left:12px;top:12px;background:var(--glyph-plate);}
-.cot-garage .cot-deploy-field-mm{position:relative;height:100%;aspect-ratio:1;background:var(--surface-page);border-left:1px solid var(--line-2);}
+.cot-garage .cot-deploy-field-mm{position:relative;height:100%;aspect-ratio:1;overflow:hidden;border-radius:0 var(--control-radius) var(--control-radius) 0;
+  background:var(--surface-page);border-left:1px solid var(--line-2);}
 .cot-garage .cot-deploy-field-mm img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cot-garage .cot-deploy-field-mm img[hidden]{display:none;}
 /* the opening objectives over it (deployObjectives.ts) */
@@ -501,11 +504,17 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-choi
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-content{width:100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-sides{flex:1 1 auto;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-sides-choice{flex:1 1 0;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams{align-self:stretch;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams [role=radiogroup]{display:flex;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams button{flex:1 1 0;}
+/* the phone's dock: the content scrolls under a fade into its plate, never a hard cut */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot::before{display:block;content:'';position:absolute;left:0;right:0;
+  bottom:100%;height:var(--s5);background:linear-gradient(0deg,var(--surface-page),transparent);pointer-events:none;}
 /* the phone's open mode reads as a desktop card does: its glyph at the top left, its title band across the foot */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .cot-deploy-choice-t{position:absolute;
   left:0;right:0;bottom:0;padding-left:var(--s3);}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{position:absolute;left:var(--s3);top:var(--s3);}
 /* beside the brief, an operation's row launch is the secondary; the brief's Launch is the one primary */
-body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{background:var(--btn-media-fill);color:var(--ink-1);box-shadow:var(--ring-3);}
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{background:var(--btn-secondary-fill);color:var(--ink-1);box-shadow:var(--btn-secondary-ring);}
 @media (hover:hover){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch:hover{background:var(--surface-hover);}}
 }

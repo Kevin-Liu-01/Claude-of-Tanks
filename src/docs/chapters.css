@@ -18,6 +18,8 @@
 .dm-table tbody tr:last-child>*{border-bottom:0}
 .dm-table tbody th a{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);text-decoration:none}
 .dm-table tbody th a:hover span{text-decoration:underline}
+/* the name's text, not its glyph, sets the row's baseline */
+.dm-table tbody th a>span{align-self:baseline}
 .dm-table tbody th .cot-i{color:var(--ink-3)}
 .dm-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
 .dm-legend li{display:inline-flex;align-items:center;gap:6px}
@@ -84,7 +86,7 @@
 .dm-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);margin-top:var(--s4)}
 .dm-class{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-hc{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-scene);--hc-band:10px;--hc-share:0.74;--hc-hshare:0.72;--hc-cxr:0.5;--hc-flag-mask:var(--docs-hc-flag-mask)}
-.dm-class__body{display:grid;gap:4px;padding:10px 12px 12px}
+.dm-class__body{display:grid;align-content:start;gap:4px;padding:10px 12px 12px}
 .dm-class__body h3{display:flex;align-items:flex-start;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
 .dm-class__body h3 .cot-i{flex:none;color:var(--ink-3)}
 .dm-class__body h3 b{margin-left:auto;font:600 var(--fs-15)/1 var(--font-data);color:var(--ink-2)}
@@ -117,7 +119,7 @@
 .dm-chart{margin:var(--s4) 0;max-width:760px}
 .dm-chart svg{display:block;width:100%;height:auto;overflow:visible;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
 /* a phone draws the 640-unit chart at about half size: its ticks and units double in chart units to hold the floor */
-@media (width < 520px){.dm-chart svg{font-size:var(--fs-24)}}
+@media (width < 520px){.dm-chart svg{font-size:calc(var(--fs-floor-12) * 2)}}
 .dm-chart .g{stroke:var(--line-1)}
 .dm-chart .k,.dm-chart .a{stroke:var(--line-3)}
 .dm-chart .t{fill:var(--ink-3)}

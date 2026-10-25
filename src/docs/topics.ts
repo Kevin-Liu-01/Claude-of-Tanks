@@ -508,8 +508,9 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">${CRUMB}</i>`
-    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></nav>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span>${groupLabel(group.key)}</span></span>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div></header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
