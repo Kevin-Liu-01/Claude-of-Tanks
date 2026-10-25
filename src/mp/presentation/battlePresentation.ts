@@ -657,7 +657,10 @@ export function createBattlePresentation({
         catch { /* createTank keeps its synchronous compatibility path */ }
       }
       assertActive();
-      ensureActor(entry, isViewer);
+      const actor = ensureActor(entry, isViewer);
+      // (perf-255) its far LOD under the roster's budget, rather than in the first battle frame it stands that far
+      const visual = actor.visual as { prepareFarLod?(): boolean };
+      if (visual.prepareFarLod) { await yieldWork(); visual.prepareFarLod(); }
       onRosterProgress?.((index + 1) / Math.max(1, active.length), entry.specId);
       await yieldWork();
     }

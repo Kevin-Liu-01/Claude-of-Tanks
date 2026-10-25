@@ -542,6 +542,13 @@ async function main() {
     page.on('pageerror', (error) => log(`  [${base.label}:${doc} page error] ${firstLine(error)}`));
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
     if (flag('layout-trace')) await page.evaluateOnNewDocument('window.__cotLayoutTrace = true;');
+    // --busy=<everyMs>:<workMs>: a loaded main thread (a timer burning workMs every everyMs), as a polling probe or a busy
+    // phone makes it
+    const busy = option('busy', '');
+    if (busy) {
+      const [every, work] = busy.split(':').map(Number);
+      await page.evaluateOnNewDocument(`setInterval(() => { const end = performance.now() + ${work}; while (performance.now() < end) {} }, ${every});`);
+    }
     await page.evaluateOnNewDocument(PROBE);
     const url = new URL(DOCS[doc].url, base.url).href;
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
