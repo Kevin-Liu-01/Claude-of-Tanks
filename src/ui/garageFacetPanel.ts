@@ -48,6 +48,8 @@ interface GarageFacetHost {
 export interface GarageFacetPanel {
   toggle(): void;
   close(options?: { restoreFocus?: boolean }): void;
+  /** Drop every facet (the Garage's empty fleet's Clear filters). */
+  clear(): void;
   readonly isOpen: boolean;
 }
 
@@ -133,7 +135,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   input.autocomplete = 'off';
   input.spellcheck = false;
   input.enterKeyHint = 'search';
-  input.placeholder = t('fleet.filter.searchPlaceholder');
+  input.placeholder = t('garage.search.short');
   input.dataset.tip = t('fleet.filter.searchHint');
   input.setAttribute('aria-label', t('fleet.filter.search'));
   input.setAttribute('aria-describedby', 'cot-garage-facets-hint');
@@ -253,7 +255,10 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   function fit(): void {
     if (!open) return;
     const top = host.anchor.getBoundingClientRect().top;
-    const fitHeight = Math.round(Math.max(160, Math.min(520, top - 16)));
+    // docked, the header keeps its row (the gauntlet 10-25: at 1024 x 600 the panel rode up over the nav)
+    const ceiling = document.body.dataset.cotPanels === 'persistent'
+      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 0) + 8 : 16;
+    const fitHeight = Math.round(Math.max(160, Math.min(520, top - ceiling)));
     panel.style.maxHeight = `${fitHeight}px`;
     // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a
     // few px under the top and slicing through its letters (critic 236)
@@ -327,6 +332,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   return {
     toggle() { setOpen(!open); },
     close(options = {}) { setOpen(false, options); },
+    clear() { commit(EMPTY_GARAGE_FACET_STATE); },
     get isOpen() { return open; },
   };
 }

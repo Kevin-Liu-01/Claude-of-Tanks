@@ -364,6 +364,8 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
 .cot-stat-title small{flex:0 0 auto;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-mono);
   letter-spacing:normal;text-transform:none;}
 .cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+/* an odd last figure spans the row instead of leaving a hole beside it */
+.cot-performance-grid>.srow:last-child:nth-child(odd){grid-column:1/-1;}
 .cot-garage .srow{position:relative;min-width:0;min-height:50px;padding:var(--s2) var(--s2) var(--s2) 36px;
   background:var(--btn-secondary-fill);border:1px solid var(--line-1);overflow:hidden;}
 .cot-garage .srow .sicon{position:absolute;left:8px;top:10px;width:20px;height:20px;display:grid;
@@ -395,8 +397,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
 .cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
   gap:7px;align-items:center;min-height:46px;margin-top:5px;padding:6px 7px;
-  color:var(--ink-2);background:var(--scrim);
-  border:1px solid var(--line-1);border-left:2px solid color-mix(in srgb,var(--shell-color) 78%,var(--surface-hover));}
+  color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);}
 .cot-garage .shellkind{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
   color:var(--shell-color);}
 .cot-garage .shellkind svg{width:15px;height:22px;flex:0 0 auto;filter:var(--sil-shadow);}
@@ -406,7 +407,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellrow .nm small{display:block;margin-top:2px;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .shellmetric{text-align:right;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
-  letter-spacing:0;text-transform:uppercase;white-space:nowrap;}
+  letter-spacing:0;white-space:nowrap;}
 .cot-garage .shellmetric b{display:block;margin-bottom:1px;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:none;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
@@ -503,6 +504,10 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   scroll-snap-type:x mandatory;scroll-padding-inline:0;touch-action:pan-x;
   scrollbar-width:none;-ms-overflow-style:none;}
 .cot-country-chips::-webkit-scrollbar{display:none;}
+/* the flags past the right edge fade out, as the cards do: a cut flag reads as "more", never as a cut count */
+.cot-country-rail.has-more-right .cot-country-chips{
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 44px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 44px),transparent 100%);}
 .cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;justify-self:center;
   width:26px;height:36px;
   color:var(--ink-3);background:var(--surface-raised);
@@ -560,10 +565,14 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   scroll-snap-type:x mandatory;cursor:grab;touch-action:pan-x;}
 /* a snapped card rests one gap in, so the card before it ends at the strip's edge, never a sliver */
 .cot-cards>.cot-card{scroll-snap-align:start;}
+.cot-garage .cot-cards[data-fit]>.cot-card{width:var(--card-fit);}
 .cot-cards.has-more-right{
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 48px),transparent 100%);}
 .cot-cards::-webkit-scrollbar{display:none;}
+.cot-cards-empty{display:flex;flex:1 1 auto;align-items:center;justify-content:center;gap:var(--s3);min-width:0;
+  color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-ui);}
+.cot-cards-empty[hidden],.cot-carousel.is-empty .cot-cards{display:none;}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards:is(.dragging,.free),.cot-country-chips.free{scroll-snap-type:none;}
@@ -623,7 +632,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-card .ti[data-cot-portrait-ready='true']{opacity:1;}
 .cot-card .nm{position:absolute;z-index:3;left:var(--hc-pad);right:var(--hc-pad);bottom:calc(var(--hc-pad) * 0.8);margin:0;
   font:600 var(--hc-name)/1.05 var(--font-ui);
-  color:var(--ink-1);letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;
+  color:var(--ink-1);letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;text-wrap:balance;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
 .cot-card.hc-n2 .nm{text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 7px rgba(0,0,0,.75);}
 /* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
@@ -865,7 +874,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
    tiles, category filter chips, era-locked tiles stay visible but inert. */
 .cot-eqpick{position:absolute;right:calc(var(--cot-garage-sidebar-width) + 38px);top:86px;width:372px;display:none;
   pointer-events:auto;z-index:70;font-family:var(--font-ui);
-  background:var(--side-plate);
+  background:var(--surface-menu);
   border:1px solid var(--line-3);box-shadow:var(--e3);
   padding:13px 14px var(--s3);}
 .cot-eqpick.open{display:block;}
@@ -874,15 +883,9 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .ph .t{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);
   color:var(--ink-2);text-transform:uppercase;}
 .cot-eqpick .ph .t i{font-style:normal;color:var(--text-accent);}
-.cot-eqpick .ph .x{cursor:pointer;border:none;background:none;color:var(--ink-3);
-  font-size:max(15px,var(--fs-15));line-height:1;padding:2px var(--s1);font-family:inherit;}
 .cot-eqpick .chips{display:flex;gap:var(--s1);margin-bottom:9px;flex-wrap:wrap;}
-.cot-eqpick .chip{cursor:pointer;border:1px solid var(--line-3);
-  background:var(--scrim);color:var(--ink-3);font-family:inherit;
-  font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;
-  padding:var(--s1) 9px 3px;transition:color var(--dur-fast),border-color var(--dur-fast);}
-.cot-eqpick .chip.sel{color:var(--accent-hi);border-color:var(--accent);
-  background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));}
+/* the kit's chip and icon button (components.css); the Garage's element reset takes their padding */
+.cot-eqpick .cot-c-chip{padding:0 var(--s3);}
 .cot-eqpick .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
   max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
   padding-right:3px;scrollbar-width:thin;
@@ -891,6 +894,8 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .pgrid::-webkit-scrollbar-track{background:var(--scrim);}
 .cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:var(--line-control);}
 .cot-eqtile{appearance:none;-webkit-appearance:none;cursor:pointer;position:relative;text-align:center;
+  /* top-aligned (a button centres its content): every glyph and name in a row on one line, whatever the description */
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
   width:100%;min-width:0;padding:var(--s2) 5px 7px;font:inherit;color:inherit;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
@@ -910,15 +915,14 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   border:1px solid var(--accent-lo);padding:1px var(--s1);text-transform:uppercase;}
 .cot-eqtile.inother .tag{color:var(--ink-3);border-color:var(--line-3);
   background:var(--surface-plate);}
-.cot-eqtile.locked{cursor:default;opacity:.38;}
+.cot-eqtile.locked{cursor:default;opacity:.55;}
+.cot-eqtile.locked :is(.n,.e){color:var(--ink-3);}
 .cot-eqtile.remove .n{color:var(--ink-3);}
 .cot-eqtile.remove svg{opacity:.55;}
 .cot-eqtile:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;
   border-color:var(--accent);}
 
 @media (hover:hover) and (pointer:fine){
-  .cot-eqpick .ph .x:hover{color:var(--accent-hi);}
-  .cot-eqpick .chip:hover{color:var(--ink-2);}
   .cot-eqtile:not(.locked):hover{border-color:var(--line-control);
     background:var(--side-plate);
     box-shadow:var(--ring-1);transform:translateY(-1px);}
@@ -931,13 +935,12 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqtooltip{position:fixed;z-index:90;width:286px;box-sizing:border-box;
   pointer-events:none;padding:10px 11px 9px;font-family:var(--font-ui);
   color:var(--ink-1);background:var(--surface-menu);
-  border:1px solid var(--line-3);border-left:2px solid var(--accent);
+  border:0;border-radius:var(--r1);
   box-shadow:var(--e3);opacity:0;visibility:hidden;
   transform:translateX(4px) scale(.985);transform-origin:right center;
   transition:opacity var(--dur-fast) ease-out,transform var(--dur-fast) ease-out,visibility 0s linear var(--dur-fast);}
-.cot-eqtooltip[data-side="right"]{border-left:1px solid var(--line-3);
-  border-right:2px solid var(--accent);transform:translateX(-4px) scale(.985);
-  transform-origin:left center;}
+/* the kit tip's plate (components.css .cot-c-tip): no coloured edge (owner 10-25, the notification bar) */
+.cot-eqtooltip[data-side="right"]{transform:translateX(-4px) scale(.985);transform-origin:left center;}
 .cot-eqtooltip.show{opacity:1;visibility:visible;transform:translateX(0) scale(1);
   transition-delay:0s;}
 .cot-eqtooltip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
@@ -976,8 +979,6 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   font-weight:700;line-height:1.3;letter-spacing:0;text-transform:uppercase;}
 body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
 @media (hover:none) and (pointer:coarse){.cot-eqtooltip{display:none!important;}}
-.cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
-  outline:1px solid var(--accent);outline-offset:1px;}
 
 /* garage_ui: entrance transition — the garage used to hard-cut in (boot and
    battle-exit both flipped display:none→block in one frame). show() re-arms
@@ -1067,7 +1068,8 @@ body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switch
 body[data-cot-width='laptop'] .cot-header-nav .nv{padding-inline:var(--s2)}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
-body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .cot-header-nav .cot-c-kbd{display:none}
+/* the nav's keys read in its hover tips (owner 10-24: labels kept, key caps folded into the tips) */
+.cot-header-nav .cot-c-kbd{display:none}
 body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-garage-variant-menu{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-featured{display:none}
@@ -1501,10 +1503,10 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-
   color:var(--ink-1);text-wrap:balance;text-shadow:var(--stage-halo);}
 .cot-lt-name.is-long{font-size:var(--fs-60);}
 .cot-lt-name .acc{color:var(--accent);}
-.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-2);
+.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-1);
   text-shadow:var(--stage-halo);}
 .cot-lt-id>span{display:inline-flex;align-items:center;gap:var(--s2);}
-.cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-3);}
+.cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
 .cot-lt-id .lt-tier b{color:var(--accent);}
 body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossier-head .sub,.stats-ti){display:none;}
@@ -1589,7 +1591,8 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
   width:auto;max-width:760px;margin-inline:auto;max-height:none;
 }
 body[data-cot-panels='overlay'] .cot-drawer-heading{display:flex;flex:0 0 44px;align-items:center;justify-content:space-between;gap:var(--s2);padding-left:var(--s2);color:var(--ink-1)}
-.cot-drawer-close{width:44px;height:44px;flex:0 0 44px;border:0;background:none;color:var(--ink-2);cursor:pointer}
+/* the kit's ghost icon button at the touch size (components.css): one close control, one focus ring */
+.cot-drawer-close{--h:44px;flex:0 0 44px}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-compact-equipment-trigger{
   display:grid;width:44px;height:44px;top:0;right:0;position:absolute;background:var(--surface-menu);
 }
@@ -1597,7 +1600,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-dossier-head{position:relative;
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-dossier-title{padding-right:44px}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage .cot-dossier-close{display:none}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-compact-equipment-trigger{display:none}
-body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-dossier-close{display:grid}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-dossier-close{
+  display:inline-flex;--h:44px;position:absolute;top:0;right:0;}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>.cot-stat-section{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>:not(.cot-dossier-head){display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-performance-grid>.srow:nth-child(n){display:block}
@@ -1610,8 +1614,10 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
-body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain}
-body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto;font-size:max(var(--fs-floor-11),var(--fs-11))}
+body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
+body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick.open{
   position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));

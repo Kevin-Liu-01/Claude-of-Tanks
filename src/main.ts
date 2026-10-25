@@ -1435,6 +1435,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     if (!multiplayerLobby?.prepareLobby()) battleIntent.preload(options);
   },
   onTankIntent: pedestal.preloadIntent,
+  onOverlayChange: () => invalidateGaragePresentation(),
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,

@@ -30,7 +30,9 @@ body[data-cot-panels='persistent'] .cot-garage{--edge:22px;--col-w:clamp(320px,2
   --cot-deploy-w:var(--col-w);}
 /* a short docked window (520 to 719 px) sets the fleet a fifth smaller, so the stage keeps its room */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--card-h:120px;--rtools-h:44px;--slot:48px;--tabs-h:48px;--battle-h:132px;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-cards{zoom:.8;}
+/* a smaller card, not a zoomed one: its name and tier keep the 11 px floor (the gauntlet 10-25: zoom set them at 9 px) */
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-card{width:125px;height:120px;min-height:120px;
+  contain-intrinsic-size:auto 125px auto 120px;--hc-band:28px;--hc-pad:7px;--hc-name:max(11px,var(--fs-11));}
 
 /* ---- the station tabs: one row of glyphs over the readout, each named under its glyph ---- */
 .cot-stations{display:none;}
@@ -53,11 +55,16 @@ body[data-cot-panels='persistent'] .cot-stations{display:block;position:absolute
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage .stats{top:calc(var(--column-top) + var(--tabs-h) + var(--s2));
   right:var(--edge);bottom:calc(var(--edge) + var(--battle-h) + var(--s3));width:var(--col-w);overflow:hidden;}
 body[data-cot-panels='persistent'] .cot-garage .stats.has-scroll-mask{mask-image:none;-webkit-mask-image:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats{display:flex;flex-direction:column;}
+/* one plate for the whole column at every station (the gauntlet 10-25: each section's own plate left the column jumping
+   in height from station to station); the sections stand on it unboxed, the overview's ammunition at its foot */
+body[data-cot-panels='persistent'] .cot-garage .stats{display:flex;flex-direction:column;border-radius:var(--plate-radius);
+  background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);box-shadow:var(--e1);}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-stat-section{background:none;border:0;box-shadow:none;}
+/* a section never shrinks to fit: the column overflows instead, and fitReadout steps to the next density */
+body[data-cot-panels='persistent'] .cot-garage .stats>*{flex-shrink:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations]{flex:1 0 auto;display:flex;
   flex-direction:column;margin-bottom:0;}
-body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations] .cot-headline{flex:1 0 auto;
-  align-content:space-evenly;}
+body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations] .cot-ammo-tiles{margin-top:auto;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-ammo-tiles{padding-top:var(--s3);}
 body[data-cot-panels='persistent'] .cot-garage .stats [data-stations]{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats [data-stations~='overview'],
@@ -103,8 +110,10 @@ body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
 .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
-/* the rounds' rows close to one line: the glyph beside its type, each figure beside its unit */
-.cot-garage .stats[data-density~='1'] .shellkind{flex-direction:row;gap:var(--s1);}
+/* one line a round: the glyph carries the type, the figures take their units inline in columns wide enough for them */
+.cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 84px 52px;}
+.cot-garage .stats[data-density~='1'] .shellhead span:first-child{visibility:hidden;}
+.cot-garage .stats[data-density~='1'] .shellkind .ty{display:none;}
 .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
 .cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
 /* each performance card sets its label and value on one line over its scale */
@@ -171,9 +180,13 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 /* ---- every paint: the band's last swatch opens the whole catalog over the stage and the fleet, left of the column; each
    paint is its swatch alone (its name in the tooltip and for assistive technology), so the hundred-odd fit at 1280 x 720 ---- */
 body[data-cot-panels='persistent'] .cot-leftcol{display:none;}
+/* a sheet on the fleet's floor, sized to the catalog and never past 46% of the window (its grid scrolls beyond that),
+   so the tank stays in view above it as it is painted; an opaque plate, so nothing ghosts through */
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{display:flex;z-index:var(--z-drawer);
-  left:var(--edge);right:var(--fleet-right);top:var(--column-top);bottom:var(--edge);width:auto;
-  border-radius:var(--plate-radius);background:var(--plate-highlight),var(--plate-fill);box-shadow:var(--plate-shadow);}
+  left:var(--edge);right:var(--fleet-right);top:auto;bottom:var(--edge);width:auto;
+  max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh);
+  border-radius:var(--plate-radius);background:var(--plate-highlight),var(--surface-menu);box-shadow:var(--plate-shadow);}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{overflow-y:auto;overscroll-behavior:contain;}
 body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;overflow:visible;height:auto;}
@@ -274,8 +287,10 @@ body[data-cot-panels='persistent'] .cot-eqpick.open{display:flex;flex-direction:
    hover tip; the grid scrolls only if a short window still can't hold it */
 body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:var(--s1);
   max-height:none;min-height:0;flex:0 1 auto;}
-/* a docked window 520-719 px tall: the picker spans the column too, so every item stays in view */
+/* a docked window 520-719 px tall: the picker spans the column too, so every item stays in view, and the column steps
+   aside while it is open (no figure half under its edge) */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick{right:var(--edge);}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage.picker-open :is(.stats,.cot-stations){visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-eqpick{padding:var(--s2) var(--s3);}
 body[data-cot-panels='persistent'] .cot-eqpick :is(.ph,.chips){margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-eqtile{padding:var(--s2) 3px var(--s1);}
@@ -456,6 +471,8 @@ body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}
 body[data-cot-panels='overlay'] .cot-lt-acts .cot-c-btn{--h:44px;height:var(--h);}
+/* a labelled act grows past the touch minimum instead of setting its name on the frame */
+body[data-cot-panels='overlay'] .cot-lt-acts .cot-lt-act{height:auto;min-height:var(--h);width:auto;min-width:60px;padding:var(--s1) var(--s2);gap:2px;}
 body[data-cot-panels='overlay'] .cot-lt-acts :is([data-lt-photo],[data-lt-callouts]){display:none;}
 
 /* ---- a phone on its side (and a folded tablet held wide): the stage and the fleet on the left, the column on the right

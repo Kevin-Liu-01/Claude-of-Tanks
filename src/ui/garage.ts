@@ -203,6 +203,9 @@ interface GarageOptions {
   readonly onGarageVariantSelect?: (variantId: string) => void;
   readonly camo?: GarageCamoOptions;
   readonly onMapSelect?: (mapId: string) => void;
+  /** The stage's overlay (the callouts) changed while the showroom is still: one frame places it (main.ts: the Garage
+   *  renders on demand, so a still stage draws nothing until asked). */
+  readonly onOverlayChange?: () => void;
 }
 
 export interface GarageRuntime {
@@ -336,7 +339,7 @@ function equipmentMetricIcon(metricId: string): string {
 
 function equipmentCategoryButtons(activeCategory: string): string {
   return EQUIP_CATEGORIES.map((category) => (
-    `<button type="button" class="chip${category.id === activeCategory ? ' sel' : ''}" ` +
+    `<button type="button" class="cot-c-chip chip" aria-pressed="${category.id === activeCategory}" ` +
     `data-cat="${category.id}">${t(`garage.equipment.cat.${category.id}`)}</button>`
   )).join('');
 }
@@ -816,11 +819,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.prev')}">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
     `<div class="cot-cards" role="listbox" tabindex="0" aria-label="${t('garage.carousel.listAria')}"></div>` +
+    `<div class="cot-cards-empty" role="status" hidden><span>${t('garage.roster.empty')}</span>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--36" data-roster-clear>${t('garage.roster.clear')}</button></div>` +
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol">` +
-    `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>` +
+    `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-garage-variant-control">` +
     `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
     `aria-haspopup="listbox" aria-expanded="false" ` +
@@ -1090,6 +1095,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function setStation(next: GarageStation, { sound = true } = {}): void {
     station = next;
     root.dataset.station = next;
+    if (calloutsShown) opts.onOverlayChange?.(); // the callouts show on the overview alone
     for (const tab of stationTabs.querySelectorAll<HTMLElement>('[role=tab]')) {
       const on = tab.dataset.station === next;
       tab.setAttribute('aria-selected', String(on));
@@ -1168,7 +1174,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const gap = (other: GarageTankSpec) => Math.abs(other.weightTons - spec.weightTons) / spec.weightTons
       + Math.abs(other.gun.caliberMm - spec.gun.caliberMm) / spec.gun.caliberMm;
     const foreign = peers.filter((other) => other.nation !== spec.nation);
-    return (foreign.length ? foreign : peers).reduce<GarageTankSpec | null>((best, other) => !best || gap(other) < gap(best) ? other : best, null);
+    // ...that differs in at least two headline figures (the gauntlet 10-25: a sibling on the same template compared
+    // even on every row, so Compare showed nothing)
+    const mine = headlineOf(spec);
+    const differs = (other: GarageTankSpec): number => {
+      const theirs = headlineOf(other);
+      return (['dmg', 'reload', 'speed', 'hpt', 'hp', 'turret'] as const).filter((key) => Math.abs(theirs[key] - mine[key]) > 1e-3).length;
+    };
+    const pool = (foreign.length ? foreign : peers).slice().sort((a, b) => gap(a) - gap(b));
+    return pool.find((other) => differs(other) >= 2) ?? pool[0] ?? null;
   };
   const headlineOf = (spec: GarageTankSpec, reloadMult = 1, turretMult = 1) => ({
     dmg: Math.max(0, ...(spec.gun.shells || []).map((shell) => shell.dmg || 0)),
@@ -1598,12 +1612,29 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The card strip and the flags snap each stop to an item's start (owner 10-24: no card or flag cut at the left edge).
   // Their last stop needs the end padding that lands it on one too, measured only when a rail's width or items change.
   const railEndKeys = new WeakMap<HTMLElement, string>();
+  // The cards take the width that fits a whole number of them in the strip (within a fifth of their own), so a strip at
+  // rest never shows part of a card at either edge (the gauntlet 10-25: a cut card's clipped name under the arrows).
+  const fitCards = (): void => {
+    cardsEl.removeAttribute('data-fit');
+    const card = [...cardsEl.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetWidth > 0);
+    if (!card) return;
+    const cs = getComputedStyle(cardsEl);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const room = cardsEl.clientWidth - 2 * (parseFloat(cs.paddingLeft) || 0); // the right pad's base is the left's
+    const base = card.offsetWidth;
+    const count = Math.max(1, Math.round((room + gap) / (base + gap)));
+    const width = (room - (count - 1) * gap) / count;
+    if (width > base * 0.8 && width < base * 1.25) {
+      cardsEl.style.setProperty('--card-fit', `${width.toFixed(2)}px`);
+      cardsEl.setAttribute('data-fit', '');
+    }
+  };
   const settleRailEnd = (rail: HTMLElement): void => {
     const extra = parseFloat(rail.style.getPropertyValue('--rail-end')) || 0;
+    if (railEndKeys.get(rail) === `${rail.clientWidth}|${rail.scrollWidth - extra}`) return;
+    if (rail === cardsEl) fitCards();
     const natural = rail.scrollWidth - extra;
-    const key = `${rail.clientWidth}|${natural}`;
-    if (railEndKeys.get(rail) === key) return;
-    railEndKeys.set(rail, key);
+    railEndKeys.set(rail, `${rail.clientWidth}|${natural}`);
     const line = rail.getBoundingClientRect().left + rail.clientLeft - rail.scrollLeft +
       (parseFloat(getComputedStyle(rail).scrollPaddingLeft) || 0);
     const stops: number[] = [];
@@ -2316,8 +2347,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const chips = equipmentCategoryButtons(eqCat);
     const tiles = equipmentPickerTiles(spec, cur, eqOpenSlot, eqCat);
     eqpickEl.innerHTML =
-      `<div class="ph"><span class="t">${t('garage.equipment.heading', { slot: eqOpenSlot + 1 })}</span>` +
-      `<button type="button" class="x" aria-label="${t('garage.equipment.headingClose')}">&#10005;</button></div>` +
+      `<div class="ph"><span class="t">${t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 })}</span>` +
+      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost x" aria-label="${t('garage.equipment.headingClose')}">` +
+      `${uiIconSVG('close', 18)}</button></div>` +
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
     // slot highlight on the card
@@ -2330,6 +2362,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (vehicleLocked) return;
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
+    root.classList.add('picker-open');
     renderEqPicker();
     eqpickEl.querySelector<HTMLButtonElement>('.ph .x')?.focus({ preventScroll: true });
     document.addEventListener('keydown', eqKeydown);
@@ -2341,6 +2374,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     hideEqTooltip(false);
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
+    root.classList.remove('picker-open');
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);
@@ -2776,10 +2810,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderFavourites();
     if (favouritesOnly) setRosterFacetFilter(rosterFacetMatch);
   }
+  // an empty fleet says so and offers the way back (owner 10-25 gauntlet: a search that matches nothing left a blank strip)
+  const rosterEmptyEl = requiredElement<HTMLElement>(root, '.cot-cards-empty');
   const updateRosterCount = (): void => {
     const shown = (specsByCountry.get(countryFilter) || []).filter((spec) => facetVisible(spec.id)).length;
     rosterCount.textContent = t('garage.roster.count', { shown, total: allSpecs.length });
+    rosterEmptyEl.hidden = shown > 0;
+    rosterEmptyEl.parentElement?.classList.toggle('is-empty', shown === 0);
   };
+  rosterEmptyEl.querySelector('[data-roster-clear]')?.addEventListener('click', () => {
+    emit('ui:click', {});
+    rosterSearchInput.value = '';
+    rosterQuery = '';
+    favouritesOnly = false;
+    renderFavourites();
+    setRosterFacetFilter(rosterFacetMatch);
+    void facetPanel?.then((panel) => panel.clear(), () => {});
+  });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
     rosterQuery = rosterSearchInput.value.trim().toLowerCase();
@@ -3164,7 +3211,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
-  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; if (calloutsShown) hotspots?.setFacts(facts); };
+  const setHotspotFacts = (facts: HotspotFacts | null): void => {
+    hotspotFacts = facts;
+    if (calloutsShown && hotspots) { hotspots.setFacts(facts); opts.onOverlayChange?.(); }
+  };
   const loadHotspots = (): void => {
     if (hotspots || hotspotsLoading) return;
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
@@ -3174,6 +3224,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(calloutsShown ? hotspotFacts : null);
+      opts.onOverlayChange?.();
     }, () => { hotspotsLoading = false; });
   };
   const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
@@ -3184,6 +3235,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!on) hotspots?.setFacts(null);
     else if (hotspots) hotspots.setFacts(hotspotFacts);
     else loadHotspots();
+    opts.onOverlayChange?.();
   }
   calloutsButton.addEventListener('click', () => { emit('ui:click', {}); setCallouts(!calloutsShown); });
   if (calloutsShown) setCallouts(true);
@@ -3306,7 +3358,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-label="${t('garage.dossier.vehicleDossier')}" ` +
       `aria-expanded="${openGaragePanel() === 'equipment'}" aria-controls="cot-garage-dossier">` +
       `${uiIconSVG('performance', 20)}<span>${t('garage.dossier.vehicleDossier')}</span></button>` +
-      `<button class="cot-compact-equipment-trigger cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>`;
+      `<button class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>`;
     const technicalSection =
       `<section class="cot-stat-section cot-technical-section">` +
       dossierHeader +
