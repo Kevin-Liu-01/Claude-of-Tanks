@@ -65,7 +65,7 @@ assert.match(garageSource, /<span class="plus" aria-hidden="true">\+<\/span><spa
   'an empty slot is labelled');
 assert.equal((garageSource.match(/magazineFigures\(spec\.gun, eqM\.reload\)/g) || []).length, 2,
   'the magazine figures show in the overview and the firepower station');
-assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*noteHeroModel\(model\);\s*if \(!calloutsShown \|\| !hotspots\) return;/,
   'no frame projects the callouts while they are off');
 assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
 assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
