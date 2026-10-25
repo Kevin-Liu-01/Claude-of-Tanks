@@ -42,6 +42,7 @@ import { normalizeRoomCode } from '../mp/room/protocol.ts';
 import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
 import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
+import { tierNumeral } from '../vehicles/tier.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
@@ -207,7 +208,8 @@ const CSS = `
 .cot-play{--play-plate:linear-gradient(var(--surface-plate),var(--surface-plate)) var(--surface-scene)}
 .cot-play .panel{position:relative;display:flex;flex-direction:column;width:min(calc(860px * max(1, var(--cot-ui-scale, 1))),96vw);max-height:100%;overflow:auto;
   padding:var(--s5);border-radius:var(--r2);background:var(--play-plate);box-shadow:var(--e4);
-  scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;color-scheme:dark;overscroll-behavior:contain}
+  scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;color-scheme:dark;overscroll-behavior:contain;
+  scroll-padding-top:calc(var(--s5) + var(--play-close) + var(--s4))}
 .cot-play .panel:focus-visible{outline:none}
 .cot-play .panel::-webkit-scrollbar{width:6px}
 .cot-play .panel::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:var(--r1)}
@@ -226,18 +228,17 @@ const CSS = `
 
 /* the two ways in: a private room and the local network */
 .cot-play .modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);margin-top:var(--s4)}
-.cot-play .mode{position:relative;display:flex;align-items:center;min-height:64px;padding:var(--s3) 56px var(--s3) var(--s4);
+.cot-play .mode{position:relative;display:flex;align-items:center;gap:var(--s3);min-height:64px;padding:var(--s3) var(--s4);
   border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);
   text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .cot-play .mode:hover{background:var(--surface-hover)}
 .cot-play .mode.on{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 .cot-play .mode b{display:block;margin:0;font:700 max(var(--fs-floor-12),var(--fs-15))/1 var(--font-display);text-transform:uppercase}
-.cot-play .mode-icon{position:absolute;right:var(--s3);top:50%;display:grid;width:36px;height:36px;place-items:center;
-  transform:translateY(-50%);border-radius:var(--r1);background:var(--glyph-plate);color:var(--ink-2)}
-.cot-play .mode:hover .mode-icon{color:var(--ink-1)}.cot-play .mode.on .mode-icon{color:var(--accent)}
+.cot-play .mode-icon{display:grid;flex:none;place-items:center;color:var(--ink-2)}
+.cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
 .cot-play .mode-icon svg{display:block}
 .cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  background:none;box-shadow:none;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
+  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
 
 /* labels: 12 px at the label tracking */
@@ -262,7 +263,7 @@ const CSS = `
 .cot-play .rule-copy{display:grid;min-width:0;gap:2px}
 .cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-display);text-overflow:ellipsis;
   white-space:nowrap;text-transform:uppercase}
-.cot-play .rule-copy small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-data)}
+.cot-play .rule-copy small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
 .cot-play .rule-copy .rule-progress{color:var(--accent)}
 .cot-play .rule-copy .rule-lines{color:var(--ink-3);line-height:1.35;white-space:normal}
 .cot-play .rule-note{display:block;margin:var(--s2) 0 0;color:var(--accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-body)}
@@ -271,7 +272,7 @@ const CSS = `
 .cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 
 /* host arrangement and the opponent brain: plates */
-.cot-play :is(.arrange,.brain){margin:var(--s3) 0 var(--s1);padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-play :is(.arrange,.brain){margin:var(--s3) 0 var(--s1);padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .brain[hidden]{display:none}
 .cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
 .cot-play .arrange-head b{color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-body);letter-spacing:normal;text-transform:none}
@@ -321,7 +322,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 /* a lobby opens straight under the title: no mode cards above it, so no rule between them */
 .cot-play.lobby-active .room{margin-top:0;padding-top:0;border-top:0}
 .cot-play .setup{display:grid;gap:var(--s3)}.cot-play .room.connected .setup{display:none}
-.cot-play .identity{display:flex;align-items:center;gap:var(--s4)}.cot-play .identity label{width:min(300px,100%)}
+.cot-play .identity{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}.cot-play .identity label{width:auto}
 .cot-play .room-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
 .cot-play .room-action{display:grid;align-content:start;gap:var(--s4);min-height:142px;padding:var(--s4);border-radius:var(--r1);
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -334,7 +335,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play :is(input,select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
-.cot-play :is(input,select):focus-visible{box-shadow:var(--ring-accent)}
+.cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
 .cot-play :is(input,select):disabled{opacity:.55}
 .cot-play .code-input{font:700 var(--fs-18)/1 var(--font-data);letter-spacing:.16em;text-transform:uppercase}
 .cot-play .menu-select{position:relative;min-width:0}
@@ -366,7 +367,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .menu-select-option-copy,.cot-play .menu-select-trigger-copy{display:grid;min-width:0;gap:2px}
 .cot-play .menu-select-option-copy b,.cot-play .menu-select-trigger-copy>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
 .cot-play .menu-select-option-copy small,.cot-play .menu-select-trigger-copy small{color:var(--ink-3);
-  font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-data)}
+  font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
 /* a seat's team: alpha in the own-team blue and bravo in the enemy red, as the roster draws them */
 .cot-play :is(.menu-select-mark,.team-mark){display:inline-block;width:8px;height:8px;flex:0 0 8px;border:1.5px solid var(--team-neutral);border-radius:50%;background:none}
 .cot-play :is(.menu-select-mark,.team-mark).alpha{border:0;background:var(--team-own)}
@@ -383,7 +384,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .menu-select--vehicle .menu-select-thumb{width:56px;height:36px;flex-basis:56px;background-color:var(--surface-page);
   background-size:contain;box-shadow:none}
 .cot-play :is(.menu-select-trigger,.menu-select-option,.mode,.rule,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
-  outline:2px solid var(--accent);outline-offset:2px}
+  outline:none;box-shadow:var(--focus-ring)}
 body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 
 /* buttons are the kit's (.cot-c-btn); these only place them */
@@ -392,8 +393,9 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* the kit draws its buttons inline-flex, which outranks the hidden attribute (Rejoin, Retry) */
 .cot-play .action[hidden]{display:none}
 .cot-play button[data-action="ready"]{min-height:44px}
-.cot-play .status:empty{min-height:0;margin-top:0}
-.cot-play .status{min-height:18px;margin-top:var(--s3);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-play .status{margin-top:var(--s3)}
+.cot-play .status.is-empty{height:0;min-height:0;margin:0;padding:0;overflow:hidden;background:none;box-shadow:none}
+.cot-play .status-legacy{min-height:18px;margin-top:var(--s3);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .status.err{color:var(--text-danger)}.cot-play .status[hidden]{display:none}
 
 /* the lobby */
@@ -418,13 +420,13 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-copy{display:grid;align-items:center;gap:var(--s3);padding:var(--s4)}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{display:grid;grid-template-columns:48px minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
+.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s3);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
-.cot-play .player .host{justify-self:start}
+.cot-play .player .host{margin-left:var(--s2);vertical-align:1px}
 .cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .player .name{min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
@@ -455,14 +457,14 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
 .cot-play :is(.room-failure,.version-refusal){flex-wrap:wrap;outline-offset:4px}
-.cot-play .room-failure{margin-top:var(--s4);scroll-margin:20px}
+.cot-play .room-failure{margin-top:var(--s4);scroll-margin-top:var(--s4)}
 .cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--s5) - 64px) 2px 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/1.3 var(--font-ui)}
-.cot-play :is(.room-failure,.version-refusal) .cot-c-notice__detail{text-wrap:pretty}
+.cot-play :is(.room-failure,.version-refusal,.status) .cot-c-notice__detail{font-size:max(var(--fs-floor-11),var(--fs-12));text-wrap:pretty}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__acts{flex-basis:100%;padding-left:calc(20px + var(--s3))}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
-.cot-play .version-refusal:focus-visible,.cot-play .room-failure:focus-visible{outline:2px solid var(--accent)}
+.cot-play :is(.version-refusal,.room-failure):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
 /* Room rules: a disclosure under the room */
 .cot-play .room-rules{order:2;margin-top:var(--s4);padding-top:var(--s3);border-top:1px solid var(--line-1)}
@@ -475,6 +477,9 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .room-rules[open]>summary::before{transform:rotate(45deg)}
 .cot-play [data-selected-rule]{margin-left:auto;color:var(--ink-2)}
 .cot-play.multiplayer-entry :is(.brain,.campaign){display:none}
+.cot-play.multiplayer-entry .arrange>.arrange-head,.cot-play .room-rules .rule-heading{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* open, the rules show their own selection: the summary's echo of it steps aside */
+.cot-play .room-rules[open] [data-selected-rule]{visibility:hidden}
 .cot-play .teams-host:not(:empty){margin-top:var(--s3)}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
 /* the arrangement's pickers are the room's selects: the 44 px row and the thin chevron */
@@ -494,8 +499,7 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.sh
   margin:var(--s3) calc(-1 * var(--s4)) calc(-1 * var(--s5));padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options .vehicle-field{grid-column:1/-1}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3) 52px var(--s3) var(--s3)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode-icon{right:var(--s2)}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s3)}
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
@@ -804,7 +808,7 @@ export function createPlayMenu({
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
     <section class="version-refusal cot-c-notice" data-severity="warning" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
-      <span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
+      <span class="cot-c-notice__glyph">${uiIconSVG('info', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
       <span class="cot-c-notice__acts"><button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button></span>
     </section></header>
     <p class="lead"></p>
@@ -835,7 +839,7 @@ export function createPlayMenu({
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt cot-c-btn" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
-    </div><div class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+    </div><div class="status cot-c-notice is-empty" data-severity="info" role="status" aria-live="polite" aria-atomic="true"><span class="cot-c-notice__glyph" data-status-glyph></span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-status-text></span></span></div>
     <section class="room-failure cot-c-notice" data-severity="error" hidden role="alert" aria-atomic="true" tabindex="-1"
       aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail">
       <span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-room-failure-title"></span><span class="cot-c-notice__detail" id="cot-room-failure-detail"></span></span>
@@ -937,7 +941,7 @@ export function createPlayMenu({
     </section>
     <section class="campaign" data-campaign>${campaignMarkup()}</section>
     </details>
-    <button class="mode" data-mode="solo" type="button">${t('playMenu.solo.settings')}</button>
+    <button class="mode" data-mode="solo" type="button">${t('playMenu.solo.settings')}${uiIconSVG('chevronRight', 16)}</button>
     </div>`;
   document.body.appendChild(root);
 
@@ -1010,9 +1014,8 @@ export function createPlayMenu({
     option.setAttribute('aria-selected', 'false');
     option.dataset.value = vehicle.id;
     option.dataset.label = vehicle.name;
-    option.dataset.meta = Number.isFinite(vehicle.tier)
-      ? t('studioPanel.picker.tierPrefix', { tier: Number(vehicle.tier) })
-      : t('studioPanel.picker.combatVehicle');
+    const numeral = tierNumeral(vehicle.id);
+    option.dataset.meta = numeral ? t('garage.card.tier', { tier: numeral }) : t('studioPanel.picker.combatVehicle');
     option.dataset.thumb = iconUrl(vehicle.id, 'angle');
     const thumb = document.createElement('img');
     thumb.className = 'menu-select-thumb';
@@ -1411,10 +1414,17 @@ export function createPlayMenu({
     }
   }
 
-  function setStatus(message: RuntimeValue, error = false): void {
-    status.textContent = message == null ? '' : String(message);
+  // the status line is the kit's notice: an error, a progress (a room being made or joined) or an info line
+  const statusText = requiredElement<HTMLElement>(status, '[data-status-text]');
+  const statusGlyph = requiredElement<HTMLElement>(status, '[data-status-glyph]');
+  const STATUS_GLYPH = { error: 'alert', progress: 'clock', info: 'info' } as const;
+  function setStatus(message: RuntimeValue, error = false, severity: 'progress' | 'info' = 'info'): void {
+    statusText.textContent = message == null ? '' : String(message);
+    const kind = error ? 'error' : severity;
+    if (status.dataset.severity !== kind || !statusGlyph.firstChild) statusGlyph.innerHTML = uiIconSVG(STATUS_GLYPH[kind], 20);
+    status.dataset.severity = kind;
     status.classList.toggle('err', !!error);
-    status.hidden = !status.textContent;
+    status.classList.toggle('is-empty', !statusText.textContent);
   }
 
   function clearFailure(): void {
@@ -1454,6 +1464,7 @@ export function createPlayMenu({
     room.classList.add('show');
     for (const item of root.querySelectorAll<HTMLButtonElement>('.mode')) {
       item.classList.toggle('on', item.dataset.mode === mode);
+      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item.dataset.mode === mode));
     }
     setConnecting(false);
     showFailure(reason);
@@ -1712,12 +1723,15 @@ export function createPlayMenu({
     const isMe = player.id === playerId;
     row.className = `player ${player.team}${isMe ? ' self' : ''}${player.connected ? '' : ' offline'}${
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
-    const host = document.createElement('span');
-    host.className = player.isHost ? 'host cot-c-tag' : 'host';
-    host.textContent = player.isHost ? t('playMenu.lobby.host') : '';
     const playerName = document.createElement('b');
     playerName.className = 'name';
     playerName.textContent = player.name;
+    if (player.isHost) {
+      const host = document.createElement('span');
+      host.className = 'host cot-c-tag';
+      host.textContent = t('playMenu.lobby.host');
+      playerName.append(host);
+    }
     const team = document.createElement('span');
     team.className = 'team';
     if (player.team !== 'spectator') {
@@ -1731,9 +1745,9 @@ export function createPlayMenu({
     ready.textContent = !player.connected
       ? t('playMenu.lobby.offline')
       : player.team === 'spectator'
-        ? t('playMenu.lobby.watching')
+        ? ''
         : t(player.ready ? 'playMenu.lobby.ready' : 'playMenu.lobby.notReady');
-    row.append(host, playerName, createLobbyVehicle(player), team, ready);
+    row.append(playerName, createLobbyVehicle(player), team, ready);
     return row;
   }
 
@@ -1852,7 +1866,7 @@ export function createPlayMenu({
     const generation = ++requestGeneration;
     lastConnectionKind = kind;
     clearFailure();
-    setStatus(t(kind === 'create' ? 'playMenu.status.creatingRoom' : 'playMenu.status.joiningRoom'));
+    setStatus(t(kind === 'create' ? 'playMenu.status.creatingRoom' : 'playMenu.status.joiningRoom'), false, 'progress');
     try {
       const connected = await connectRoom(kind, generation);
       if (connected && generation === requestGeneration) {
@@ -1901,7 +1915,10 @@ export function createPlayMenu({
     closeCurrentSession('mode_changed');
     clearFailure();
     mode = nextMode;
-    for (const item of root.querySelectorAll('.mode')) item.classList.toggle('on', item === button);
+    for (const item of root.querySelectorAll<HTMLElement>('.mode')) {
+      item.classList.toggle('on', item === button);
+      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item === button));
+    }
     room.classList.add('show');
     setConnecting(false);
     if (!menuRoomsUrl()) showFailure('room_unconfigured');

@@ -1531,7 +1531,7 @@
   "playMenu.advanced.vehicleSelect": "选择战车",
   "playMenu.advanced.vehicleDesc": "准备阶段的载具",
   "playMenu.advanced.size": "战斗格式",
-  "playMenu.sizeFormat": "{size} vs {size}",
+  "playMenu.sizeFormat": "{size} 对 {size}",
   "playMenu.deployment": "部署队伍",
   "playMenu.battleRulesAria": "战斗规则",
   "playMenu.close": "关闭",

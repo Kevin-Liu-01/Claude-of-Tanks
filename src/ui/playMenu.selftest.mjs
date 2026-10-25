@@ -74,7 +74,8 @@ assert.match(source, /!handedOff && !activeRoom && hasMatchStart\(session\);/,
 assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);
-assert.match(source, /\.room-failure:focus-visible\{outline:2px/);
+// (2026-10-25 gauntlet r3) a focused failure wears the kit's one focus ring
+assert.match(source, /:is\(\.version-refusal,\.room-failure\):focus-visible\{outline:none;box-shadow:var\(--focus-ring\)\}/);
 assert.match(responsive, /body\[data-cot-width='compact'\] \.cot-play \.room-failure-actions,\s*body\[data-cot-width='phone'\] \.cot-play \.room-failure-actions\{display:grid;grid-template-columns:1fr\}/,
   'room recovery actions use the shared compact and phone viewport policy');
 assert.match(source, /readyBtn\.disabled = spectator \|\| !player\.connected \|\| !player\.specId \|\| next\.phase !== 'waiting'/,
