@@ -1645,6 +1645,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
+    // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
+    'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',

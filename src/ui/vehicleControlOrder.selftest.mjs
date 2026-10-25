@@ -1,17 +1,23 @@
 // Owner (2026-10-14): "in jump modes, jump should always be placed farthest left in the stuff u can do row".
+// Owner (2026-10-25): the actions "organized and set ... so its consistent which keys do what and their order with
+// each other": the row's order is the vehicle-action table's (src/game/vehicleActions.ts).
 // Every jump mode (every ruleset with a jump launch, Mars in each gravity world) x every loadout the row can show
-// (each subset of special action, drone, extra ATGM, smoke, lights, roof gun, in or out of cooldown) leads with the
-// jump; every other mode keeps the row's existing order. The HUD's one row (desktop and touch) is arranged by the
-// same function, and nothing in the row's styles reorders it visually.
+// (each subset of suspension, ATGM, reload, drone, smoke, lights, roof gun, in or out of cooldown) leads with the
+// jump; every other mode keeps the table's order. The HUD's one row (desktop and touch) is arranged by the same
+// function, and nothing in the row's styles reorders it visually.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { arrangeVehicleControls, isJumpMode, vehicleControlOrder, visibleVehicleControls } from './vehicleControlOrder.ts';
+import { VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
 
-// The row's order before this change, as the HUD built it: special, jump, drone, ATGM, smoke, lights, roof gun.
-const BUILD_ORDER = ['special', 'jump', 'drone', 'missile', 'smoke', 'lights', 'roofGun'];
-const LOADOUT = BUILD_ORDER.filter((id) => id !== 'jump');
+// The table's order: jump, suspension, ATGM, reload, drone, smoke, lights, roof gun. The HUD builds its buttons in
+// another order (suspension, jump, drone, ATGM, reload, smoke, lights, roof gun), so the arrangement is exercised.
+const TABLE_ORDER = VEHICLE_ACTIONS.map((def) => def.id);
+assert.deepEqual(TABLE_ORDER, ['jump', 'suspension', 'atgm', 'reload', 'drone', 'smoke', 'lights', 'roofGun'], 'the table\'s order');
+const BUILD_ORDER = ['suspension', 'jump', 'drone', 'atgm', 'reload', 'smoke', 'lights', 'roofGun'];
+const LOADOUT = TABLE_ORDER.filter((id) => id !== 'jump');
 
 // --- every ruleset the HUD can be handed: each mode, and Mars in every gravity world and cache cadence ---
 const rulesets = GAME_MODE_IDS.map((mode) => ({ name: mode, ruleset: matchRulesetFor(mode) }));
@@ -102,12 +108,12 @@ function fakeRow(ids) {
 // --- the HUD wiring: one row, every item mapped, one arrangement call, the jump flag in one place ---
 const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 const rowChildren = [...hud.matchAll(/el\(\s*'button'\s*,\s*'([^']+)'\s*,\s*controlsRow\s*\)/g)].map((m) => m[1]);
-assert.deepEqual(rowChildren, ['cot-special', 'cot-jump', 'cot-auxiliary cot-drone-control', 'cot-auxiliary', 'cot-auxiliary', 'cot-systems-more'],
-  'the row holds the special action, the jump, the drone, the ATGM, the three auxiliary buttons (smoke, lights, roof gun) and, '
-  + 'created after them all and never arranged, the touch row\'s More tile (UI-06), so it stays last');
+assert.deepEqual(rowChildren, ['cot-special', 'cot-jump', 'cot-auxiliary cot-drone-control', 'cot-auxiliary', 'cot-auxiliary cot-reload-control', 'cot-auxiliary', 'cot-systems-more'],
+  'the row holds the suspension, the jump, the drone, the ATGM, the reload, the three auxiliary buttons (smoke, lights, '
+  + 'roof gun) and, created after them all and never arranged, the touch row\'s More tile (UI-06), so it stays last');
 assert.match(hud, /const auxiliaryButtons = \(\['smoke','lights','roofGun'\] as const\)\.map/, 'the auxiliary trio is smoke, lights, roof gun');
-assert.match(hud, /const vehicleControls=\{jump:jumpHint,special:specialButton,drone:droneButton,missile:missileButton,\n\s*smoke:auxiliaryButton\('smoke'\),lights:auxiliaryButton\('lights'\),roofGun:auxiliaryButton\('roofGun'\)\};/,
-  'every row button is handed to the ordering by its id');
+assert.match(hud, /const vehicleControls=\{jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,\n\s*smoke:auxiliaryButton\('smoke'\),lights:auxiliaryButton\('lights'\),roofGun:auxiliaryButton\('roofGun'\)\};/,
+  'every row button is handed to the ordering by its table id');
 assert.equal(hud.match(/arrangeVehicleControls\(/g)?.length, 1, 'the HUD arranges the row in exactly one place');
 assert.match(hud, /if\(controlsJumpMode===on\)return;\n\s*controlsJumpMode=on;\n\s*arrangeVehicleControls\(controlsRow,vehicleControls,on\);/,
   'the row is rearranged only when the jump flag changes, never per frame');
@@ -117,7 +123,7 @@ assert.match(hud, /if\(frame\.matchModeState\?\.id\)setControlsJumpMode\(isJumpM
 assert.doesNotMatch(hud, /controlsRow\.(append|prepend|appendChild|insertBefore|replaceChildren)\(/, 'nothing else reorders the row');
 
 // --- no style reorders the row visually (order, row-reverse, rtl) on desktop or touch ---
-const ROW_SELECTOR = /cot-vehicle-controls|cot-jump|cot-special|cot-auxiliary|cot-drone-control/;
+const ROW_SELECTOR = /cot-vehicle-controls|cot-jump|cot-special|cot-auxiliary|cot-drone-control|cot-reload-control/;
 const sources = [
   ...readdirSync(new URL('.', import.meta.url)).filter((f) => f.endsWith('.css')).map((f) => `./${f}`),
   './hud.ts', './touchControls.ts', './battleHudLayout.ts',

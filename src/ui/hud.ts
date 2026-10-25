@@ -29,6 +29,7 @@ import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
 import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
+import { vehicleAction } from '../game/vehicleActions.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getLocale, t } from './i18n.ts';
@@ -269,7 +270,7 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
 interface HudHeightField {
@@ -2653,10 +2654,15 @@ export function initHud(bus: EventBus): HudRuntime {
     button.addEventListener('pointercancel', () => { touchId = -1; });
     button.addEventListener('click', (event) => { event.stopPropagation(); if (event.detail === 0) act(); });
   };
+  // The row's tiles are the vehicle-action table's (src/game/vehicleActions.ts), each on its own key on every vehicle
+  // (owner 2026-10-25: "consistent which keys do what and their order with each other"): the suspension (E) on a
+  // hydropneumatic hull, the ATGM (Q) beside a conventional round, the magazine reload (C) on an autoloader.
   const specialButton = el('button', 'cot-special', controlsRow);
   specialButton.type = 'button';
   specialButton.hidden = true;
-  specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span><small class="system-status"></small>';
+  specialButton.innerHTML = `<span class="si">${uiIconSVG(vehicleAction('suspension').glyph, 22, 'currentColor')}</span>`
+    + `<span class="sl">${t(vehicleAction('suspension').label)}</span><span class="sk">E</span><small class="system-status"></small>`;
+  specialButton.dataset.tip = t(vehicleAction('suspension').help);
   bindControl(specialButton, () => { if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {}); });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('button', 'cot-jump', controlsRow);
@@ -2669,7 +2675,6 @@ export function initHud(bus: EventBus): HudRuntime {
   jumpHint.setAttribute('aria-label', t('hud.jump'));
   jumpHint.dataset.tip = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word in the hover tip)
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
-  const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
   const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
   const specialStatus = requireElement<HTMLElement>(specialButton, 'small');
@@ -2685,7 +2690,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
-  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
   const missileLabel=requireElement<HTMLElement>(missileButton,'.sl'),missileKey=requireElement<HTMLElement>(missileButton,'.sk');
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
@@ -2696,6 +2701,13 @@ export function initHud(bus: EventBus): HudRuntime {
     bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
   }
   bindControl(missileButton, toggleExtraMissile);
+  // Q (input.ts 'atgm', playerBattleActions.ts) toggles the same way the tile does
+  bus.on('ui:atgmToggle', toggleExtraMissile);
+  const reloadButton=el('button','cot-auxiliary cot-reload-control',controlsRow);reloadButton.type='button';reloadButton.hidden=true;
+  reloadButton.innerHTML=`<span class="si">${uiIconSVG('autoloader',18)}</span><span class="sl">${t(vehicleAction('reload').label)}</span><span class="sk">C</span><small class="system-status"></small>`;
+  reloadButton.dataset.tip=t(vehicleAction('reload').help);reloadButton.setAttribute('aria-label',t(vehicleAction('reload').label));
+  const reloadLabel=requireElement<HTMLElement>(reloadButton,'.sl'),reloadKey=requireElement<HTMLElement>(reloadButton,'.sk');
+  bindControl(reloadButton, () => { if (!reloadButton.hidden && !reloadButton.disabled) bus.emit('ui:magazineReload', {}); });
   let defaultLightsOn=false;
   bus.on('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on:boolean}).on;});
   const auxiliaryButtons = (['smoke','lights','roofGun'] as const).map(action=>{
@@ -2707,7 +2719,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
   const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
-  const vehicleControls={jump:jumpHint,special:specialButton,drone:droneButton,missile:missileButton,
+  const vehicleControls={jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,
     smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
   let controlsJumpMode:boolean|null=null;
   function setControlsJumpMode(on:boolean):void{
@@ -2781,20 +2793,17 @@ export function initHud(bus: EventBus): HudRuntime {
     if (descriptor) {
       previousConventionalSlot = Math.max(0, player?.spec?.gun?.shells.findIndex(shell => !shell.guided) ?? 0);
       specialKind = descriptor.kind;
-      const icon = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE ? 'missileRack'
-        : specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM ? 'track'
-          : specialKind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD ? 'autoloader' : null;
-      specialIcon.innerHTML = icon ? uiIconSVG(icon, 22, 'currentColor') : '';
-      specialLabel.textContent = descriptor.shortLabel;
-      specialLabel.dataset.short = descriptor.shortLabel;
-      specialButton.dataset.tip = descriptor.label ?? '';
-      specialButton.setAttribute('aria-label', descriptor.label || t('hud.special.unavailable'));
-      specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
-      specialButton.hidden = specialKind === SPECIAL_ACTION_KINDS.NONE;
+      const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+      specialLabel.dataset.short = t(vehicleAction('suspension').label);
+      specialButton.setAttribute('aria-label', specialLabel.dataset.short);
+      specialButton.classList.toggle('show', suspension);
+      specialButton.hidden = !suspension;
     }
     missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
-    setHidden(missileButton,extraMissileSlot<0||specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
+    setHidden(missileButton,extraMissileSlot<0||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
+    const autoloaded=!!player?.spec?.gun?.autoloader;
+    setHidden(reloadButton,!autoloaded);
     const combat=player?.combat;
     const emptyMissileLabel=depletedMissileLabel(combat,extraMissileSlot,player?.spec?.gun?.shells[extraMissileSlot]);
     const missileEmpty=emptyMissileLabel!==null;
@@ -2809,30 +2818,26 @@ export function initHud(bus: EventBus): HudRuntime {
     // visibly latched for as long as that slot remains selected; 1/2/3 are
     // the only actions that clear it. True modes continue to use action.active.
     const active = specialActionIsActive(action, player?.combat?.shellSlot);
-    const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
-      ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
     setControlText(missileLabel,!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm'),!missileEmpty&&missileWait>0);
     setAttr(missileButton, 'aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
-    const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
-    // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
+    // A magazine reload with nothing stowed to load is spent: no countdown, no pointless reload.
     // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
     const cards=aim?.shells??lastShells;
-    const specialEmpty=specialMissileEmpty||(specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD
-      &&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true));
-    const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
-      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    setControlText(specialLabel,wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'',wait>0);
-    const specialName = specialButton.dataset.tip || '';
-    setAttr(specialButton, 'aria-label', specialMissileEmpty ? `${specialName} ${emptyMissileLabel}` : specialName || t('hud.special.unavailable'));
+    const reloadEmpty=autoloaded&&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true);
+    const reloadWait=autoloaded&&!reloadEmpty?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
+    setControlText(reloadLabel,reloadWait>0?t('systems.cooldown',{seconds:reloadWait}):t(vehicleAction('reload').label),reloadWait>0);
+    reloadButton.classList.toggle('empty',reloadEmpty);
+    setDisabled(reloadButton,!canControl||!autoloaded||reloadEmpty);
+    const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+    setControlText(specialLabel,specialLabel.dataset.short||'',false);
     setText(specialStatus, '');
-    specialButton.classList.toggle('empty', specialEmpty);
-    specialButton.classList.toggle('active', active&&!specialEmpty);
+    specialButton.classList.toggle('active', active&&suspension);
     // (toggle with its force writes nothing when unchanged; remove() always rewrites the class attribute)
     specialButton.classList.toggle('pending', false);
-    setDisabled(specialButton, !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialEmpty);
-    setAttr(specialButton, 'aria-pressed', active ? 'true' : 'false');
+    setDisabled(specialButton, !canControl || !suspension);
+    setAttr(specialButton, 'aria-pressed', active&&suspension ? 'true' : 'false');
   }
 
   const shellBox = el('div', 'cot-shells', root);
@@ -7370,9 +7375,9 @@ export function initHud(bus: EventBus): HudRuntime {
       target.classList.add('deny');
     }
     if (includeSpecial) {
-      specialButton.classList.remove('deny');
-      void specialButton.offsetWidth;
-      specialButton.classList.add('deny');
+      missileButton.classList.remove('deny');
+      void missileButton.offsetWidth;
+      missileButton.classList.add('deny');
     }
   }
   on('ui:ammoSelectionDenied', ({ slot, guided }) => {
@@ -7822,7 +7827,9 @@ export function initHud(bus: EventBus): HudRuntime {
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)setText(item.key,frame.auxiliaryKeyLabels[item.action]);
-      setText(missileKey,frame.auxiliaryKeyLabels.missile);
+      setText(missileKey,frame.auxiliaryKeyLabels.atgm || 'Q');
+      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine || 'C');
+      setText(specialKey,frame.auxiliaryKeyLabels.specialAction || 'E');
       setText(droneKey,frame.auxiliaryKeyLabels.drone || 'V');
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');

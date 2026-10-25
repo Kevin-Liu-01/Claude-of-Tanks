@@ -4,6 +4,7 @@ import { getLocale, setLocale, t } from './i18n.ts';
 import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { FLIGHT_ACTIONS, VEHICLE_ACTIONS } from '../game/vehicleActions.ts';
 
 const originalLocale = getLocale();
 setLocale('en-US');
@@ -31,8 +32,14 @@ for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) as
 // six battle modes (2026-10-02): the drone launch (V) joins them; the proving ground (2026-10-20): its reset (R) and
 // moving targets (Y) join them
 for (const action of ['rangeReset', 'rangeMoving']) assert.ok(iconIds.has(SETTINGS_ACTION_ICONS[action].id), `${action} wears an icon of the shared set`);
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 37,
+// the vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts): the ATGM (Q) joins them, and every vehicle and
+// flight action wears the table's glyph, as the HUD's controls row and the Garage do
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 38,
   'every remappable action has a settings icon');
+for (const def of [...VEHICLE_ACTIONS, ...FLIGHT_ACTIONS].filter((entry) => entry.binding !== 'selfRight')) {
+  assert.equal(SETTINGS_ACTION_ICONS[def.binding].id, def.glyph, `${def.binding} wears the table's ${def.glyph}`);
+  assert.ok(iconIds.has(def.glyph), `${def.glyph} is in the shared set`);
+}
 // sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'crewVoice',

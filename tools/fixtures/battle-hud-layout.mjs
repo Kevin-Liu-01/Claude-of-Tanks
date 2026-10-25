@@ -186,7 +186,8 @@ function state(name) {
   // zone control's three zones (the sector chips under the score and the map's badges): held, contested, lost
   if(modeId==='zone_control')frame.matchModeState.zones=[{x:-150,z:90,control:1,owner:'alpha',contested:false},
     {x:0,z:0,control:.4,owner:null,contested:true},{x:150,z:-90,control:-1,owner:'bravo',contested:false}];
-  player.spec = TANK_SPECS[name==='special'?'bwp1':'m1a3'];
+  // (?tank=<id> stages another vehicle's controls row, e.g. strv103b's suspension or mbt70's suspension and ATGM)
+  player.spec = TANK_SPECS[new URLSearchParams(location.search).get('tank')||(name==='special'?'bwp1':'m1a3')];
   player.combat = createCombatState(player.spec);
   player.specialAction = createSpecialActionState(player.spec);
   hud.setMode('hidden'); hud.setMode('battle');
