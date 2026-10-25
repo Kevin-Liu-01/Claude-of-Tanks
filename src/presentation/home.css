@@ -142,7 +142,7 @@ img{display:block;max-width:100%}
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
-.press{padding:var(--s7) 0 var(--s8)}
+.press{padding:var(--s7) 0 var(--s9)}
 .press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s5) var(--s7)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
@@ -253,6 +253,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__link .cot-i{width:20px;height:20px}
   :root{--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
+  /* the closing band keeps the phone's 80 px section rhythm */
+  .press{padding-bottom:calc(var(--s7) + var(--s6))}
   /* one whole card per view; the switch keeps its arrows beside it while the column holds all four tabs (the play-acts
      query below sets them two by two when it does not), at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
