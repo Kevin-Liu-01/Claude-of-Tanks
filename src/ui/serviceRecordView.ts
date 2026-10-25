@@ -277,7 +277,7 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${statLabel(t('garage.record.kills'), 'skull')}</small></span>` +
       `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${statLabel(t('garage.record.damage'), 'damage')}</small></span>` +
       `<span class="cot-record-battle-medals" aria-hidden="true">${rowMedals}</span>` +
-      `<span class="cot-record-expand" aria-hidden="true">${uiIconSVG('chevronDown', 16)}</span></span></summary>` +
+      `<span class="cot-record-expand" aria-hidden="true">${uiIconSVG('chevronDown', 20)}</span></span></summary>` +
       `<div class="cot-record-battle-body"><div class="cot-record-battle-metrics">` +
       metric(t('garage.record.accuracy'), `${shotAccuracy(battle.hits, battle.shots)}%`, 'scope', accuracy) +
       metric(t('garage.record.duration'), clock(battle.durationS), 'clock') +

@@ -175,7 +175,7 @@ body[data-cot-width='compact'] .cot-set-body,
 body[data-cot-width='phone'] .cot-set-body{min-height:0;flex:1 1 auto;padding:0 var(--cot-edge) 14px}
 body[data-cot-width='compact'] .cot-set-ftr,
 body[data-cot-width='phone'] .cot-set-ftr{
-  flex:0 0 auto;flex-wrap:wrap;padding:10px var(--cot-edge) max(10px,env(safe-area-inset-bottom));
+  flex:0 0 auto;flex-wrap:wrap;padding:var(--s3) var(--cot-edge) max(var(--s3),env(safe-area-inset-bottom));
   background:rgba(5,8,11,.98);border-top:1px solid rgba(146,164,180,.18);
 }
 body[data-cot-width='phone'] .cot-set-ftr .cot-set-btn{flex:1 1 120px;min-width:0}
@@ -190,7 +190,7 @@ body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 auto}
 body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
 /* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
-body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+body[data-cot-width='phone'] .cot-set-seg:has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
 body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
@@ -209,12 +209,12 @@ body[data-cot-height='short'] .cot-set-preview{display:none}
 /* a compact screen keeps the preview to a strip, so the rows under it stay in view */
 body[data-cot-height='compact'] .cot-set-preview{aspect-ratio:auto;height:200px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
-body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
-body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
+body[data-cot-width='tablet'] .cot-set-hdr{padding:var(--s3) var(--s4) var(--s2)}
+body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:var(--s4)}
 body[data-cot-width='tablet'] .cot-set-tab{font-size:max(13px,var(--fs-13))}
-body[data-cot-width='tablet'] .cot-set-body{padding:0 14px 12px}
-body[data-cot-width='tablet'] .cot-set-conflict{margin:8px 14px 0}
-body[data-cot-width='tablet'] .cot-set-ftr{padding:10px 14px 12px}
+body[data-cot-width='tablet'] .cot-set-body{padding:0 var(--s4) var(--s3)}
+body[data-cot-width='tablet'] .cot-set-conflict{margin:var(--s2) var(--s4) 0}
+body[data-cot-width='tablet'] .cot-set-ftr{padding:var(--s3) var(--s4)}
 
 /* PLAY / PRIVATE ROOM ---------------------------------------------------- */
 body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) var(--cot-edge) max(8px,env(safe-area-inset-bottom))}

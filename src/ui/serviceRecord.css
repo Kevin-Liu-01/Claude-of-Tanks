@@ -39,13 +39,16 @@
   font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);cursor:pointer}
 .cot-record-tab svg{flex:none;width:18px;height:18px}
 .cot-record-tab small{font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:0;color:var(--ink-3)}
+.cot-record-tab small:empty{display:none}
 .cot-record-tab:hover{color:var(--ink-1)}
 .cot-record-tab[aria-selected=true]{border-bottom-color:var(--accent);color:var(--ink-1)}
 .cot-record-tab.has-new small::after{content:'';display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:var(--text-ok);vertical-align:middle}
 
 .cot-record-body{flex:1;min-height:0;padding:var(--s6);overflow:auto;mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);overscroll-behavior:contain;outline:none;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-record-body:focus-visible{outline:var(--focus-bracket-width) solid var(--focus-bracket-color);outline-offset:calc(var(--focus-bracket-width) * -1)}
-.cot-service-record .cot-record-stat-label{display:flex;align-items:center;gap:6px;font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.3;color:var(--ink-3)}
+/* the record's figures are the kit's stat plates: one inset, one label weight, one step above the dialog */
+.cot-service-record .cot-record-metric{padding:var(--s4);background:var(--surface-raised)}
+.cot-service-record .cot-record-stat-label{display:flex;align-items:center;gap:6px;font-weight:600;font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.3;color:var(--ink-3)}
 .cot-record-stat-label svg{flex:none;width:16px;height:16px;color:var(--ink-3)}
 .cot-record-medal .cot-record-new{position:absolute;top:var(--s2);right:var(--s2)}
 .cot-record-ach-title .cot-record-new{margin-left:auto}
@@ -69,7 +72,7 @@
 /* the figures are the kit's stat tiles (statTile), the overview's and each battle's alike */
 .cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
 .cot-record-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s3)}
-.cot-record-card{display:flex;flex-direction:column;min-width:0;padding:var(--s5);background:var(--surface-raised);box-shadow:var(--ring-1)}
+.cot-record-card{display:flex;flex-direction:column;min-width:0;padding:var(--s4);background:var(--surface-raised);box-shadow:var(--ring-1)}
 /* an empty card or tab says so once, centred in the space it would fill (no second frame inside the card) */
 .cot-record-card>.cot-c-empty{flex:1;justify-content:center;padding:var(--s4) 0;box-shadow:none}
 .cot-record-body>.cot-c-empty:only-child{min-height:100%;justify-content:center;box-shadow:none}
@@ -180,6 +183,7 @@
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
   .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 68px 84px}
   .cot-record-vehicle{width:96px;height:64px}
+  .cot-record-outcome:not(.win-rate){padding-bottom:var(--s4)}
   .cot-record-expand{top:var(--s3);translate:0}
   .cot-record-battle-medals{grid-column:2/-1}
 }
@@ -234,9 +238,11 @@
   .cot-modal-root.cot-service-record .cot-modal__title{font-size:var(--fs-20)}
   .cot-record-plate .cot-record-vehicle{width:72px;height:44px}
   .cot-record-plate small{display:none}
-  .cot-record-tab{min-height:40px}
+  .cot-record-tab{position:relative;min-height:var(--cot-control-floor,44px)}
+  .cot-record-tab small{display:none}
+  .cot-record-tab.has-new::after{content:'';position:absolute;top:var(--s2);right:0;width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
   .cot-record-tabs{gap:var(--s4);padding:0 var(--s4)}
-  .cot-record-tab{padding:0}
+  .cot-record-tab{padding:0 var(--s2)}
   .cot-record-body{padding:var(--s3) var(--s4)}
   .cot-record-medal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }

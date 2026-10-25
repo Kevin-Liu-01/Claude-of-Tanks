@@ -29,6 +29,8 @@
 .cot-c-btn--56{--h:var(--btn-h-l);padding:0 26px;font-size:var(--fs-16)}
 .cot-c-btn--64{--h:var(--btn-h-xl);padding:0 30px;font-size:var(--fs-18)}
 .cot-c-btn--icon{padding:0;width:var(--h)}
+/* a secondary on a plate sits a step above it (the default's media fill is for buttons over art and footage) */
+.cot-c-btn--secondary{background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring)}
 .cot-c-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
 .cot-c-btn--ghost,.cot-c-btn--quiet{background:transparent;box-shadow:none;color:var(--ink-2)}
 .cot-c-btn--quiet{color:var(--ink-3);text-transform:none;letter-spacing:normal;font-family:var(--font-ui)}

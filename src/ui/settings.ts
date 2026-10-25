@@ -314,7 +314,7 @@ const SETTINGS_CSS = `
 .cot-set-conflict.show{display:flex;}
 .cot-set-conflict b{color:var(--text-warn);font-weight:600;}
 /* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
-.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
+.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5);border-top:1px solid var(--line-1);}
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
 .cot-set-btn[hidden]{display:none;}
@@ -542,7 +542,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button">${t('settings.reset')}</button>` +
     // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
@@ -1081,7 +1081,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const iface = groupCard(body, t('settings.interface.title'));
     const hudLayoutRow = el('div', 'cot-set-row', iface);
     settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
-    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36', hudLayoutRow);
+    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
       editHud.disabled = true;
