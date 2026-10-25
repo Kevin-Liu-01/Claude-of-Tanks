@@ -401,17 +401,20 @@ type GunFrontPort = Pick<TankBuilderPort, 'add' | 'addEquipment'>;
 
 /** The K2's measured gun front on any K2 trunnion (gun-relative): the raked mantlet, the gunner's sight hood and the
  * collar. The K2B's prototype front (korea.ts) seats the same stock in its well. */
-export function addK2GunFront(P: GunFrontPort): void { addGunMantlet(P); }
+/** The K2's gun front on a gun frame of its own. `minDropM` (default none) trims the mantlet's lower rear corner to that
+ * depth under the bore, for a hull whose deck it would otherwise sweep. */
+export function addK2GunFront(P: GunFrontPort, minDropM?: number): void { addGunMantlet(P, minDropM); }
 
-function addGunMantlet(P: GunFrontPort): void {
+function addGunMantlet(P: GunFrontPort, minDropM?: number): void {
+  const floor = minDropM === undefined ? -Infinity : GUN_Y - minDropM;
   // The source face retreats at its top and bottom; the old full-height box
   // protruded 0.28 m above the real forward face at canonical Z2.36.
-  P.add('gunMount',gunPrism(-.3162,.4319,[
+  P.add('gunMount',gunPrism(-.3162,.4319,([
     [1.63853,1.64502],[1.63853,1.732],[1.770,2.219],
     [1.955,2.36902],[2.0567,2.36],[2.188,2.302],[2.330,2.241],
     [2.34023,1.740],[2.310,1.771],[2.307,1.897],
     [2.042,1.897],[2.040,1.64502],
-  ]));
+  ] as const).map(([y, z]) => [Math.max(y, floor), z] as const)));
   addGunHood(P);
   // Source circular collar stands ahead of the raked face, not hidden in a
   // rectangular armored block. The ordinary circular barrel remains native.

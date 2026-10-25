@@ -192,10 +192,13 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   addOpenYokeAuxRWS(P);
   addRoofWhips(P, 0.64, -1.72, 1030, 1.00);
 
-  // The K2's gun front (the K2 X measured mantlet, sight hood and collar) on the K2B's trunnion
+  // The K2's gun front (the K2 X measured mantlet, sight hood and collar) on the K2B's trunnion. The K2B carries its
+  // trunnion 1.72 m ahead of its ring (the K2 1.15 m), so turned aft the mantlet hangs over the engine deck: its lower
+  // rear corner, 0.354 m under the bore, stood under the deck's top (the gun held -0.9 deg over the stern), and is
+  // trimmed to the old gun plant's 0.24 m.
   const gunFrontPort = P as ProceduralBuilderPort & Partial<Pick<TankBuilderPort, 'addEquipment'>>;
   if (!gunFrontPort.addEquipment) throw new Error('K2B gun front requires the builder equipment slots');
-  addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>);
+  addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>, 0.24);
   P.add('turretDetail', cylY(0.11, 0.12, 0.08, 14), 0.56, 0.73, -0.22);
   P.decal('hull', 'number', 'K2B', 0.24, [-1.90, 1.18, -0.42], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);

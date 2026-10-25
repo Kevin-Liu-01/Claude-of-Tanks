@@ -73,7 +73,7 @@
   "k1e1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"86b2fc7e012a7cfe","gun":"f87f812fa07e1625"}},
   "k21": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6d5cd637ba77aa77","gun":"a22fc474db7fb783"}},
   "k2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e9248f416491fcde","gun":"a4599132f5db8197"}},
-  "k2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e89c30537024e92f","gun":"59c800d59ee28c4e"}},
+  "k2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e89c30537024e92f","gun":"aa118c17e2454475"}},
   "kf41_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6728f29447935059","gun":"49ba9c9013b72e2c"}},
   "kf51_evo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e78a75b4cf3c4e98","gun":"e85f62473c9868b0"}},
   "kf51_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0c2a67f06f8cdbc9","gun":"969cbdc09b5b2bc8"}},
