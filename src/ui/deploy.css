@@ -157,8 +157,10 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op-index{font:700 var(--fs-44)/1 var(--font-display);color:var(--ink-3);}
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--ink-1);}
 .cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-op-meta{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
+/* the operation's fixed-width facts (clock, stars, meter) lead, so they line up row to row; the place follows and wraps */
+.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s2);}
+.cot-garage .cot-deploy-op-meta>span:first-child{order:4;}
 .cot-garage .cot-deploy-op-meta svg{color:var(--ink-3);}
 .cot-garage .cot-deploy-op-stars{display:inline-flex;gap:var(--s1);color:var(--ink-4);}
 .cot-garage .cot-deploy-op-stars .on{color:var(--accent);}
