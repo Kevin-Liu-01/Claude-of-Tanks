@@ -2459,21 +2459,23 @@ function clipSweep(poly: Float64Array, count: number, axis: number, bound: numbe
 // past the originals) keeps SWEEP_MISS_MARGIN_M. The riding-station sweeps were most of a US tank's builder step (a
 // 721 ms task on a desktop Garage switch, 2.8 s on a 4x phone).
 const SWEEP_MISS_MARGIN_M = 1e-9;
-/** Axis `axis` of corner T[i..i+2] posed by the matrix elements `e`, as Vector3.applyMatrix4 computes it. */
+/** Axis `axis` of corner T[i..i+2] posed by the matrix elements `e`, as Vector3.applyMatrix4 computes it. An affine
+ * pose (the sweeps' turns and translations) skips the divide: applyMatrix4's w is then exactly 1 for a finite corner,
+ * and the sum times 1 is the sum. */
 function posedAxis(T: ArrayLike<number>, i: number, e: ArrayLike<number>, axis: number): number {
   const x = T[i]!, y = T[i + 1]!, z = T[i + 2]!;
-  const w = 1 / (e[3]! * x + e[7]! * y + e[11]! * z + e[15]!);
-  return (e[axis]! * x + e[4 + axis]! * y + e[8 + axis]! * z + e[12 + axis]!) * w;
+  const v = e[axis]! * x + e[4 + axis]! * y + e[8 + axis]! * z + e[12 + axis]!;
+  if (e[3] === 0 && e[7] === 0 && e[11] === 0 && e[15] === 1) return v;
+  return v * (1 / (e[3]! * x + e[7]! * y + e[11]! * z + e[15]!));
 }
 /** Whether triangle t posed by `e` clips to nothing against lo then hi on `axis` (clipSweep's dir 1, then -1). */
 function sweepMissesSlab(T: ArrayLike<number>, t: number, e: ArrayLike<number>, axis: number, lo: number, hi: number): boolean {
   const a = posedAxis(T, t, e, axis), b = posedAxis(T, t + 3, e, axis), c = posedAxis(T, t + 6, e, axis);
   return (a - lo < 0 && b - lo < 0 && c - lo < 0) || (a - hi > 0 && b - hi > 0 && c - hi > 0);
 }
-/** sweptLow's four clips (x0, x1 on its corners; z0, z1 after them, within the margin). */
-function sweepMissesFootprint(T: ArrayLike<number>, t: number, e: ArrayLike<number>,
-  x0: number, x1: number, z0: number, z1: number): boolean {
-  if (sweepMissesSlab(T, t, e, 0, x0, x1)) return true;
+/** sweptLow's z clips (after its x clips, so within the margin). Its x clips are not tested: a pitch turn keeps x, and
+ * the candidates already meet the footprint's x span. */
+function sweepMissesFootprint(T: ArrayLike<number>, t: number, e: ArrayLike<number>, z0: number, z1: number): boolean {
   const a = posedAxis(T, t, e, 2), b = posedAxis(T, t + 3, e, 2), c = posedAxis(T, t + 6, e, 2);
   return Math.max(a, b, c) < z0 - SWEEP_MISS_MARGIN_M || Math.min(a, b, c) > z1 + SWEEP_MISS_MARGIN_M;
 }
@@ -2493,14 +2495,14 @@ function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: numbe
   for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
   poses.push(RIDING_STATION_PITCH[1]);
   let low = Infinity;
-  const clips = [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const, skip = x0 <= x1 && z0 <= z1;
+  const clips = [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const, skip = z0 <= z1;
   for (const e of poses) for (const r of stroke > 0 ? [0, stroke] : [0]) {
     const turn = new THREE.Matrix4().makeRotationX(-e), pivot = new THREE.Matrix4().makeTranslation(0, pivotY, pivotZ);
     const full = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
     const gunM = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
     for (const t of candidates) {
       const M = t / 9 < moving.gunTriangles ? gunM : full;
-      if (skip && sweepMissesFootprint(T, t, M.elements, x0, x1, z0, z1)) continue;
+      if (skip && sweepMissesFootprint(T, t, M.elements, z0, z1)) continue;
       let poly = SWEEP_A, spare = SWEEP_B, count = sweepTriangle(T, t, M, poly);
       for (const [axis, bound, dir] of clips) {
         count = clipSweep(poly, count, axis, bound, dir, spare);
