@@ -602,6 +602,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercXTrackLinks.selftest.mjs',
     'src/vehicles/profiles/leclercXRearShoulders.selftest.mjs',
     'src/vehicles/sourceXSecondWaveEra.selftest.mjs',
+    'src/vehicles/turretSeatEraSpans.selftest.mjs',
     'src/vehicles/profiles/t72buXGeometry.selftest.mjs',
     'src/vehicles/profiles/awSecondWaveGeometry.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSource.selftest.mjs',

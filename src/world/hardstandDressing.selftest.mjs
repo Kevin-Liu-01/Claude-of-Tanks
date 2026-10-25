@@ -12,7 +12,11 @@ import { civicUndressedPads } from './civic/plans/index.ts';
 
 // (229 b1, the civic kit: Ruinspires' three squares and Aegis Crossing's two plazas are civic areas now, their pads
 // undressed: civicUndressedPads)
-const PAVED = ['airfield', 'urban', 'railyard'];
+// (maps 234, 32438db193; the owner, 2026-10-22: "just get rid of thes square broders") a softened pad (its paint ragged:
+// hardstandSurface.ts) is worn ground with no slab, so no lip, gullies or patches: Steinburg's west yard and Cinder
+// Junction's three aprons. Their maps keep no dressed pad.
+const PAVED = ['airfield'];
+const softened = (s) => (s.paint?.ragged ?? 0) > 0;
 const inside = (s, x, z, inset) => {
   const yaw = (s.yawDeg ?? 0) * Math.PI / 180, dx = x - s.x, dz = z - s.z;
   return Math.abs(dx * Math.cos(yaw) - dz * Math.sin(yaw)) < s.width / 2 - inset && Math.abs(dx * Math.sin(yaw) + dz * Math.cos(yaw)) < s.length / 2 - inset;
@@ -24,7 +28,7 @@ for (const mapId of MAP_IDS) {
   // (the maps lane, 228) a pad a civic area dresses as its town square (civic/plans) takes none of the yard's dressing
   const undressed = civicUndressedPads(mapId);
   const g = buildHardstandDressing(strips, cfg.splat, field, L.roads, L.village, 1337, undressed);
-  const paved = strips.filter((s, i) => hardstandIsPaved(cfg.splat, s.x, s.z, L.village) && !undressed.has(i));
+  const paved = strips.filter((s, i) => hardstandIsPaved(cfg.splat, s.x, s.z, L.village) && !undressed.has(i) && !softened(s));
   assert.equal(!!g, paved.length > 0, `${mapId}: dressed exactly where the terrain paves a pad`);
   if (!g) continue;
   dressed.push(mapId);

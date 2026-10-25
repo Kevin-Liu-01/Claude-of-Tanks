@@ -7,7 +7,7 @@
 // every spandrel a bare slab. Their tiers are the skyline kit's (towerTier, dressFace), copied as decoTier and decoFace,
 // with the piers built as deco piers of two orders (the front order stepped in) and each spandrel a panel with its
 // weathered sill course; the dark core, the glass, the damage and every stream as before.
-import { faceBox, facePanel, facePoint, PartSink, rgb, type EmitOptions, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
+import { faceBox, facePanel, facePoint, PartSink, rgb, UV_WORLD, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
 import { recordBody } from './house.ts';
 import type { RegionalBuilder } from './types.ts';
@@ -66,15 +66,24 @@ function deckFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: Re
  * triangles proud of it between its foot and its finials, three quarters of a metre high so the band reads from the
  * street (none over a collapsed corner's void).
  */
-function chevrons(sink: PartSink, r: Rect, y: number, accent: Rgb, gone: Rect | null): void {
+function chevrons(sink: PartSink, r: Rect, y: number, accent: Rgb, gone: Rect | null, bay: number): void {
   const opts = { ...DECOR, colour: accent };
+  // (251, the kit's 12k budget: the Bund towers stood at 13.5-15.8k) one stepped chevron over each of the tier's bays,
+  // where a pair stood every 1.3 m, and no back drawn on the parapet's face (a prism's near cap, flat against it)
+  const chevron = (points: readonly Vec3[], dir: Vec3, depth: number): void => {
+    const far = points.map((p): Vec3 => [p[0] + dir[0] * depth, p[1] + dir[1] * depth, p[2] + dir[2] * depth]);
+    sink.polygon('structureMetal', far, opts);
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      sink.quad('structureMetal', points[i], points[j], far[j], far[i], { ...opts, uv: UV_WORLD });
+    }
+  };
   for (const face of rectFaces(r)) {
-    const n = Math.max(2, Math.round(face.width / 1.3)), w = face.width / n;
+    const n = Math.max(2, Math.round(face.width / bay)), w = face.width / n;
     for (let k = 0; k < n; k++) {
       const u = -face.width / 2 + (k + 0.5) * w, p = facePoint(face, u, 0, 0);
       if (within(gone, p[0], p[2], 0.6)) continue;
-      sink.prism('structureMetal', [facePoint(face, u - w * 0.44, y), facePoint(face, u + w * 0.44, y), facePoint(face, u, y + 0.75)], face.out, 0.14, opts);
-      sink.prism('structureMetal', [facePoint(face, u - w * 0.24, y), facePoint(face, u + w * 0.24, y), facePoint(face, u, y + 0.4)], face.out, 0.22, opts);
+      chevron([facePoint(face, u - w * 0.44, y), facePoint(face, u + w * 0.44, y), facePoint(face, u, y + 0.75)], face.out, 0.14);
     }
   }
 }
@@ -109,8 +118,10 @@ function bladeSign(sink: PartSink, face: Face, u: number, y0: number, h: number,
     const side: Face = { origin: facePoint(face, u + s * 0.13, 0, 0), u: [face.out[0] * s, 0, face.out[2] * s], out: [face.u[0] * s, 0, face.u[2] * s], width: reach };
     const n = Math.max(2, Math.min(7, Math.floor(h / (reach * 0.95)))), cell = Math.min(reach * 0.66, h / n / 1.15);
     for (let k = 0; k < n; k++) {
+      // (251, the kit's 12k budget) each stroke flat on the board, 8 mm proud: the 12 mm boxes' sides drew nothing a range
+      // reads, at five times the triangles
       glyph(s * oc, y0 + h - (k + 0.5) * h / n, cell, rng, (u0, u1, a, b) =>
-        faceBox(sink, 'structureWood', side, (u0 + u1) / 2, (a + b) / 2, 0.006, u1 - u0, b - a, 0.012, { ...DECOR, colour: ink }));
+        facePanel(sink, 'structureWood', side, (u0 + u1) / 2, (a + b) / 2, 0.008, u1 - u0, b - a, { ...DECOR, colour: ink }));
     }
   }
   for (const y of [y0 + 0.3, y0 + h - 0.3]) faceBox(sink, 'structureMetal', face, u, y, out + 0.15, 0.08, 0.08, 0.3, { ...DECOR, colour: STEEL });
@@ -141,6 +152,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     const facade: TowerFacade = {
       pier: { bucket: wall, w: 0.66, out: 0.5 }, spandrel: { ...dress.spandrel, h: 1.1, out: 0.07 },
       bay: 2.2, lit: 0.32, glazing: 'bays', mullions: 1, mullion: BRONZE,
+      // (251, the kit's 12k budget) the windows' bronze mullion and transom (5 cm) on the storeys over the podium a
+      // street reads, not on the shaft's 60 m where they draw under a pixel
+      joineryTop: podiumH + 3 * 3.6,
     };
     const total = opts.floors ?? Math.max(6, Math.min(22, Math.round((ctx.info.h > 20 ? ctx.info.h : 48) / 3.6)));
     const fh = 3.6;
@@ -163,7 +177,7 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       deckFinials(sink, r, top + 0.9, facade.bay, wall, gone);
       // (230, "underdesigned") the Art Deco chevrons along the setback's parapet; up each wide face of the first tier its
       // centre spine
-      chevrons(sink, r, top + 0.08, dress.accent, gone);
+      chevrons(sink, r, top + 0.08, dress.accent, gone, facade.bay);
       for (const face of rectFaces(r)) {
         // (never up a face whose middle a collapsed corner's void reaches: its fins would stand before the void)
         const mid = facePoint(face, 0, 0, 0);
@@ -235,14 +249,15 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
  * A section (o out of the face, y) run along a face from u0 to u1: its sides (the section's segments; none along o = 0,
  * the wall) and its two end caps (the section fanned; convex).
  */
-export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, sec: ReadonlyArray<readonly [number, number]>, opts: EmitOptions): void {
+export function faceSection(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, sec: ReadonlyArray<readonly [number, number]>, opts: EmitOptions,
+  caps: readonly [boolean, boolean] = [true, true]): void {
   for (let i = 0; i + 1 < sec.length; i++) {
     const [oa, ya] = sec[i], [ob, yb] = sec[i + 1];
     if (oa < 1e-6 && ob < 1e-6) continue;
     sink.quad(bucket, facePoint(face, u0, ya, oa), facePoint(face, u1, ya, oa), facePoint(face, u1, yb, ob), facePoint(face, u0, yb, ob), opts);
   }
-  sink.polygon(bucket, sec.map(([o, y]) => facePoint(face, u0, y, o)), opts);
-  sink.polygon(bucket, [...sec].reverse().map(([o, y]) => facePoint(face, u1, y, o)), opts);
+  if (caps[0]) sink.polygon(bucket, sec.map(([o, y]) => facePoint(face, u0, y, o)), opts);
+  if (caps[1]) sink.polygon(bucket, [...sec].reverse().map(([o, y]) => facePoint(face, u1, y, o)), opts);
 }
 
 /**
@@ -339,8 +354,9 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       if (run0 < 0) return;
       const u0 = -W / 2 + run0 * bw, u1 = -W / 2 + b * bw;
       // (looks r2) the spandrel panel with its sill: a weathered sill course along its head, its nose 5 cm proud of the panel
+      // (251) a run's end at the face's edge stands in its corner pier's side, its cap drawn there for nothing
       faceSection(sink, sp.bucket, face, u0, u1, [[0, y], [sp.out, y], [sp.out, y + sp.h - 0.12], [sp.out + 0.05, y + sp.h - 0.1], [0, y + sp.h]],
-        { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) });
+        { ...spOpts, ...(burnt ? { colour: CHAR, shade: 0.4 } : {}) }, [!(pier && run0 === 0), !(pier && b === bays)]);
       run0 = -1;
     };
     for (let b = 0; b <= bays; b++) {
@@ -362,7 +378,7 @@ function decoFace(sink: PartSink, face: Face, fi: number, bays: number, y0: numb
       const lit = h > 1 - facade.lit;
       facePanel(sink, lit ? 'curtain' : 'glass', face, u, (gy0 + gy1) / 2, glassO, gw, gy1 - gy0, { ...DECOR, window: face.out });
       // mullions and the transom (fine joinery)
-      if (facade.mullions > 0) {
+      if (facade.mullions > 0 && y < (facade.joineryTop ?? Infinity)) {
         for (let m = 1; m <= facade.mullions; m++) {
           const mu = u - gw / 2 + gw * m / (facade.mullions + 1);
           facePanel(sink, 'structureMetal', face, mu, (gy0 + gy1) / 2, glassO + 0.02, 0.05, gy1 - gy0, { ...DECOR, colour: facade.mullion, fine: !facade.coarseMullions });

@@ -3670,6 +3670,8 @@ const RELAY_TOWER_HUT = { w: 4.2, x: -1.0 } as const;
  *  head, its sections */
 const RELAY_TOWER_AXIS: readonly [number, number] = [2.4, 0];
 const RELAY_TOWER = { footingTop: 0.33, footing: 0.56, height: 10.6, face: 1.5, topFace: 0.55, sections: 4 } as const;
+/** (251) the footings' depth under the ground: a light family's band (regionalArchitecture: 5 cm), where they stood 0.5 m */
+const RELAY_FOOTING_SINK = 0.05;
 
 function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEFAULT): THREE.BufferGeometry {
   const paint = seatedStream(rng, RELAY_STREAM_DRAWS);
@@ -3877,7 +3879,7 @@ function relayTower(out: THREE.BufferGeometry[], put: (geo: THREE.BufferGeometry
   };
   for (let i = 0; i < 3; i++) {
     const [ux, uz] = legDir(i);
-    put(scaleUV(box(T.footing, 0.5 + T.footingTop, T.footing), 0.08, 0.08).translate(tx + ux * r0, (T.footingTop - 0.5) / 2, tz + uz * r0), RELAY_CONCRETE, 'tower-footing', 0.05);
+    put(scaleUV(box(T.footing, RELAY_FOOTING_SINK + T.footingTop, T.footing), 0.08, 0.08).translate(tx + ux * r0, (T.footingTop - RELAY_FOOTING_SINK) / 2, tz + uz * r0), RELAY_CONCRETE, 'tower-footing', 0.05);
   }
   buildLatticeMast({
     x: 0, z: 0, baseY: T.footingTop, height: T.height, face: T.face, topFace: T.topFace, section: T.height / T.sections,
@@ -3913,7 +3915,7 @@ function relayTowerWreck(parts: THREE.BufferGeometry[], own: Rng): THREE.BufferG
   const [tx, tz] = RELAY_TOWER_AXIS, T = RELAY_TOWER, r0 = T.face / Math.sqrt(3);
   for (let i = 0; i < 3; i++) {
     const a = Math.PI + (i * 2 * Math.PI) / 3, fx = tx + Math.cos(a) * r0, fz = tz + Math.sin(a) * r0;
-    colored(parts, scaleUV(box(T.footing, 0.5 + T.footingTop, T.footing), 0.08, 0.08).translate(fx, (T.footingTop - 0.5) / 2, fz), RELAY_CONCRETE, own, 0.05);
+    colored(parts, scaleUV(box(T.footing, RELAY_FOOTING_SINK + T.footingTop, T.footing), 0.08, 0.08).translate(fx, (T.footingTop - RELAY_FOOTING_SINK) / 2, fz), RELAY_CONCRETE, own, 0.05);
     colored(parts, box(0.3, 0.03, 0.3).translate(fx, T.footingTop + 0.015, fz), 0x5f6569, own, 0.03);
   }
   // (the tower's lattice at its own gauge, three sections down from its footings past the hut's +x side and out beyond

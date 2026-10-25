@@ -60,6 +60,7 @@ const ROUND_ASPECT = 1.15, WIDEN_FACTOR = 2, MIN_RUN_M = 0.12, CAP_FACTOR = 2.5;
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, getSpec } = await import('../src/vehicles/specs.ts');
 const { casemateGunYaw } = await import('../src/vehicles/casemateGunPose.ts');
+const { authoringRigSpec } = await import('../src/vehicles/combatGunRigSeat.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', '').split(',').map((s) => s.trim()).filter(Boolean), 'gun-barrel-align-census --ids');
 if (!ids.length) { console.error('gun-barrel-align-census: pass --ids=<a,b> or --all'); process.exit(2); }
 if (LEDGER_PATH && flag('update') === flag('check')) { console.error('gun-barrel-align ledger: pass exactly one of --update or --check'); process.exit(2); }
@@ -291,7 +292,7 @@ const exceeds = (p) => [
 const score = (p) => Math.max(p.offsetMm / (T.offsetM * 1000), p.angleDeg / T.angleDeg, Math.abs(p.axialMm) / (T.axialM * 1000),
   p.radiusMm === null ? 0 : Math.abs(p.radiusMm) / (T.radiusM * 1000), p.fallback ? 9 : 0);
 
-const r4 = (v) => Math.round(v * 1e4) / 1e4;
+const r4 = (v) => Math.round(v * 1e4) / 1e4, r9 = (v) => Math.round(v * 1e9) / 1e9;
 /** rig_gun pitches about X inside rig_turret: a turret scale with y != z shears the pitch (the drawn gun lags the sim's). */
 function turretScaleOf(root) {
   const turret = root.getObjectByName('rig_turret');
@@ -316,14 +317,21 @@ function measuredRig(root, spec, combat, rest) {
   // A rig still at the factory's seat (the combat pivot) stays there: the drawn bore rides that frame, so moving the pivot
   // onto the bore line would move the drawn bore by the same offset (no fixpoint). Only a rig the builder seated itself
   // has its trunnion projected onto the drawn bore.
+  // A rig_turret at its profile-authored seat (combatGunRigSeat.ts: builders build in that frame) keeps that pivot to the
+  // nanometre. Snapped only to the combat row, a row rounded to 0.1 mm held itself: the raised T-80U's combat turret stood
+  // 36 µm off its drawn casting, and its ERA faces, fitted against the drawn cassettes, stood that far off their skin
+  // (sourceXSecondWaveEra's 20 µm witness). The trunnion keeps the combat seat and its bore projection.
   const combatTp = new THREE.Vector3().fromArray(combat.turretPivot || [0, 0, 0]);
   const combatTrunnion = combatTp.clone().add(new THREE.Vector3().fromArray(combat.gunPivot || [0, 0, 0]));
-  if (tp.distanceTo(combatTp) < 0.001) tp.copy(combatTp);
+  const seatTp = authoringRigSpec(spec).armor.turretPivot;
+  const seatedTp = !hullFixed && !!turret && tp.distanceTo(new THREE.Vector3().fromArray(seatTp)) < 0.001;
+  if (seatedTp) tp.fromArray(seatTp);
+  else if (tp.distanceTo(combatTp) < 0.001) tp.copy(combatTp);
   const factorySeat = trunnion.distanceTo(combatTrunnion) < 0.001;
   const along = trunnion.clone().sub(P).dot(d);
   const Q = factorySeat ? combatTrunnion.clone() : P.clone().addScaledVector(d, along);
   return {
-    turretPivot: tp.toArray().map(r4), gunPivot: Q.clone().sub(tp).toArray().map(r4), lengthM: r4(-along),
+    turretPivot: tp.toArray().map(seatedTp ? r9 : r4), gunPivot: Q.clone().sub(tp).toArray().map(r4), lengthM: r4(-along),
     radiusM: rest.line.radius === null ? null : r4(rest.line.radius), boreOffsetMm: r1(trunnion.distanceTo(Q) * 1000),
     restAngleDeg: r2(Math.acos(Math.min(1, Math.max(-1, d.z))) / DEG),
   };
