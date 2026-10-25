@@ -446,8 +446,11 @@ async function playScenario(options, side, scenario, size, done, abort) {
   activeBrowser = browser;
   let aborted = null;
   const pid = browser.process()?.pid;
+  // the browser tree's resident set (the GPU process's Metal memory included on a Mac): its peak a battle, recorded
+  const rss = { peakKb: 0 };
   const watchdog = setInterval(() => {
     const kb = pid ? treeRssKb(pid) : 0;
+    rss.peakKb = Math.max(rss.peakKb, kb);
     if (kb > RSS_ABORT_KB && !aborted) {
       aborted = `browser RSS ${(kb / 1048576).toFixed(1)} GB past 6 GB`;
       log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
@@ -482,7 +485,9 @@ async function playScenario(options, side, scenario, size, done, abort) {
         await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
         await sleep(5000);
       }
+      rss.peakKb = 0;
       const record = await measureBattle(page, { ...options, root: side.root, port: side.port }, { mapId, gameMode, allies, enemies, pass, key });
+      record.browserPeakRssMB = Math.round(rss.peakKb / 1024);
       record.label = side.label;
       record.governor = options.governor;
       record.bootMs = bootMs;
@@ -698,7 +703,7 @@ export function summarizeCensus(dir) {
     rows.push({ key: r.key, label: r.label ?? '', map: r.mapId, mode: r.gameMode, size: r.size, pass: r.pass, tanks: r.roster?.count, entryMs: r.entryMs,
       frames: r.analysis.intervals.count, over33: r.analysis.intervals.over33, over50: r.analysis.intervals.over50,
       over100: r.analysis.intervals.over100, p99: r.analysis.intervals.p99, max: r.analysis.intervals.max,
-      longTasks: r.analysis.longTasks.length, medianMs: r.analysis.intervals.medianMs, hitches: r.analysis.intervals.hitches,
+      longTasks: r.analysis.longTasks.length, medianMs: r.analysis.intervals.medianMs, hitches: r.analysis.intervals.hitches, peakRssMB: r.browserPeakRssMB ?? null,
       liveOver33: r.live.intervals.over33, liveHitches: r.live.intervals.hitches, liveLinks: r.live.links?.links ?? null,
       linkNames: r.live.links?.names ?? null, gc: r.live.heap ?? null, heapProfileMBPerS: r.heapProfile?.allocMBPerS ?? null,
       causes: r.analysis.summary, load: r.load });
