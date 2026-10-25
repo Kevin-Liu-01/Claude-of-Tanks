@@ -383,8 +383,10 @@ assert.match(perfHud,
   /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,
   'the compact diagnostics header must expose an accessible expand/collapse control');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:1 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
-  'phone Settings tabs size to their labels (never squeezed under them) and share the spare width');
+  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:0 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
+  'phone Settings tabs size to their labels (never squeezed under them)');
+assert.match(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{gap:0;justify-content:space-between\}/,
+  'phone Settings tabs share the spare width between them, so a short label keeps a short underline (gauntlet 250)');
 assert.doesNotMatch(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{overflow-x:hidden\}/,
   'a tab row wider than the phone scrolls instead of clipping a label');
 assert.match(responsiveSurfaces,

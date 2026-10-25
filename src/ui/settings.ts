@@ -219,7 +219,7 @@ const SETTINGS_CSS = `
 /* the panel's reset spares every kit element (buttons, notices, swatches), whose components layer the surfaces layer
    would otherwise override */
 .cot-settings :where(:not([class*="cot-c-"])){box-sizing:border-box;margin:0;padding:0;}
-.cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
+.cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(1080px,88vh);max-height:88vh;
   display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
 .cot-set-panel:focus{outline:none;}
 .cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
@@ -301,7 +301,7 @@ const SETTINGS_CSS = `
 .cot-chip svg{display:inline-block;width:14px;height:14px;vertical-align:middle;}
 .cot-chip:hover{background:var(--surface-hover);}
 .cot-chip:active{transform:translateY(var(--btn-press-drop));}
-.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:var(--ring-2);}
+.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:var(--ring-3);}
 .cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
   animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
 .cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
@@ -323,12 +323,12 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
   background:transparent;}
 .cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
-  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--line-2) var(--f));}
+  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--line-3) var(--f));}
 .cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
   border-radius:var(--control-radius);background:var(--ink-1);box-shadow:var(--e1);
   transition:transform var(--dur-fast) var(--ease-enter);}
 .cot-set-slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15);}
-.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-2);}
+.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-3);}
 .cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
@@ -359,7 +359,7 @@ const SETTINGS_CSS = `
 .cot-settings .cot-time-content>svg{display:none;}
 .cot-settings .cot-time-check{flex:0 0 12px;width:12px;height:12px;border:0;color:var(--ink-1);visibility:hidden;}
 @media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
-.cot-settings .cot-time-choice input:checked+.cot-time-content{color:var(--ink-1);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{background:transparent;box-shadow:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
 .cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
@@ -420,7 +420,7 @@ body.cot-hud-aerial .cot-hints{display:none;}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) 0 var(--s2);padding:var(--s2) var(--s3);
   border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
@@ -1018,7 +1018,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     brainSeg.setAttribute('aria-label', brainLabel);
     const brainButtons: HTMLButtonElement[] = [];
     const alliesRow = el('div', 'cot-set-row', battle);
-    settingLabel(alliesRow, t('playMenu.brain.allies'), SETTINGS_OPTION_ICONS.aiDifficulty);
+    settingLabel(alliesRow, t('settings.gameplay.alliesJev'), { id: 'team' });
     const alliesSeg = el('div', 'cot-set-seg onoff', alliesRow);
     const alliesButtons: HTMLButtonElement[] = [];
     const brainNote = el('div', 'cot-set-note', battle);
@@ -1055,7 +1055,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.type = 'button';
       b.dataset.brainAllies = String(on);
       b.textContent = t(on ? 'settings.on' : 'settings.off');
-      b.setAttribute('aria-label', `${t('playMenu.brain.allies')}: ${b.textContent}`);
+      b.setAttribute('aria-label', `${t('settings.gameplay.alliesJev')}: ${b.textContent}`);
       b.addEventListener('click', () => {
         writeBrainSettings({ allies: on });
         syncBrain();
@@ -1434,7 +1434,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     // Custom: own and enemy pickers; a pair under the colour-vision or contrast floors is refused (colorVision.ts).
     const customRow = el('div', 'cot-set-row', vision);
-    settingLabel(customRow, t('settings.a11y.preset.custom'), A11Y_ICONS.colors);
+    settingLabel(customRow, t('settings.a11y.preset.custom'), { id: 'brush' });
     const custom = el('div', 'cot-a11y-custom', customRow);
     const shape = (side: string, entity: string): void => {
       const mark = el('span', `cot-a11y-shape ${side}`, custom);

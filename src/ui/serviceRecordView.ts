@@ -158,7 +158,7 @@ function overview(view: ServiceRecordView): string {
   const reasoning = MEDALS.filter((medal) => medal.group === 'reasoning');
   const reasoningTiles = reasoning.map((medal) => {
     const tally = view.medals[medal.id];
-    return `<button type="button" class="cot-record-reason${tally ? ' is-earned' : ''}" data-medal-tip="${medal.id}">${medalSVG(medal, 64, { locked: !tally })}` +
+    return `<button type="button" class="cot-record-reason${tally ? ' is-earned' : ' is-locked'}" data-medal-tip="${medal.id}">${medalSVG(medal, 64, { locked: !tally })}` +
       `<div><strong>${medalName(medal.id)}</strong>${tally ? `<small>${t('garage.record.earnedCount', { count: num(tally.count) })}</small>` : `<small class="cot-record-sr">${t('garage.record.notEarned')}</small>`}</div></button>`;
   }).join('');
   const reasoningCard = `<section class="cot-record-card cot-record-reasoning">` +
@@ -223,7 +223,8 @@ function achievementCard(entry: AchievementProgress, fresh: boolean): string {
   const { def, tier, value, next } = entry;
   const target = next ?? def.tiers[2];
   const floor = tier > 0 ? def.tiers[tier - 1] : 0;
-  const pct = next == null ? 100 : Math.max(0, Math.min(100, ((value - floor) / Math.max(1, next - floor)) * 100));
+  // the bar reads as the count beside it does: the value toward the next tier's target
+  const pct = next == null ? 100 : Math.max(0, Math.min(100, (value / Math.max(1, next)) * 100));
   return `<article class="cot-record-ach tier-${tier}${fresh ? ' is-new' : ''}" data-achievement="${def.id}">` +
     `<button type="button" class="cot-record-ach-art" data-achievement-tip="${def.id}" data-award-tier="${tier || 1}" aria-label="${safe(t(`service.achievement.${def.id}.name`))}">${achievementSVG(def, tier, 64)}</button>` +
     `<div class="cot-record-ach-copy"><div class="cot-record-ach-title"><strong>${t(`service.achievement.${def.id}.name`)}</strong>` +

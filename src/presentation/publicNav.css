@@ -90,8 +90,9 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   .public-footer__inner{grid-template-columns:1fr;gap:var(--s5)}
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
-/* a phone keeps the menu button on the bar: Play now becomes its glyph (named, its tip on hover); the menu repeats it in full */
-@media (width < 440px){
+/* a phone (the 520 px band edge) keeps the menu button on the bar: Play now becomes its glyph (named, its tip on hover); the
+   menu repeats it in full */
+@media (width < 520px){
   .public-nav__cta{width:var(--btn-h-s);padding:0}
   .public-nav__cta span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
