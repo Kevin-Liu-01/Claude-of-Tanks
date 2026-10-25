@@ -18,8 +18,10 @@ registerHooks({
 });
 
 const {
-  button, chip, esc, keycap, scale20, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
+  button, chip, emptyState, esc, keycap, scale20, scaleCells, segmented, statChip, statRow, statTile, tabs, tag, toggle, wireRoving,
+  wireRovingKeys,
 } = await import('./components.ts');
+const { nationChip, vehicle } = await import('./identity.ts');
 
 /* 1. markup -------------------------------------------------------------------------------------------------- */
 assert.equal(esc(`<a href="x">'&'</a>`), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;', 'text and attributes are escaped');
@@ -35,7 +37,7 @@ assert.match(button({ label: 'Back', attrs: { disabled: true, 'data-x': 1, hidde
   'extra attributes: true is bare, false is omitted');
 assert.match(chip({ label: 'MBT', pressed: true }), /^<button type="button" class="cot-c-chip" aria-pressed="true" data-ui-sound="toggle">/);
 assert.match(chip({ label: 'MBT' }), /^<span class="cot-c-chip">/, 'a static chip is not a control');
-assert.match(chip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }), /aria-label="Germany"[^>]*><img class="cot-c-flag/,
+assert.match(nationChip({ label: 'Germany', nation: 'germany', pressed: false, compact: true }), /aria-label="Germany"[^>]*><img class="cot-c-flag/,
   'a compact flag chip is named by its nation');
 assert.equal(tag('New', 'accent'), '<span class="cot-c-tag cot-c-tag--accent">New</span>');
 const seg = segmented({ label: 'Sides', value: 'b', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }, { value: 'c', label: 'C', disabled: true }] });
@@ -62,6 +64,19 @@ assert.match(bar, /^<span class="cot-c-scale" aria-hidden="true"><i class="f"><\
 assert.match(scale20(5, 3), /<i class="f r"><\/i>/, 'a rival tick inside the lit run');
 const row = statRow({ label: 'Reload', value: '5.7', unit: 's', icon: 'reload', cells: 14, rivalCells: 13, delta: '−0.3', better: true });
 assert.match(row, /<b class="num">5\.7<\/b><small>s<\/small><em class="cot-c-stat__delta is-better">−0\.3<\/em>/, 'raw value, unit and worded delta');
+// stat chips, stat tiles and empty states (250): escaped text, sprite glyphs, the tip as data-tip
+const round = statChip({ icon: 'shellApfsds', label: 'APFSDS', value: '855', unit: 'mm', tip: 'M829A4 <sabot>' });
+assert.match(round, /^<span class="cot-c-statchip" data-tip="M829A4 &lt;sabot&gt;"><svg [^>]*><use href="#i-shellApfsds(?:-s)?"\/><\/svg>/);
+assert.match(round, /<span class="cot-c-statchip__label">APFSDS<\/span><b class="num">855<\/b><small>mm<\/small><\/span>$/);
+const fitting = statChip({ icon: 'eqRammer', tip: 'Rammer' });
+assert.match(fitting, /^<span class="cot-c-statchip cot-c-statchip--glyph" data-tip="Rammer" role="img" aria-label="Rammer">/, 'a glyph-only chip is named');
+const tile = statTile({ label: 'Battles', value: '12', icon: 'battleRecord', note: '3 / 4', className: 'host-hook' });
+assert.match(tile, /^<div class="cot-c-tile host-hook"><span class="cot-c-tile__label"><svg [^>]*><use href="#i-battleRecord(?:-s)?"\/><\/svg>Battles<\/span>/);
+assert.match(tile, /<strong class="cot-c-tile__value">12<\/strong><small class="cot-c-tile__note">3 \/ 4<\/small><\/div>$/);
+assert.match(statTile({ label: 'Survived', valueIcon: 'shield' }), /<strong class="cot-c-tile__value"><svg [^>]*><use href="#i-shield"\/>/, 'a status glyph in the figure');
+const empty = emptyState({ text: 'No <match>', icon: 'search', action: { label: 'Clear', attrs: { 'data-clear-filters': true } } });
+assert.match(empty, /<p>No &lt;match&gt;<\/p><button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press" data-clear-filters>Clear<\/button><\/div>$/);
+assert.doesNotMatch(button({ label: 'Close', iconOnly: true, icon: 'close' }), /title=/, 'icon-only controls name themselves for the hover tip, not the browser');
 const veh = vehicle({ id: 'challenger3', nation: 'uk', name: 'Challenger 3' });
 assert.match(veh, /<img class="cot-c-flag cot-c-flag--sm"[^>]*alt="" aria-hidden="true"/, 'the flag is decorative beside the name');
 assert.match(veh, /--sil:url\(\/icons\/challenger3_side_silhouette\.png\)/, 'the silhouette is the tank\'s own');
@@ -114,26 +129,107 @@ wireRoving(radios.host, () => {});
 radios.items[0].focus();
 radios.listeners.keydown({ key: 'ArrowRight', preventDefault() {} });
 assert.equal(radios.items[1].getAttribute('aria-checked'), 'true', 'a radio group checks what it moves to');
+// wireRovingKeys: a group whose items handle their own clicks (the Studio's segmented controls) gets the arrows only
+const own = stubList(['p', 'q', 'r'], 'radio');
+const pressed = [];
+for (const item of own.items) item.click = () => pressed.push(item.dataset.value);
+const unkey = wireRovingKeys(own.host);
+assert.deepEqual(Object.keys(own.listeners), ['keydown'], 'keys only: the items keep their own click handlers');
+own.items[0].focus();
+let stopped = false;
+own.listeners.keydown({ key: 'ArrowRight', preventDefault() {}, stopPropagation() { stopped = true; } });
+assert.equal(document.activeElement, own.items[1], 'the arrow moves focus');
+assert.deepEqual(pressed, ['q'], 'and presses the item, whose click selects it');
+assert.ok(stopped, 'the arrows stay inside the group');
+own.listeners.keydown({ key: 'End', preventDefault() {}, stopPropagation() {} });
+own.listeners.keydown({ key: 'Tab', preventDefault() { throw new Error('Tab is not the group\'s'); }, stopPropagation() {} });
+assert.deepEqual(pressed, ['q', 'r'], 'End presses the last; other keys pass');
+unkey();
+assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 
 /* 3. styles -------------------------------------------------------------------------------------------------- */
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
 // stays out of the boot script.
-const sheet = readFileSync(new URL('./components.css', import.meta.url), 'utf8');
-assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
-  'the kit declares into the components layer, below every surface');
-assert.match(readFileSync(new URL('../../main.ts', import.meta.url), 'utf8'), /import '\.\/ui\/components\/components\.css';/,
-  'the game imports the sheet');
-assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
-  'no second copy of the sheet in the script');
-const css = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
-assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, 'no colour literal: tokens only');
-assert.doesNotMatch(css, /z-index:\s*\d|!important/, 'no z-index or !important');
-assert.doesNotMatch(css, /letter-spacing:\s*-?\.?\d/, 'tracking reads the tracking tokens');
-assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, 'type sizes read the type scale');
-assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, 'durations read the motion tokens');
-for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
-  if (name === 'h' || name === 'sil') continue;
-  assert.match(readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8'), new RegExp(`--${name}:`), `--${name} is a design token`);
+// The kit's sheets: components.css (every page that uses the kit), figures.css (the stat chips, stat tiles, empty states
+// and swatches the data surfaces draw) and notices.css (the notifications), each tokens-only in the components layer.
+const tokensCss = readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8');
+for (const file of ['./components.css', './figures.css', './notices.css']) {
+  const sheet = readFileSync(new URL(file, import.meta.url), 'utf8');
+  assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
+    `${file} declares into the components layer, below every surface`);
+  const css = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, `${file}: no colour literal: tokens only`);
+  assert.doesNotMatch(css, /z-index:\s*\d|!important/, `${file}: no z-index or !important`);
+  assert.doesNotMatch(css, /letter-spacing:\s*-?\.?\d/, `${file}: tracking reads the tracking tokens`);
+  assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, `${file}: type sizes read the type scale`);
+  assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, `${file}: durations read the motion tokens`);
+  for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
+    if (name === 'h' || name === 'sil') continue;
+    assert.match(tokensCss, new RegExp(`--${name}:`), `${file}: --${name} is a design token`);
+  }
 }
+const mainSource = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
+assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';/,
+  'the game imports the three sheets');
+for (const page of ['../../gallery/gallery.css', '../../docs/docs.css']) {
+  assert.match(readFileSync(new URL(page, import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/notices\.css'\);/, `${page} imports the notifications`);
+}
+assert.doesNotMatch(readFileSync(new URL('./notices.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
+  /border-(?:left|right|top|bottom|inline-start|inline-end)\s*:|inset\s+-?\d+px\s+0\s+0/, 'no one-sided border or stripe: the severity is the glyph\'s tone (the bar\'s line 11)');
+assert.match(readFileSync(new URL('../../gallery/gallery.css', import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/figures\.css'\);/,
+  'the Gallery imports the figures it draws');
+for (const page of ['../../docs/docs.css', '../../presentation/home.css', '../../presentation/notFound.css']) {
+  assert.doesNotMatch(readFileSync(new URL(page, import.meta.url), 'utf8'), /figures\.css/, `${page} draws no figure and loads none`);
+}
+assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
+  'no second copy of the sheets in the script');
+assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /from '\.\.\/(?:flags|icons)\.ts'/,
+  'the core kit imports no asset: the flags and silhouettes are identity.ts');
 
-console.log('components: markup, ARIA and escaping for every factory; roving focus; one tokens-only sheet in the components layer');
+/* 4. notifications ------------------------------------------------------------------------------------------- */
+const { notice, banner, NoticeQueue, toastDuration } = await import('./notice.ts');
+const inline = notice({ severity: 'error', text: 'Refused <colours>', detail: 'Below the floor', actions: [{ label: 'Fix', primary: true, attrs: { 'data-fix': true } }] });
+assert.match(inline, /^<div class="cot-c-notice" data-severity="error" role="alert"><span class="cot-c-notice__glyph"><svg [^>]*><use href="#i-alert"\/>/, 'an error is an alert with its stroke alert glyph (250 ruling: not the filled lamp)');
+assert.match(inline, /Refused &lt;colours&gt;<\/span><span class="cot-c-notice__detail">Below the floor<\/span>/, 'text and detail escaped');
+assert.match(inline, /<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--primary" data-ui-sound="press" data-fix>Fix<\/button>/);
+assert.match(notice({ text: 'Saved', severity: 'success' }), /role="status"/, 'any other severity is a status');
+assert.doesNotMatch(notice({ text: 'Here at open', live: false }), /role=/, 'a notice present at render announces nothing');
+assert.match(banner({ text: 'Offline', severity: 'warning' }), /^<div class="cot-c-notice cot-c-notice--banner" data-severity="warning"/);
+assert.equal(toastDuration({ text: 'x' }), 4500); assert.equal(toastDuration({ text: 'x', severity: 'error' }), null, 'an error stays');
+assert.equal(toastDuration({ text: 'x', severity: 'warning', durationMs: 900 }), 900);
+// the queue on a fake clock: the limit, priority pre-emption, dedupe counts, holds and the game's pause
+let now = 0;
+const hooks = { show() {}, hide() {}, update() {} };
+const queue = new NoticeQueue(2, () => now, hooks);
+queue.push('a', { text: 'A' }); queue.push('b', { text: 'B' }); queue.push('c', { text: 'C' });
+assert.deepEqual([queue.shown.map((x) => x.id), queue.waiting.map((x) => x.id)], [['a', 'b'], ['c']], 'two shown, one waiting');
+queue.push('urgent', { text: 'U', priority: 5 });
+assert.deepEqual(queue.shown.map((x) => x.id), ['b', 'urgent'], 'a higher priority displaces the oldest of the lowest');
+assert.deepEqual(queue.waiting.map((x) => x.id), ['c', 'a'], 'the displaced one waits again, behind its equals');
+queue.push('d1', { text: 'Hit', dedupeKey: 'hit' });
+queue.push('d2', { text: 'Hit', dedupeKey: 'hit' });
+assert.equal(queue.waiting.filter((x) => x.options.dedupeKey === 'hit').length, 1, 'a repeat never queues twice');
+assert.equal(queue.waiting.find((x) => x.options.dedupeKey === 'hit').count, 2, 'it counts instead ("×2")');
+queue.remove('b');
+assert.deepEqual(queue.shown.map((x) => x.id), ['urgent', 'c'], 'a removal shows the next waiting');
+const timed = new NoticeQueue(3, () => now, hooks);
+now = 0; timed.push('t', { text: 'Saved', severity: 'success' });
+now = 4000; assert.deepEqual(timed.expired(), [], 'not yet');
+timed.hold('t', true); now = 9000; assert.deepEqual(timed.expired(), [], 'a held toast keeps its time');
+timed.hold('t', false); now = 9400; assert.deepEqual(timed.expired(), [], 'and resumes where it was');
+timed.pause(true); now = 20000; assert.deepEqual(timed.expired(), [], 'the game\'s pause holds every time');
+timed.pause(false); now = 20050; assert.deepEqual(timed.expired(), [], '100 ms were left when the pause lifted');
+now = 20101; assert.deepEqual(timed.expired(), ['t'], 'then it runs out');
+timed.push('t', { text: 'Saved again', severity: 'success' }); now = 21000;
+assert.deepEqual(timed.expired(), [], 'an update in place restarts its time');
+const sticky = new NoticeQueue(3, () => now, { show() {}, hide() {}, update() {} });
+sticky.push('e', { text: 'Failed', severity: 'error' }); now += 1e9;
+assert.deepEqual(sticky.expired(), [], 'an error stays until dismissed');
+assert.equal(sticky.nextDeadline(), null);
+
+// an arrow key's cap is the sprite's arrow; a letter stays text
+assert.match(keycap('↑'), /data-icon="moveForward"/, 'the up arrow key draws the sprite arrow');
+assert.doesNotMatch(keycap('→'), /→/, 'no typed arrow in a key cap');
+assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
+
+console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); three tokens-only sheets in the components layer');

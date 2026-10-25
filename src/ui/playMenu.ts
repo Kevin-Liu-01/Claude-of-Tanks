@@ -54,6 +54,7 @@ import {
 import {
   BATTLE_MODE_IDS,
   GAME_MODE_DEFINITIONS,
+  MODE_PRESENTATION_ORDER,
   normalizeGameMode,
   type GameModeId,
 } from '../sim/gameModeCatalog.ts';
@@ -781,8 +782,8 @@ export function createPlayMenu({
   const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
     rulesetLines(matchRulesetFor(id, null, arrangement))
       .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
-  const leadingModes: readonly GameModeId[] = ['standard', 'drone', 'ac130', 'mars', 'juggernaut', 'capture_the_flag', 'infected', 'frontline_assault', 'realistic', 'gun_game', 'turbo_ball', 'zone_control', 'endless_horde'];
-  const modeRank = (id: GameModeId): number => { const rank = leadingModes.indexOf(id); return rank < 0 ? leadingModes.length : rank; };
+  // the one presentation order (sim/gameModeCatalog.ts), as Deploy shows the modes
+  const modeRank = (id: GameModeId): number => { const rank = (MODE_PRESENTATION_ORDER as readonly string[]).indexOf(id); return rank < 0 ? MODE_PRESENTATION_ORDER.length : rank; };
   // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
   const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>

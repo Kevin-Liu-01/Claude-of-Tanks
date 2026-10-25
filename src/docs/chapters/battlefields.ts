@@ -23,7 +23,7 @@ function mapCard(id: string): string {
   const art = pictureMarkup({ src: `/maps/cards/${id}.webp`, width: 1280, height: 720, alt: '', sizes: '(width < 768px) 50vw, (width < 1440px) 33vw, 22vw',
     rungs: [{ src: `/maps/thumbs/${id}.webp`, width: 512 }, { src: `/maps/cards/${id}.webp`, width: 1280 }] }, false);
   return `<li class="dm-map" id="map-${id}">${art}<span class="dm-map__name"><b>${esc(t(`map.${id}`))}</b>`
-    + `<span class="dm-map__tags">${tags.map((tag) => `<span title="${esc(t(`camoTag.${tag}`))}">${icon(regionTagIcon(tag) as IconId, { size: 14 })}</span>`).join('')}</span></span></li>`;
+    + `<span class="dm-map__tags">${tags.map((tag) => `<span role="img" aria-label="${esc(t(`camoTag.${tag}`))}" data-tip="${esc(t(`camoTag.${tag}`))}">${icon(regionTagIcon(tag) as IconId, { size: 14 })}</span>`).join('')}</span></span></li>`;
 }
 
 function landscapes(): string {

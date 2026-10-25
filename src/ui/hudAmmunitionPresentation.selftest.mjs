@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { ammunitionSelectionLabel, ammunitionSlotViewState, hordeStatusCopy } from './hud.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
-import { shellTypeLabel } from './garageDossier.ts';
+import { shellTypeLabel } from './shellLabels.ts';
 import { getLocale, setLocale } from './i18n.ts';
 
 const mutations = [];

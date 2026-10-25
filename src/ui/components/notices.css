@@ -1,0 +1,49 @@
+/* The kit's notifications (components/notice.ts: notice, banner, notify and its regions). Copyright © 2026 Kevin B. Liu.
+   One family for every notice, toast, alert and banner (the bar's line 11). The severity is the glyph's tone and a faint
+   wash on the plate, never a coloured stripe or a one-sided border. Regions are fixed overlays, so a notice never moves
+   the page; a phone's tab bar keeps the bottom. Text wraps at any character in Latin and by strict rules in Chinese,
+   on the 11/12 px floor. Tokens only, in the components layer; the game (main.ts), the Gallery and the Field Manual
+   import it. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer components{
+/* ---- a notice: glyph, text and a detail line, a count, its actions, its close ---- */
+.cot-c-notice{box-sizing:border-box;display:flex;align-items:flex-start;gap:var(--s3);min-width:0;padding:var(--s3);
+  border-radius:var(--plate-radius);background:var(--surface-plate);box-shadow:var(--ring-2);color:var(--ink-1);
+  font:500 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body)}
+.cot-c-notice__glyph{display:grid;place-items:center;flex:none;width:20px;height:20px;color:var(--text-accent)}
+.cot-c-notice__glyph svg{width:20px;height:20px}
+.cot-c-notice[data-severity=success] .cot-c-notice__glyph{color:var(--text-ok)}
+.cot-c-notice[data-severity=warning] .cot-c-notice__glyph{color:var(--text-warn)}
+.cot-c-notice[data-severity=error] .cot-c-notice__glyph{color:var(--text-danger)}
+.cot-c-notice[data-severity=progress] .cot-c-notice__glyph{color:var(--ink-2)}
+.cot-c-notice[data-severity=warning]{background:color-mix(in srgb,var(--text-warn) 7%,var(--surface-plate))}
+.cot-c-notice[data-severity=error]{background:color-mix(in srgb,var(--text-danger) 9%,var(--surface-plate))}
+.cot-c-notice__body{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0;padding-top:1px}
+.cot-c-notice__text,.cot-c-notice__detail{overflow-wrap:anywhere;line-break:strict}
+.cot-c-notice__detail{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
+.cot-c-notice__count{flex:none;align-self:center;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
+.cot-c-notice__acts{display:flex;flex-wrap:wrap;align-self:center;gap:var(--s2)}
+.cot-c-notice__close{flex:none;margin:-6px -6px -6px 0}
+.cot-c-notice[hidden]{display:none}
+.cot-c-notice--banner{width:100%;border-radius:0}
+.cot-c-notice--toast{box-shadow:var(--e3);
+  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter)}
+.cot-c-notice--toast[data-state]{opacity:0;transform:translateY(4px)}
+.cot-c-notice--toast:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (prefers-reduced-motion:reduce){.cot-c-notice--toast[data-state]{transform:none}}
+
+/* ---- a placed region: a fixed column of toasts that never moves the page ---- */
+.cot-c-notices{position:fixed;z-index:var(--z-toast);display:flex;flex-direction:column;gap:var(--s2);width:min(420px,calc(100vw - 32px));
+  pointer-events:none}
+.cot-c-notices:empty{display:none}
+.cot-c-notices>*{pointer-events:auto}
+.cot-c-notices[data-placement=bottom]{left:50%;bottom:calc(var(--s5) + env(safe-area-inset-bottom,0px));flex-direction:column-reverse;
+  transform:translateX(-50%)}
+.cot-c-notices[data-placement=bottom-end]{right:var(--s4);bottom:calc(var(--s5) + env(safe-area-inset-bottom,0px));flex-direction:column-reverse}
+.cot-c-notices[data-placement=top]{left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%)}
+.cot-c-notices[data-placement=top-end]{right:var(--s4);top:calc(76px + env(safe-area-inset-top,0px))}
+.cot-c-notices[data-placement=host]{position:static;width:auto;transform:none}
+/* a phone's tab bar keeps the bottom: the menus' toasts sit above it */
+body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-notices[data-placement^=bottom]{
+  bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}

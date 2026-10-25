@@ -36,9 +36,9 @@ import { flagIconUrl } from '../ui/flags.ts';
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
-import {
-  esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
-} from '../ui/components/components.ts';
+import { shellIconId } from '../ui/shellIcons.ts';
+import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
@@ -788,8 +788,8 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = `<div class="fam__empty"><span>${esc(t('gallery.empty.noMatch'))}</span>`
-      + `<button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press" data-clear-filters>${esc(t('gallery.empty.clear'))}</button></div>`;
+    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+      action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
     for (const row of vehicleList.querySelectorAll<HTMLElement>('.it')) {
@@ -1007,15 +1007,11 @@ function renderStats(record: GalleryRecord): void {
     return rows ? `<section class="stat-group"><h2>${icon(glyph, { size: 16 })}${esc(t(label))}</h2>${rows}</section>` : '';
   }).join('');
 }
-const SHELL_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
-  AP: 'shellAp', APC: 'shellAp', APBC: 'shellAp', APCBC: 'shellAp', APHE: 'shellAp', APCR: 'shellApcr', HVAP: 'shellApcr',
-  APDS: 'shellApfsds', APFSDS: 'shellApfsds', HEAT: 'shellHeat', 'HEAT-FS': 'shellHeat', HESH: 'shellHe', HE: 'shellHe', ATGM: 'shellAtgm',
-});
 function renderAmmo(record: GalleryRecord): void {
   const best = Math.max(1, ...records.flatMap((other) => other.shells.map((shell) => shell.penetrationMm)));
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
-    const glyph = SHELL_ICONS[type] || (/ATGM|MISSILE/.test(type) ? 'shellAtgm' : /HEAT/.test(type) ? 'shellHeat' : /FSDS/.test(type) ? 'shellApfsds' : 'shell');
+    const glyph = shellIconId(type);
     return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`

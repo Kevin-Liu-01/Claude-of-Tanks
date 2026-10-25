@@ -139,7 +139,7 @@ try {
   // Esc (the pause menu), a dwell, Resume
   await page.keyboard.press('Escape');
   await sleep(1500);
-  await page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click());
+  await page.evaluate(() => document.querySelector('.cot-set-close')?.click());
   await sleep(1000);
   await judge('after resume');
 

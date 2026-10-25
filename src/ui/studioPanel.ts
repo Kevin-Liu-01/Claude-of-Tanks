@@ -15,6 +15,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -498,6 +499,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   const formatSeg = el('div', 'cot-c-seg');
   formatSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(formatSeg);
   formatSeg.setAttribute('aria-label', productionLabel('format'));
   const formatButtons = FILM_FORMATS.map(([format, ratio]) => {
     const option = el('button', 'cot-c-seg__opt', ratio);
@@ -512,6 +514,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // Quick | Pro (brand-ui SPEC 12.6): Quick keeps the essentials, Pro adds the fine controls; each viewer's own choice
   const modeSeg = el('div', 'cot-c-seg st-mode');
   modeSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(modeSeg);
   modeSeg.setAttribute('aria-label', t('studio.ws.controls'));
   const modeButtons = (['quick', 'pro'] as const).map((mode) => {
     const option = el('button', 'cot-c-seg__opt', t(`studio.ws.mode.${mode}`));
@@ -793,6 +796,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the times of day: a segmented row (09-studio .seg), the times this map has enabled
   const timeSeg = el('div', 'cot-c-seg');
   timeSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(timeSeg);
   timeSeg.setAttribute('aria-label', t('studioPanel.timeOfDay'));
   const timeOptions = new Map<StudioTimeOfDay, HTMLButtonElement>();
   let timeBusy = false;
@@ -1037,6 +1041,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the snap (09-studio Transform .seg): where a dragged or placed tank lands
   const snapSeg = el('div', 'cot-c-seg');
   snapSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(snapSeg);
   snapSeg.setAttribute('aria-label', t('studio.ws.snap'));
   const snapButtons = (['road', 'terrain', 'off'] as const).map((snap) => {
     const option = el('button', 'cot-c-seg__opt', t(`studio.ws.snap.${snap}`));
@@ -1109,6 +1114,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   const stateSeg = el('div', 'cot-c-seg');
   stateSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(stateSeg);
   stateSeg.setAttribute('aria-label', t('studioPanel.selected.stateLabel'));
   const stateButtons = new Map<string, HTMLButtonElement>();
   for (const sid of S.ACTOR_STATES) {
@@ -1536,6 +1542,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const secCam = section('camera', t('studioPanel.section.camera'), 'optics');
   const camModeSeg = el('div', 'cot-c-seg');
   camModeSeg.setAttribute('role', 'radiogroup');
+  wireRovingKeys(camModeSeg);
   camModeSeg.setAttribute('aria-label', t('studioPanel.section.camera'));
   const flyBtn = el('button', 'cot-c-seg__opt', t('studio.freeFly'));
   const orbBtn = el('button', 'cot-c-seg__opt', t('studio.orbit'));
@@ -2815,6 +2822,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       spd.set(S._internal.cam.speed);
       flyBtn.setAttribute('aria-checked', String(c.mode === 'fly'));
       orbBtn.setAttribute('aria-checked', String(c.mode === 'orbit'));
+      flyBtn.tabIndex = c.mode === 'fly' ? 0 : -1;
+      orbBtn.tabIndex = c.mode === 'orbit' ? 0 : -1;
       setLabel(modeChip, c.mode === 'orbit' ? t('studio.orbit') : t('studio.freeFly'));
       setLabel(lensChip, `${Math.round(c.fov)}°`);
       press(lookChip, S.lookThrough && !lookChip.disabled);

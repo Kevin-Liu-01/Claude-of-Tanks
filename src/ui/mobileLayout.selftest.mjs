@@ -383,8 +383,10 @@ assert.match(perfHud,
   /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,
   'the compact diagnostics header must expose an accessible expand/collapse control');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:1 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
-  'phone Settings tabs size to their labels (never squeezed under them) and share the spare width');
+  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:0 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
+  'phone Settings tabs size to their labels (never squeezed under them)');
+assert.match(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{gap:0;justify-content:space-between\}/,
+  'phone Settings tabs share the spare width between them, so a short label keeps a short underline (gauntlet 250)');
 assert.doesNotMatch(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{overflow-x:hidden\}/,
   'a tab row wider than the phone scrolls instead of clipping a label');
 assert.match(responsiveSurfaces,
@@ -395,8 +397,10 @@ assert.match(responsiveSurfaces,
   'the graphics recovery title must reflow without overflowing small screens');
 assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
   'Gallery feedback toasts must be viewport-bounded');
-assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Docs feedback toasts must be viewport-bounded');
+// the Field Manual's notices are the kit's (components/notices.css): a region bounded to the viewport, text that wraps
+assert.match(docs, /@import url\('\.\.\/ui\/components\/notices\.css'\);/, 'the Field Manual loads the kit\'s notices');
+assert.match(await readFile(new URL('./components/notices.css', import.meta.url), 'utf8'),
+  /\.cot-c-notices\{[^}]*width:min\(420px,calc\(100vw - 32px\)\)/, 'notices are viewport-bounded');
 
 for (const [source, pattern, label] of [
   [transition, /\.cot-trans\{position:fixed/, 'state transition'],

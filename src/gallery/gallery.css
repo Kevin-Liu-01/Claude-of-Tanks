@@ -8,6 +8,8 @@
    colour, size, track, duration, shadow and layer reads a custom property. */
 /* the tokens only the Gallery reads (tokens.json surface-gallery) */
 @import url('../ui/tokens/surface-gallery.css');
+@import url('../ui/components/figures.css');
+@import url('../ui/components/notices.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{button,input,select,textarea{font:inherit;color:inherit}}
@@ -113,7 +115,6 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   font:600 var(--fs-12)/1.1 var(--font-display);text-transform:uppercase}
 .fam[data-layout=grid] .it .e{position:absolute;right:8px;top:8px;z-index:var(--z-lift)}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
-.fam__empty{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s4) var(--s2);color:var(--ink-3);font:400 var(--fs-13)/1.5 var(--font-body)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
 .stage{grid-area:stage;position:relative;min-width:0;min-height:0;overflow:hidden;isolation:isolate;background:var(--gallery-stage)}
