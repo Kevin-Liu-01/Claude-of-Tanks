@@ -1513,8 +1513,9 @@ const HUD_CSS = `
 .cot-top .fg{color:var(--hud-own);text-align:right;}
 /* (the Horde's wave is no side's score: in the ink, the hostiles left beside it in the enemy's, gauntlet r4) */
 .cot-top .fg.wave{color:var(--ink-1);}
-/* (and no side's gauge beside it: a team-blue dash by the wave number measured nothing, gauntlet r5) */
-.cot-top .sc.ally:has(>.fg.wave) .bar{display:none;}
+/* (and no gauge either side, each keeping its place: a team-blue dash by the wave number measured nothing, gauntlet r5; the
+   wave's own bar alone left the plate lopsided and the wave against the clock, "3 1:00", r6) */
+.cot-top:has(.fg.wave) .sc .bar{visibility:hidden;}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
    transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
@@ -2141,9 +2142,18 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-hud [data-severity=warning]{--notice-tone:var(--text-warn);}
 .cot-hud [data-severity=error]{--notice-tone:var(--text-danger);}
 .cot-hud [data-severity=info]{--notice-tone:var(--text-accent);}
-.cot-sixth,.cot-alert,.cot-aim-warning{border:0;border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--hud-plate-ring);}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{background:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong));}
-:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{background:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong));}
+/* ... on the HUD's own notice plate (owner 2026-10-25: "i wonder if we should make notificatison special shapes, like
+   hexagons, again"): every battle notice the same long hexagon, the score plate's and the mission plate's slant at both
+   ends, its edge and its fill two layers under the words (a ring cannot follow a clip) */
+.cot-sixth,.cot-alert,.cot-aim-warning{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,
+  calc(100% - var(--notice-point)) 100%,var(--notice-point) 100%,0 50%);--notice-point:8px;--notice-fill:var(--hud-plate-strong);
+  --notice-line:var(--line-2);border:0;border-radius:0;background:none;box-shadow:none;isolation:isolate;}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)::before,:is(.cot-sixth,.cot-alert,.cot-aim-warning)::after{content:'';position:absolute;
+  z-index:-1;pointer-events:none;clip-path:var(--notice-cut);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)::before{inset:0;background:var(--notice-line);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)::after{inset:1px;background:var(--notice-fill);}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong));}
+:is(.cot-sixth,.cot-alert,.cot-aim-warning)[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong));}
 @keyframes cotDetectedIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){.cot-sixth.on{animation:none}}
 

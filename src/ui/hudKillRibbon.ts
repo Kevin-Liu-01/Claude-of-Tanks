@@ -42,8 +42,9 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .top{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 14px;min-width:0}
 .cot-ribbon .top>:is(.id,.cause){display:contents}
 .cot-ribbon .w{flex:none;font:700 var(--battle-fs-14)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent)}
-/* the callsign takes the row (SPEC 12.2.3) */
-.cot-ribbon .cs{flex:0 1 auto;min-width:6ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 var(--battle-fs-18)/1 var(--hud-font)}
+/* the callsign takes the row (SPEC 12.2.3), its slack too: the cause chip by the streak's block (zh's shorter word left
+   30-55 px before the block, gauntlet r6) */
+.cot-ribbon .cs{flex:1 1 auto;min-width:6ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 var(--battle-fs-18)/1 var(--hud-font)}
 /* the victim's vehicle is its silhouette beside the callsign; its name is spoken only (gauntlet r1: a long callsign cut it
    to "T-9..." in zh and to nothing in en) */
 .cot-ribbon .vn{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

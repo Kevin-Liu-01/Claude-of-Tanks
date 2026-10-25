@@ -207,7 +207,11 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
 .cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
 .cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
-  border-left-color:var(--accent);box-shadow:var(--ring-accent);}
+  border-left-color:var(--accent);box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
+/* (the player's row ringed by an outline, which paints over the row's own parts: the ring under them let a tall side render
+   cover it, and the side's ink sat outside it, gauntlet r6) */
+/* (a side's rows on one plate, their gaps the plate's: the art behind showed through them as stray stripes, gauntlet r6) */
+.cot-bl .team:not(.cards) .rows{background:var(--hud-plate-strong);border-radius:var(--r1);}
 /* the tier only where the battle mixes tiers (a rank every row shares says nothing) */
 .cot-bl .row .tier{flex:0 0 22px;text-align:center;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--accent-hi);}
 .cot-bl:not(.mixed-tiers) .row .tier{display:none;}
@@ -235,6 +239,9 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   --battle-fs-11:11px;--battle-fs-12:12px;--fs-floor-11:11px;--fs-floor-12:12px;}
 .cot-bl .vs{display:grid;place-items:center;justify-self:center;align-self:center;
   font:700 var(--fs-28)/1 var(--font-ui);color:var(--accent);}
+/* (centred on the rows, not on the sides' heads and rows: half the head band lower, gauntlet r6 read it 22 px high on the
+   seam between two rows) */
+.cot-bl .teams:not(:has(>.team.cards)) .vs{padding-top:calc(24px + var(--s2) + var(--s1) + 7px);}
 /* --- footer: the stage, the five-step progress, the countdown ------------- */
 .cot-bl .foot{padding-top:clamp(15px,2.5vh,24px);}
 .cot-bl .fmeta{display:flex;align-items:center;gap:16px;}
@@ -264,7 +271,10 @@ ${WIDE} .cot-bl .briefing{width:100%;height:100%;min-height:0;grid-template-colu
   grid-template-rows:auto minmax(0,1fr) auto auto;column-gap:48px;padding:14vh 64px calc(5.5vh + 22px);}
 ${WIDE} .cot-bl .cap{grid-column:1;grid-row:1;align-items:flex-start;text-align:left;gap:16px;padding:0;}
 /* (its 128 px at 1920, a third larger at 2560 with the rest of the composition, gauntlet r4) */
-${WIDE} .cot-bl .mapname{font-size:clamp(64px,7vw,max(128px,6.67vw));line-height:.84;}
+${WIDE} .cot-bl .mapname{font-size:clamp(64px,7vw,max(128px,6.67vw));line-height:.84;margin-left:-.045em;}
+/* (the title's ink on the chips' and the rosters' edge: the face's side bearing set it 4-10 px in, gauntlet r6) */
+/* (each side's head nearer its rows than the chips over it: 9 px under the chips, 12 over its rows, gauntlet r6) */
+${WIDE} .cot-bl .team:not(.cards) .thead{margin-top:var(--s4);}
 ${WIDE} .cot-bl .rules{justify-content:flex-start;}
 ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;}
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
@@ -280,6 +290,9 @@ ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:
 /* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
    would take the name's room) */
 ${PORTRAIT} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;}
+/* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */
+${PORTRAIT} .cot-bl .rules{display:grid;grid-auto-flow:column;grid-template-rows:auto auto;justify-content:center;}
+${PORTRAIT} .cot-bl .rules .mode{grid-row:1;grid-column:1 / span 3;justify-self:center;}
 ${PORTRAIT} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
   column-gap:6px;row-gap:2px;align-content:center;}
 ${PORTRAIT} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}
@@ -302,6 +315,11 @@ ${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:var(--s4);}
 /* (the vehicle's name in a column of its own width, so the drivers beside it start on one line: each began where its
    vehicle's name ended, gauntlet r5) */
 ${WIDE} .cot-bl .team:not(.cards) .row .nm{flex:0 1 clamp(132px,7.6vw,200px);}
+/* (a side's sheet as wide as its rows' reading line, on its outer gutter, the map between the two: stretched to the VS, a
+   row carried 500-700 px of empty plate at 1920 and 2560, gauntlet r6) */
+${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team{width:100%;max-width:clamp(520px,30vw,760px);}
+${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.ally{justify-self:start;}
+${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.foe{justify-self:end;}
 ${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:var(--s4);}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}

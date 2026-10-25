@@ -305,6 +305,9 @@ body[data-cot-width='phone'] .cot-bl .briefing{
 body[data-cot-width='compact'] .cot-bl .teams,
 body[data-cot-width='phone'] .cot-bl .teams,
 body[data-cot-width='tablet'] .cot-bl .teams{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s2)}
+/* (the sides 24 px apart where the VS gives way: at 8 an ally's driver met the enemy's as one cell, gauntlet r6) */
+body[data-cot-width='compact'] .cot-bl .teams,
+body[data-cot-width='tablet'] .cot-bl .teams{gap:var(--s5)}
 body[data-cot-width='tablet'] .cot-bl .vs,
 body[data-cot-width='compact'] .cot-bl .vs,
 body[data-cot-width='phone'] .cot-bl .vs{display:none}
@@ -402,7 +405,8 @@ body[data-cot-width='phone'] .cot-es .es-actions,
 body[data-cot-height='short'] .cot-es .es-actions{
   position:fixed;z-index:4;left:0;right:0;bottom:0;justify-content:center;margin:0;
   padding:var(--s2) var(--cot-edge) max(8px,env(safe-area-inset-bottom));
-  background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .1),var(--hud-plate-strong) 28%);border-top:1px solid var(--line-3);
+  /* (no rule of its own: the report's plate edge over it made two lines at 844x390, gauntlet r6, as r4 at 390) */
+  background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .1),var(--hud-plate-strong) 28%);border-top:0;
 }
 body[data-cot-width='phone'] .cot-es .es-action{min-width:0;flex:1;padding:0 var(--s2);font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-es{justify-content:flex-start;overflow-y:auto;padding-bottom:78px}

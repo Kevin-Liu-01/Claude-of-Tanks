@@ -44,7 +44,8 @@ const CSS = `
 .cot-touch .joy::before,.cot-touch .joy::after{content:"";position:absolute;left:50%;top:50%;
   background:oklch(from var(--ink-1) l c h / .16);transform:translate(-50%,-50%);}
 .cot-touch .joy::before{width:76%;height:1px}.cot-touch .joy::after{width:1px;height:76%}
-.cot-touch .knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px;
+/* (the knob over the guide lines: the ::after hairline came after it in the paint order and crossed it, gauntlet r6) */
+.cot-touch .knob{position:absolute;z-index:var(--z-lift);left:50%;top:50%;width:56px;height:56px;margin:-28px;
   border-radius:50%;background:radial-gradient(circle at 38% 30%,oklch(from var(--ink-3) .61 c h),oklch(from var(--surface-hover) .37 c h) 35%,var(--surface-menu) 72%,var(--surface-page));
   border:2px solid oklch(from var(--ink-1) l c h / .58);box-shadow:0 6px 14px oklch(from var(--surface-scene) l c h / .68),inset 0 1px 4px oklch(from var(--ink-1) l c h / .2);}
 .cot-touch .arrow{position:absolute;color:oklch(from var(--ink-1) l c h / .72);font-size:16px;line-height:1;
@@ -75,11 +76,20 @@ const CSS = `
    of FIRE's amber read as a second kit, gauntlet r4) */
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:1;border-color:var(--line-control);
   background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);}
-/* (the left trigger is FIRE's second hand, its shell alone on the secondary finish, the name spoken (aria-label) and
-   shown once, under FIRE: named, the screen read FIRE twice in two styles, gauntlet r5; as an amber twin, a second kit,
-   r4) */
-.cot-touch .fire.alt .lb{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+/* (the left trigger names itself as every round control does, on the secondary finish: unnamed, it read as an odd button,
+   gauntlet r3 and r6; as an amber twin, a second kit, r4) */
+.cot-touch .fire.alt .lb{color:var(--ink-1);}
 .cot-touch .fire.alt svg{width:20px;height:34px}
+/* The touch kit's rounds on the HUD's plates (gauntlet r6: glossy discs with metal gradients beside the flat square plates
+   read as a second kit): the strong plate, its 2 px edge and ring; FIRE on the accent's wash; pressed, the accent's ring;
+   the stick a flat well with its guide ring and lines, its knob a raised plate */
+.cot-touch .round{background:var(--hud-plate-strong);box-shadow:var(--hud-plate-ring);}
+.cot-touch .round:active,.cot-touch .round.down{box-shadow:var(--ring-accent);}
+.cot-touch .fire{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);}
+.cot-touch .fire.alt{background:var(--hud-plate-strong);}
+.cot-touch .joy{background:radial-gradient(circle,transparent 45%,oklch(from var(--ink-1) l c h / .1) 46% 47%,transparent 48%),var(--hud-plate);
+  box-shadow:var(--hud-plate-ring);}
+.cot-touch .knob{background:var(--surface-raised);box-shadow:var(--hud-plate-ring),var(--e2);}
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
    buttons dim to a muted shell on a danger rim, in colour only */
 body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:oklch(from var(--danger) l c h / .5);opacity:.62;
@@ -99,6 +109,9 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
   transform:scale(1.07);box-shadow:0 0 18px oklch(from var(--danger) l c h / .46);}
 .cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:var(--ink-1);}
 .cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
+/* (the kit's selected look while the sight is up, the accent's ring on its wash: it read the same scoped or not, gauntlet r6) */
+html[data-cot-scoped] .cot-touch .round.scope{border-color:var(--accent);background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
+  box-shadow:var(--ring-accent);color:var(--accent-hi);}
 .cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:var(--ink-1);}
 .cot-touch .jump{right:134px;bottom:124px;width:84px;height:84px;color:var(--accent-hi);border-color:oklch(from var(--accent-hi) l c h / .5);
   background:radial-gradient(circle at 50% 42%,oklch(from var(--accent) l c h / .22),transparent 40%),
