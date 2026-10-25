@@ -193,13 +193,33 @@ the **rare effects'** window, not the sights'.
   is polled and the draw only queued.
 - So one slice issued a dozen renders, and the GPU process built all their pipelines in one flush.
 
-**Fix:**
+**Tried and reverted: pacing the warm by the GPU.**
 
-- The combat warm's renderer fences each render (`engine/offscreenWarm.ts` `fence: true`, `gpuSettled`).
-- After the hold's release, each yield of the deferred warm waits real frames until the last render's fence has
-  signalled, at most 90 frames a yield (`game/deferredCombatWarmRuntime.ts`, `trace.gpuPacedFrames`).
-- One render's pipelines are in flight at a time, frames between them.
-- The held count and the warms behind the veil are unchanged.
+What was tried (67c4a3d35a):
+
+- the combat warm's renderer fenced each render;
+- after the hold's release, each yield of the deferred warm waited until the last render's fence had signalled.
+
+The A/B (`ab2`: twelve battles a side, Verdant and Steinburg at 7/14/21 v 21, cold and warm) had the same combat
+content on both sides: 72 shots and 3 kills each. Against base:
+
+| Measure | Base | Lane | Note |
+|---|---|---|---|
+| GPU-busy hitches | 30 | 18 | the same fall the stand-ins alone gave in `ab1` |
+| Hitches | 184 | 211 | up |
+| Worst stall | 707 ms | 1,149 ms | one render's own pipelines; no pacing splits that |
+| Rare-effects warm, Verdant 14 v 14 cold | 6.35 s | 8.29 s | the warm ran 2–4 s longer into the fight |
+| Program-link excess | 541 ms | 1,150 ms | effects fired inside the longer warm compiled at first use |
+
+Reverted (32d4854895).
+
+**What is left** is the GPU process's first-use pipeline work for the warm's renders after the countdown's hold.
+One render can cost a second of it on the census machine, whose GPU other sessions' Chromes share. It is gone once
+warm: a warm battle on the same page has none. The structural choice is the owner's, between:
+
+- finishing the GPU-heavy warm stages behind the entry veil on a session's first battle (the entry a few seconds
+  longer, once a session), or
+- accepting the first-use stalls in a cold session's first battle.
 
 ### The bots' first step (cold)
 
