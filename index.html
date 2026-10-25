@@ -300,8 +300,8 @@
     /* /cot:brand-motion */
     .cot-boot-invite {
       display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
-      padding: 9px 15px; color: var(--ink-1); border: 1px solid oklch(from var(--accent) l c h / .48);
-      background: oklch(from var(--surface-plate) l c h / .72); box-shadow: var(--e2);
+      padding: 9px 15px; color: var(--ink-1); border: 1px solid var(--line-3);
+      background: var(--surface-raised); box-shadow: var(--e2);
       font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
     }
     .cot-boot-invite.on { display: block; }
@@ -324,12 +324,12 @@
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
     }
     .cot-boot-meta {
-      display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: var(--ink-2);
+      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: var(--ink-2); text-wrap: pretty;
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
@@ -353,7 +353,7 @@
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: oklch(from var(--surface-plate) l c h / .82); text-align: left; }
+    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: var(--surface-raised); text-align: left; }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-links {
       display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
@@ -362,7 +362,7 @@
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 10px 15px; border: 1px solid var(--line-3); border-radius: 2px;
-      background: oklch(from var(--surface-plate) l c h / .55); color: var(--ink-1); cursor: pointer;
+      background: var(--surface-raised); color: var(--ink-1); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
@@ -400,7 +400,7 @@
     @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
       transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
-      background: oklch(from var(--surface-plate) l c h / .82); box-shadow: var(--e2);
+      background: var(--surface-hover); box-shadow: var(--e2);
     }
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
@@ -410,6 +410,9 @@
     @media (width <= 380px) {
       :root body .cot-boot-links { gap: 8px; }
       :root body .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    }
+    @media (pointer: coarse) {
+      :root body .cot-boot-links > .cot-boot-link { height: 44px; }
     }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
@@ -436,7 +439,7 @@
     .cot-credits {
       box-sizing:border-box;width:min(860px,calc(100vw - 32px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
-      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-plate);box-shadow:var(--e4);
+      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-raised);box-shadow:var(--e4);
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
@@ -450,25 +453,22 @@
     .cot-credits-signature{display:flex;align-items:center;gap:var(--s3);color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
     .cot-credits-signature img{width:36px;height:36px;object-fit:contain}
     .cot-credits-signature strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s)}
-    .cot-credits-signature span{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
     .cot-credits-copy{min-width:0;padding:45px 34px 34px;text-align:left}
-    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1.7 var(--font-display);
-      letter-spacing:var(--track-label);text-transform:uppercase}
-    .cot-credits h2{margin:var(--s3) 0 var(--s5);font:600 38px/1.06 var(--font-display);letter-spacing:var(--track-title)}
+    .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title)}
     .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body)}
     .cot-credits-actions{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:var(--s2) var(--s3);
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:44px;padding:var(--s2) var(--s3);
       font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
     .cot-credits-actions .cot-boot-link:last-child{background:transparent;box-shadow:none;color:var(--ink-3)}
     .cot-credits-close{position:absolute;z-index:2;top:12px;right:12px;display:grid;place-items:center;
-      width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
+      width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
     .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 18px)}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{width:100px;flex:none}
@@ -476,6 +476,15 @@
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature img{width:28px;height:28px;margin-bottom:7px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-copy{padding:24px 22px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits h2{font-size:32px;margin-bottom:20px}
+    /* a short landscape screen: the profile rides above the copy and the links stay on screen while it scrolls */
+    @media (max-height: 520px) {
+      .cot-credits-grid{grid-template-columns:1fr}
+      .cot-credits-profile{flex-direction:row;align-items:center;padding:16px 22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
+      .cot-credits-portrait{width:72px;flex:none}
+      .cot-credits-copy{padding:20px 22px 0}
+      .cot-credits h2{font-size:28px;margin-bottom:14px}
+      .cot-credits-actions{position:sticky;bottom:0;margin-top:var(--s3);padding:var(--s3) 0;background:var(--surface-raised)}
+    }
     .cot-boot-gate {
       margin-top: 26px; height: 22px;
       font-family: var(--font-ui);
@@ -497,12 +506,13 @@
     .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
-    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-pct, .cot-boot-tip) { display: none; }
+    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-pct, .cot-boot-tip) { display: none; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { display: none; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage {
       max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: var(--ink-1);
     }
-    #cot-boot:has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* Retry joins the column right under the reason, before the links */
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-inner { display: flex; flex-direction: column; align-items: center; }
     #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-load, .cot-boot-links) { align-self: stretch; }
@@ -518,7 +528,7 @@
       color: var(--ink-3); text-align: center; opacity: 0; transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-notice.on { opacity: 1; }
-    @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+    @keyframes cot-gate { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
       font-family: var(--font-ui);
@@ -534,6 +544,18 @@
       /* a failure's sentence takes the stage line and wraps to three on a phone: its room is held from the first
          frame, so the centred splash never re-centres around it */
       .cot-boot-stage { min-height: calc(3 * 1.3em); line-height: 1.3; }
+    }
+    @media (max-height: 520px) {
+      .cot-boot-mark { width: auto; height: min(34vh, 150px); margin-bottom: 0; }
+      .cot-boot-invite { margin: 12px auto -6px; }
+      .cot-boot-load, #cot-boot.has-invite .cot-boot-load { margin-top: 18px; }
+      .cot-boot-stage { min-height: 0; }
+      .cot-boot-tip { display: none; }
+      .cot-boot-links { margin-top: 14px; }
+      .cot-boot-gate { margin-top: 12px; }
+      #cot-boot:has(.cot-boot-retry.on) .cot-boot-retry { margin-top: 14px; }
+      #cot-boot:has(.cot-boot-retry.on) .cot-boot-links { margin-top: 14px; }
+      .cot-boot-foot { left: auto; right: 16px; bottom: 10px; }
     }
     }
   </style>
@@ -698,22 +720,24 @@
       }
       const MESSAGES = /^\/cn(?:\/|$)/.test(location.pathname) ? {
         chunk: '游戏文件下载失败',
-        driver: '显卡驱动无法启动。请关闭其他 3D 标签页或重新加载。',
-        script: '游戏启动时出错。请重新加载再试。',
-        slow: '当前网络下加载时间比预期更长。可以继续等待或重新加载。',
-        offline: '已有一段时间没有下载任何内容，请检查网络连接后重新加载。',
-        stalled: '加载已停滞。一分钟内没有收到任何内容，请重新加载再试。',
+        driver: '显卡驱动无法启动。关闭其他 3D 标签页可能有帮助。',
+        script: '游戏启动时出错。',
+        slow: '当前网络下加载时间比预期更长。',
+        offline: '已有一段时间没有下载任何内容，请检查网络连接。',
+        stalled: '加载已停滞，一分钟内没有收到任何内容。',
         offlineRetry: '。你似乎已离线，网络恢复后游戏会自动重试。',
-        reload: '重新加载',
+        reload: '重试加载',
+        downloading: '正在下载游戏文件',
       } : {
         chunk: 'A game file failed to download',
-        driver: 'The graphics driver refused to start. Close other 3D tabs or reload.',
-        script: 'The game hit an error while starting. Reload to try again.',
-        slow: 'Loading is taking longer than expected on this connection. Keep waiting or reload.',
-        offline: 'Nothing has downloaded for a while, so check your connection and reload.',
-        stalled: 'Loading stalled. Nothing has arrived for a minute, so reload to try again.',
+        driver: 'The graphics driver refused to start. Closing other 3D tabs can help.',
+        script: 'The game hit an error while starting.',
+        slow: 'Loading is taking longer than expected on this connection.',
+        offline: 'Nothing has downloaded for a while, so check your connection.',
+        stalled: 'Loading stalled. Nothing has arrived for a minute.',
         offlineRetry: '. You appear to be offline. The game retries when the connection returns.',
-        reload: 'Reload',
+        reload: 'Retry loading',
+        downloading: 'Downloading game files',
       };
       function describe(reason) {
         const kind = classify(reason);
@@ -767,6 +791,8 @@
         const stage = document.getElementById('cot-boot-stage');
         let retry = document.getElementById('cot-boot-retry');
         if (stage) stage.textContent = verdict.text;
+        const boot = document.getElementById('cot-boot');
+        if (boot) boot.dataset.stop = verdict.kind;
         // bootScreen removes its DOM after entry. A post-boot network failure
         // still needs a visible recovery action if the one automatic reload
         // has already been spent.
@@ -887,7 +913,7 @@
       function paintDownloadProgress() {
         if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
         const stage = document.getElementById('cot-boot-stage');
-        if (stage) stage.textContent = `Downloading game files · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        if (stage) stage.textContent = `${MESSAGES.downloading} · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
       }
       function noteNetworkProgress(entries) {
         let bytes = 0;
@@ -1103,10 +1129,9 @@
     <div class="cot-credits-grid">
       <figure class="cot-credits-profile">
         <img class="cot-credits-portrait" src="/brand/kevin-liu.jpg" width="460" height="460" alt="Kevin B. Liu" data-i18n-alt="credits.portraitAlt" loading="lazy" decoding="async" />
-        <figcaption class="cot-credits-signature"><img src="/brand/mark.svg" alt="" width="36" height="36" /><div><strong>CLAUDE OF TANKS</strong><span data-i18n="credits.originalGame">An original browser game</span></div></figcaption>
+        <figcaption class="cot-credits-signature"><img src="/brand/mark.svg" alt="" width="36" height="36" /><div><strong>CLAUDE OF TANKS</strong></div></figcaption>
       </figure>
       <div class="cot-credits-copy">
-        <span class="cot-credits-kicker" data-i18n="credits.kicker">Creator / designer / director</span>
         <h2 id="cot-credits-title">Kevin B. Liu</h2>
         <p data-i18n="credits.body1">I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.</p>
         <p data-i18n="credits.body2">The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
@@ -1136,7 +1161,7 @@
           ? (chineseRoute ? 'LAN 对战' : 'LAN Battle')
           : (chineseRoute ? '私人对战' : 'Private Battle');
         const invitationTitle = hostName
-          ? (chineseRoute ? '加入 ' + hostName + ' 的 ' + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
+          ? (chineseRoute ? '加入 ' + hostName + ' 的' + (/^[A-Z]/.test(battleLabel) ? ' ' : '') + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
           : (chineseRoute ? '加入私人对战 ' + roomCode : 'Join Private Battle ' + roomCode);
         invite.textContent = invitationTitle;
         invite.classList.add('on');
