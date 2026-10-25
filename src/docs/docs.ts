@@ -1,5 +1,4 @@
 import { t } from '../ui/i18n.ts';
-import { noticeRegion, notify } from '../ui/components/notice.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
@@ -21,12 +20,17 @@ if (searchHost && searchInput) {
   if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
 }
 
-/** The archive failed to load: the kit's error notice inside the open dialog (the top layer hides a page toast), with a
- *  Retry that runs the same load again. */
+/** The archive failed to load: the kit's error notice, static in the dialog (the top layer hides a page toast), shows
+ *  with a Retry that runs the same load again. Its markup ships with the page, so the notice needs no chunk of its own
+ *  (a load that failed would likely fail that one too). */
 function loadFailed(retry: () => Promise<unknown>): void {
-  if (archiveDialog) noticeRegion('docs-archive', { host: archiveDialog, placement: 'bottom', limit: 1 });
-  notify({ id: 'docs-archive-load', region: archiveDialog?.open ? 'docs-archive' : 'menu', severity: 'error',
-    text: t('docs.archive.loadFailed'), retry });
+  const failed = archiveDialog?.querySelector<HTMLElement>('[data-archive-failed]');
+  if (!failed) return;
+  failed.hidden = false;
+  failed.querySelector('button')?.addEventListener('click', () => {
+    failed.hidden = true;
+    void retry().catch(() => loadFailed(retry));
+  }, { once: true });
 }
 
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');

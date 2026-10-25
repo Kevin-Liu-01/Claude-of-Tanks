@@ -58,6 +58,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 :root body .docs-archive-dialog>header{align-items:start;padding:18px}
 :root body .docs-motion-grid{grid-template-columns:1fr;padding:10px 10px 0}
 :root body .docs-archive-body{padding:10px}
+.docs-archive-failed{margin:var(--s3)}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition-duration:var(--dur-instant)!important}}
 
