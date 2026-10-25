@@ -451,7 +451,10 @@ const stage = document.querySelector<HTMLElement>('#viewport');
 if (stage) noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
 const actions = document.querySelector<HTMLElement>('.acts');
 if (actions) noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
+// a short window lets the actions scroll with the page, so its notices stand at the window's foot
+noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
+const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px)') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
  * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
@@ -470,7 +473,7 @@ function showToast(message: string, { visual = true, severity = 'info' as Notice
   }
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
-  return notify({ text: message, severity, region: stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+  return notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {

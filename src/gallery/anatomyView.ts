@@ -91,7 +91,9 @@ export interface AnatomyHost {
 const STYLE = `
 .subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
 .subs[hidden]{display:none}
-.subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate)}
+/* one toggle look: every chip carries its ring, a pressed one the accent ring */
+.subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate);box-shadow:var(--ring-2)}
+.subs .cot-c-chip[aria-pressed=true]{box-shadow:var(--ring-accent)}
 .subs .cot-c-seg{align-items:stretch;padding:2px;background:var(--hud-plate)}
 /* the segments fill their frame when a touch row stretches it to the chips' height */
 .subs .cot-c-seg__opt{height:auto;min-height:24px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-12))}
@@ -109,8 +111,8 @@ const STYLE = `
 /* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
 #viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
 #viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
-/* a short stage keeps the ramp alone (its key rows stood over the gun and the hull) */
-@media (height < 520px){#viewport .anatomy-legend .anatomy-key{display:none}}
+/* a short stage sets the legend's keys in a row beside the ramp, so the plate stays low and every key shows */
+@media (height < 520px){#viewport .legend.anatomy-legend{flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:var(--s3)}}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
