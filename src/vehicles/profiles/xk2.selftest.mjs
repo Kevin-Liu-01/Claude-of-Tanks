@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {getSpec} from '../specs.ts';
 import {XK2_FRAME as D} from './xk2Frame.ts';
 import {synchronizeSourceXCombatMetadata} from '../sourceXFleetSpecs.ts';
+import {combatAnatomyCalibration,registerCombatAnatomyCalibrations} from '../combatAnatomyCalibrationRegistry.ts';
 
 const options={proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
 const turretStock=tank=>neutralStock(tank.root.getObjectByName('rig_turret'));
@@ -25,12 +26,27 @@ function receivingClearance(tank,yaw){
     }
   } finally {hull.material.side=original[0];shell.material.side=original[1];}
 }
+// 252: each turret is seated over its own hull's deck (turretSeatRace.ts, from its ring receipt), so the two drawn
+// undersides differ by design; the donor turret is compared as authored, both built without their ring receipts.
+function authoredTurretStocks(quality){
+  const ids=['xk2_black_panther','k1a1'],committed=ids.map(id=>combatAnatomyCalibration(id));
+  registerCombatAnatomyCalibrations(Object.fromEntries(ids.map((id,i)=>{const {turretRing:_ring,...bare}=committed[i];return [id,bare];})));
+  const built=ids.map(id=>createTank(id,null,{...options,quality}));
+  try {
+    for(const tank of built)tank.root.updateMatrixWorld(true);
+    return built.map(turretStock);
+  } finally {
+    for(const tank of built)tank.dispose();
+    registerCombatAnatomyCalibrations(Object.fromEntries(ids.map((id,i)=>[id,committed[i]])));
+  }
+}
 for(const quality of ['high','low']){
+  const [authored,donorAuthored]=authoredTurretStocks(quality);
+  assert.deepEqual(authored,donorAuthored,`${quality}: complete donor turret, gun and fittings preserved`);
   const tank=createTank('xk2_black_panther',null,{...options,quality});
   const donor=createTank('k1a1',null,{...options,quality});
   try {
     tank.root.updateMatrixWorld(true);donor.root.updateMatrixWorld(true);
-    assert.deepEqual(turretStock(tank),turretStock(donor),`${quality}: complete donor turret, gun and fittings preserved`);
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     assert.deepEqual(turret.position.toArray(),D.turretPivot);
     assert.deepEqual(gun.position.toArray(),D.gunPivot);
