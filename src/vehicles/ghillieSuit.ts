@@ -5957,7 +5957,7 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
   }
   if (cfg.dropOverSpentEra && P.eraClusterAt && P.bindEraDrape) {
     yield;
-    drapeSuitOverSpentEra({eraClusterAt: P.eraClusterAt, bindEraDrape: P.bindEraDrape}, owners.filter(([o]) => o !== 'gun').map(([, parent, others]) => [parent, others] as const));
+    yield* drapeSuitOverSpentEra({eraClusterAt: P.eraClusterAt, bindEraDrape: P.bindEraDrape}, owners.filter(([o]) => o !== 'gun').map(([, parent, others]) => [parent, others] as const));
   }
   if (cfg.gunStopTrimM !== undefined && !clearance) {
     yield;

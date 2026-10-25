@@ -110,8 +110,9 @@ class OwnerStock {
   }
 }
 
-/** Bind every suit mesh of each owner to the clusters its cloth and garnish rest on. */
-export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (readonly [THREE.Object3D, readonly THREE.Object3D[]])[]): void {
+/** Bind every suit mesh of each owner to the clusters its cloth and garnish rest on, a mesh a slice (the suit's build
+ *  steps it; each mesh's welds, rests and moves are its own). */
+export function* drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (readonly [THREE.Object3D, readonly THREE.Object3D[]])[]): Generator<void, void, void> {
   for (const [parent, others] of owners) {
     parent.updateMatrixWorld(true);
     const suits = parent.children.filter((o): o is THREE.Mesh => (o as THREE.Mesh).isMesh && /_ghillie_/.test(o.name || ''));
@@ -203,6 +204,7 @@ export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (read
         }
         port.bindEraDrape(c, pos, idx, spent);
       }
+      yield;
     }
   }
 }
