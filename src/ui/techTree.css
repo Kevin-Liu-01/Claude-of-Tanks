@@ -10,7 +10,7 @@
   --tt-ui:1;
   /* vehicle names are Latin in every locale, so they keep the en floor (zh lifts --fs-floor-11 for its own script) */
   --tt-name-floor:calc(var(--battle-fs-13) * 11 / 13);
-  --tt-detail-art-w:clamp(240px,21vw,420px);
+  --tt-detail-art-w:clamp(240px,19vw,360px);
   position:fixed;inset:0;z-index:var(--z-modal);display:grid;grid-template-columns:minmax(0,1fr);
   grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface-page);color:var(--ink-1);
   font-family:var(--font-ui);font-weight:500;-webkit-font-smoothing:antialiased;
@@ -26,14 +26,17 @@
   white-space:nowrap}
 .cot-tt .tt-rail{display:flex;align-items:center;gap:var(--s1);min-width:0;overflow-x:auto;scrollbar-width:none;margin-right:auto}
 .cot-tt .tt-rail::-webkit-scrollbar{display:none}
-/* A rail wider than its space fades, over one flag's width, at the edges it scrolls toward. */
-.cot-tt .tt-rail.is-more-right{-webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 48px),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 48px),transparent)}
-.cot-tt .tt-rail.is-more-left{-webkit-mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - 48px),transparent);
-  mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - 48px),transparent)}
+/* A rail wider than its space fades at the edges it scrolls toward (over one flag's width; half that on phones). */
+.cot-tt .tt-rail{--tt-rail-fade:48px}
+.cot-tt .tt-rail.is-more-right{-webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent)}
+.cot-tt .tt-rail.is-more-left{-webkit-mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
+  mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent)}
 .cot-tt .tt-rail.is-more-left.is-more-right{
-  -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 48px),transparent),linear-gradient(270deg,var(--ink-1) calc(100% - 48px),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 48px),transparent),linear-gradient(270deg,var(--ink-1) calc(100% - 48px),transparent);
+  -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent),
+    linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent),
+    linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
   -webkit-mask-composite:source-in;mask-composite:intersect}
 /* the flags are as tall as the header's plates (a 36 px button on a 2 px pad) */
 .cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:calc(44px * var(--tt-ui));
@@ -76,14 +79,17 @@
 .cot-tt .tt-wires path.is-sel{stroke:var(--accent);stroke-width:2.5}
 .cot-tt .tt-wires marker.is-base path{fill:var(--ink-4)}
 .cot-tt .tt-wires marker.is-sel path{fill:var(--accent)}
-/* The special lane's rule spans the bands, edge to edge, and carries the lane's label at its start. */
-.cot-tt .tt-rule{position:absolute;left:var(--tt-pad);right:var(--tt-pad);height:1px;background:var(--line-2)}
-.cot-tt .tt-rule[hidden],.cot-tt .tt-rule-label[hidden]{display:none}
-.cot-tt .tt-rule-label{position:absolute;left:var(--tt-pad);transform:translateY(-50%);padding-right:var(--s2);background:var(--surface-page);
+/* The special lane's rule spans the bands, edge to edge: its label opens it, inset like a card's name, and the line
+   runs on from the label (nothing covers a band). */
+.cot-tt .tt-rule{position:absolute;left:var(--tt-pad);right:var(--tt-pad);display:flex;align-items:center;gap:var(--s2);
+  transform:translateY(-50%)}
+.cot-tt .tt-rule::after{content:'';flex:1;height:1px;background:var(--line-2)}
+.cot-tt .tt-rule[hidden]{display:none}
+.cot-tt .tt-rule-label{padding-left:calc(1px + var(--s2));
   font:600 max(var(--fs-floor-11),calc(var(--fs-11) * var(--tt-ui)))/1 var(--font-ui);letter-spacing:var(--track-label);
   text-transform:uppercase;color:var(--ink-3)}
 
-/* Nodes: the hero render on the nation's flag, the name under it on one or two lines. */
+/* Nodes: the hero render on the nation's flag, the name under it: one name and one size for the whole tree. */
 .cot-tt .tt-node{position:absolute;display:flex;flex-direction:column;width:var(--tt-col);height:var(--tt-row);padding:0;
   border-radius:var(--r2);cursor:pointer;overflow:hidden;background:var(--surface-raised);border:1px solid var(--line-2);
   text-align:left;color:inherit;font:inherit;transition:border-color var(--dur-fast),transform var(--dur-fast) var(--ease-enter)}
@@ -92,16 +98,17 @@
 .cot-tt .tt-art{position:relative;flex:1 1 0;min-height:0;overflow:hidden;
   background:radial-gradient(ellipse 72% 80% at 50% 72%,var(--fill-scale),transparent 100%),
     linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
-/* the art has no name band under it: the band is the room the near track and its shadow drop below the contact line */
-.cot-tt .tt-art .hc-host{--hc-band:max(8px,12cqh);--hc-share:.86;--hc-hshare:.9;--hc-cxr:.5}
+/* the art has no name band under it: the band is the room the near track and its shadow drop below the contact line;
+   the core takes .7 of the height so masts and roof weapons above it stay inside a wide card */
+.cot-tt .tt-art .hc-host{--hc-band:max(8px,12cqh);--hc-share:.86;--hc-hshare:.7;--hc-cxr:.5}
+/* a flag's darkest stripe (Germany's black) still reads against the card's dark plate */
+.cot-tt .tt-art .hc-flag{filter:contrast(.7) brightness(1.2)}
 .cot-tt .tt-portrait{position:absolute;inset:6% 6% 2%;width:88%;height:92%;object-fit:contain}
-.cot-tt .tt-name{flex:none;overflow:hidden;white-space:nowrap;padding:2px var(--s2) var(--s1);font-weight:600;font-size:max(var(--tt-name-floor),var(--tt-name-fs));
-  line-height:calc(max(var(--tt-name-floor),var(--tt-name-fs)) * 1.2);color:var(--ink-2)}
-.cot-tt .tt-name.is-tight{padding-inline:var(--s1);font-size:max(var(--tt-name-floor),var(--tt-name-tight))}
-/* techTree.ts nameColumn measures each name at the floor, unseen */
+.cot-tt .tt-name{flex:none;overflow:hidden;white-space:nowrap;padding:2px var(--s2) var(--s1);font-weight:600;
+  font-size:var(--tt-name-fs);line-height:1.2;color:var(--ink-2)}
+/* techTree.ts nameMetrics measures each name at the floor, unseen */
 .cot-tt .tt-grid .tt-name.is-probe{display:block;position:absolute;visibility:hidden;font-size:var(--tt-name-floor)}
-.cot-tt .tt-name.is-two-line{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;text-wrap:balance}
-/* A node too small for a name shows its render alone; the hover tip names it. */
+/* A board zoomed out past its names shows the renders alone; the hover tip names each. */
 .cot-tt .tt-grid.is-compact .tt-name{display:none}
 /* the selected edge grows outward, so the card's content (its name's room) keeps the size of every other card */
 .cot-tt .tt-node.is-sel{--tt-sel-grow:calc(var(--selected-edge) - 1px);border:var(--selected-edge) solid var(--accent);
@@ -111,28 +118,29 @@
 .cot-tt .tt-node.is-sel:focus-visible{box-shadow:none}
 .cot-tt .tt-node.is-sel .tt-name{color:var(--ink-1)}
 
-/* Detail: the selected vehicle, its tags and builds, its four numbers on the kit's scale, and Select at the end. The
-   name, the tags and the stats keep together; the spare width sits before Select. */
-.cot-tt .tt-detail{display:grid;grid-template-columns:auto calc(400px * var(--tt-ui)) minmax(0,1fr) auto;
-  align-items:center;gap:var(--s7);padding:var(--s3) 28px var(--s4);
+/* Detail: the selected vehicle's render; its name, tags and builds over its four numbers on the kit's scale (one
+   column, so the numbers start under the name for every vehicle); Select at the end. The band keeps the page's 28 px
+   gutter on every side. */
+.cot-tt .tt-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s7);padding:28px;
   background:linear-gradient(180deg,var(--row-plate),var(--surface-raised));border-top:1px solid var(--line-2)}
-.cot-tt .tt-detail-art{grid-column:1;position:relative;width:calc(var(--tt-detail-art-w) * var(--tt-ui));
+.cot-tt .tt-detail-info{display:flex;flex-direction:column;gap:var(--s4);min-width:0}
+.cot-tt .tt-detail-art{position:relative;width:calc(var(--tt-detail-art-w) * var(--tt-ui));
   height:calc(var(--tt-detail-art-w) * var(--tt-ui) * .56);border-radius:var(--r2);overflow:hidden;box-shadow:var(--ring-2);
   background:radial-gradient(ellipse 70% 70% at 50% 60%,var(--fill-scale),transparent 100%),
     linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
 .cot-tt .tt-detail-art .hc-host{--hc-band:10cqh;--hc-share:.84;--hc-hshare:.8;--hc-cxr:.5;--hc-flag-opacity:.8}
-.cot-tt .tt-detail-id{grid-column:2;display:grid;gap:var(--s3);min-width:0}
+.cot-tt .tt-detail-id{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s3) var(--s4);min-width:0}
 .cot-tt .tt-detail-name{margin:0;font:700 calc(var(--fs-36) * var(--tt-ui))/1.05 var(--font-display);letter-spacing:var(--track-display);
   overflow-wrap:anywhere}
 .cot-tt .tt-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
 .cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
   font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
 .cot-tt .tt-detail-special[hidden]{display:none}
-.cot-tt .tt-builds{flex-wrap:wrap;max-width:100%}
+.cot-tt .tt-builds{flex-wrap:wrap;flex-basis:100%;max-width:100%}
 .cot-tt .tt-builds[hidden]{display:none}
 .cot-tt .tt-builds .cot-c-seg__opt{height:calc(32px * var(--tt-ui));font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))}
 .cot-tt .tt-builds .cot-c-sil{width:40px;height:16px}
-.cot-tt .tt-stats{grid-column:3;display:grid;grid-template-columns:repeat(var(--tt-stat-cols,1),minmax(0,1fr));gap:var(--s3) var(--s6);
+.cot-tt .tt-stats{display:grid;grid-template-columns:repeat(var(--tt-stat-cols,1),minmax(0,1fr));gap:var(--s3) var(--s6);
   min-width:0}
 /* the kit's stat rows on the screen's scale: the label style for the labels, the floor for the units, and empty cells
    that read at 3:1 against the panel */
@@ -145,8 +153,8 @@
 .cot-tt .tt-stats .cot-c-stat svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
 .cot-tt .tt-stats .cot-c-scale i{background:var(--ink-4)}
 .cot-tt .tt-stats .cot-c-scale i.f{background:var(--ink-2)}
-.cot-tt .tt-act{grid-column:4}
-.cot-tt .tt-select{min-width:180px}
+/* Select grows with the screen like everything beside it */
+.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui));font-size:calc(var(--fs-16) * var(--tt-ui))}
 
 /* Tablets: the rail takes its own row; the detail folds the stats under the name. */
 @media (max-width:1100px){
@@ -154,7 +162,8 @@
   .cot-tt .tt-nation{margin-right:auto}
   .cot-tt .tt-rail{order:1;flex-basis:100%;margin-right:0}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'art id act' 'art stats stats';
-    gap:var(--s3) var(--s5);padding:var(--s3) var(--s5) var(--s4)}
+    gap:var(--s3) var(--s5);padding:var(--s5)}
+  .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{grid-area:art}
   .cot-tt .tt-detail-id{grid-area:id}
   .cot-tt .tt-stats{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5)}
@@ -170,7 +179,7 @@
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-24)}
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
-  .cot-tt .tt-rail{grid-area:rail}
+  .cot-tt .tt-rail{grid-area:rail;gap:var(--s2);--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
     padding:var(--s3) var(--s4) var(--s4)}
@@ -186,25 +195,40 @@
   .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;padding:var(--s2) var(--s4)}
   .cot-tt .tt-nation{margin-right:0}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
-  .cot-tt .tt-title{font-size:var(--fs-20)}
+  .cot-tt .tt-title{font-size:var(--fs-28)}
   .cot-tt .tt-rail{order:0;flex:1 1 0;margin-right:0}
   .cot-tt .tt-stage{grid-column:1;grid-row:2}
-  .cot-tt .tt-detail{grid-column:2;grid-row:2;grid-template-columns:minmax(0,1fr);grid-template-areas:'art' 'id' 'stats' 'act';
-    align-content:start;gap:var(--s3);overflow-y:auto;padding:var(--s3) var(--s4);border-top:0;border-left:1px solid var(--line-2)}
+  /* Select sits at the panel's foot: the spare height goes above it */
+  .cot-tt .tt-detail{grid-column:2;grid-row:2;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:'art' 'id' 'stats' 'act';gap:var(--s3);overflow-y:auto;padding:var(--s3) var(--s4);border-top:0;
+    border-left:1px solid var(--line-2)}
+  .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{grid-area:art;width:100%;height:calc(var(--tt-detail-art-w) * .52)}
   .cot-tt .tt-detail-id{grid-area:id}
   .cot-tt .tt-stats{grid-area:stats}
   .cot-tt .tt-act{grid-area:act}
   .cot-tt .tt-detail-name{font-size:var(--fs-20)}
   .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr)}
-  /* Select stays at the panel's foot while the panel scrolls */
-  .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);margin:0 calc(var(--s4) * -1);padding:var(--s2) var(--s4) var(--s3);
-    background:var(--surface-raised)}
+  /* Select stays at the panel's foot while the panel scrolls, and the stats it hides fade out over it */
+  .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);align-self:end;margin:0 calc(var(--s4) * -1);
+    padding:var(--s2) var(--s4) var(--s3);background:var(--surface-raised)}
+  .cot-tt .tt-detail.is-more-below .tt-act::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--s6);
+    pointer-events:none;background:linear-gradient(180deg,transparent,var(--surface-raised))}
   .cot-tt .tt-act .tt-select{width:100%}
 }
-/* The shortest of them (a phone on its side) keep a short render. */
+/* The shortest of them (a phone on its side): the render beside the name and tags, the builds under them across the
+   panel, so all four numbers fit over Select. */
 @media (max-height:420px) and (orientation:landscape){
-  .cot-tt .tt-detail-art{height:calc(var(--tt-detail-art-w) * .4)}
+  .cot-tt .tt-detail{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:'art name' 'art meta' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
+  .cot-tt .tt-detail.has-builds{grid-template-rows:auto auto auto auto 1fr;
+    grid-template-areas:'art name' 'art meta' 'builds builds' 'stats stats' 'act act'}
+  .cot-tt .tt-detail-id{display:contents}
+  .cot-tt .tt-detail-name{grid-area:name;align-self:end}
+  .cot-tt .tt-detail-meta{grid-area:meta;align-self:start}
+  .cot-tt .tt-builds{grid-area:builds}
+  .cot-tt .tt-detail-art{height:calc(var(--tt-detail-art-w) * .32)}
+  .cot-tt .tt-stats{row-gap:var(--s2)}
 }
 /* Touch: every control is at least 44 px. */
 @media (pointer:coarse){
