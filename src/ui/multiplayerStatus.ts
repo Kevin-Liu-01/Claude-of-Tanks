@@ -23,6 +23,10 @@ import { t } from './i18n.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
 const STYLE_ID = 'cot-mp-status-style';
+/** The body class a battle's strip holds while it is up: the one link readout (hud.ts drops its corner chip under it). */
+const MP_LINK_CLASS = 'cot-mp-link';
+/** The battle strips up now (the class leaves with the last of them). */
+let linkHolders = 0;
 export const MP_STATUS_PANEL_STORAGE_KEY = 'cot.mp.netpanel';
 export const LEAVE_CONFIRM_MS = 2500;
 
@@ -422,7 +426,12 @@ export function createMultiplayerStatusSurface({
     if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
     window.dispatchEvent(new CustomEvent('cot-hud-relayout'));
   };
-  if (host === 'battle') relayout();
+  // (the strip owns the battle's link readout while it is up: the HUD's corner drops its own, hud.ts body.cot-mp-link;
+  // owner 2026-10-25, "the ping or wifi is duplicated in the top right")
+  if (host === 'battle') {
+    if (linkHolders++ === 0) document.body?.classList?.add(MP_LINK_CLASS);
+    relayout();
+  }
 
   return {
     root,
@@ -435,7 +444,10 @@ export function createMultiplayerStatusSurface({
       disposed = true;
       banner.remove();
       root.remove();
-      if (host === 'battle') relayout();
+      if (host === 'battle') {
+        if (--linkHolders === 0) document.body?.classList?.remove(MP_LINK_CLASS);
+        relayout();
+      }
     },
   };
 }

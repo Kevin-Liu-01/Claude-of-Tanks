@@ -1579,6 +1579,12 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-hud-gear:hover{color:var(--ink-1);}
 .cot-hud-gear .cot-c-kbd{display:none;font-size:var(--battle-fs-11);}
 .cot-net:is(.metered,:has(.cot-net-link:not([hidden]))) .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
+/* One link readout (owner 2026-10-25: "the ping or wifi is duplicated in the top right"; Main's ruling): in a networked
+   battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-link while it is up: its health, seat and
+   roster, and its details panel), so the corner drops its link chip and the meter reads its fps alone. A body class, never
+   a body:has() (a whole-page restyle on every write). Solo battles keep the corner as it was. */
+body.cot-mp-link :is(.cot-net-link,.cot-net-unit.ping){display:none;}
+body.cot-mp-link .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
 /* touch: the readout keeps its own place (battleHudLayout.css), the gear is the toolbar's (touchControls.ts) */
 body.cot-touch-layout .cot-net:not(.metered){display:none;}
 body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
