@@ -4,7 +4,8 @@ import { FONT_STACK } from './fonts.ts';
 // hull points as a large readout over the 20-cell bar, the camera-up plan on its grid, the mounted equipment in hairline
 // cells, the fire as a danger chip. The plan itself (damagePanel.ts) is unchanged: every marker at its exact anchor.
 export const DAMAGE_PANEL_CSS = `
-.cot-dp{position:absolute;z-index:var(--hud-layer-controls);left:12px;bottom:12px;width:136px;pointer-events:none;
+/* (the lower corners share one 16 px floor: the panel and the dial stood 4 px below the tray and the map, gauntlet r2) */
+.cot-dp{position:absolute;z-index:var(--hud-layer-controls);left:12px;bottom:16px;width:136px;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);background:var(--hud-plate);border:0;border-radius:var(--r1);
   box-shadow:var(--battle-plate-shadow);padding:8px 9px 9px;-webkit-user-select:none;user-select:none;}
 .cot-dp *{box-sizing:border-box;margin:0;padding:0;}

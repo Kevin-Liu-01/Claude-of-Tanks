@@ -730,7 +730,7 @@ function setShotCardTrace(
   card.dataset.angle = String(Math.round(ev.impactAngleDeg || 0));
   card.dataset.zone = ev.zone || '';
   card.dataset.outcome = cls.id;
-  card.style.borderRightColor = cls.color;
+  // (the outcome's ink is its title's and glyph's: the card keeps its ring all round, no coloured edge, owner 2026-10-25)
 }
 
 function appendShotCardHeader(
@@ -1416,7 +1416,6 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.dataset.outcome = group.outcome?.id || 'mixed';
     toast.classList.toggle('deflected', !damaging);
     toast.classList.remove('out');
-    toast.style.borderLeftColor = color;
     toast.querySelector('.attacker')!.textContent = name;
     const value = toast.querySelector<HTMLElement>('.l1 b')!;
     value.style.color = color;

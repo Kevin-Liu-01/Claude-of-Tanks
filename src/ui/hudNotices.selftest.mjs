@@ -36,6 +36,10 @@ for (const file of SOURCES) {
   }
 }
 assert.ok(rules >= 60, `the scan reads the notices' rules (${rules})`);
+// ...and no script sets one edge's colour inline (the shot card's outcome ink rode its right edge that way, gauntlet r2)
+for (const file of SOURCES.filter((name) => name.endsWith('.ts'))) {
+  assert.doesNotMatch(read(file), /style\.border(Left|Right|Top|Bottom)(Color)?\s*=/, `${file}: no inline one-edge border`);
+}
 // (the scan itself catches both forms)
 assert.match('border-left:3px solid var(--tone)', ONE_EDGE); assert.match('box-shadow:inset 3px 0 0 var(--accent)', STRIPE);
 assert.match('box-shadow:inset 0 -2px 0 var(--danger)', STRIPE); assert.doesNotMatch('box-shadow:inset 0 1px oklch(from var(--ink-1) l c h / .05)', STRIPE);

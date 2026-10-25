@@ -43,7 +43,8 @@ type AerialGround=()=>{getHeightAt(x:number,z:number):number}|null;
 /** Height above the ground a pilot reads: whole metres, one decimal below 10 m (the low-flight band where a metre
  * matters), never negative (the sim keeps the airframe above the ground; a probe a few centimetres off reads 0). */
 export function formatDroneAltitude(heightM:number):string{
-  const h=Math.max(0,heightM);return h<9.95?`${h.toFixed(1)}m`:`${Math.round(h)}m`;
+  // (its unit after a narrow space, as the HUD's "200 m" and "3.2 s" read: gauntlet r2)
+  const h=Math.max(0,heightM);return h<9.95?`${h.toFixed(1)}\u202fm`:`${Math.round(h)}\u202fm`;
 }
 /** How long the scope's vision plate shows its name after the sight opens or the view changes, before folding. */
 const SCOPE_PLATE_UNFOLD_MS=2200;
@@ -228,8 +229,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       const field=drone?ground():null;
       setText(altimeter.value,field?formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)):'—');
       setHidden(zoom.host,drone);setHidden(distance.host,drone);
-      setText(timer.value,`${Math.ceil(view.batteryS)}s`);setText(link.value,`${Math.round(range)}m`);setText(speedometer.value,`${Math.round(speed*3.6)}km/h`);
-      setText(zoom.value,`×${(55/fov).toFixed(1)}`);setText(distance.value,`${Math.round(dist)}m`);
+      setText(timer.value,`${Math.ceil(view.batteryS)}\u202fs`);setText(link.value,`${Math.round(range)}\u202fm`);setText(speedometer.value,`${Math.round(speed*3.6)}\u202fkm/h`);
+      setText(zoom.value,`×${(55/fov).toFixed(1)}`);setText(distance.value,`${Math.round(dist)}\u202fm`);
       setHidden(battery,!drone);const charge=Math.round(view.batteryS*4)/4;if(charge!==batteryCharge){battery.value=charge;batteryCharge=charge;} // (in quarter seconds, against the last value written: a meter reads back clamped to its max)
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
       setHidden(weapons,drone);setHidden(back,!drone);

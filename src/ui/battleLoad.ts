@@ -168,15 +168,20 @@ const CSS = `
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
-.cot-bl .team.ally .thead{color:var(--text-own);border-bottom:1px solid var(--team-own);}
-.cot-bl .team.foe .thead{color:var(--text-enemy);border-bottom:1px solid var(--team-enemy);flex-direction:row-reverse;}
+.cot-bl .team.ally .thead{color:var(--text-own);}
+.cot-bl .team.foe .thead{color:var(--text-enemy);flex-direction:row-reverse;}
+/* (each side's name on a plate of its own, in its team's ink: red on the pale sky read 1.2:1 with a halo alone, and a
+   team-coloured underline was a one-edge stripe, gauntlet r2) */
+.cot-bl .team:not(.cards) .thead{align-self:flex-start;width:max-content;height:auto;min-height:24px;padding:var(--s1) var(--s3);
+  margin-bottom:var(--s1);background:var(--hud-plate);border-radius:var(--r1);text-shadow:none;}
+.cot-bl .team.foe:not(.cards) .thead{margin-left:auto;}
 /* the rules row says the sides ("7 v 7"): each heading's count stays for assistive technology alone */
 .cot-bl .thead .n{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
-/* (a long side's rows give up height, to 20 px, before any row leaves the panel: 14 a side sliced its 12th row at
-   1024x600, gauntlet r1) */
-.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(20px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
+/* (a long side's rows give up height, to 16 px, before any row leaves the panel: 14 a side sliced its 12th row at
+   1024x600 and its 13th at 844x390, gauntlet r1 and r2) */
+.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(16px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
 .cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
@@ -272,6 +277,9 @@ ${PORTRAIT} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT} .cot-bl .team.
 ${PORTRAIT} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
 ${PORTRAIT} .cot-bl .row .nm{grid-row:1;}${PORTRAIT} .cot-bl .row .cs{grid-row:2;margin:0;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
+/* (a long side's sheets keep a reading width, centred on the VS: at 1920 and up a row ran 840-1160 px with the name and
+   the driver 650-1000 px apart, gauntlet r2) */
+${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,560px) 54px minmax(0,560px);justify-content:center;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}
@@ -295,14 +303,15 @@ ${WIDE} .cot-bl .team.cards .row.card .fl{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card.cot-hc .sil{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-index:var(--battle-z-card-fade);left:0;right:0;bottom:0;height:calc(var(--hc-band) + 8px);
   background:var(--media-fade);pointer-events:none;}
-${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.1 var(--font-ui);
+${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:6px;right:6px;bottom:8px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.1 var(--font-ui);
   text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:left;}
 ${WIDE} .cot-bl .team.foe.cards .row.card .nm{text-align:left;}
 /* the driver under the vehicle's name: the band holds a two-line name and the driver, so the tank keeps clear of all
    three (gauntlet r1: "LEOPARD / 2A5" ran its first line over the tank) */
 ${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:54px;}
-${WIDE} .cot-bl .team.cards .row.card.has-cs .nm{bottom:24px;}
-${WIDE} .cot-bl .team.cards .row.card .cs{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:7px;margin:0;
+/* (a name hangs from the band's top, so a one-line and a two-line name start on one line, gauntlet r2) */
+${WIDE} .cot-bl .team.cards .row.card.has-cs .nm{bottom:auto;top:calc(100% - var(--hc-band) + 4px);}
+${WIDE} .cot-bl .team.cards .row.card .cs{position:absolute;z-index:var(--battle-z-card-text);left:6px;right:6px;bottom:7px;margin:0;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 ${WIDE} .cot-bl .team.cards .row.card.me .cs{color:var(--accent-hi);}
 ${WIDE} .cot-bl .team.cards .row.card .tier{position:absolute;z-index:var(--battle-z-card-text);top:6px;left:6px;flex:none;padding:2px 4px;border-radius:var(--r1);
@@ -636,8 +645,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     if (!rows.length && reserved && host.dataset.pendingSlots === String(reserved) && host.childElementCount === reserved) return;
     if (reserved) host.dataset.pendingSlots = String(reserved); else delete host.dataset.pendingSlots;
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
-    // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise
-    const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX;
+    // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise; a laptop-width
+    // window (under 1440 px) sets the wide composition's sheets as a long side does, where a card left a driver about 7
+    // characters (gauntlet r2 at 1280x720)
+    const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX && document.body?.dataset?.cotWidth !== 'laptop';
     if (cards) team.classList.add('cards'); else team.classList.remove('cards');
     const decorated: [HTMLElement, string][] = [];
     host.textContent = '';

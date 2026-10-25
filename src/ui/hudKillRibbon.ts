@@ -137,6 +137,9 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   function paintStream(): void {
     const now = performance.now();
     killsText.textContent = t('hud.ribbon.kills', { count: streak });
+    // (a streak's count is its multiplier's: the stream says it only for a single kill, gauntlet r2 read "×3 TRIPLE" and
+    // "+3 kills" together)
+    killsItem.hidden = streak >= 2;
     damageItem.hidden = streakDamage <= 0;
     damageText.textContent = t('hud.ribbon.damage', { amount: formatNumber(Math.round(streakDamage)) });
     const zones = inWindow(zoneTimes, now), spots = inWindow(spotTimes, now);

@@ -197,6 +197,9 @@ body.cot-touch-layout .cot-drive{display:block!important;left:calc(max(14px,env(
   bottom:max(16px,env(safe-area-inset-bottom));transform:scale(.82);transform-origin:left bottom;z-index:24;}
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-drive{
   left:max(14px,env(safe-area-inset-left));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 150px);transform:scale(.78);}
+/* (a touch dial, at .68-.82, sets its 11 px unit and end marks at 7.5-9 px: it keeps the needle and the figure, the
+   11 px floor; gauntlet r2) */
+body.cot-touch-layout .cot-drive :is(.unit,.zero,.limit){display:none;}
 body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
   bottom:max(8px,env(safe-area-inset-bottom));
   transform:scale(.58);transform-origin:left bottom;}

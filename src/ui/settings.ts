@@ -410,6 +410,11 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 .cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
   text-transform:uppercase;}
 .cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
+/* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
+   the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
+.cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);border:1px solid oklch(from var(--ink-3) .61 c h);
+  border-radius:3px;background:var(--battle-veil);box-shadow:none;color:var(--ink-1);font:700 var(--battle-fs-fig-11)/1 var(--hud-font);letter-spacing:0;}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */

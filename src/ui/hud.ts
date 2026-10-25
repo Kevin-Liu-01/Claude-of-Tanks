@@ -1568,7 +1568,7 @@ body.cot-touch-layout .cot-net:not(.metered){display:none;}
 body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
-.cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:12px;
+.cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:16px;
   width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
   contain:layout paint style;
   font-family:${FONT_COND};color:var(--ink-1);
@@ -1940,11 +1940,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 @keyframes cotAmmoDeny{0%,100%{border-color:var(--line-control);box-shadow:none}
   45%{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),var(--hud-plate-strong));
     color:var(--danger);box-shadow:0 0 18px oklch(from var(--danger) l c h / .58)}}
-/* r6-2: thin SHELL-CLASS color underline inside each ammo slot (silver
-   kinetic / orange HEAT / olive HE) — class reads without the text label */
-.cot-shell .clr{position:absolute;left:0;right:0;bottom:0;height:2px;z-index:2;
-  background:var(--line-3);}
-.cot-shell.sel .clr{bottom:0;}
+/* (the slot's type reads in its label's ink: the r6-2 class underline under it, silver or olive under an amber HE, said the
+   same in a second colour and was a coloured edge, gauntlet r2) */
+.cot-shell .clr{display:none;}
 /* the shell sits 3 px high so its tail keeps clear of the type label (critic r4b: the fins came within 2 px of APFSDS) */
 /* At the 11 px type floor one row cannot hold a type label and its count (APFSDS alone is 41 px of the 62 px slot), so
    every tray sets them as the stacked and touch trays already did: the key top-left, the count top-right, the type label
@@ -1966,8 +1964,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
+/* (the type code is Latin in every locale, so it is set in the display face whose Latin it is: a zh document's UI stack
+   drew it a fallback face wider, past its tile, gauntlet r2) */
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-fig-11);font-weight:700;
-  font-family:${FONT_COND};
+  font-family:var(--font-display);
   letter-spacing:-.02em;white-space:nowrap;z-index:4;}
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
 .cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;}
@@ -2138,8 +2138,9 @@ const TAP_SLOP_PX = 10;
 const SCORE_BAR_STUB = 0.05;
 
 /** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
- *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). A wrapped line starts with its part's
- *  dot, never ends on one (gauntlet r1: "0 ALIVE ·" over "0/1 SAFE"). */
+ *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). A tab too narrow for the parts on one line
+ *  stacks them too, one a line without their dots (gauntlet r2: a wrap left "0 ALIVE" over "· 0/1 SAFE"); its width is
+ *  the planner's (--hud-objective-width), its copy estimated at the 11 px caps' advance, so nothing is measured. */
 function setObjectiveValue(target: HTMLElement, copy: string): void {
   target.replaceChildren();
   copy.split(' · ').forEach((part, index) => {
@@ -2151,6 +2152,18 @@ function setObjectiveValue(target: HTMLElement, copy: string): void {
     seg.append(part.replace(/ \/ /g, ' / '));
     target.append(seg);
   });
+  const width = parseFloat(document.body?.style?.getPropertyValue?.('--hud-objective-width') || '') || OBJECTIVE_DEFAULT_W;
+  // (a class, which the planner observes, so its re-seat follows the taller tab; toggle with its force writes nothing when
+  // unchanged)
+  target.closest?.('.cot-mode-status')?.classList.toggle('stacked', copy.includes(' · ') && objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W);
+}
+/** The objective panel's default width and its padding and glyph's share of it (battleHudLayout.css). */
+const OBJECTIVE_DEFAULT_W = 278, OBJECTIVE_CHROME_W = 70;
+/** A copy's width at the objective's 11 px caps: about 7.5 px a Latin letter or figure, 13 a Chinese character. */
+function objectiveCopyWidth(copy: string): number {
+  let width = 0;
+  for (const char of copy) width += /[\u3000-\u9fff\uff00-\uffef]/.test(char) ? 13 : char === ' ' ? 3.5 : 7.5;
+  return width;
 }
 
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
@@ -2810,9 +2823,10 @@ export function initHud(bus: EventBus): HudRuntime {
       if(action!=='smoke')setAttr(button,'aria-pressed',String(active));
       setDisabled(button,!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0)));
       const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
-      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0/3'
+      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0\u202f/\u202f3'
         : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);
-      setText(status,action==='smoke'?`${state?.smokeCharges??3}/3`:'');
+      // (a fraction reads as the HUD's others do, "7 / 7", in narrow spaces: gauntlet r2)
+      setText(status,action==='smoke'?`${state?.smokeCharges??3}\u202f/\u202f3`:'');
       if(action==='smoke')setAttr(button,'aria-label',`${help} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
     const descriptor = readSpecialAction(player?.spec);

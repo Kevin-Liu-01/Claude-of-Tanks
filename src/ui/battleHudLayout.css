@@ -25,6 +25,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:var(--s2);flex-wrap:wrap}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow :is(.d,.z){white-space:nowrap}
+/* (the damage sits on the row's right edge with the zone and range under it, gauntlet r2) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .d{justify-self:end}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{width:auto;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{max-width:100%;overflow:hidden}
@@ -151,7 +153,9 @@ body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibil
 .cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
-.cot-vehicle-controls>button.active{--hud-tile-on-edge:var(--accent);--hud-tile-on-mark:var(--battle-control-on);color:var(--accent-hi);border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
+/* an engaged system reads as a selected ammo slot does: the accent's ring all round on its wash (gauntlet r2: an underline
+   alone beside the slot's full frame, one coloured edge) */
+.cot-vehicle-controls>button.active{--hud-tile-on-edge:var(--accent);--hud-tile-on-mark:var(--ring-accent);color:var(--accent-hi);border-color:var(--hud-tile-on-edge);background:var(--accent-wash);box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
@@ -229,6 +233,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-sea
   min-height:0;clip-path:none;padding:var(--s1) 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:var(--battle-plate-shadow)}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block;white-space:normal}
+/* a tab too narrow for its parts on one line stacks them, one a line without their dots (hud.ts setObjectiveValue) */
+body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .sep{display:none}
+body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .seg{display:block}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
@@ -237,7 +244,8 @@ body[data-cot-battle-layout] .cot-kill-lane{
 }
 body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:0;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
 body[data-cot-battle-layout] .cot-kill-lane:empty{display:none}
-body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:var(--s1) 6px;font-size:var(--battle-fs-11);gap:var(--s1)}
+/* (a row's words start on the rosters' 10 px line, gauntlet r2: the feed began at 6 px under the rosters' 10) */
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:var(--s1) 10px;font-size:var(--battle-fs-11);gap:var(--s1)}
 
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .si{width:22px}
 /* a phone's lanes (two side by side under 200 px each): the callsigns keep the room, the silhouettes and the crew mark
@@ -290,7 +298,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.icon-grid
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l{--roster-height:var(--hud-roster-left-height,28vh)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r{--roster-height:var(--hud-roster-right-height,28vh)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-ear-rows{
-  display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(0,var(--roster-row-height,24px)));align-content:start;
+  /* (a row keeps 16 px: under a Watch bar at 900x700 they fell to 7 px and printed over each other, gauntlet r2) */
+  display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(16px,var(--roster-row-height,24px)));align-content:start;
   height:calc(var(--roster-height) - 22px);overflow:hidden;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
@@ -332,8 +341,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 }
 
 /* The feed borders touch the screen; text stays clear of phone display cutouts. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-si-toast,.cot-kill-lane.l .cot-kf){padding-left:max(6px,env(safe-area-inset-left))}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .cot-kf{padding-right:max(6px,env(safe-area-inset-right))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-si-toast,.cot-kill-lane.l .cot-kf){padding-left:max(10px,env(safe-area-inset-left))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .cot-kf{padding-right:max(10px,env(safe-area-inset-right))}
 
 /* A browser toolbar can leave less than 300 CSS pixels of landscape height.
    Keep one fire button, and give ammo and consumables separate 44px rows. FIRE stands as low as its label, 15 px under

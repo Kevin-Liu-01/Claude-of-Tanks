@@ -639,6 +639,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       for (const entry of entries) {
         const panel = (entry.target as HTMLElement).closest<HTMLElement>('.es-debrief');
         if (panel) markMore(panel);
+        // (the narrower windows scroll the report itself: its foot fades as the columns' do, gauntlet r2)
+        const report = (entry.target as HTMLElement).closest<HTMLElement>('.es-report');
+        if (report) markMore(report);
       }
     })
     : null;
@@ -1033,7 +1036,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const score = el('div', 'es-score', headline);
     score.setAttribute('role', 'img');
     score.setAttribute('aria-label', t('endScreen.watch.scoreAria', { alpha: fmtN(alpha), bravo: fmtN(bravo) }));
-    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="e">${fmtN(bravo)}</span>`;
+    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="sep" aria-hidden="true">–</span><span class="e">${fmtN(bravo)}</span>`;
     host.dataset.score = `${Math.round(alpha)}:${Math.round(bravo)}`;
     el('div', 'es-rule', hero);
     if (sum.finalBlow) {
@@ -1508,6 +1511,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         for (const section of panel.children) moreObserver?.observe(section);
         markMore(panel); // at once too: the observer's first word waits on a rendering step
       }
+      report.addEventListener('scroll', () => markMore(report), { passive: true });
+      moreObserver?.observe(report);
+      markMore(report);
       renderEndActions(sum);
       fillFlags();
 

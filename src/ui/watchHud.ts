@@ -66,7 +66,7 @@ const STYLE = `
 .cot-watch{position:absolute;left:50%;bottom:max(var(--inset-bottom),var(--hud-watch-lift,0px));transform:translateX(-50%);z-index:var(--z-hud-controls);
  display:flex;align-items:stretch;gap:var(--s1);pointer-events:none;font-family:var(--font-ui);color:var(--ink-1)}
 .cot-watch[hidden]{display:none}
-html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
+html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch,html[data-watch=drone] body[data-watch-top] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
 .cot-watch .who{--tone:var(--accent);display:grid;grid-template-columns:auto 56px minmax(0,1fr);align-items:center;gap:var(--s2);
  width:300px;height:48px;padding:0 var(--s3);background:var(--hud-plate);border-radius:var(--r1);
  box-shadow:var(--ring-1);pointer-events:auto}

@@ -72,6 +72,8 @@ const NETWORK_CORNER_RIGHT = 10;
 const REPORT_DOCK_MIN = 140;
 /** A roster row's least height (its line and its gap: 12 px rows touched one another). */
 const ROSTER_ROW_MIN = 16;
+/** The lowest share of the window a flying Watch bar may rise to on the floor before it takes the top seat. */
+const WATCH_FLOOR_SHARE = 0.22;
 
 export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
   const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
@@ -691,9 +693,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const toolbar = touch && !toolbarFollows ? read('.cot-touch.on .mobile-chrome') : null;
       const fixedMap = mapFollows ? null : map;
       // (a short touch landscape tucks the flying bar under the score as riding does: hud.ts)
-      const floorBar = watchView === 'drone' && !(touch && document.body.dataset.cotHeight === 'short');
+      // A flying bar rests on the floor, lifted over a map that would meet it, while that keeps it in the lower fifth;
+      // higher it would float mid-screen (gauntlet r2: 1024x600 hung it at 336 px), so it takes the riding bar's seat.
+      const lift = crosses(fixedMap) && fixedMap.top > height / 2 ? Math.ceil(height - fixedMap.top + 8) : 0;
+      const floorBar = watchView === 'drone' && !(touch && document.body.dataset.cotHeight === 'short')
+        && lift + watchBar.height <= height * WATCH_FLOOR_SHARE;
+      const seatTop = !floorBar && watchView === 'drone';
+      if (document.body.hasAttribute('data-watch-top') !== seatTop) document.body.toggleAttribute('data-watch-top', seatTop);
       if (floorBar) {
-        const lift = crosses(fixedMap) && fixedMap.top > height / 2 ? Math.ceil(height - fixedMap.top + 8) : 0;
         setBodyVar('--hud-watch-lift', `${lift}px`);
         watchFloorTop = lift > 0 ? height - lift - watchBar.height : watchBar.top;
       } else {
@@ -1136,6 +1143,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       chipTop = side.top;
       if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
     }
+    const rosterLeftHeight = battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded'));
+    const rosterRightHeight = Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity);
+    const rosterHeights = read('.cot-ear.l') && read('.cot-ear.r') && !root.querySelector('.cot-ear.icon-grid')
+      ? [Math.min(rosterLeftHeight, rosterRightHeight), Math.min(rosterLeftHeight, rosterRightHeight)] : [rosterLeftHeight, rosterRightHeight];
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
@@ -1145,8 +1156,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'network-corner-right': networkRight,
-      'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
-      'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
+      // the two rosters keep one height while both show, so their rows share one pitch (gauntlet r2: 22 px allies beside
+      // 18 px enemies at 1280x720)
+      'roster-left-height': rosterHeights[0],
+      'roster-right-height': rosterHeights[1],
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
