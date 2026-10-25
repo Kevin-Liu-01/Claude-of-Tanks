@@ -5,7 +5,11 @@
    menu sheet, the footer and the shared button, mark, wordmark, flag and symbol components. Tokens only
    (src/ui/tokens/tokens.css, imported above, so every page that links this sheet has them). */
 @layer components{
-:root{--shell-gutter:clamp(16px,3.4vw,44px);--shell-max:1600px;--shell-nav-h:64px}
+/* the gutter steps at the layout's band edges (16 / 24 / 32 / 44 px), on the spacing grid at every width */
+:root{--shell-gutter:16px;--shell-max:1600px;--shell-nav-h:64px}
+@media (width >= 520px){:root{--shell-gutter:24px}}
+@media (width >= 768px){:root{--shell-gutter:32px}}
+@media (width >= 1100px){:root{--shell-gutter:44px}}
 html,body{min-height:var(--cot-viewport-height,100dvh)}
 .cot-symbols{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 .cot-i{flex:none}

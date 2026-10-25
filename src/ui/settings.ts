@@ -532,7 +532,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
     `</div>` +
     // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
-    `<div class="cot-set-conflict cot-c-notice" data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('lampWarn', 20)}</span>` +
+    `<div class="cot-set-conflict cot-c-notice" data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
     `<span class="cot-c-notice__body"><span class="cot-c-notice__text msg"></span></span><span class="cot-c-notice__acts">` +
     `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
