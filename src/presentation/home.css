@@ -68,7 +68,7 @@ img{display:block;max-width:100%}
 .hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
-.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);box-shadow:var(--btn-secondary-ring);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -89,7 +89,7 @@ img{display:block;max-width:100%}
 .hero__film:fullscreen video{flex:1;min-height:0;aspect-ratio:auto}
 
 /* ---- the features: one large picture or loop each, its name the way in (a row of one runs the page's width) ---- */
-.features{padding:var(--s7) 0 var(--s8)}
+.features{padding:var(--s7) 0}
 .features-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
 .feat,.play-tile{box-shadow:var(--ring-1)}
 .feat{margin:0;aspect-ratio:16/9}
@@ -253,13 +253,12 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__link .cot-i{width:20px;height:20px}
   :root{--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
-  /* one whole card per view, the arrows beside the switch; the switch takes two rows at the 44 px target */
+  /* one whole card per view; the switch keeps its arrows beside it while the column holds all four tabs (the play-acts
+     query below sets them two by two when it does not), at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
-  .play-acts{display:grid;grid-template-columns:1fr auto auto;width:100%;container:play-acts / inline-size}
-  .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;grid-column:1 / -1;overflow:visible}
+  .play-acts{flex-wrap:wrap;width:100%;container:play-acts / inline-size}
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px;white-space:normal}
-  .play-acts .cot-c-btn--icon{--h:44px}
-  .play-acts>.cot-c-btn--icon:first-of-type{grid-column:2}
+  .play-acts .cot-c-btn--icon{--h:50px}
   .play-tile__nm{left:var(--s4);right:var(--s4);bottom:var(--s3)}
   .play-tile__nm b{font-size:var(--fs-20)}
   .play-tile__nm .cot-i{width:20px;height:20px}
@@ -283,8 +282,11 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .film-scrub{height:44px}
   .film-time{display:none}
 }
-/* a phone column wide enough for the four tabs keeps them on one row */
-@container play-acts (width >= 560px){.play-acts>.cot-c-seg{display:flex}}
+/* a phone column too narrow for the four tabs: two by two, the arrows on the row under them */
+@container play-acts (width < 560px){
+  .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 100%;overflow:visible}
+  .play-acts>.cot-c-btn--icon:first-of-type{margin-left:auto}
+}
 @media (height < 520px) and (width >= 768px){
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
@@ -292,7 +294,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 /* blockers 3, 4: touch screens (and a short landscape one, which is a phone) get the 44 px targets */
 @media (pointer:coarse),(height < 520px){
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px}
-  .play-acts .cot-c-btn--icon{--h:44px}
+  .play-acts .cot-c-btn--icon{--h:50px}
   .press__src{height:44px}
   .film-btn,.hero__film-close{--h:44px}
   .film-scrub{height:44px}
