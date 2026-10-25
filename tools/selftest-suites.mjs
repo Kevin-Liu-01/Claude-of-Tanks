@@ -751,6 +751,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
+    'tools/hot-path-alloc.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
@@ -1279,6 +1280,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',
+    'src/engine/coverageMipQuantile.selftest.mjs',
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
@@ -1314,6 +1316,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',

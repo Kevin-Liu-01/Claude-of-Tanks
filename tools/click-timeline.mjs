@@ -89,6 +89,12 @@ const PROBE = `(() => {
     new PerformanceObserver((list) => { for (const e of list.getEntries()) rec.longtasks.push({ start: e.startTime, duration: e.duration }); })
       .observe({ type: 'longtask', buffered: true });
   } catch (_) {}
+  // every rendered frame longer than 33 ms (two refreshes at 60 Hz), from the animation callbacks' own clock
+  rec.frames = [];
+  let lastFrame = 0;
+  const frameTick = (t) => { if (lastFrame && t - lastFrame > 33) rec.frames.push({ start: lastFrame, duration: t - lastFrame });
+    lastFrame = t; requestAnimationFrame(frameTick); };
+  requestAnimationFrame(frameTick);
 })();`;
 
 const GARAGE = `window.__GAME_READY === true && __click.shown('.cot-garage') && !document.querySelector('.cot-garage.awaiting-boot')
@@ -148,7 +154,26 @@ async function settle(page, quietMs = 600, maxMs = 6000) {
 }
 
 /** One measured press: INP, processing, input delay, the overlapping LoAF scripts, long tasks, time to shown / done. */
-async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null }) {
+async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null,
+  idleMs = 0 }) {
+  // --census: the JS Self-Profiler samples the whole window (press to settled) so each long task names its code
+  // (the page must be served with Document-Policy: js-profiling: vercel-static-preview --document-policy=js-profiling)
+  const census = flag('census');
+  const consoleFrom = page.__consoleLog?.length ?? 0;
+  // --alloc (with --census): the sampling heap profiler over the same window, the objects minor and major GCs already
+  // collected included, so short-lived garbage is counted
+  const heap = census && flag('alloc') ? await page.createCDPSession().catch(() => null) : null;
+  if (heap) {
+    await heap.send('HeapProfiler.enable').catch(() => {});
+    await heap.send('HeapProfiler.startSampling', { samplingInterval: 8192,
+      includeObjectsCollectedByMinorGC: true, includeObjectsCollectedByMajorGC: true }).catch(() => {});
+  }
+  if (census) {
+    await page.evaluate(() => {
+      try { window.__cotProfiler = new Profiler({ sampleInterval: 10, maxBufferSize: 30000 }); window.__cotProfilerError = null; }
+      catch (error) { window.__cotProfiler = null; window.__cotProfilerError = String(error).slice(0, 160); }
+    }).catch(() => {});
+  }
   // --cpu-profile=<dir>: a sampled V8 profile of the press and its next two frames, for attributing inside one handler
   // (it stalled on the game page's first press in click-perf-248; --layout-trace names the forced layouts instead)
   const profiler = cpuProfile ? await page.createCDPSession() : null;
@@ -159,7 +184,8 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   }
   const t0 = await page.evaluate(() => { window.__click.layoutReads.length = 0; window.__click.layoutArmed = true; return performance.now(); });
   let error = null;
-  if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
+  if (idleMs) await sleep(idleMs);
+  else if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
   else await press(page, selector, touch).catch((cause) => { error = firstLine(cause); });
   // the press's task and its next two frames: what the layout tracer (when on) attributes
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
@@ -184,6 +210,8 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       .catch((cause) => { error = `not done: ${firstLine(cause)}`; });
   }
   await settle(page, quietMs);
+  const censusData = census ? await censusWindow(page, t0, consoleFrom) : null;
+  if (heap && censusData) censusData.alloc = await allocationWindow(heap, censusData.windowMs);
   const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
     const events = rec.events.filter((e) => e.start >= from - 5 && inputs.includes(e.name));
@@ -217,7 +245,92 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   visualLoads: Array.isArray(window.__VISUAL_LOAD_TIMINGS) ? JSON.parse(JSON.stringify(window.__VISUAL_LOAD_TIMINGS.slice(-40))) : null };
   }, t0, INPUT_EVENTS, done && doneAt != null ? doneAt : null);
   return { error, layoutReads, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
-    doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
+    doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data, ...(censusData ? { census: censusData } : {}) };
+}
+
+/** The sampling heap profile of a census window: bytes allocated, per second, and the sites that allocated most. */
+async function allocationWindow(heap, windowMs) {
+  const result = await heap.send('HeapProfiler.stopSampling').catch(() => null);
+  await heap.detach().catch(() => {});
+  if (!result?.profile) return null;
+  const sites = new Map();
+  let total = 0;
+  const walk = (node, appFrame) => {
+    const frame = node.callFrame;
+    const own = /\/assets\//.test(frame.url) ? frame : appFrame;
+    if (node.selfSize) {
+      total += node.selfSize;
+      const site = own ?? frame;
+      const key = `${site.url}|${site.lineNumber}|${site.columnNumber}|${site.functionName}`;
+      sites.set(key, (sites.get(key) || 0) + node.selfSize);
+    }
+    for (const child of node.children || []) walk(child, own);
+  };
+  walk(result.profile.head, null);
+  return { bytes: total, perSecond: windowMs > 0 ? Math.round(total * 1000 / windowMs) : null,
+    sites: [...sites].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([key, bytes]) => {
+      const [url, line, column, name] = key.split('|');
+      // the heap profiler's positions are zero-based: one-based line and column, as the self-profiler's
+      return { url, line: Number(line) + 1, column: Number(column) + 1, name, bytes };
+    }) };
+}
+
+/**
+ * A census window (press to settled): every frame over 33 ms, every long task over 50 ms with the code its profiler
+ * samples name (the leaf-most frames from the page's own scripts, the most sampled first), and the console's errors and
+ * warnings.
+ */
+async function censusWindow(page, t0, consoleFrom) {
+  const window_ = await page.evaluate(async (from) => {
+    const rec = window.__click, end = performance.now();
+    const profiler = window.__cotProfiler;
+    window.__cotProfiler = null;
+    const trace = profiler ? await profiler.stop().catch(() => null) : null;
+    const frames = rec.frames.filter((f) => f.start + f.duration >= from && f.start <= end);
+    const seen = new Set();
+    const longs = rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= end && t.duration > 50
+      && !seen.has(t.start) && seen.add(t.start));
+    const loafs = rec.loafs.filter((l) => l.start + l.duration >= from && l.start <= end && l.duration > 50);
+    // each long task's samples: the leaf-most frame from an app script (assets/), else the leaf
+    const attribute = (start, stop) => {
+      if (!trace) return [];
+      const counts = new Map();
+      let total = 0;
+      for (const sample of trace.samples) {
+        if (sample.timestamp < start || sample.timestamp > stop) continue;
+        total++;
+        if (sample.stackId == null) continue;
+        let leaf = null;
+        for (let id = sample.stackId; id != null; id = trace.stacks[id].parentId) {
+          const frame = trace.frames[trace.stacks[id].frameId];
+          const url = frame.resourceId != null ? trace.resources[frame.resourceId] : '';
+          if (!leaf) leaf = { frame, url };
+          if (/\/assets\//.test(url)) { leaf = { frame, url }; break; }
+        }
+        if (!leaf) continue;
+        const key = `${leaf.url}|${leaf.frame.line}|${leaf.frame.column}|${leaf.frame.name}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      // the sampler runs faster than its nominal interval: each site's share of the task's own samples, in the task's ms
+      return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, n]) => {
+        const [url, line, column, name] = key.split('|');
+        return { url, line: Number(line) || null, column: Number(column) || null, name, ms: Math.round((n / total) * (stop - start)) };
+      });
+    };
+    return {
+      windowMs: Math.round(end - from), profiler: !!trace, profilerError: window.__cotProfilerError ?? null,
+      frames33: frames.length, worstFrame: Math.round(Math.max(0, ...frames.map((f) => f.duration))),
+      frames: frames.sort((a, b) => b.duration - a.duration).slice(0, 6).map((f) => ({ at: Math.round(f.start - from), ms: Math.round(f.duration) })),
+      long50: longs.length, worstLong: Math.round(Math.max(0, ...longs.map((t) => t.duration))),
+      longs: longs.sort((a, b) => b.duration - a.duration).slice(0, 6).map((t) => ({ at: Math.round(t.start - from), ms: Math.round(t.duration),
+        code: attribute(t.start, t.start + t.duration) })),
+      loafScripts: loafs.sort((a, b) => b.duration - a.duration).slice(0, 4).map((l) => ({ ms: Math.round(l.duration),
+        scripts: l.scripts.slice(0, 3).map((x) => ({ invoker: x.invoker, url: x.url, pos: x.pos, fn: x.fn, ms: Math.round(x.duration) })) })),
+    };
+  }, t0).catch((cause) => ({ error: firstLine(cause) }));
+  const logged = (page.__consoleLog ?? []).slice(consoleFrom);
+  return { ...window_, consoleErrors: logged.filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
+    consoleWarnings: logged.filter((m) => m.type === 'warn').length };
 }
 
 const pressKey = (page, key) => page.keyboard.press(key);
@@ -237,6 +350,27 @@ const leaveStudio = async (page, ctx) => {
   if (await page.evaluate(expression(`shown('.cot-settings.open')`)).catch(() => false)) await closeSettings(page, ctx);
   await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
 };
+// The Garage again after a sweep press: any panel, menu or modal it opened closed (Escape, Settings' close), the
+// transition gone
+const OPEN_OVERLAY = `shown('.cot-settings.open') || shown('#cot-battle-menu.open') || shown('#cot-record-modal')
+  || [...document.querySelectorAll('[aria-modal="true"], [role="dialog"]')].some((el) => __click.visible(el))`;
+const restoreGarage = async (page, ctx) => {
+  for (let tries = 0; tries < 3; tries++) {
+    if (!await page.evaluate(expression(OPEN_OVERLAY)).catch(() => false)) break;
+    if (await page.evaluate(expression(`shown('.cot-settings.open')`)).catch(() => false)) await closeSettings(page, ctx).catch(() => {});
+    else await pressKey(page, 'Escape');
+    await sleep(400);
+  }
+  await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+  await waitFor(page, GARAGE, 30000).catch(() => {});
+};
+// A Garage sweep presses every visible control on the Garage's screen except what leaves the page, starts a battle or
+// a room, or switches the language (those have their own paths)
+const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]', '[data-proving]',
+  '[data-nav=home]', '[data-nav=gallery]', '[data-nav=docs]', '[data-nav=studio]', '[data-nav=github]', '.cot-github',
+  '[data-mobile-nav=home]', '[data-mobile-nav=gallery]', '[data-mobile-nav=docs]', '[data-mobile-nav=studio]',
+  '[data-mobile-nav=locale]', '[data-deploy-room]', '[data-tabbar=gallery]', '.cot-wordmark', 'a[href^="http"]',
+  'a[href^="/"]', '[hreflang]', '[data-locale]'].join(', ');
 const openDeploy = async (page, ctx) => {
   if (await page.evaluate(() => window.__click.shown('#cot-battle-menu.open'))) return;
   await tapOrClick(page, await target(page, '[data-nav=deploy], .cot-battle-mode'), ctx);
@@ -365,6 +499,30 @@ export const PATHS = [
       await leaveStudio(page, ctx);
       await sleep(1500);
     } },
+  // the Garage at rest: no frame or task may stall while nobody touches it
+  { id: 'garage-idle', doc: 'game', reps: 1,
+    script: async (page, i, run) => { await run('garage-idle', async () => null, { idleMs: 8000, quietMs: 1 }); } },
+  // every visible control on the Garage's screen, pressed once, the Garage restored between presses
+  { id: 'garage-sweep', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const count = await page.evaluate((deny) => {
+        const controls = [...document.querySelectorAll('button, [role=button], [role=tab], [role=switch], [role=option], select, '
+          + 'input[type=checkbox], input[type=radio], a[href^="#"]')]
+          .filter((el) => __click.visible(el) && !el.disabled && !el.matches(deny) && !el.closest(deny));
+        controls.forEach((el, n) => el.setAttribute('data-sweep', String(n)));
+        return controls.length;
+      }, SWEEP_DENY);
+      for (let n = 0; n < count; n++) {
+        const selector = `[data-sweep="${n}"]`;
+        const label = await page.evaluate((sel) => { const el = document.querySelector(sel);
+          if (!el || !__click.visible(el)) return null;
+          const text = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || el.className || el.tagName;
+          return String(text).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 28) || el.tagName.toLowerCase(); }, selector);
+        if (!label) continue;
+        await run(`sweep:${n}:${label}`, async () => selector, { quietMs: 400 });
+        await restoreGarage(page, ctx);
+      }
+    } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
     press: (page, i) => target(page, '.cot-studio .workspace-nav button', i + 1),
@@ -463,7 +621,10 @@ async function runPath({ page, path, reps, touch, log, profileDir = null, outDir
     samples.push({ kind, i, ...sample });
     log(`  ${kind.padEnd(18)} #${i} inp ${String(sample.duration == null ? '-' : Math.round(sample.duration)).padStart(5)}`
       + `  proc ${String(sample.processing ?? '-').padStart(4)}  long ${String(sample.longtaskMs).padStart(5)}/${sample.longtasks}`
-      + `  shown ${sample.shownMs ?? '-'}  done ${sample.doneMs ?? '-'}${sample.error ? `  ERROR ${sample.error}` : ''}`);
+      + `  shown ${sample.shownMs ?? '-'}  done ${sample.doneMs ?? '-'}${sample.error ? `  ERROR ${sample.error}` : ''}`
+      + (sample.census ? `  | >33ms ${sample.census.frames33}/${sample.census.worstFrame}  >50ms ${sample.census.long50}/${sample.census.worstLong}`
+        + `  errors ${sample.census.consoleErrors?.length ?? '-'}${sample.census.profiler ? '' : '  (no profiler)'}`
+        + (sample.census.alloc ? `  alloc ${(sample.census.alloc.perSecond / 1048576).toFixed(1)} MB/s` : '') : ''));
     return sample;
   };
   let failures = 0;
@@ -539,7 +700,15 @@ async function main() {
     page.setDefaultTimeout(180000);
     await page.setViewport(profile.viewport);
     if (profile.userAgent) await page.setUserAgent(profile.userAgent);
-    page.on('pageerror', (error) => log(`  [${base.label}:${doc} page error] ${firstLine(error)}`));
+    page.__consoleLog = [];
+    page.on('pageerror', (error) => { log(`  [${base.label}:${doc} page error] ${firstLine(error)}`);
+      page.__consoleLog.push({ type: 'error', text: `pageerror: ${firstLine(error)}`.slice(0, 240) }); });
+    page.on('console', (message) => {
+      const type = message.type();
+      if (type === 'error' || type === 'warn' || type === 'warning') {
+        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: message.text().slice(0, 240) });
+      }
+    });
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
     if (flag('layout-trace')) await page.evaluateOnNewDocument('window.__cotLayoutTrace = true;');
     // --busy=<everyMs>:<workMs>: a loaded main thread (a timer burning workMs every everyMs), as a polling probe or a busy
@@ -668,11 +837,30 @@ async function report(dir) {
     const found = entry.consumer.originalPositionFor({ line, column });
     return found?.source ? `${found.source.replace(/^.*?\/src\//, 'src/')}:${found.line}${found.name ? ` ${found.name}` : ''}` : null;
   };
+  // a profiler frame's position (1-based line and column) in its built file, as a source line
+  const locateLineColumn = (label, url, line, column) => {
+    const dist = dists[label];
+    if (!dist || !url || !line) return null;
+    let file;
+    try { file = new URL(url).pathname; } catch { return null; }
+    const key = `${label}:${file}`;
+    if (!consumers.has(key)) {
+      const js = join(dist, file);
+      const map = `${js}.map`;
+      consumers.set(key, existsSync(js) && existsSync(map)
+        ? { text: readFileSync(js, 'utf8'), consumer: new SourceMapConsumer(JSON.parse(readFileSync(map, 'utf8'))) } : null);
+    }
+    const entry = consumers.get(key);
+    if (!entry) return null;
+    const found = entry.consumer.originalPositionFor({ line, column: Math.max(0, (column ?? 1) - 1) });
+    return found?.source ? `${found.source.replace(/^.*?\/src\//, 'src/').replace(/^.*node_modules\//, '')}:${found.line}${found.name ? ` ${found.name}` : ''}` : null;
+  };
   const kinds = new Map();
   for (const label of labels) {
     if (!existsSync(join(dir, label))) continue;
     for (const file of readdirSync(join(dir, label)).filter((f) => f.endsWith('.json'))) {
       const run = JSON.parse(readFileSync(join(dir, label, file), 'utf8'));
+      if (!Array.isArray(run.samples)) continue;
       for (const sample of run.samples) {
         const key = `${sample.kind}.${run.profile}`;
         if (!kinds.has(key)) kinds.set(key, {});
@@ -719,6 +907,63 @@ async function report(dir) {
   console.log(`\nWorst by ${labels[0]} INP p95: ${ranked.sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ')}`);
   console.log(`\n| press.profile | build | script (source) | ms per press | forced layout ms |\n|---|---|---|---:|---:|`);
   console.log(culprits.join('\n'));
+  // --census runs: every surface's spikes (frames over 33 ms, long tasks over 50 ms), console errors, and the code its
+  // long tasks sampled, summed over the run
+  const censusRows = [];
+  const code = new Map();
+  const errorsSeen = new Map();
+  for (const [key, byLabel] of [...kinds].sort()) {
+    for (const label of labels) {
+      const samples = (byLabel[label] || []).filter((s) => s.census && !s.census.error);
+      if (!samples.length) continue;
+      const sum = (field) => samples.reduce((total, s) => total + (s.census[field] || 0), 0);
+      const worst = (field) => Math.max(0, ...samples.map((s) => s.census[field] || 0));
+      const errors = samples.flatMap((s) => s.census.consoleErrors || []);
+      for (const text of errors) errorsSeen.set(`${label} | ${text}`, (errorsSeen.get(`${label} | ${text}`) || 0) + 1);
+      censusRows.push({ row: `| ${key} | ${label} | ${samples.length} | ${sum('frames33')} | ${worst('worstFrame')} | ${sum('long50')} | ${worst('worstLong')} | ${errors.length} |`,
+        weight: sum('long50') * 1000 + worst('worstLong') });
+      for (const sample of samples) for (const long of sample.census.longs || []) for (const site of long.code || []) {
+        const where = locateLineColumn(label, site.url, site.line, site.column) || `${(site.url || '').split('/').pop()} ${site.name}`;
+        const entry = code.get(`${label} | ${where}`) || { ms: 0, tasks: 0, paths: new Set() };
+        entry.ms += site.ms; entry.tasks += 1; entry.paths.add(key.split('.')[0].replace(/^sweep:\d+:/, 'sweep:'));
+        code.set(`${label} | ${where}`, entry);
+      }
+    }
+  }
+  if (!censusRows.length) return;
+  console.log(`\n| surface.profile | build | samples | frames >33 ms | worst frame | tasks >50 ms | worst task | console errors |\n|---|---|---:|---:|---:|---:|---:|---:|`);
+  console.log(censusRows.sort((a, b) => b.weight - a.weight).map((r) => r.row).join('\n'));
+  console.log(`\n| build | code in long tasks (source) | sampled ms | tasks | surfaces |\n|---|---|---:|---:|---|`);
+  console.log([...code].sort((a, b) => b[1].ms - a[1].ms).slice(0, 40)
+    .map(([where, e]) => `| ${where} | ${e.ms} | ${e.tasks} | ${[...e.paths].slice(0, 4).join(', ')} |`).join('\n'));
+  const allocRows = [];
+  const allocSites = new Map();
+  for (const [key, byLabel] of [...kinds].sort()) {
+    for (const label of labels) {
+      const samples = (byLabel[label] || []).filter((s) => s.census?.alloc);
+      if (!samples.length) continue;
+      const bytes = samples.reduce((sum, s) => sum + s.census.alloc.bytes, 0);
+      const ms = samples.reduce((sum, s) => sum + (s.census.windowMs || 0), 0);
+      allocRows.push({ row: `| ${key} | ${label} | ${(bytes / 1048576).toFixed(1)} | ${ms ? (bytes / 1048.576 / ms).toFixed(2) : '-'} |`, bytes: ms ? bytes / ms : 0 });
+      for (const sample of samples) for (const site of sample.census.alloc.sites) {
+        const where = locateLineColumn(label, site.url, site.line, site.column) || `${(site.url || '').split('/').pop()} ${site.name}`;
+        const entry = allocSites.get(`${label} | ${where}`) || { bytes: 0, paths: new Set() };
+        entry.bytes += site.bytes; entry.paths.add(key.split('.')[0].replace(/^sweep:\d+:/, 'sweep:'));
+        allocSites.set(`${label} | ${where}`, entry);
+      }
+    }
+  }
+  if (allocRows.length) {
+    console.log(`\n| surface.profile | build | MB allocated | MB/s |\n|---|---|---:|---:|`);
+    console.log(allocRows.sort((a, b) => b.bytes - a.bytes).map((r) => r.row).join('\n'));
+    console.log(`\n| build | allocating code (source) | MB | surfaces |\n|---|---|---:|---|`);
+    console.log([...allocSites].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 40)
+      .map(([where, e]) => `| ${where} | ${(e.bytes / 1048576).toFixed(2)} | ${[...e.paths].slice(0, 4).join(', ')} |`).join('\n'));
+  }
+  if (errorsSeen.size) {
+    console.log(`\n| build | console error | count |\n|---|---|---:|`);
+    console.log([...errorsSeen].sort((a, b) => b[1] - a[1]).map(([text, n]) => `| ${text.replace(/\|/g, '/')} | ${n} |`).join('\n'));
+  }
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
