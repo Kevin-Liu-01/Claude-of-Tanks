@@ -22,7 +22,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
   top:var(--hud-right-top);right:var(--hud-report-right,12px);bottom:auto;width:var(--hud-side-width);
-  max-height:var(--hud-right-height);min-height:0;overflow:auto;overscroll-behavior:contain;
+  max-height:min(var(--hud-right-height),var(--si-log-fit,100vh));min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
@@ -92,6 +92,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   left:12px;right:auto;bottom:12px;transform:none;gap:var(--s1);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) :is(.cot-shell,.cot-con){width:48px;height:52px}
+/* (a shell's slot 54 px wide, so "APFSDS" keeps clear of both borders, gauntlet r4 at 900x700) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-shell{width:54px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:84px}
 /* Every mouse tray under 1000 px (48x52 and 44x52 slots): the bottom row cannot hold a type label and its count (critic
    r6: APFSDS|∞ overlapped by 12 px at 900 px; the stacked scale here had also dropped the desktop shell's 3 px raise).
@@ -164,6 +166,8 @@ body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibil
    fillRack): six 74 px tiles were clipped at the row's 440 px cap, four sat centred over six slots, gauntlet r3) */
 body[data-cot-battle-layout][data-systems-fill]:not(.cot-touch-layout) .cot-vehicle-controls{width:var(--hud-systems-width);max-width:none;padding:2px 0;box-sizing:border-box;overflow:visible}
 body[data-cot-battle-layout][data-systems-fill]:not(.cot-touch-layout) .cot-vehicle-controls>button{--hud-tile-w:auto;flex:1 1 0}
+body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .cot-vehicle-controls{gap:0}
+body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .cot-vehicle-controls>button{flex:0 0 auto;margin-left:var(--hud-tile-dx,0px)}
 .cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
@@ -183,6 +187,17 @@ body[data-cot-battle-layout][data-systems-fill]:not(.cot-touch-layout) .cot-vehi
    (gauntlet r3: three cap styles on one screen) */
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
+/* (a tile with a count centres its glyph and count as one group, the key cap at its end: the smoke glyph sat against the
+   cell's left edge and its count mid-cell, gauntlet r4) */
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)){grid-template-columns:minmax(0,1fr) auto auto minmax(0,1fr) 15px;column-gap:4px}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)) .si{grid-column:2}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)) :is(.sl[data-count],.system-status){grid-column:3}
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button:has(.sl[data-count],.system-status:not(:empty)) .sk{grid-column:5}
+/* (an engaged control keeps the row's underline, in the accent, its glyph lit: a ringed box stood taller than the row) */
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button.active{box-shadow:none;border-bottom:2px solid var(--accent);padding-bottom:2px}
+/* (one key cap size for the HUD's own caps beside a label, 20 px, the tiles' in-cell caps 15: three sizes read as three
+   kits, gauntlet r4) */
+body[data-cot-battle-layout] :is(.cot-mode-status,.cot-hud-gear,.cot-mm-hd,.cot-watch) .cot-c-kbd{height:20px;min-width:20px;padding:0 5px;font-size:var(--battle-fs-fig-11)}
 .cot-vehicle-controls .system-status{display:none;grid-column:2;grid-row:1;font:600 var(--battle-fs-11)/1 var(--hud-font,system-ui);letter-spacing:var(--battle-track-status);color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
 
@@ -253,6 +268,8 @@ body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{d
 /* a tab too narrow for its parts on one line stacks them, one a line without their dots (hud.ts setObjectiveValue) */
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .sep{display:none}
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .seg{display:block}
+/* (stacked lines with leading of their own: zh's lines touched at 13 px on 13, gauntlet r4) */
+body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .mv{line-height:1.3}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
@@ -323,7 +340,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon
 /* (a roster cut to whole rows ends with the count it leaves out, its own 16 px line: battleHudLayout.ts snapRosterHeight) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid)[data-more] .cot-ear-rows{height:calc(var(--roster-height) - 22px - 17px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid)[data-more]::after{content:attr(data-more);flex:none;height:16px;
-  display:flex;align-items:center;padding:0 10px;font:600 var(--battle-fs-fig-11)/1 var(--font-data);color:var(--ink-3);text-shadow:var(--battle-text-halo)}
+  display:flex;align-items:center;padding:0 44px;font:600 var(--battle-fs-fig-11)/1 var(--font-data);color:var(--ink-3);text-shadow:var(--battle-text-halo)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.l:not(.icon-grid)[data-more]::after{border-left:2px solid oklch(from var(--hud-own) l c h / .4)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r:not(.icon-grid)[data-more]::after{justify-content:flex-end;border-right:2px solid oklch(from var(--hud-enemy) l c h / .4)}
 /* (the head is 21 px and the ear's gap 1, so its rows start the 22 px down that the planner's ROSTER_HEAD_H counts: zh's
@@ -331,6 +348,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.r:not(.ic
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .hd{height:21px;box-sizing:border-box;align-items:center;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .rosters-expanded .cot-ear{--roster-row-height:30px;width:min(320px,calc(50vw - 184px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-rows{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .micro-shot-report :is(.cot-si-sub,.cot-si-body){display:none}
 /* Clip diagrams inside the card, not its outer shadow at the lane edges.
    Card sizing below still keeps its contents inside the measured HUD budget. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:visible}
@@ -394,6 +412,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
    to layout checks and directly over the system buttons on short phones. */
 .cot-aim-warning{position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
+/* (a mouse layout's chip at 13 px, near its centre notices' 15: an 11 px chip under them read as another kit, gauntlet r4) */
+body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);letter-spacing:0}
 .cot-aim-warning[hidden]{display:none}
 /* the kit's notice grammar (hud.ts): the plate, the severity on the glyph and the wash (hud.ts aimWarningState sets it) */
 /* Owner 2026-10-17 (out of ammo, critic r9): where the chip sits under the sight, the reticle seats it (hud.ts
@@ -406,7 +426,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:180px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s2);white-space:normal}
+  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s3);white-space:normal}
 }
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
@@ -482,7 +502,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] small{display:none}
 
 /* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
-.cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:var(--accent-hi);font-weight:800;font-variant-numeric:tabular-nums;font-size:var(--battle-fs-11);line-height:1}
+.cot-hud .cot-er .kills{flex:0 0 auto;min-width:18px;text-align:center;color:var(--accent-hi);font-weight:800;font-variant-numeric:tabular-nums;font-size:var(--battle-fs-11);line-height:1}
 /* (the count's column is held on every row, so every callsign has the same room and lines up: gauntlet r1) */
 .cot-hud .cot-er .kills[hidden]{display:block;visibility:hidden}
 .cot-hud .cot-ear.icon-grid .cot-er .kills[hidden]{display:none}

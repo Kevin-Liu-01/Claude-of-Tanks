@@ -755,6 +755,8 @@ function isHudHitEvent(payload: HudEventPayload): payload is HudEventPayload & H
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
+/** The zoom readout's rules: the ring's green, translucent. */
+const ZOOM_RULE_INK = 'rgba(126,232,126,0.5)';
 const PEN_ORANGE = '#f0b04a';
 const PEN_RED = '#f05a5a';
 const PEN_NONE = 'rgba(236,242,248,0.95)';
@@ -838,7 +840,8 @@ const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
 const FONT_SCOPE_COUNT = `700 13.5px ${FONT_COND}`;
 const FONT_SCOPE_TYPE = `700 11px ${FONT_COND}`;
 const FONT_RANGE_TAG = `600 11.5px ${FONT_COND}`;
-const FONT_AIM_WARNING = `700 11px ${FONT_COND}`;
+// (the mouse layout's chip at 13 px, a step under the centre notices' 15 and over their 11 px touch type, battleHudLayout.css)
+const FONT_AIM_WARNING = `700 13px ${FONT_COND}`;
 const FONT_RACK_OVERFLOW = `700 11px ${FONT_COND}`;
 /** A lane marker's letter is part of its 11 px minimap glyph (drawLaneGlyph), sized with the glyph like the hex badges'
  *  letters, not reading text (the 11 px type floor is for labels a player reads). */
@@ -1507,6 +1510,8 @@ const HUD_CSS = `
 .cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
   letter-spacing:0;min-width:2ch;}
 .cot-top .fg{color:var(--hud-own);text-align:right;}
+/* (the Horde's wave is no side's score: in the ink, the hostiles left beside it in the enemy's, gauntlet r4) */
+.cot-top .fg.wave{color:var(--ink-1);}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
    transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
@@ -3691,6 +3696,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
+      fgEl.classList.toggle('wave', !!horde);
       feEl.textContent = horde && horde.total ? String(remaining) : String(enemyScore);
       // the wave's total rides small beside the count still standing, so "30 / 30" fits the score slot on one line
       if (horde && horde.total) {
@@ -5267,11 +5273,13 @@ export function initHud(bus: EventBus): HudRuntime {
     // Keep the familiar zoom line directly beneath ammunition, not over the
     // target or detached down beside the vehicle console.
     const text = sniperZoomText(view);
+    // (in the ring's own green, its rules a translucent one: a paler green of its own beside the ring read as two greens,
+    // gauntlet r4)
     ctx.font = FONT_SCOPE_ZOOM;
-    ctx.fillStyle = 'rgba(196,246,202,0.95)';
+    ctx.fillStyle = PEN_GREEN;
     ctx.fillText(text, x, y);
     const halfWidth = ctx.measureText(text).width / 2 + 12;
-    ctx.strokeStyle = 'rgba(170,240,178,0.5)';
+    ctx.strokeStyle = ZOOM_RULE_INK;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(x - halfWidth - 20, y - 5.5);
@@ -5331,7 +5339,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (touch) draw.warningW = w < 375 && h >= w ? TOUCH_WARNING_NARROW_W : TOUCH_WARNING_W;
     else {
       ctx.font = FONT_AIM_WARNING;
-      draw.warningW = ctx.measureText(warning.text).width + 50;
+      draw.warningW = ctx.measureText(warning.text).width + 62;
     }
     draw.warningX = draw.cx;
     const marks = Math.max(draw.magazineBottomY ? draw.magazineBottomY + (draw.dry ? 3 : 2) + 3 + AIM_WARNING_CHIP_ABOVE : 0,
@@ -5406,7 +5414,9 @@ export function initHud(bus: EventBus): HudRuntime {
       }
       if (touchAimWarning.dataset.kind !== warning.kind) {
         touchAimWarning.dataset.kind = warning.kind;
-        touchAimWarning.dataset.severity = warning.kind === 'blocked' ? 'error' : warning.kind === 'rollover' ? 'warning' : 'info';
+        // (a gun at its travel limit is a warning, the detection's and the alerts' wash and glyph tone: as info its plate
+        // was the one cool plate among the warm ones, gauntlet r4)
+        touchAimWarning.dataset.severity = warning.kind === 'blocked' ? 'error' : 'warning';
         // (a blocked gun is an error, in the kit's error glyph: the sprite's alert)
         touchAimWarningGlyph.innerHTML = uiIconSVG(warning.kind === 'rollover' ? 'rematch' : warning.kind === 'blocked' ? 'alert' : 'turretRing', 14);
       }

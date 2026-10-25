@@ -310,6 +310,9 @@ function presentationSpec(id: string): PresentationTankSpec {
 
 
 // every use is a CSS value (the sheet, inline colours): the battle surface's status and ink tokens
+/** The log's cue under its last whole row (fitLog). */
+const LOG_CUE_H = 18;
+
 const COL = {
   green: 'var(--ok)',
   red: 'var(--danger)',
@@ -377,7 +380,7 @@ const SI_CSS = `
 .cot-si-card{container:si-card/inline-size;}
 @container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
 .cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
-  color:var(--warn);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
+  color:var(--accent-hi);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
@@ -405,9 +408,11 @@ const SI_CSS = `
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
 .cot-si-kv.pen b{white-space:nowrap;}
-.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.04em;
-  vertical-align:1px;line-height:1.25;font-weight:700;}
+.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 5px 1px;
+  /* (the kit's chip, in sentence case, its ink the qualifier's: an outlined capitals chip beside the ribbon's sentence-case
+     one read as two chip styles, gauntlet r4) */
+  border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
+  text-transform:none;vertical-align:1px;line-height:1.25;font-weight:700;}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
@@ -445,9 +450,11 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
-/* (the rows fade into the plate at its foot, the plate's own edge kept: a mask on the panel erased its bottom edge) */
-.cot-si-log.more::after{content:'';position:sticky;bottom:0;display:block;height:20px;margin-top:-20px;pointer-events:none;
-  background:linear-gradient(oklch(from var(--hud-plate) l c h / 0),var(--hud-plate));}
+/* (a chevron on the plate under the last whole row while more lies below, the plate's own edge kept: a mask erased it,
+   a fade lay across a sliced row) */
+.cot-si-log .more-cue{display:none}
+.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;height:18px;
+  border-top:1px solid var(--line-1);background:var(--hud-plate);color:var(--ink-3);pointer-events:none}
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -456,7 +463,7 @@ const SI_CSS = `
   color:var(--ink-2);border-bottom:1px solid var(--line-1);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
-.cot-si-lrow .d{font-weight:700;color:var(--warn);width:36px;flex:0 0 auto;text-align:right;
+.cot-si-lrow .d{font-weight:700;color:var(--accent-hi);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
@@ -468,11 +475,13 @@ const SI_CSS = `
   background:none;border:0;padding:var(--s1) 6px;
   transition:opacity var(--dur-stage) ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
-.cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
+/* (the damage follows its attacker, and the name stands on the rosters' line: a silhouette as wide as theirs, gauntlet r4
+   read "−2520 ×6" 70 px adrift on a phone and the name 6 px off the rosters') */
+.cot-si-toast .l1{height:100%;display:flex;justify-content:flex-start;align-items:center;gap:5px;
   font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-1);}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-toast .l1 .attacker{flex:1;}
-.cot-si-toast .l1 .si{display:inline-block;width:22px;height:12px;flex:0 0 22px;}
+.cot-si-toast .l1 .attacker{flex:0 1 auto;}
+.cot-si-toast .l1 .si{display:inline-block;width:29px;height:12px;flex:0 0 29px;}
 .cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
   font-size:var(--battle-fs-11);display:flex;align-items:center;gap:var(--s1);
   white-space:nowrap;}
@@ -1008,13 +1017,30 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   cardHost.setAttribute('role', 'status');
   cardHost.setAttribute('aria-live', 'polite');
   const logPanel = el('div', 'cot-si-log', root);
-  /** The log fades its foot while rows lie under it: measured as it fills, as the planner resizes its dock and as it
-   *  scrolls (gauntlet r3: set once on the first fill, the fade stayed on six rows that fit at 1920 and off the bottom). */
+  /** The log shows its cue at its foot while rows lie under it: measured as it scrolls (gauntlet r3: set once on the
+   *  first fill, the fade stayed on six rows that fit at 1920 and off the bottom). */
   const markLogMore = (): void => {
     logPanel.classList.toggle('more', logPanel.scrollTop + logPanel.clientHeight < logPanel.scrollHeight - 1);
   };
+  /** A log taller than its dock ends on a whole row, its cue under it (--si-log-fit caps it at the last row its dock holds
+   *  whole: gauntlet r4 found a row sliced through its glyphs at 1280, 1024 and 900 wide); measured as it fills and as the
+   *  planner resizes its dock, never on a scroll. */
+  const fitLog = (): void => {
+    logPanel.style.removeProperty('--si-log-fit');
+    const room = logPanel.clientHeight;
+    if (logPanel.scrollHeight - room > 1) {
+      const top = logPanel.getBoundingClientRect().top - logPanel.scrollTop;
+      let fit = 0;
+      for (const part of logPanel.querySelectorAll<HTMLElement>('.sec,.cot-si-lrow')) {
+        const bottom = part.getBoundingClientRect().bottom - top;
+        if (bottom <= room - LOG_CUE_H && bottom > fit) fit = bottom;
+      }
+      if (fit > 0) logPanel.style.setProperty('--si-log-fit', `${Math.ceil(fit + LOG_CUE_H)}px`);
+    }
+    markLogMore();
+  };
   logPanel.addEventListener('scroll', markLogMore, { passive: true });
-  if (typeof ResizeObserver === 'function') new ResizeObserver(markLogMore).observe(logPanel);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(fitLog).observe(logPanel);
   logPanel.tabIndex = 0;
   const toastHost = el('div', 'cot-si-toasthost', root);
   toastHost.setAttribute('role', 'status');
@@ -1356,7 +1382,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
     // a log taller than its dock fades its last row out rather than cutting it (measured a frame later, off any press)
-    requestAnimationFrame(markLogMore);
+    el('div', 'more-cue', logPanel).innerHTML = uiIconSVG('chevronDown', 12);
+    requestAnimationFrame(fitLog);
   }
 
   function toggleLog(): void {
@@ -1405,8 +1432,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         '<span class="attacker"></span><b></b></div>';
       const silhouette = toast.querySelector<HTMLElement>('.si')!;
       const specId = ev.attackerSpecId || attacker?.specId;
-      if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, '#f28f8f');
-      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
+      // (the attacker's silhouette in the enemy ink the rosters and lanes use: a pink of its own, gauntlet r4)
+      if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, 'var(--hud-enemy)');
+      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', 'var(--hud-enemy)');
       else silhouette.remove();
       toastHost.prepend(toast);
     }

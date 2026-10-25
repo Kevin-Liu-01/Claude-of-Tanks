@@ -49,7 +49,9 @@
 .cot-drone-return:disabled{cursor:default;opacity:.42;filter:saturate(.3)}.cot-drone-return:disabled:active{filter:saturate(.3)}
 /* The moment the recall opens, the return control lights: its edge takes the console's accent and it flares three
    times, so a touch pilot (whose hint line is hidden) sees it open, not just un-dim. Reduced motion keeps a steady glow. */
-.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--flight-accent)}
+/* (the console's lead control on the accent edge the selected weapon wears: a white glow edge was a state of its own,
+   gauntlet r4) */
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--accent)}
 .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){animation:drone-recall-open .6s ease-out 3}
 @keyframes drone-recall-open{0%{filter:drop-shadow(0 0 0 transparent) brightness(1)}30%{filter:drop-shadow(0 0 10px var(--flight-accent)) brightness(1.35)}100%{filter:drop-shadow(0 0 0 transparent) brightness(1)}}
 /* The tank row while a recalled drone flies home and lands (data-phase=returning, ui/droneControlState.ts): busy rather
@@ -259,18 +261,19 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-key{min-width:17px;height:17px}
 .cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:var(--battle-fs-11)}
-/* (its glyph and words centred in the tile, as the supplies' beside it: gauntlet r3 read Infrared set left) */
-.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,max-content);justify-content:center;grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
+/* (every tile of the console set from its left edge, its key cap in its top-right corner, as the weapons are: gauntlet r4
+   read the weapons set left over a centred second row) */
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
 .cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
 .cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
 .cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;grid-column:2;grid-row:2;gap:var(--s1);height:3px}
-.cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:center;gap:7px}
+.cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:flex-start;gap:7px}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=ammo]{grid-column:2}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
 .cot-flight-hud[data-kind=gunship] .flight-supply small{font:inherit;font-weight:700}
-.cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:static;font-size:var(--battle-fs-11)}
+.cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:absolute;top:5px;right:14px;font-size:var(--battle-fs-11)}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal] .flight-icon{color:var(--ok)}
 .cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
 .cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:var(--battle-fs-11);color:var(--ink-2)}
@@ -343,14 +346,16 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
    takes the compact touch plate in the same seat. Touch seats it left of the sight (below), clear of the ammo and
    consumables column and FIRE on the right. */
 .cot-hud .cot-scope-vision{
- --scope-accent:var(--accent-hi);--scope-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);
+ /* (the kit's plate, a hairline edge, the accent on hover and focus: a hexagon with a tan edge was the tank HUD's one such
+    plate, gauntlet r4) */
+ --scope-accent:var(--accent-hi);--scope-cut:inset(0 round var(--r1));
  position:absolute;left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%);isolation:isolate;
  display:flex;gap:9px;align-items:center;justify-content:center;min-width:156px;min-height:48px;
  padding:7px 19px;pointer-events:auto;border:0;border-radius:0;background:none;color:var(--ink-1);
  font:inherit;font-size:var(--battle-fs-11);line-height:1.15;cursor:pointer;filter:drop-shadow(0 2px 5px oklch(from var(--surface-scene) l c h / .6));-webkit-tap-highlight-color:transparent;
 }
 .cot-scope-vision::before,.cot-scope-vision::after{content:'';position:absolute;pointer-events:none;clip-path:var(--scope-cut);z-index:-1}
-.cot-scope-vision::before{inset:0;background:color-mix(in srgb,var(--scope-accent) 60%,oklch(from var(--surface-hover) .42 c h))}
+.cot-scope-vision::before{inset:0;background:var(--line-2)}
 .cot-scope-vision::after{inset:1px;background:linear-gradient(165deg,oklch(from var(--surface-hover) .32 c h / .918),var(--hud-plate-strong))}
 .cot-scope-vision[data-view=infrared]{--scope-accent:var(--ink-1)}
 .cot-scope-vision[data-view=thermal]{--scope-accent:var(--accent)}

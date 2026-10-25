@@ -53,10 +53,17 @@ const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisibl
 const touch = createTouchControls({input, bus, isBattleActive:()=>true, onOpenSettings:()=>settings.open()});
 // ?tanks=N: a larger bot room (two even sides; the HUD's per-frame cost probes, brand-ui 249); 7 v 7 by default
 const TANK_COUNT = Math.max(2, Math.min(64, Number(new URLSearchParams(location.search).get('tanks')) || 14));
+// (each side spread over its own half of the map, as a battle's opening is: gauntlet r4 read the fixture's row of tanks
+// near the centre as one hatched blob on the minimap)
+const spread = (i, ally) => {
+  const k = ally ? i : i - TANK_COUNT / 2, col = k % 4, row = Math.floor(k / 4);
+  return ally ? new Vector3(-60 - col * 55, 0, 90 + row * 60) : new Vector3(60 + col * 55, 0, -90 - row * 60);
+};
 const tanks = Array.from({length:TANK_COUNT},(_,i)=>{
   const spec = TANK_SPECS[['leo2a4_v','m1a1_abrams_hc','t90am'][i%3]];
-  return {id:`tank-${i}`, isPlayer:i===0, team:i<TANK_COUNT/2?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
-    spec, state:createTankState(spec,new Vector3(i*10,0,50),0), combat:createCombatState(spec)};
+  const ally = i<TANK_COUNT/2;
+  return {id:`tank-${i}`, isPlayer:i===0, team:ally?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
+    spec, state:createTankState(spec,i===0?new Vector3(0,0,50):spread(i,ally),0), combat:createCombatState(spec)};
 });
 const player = tanks[0];
 hud.setDamagePanel(panel);
@@ -183,7 +190,11 @@ function state(name) {
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
-  frame.matchModeState = {id:modeId, score:{alpha:2,bravo:1}, target:modeId==='capture_the_flag'?3:modeId==='turbo_ball'?5:750, horde:{wave:3,alive:12},line:{index:1,total:3},playerAmmo:24,playerAmmoCapacity:40};
+  // (the Horde's hostiles left are the enemy roster's living; a flag battle carries its two flags at their bases)
+  frame.matchModeState = {id:modeId, score:{alpha:2,bravo:1}, target:modeId==='capture_the_flag'?3:modeId==='turbo_ball'?5:750,
+    horde:{wave:3,alive:tanks.filter(t=>t.team==='enemy'&&!t.combat.destroyed).length},line:{index:1,total:3},playerAmmo:24,playerAmmoCapacity:40};
+  if(modeId==='capture_the_flag')frame.matchModeState.flags=[{team:'alpha',x:-240,z:200,baseX:-240,baseZ:200,status:'home'},
+    {team:'bravo',x:240,z:-200,baseX:240,baseZ:-200,status:'home'}];
   // zone control's three zones (the sector chips under the score and the map's badges): held, contested, lost
   if(modeId==='zone_control')frame.matchModeState.zones=[{x:-150,z:90,control:1,owner:'alpha',contested:false},
     {x:0,z:0,control:.4,owner:null,contested:true},{x:150,z:-90,control:-1,owner:'bravo',contested:false}];
@@ -233,6 +244,8 @@ function state(name) {
     player.aerial={kind:name,active:true,launching:false,x:player.state.pos.x,y:name==='drone'?40:900,z:player.state.pos.z,
       yaw:0,pitch:-0.5,batteryS:80,cooldownS:0,recallS:0,returnS:0};
     frame.matchModeState={...frame.matchModeState,id:name==='gunship'?'ac130':'drone'};
+    // (the gunship flown from its gimbal, its airframe hidden: the lens's sight and solution show, gauntlet r4)
+    player.visual=name==='gunship'?{root:{visible:false}}:undefined;
     for(let i=0;i<5;i++)hud.update(frame);
   }
   if(name==='hints')settings.showHints();

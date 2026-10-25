@@ -128,7 +128,7 @@ const pins = [
   [/const sideX = draw\.cx - draw\.magazineHalfW - 7 - textW - unitW;/, R.besideCountdownPx >= 19 + 7 + 50],
   // the chip: under the marker and the column's marks, or over the sight
   [/const AIM_WARNING_CHIP_ABOVE = 14;/, R.chipAbovePx === 14], [/const AIM_WARNING_CHIP_BELOW = 10;/, R.chipBelowPx === 10],
-  [/draw\.warningW = ctx\.measureText\(warning\.text\)\.width \+ 50;/, R.chipHalfWidthPx === 92],
+  [/draw\.warningW = ctx\.measureText\(warning\.text\)\.width \+ 62;/, R.chipHalfWidthPx === 111],
   [/let y = Math\.max\(draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\),/, R.chipMinPx === 62 && R.chipRingPx === 24],
   [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
   [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],

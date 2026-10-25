@@ -151,8 +151,9 @@ export const MOUSE_RETICLE = Object.freeze({
   stackTopPx: 8, stackBottomPx: 70, stackHalfWidthPx: 58, markHalfWidthPx: 24, countdownPx: 13.12, countdownHalfWidthPx: 40,
   besideCountdownPx: 76,
   /** placeAimWarning: the chip's baseline at cy + max(62, r + 24), or 3 px under the column's marks (its ink 14 px over
-   *  the baseline, AIM_WARNING_CHIP_ABOVE, and 10 under); text + 50 wide. */
-  chipMinPx: 62, chipRingPx: 24, chipAbovePx: 14, chipBelowPx: 10, chipHalfWidthPx: 92,
+   *  the baseline, AIM_WARNING_CHIP_ABOVE, and 10 under); text + 62 wide, the widest text at 13 px (gauntlet r4 raised it
+   *  from 11: "PRESS L-SHIFT TO FLIP", about 159 px). */
+  chipMinPx: 62, chipRingPx: 24, chipAbovePx: 14, chipBelowPx: 10, chipHalfWidthPx: 111,
   /** drawScope: arms from the ring to 1.55 r + 3, a 2.4 px under-stroke and mil ticks either side. */
   armFactor: 1.55, armPx: 3 + 1.3, armHalfWidthPx: 6.5,
   /** sniperReadoutStack: the readout line (digits 10 px over the baseline; a leading struck round 14.7 over and 4.7 under)

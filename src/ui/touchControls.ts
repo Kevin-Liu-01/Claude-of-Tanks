@@ -71,7 +71,11 @@ const CSS = `
 .cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;line-height:1;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
-.cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
+/* (the left FIRE is a secondary round control, AUTO AIM's and SCOPE's finish with the shell in the accent: a smaller twin
+   of FIRE's amber read as a second kit, gauntlet r4) */
+.cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:1;border-color:var(--line-control);
+  background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);}
+.cot-touch .fire.alt .lb{color:var(--ink-1);}
 /* (the left FIRE names itself as every round control does: unnamed, it read as an odd amber button, gauntlet r3) */
 .cot-touch .fire.alt svg{width:20px;height:34px}
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
@@ -150,7 +154,7 @@ body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:52px;heig
   transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
 body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left:4px;top:40%;
-  transform:translateY(-50%);font:700 var(--battle-fs-13)/1 ${FONT_COND};color:oklch(from var(--accent-hi) l c h / .9);}
+  transform:translateY(-50%);font:700 18px/1 ${FONT_COND};color:var(--accent-hi);}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›';}

@@ -1063,7 +1063,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
   const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
   const zoom = ops.find((op) => op.op === 'fillText' && /^×/.test(op.text));
-  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(170,240,178,0.5)');
+  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(126,232,126,0.5)');
   const line = ops.filter((op) => op.op === 'fillText' && op.style !== INK.reload
     && (/^(\d+|∞) $/.test(op.text) || (/^[A-Z]+$/.test(op.text) && op !== warningText)));
   // (the zoom plate is left out only where the screen leaves it no room clear of the furniture)

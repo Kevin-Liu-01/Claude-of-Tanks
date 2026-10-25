@@ -26,6 +26,7 @@ import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
 // Translate legacy English progress labels written by the various loading
@@ -159,7 +160,11 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 :lang(zh-CN) .cot-bl .mapname .ho{color:var(--ink-1);-webkit-text-stroke:0;}
 .cot-bl .rules{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
 .cot-bl .rules .cot-c-chip{height:34px;padding:0 12px;background:var(--battle-chip-plate);color:var(--ink-1);}
-.cot-bl .rules .cot-c-chip[hidden]{display:none;}
+.cot-bl .rules .cot-c-chip[hidden],.cot-bl .rules .gi:empty{display:none;}
+/* (every chip's words one size, at the 12 px floor: the count's ran smaller than the mode's on the phones and the type
+   scale set them 10 px at 900x700, gauntlet r4) */
+.cot-bl .rules .cot-c-chip{font-size:max(var(--battle-fs-12),var(--fs-13));}
+.cot-bl .rules .cot-c-chip :is(.kicker,.sv,.v){font-size:inherit;}
 .cot-bl .rules .gi{display:flex;color:var(--accent);}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
@@ -244,9 +249,6 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .count{margin-top:13px;text-align:center;font:700 var(--fs-15)/1 var(--font-ui);line-height:30px;
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1);height:30px;}
 .cot-bl .count b{color:var(--accent-hi);font-size:var(--fs-24);}
-.cot-bl .tip{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r1);
-  background:var(--battle-tip-plate);box-shadow:var(--e1);font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2);}
-.cot-bl .tip .gi{display:flex;flex:none;color:var(--accent);}
 /* --- the wide layouts: the direction's composition ------------------------
    The name and its rules top left, the tip and the battlefield's plan top right, the rosters over the floor (a hero
    card a tank while a side has seven or fewer), the progress under them, letterboxed. */
@@ -267,7 +269,6 @@ ${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover
 .cot-bl .map .obj{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 ${PORTRAIT} .cot-bl .briefing{grid-template-rows:auto auto minmax(0,1fr) auto;}
 ${PORTRAIT} .cot-bl .side{display:flex;justify-content:center;padding-bottom:clamp(12px,2.5vh,24px);}
-${PORTRAIT} .cot-bl .side .tip{display:none;}
 ${PORTRAIT} .cot-bl .map{width:min(58vw,260px);padding:6px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${PORTRAIT} .cot-bl .map[hidden]{display:none;}
 ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
@@ -288,7 +289,12 @@ ${PORTRAIT} .cot-bl .row .nm{grid-row:1;}${PORTRAIT} .cot-bl .row .cs{grid-row:2
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 /* (a long side's sheets keep a reading width, centred on the VS: at 1920 and up a row ran 840-1160 px with the name and
    the driver 650-1000 px apart, gauntlet r2) */
-${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,560px) 54px minmax(0,560px);justify-content:start;}
+/* (a long side's sheets span the page's gutters, the driver beside its vehicle rather than at the row's far end: pinned
+   to 560 px they ended 83-830 px short of the right gutter, gauntlet r4; at the far end the two sat 650-1000 px apart,
+   r2) */
+${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);}
+${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:var(--s4);}
+${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:var(--s4);}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}
@@ -333,12 +339,10 @@ ${WIDE} .cot-bl .team.cards .row :is(.hc-flag,.hc-tank){display:block;}
 ${WIDE} .cot-bl .rules .cot-c-chip{height:clamp(34px,1.75vw,44px);padding:0 clamp(12px,.63vw,16px);font-size:clamp(13px,.66vw,16px);}
 ${WIDE} .cot-bl .briefing{grid-template-columns:minmax(0,1fr) minmax(0,clamp(360px,18.75vw,480px));column-gap:clamp(48px,2.5vw,64px);
   padding-inline:clamp(64px,3.4vw,88px);}
-${WIDE} .cot-bl .tip{padding:clamp(12px,.63vw,16px) clamp(14px,.73vw,18px);font-size:clamp(14px,.73vw,18px);}
 ${WIDE} .cot-bl .map{width:clamp(250px,13vw,330px);}${WIDE} .cot-bl .map img{width:clamp(234px,12.2vw,314px);height:clamp(234px,12.2vw,314px);}
 ${WIDE} .cot-bl .team.cards{--bl-row-height:clamp(118px,6.15vw,156px);}
 ${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:clamp(54px,2.82vw,68px);}
 ${WIDE} .cot-bl .team.cards .row.card :is(.nm,.cs){font-size:max(var(--fs-floor-11),var(--fs-11),clamp(11px,.55vw,14px));}
-${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,clamp(560px,29.2vw,720px)) clamp(54px,2.82vw,64px) minmax(0,clamp(560px,29.2vw,720px));}
 ${WIDE} .cot-bl .team:not(.cards){--bl-row-height:clamp(30px,1.56vw,40px);}
 ${WIDE} .cot-bl .row:not(.card) .nm{font-size:max(var(--battle-fs-13),var(--fs-13),clamp(13px,.66vw,16px));}
 ${WIDE} .cot-bl .row:not(.card) .cs{font-size:max(var(--fs-floor-11),var(--fs-11),clamp(11px,.55vw,14px));}
@@ -351,22 +355,9 @@ ${WIDE} .cot-bl .count{font-size:clamp(15px,.78vw,20px);}${WIDE} .cot-bl .count 
    five 20 px dashes, gauntlet r3) */
 ${PORTRAIT} .cot-bl .fmeta{flex-wrap:wrap;row-gap:8px;}
 ${PORTRAIT} .cot-bl .fbar{order:3;flex-basis:100%;}
+${PORTRAIT} .cot-bl .fpct{margin-left:auto;}
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .fbar i b{transition-duration:1ms;}}
 `;
-
-const BATTLE_TIPS: ReadonlyArray<readonly [string, string]> = [
-  ['battleLoad.tip.opening.heading', 'battleLoad.tip.opening.body'],
-  ['battleLoad.tip.trade.heading', 'battleLoad.tip.trade.body'],
-  ['battleLoad.tip.team.heading', 'battleLoad.tip.team.body'],
-  ['battleLoad.tip.minimap.heading', 'battleLoad.tip.minimap.body'],
-];
-
-/** Resolve a BATTLE_TIPS entry into its localized heading and body. */
-function localizedTip(
-  entry: readonly [string, string],
-): readonly [string, string] {
-  return [t(entry[0]), t(entry[1])];
-}
 
 export interface BattleLoadRosterRow {
   readonly id: string;
@@ -470,11 +461,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div></div>` +
     `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
     `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
-    `<div class="rules"><span class="cot-c-chip"><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
+    `<div class="rules"><span class="cot-c-chip mode"><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
     `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
     `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v num"></span></span>` +
     `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
-    `<div class="side"><div class="tip"></div><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
+    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -579,6 +570,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     nameEl.append(rest);
   };
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
+  const modeGlyphEl = requiredElement<HTMLSpanElement>(root, '.rules .mode .gi');
   const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
   const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
   const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
@@ -596,7 +588,6 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const stepEls = Array.from({ length: PROGRESS_STEPS }, (_, step) => requiredElement<HTMLElement>(root, `.fbar i:nth-child(${step + 1})`));
   const stepFills = stepEls.map((_, step) => requiredElement<HTMLElement>(root, `.fbar i:nth-child(${step + 1}) b`));
   const countEl = requiredElement<HTMLDivElement>(root, '.count');
-  const tipEl = requiredElement<HTMLDivElement>(root, '.tip');
 
   /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): once per page, null where they
    *  cannot load (a Node receipt, a blocked chunk), and the cards keep their silhouettes. */
@@ -772,6 +763,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     show(info: BattleLoadInfo) {
       setMapName(info.mapName || t('battleLoad.fallbackMapName'));
       if (info.mode) kickEl.textContent = info.mode;
+      // (the mode's own glyph, as every chip beside it wears one: gauntlet r4)
+      const modeGlyph = info.modeId ? GAME_MODE_DEFINITIONS[normalizeGameMode(info.modeId)]?.icon : '';
+      modeGlyphEl.innerHTML = modeGlyph ? uiIconSVG(modeGlyph, 16) : '';
       // the art a covered entry already staged stays (the loading owner's first show names the same battlefield)
       const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
       if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
@@ -786,13 +780,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       markTiers(info.allies, info.enemies);
       showSides(info.allies.length, info.enemies.length);
       seatMark();
-      // the tip's body alone (less text): its glyph says what it is; a cover already up keeps its tip
-      if (!visible || !tipEl.firstChild) {
-        const [, body] = localizedTip(
-          BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
-        );
-        tipEl.innerHTML = `<span class="gi">${uiIconSVG('shield', 22)}</span><span>${body}</span>`;
-      }
+      // (no tip: a helper sentence is the less-text rule's first cut, gauntlet r4; the battlefield's plan stands alone)
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
       if (!visible) loadStartedAt = performance.now();

@@ -300,8 +300,9 @@ body[data-cot-height='compact'][data-cot-panels='persistent'] .cot-bl .team{--bl
 body[data-cot-panels='overlay'] .cot-bl .cap{padding-bottom:10px}
 body[data-cot-panels='overlay'] .cot-bl .cap::before{margin-bottom:5px;font-size:var(--battle-fs-11)}
 body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:var(--s1);font-size:clamp(22px,6vw,34px)}
-body[data-cot-panels='overlay'] .cot-bl .kicker{font-size:var(--battle-fs-11)}
-body[data-cot-panels='overlay'] .cot-bl .thead{font-size:var(--battle-fs-11);padding:0 var(--s1) var(--s1)}
+body[data-cot-panels='overlay'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-fs-11)}
+/* (the side's name centred on its plate: a bottom padding alone set it 6 px high, gauntlet r4) */
+body[data-cot-panels='overlay'] .cot-bl .thead{font-size:var(--battle-fs-11);padding:var(--s1) var(--s2)}
 body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
 body[data-cot-panels='overlay'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
 body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:var(--battle-fs-11)}
@@ -313,7 +314,6 @@ body[data-cot-panels='overlay'] .cot-bl .fstage{font-size:var(--battle-fs-11)}
 body[data-cot-panels='overlay'] .cot-bl .fpct{font-size:var(--battle-fs-15)}
 body[data-cot-panels='overlay'] .cot-bl .count{margin-top:var(--s2);font-size:var(--battle-fs-11)}
 body[data-cot-panels='overlay'] .cot-bl .count b{font-size:16px}
-body[data-cot-panels='overlay'] .cot-bl .tip{display:none}
 body[data-cot-width='phone'] .cot-bl .row{gap:3px;padding-inline:3px}
 body[data-cot-width='phone'] .cot-bl .row .tier{flex-basis:17px;font-size:var(--battle-fs-11)}
 body[data-cot-width='phone'] .cot-bl .row .sil{flex-basis:40px;max-height:20px}
@@ -325,11 +325,14 @@ body[data-cot-height='short'] .cot-bl .briefing{width:calc(100vw - max(16px,env(
 body[data-cot-height='short'] .cot-bl .cap{padding-bottom:5px}
 body[data-cot-height='short'] .cot-bl .cap::before{display:none}
 body[data-cot-height='short'] .cot-bl .mapname{margin-top:3px;font-size:clamp(18px,3vw,26px)}
-body[data-cot-height='short'] .cot-bl .kicker{font-size:var(--battle-fs-11)}
+body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-fs-11)}
 /* (a 16 px gutter between the sides: at 8 an ally's driver ran into the enemy's vehicle as one line, gauntlet r3; rows
    give way to 14 px, one line each, so fourteen a side fit at 844x390 under 26 px chips) */
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:18px;--bl-row-gap:1px;--bl-heading:18px}
+/* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
+   gauntlet r4; a long side's still give way to 14) */
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px}
+body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
 body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
 body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{height:26px}
@@ -342,7 +345,6 @@ body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}
 body[data-cot-height='short'] .cot-bl .fstage{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .fpct{font-size:var(--battle-fs-13)}
 body[data-cot-height='short'] .cot-bl .count{margin-top:var(--s1);height:18px;line-height:18px}
-body[data-cot-height='short'] .cot-bl .tip{display:none}
 
 /* AFTER-ACTION REPORT ---------------------------------------------------- */
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es,
@@ -418,7 +420,8 @@ body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-acti
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-actions{
   position:fixed;z-index:4;left:0;right:0;bottom:0;justify-content:center;margin:0;
   padding:var(--s2) 7px max(8px,env(safe-area-inset-bottom));
-  background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .15),var(--hud-plate-strong) 30%);border-top:1px solid var(--line-3);
+  /* (no rule of its own: the report's plate edge 8 px over it made two parallel lines, gauntlet r4) */
+  background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .15),var(--hud-plate-strong) 30%);border-top:0;
 }
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es .es-action,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-action,
@@ -578,9 +581,10 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shells{
-  right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:var(--s1);width:48px;height:48px;
+  right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:var(--s1);width:52px;height:48px;
 }
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell{width:48px;height:48px}
+/* (52 px wide as the portrait rail's, so a six-letter code clears both borders in zh too, gauntlet r4) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell{width:52px;height:48px}
 /* a 48 px tall slot draws its shell smaller, so the tip stays clear of the top edge (critic r4b) and 3 px from the corner
    count, standing 1 px higher so its foot keeps 3 px from the label (r6: 2.7 px to the count) */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell:not(.wide) canvas{bottom:12px;transform:translateX(-50%) scale(.64)}

@@ -386,14 +386,6 @@
   "garage.battle.rulesAria": "Battle rules: {label}. Change battle type",
   "garage.battle.startRulesAria": "Start {label}",
   "battleLoad.fallbackMapName": "Battlefield",
-  "battleLoad.tip.opening.heading": "Opening move",
-  "battleLoad.tip.opening.body": "Let the scouts spot first, then pick your flank.",
-  "battleLoad.tip.trade.heading": "Trade",
-  "battleLoad.tip.trade.body": "Fire, then break line of sight.",
-  "battleLoad.tip.team.heading": "Team",
-  "battleLoad.tip.team.body": "Fight beside two friendlies, never alone.",
-  "battleLoad.tip.minimap.heading": "Minimap",
-  "battleLoad.tip.minimap.body": "Check the minimap at every reload.",
   "endScreen.resultsAria": "Battle results",
   "endScreen.damageAria": "Damage",
   "endScreen.damageValueAria": "{value} damage",
@@ -5161,5 +5153,8 @@
   "notice.dismiss": "Dismiss",
   "notice.retry": "Retry",
   "notice.offline": "Offline",
-  "notice.online": "Back online"
+  "notice.online": "Back online",
+  "input.mouse.left": "LMB",
+  "input.mouse.middle": "MMB",
+  "input.mouse.right": "RMB"
 }

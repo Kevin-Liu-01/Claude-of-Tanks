@@ -421,6 +421,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 /* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
 .cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
 .cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
+.cot-es .es-tr .veh .dt svg{display:inline-block;width:11px;height:11px;margin-right:2px;vertical-align:-1px}
 .cot-es .es-tr .veh b{color:${COL.gold};font-weight:700}
 .cot-es .es-tr .output{display:flex;flex:0 0 58px;min-width:0;flex-direction:column;gap:3px;align-items:stretch;}
 /* (the figure in the mono, whose digits align down the column as the wide table's do: the display face's 7,160 ran 5 px
@@ -541,6 +542,16 @@ export function damageComparisonPercent(damage: RuntimeValue, maxDamage: Runtime
  * (owner 2026-09-21: "in respawn modes youre registered as dead even if you respawned at end" — deaths are
  * a stat there, the skull is the state at the end). Non-reviving modes never show a death line.
  */
+/** A narrow row's counts as the wide table's column glyphs and figures (its words for screen readers): "· ☠ 2" keeps
+ *  the vehicle's whole name where "· 2 次击杀" cut it, gauntlet r4 at 390 in zh. */
+function detailGlyphs(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string {
+  const kills = Math.max(0, Math.floor(Number(row.kills) || 0));
+  const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
+  const parts = [kills > 0 ? `${uiIconSVG('skull', 11)}${kills}` : '', revives && deaths > 0 ? `${uiIconSVG('rematch', 11)}${deaths}` : '']
+    .filter(Boolean);
+  return parts.length ? `<span class="counts num" aria-hidden="true"> · ${parts.join(' · ')}</span>` : '';
+}
+
 export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {
   const details: string[] = [];
   if (row.kills > 0) details.push(t('endScreen.kills', { count: row.kills }));
@@ -614,6 +625,11 @@ function vehicleName(specId: string | null | undefined): string {
  */
 /** A " · " line as its parts: a wrapped line starts with its dot, never ends on one (gauntlet r1: "5 / 21 survived ·" over
  *  "111,300 damage"). */
+/** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them. */
+const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
+  + '.es-stat-secondary,.es-kill-block,.es-rematch';
+const FIT_CUE_H = 22;
+
 function dotLine(text: string): string {
   return text.split(' · ').map((part, index) => `<span class="seg">${index ? '<span class="sep">·\u00a0</span>' : ''}${escapeHtml(part)}</span>`).join(' ');
 }
@@ -633,19 +649,36 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.setAttribute('aria-hidden', 'true');
 
   const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
-  /** A report column that scrolls (the wide windows' side-by-side record) fades at its foot while more lies below. */
+  /** A report column that scrolls (the wide windows' side-by-side record, a narrower window's report) shows its cue at
+   *  its foot while more lies below (endScreenPresentation.css .more). */
   const markMore = (panel: HTMLElement): void => {
     panel.classList.toggle('more', panel.scrollHeight - panel.scrollTop - panel.clientHeight > 2);
+  };
+  /** A column that scrolls ends on a whole part (a row, the medals, the best shot), the cue under it, never across one
+   *  (gauntlet r4: a faded row sliced by the panel's edge at every wide window, the medals' borders cut at 844x390): its
+   *  height is capped (--es-fit) at the last part its layout height holds whole. Measured on a resize, not a scroll. */
+  const fitPanel = (panel: HTMLElement): void => {
+    panel.style.removeProperty('--es-fit');
+    const room = panel.clientHeight;
+    if (panel.scrollHeight - room <= 2) { markMore(panel); return; }
+    const top = panel.getBoundingClientRect().top - panel.scrollTop;
+    let fit = 0;
+    for (const part of panel.querySelectorAll<HTMLElement>(FIT_PARTS)) {
+      const bottom = part.getBoundingClientRect().bottom - top;
+      if (bottom <= room - FIT_CUE_H && bottom > fit) fit = bottom;
+    }
+    if (fit > FIT_CUE_H) panel.style.setProperty('--es-fit', `${Math.ceil(fit + FIT_CUE_H)}px`);
+    markMore(panel);
   };
   // the column's box (a resize) and its sections (late art, the hero tile, a tab's swap) change what lies below
   const moreObserver = typeof ResizeObserver === 'function'
     ? new ResizeObserver((entries) => {
       for (const entry of entries) {
         const panel = (entry.target as HTMLElement).closest<HTMLElement>('.es-debrief');
-        if (panel) markMore(panel);
-        // (the narrower windows scroll the report itself: its foot fades as the columns' do, gauntlet r2)
+        if (panel) fitPanel(panel);
+        // (the narrower windows scroll the report itself: its foot shows the cue as the columns' does, gauntlet r2)
         const report = (entry.target as HTMLElement).closest<HTMLElement>('.es-report');
-        if (report) markMore(report);
+        if (report) fitPanel(report);
       }
     })
     : null;
@@ -889,11 +922,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details = rosterRowDetails(result, revives);
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
-    // kills (and a reviving battle's deaths) in their own columns; the narrow sheets keep the counts as words
+    // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
-      `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
+      `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
@@ -1515,15 +1548,20 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       if (rematchPanel) report.prepend(rematchPanel);
       renderBattleBeats(res, sum);
       moreObserver?.disconnect();
+      // (each scrolling column's cue: a chevron at its foot while more lies below)
+      for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
+        el('div', 'es-more', panel).innerHTML = uiIconSVG('chevronDown', 14);
+        panel.lastElementChild?.setAttribute('aria-hidden', 'true');
+      }
       for (const panel of report.querySelectorAll<HTMLElement>('.es-debrief')) {
         panel.addEventListener('scroll', () => markMore(panel), { passive: true });
         moreObserver?.observe(panel);
         for (const section of panel.children) moreObserver?.observe(section);
-        markMore(panel); // at once too: the observer's first word waits on a rendering step
+        fitPanel(panel); // at once too: the observer's first word waits on a rendering step
       }
       report.addEventListener('scroll', () => markMore(report), { passive: true });
       moreObserver?.observe(report);
-      markMore(report);
+      fitPanel(report);
       renderEndActions(sum);
       fillFlags();
 
