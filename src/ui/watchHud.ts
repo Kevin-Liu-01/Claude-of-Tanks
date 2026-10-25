@@ -61,10 +61,12 @@ const KIT = `
 `;
 
 const STYLE = `
-.cot-watch{position:absolute;left:50%;bottom:var(--inset-bottom);transform:translateX(-50%);z-index:var(--z-hud-controls);
+/* its seat is the layout's (battleHudLayout.ts): flying on the floor, lifted over the map where it would meet it; riding
+   and driving under the score's band, below the map and the touch toolbar where it would cross them */
+.cot-watch{position:absolute;left:50%;bottom:max(var(--inset-bottom),var(--hud-watch-lift,0px));transform:translateX(-50%);z-index:var(--z-hud-controls);
  display:flex;align-items:stretch;gap:var(--s1);pointer-events:none;font-family:var(--font-ui);color:var(--ink-1)}
 .cot-watch[hidden]{display:none}
-html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:calc(var(--inset-top) + 76px)}
+html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:var(--hud-watch-top,calc(var(--inset-top) + 76px))}
 .cot-watch .who{--tone:var(--accent);display:grid;grid-template-columns:auto 56px minmax(0,1fr);align-items:center;gap:var(--s2);
  width:300px;height:48px;padding:0 var(--s3);background:var(--hud-plate);border-radius:var(--r1);
  border-left:3px solid var(--tone);box-shadow:var(--ring-1);pointer-events:auto}
@@ -105,7 +107,7 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
 }
 /* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear */
 @media(max-height:500px){
- html:is([data-watch=ride],[data-watch=drive]) .cot-watch{top:calc(var(--inset-top) + 40px)}
+ html:is([data-watch=ride],[data-watch=drive]) .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px))}
  .cot-watch .who,.cot-watch .wb{height:38px}.cot-watch .wb{min-width:38px;padding:0 var(--s2)}
  .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}
  .cot-watch .who b{font-size:var(--fs-14)}.cot-watch .wb.seat{min-width:96px}

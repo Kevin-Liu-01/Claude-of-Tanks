@@ -193,7 +193,8 @@ function state(name) {
   // Cross the real 30-frame FPS threshold; single-frame fixtures miss this plate.
   for(let i=0;i<31;i++)hud.update(frame);
   panel.update(player.combat);
-  for(let i=0;i<(name==='feed-burst'?14:3);i++){
+  // (the first battles' strip stands at the rollout, before the player's first engagement: no kills staged)
+  for(let i=0;i<(name==='hints'?0:name==='feed-burst'?14:3);i++){
     bus.emit('mode:respawn',{id:tanks[8].id});
     bus.emit('mode:respawn',{id:tanks[1].id});
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
@@ -223,6 +224,16 @@ function state(name) {
       window.__HUD_LAYOUT.watch=watch;
     });
   }
+  // ?state=gunship | drone: the player flying (the AC-130's gunship sight, a drone's feed), as the battle's aerial view
+  // reaches the HUD (sim/matchModes.ts AerialView); ?state=hints: the first battles' controls strip (settings.ts)
+  delete player.aerial;
+  if(name==='gunship'||name==='drone'){
+    player.aerial={kind:name,active:true,launching:false,x:player.state.pos.x,y:name==='drone'?40:900,z:player.state.pos.z,
+      yaw:0,pitch:-0.5,batteryS:80,cooldownS:0,recallS:0,returnS:0};
+    frame.matchModeState={...frame.matchModeState,id:name==='gunship'?'ac130':'drone'};
+    for(let i=0;i<5;i++)hud.update(frame);
+  }
+  if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
   if(name==='sniper')hud.setMode('sniper');
   if(name==='large-map'){

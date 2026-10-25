@@ -138,6 +138,9 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 /* Chat and touch controls are siblings of the HUD, so its cinematic veil
    alone cannot hide them during the killcam/results handoff. */
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
+/* the replay owns the screen: the battle's own strips outside the HUD's root step aside too (owner 2026-10-25, "fix
+   overlapping uis") */
+body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibility:hidden!important}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}

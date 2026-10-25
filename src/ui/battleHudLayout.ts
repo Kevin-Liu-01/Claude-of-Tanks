@@ -622,6 +622,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
     // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
     observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
+    // Watch's bar (its seat: refresh)
+    observe('.cot-watch');
     // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
     const { width, height } = layoutViewportSize(window);
@@ -656,7 +658,39 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const objective = read('.cot-mode-status.show');
     const side = objectiveSeat === 'side' && objective ? objective : null;
     const head = Math.max(scoreBottom, pips?.bottom || 0);
-    const top = side || objectiveSeat === 'corner' ? head : Math.max(head, objective?.bottom || 0);
+    const headTop = side || objectiveSeat === 'corner' ? head : Math.max(head, objective?.bottom || 0);
+    // Watch's bar (watchHud.ts) owns a band of its own (owner 2026-10-25: "fix overlapping uis"). Riding or driving it
+    // hangs under the score's band, below the map and the touch toolbar where it would cross them, and everything the
+    // head band bounds (the side lanes, the centre notices) starts under it. Flying it rests on the floor, lifted over the
+    // map where the map would meet it. A centred bar of its own width: the box read here holds whatever seat it is given.
+    const watchView = document.documentElement?.dataset?.watch ?? '';
+    const watchBar = watchView ? read('.cot-watch:not([hidden])') : null;
+    let watchBand = 0;
+    /** A floor bar's top (flying), which the side lanes it crosses end above. */
+    let watchFloorTop = Infinity;
+    if (watchBar) {
+      const crosses = (box: DOMRect | null): box is DOMRect => !!box && box.right > watchBar.left && box.left < watchBar.right;
+      // A phone- or compact-width window hangs its map (and, on touch in portrait, its toolbar) under the head band
+      // (battleHudLayout.css --hud-objective-bottom), so they move under the bar; elsewhere they hold their corners, and
+      // the bar clears the ones it would cross.
+      const narrow = document.body.dataset.cotWidth === 'phone' || document.body.dataset.cotWidth === 'compact';
+      const mapFollows = narrow && (!touch || width < height), toolbarFollows = narrow && touch && width < height;
+      const toolbar = touch && !toolbarFollows ? read('.cot-touch.on .mobile-chrome') : null;
+      const fixedMap = mapFollows ? null : map;
+      // (a short touch landscape tucks the flying bar under the score as riding does: hud.ts)
+      const floorBar = watchView === 'drone' && !(touch && document.body.dataset.cotHeight === 'short');
+      if (floorBar) {
+        const lift = crosses(fixedMap) && fixedMap.top > height / 2 ? Math.ceil(height - fixedMap.top + 8) : 0;
+        setBodyVar('--hud-watch-lift', `${lift}px`);
+        watchFloorTop = lift > 0 ? height - lift - watchBar.height : watchBar.top;
+      } else {
+        const watchTop = Math.ceil(Math.max(headTop, crosses(fixedMap) && fixedMap.top < height / 2 ? fixedMap.bottom : 0,
+          crosses(toolbar) && toolbar.top < height / 2 ? toolbar.bottom : 0) + 8);
+        setBodyVar('--hud-watch-top', `${watchTop}px`);
+        watchBand = watchTop + watchBar.height;
+      }
+    }
+    const top = Math.max(headTop, watchBand);
     const telemetry = read('.cot-net');
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
@@ -817,7 +851,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killLeft = root.querySelector('.cot-kill-lane.l');
     const killRight = root.querySelector('.cot-kill-lane.r');
     const leftBottom = Math.min(leftFloor(height, touch),
-      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height);
+      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      // a floor bar of Watch's (flying) the lane would reach
+      watchBar && watchBar.left < sideWidth ? watchFloorTop - 8 : height);
     const earRight = read('.cot-ear.r');
     const networkRight = networkCornerRight(width, touch, telemetry, score);
     const strip = read('.cot-mp-status.battle');
@@ -831,7 +867,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
     let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
-      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height);
+      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      watchBar && watchBar.right > width - sideWidth ? watchFloorTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
@@ -1088,6 +1125,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
+      // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
+      // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
+      'ribbon-top': Math.min(systemsTop, read('.cot-flight-hud:not([hidden]) .flight-console')?.top ?? Infinity),
       'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
       'notice-top': noticeTop, 'alert-top': alertTop,
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split; tops and widths

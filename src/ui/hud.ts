@@ -1739,7 +1739,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rost
 /* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
    the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
 html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
-html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}
+html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px));bottom:auto}
 /* the coordinator's 11 px floor (246): no HUD text under 11 px on any device. A label that cannot fit there reads as its
    glyph or its state's ink, its words in its title and for a screen reader; a figure stays visible (.num). The systems
    row: a control's name is its glyph, a count it shows (a cooldown, the smoke charges) a figure, as a touch tile shows it */
@@ -2199,6 +2199,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let tgtPendingTransform: string | null = null;
   let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
   let aimTargetId: string | null = null;
+  /** Whether the player has given or taken a hit this battle (re-armed when the HUD hides between battles). */
+  let playerEngaged = false;
   let lastTanksRef: HudTank[] | null = null;  // roster snapshot for the forced-still target scan
   let forcedStill = false;  // true between forceAimDisplay and the next update
   let dmgPanelRef: DamagePanelController | null = null;   // mounted damage panel (turret-bearing feed)
@@ -7558,6 +7560,11 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
+    // the player's first hit given or taken this battle: the first battles' controls strip has done its work (settings.ts)
+    if (!playerEngaged && playerId != null && (hit.attackerId === playerId || hit.targetId === playerId)) {
+      playerEngaged = true;
+      bus.emit('ui:playerEngaged', {});
+    }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       killRibbon.damage(hit.targetId, hit.damage);
@@ -7736,6 +7743,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function applyMode(): void {
+    if (mode === 'hidden') playerEngaged = false;
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';markGunDry(false);}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
     // the layout owner holds a medal card placed clear of the battle sight only while the scope is up (battleHudLayout.ts);

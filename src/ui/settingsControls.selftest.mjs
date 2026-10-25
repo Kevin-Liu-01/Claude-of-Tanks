@@ -70,6 +70,19 @@ assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries
     'the rollout shows the first battles\' strip');
   assert.match(source, /if \(input\.isTouchLayout\?\.\(\) \|\| input\.isPadConnected\(\)\) return false;/,
     'a touch layout and a pad show no keyboard caps');
+  // (owner 2026-10-25: "only make it come up when its needed") the strip shows the groups still unused; each leaves as
+  // its control is pressed and stays learned; the strip leaves at the player's first engagement and with a kill cam
+  assert.match(source, /const HINT_GROUP_IDS = \['move', 'fire', 'aim', 'sniper', 'menu'\] as const;/, 'one id per group, in the strip\'s order');
+  assert.match(source, /if \(record\.battles >= HINT_BATTLES \|\| HINT_GROUP_IDS\.every\(\(id\) => record\.learned\.has\(id\)\)\) return false;/,
+    'a player who has used every control sees no strip');
+  assert.match(source, /\.filter\(\(\{ id \}\) => !record\.learned\.has\(id\)\)/, 'only the groups still unused show');
+  assert.match(source, /hintListeners\.push\(input\.onAction\(action, \(\) => learnHint\(id\)\)\)/, 'a group leaves as its control is pressed');
+  assert.match(source, /bus\.on\('ui:playerEngaged', \(\) => fadeHints\(\)\);/, 'the first engagement ends the strip');
+  assert.match(source, /bus\.on\('killcam:begin', \(\) => \{\s*kcReplay = true;\s*hideResumeVeil\(\);\s*hideHints\(\);/, 'a kill cam ends the strip');
+  // its seat: over the vehicle-controls row (battleHudLayout.ts); never over the scope, a flight, Watch or a spectated battle
+  assert.match(source, /\.cot-hints\{position:fixed;left:50%;top:calc\(var\(--hud-systems-top,/, 'the strip seats over the controls row');
+  assert.match(source, /body\.cot-hud-aerial \.cot-hints,html\[data-cot-scoped\] \.cot-hints,html\[data-watch\] \.cot-hints,body\.cot-spectating \.cot-hints\{display:none;\}/,
+    'the scope, a flight, Watch and spectating hide the strip');
 }
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
