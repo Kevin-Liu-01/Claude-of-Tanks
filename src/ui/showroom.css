@@ -200,7 +200,7 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :
    goes to whole rows of paint rather than wrapped chips over a sliced one */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){
   flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 28px),transparent);}
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections)>*{flex:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
   grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}
@@ -229,7 +229,8 @@ body[data-cot-panels='overlay'] .cot-garage>.cot-featured{display:none;}
 body[data-cot-panels='persistent'][data-cot-width] .cot-lower-third{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
   left:var(--edge);right:calc(var(--fleet-right) + var(--s4));bottom:var(--band-bottom);pointer-events:none;}
 /* the words keep a local shade over the turntable's bright rim; the band is its own plate */
-body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(--s2) var(--s4);margin:calc(-1 * var(--s6)) 0 0 calc(-1 * var(--s4));
+body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(--s5) var(--s4);
+  margin:calc(-1 * var(--s6)) 0 calc(var(--s2) - var(--s5)) calc(-1 * var(--s4));
   background:var(--stage-scrim);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-36);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));}
@@ -240,7 +241,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-group>:is(.cot-lt-loadout,.cot-lt-paint){display:flex;gap:var(--s1);height:var(--slot,56px);}
 /* (the captions stand over the stage's floor, so they take the stage's halo, as the name over the tank does) */
 .cot-lt-cap{font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
-  text-transform:uppercase;color:var(--ink-2);text-shadow:var(--stage-halo);}
+  text-transform:uppercase;color:var(--ink-1);text-shadow:var(--stage-halo);}
 .cot-lt-acts{height:var(--slot,56px);}
 /* an act is as wide as its name needs (never cut, never edge to edge), at least a slot */
 .cot-lt-band .cot-lt-act{flex-direction:column;justify-content:center;gap:var(--s1);width:auto;min-width:60px;padding:0 var(--s2);}

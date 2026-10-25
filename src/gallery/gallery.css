@@ -361,7 +361,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   /* the phone's filter rails scroll under an edge fade, never a chip cut at the screen edge; the end pad lets the last
      chip leave the fade */
   .flags,#classFacets,.toggles--glyphs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s6);
-    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+    -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
   .flags{display:flex}
   .flags button{flex:none;width:40px}
   .toggles .cot-c-chip{flex:none;height:36px}

@@ -98,14 +98,14 @@ body[data-cot-panels='overlay'] .cot-facet-row::-webkit-scrollbar{display:none;}
    the row's end pad lets its last chip scroll clear of the fade */
 body[data-cot-panels='overlay'] .cot-facet-row{padding-inline-end:var(--s6);}
 body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='r'] .cot-facet-row{
-  -webkit-mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 32px),transparent);
-  mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 32px),transparent);}
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);}
 body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='l'] .cot-facet-row{
-  -webkit-mask-image:linear-gradient(270deg,var(--graphite-900) calc(100% - 32px),transparent);
-  mask-image:linear-gradient(270deg,var(--graphite-900) calc(100% - 32px),transparent);}
+  -webkit-mask-image:linear-gradient(270deg,var(--surface-page) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(270deg,var(--surface-page) calc(100% - 32px),transparent);}
 body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='lr'] .cot-facet-row{
-  -webkit-mask-image:linear-gradient(90deg,transparent,var(--graphite-900) 32px,var(--graphite-900) calc(100% - 32px),transparent);
-  mask-image:linear-gradient(90deg,transparent,var(--graphite-900) 32px,var(--graphite-900) calc(100% - 32px),transparent);}
+  -webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 32px,var(--surface-page) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,transparent,var(--surface-page) 32px,var(--surface-page) calc(100% - 32px),transparent);}
 /* a docked Garage keeps its search in the strip, so the panel shows no second one */
 body[data-cot-panels='persistent'] .cot-facet-search{display:none;}
 /* A short landscape phone (390 px tall): the panel tops out at the screen's edge over the rail, so its rows sit closer and
