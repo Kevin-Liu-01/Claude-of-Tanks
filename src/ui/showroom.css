@@ -77,6 +77,7 @@ body[data-cot-panels='persistent'] .cot-garage[data-station='crew'] .stats [data
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-overview-more{display:none;}
 /* the band's acts hold the proving ground; the readout does not repeat it */
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-test-drive{display:none;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-tabs{display:none;}
 /* the readout's sections close up: one plate each, a step tighter, the performance cards in two columns */
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-stat-section{padding:var(--s3);margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-sidebar-section-title{min-height:20px;margin-bottom:var(--s2);}
@@ -339,9 +340,9 @@ body[data-cot-panels='persistent'] .cot-battle-mode{grid-row:1;position:relative
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic{display:block;position:absolute;inset:0;
   background:var(--surface-raised) center/cover no-repeat;transition:transform var(--dur-screen) var(--ease-enter);}
 /* the picture paints first; the words stand over it */
-body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;}
+body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;text-shadow:var(--stage-halo);}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic::after{content:'';position:absolute;inset:0;
-  background:linear-gradient(180deg,transparent 30%,var(--glyph-plate));}
+  background:linear-gradient(180deg,transparent 10%,var(--glyph-plate) 75%);}
 /* Random's four battlefields: one row of four on the wide card, two by two in a phone's small picture; no empty cell */
 .cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;}
 body[data-cot-panels='overlay'] .cot-battle-mode .sum-pic .random-map-mosaic{grid-template:repeat(2,1fr)/repeat(2,1fr);}
@@ -367,7 +368,8 @@ body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-battle-control{grid-template-rows:minmax(0,1fr) var(--btn-h-m);}
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
-body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
+body[data-cot-panels='persistent'][data-cot-width='tablet'] .cot-roster-count{display:none;}
+body[data-cot-panels='persistent']:not([data-cot-width='tablet']) .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
   font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-data);color:var(--ink-3);white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-roster-search input::placeholder{color:var(--ink-3);}
 

@@ -352,7 +352,7 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
   filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
 .cot-gallery-link{width:100%;height:36px;margin-top:var(--s3);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
   color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);
-  cursor:pointer;text-align:left;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  cursor:pointer;text-align:left;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);letter-spacing:0;text-transform:none;
   transition:background-color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter);}
 .cot-gallery-link svg{width:16px;height:16px;color:var(--ink-2);flex:0 0 auto;}
 .cot-gallery-link .go{margin-left:auto;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-14));line-height:1;}
@@ -412,14 +412,14 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   letter-spacing:0;text-transform:none;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
 .cot-garage .armorline{position:relative;min-width:0;min-height:54px;padding:9px var(--s2) var(--s2) 38px;color:var(--ink-3);
-  text-transform:uppercase;background:var(--scrim);border:1px solid var(--line-1);}
+  text-transform:none;background:var(--scrim);border:1px solid var(--line-1);}
 .cot-garage .armorline svg{position:absolute;left:9px;top:11px;width:19px;height:19px;color:var(--accent-lo);}
-.cot-garage .armorline span{display:block;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:var(--track-label-s);}
+.cot-garage .armorline span{display:block;font:600 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;}
 .cot-garage .armorline b{display:block;margin-top:5px;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
   text-transform:none;}
-.cot-layer-link{width:100%;height:28px;margin-top:var(--s2);display:flex;align-items:center;justify-content:center;gap:7px;
-  color:var(--ink-3);background:var(--scrim);border:1px solid var(--line-2);cursor:pointer;
-  font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase;}
+.cot-layer-link{width:100%;height:36px;margin-top:var(--s2);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
+  color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);cursor:pointer;
+  font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
 .cot-layer-link svg{width:13px;height:13px;color:var(--accent-lo);}
 .cot-layer-link:hover,.cot-layer-link:focus-visible{color:var(--accent-hi);border-color:var(--accent-lo);outline:none;}
 .cot-technical-section{padding:0 var(--s3) var(--s3);overflow:hidden;}
@@ -488,14 +488,14 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
 .cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
-  font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;text-transform:uppercase;}
+  font:600 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:none;}
 .cot-module-chip .mi{width:17px;height:17px;display:grid;place-items:center;color:var(--accent-lo);flex:0 0 auto;}
 .cot-module-chip svg{width:15px;height:15px;}.cot-module-chip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-crew-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s1);}
 .cot-crew-chip{min-width:0;padding:6px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:var(--s1);
-  color:var(--ink-3);background:var(--scrim);border:1px solid var(--line-1);
+  color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
   font:600 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-ui);letter-spacing:0;text-align:center;}
-.cot-crew-chip svg{width:16px;height:16px;color:var(--ink-2);}
+.cot-crew-chip svg{width:16px;height:16px;color:var(--accent-lo);}
 /* a role's name takes two lines rather than an ellipsis (Commander, Radio operator in a quarter column) */
 .cot-crew-chip span{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 /* One combined historical fleet, filtered by national flag. Compact arrow
@@ -531,7 +531,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   background:linear-gradient(180deg,var(--accent-wash),var(--surface-nav));opacity:1;
   box-shadow:var(--e1);}
 .cot-country-edge:active{transform:scale(.96);}
-.cot-country-edge.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
+.cot-country-edge.is-unavailable{opacity:.3;pointer-events:none;}
 .cot-country-chip{cursor:pointer;border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-plate);
   color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-mono);padding:var(--s1) var(--s2);
   display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;flex:0 0 auto;scroll-snap-align:start;
@@ -555,7 +555,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   display:flex;align-items:center;justify-content:center;
   background:var(--scrim);color:var(--ink-3);
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast);outline:none;}
-.cot-car-arrow.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
+.cot-car-arrow.is-unavailable{opacity:.3;pointer-events:none;}
 .cot-car-arrow svg{display:block;}
 .cot-car-arrow:hover{color:var(--text-accent);border-color:var(--accent);
   background:var(--surface-plate);}
@@ -584,6 +584,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-ui);}
 .cot-cards-empty[hidden],.cot-carousel.is-empty .cot-cards{display:none;}
 .cot-cards-empty .cot-c-btn{padding:0 var(--s4);}
+.cot-garage .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11));}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards:is(.dragging,.free),.cot-country-chips.free{scroll-snap-type:none;}
@@ -613,7 +614,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-card.hc-n2{--hc-n2:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:var(--line-control);transform:translateY(-2px);}
 .cot-card.sel:hover{transform:translateY(-6px);}
-.cot-card.sel{border-color:var(--accent);transform:translateY(-6px);
+.cot-card.sel{border-color:var(--accent);transform:translateY(-4px);
   box-shadow:0 8px 26px rgba(240,140,20,.28);}
 .cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px var(--s1) 2px;

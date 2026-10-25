@@ -219,7 +219,7 @@ export interface GarageRuntime {
   hide(): void;
   drainThumbs(): void;
   setDecorativeWorkGate(covered: () => boolean): void;
-  getStageRect(): { x: number; y: number; w: number; h: number };
+  getStageRect(centred?: boolean): { x: number; y: number; w: number; h: number };
   setSelected(specId: string): void;
   getSelected(): string;
   getSelectedGarageVariant(): string;
@@ -3192,7 +3192,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const between = autoloader ? autoloader.intraClipS : salvo!.intervalS * loadoutReload *
       rulesetReloadMultiplier(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
     const cell = (value: string, unit: string, label: string): string =>
-      `<div class="cot-mag-cell"><b class="num">${value}${unit ? `<small>${unit}</small>` : ''}</b><span>${label}</span></div>`;
+      `<div class="cot-mag-cell"><span>${label}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ''}</b></div>`;
     return `<div class="cot-mag" role="group" aria-label="${t('garage.mag.heading')}">` +
       cell(String(rounds), '', t(autoloader ? 'garage.mag.perClip' : 'garage.mag.perSalvo')) +
       cell(between.toFixed(between < 1 ? 2 : 1), 's', t('garage.mag.between')) + `</div>`;
@@ -3212,7 +3212,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let hotspots: GarageHotspots | null = null;
   let hotspotsLoading = false;
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
-  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(),
+  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => {
@@ -4515,8 +4515,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
-    /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
-    getStageRect() {
+    /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels); `centred: false` is the whole free area (the
+     *  callouts' room) rather than the hero's centred frame. */
+    getStageRect(centred = true) {
       // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
       if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
       // The stage (the 245 redesign): the docked layout frames the tank between the left edge and the readout's column,
@@ -4530,8 +4531,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const docked = !isOverlayPanelLayout();
       const sideways = !docked && document.body.dataset.cotOrientation === 'landscape';
       const column = sideways ? lowerThird.getBoundingClientRect() : null;
-      const x0 = rr.left + 18;
-      const x1 = docked && stats.width ? stats.left - 14 : column && column.width ? column.left - 14 : rr.right - 18;
+      let x0 = rr.left + 18;
+      let x1 = docked && stats.width ? stats.left - 14 : column && column.width ? column.left - 14 : rr.right - 18;
+      // Docked, the hero stands on the screen's own centre line where the readout leaves it room (owner 10-25: "not
+      // forcing the actual tank to be uncentered in screen and in top left"); where that would keep it under seven
+      // tenths of the free width (a narrow window), it slides toward the column instead.
+      if (docked && centred) {
+        const free = x1 - x0, mid = (rr.left + rr.right) / 2;
+        let half = Math.min(mid - x0, x1 - mid), cx = mid;
+        if (2 * half < 0.7 * free) { half = 0.35 * free; cx = x1 - half; }
+        x0 = cx - half;
+        x1 = cx + half;
+      }
       const y0 = rr.top + (docked ? 78 : 66);
       const floor = docked ? band : sideways ? countryRailEl.getBoundingClientRect() : head;
       const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
