@@ -1137,9 +1137,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
     const key = `${station}|${statsFor}|${window.innerWidth}x${window.innerHeight}`;
     const known = force ? undefined : readoutDensities.get(key);
-    if (known !== undefined) { statsEl.dataset.density = READOUT_DENSITY[known]; return; }
-    let density = 0;
-    statsEl.dataset.density = READOUT_DENSITY[0];
+    // a remembered density is checked once (the frame lays the readout out to paint it anyway): the same tank's readout
+    // can grow after it was fitted (its actions row, a late key cap), and one that no longer fits steps on from there
+    let density = known ?? 0;
+    statsEl.dataset.density = READOUT_DENSITY[density];
     while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
     if (readoutDensities.size > 64) readoutDensities.clear();
     readoutDensities.set(key, density);
