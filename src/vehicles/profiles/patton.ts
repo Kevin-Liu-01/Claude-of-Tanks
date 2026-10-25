@@ -7420,7 +7420,9 @@ export const PATTON_PROFILES = {
         antenna: { x: -1.03, y: 2.681, z: -0.579 },
         decalSec: 6,
       },
-      gun: { rootZ: 1.514, axisY: 1.875, len: 4.19 },
+      // (2026-10-25: the gun keeps its 1.93 world axis, toward the packet's 2.017, now in the turret, which sits 55 mm
+      // lower on its ring: at 1.875 the seated dome's side underside, 1.88, left the axis behind the trunnion in sight)
+      gun: { rootZ: 1.514, axisY: 1.93, len: 4.19 },
     }),
   },
   m60a2: {

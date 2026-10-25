@@ -32,7 +32,7 @@ assert(Math.abs(turretRig.position.y - seatReceipt.seatedRingY) < 1e-9,
   'complete articulated turret is placed at the reseated ring height');
 const gunRig = tank.root.getObjectByName('rig_gun');
 const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
-assert(Math.abs(gunWorld.y - 1.875) < 1e-9,
+assert(Math.abs(gunWorld.y - 1.93) < 1e-9,
   'gun, mantlet, and recoil rig rise with the turret instead of remaining in the hull');
 
 const position = turret.geometry.getAttribute('position');
