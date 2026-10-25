@@ -412,11 +412,19 @@ const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.gro
 
 /** The title in the direction's two voices (08 h1): its first words solid, its last words in the hollow outline. A
  *  Chinese title has no spaces and stays one solid line (the type package keeps CJK solid, SPEC 4.7). */
+const VOICE_TAIL = new Set(['a', 'an', 'the', 'to', 'of', 'for', 'and', 'in', 'on', 'with', 'at', 'by', 'from']);
+/** The title's two voices: split after its first comma, else at the word break nearest its middle (never leaving a short
+ * function word at the end of the first voice); a title with neither stays one voice. */
 function titleMarkup(title: string): string {
-  const words = title.split(' ');
-  if (words.length < 2) return `<span>${title}</span>`;
-  const cut = Math.ceil(words.length / 2);
-  return `<span>${words.slice(0, cut).join(' ')}</span> <span class="t-hollow">${words.slice(cut).join(' ')}</span>`;
+  const comma = title.search(/[,，]/);
+  let cut = comma > 0 ? comma + 1 : -1;
+  if (cut < 0) {
+    const breaks = [...title.matchAll(/ /g)].map((match) => match.index ?? 0)
+      .filter((at) => !VOICE_TAIL.has(title.slice(0, at).split(' ').pop()?.toLowerCase() ?? ''));
+    if (!breaks.length) return `<span>${title}</span>`;
+    cut = breaks.reduce((best, at) => (Math.abs(at - title.length / 2) < Math.abs(best - title.length / 2) ? at : best));
+  }
+  return `<span>${title.slice(0, cut).trim()}</span> <span class="t-hollow">${title.slice(cut).trim()}</span>`;
 }
 
 

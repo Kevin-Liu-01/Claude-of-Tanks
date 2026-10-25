@@ -24,7 +24,7 @@ export function lineChart(options: { readonly x: Axis; readonly y: Axis; readonl
   const sx = (v: number): number => left + ((v - x.min) / (x.max - x.min)) * (W - left - right);
   const sy = (v: number): number => top + (1 - (Math.min(v, y.max) - y.min) / (y.max - y.min)) * (H - top - bottom);
   const grid = y.ticks.map((v) => `<line class="g" x1="${left}" x2="${W - right}" y1="${f(sy(v))}" y2="${f(sy(v))}"/>`
-    + `<text class="t" x="${left - 8}" y="${f(sy(v))}" text-anchor="end" dominant-baseline="central">${v}</text>`).join('');
+    + `<text class="t" x="0" y="${f(sy(v))}" dominant-baseline="central">${v}</text>`).join('');
   const xticks = x.ticks.map((v) => `<line class="k" x1="${f(sx(v))}" x2="${f(sx(v))}" y1="${H - bottom}" y2="${H - bottom + 5}"/>`
     + `<text class="t" x="${f(sx(v))}" y="${H - bottom + 18}" text-anchor="middle">${v}</text>`).join('');
   const lines = series.map((s) => {
