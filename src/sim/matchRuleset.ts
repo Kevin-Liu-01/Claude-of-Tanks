@@ -2064,3 +2064,28 @@ export function refillUnlimitedAmmunition(
 export function rulesetAllyCap(ruleset: MatchRuleset, defaultCap: number): number {
   return ruleset.allies == null ? defaultCap : Math.max(0, Math.floor(ruleset.allies));
 }
+
+/**
+ * A mode's room (mp-scale-251, docs/MULTIPLAYER-V2.md §13.30): the team sizes a room may set, the size a new room takes,
+ * how many commanders it seats and on which sides. A room's empty slots up to its team size are the room's bots
+ * (src/mp/room/roomBots.ts planRoomBots), so a small group plays a full battle and a large one fills it. The rooms
+ * Worker, the LAN service and the hosting seat all read this table (src/mp/room/roomPolicy.ts).
+ */
+export interface RoomSizeRules {
+  /** 'versus': commanders on both sides, each up to the team size; 'coop': every commander on Alpha against the mode's hostiles. */
+  readonly sides: 'versus' | 'coop';
+  readonly minTeamSize: number;
+  readonly maxTeamSize: number;
+  readonly defaultTeamSize: number;
+  /** Commanders seated at most (null: both sides full). */
+  readonly maxHumans: number | null;
+}
+
+const VERSUS_ROOM: RoomSizeRules = Object.freeze({ sides: 'versus', minTeamSize: 1, maxTeamSize: 14, defaultTeamSize: 7, maxHumans: null });
+// the co-op modes field their own hostiles (Frontline's defenders, the Horde's pool) beside up to seven commanders
+const COOP_ROOM: RoomSizeRules = Object.freeze({ sides: 'coop', minTeamSize: 1, maxTeamSize: 7, defaultTeamSize: 7, maxHumans: 7 });
+
+/** The room rules of a mode (an unknown mode reads as standard). */
+export function roomSizeRulesFor(gameMode: string | null | undefined): RoomSizeRules {
+  return gameMode === 'endless_horde' || gameMode === 'frontline_assault' ? COOP_ROOM : VERSUS_ROOM;
+}
