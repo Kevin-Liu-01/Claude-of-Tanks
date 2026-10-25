@@ -918,6 +918,8 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
   padding-right:3px;scrollbar-width:thin;
   scrollbar-color:var(--line-3) var(--scrim);}
+/* a scrolling grid keeps a foot pad: the fade covers the next row's peek in it, never the last whole row */
+:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:16px;}
 .cot-eqpick .pgrid.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);
   mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);}
@@ -1672,6 +1674,9 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
   max-height:calc(100% - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));
   background:var(--surface-page);
 }
+/* the phone picker opens from the dossier's slots: the dossier steps aside under it (the sheet's scrim stays), so the
+   picker is never a sheet half over another with two close buttons */
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage.picker-open[data-garage-panel='equipment'] .stats{visibility:hidden;}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-garage{--cot-country-height:48px}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] :is(.cot-country-chip,.cot-country-edge){min-height:44px;min-width:44px}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-rail{--country-edge:44px}

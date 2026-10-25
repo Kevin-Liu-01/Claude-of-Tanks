@@ -110,6 +110,8 @@ body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
 .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
+/* the densest overview keeps its figures, deltas and actions and drops the headline bars (1024x600 overflowed by 26 px) */
+.cot-garage .stats[data-density~='4'] .cot-hrow .cot-c-scale{display:none;}
 /* one line a round: the glyph carries the type, the figures take their units inline in columns wide enough for them */
 .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 84px 52px;}
 /* Chinese figures stand at the 13 px floor: the figure columns widen so "806 / 733 mm" never runs into its damage */
@@ -310,6 +312,10 @@ body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repe
 /* a docked window 520-719 px tall: the picker spans the column too, so every item stays in view, and the column steps
    aside while it is open (no figure half under its edge) */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick{max-width:calc(100% - 2 * var(--edge));}
+/* a short window gives the rows the head's line: the slot shows as the open slot in the band, close stands at the chips' end */
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph{position:absolute;top:var(--s2);right:var(--s3);margin:0;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph .t{display:none;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .chips{padding-right:calc(var(--btn-h-s) + var(--s2));}
 /* the picker opens over the name's place: the name steps aside while it is open */
 body[data-cot-panels='persistent'] .cot-garage.picker-open .cot-lt-head{visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-garage.picker-open.picker-over-readout :is(.stats,.cot-stations){visibility:hidden;}
