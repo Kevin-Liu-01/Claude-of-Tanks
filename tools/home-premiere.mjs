@@ -16,6 +16,7 @@ import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
+import { displayTier, tierNumeral } from '../src/techTree/tiers.ts';
 import { vehicleFacetSearchWords, vehicleFacetsForId } from '../src/vehicles/vehicleFacets.ts';
 import { GAME_MODE_DEFINITIONS, MODE_PRESENTATION_ORDER } from '../src/sim/gameModeCatalog.ts';
 
@@ -272,7 +273,7 @@ function fleetCard(take, entry) {
   return { id, a, take: entry, hero: heroLayers(id, a), m: mobility(id) };
 }
 /** The plate's facts of one vehicle (publicPages.ts FleetFeature): what a tile shows when it is pointed at. */
-const feature = (c) => ({ name: c.a.name, flag: c.a.countryCode, tier: c.a.tierNumeral, cal: c.a.gun?.caliberMm ?? 0,
+const feature = (c) => ({ name: c.a.name, flag: c.a.countryCode, tier: tierNumeral(c.id), cal: c.a.gun?.caliberMm ?? 0,
   pen: pen(c.a), crew: c.m.crew, weight: c.m.weight, speed: c.m.speed, tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
   anatomy: galleryHref(c.id, 'modules').replace(/&amp;/g, '&'), drive: driveHref(c.id).replace(/&amp;/g, '&') });
 let wall = null;
@@ -283,18 +284,18 @@ function fleetWall() {
   const cards = [...curated, ...rest].map(([take, entry]) => fleetCard(take, entry));
   const rank = (c) => NATION_ORDER.indexOf(c.a.countryCode);
   const ordered = [...cards.slice(0, FLEET.length), ...cards.slice(FLEET.length)
-    .sort((x, y) => rank(x) - rank(y) || y.a.tier - x.a.tier || x.a.name.localeCompare(y.a.name))];
+    .sort((x, y) => rank(x) - rank(y) || displayTier(y.id) - displayTier(x.id) || x.a.name.localeCompare(y.a.name))];
   const records = ordered.map((c) => {
     const facets = vehicleFacetsForId(c.id);
     if (!facets) throw new Error(`home-premiere: ${c.id} has no class, role or status (src/vehicles/vehicleFacets.ts)`);
     const nationKey = `nation.${c.a.nation}`;
     const nationTerms = [...new Set([c.a.nation, c.a.markings?.countryLabel, c.a.countryCode, ZH[nationKey]].filter(Boolean).map(lower))];
-    const words = [c.a.name, ...(c.a.label?.searchAliases ?? []), ...nationTerms, c.a.era, `tier ${c.a.tier}`, c.a.tierNumeral,
+    const words = [c.a.name, ...(c.a.label?.searchAliases ?? []), ...nationTerms, c.a.era, `tier ${displayTier(c.id)}`, tierNumeral(c.id),
       vehicleFacetSearchWords(facets, (key) => EN[key] ?? key), vehicleFacetSearchWords(facets, (key) => ZH[key] ?? key)];
     return {
       id: c.id, name: c.a.name, flag: c.a.countryCode, href: galleryHref(c.id).replace(/&amp;/g, '&'), poster: c.take.poster, loop: c.take.loop, title: c.take.title,
       // each word once (the facet labels and their aliases repeat across the English and Chinese words)
-      entry: { searchText: [...new Set(lower(words.join(' ')).split(/\s+/).filter(Boolean))].join(' '), facets, era: c.a.era, nationTerms, tier: c.a.tier },
+      entry: { searchText: [...new Set(lower(words.join(' ')).split(/\s+/).filter(Boolean))].join(' '), facets, era: c.a.era, nationTerms, tier: displayTier(c.id) },
       feature: feature(c),
     };
   });

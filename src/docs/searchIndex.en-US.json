@@ -51,7 +51,7 @@
   "href": "/docs/controls#keys",
   "title": "Keys, mouse and gamepad",
   "chapter": "Controls and Watch",
-  "text": "Movement Action Keys Gamepad Move forward W – Move back S – Steer left A – Steer right D – Handbrake SPACE A Flip tank F – Combat Action Keys Gamepad Fire gun LMB RT Sniper mode L-SHIFT LT Shell slot 1 1 D-UP Shell slot 2 2 D-LEFT Shell slot 3 3 D-RIGHT Drop ammunition supplies J – Drop health supplies K – Cycle sensor view I – Drone V – Smoke G – Lights N – Auto gun B – Special action E LB Reload magazine C D-DOWN Auto-aim lock T – Armor overlay (hitboxes) H – Consumables Action Keys Gamepad Repair kit 4 X First aid kit 5 Y Fire extinguisher 6 B Camera Action Keys Gamepad Gun hold (free aim) CAPS L-ALT RB Aim / free look (RMB) RMB – Zoom in WHEEL ↑ – Zoom out WHEEL ↓ – Interface Action Keys Gamepad Minimap zoom M BACK Shot info log L – Performance overlay F8 – Network details F3 – Leave battle F4 – Reset Range R – Moving Targets Y – Settings menu ESC START"
+  "text": "Movement Action Keys Gamepad Move forward W – Move back S – Steer left A – Steer right D – Handbrake SPACE A Flip tank F – Combat Action Keys Gamepad Fire gun LMB RT Sniper mode L-SHIFT LT Shell slot 1 1 D-UP Shell slot 2 2 D-LEFT Shell slot 3 3 D-RIGHT Auto-aim lock T – Armor overlay (hitboxes) H – Vehicle Action Keys Gamepad Suspension E LB ATGM Q – Reload C D-DOWN Drone V – Smoke G – Lights N – Auto gun B – Flight Action Keys Gamepad Cycle sensor view I – Drop ammunition supplies J – Drop health supplies K – Consumables Action Keys Gamepad Repair kit 4 X First aid kit 5 Y Fire extinguisher 6 B Camera Action Keys Gamepad Gun hold (free aim) CAPS L-ALT RB Aim / free look (RMB) RMB – Zoom in WHEEL ↑ – Zoom out WHEEL ↓ – Interface Action Keys Gamepad Minimap zoom M BACK Shot info log L – Performance overlay F8 – Network details F3 – Leave battle F4 – Reset Range R – Moving Targets Y – Settings menu ESC START"
  },
  {
   "href": "/docs/controls#hold",
@@ -123,7 +123,7 @@
   "href": "/docs/tanks#classes",
   "title": "Classes",
   "chapter": "Tanks and equipment",
-  "text": "221 tanks in 9 classes. Main battle tank 159 AbramsX Medium tank 7 Carro 45t Heavy tank 1 KV-2 Light tank 6 BMP-3M Dragun 125 Infantry fighting vehicle 35 Ajax Armored personnel carrier 1 Ares APC Tank destroyer 7 AFT-10 Self-propelled anti-aircraft 1 M6 Linebacker Fire support vehicle 4 BMPT T-90 Open any of them in the Tank Gallery"
+  "text": "221 tanks in 9 classes. Main battle tank 159 C2 Ariete Prototype Medium tank 7 Centurion Mk 5/2 Heavy tank 1 KV-2 Light tank 6 PL-01 Infantry fighting vehicle 35 CV90 Mk 4 Armored personnel carrier 1 Ares APC Tank destroyer 7 Object 695 Self-propelled anti-aircraft 1 M6 Linebacker Fire support vehicle 4 BMPT T-90 Open any of them in the Tank Gallery"
  },
  {
   "href": "/docs/tanks#roles",
@@ -135,7 +135,7 @@
   "href": "/docs/tanks#tiers",
   "title": "Tiers and nations",
   "chapter": "Tanks and equipment",
-  "text": "Tanks of a tier meet tanks of nearby tiers. X 106 IX 60 VIII 34 VII 21 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
+  "text": "A tank's tier is its column in its nation's tech tree. X 21 IX 39 VIII 35 VII 31 VI 26 V 25 IV 14 III 13 II 9 I 8 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
  },
  {
   "href": "/docs/tanks#equipment",

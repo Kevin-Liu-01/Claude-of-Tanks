@@ -910,6 +910,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // tech-tree view 252 (2026-10-25): the read-only national trees (shape, layout, the fleet once each, no progression)
+    'src/techTree/techTree.selftest.mjs',
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',

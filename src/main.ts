@@ -275,7 +275,7 @@ import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRunt
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { createRosterPresentation } from './game/rosterPresentation.ts';
-import { tankTier, tierNumeral } from './vehicles/tier.ts';
+import { displayTier, tierNumeral } from './techTree/tiers.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
 import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
@@ -1336,7 +1336,7 @@ const playSurface = createPlaySurfaceRuntime({
       maps: garageMaps,
       vehicles: VISIBLE_TANK_IDS.map((id) => {
         const spec = getSpec(id);
-        return { id, name: spec.name, tier: tankTier(id), nation: spec.nation };
+        return { id, name: spec.name, tier: displayTier(id), nation: spec.nation };
       }),
       getSelection: () => ({
         specId: garage.getSelected(),

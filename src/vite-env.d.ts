@@ -11,3 +11,9 @@ declare module 'virtual:cot-i18n-fleet/*' {
   const strings: Readonly<Record<string, string>>;
   export default strings;
 }
+
+// A locale's tech-tree screen strings, which load with the screen (tools/viteI18nStudioCatalog.ts).
+declare module 'virtual:cot-i18n-techTree/*' {
+  const strings: Readonly<Record<string, string>>;
+  export default strings;
+}
