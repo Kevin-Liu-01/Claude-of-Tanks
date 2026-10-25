@@ -28,6 +28,7 @@ worktree and never stage generated tank work wholesale.
   [`docs/audio-generation/SKILL.md`](docs/audio-generation/SKILL.md) before
   generating or repairing any sound or crew line.
 - `docs/MULTIPLAYER-V2.md` — the peer-to-peer multiplayer: rooms Worker, wire, host, client, the cutover (§13.10).
+- `docs/RUST-KERNELS.md` — the authority's WebAssembly kernels (`crates/cot-sim`): what they answer, the flags, the receipts.
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
   new source-backed tanks, family rebuilds or exact-surface geometry repairs.
