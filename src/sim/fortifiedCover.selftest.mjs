@@ -81,7 +81,7 @@ assert.match(solo, /crushWorldPropFromShell\(world, bus, shell, hit, game\._fort
 assert.match(authority, /if \(isFortifiedCoverRecord\(obstacle\) && !fortified\.shellHit\(obstacle, shell\.spec\)\) return;/, 'authority: a round that stops on it');
 for (const [name, text, call] of [['solo', solo, /return game\._fortified\?\.ram\(obstacle, self\.spec\.weightTons, closing, game\.timeS\) \?\? false;/],
   ['authority', authority, /return fortified\.ram\(obstacle, entity\.spec\.weightTons, closing, timeS\);/]]) {
-  assert.match(text, /const closing = Math\.max\(0, -state\.speed \* \(Math\.sin\(state\.yaw\) \* pushX \+ Math\.cos\(state\.yaw\) \* pushZ\) \/ length\);\s*return (game\._fortified\?|fortified)\.ram\(/,
+  assert.match(text, /const closing = Math\.max\(0, -state\.speed \* \((?:det)?Math\.sin\(state\.yaw\) \* pushX \+ (?:det)?Math\.cos\(state\.yaw\) \* pushZ\) \/ length\);\s*return (game\._fortified\?|fortified)\.ram\(/,
     `${name}: a ram on the closing speed along the contact`);
   assert.match(text, call, `${name}: the ram books on the ledger`);
   assert.match(text, /obstacle\.min\[1\] > y \+ radius \|\| isFortifiedCoverRecord\(obstacle\)\) continue;/, `${name}: no fall to a burst beside it`);
