@@ -112,33 +112,39 @@ export const ROAD_LIFE_SEATS: Readonly<Record<string, readonly CivicFurniture[]>
 
   // @map delta
   // 20 vehicles and 6 carts; rotation twins about (-4, 14); on the shoulder; seats the hulls left alone in 6 zone and 6 Frontline base battles
+  // (251, the world-receipts lane: the search's tool is gone) the rotation twins east of the centre stood 12-145 m off
+  // any road, four of them in its trees. Thirteen seats re-seated by projection
+  // (cot-lanes/world-receipts-251 .qa-dev/w251/delta-reseat.mjs, deterministic): each run by its centre onto the
+  // nearest road segment, 5 m off the centreline on its own side, nose to tail at its old spacing, heading with the
+  // road in its old sense. Each clears every record by 0.3 m, the water, the objectives' discs and the carriageway rule
+  // (no slide was needed). Twin pairs about (-4, 14) no longer: Delta's roads are not symmetric about it.
   delta: [
     { kind: 'jeep', x: -286.69, z: 396.72, yawDeg: -158.7 },
-    { kind: 'jeep', x: 278.69, z: -368.72, yawDeg: 21.3 },
+    { kind: 'jeep', x: 320.72, z: -364.57, yawDeg: -8.7 },
     { kind: 'sedan', x: -284.45, z: 402.28, yawDeg: -157.8 },
-    { kind: 'sedan', x: 276.45, z: -374.28, yawDeg: 22.2 },
+    { kind: 'sedan', x: 321.63, z: -370.49, yawDeg: -8.7 },
     { kind: 'pickup', x: -282.21, z: 407.85, yawDeg: -158 },
-    { kind: 'pickup', x: 274.21, z: -379.85, yawDeg: 22 },
+    { kind: 'pickup', x: 322.54, z: -376.42, yawDeg: -8.7 },
     { kind: 'sedan', x: -263.86, z: -495.35, yawDeg: 25.4 },
-    { kind: 'sedan', x: 255.86, z: 523.35, yawDeg: -154.6 },
+    { kind: 'sedan', x: 364.56, z: 433.93, yawDeg: -140.5 },
     { kind: 'wagon', x: -261.26, z: -489.95, yawDeg: 25.1 },
-    { kind: 'wagon', x: 253.26, z: 517.95, yawDeg: -154.9 },
+    { kind: 'wagon', x: 360.74, z: 429.31, yawDeg: -140.5 },
     { kind: 'van', x: -258.42, z: -484.06, yawDeg: 25.8 },
-    { kind: 'van', x: 250.42, z: 512.06, yawDeg: -154.2 },
+    { kind: 'van', x: 356.58, z: 424.27, yawDeg: -140.5 },
     { kind: 'van', x: -423.86, z: -114.58, yawDeg: 7.6 },
-    { kind: 'van', x: 415.86, z: 142.58, yawDeg: -172.4 },
+    { kind: 'van', x: 380.56, z: 151.37, yawDeg: -166.1 },
     { kind: 'sedan', x: -423.04, z: -107.83, yawDeg: 7.8 },
-    { kind: 'sedan', x: 415.04, z: 135.83, yawDeg: -172.2 },
+    { kind: 'sedan', x: 378.92, z: 144.77, yawDeg: -166.1 },
     { kind: 'wagon', x: -422.31, z: -101.87, yawDeg: 6.3 },
-    { kind: 'wagon', x: 414.31, z: 129.87, yawDeg: -173.7 },
+    { kind: 'wagon', x: 377.48, z: 138.94, yawDeg: -166.1 },
     { kind: 'truckflatbed', x: -336.19, z: 301.26, yawDeg: 23 },
-    { kind: 'truckflatbed', x: 328.19, z: -273.26, yawDeg: -157 },
+    { kind: 'truckflatbed', x: 317.04, z: -274.86, yawDeg: 171.3 },
     { kind: 'handcart', x: -235.89, z: -461.03, yawDeg: -154.3 },
-    { kind: 'handcart', x: 227.89, z: 489.03, yawDeg: 25.7 },
+    { kind: 'handcart', x: 336.27, z: 399.64, yawDeg: 39.5 },
     { kind: 'handcart', x: -256.45, z: 499.49, yawDeg: 21.9 },
-    { kind: 'handcart', x: 248.45, z: -471.49, yawDeg: -158.1 },
+    { kind: 'handcart', x: 335.12, z: -458.16, yawDeg: 171.3 },
     { kind: 'handcart', x: -312.36, z: 332.91, yawDeg: -158.1 },
-    { kind: 'handcart', x: 304.36, z: -304.91, yawDeg: 21.9 },
+    { kind: 'handcart', x: 311.38, z: -303.83, yawDeg: -8.7 },
   ],
 
   // @map ruinspires
