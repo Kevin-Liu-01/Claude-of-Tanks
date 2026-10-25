@@ -370,13 +370,7 @@ function studioContract() {
 // Copy that changes with the media, in both locales. Keys the pages already use keep their names.
 const COPY = {
   en: {
-    'home.trailers.trailer': 'Trailer',
-    'home.trailers.trailer30': '30-second cut',
-    'home.trailers.trailerVertical': 'Vertical cut',
-    'home.trailers.seconds': '{seconds} seconds',
     'home.trailers.trailerAria': 'Play the trailer ({seconds} seconds), filmed in the game engine with its score and battle sound',
-    'home.trailers.trailer30Aria': "Play the trailer's {seconds}-second cut, filmed in the game engine with its score and battle sound",
-    'home.trailers.trailerVerticalAria': "Play the trailer's vertical cut ({seconds} seconds), filmed in the game engine with its score and battle sound",
     'docs.hero.trailerCaption': 'The trailer, filmed in the game engine',
     'docs.hero.trailerSpec': 'In-engine renders · {seconds} seconds',
     'docs.hero.trailerAria': 'The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound',
@@ -402,13 +396,7 @@ const COPY = {
     'docs.topic.studio.media2': 'Ten of the fifty frames on one contact sheet, used for visual review',
   },
   zh: {
-    'home.trailers.trailer': '预告片',
-    'home.trailers.trailer30': '30 秒剪辑版',
-    'home.trailers.trailerVertical': '竖屏版',
-    'home.trailers.seconds': '{seconds} 秒',
     'home.trailers.trailerAria': '播放预告片（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效',
-    'home.trailers.trailer30Aria': '播放预告片的 {seconds} 秒剪辑版，在游戏引擎中拍摄，配有配乐与战场音效',
-    'home.trailers.trailerVerticalAria': '播放预告片的竖屏版（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效',
     'docs.hero.trailerCaption': '预告片，在游戏引擎中拍摄',
     'docs.hero.trailerSpec': '引擎内渲染 · {seconds} 秒',
     'docs.hero.trailerAria': 'Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效',

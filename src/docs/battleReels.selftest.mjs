@@ -42,6 +42,7 @@ const library = /<div class="battle-reels"[\s\S]*?<\/noscript>/.exec(docs)?.[0];
 assert.ok(library, 'the manual index carries the take library');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load takes through one shared player');
 assert.ok(library.includes(`src="${BATTLE_REELS[0].video}"`), 'the player opens on the first take');
-assert.match(home, new RegExp(`href="/docs#battle-reels"[^>]*>[\\s\\S]*?Watch ${picks.docs.reels.length} battle takes`));
+// (2026-10-25) the landing's hero reel and features show the footage; the takes live in the manual alone
+assert.doesNotMatch(home, /href="\/docs#battle-reels"/, 'the landing no longer lists the takes');
 
 console.log('battle reels selftest passed');

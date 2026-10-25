@@ -88,25 +88,25 @@ assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|
 assert.ok(new RegExp(`id="docsArchiveOpen"[\\s\\S]*?Visual archive[\\s\\S]*?${archiveCount} field frames`).test(docsSource),
   'the archive card counts the archive');
 assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
-// the home page loops the reel silent; the manual leads with its banner (the trailer is the landing's, public/media/site50-r14/films), and
-// (2026-10-19, the owner: "all our new medai has to be shhown soomewhhere") the home page's motion stage plays the
-// trailer's three cuts with their score on a click only: outside that stage the home page names no trailer
-assert.match(homeSource, /\/media\/site50-r14\/films\/reel\.mp4/);
-const homeTrailerStage = homeSource.match(/<figure class="motion-trailer" data-trailer-stage>[\s\S]*?<\/figure>/)?.[0] ?? '';
-assert.match(homeTrailerStage, /<video controls playsinline preload="none" data-trailer [^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm"/,
-  'the motion stage plays the trailer on a click');
-assert.doesNotMatch(homeSource.replace(homeTrailerStage, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
-  'no trailer plays on the home page outside its motion stage');
+// (2026-10-25, the owner: "have big hero pics always animate and show multiple") the landing's hero reel crossfades the
+// curated clips (public/media/home-r2), and the trailer plays in the hero's dialog with its score on a press only: its
+// files are named only then (data-src), and nowhere else on the page
+const homeTrailerDialog = homeSource.match(/<dialog class="hero__film" data-trailer-dialog[\s\S]*?<\/dialog>/)?.[0] ?? '';
+assert.match(homeTrailerDialog, /<video controls playsinline preload="none" data-trailer [^>]*><source data-src="\/media\/site50-r14\/films\/trailer\.webm"/,
+  'the hero dialog plays the trailer on a press');
+assert.doesNotMatch(homeSource.replace(homeTrailerDialog, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
+  'no trailer plays on the home page outside its dialog');
+assert.ok((homeSource.match(/<video class="hero__clip" [^>]*data-reel-clip/g) || []).length >= 3, 'the hero reel holds several clips');
 // (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's motion stage)
 assert.match(docsSource, /<img src="\/media\/docs-r1\/banner-2560\.webp" srcset="\/media\/docs-r1\/banner-1280\.webp 1280w/, 'the manual leads with its banner');
 assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trailer plays on the landing, not in the manual');
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 // Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
 // lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.
-assert.match(homeSource, /<h1 class="hero__title" id="hero-title"><svg class="hero__lockup" viewBox="[^"]+" role="img" aria-labelledby="hero-title-name"><title id="hero-title-name">Claude of Tanks<\/title>/,
-  'the hero names the game with the outlined lockup (SPEC 3.1), its title Latin in every locale');
+assert.match(homeSource, /<h1 class="hero__title home-sr" id="hero-title">Claude of Tanks<\/h1>/,
+  'the hero names the game in its h1 for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
+assert.doesNotMatch(homeSource, /hero__lockup/, 'the hero draws no second lockup');
 assert.doesNotMatch(homeStyles, /html\[lang\^='zh'\][^{]*\{[^}]*-webkit-text-stroke/, 'no outline type on the Chinese hero');
-assert.match(homeSource, /<span class="t-hollow" data-i18n="home\.versus\.duels">/, 'the section headlines use the shared hollow treatment');
 assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(--hollow-ink,#eef4f8\);-webkit-text-stroke:0;opacity:\.72\}/,
   'the shared hollow treatment is solid ink on Chinese');
 assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC'/,
@@ -117,8 +117,8 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // (242, the direction's pages: the section eyebrow pictograms went with the eyebrows; the walls carry the duel, map, time
 // and fact glyphs; 246: the facts strip's renderer glyph left with the strip, the modes and mechanics switch carries the
 // modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
-const landingIcons = ['play', 'vehicle', 'map', 'team', 'fireGun', 'layerModules', 'cameraPath', 'gallery', 'star',
-  'globe', 'media', 'modeStandard', 'chevronLeft', 'phone'];
+// (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
+const landingIcons = ['play', 'map', 'team', 'gallery', 'globe', 'media', 'modeStandard', 'chevronRight', 'pause', 'close'];
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }
