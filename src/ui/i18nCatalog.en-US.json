@@ -5143,5 +5143,9 @@
   "studio.ws.queue.done": "The queue finished: {count, plural, one {# file} other {# files}} saved",
   "studio.ws.laneSound": "Sound",
   "studio.ws.fxMany": "{name} ×{count}",
-  "studio.ws.fxPlus": "{name} +{count}"
+  "studio.ws.fxPlus": "{name} +{count}",
+  "notice.dismiss": "Dismiss",
+  "notice.retry": "Retry",
+  "notice.offline": "Offline",
+  "notice.online": "Back online"
 }

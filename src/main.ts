@@ -141,6 +141,7 @@ import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
 import './ui/components/figures.css';
+import './ui/components/notices.css';
 import './ui/garage.css';
 import './ui/showroom.css';
 import './ui/battleTimeChoices.css';

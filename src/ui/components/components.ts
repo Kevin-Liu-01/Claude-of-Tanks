@@ -13,24 +13,12 @@
 // Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
-import { esc } from './escape.ts';
+import { attrs, esc, type Attrs } from './escape.ts';
 /** Text and attribute values are escaped once (escape.ts). */
 export { esc };
 
 /** What a control sounds like when used (SPEC §10; src/audio/interfaceSounds.ts reads it). */
 type SoundRole = 'tick' | 'press' | 'confirm' | 'back' | 'tab' | 'toggle' | 'select' | 'deploy' | 'error';
-
-/** Extra attributes for a host element, escaped; `true` writes a bare attribute, false/null/undefined omit it. */
-type Attrs = Readonly<Record<string, string | number | boolean | null | undefined>>;
-function attrs(extra: Attrs | undefined): string {
-  if (!extra) return '';
-  let out = '';
-  for (const [name, value] of Object.entries(extra)) {
-    if (value === false || value === null || value === undefined) continue;
-    out += value === true ? ` ${name}` : ` ${name}="${esc(value)}"`;
-  }
-  return out;
-}
 
 /* ------------------------------------------------------------------------------------------------------- buttons */
 

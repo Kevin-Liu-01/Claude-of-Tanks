@@ -150,10 +150,10 @@ assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 /* 3. styles -------------------------------------------------------------------------------------------------- */
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
 // stays out of the boot script.
-// The kit's two sheets: components.css (every page that uses the kit) and figures.css (the stat chips, stat tiles and
-// empty states the data surfaces draw), each tokens-only in the components layer.
+// The kit's sheets: components.css (every page that uses the kit), figures.css (the stat chips, stat tiles, empty states
+// and swatches the data surfaces draw) and notices.css (the notifications), each tokens-only in the components layer.
 const tokensCss = readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8');
-for (const file of ['./components.css', './figures.css']) {
+for (const file of ['./components.css', './figures.css', './notices.css']) {
   const sheet = readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
     `${file} declares into the components layer, below every surface`);
@@ -169,7 +169,13 @@ for (const file of ['./components.css', './figures.css']) {
   }
 }
 const mainSource = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
-assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';/, 'the game imports both sheets');
+assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';/,
+  'the game imports the three sheets');
+for (const page of ['../../gallery/gallery.css', '../../docs/docs.css']) {
+  assert.match(readFileSync(new URL(page, import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/notices\.css'\);/, `${page} imports the notifications`);
+}
+assert.doesNotMatch(readFileSync(new URL('./notices.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
+  /border-(?:left|right|top|bottom|inline-start|inline-end)\s*:|inset\s+-?\d+px\s+0\s+0/, 'no one-sided border or stripe: the severity is the glyph\'s tone (the bar\'s line 11)');
 assert.match(readFileSync(new URL('../../gallery/gallery.css', import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/figures\.css'\);/,
   'the Gallery imports the figures it draws');
 for (const page of ['../../docs/docs.css', '../../presentation/home.css', '../../presentation/notFound.css']) {
@@ -180,4 +186,45 @@ assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'u
 assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /from '\.\.\/(?:flags|icons)\.ts'/,
   'the core kit imports no asset: the flags and silhouettes are identity.ts');
 
-console.log('components: markup, ARIA and escaping for every factory; roving focus; two tokens-only sheets in the components layer');
+/* 4. notifications ------------------------------------------------------------------------------------------- */
+const { notice, banner, NoticeQueue, toastDuration } = await import('./notice.ts');
+const inline = notice({ severity: 'error', text: 'Refused <colours>', detail: 'Below the floor', actions: [{ label: 'Fix', primary: true, attrs: { 'data-fix': true } }] });
+assert.match(inline, /^<div class="cot-c-notice" data-severity="error" role="alert"><span class="cot-c-notice__glyph"><svg [^>]*><use href="#i-lampDown"\/>/, 'an error is an alert with its glyph');
+assert.match(inline, /Refused &lt;colours&gt;<\/span><span class="cot-c-notice__detail">Below the floor<\/span>/, 'text and detail escaped');
+assert.match(inline, /<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--primary" data-ui-sound="press" data-fix>Fix<\/button>/);
+assert.match(notice({ text: 'Saved', severity: 'success' }), /role="status"/, 'any other severity is a status');
+assert.doesNotMatch(notice({ text: 'Here at open', live: false }), /role=/, 'a notice present at render announces nothing');
+assert.match(banner({ text: 'Offline', severity: 'warning' }), /^<div class="cot-c-notice cot-c-notice--banner" data-severity="warning"/);
+assert.equal(toastDuration({ text: 'x' }), 4500); assert.equal(toastDuration({ text: 'x', severity: 'error' }), null, 'an error stays');
+assert.equal(toastDuration({ text: 'x', severity: 'warning', durationMs: 900 }), 900);
+// the queue on a fake clock: the limit, priority pre-emption, dedupe counts, holds and the game's pause
+let now = 0;
+const hooks = { show() {}, hide() {}, update() {} };
+const queue = new NoticeQueue(2, () => now, hooks);
+queue.push('a', { text: 'A' }); queue.push('b', { text: 'B' }); queue.push('c', { text: 'C' });
+assert.deepEqual([queue.shown.map((x) => x.id), queue.waiting.map((x) => x.id)], [['a', 'b'], ['c']], 'two shown, one waiting');
+queue.push('urgent', { text: 'U', priority: 5 });
+assert.deepEqual(queue.shown.map((x) => x.id), ['b', 'urgent'], 'a higher priority displaces the oldest of the lowest');
+assert.deepEqual(queue.waiting.map((x) => x.id), ['c', 'a'], 'the displaced one waits again, behind its equals');
+queue.push('d1', { text: 'Hit', dedupeKey: 'hit' });
+queue.push('d2', { text: 'Hit', dedupeKey: 'hit' });
+assert.equal(queue.waiting.filter((x) => x.options.dedupeKey === 'hit').length, 1, 'a repeat never queues twice');
+assert.equal(queue.waiting.find((x) => x.options.dedupeKey === 'hit').count, 2, 'it counts instead ("×2")');
+queue.remove('b');
+assert.deepEqual(queue.shown.map((x) => x.id), ['urgent', 'c'], 'a removal shows the next waiting');
+const timed = new NoticeQueue(3, () => now, hooks);
+now = 0; timed.push('t', { text: 'Saved', severity: 'success' });
+now = 4000; assert.deepEqual(timed.expired(), [], 'not yet');
+timed.hold('t', true); now = 9000; assert.deepEqual(timed.expired(), [], 'a held toast keeps its time');
+timed.hold('t', false); now = 9400; assert.deepEqual(timed.expired(), [], 'and resumes where it was');
+timed.pause(true); now = 20000; assert.deepEqual(timed.expired(), [], 'the game\'s pause holds every time');
+timed.pause(false); now = 20050; assert.deepEqual(timed.expired(), [], '100 ms were left when the pause lifted');
+now = 20101; assert.deepEqual(timed.expired(), ['t'], 'then it runs out');
+timed.push('t', { text: 'Saved again', severity: 'success' }); now = 21000;
+assert.deepEqual(timed.expired(), [], 'an update in place restarts its time');
+const sticky = new NoticeQueue(3, () => now, { show() {}, hide() {}, update() {} });
+sticky.push('e', { text: 'Failed', severity: 'error' }); now += 1e9;
+assert.deepEqual(sticky.expired(), [], 'an error stays until dismissed');
+assert.equal(sticky.nextDeadline(), null);
+
+console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); three tokens-only sheets in the components layer');

@@ -5143,5 +5143,9 @@
   "media.versus.place.vs08WinterCv90Bmp3R7Top": "霜谷，白天，俯瞰",
   "media.versus.title.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰：Stridsvagn 122 对 T-80BV",
   "media.versus.match.vs09AlpineStrv122T80bvR7Top": "Stridsvagn 122 对 T-80BV",
-  "media.versus.place.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰"
+  "media.versus.place.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰",
+  "notice.dismiss": "关闭",
+  "notice.retry": "重试",
+  "notice.offline": "已离线",
+  "notice.online": "已重新连接"
 }
