@@ -214,14 +214,16 @@ const CSS = `
 .cot-play .panel::-webkit-scrollbar{width:6px}
 .cot-play .panel::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:var(--r1)}
 /* the cue that the panel runs on past an edge: the edge fades while more lies beyond it (scroll-driven; a panel that does not
-   scroll has no timeline and shows no fade). Like the sticky head, each sits on the panel's padding edge; the sticky head
+   scroll has no timeline and shows no fade; a browser without scroll timelines shows none). Like the sticky head, each sits on the panel's padding edge; the sticky head
    and foot cover their own edge. */
+@supports (animation-timeline:scroll()){
 .cot-play .panel::before,.cot-play .panel::after{content:'';position:sticky;z-index:var(--z-lift);flex:0 0 var(--s6);background:var(--play-plate);
   pointer-events:none;opacity:0;animation-timeline:scroll(nearest)}
 .cot-play .panel::before{order:-1;top:calc(-1 * var(--s5));margin-bottom:calc(-1 * var(--s6));mask-image:linear-gradient(var(--surface-scene),transparent);
   animation-name:cotPlayEdge;animation-direction:reverse;animation-fill-mode:both;animation-timing-function:linear;animation-range:0 var(--s6)}
 .cot-play .panel::after{order:99;bottom:calc(-1 * var(--s5));margin-top:calc(-1 * var(--s6));mask-image:linear-gradient(transparent,var(--surface-scene));
   animation-name:cotPlayEdge;animation-fill-mode:both;animation-timing-function:linear;animation-range:calc(100% - var(--s6)) 100%}
+}
 @keyframes cotPlayEdge{from{opacity:1}to{opacity:0}}
 .cot-play .play-head{position:sticky;top:calc(-1 * var(--s5));z-index:5;flex-shrink:0;margin:calc(-1 * var(--s5)) calc(-1 * var(--s5)) 0;
   padding:var(--s5) 64px var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
