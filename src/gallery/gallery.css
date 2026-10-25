@@ -45,7 +45,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .search__field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;color:var(--ink-1);font:inherit;outline:none}
 .search__field input::placeholder{color:var(--ink-3)}
 .search__field input::-webkit-search-cancel-button{display:none}
-.search__count{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
+.search__count{margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
 .flags{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--s1)}
 .flags button{display:grid;place-items:center;height:28px;min-width:0;padding:0;border:0;border-radius:var(--control-radius);
   background:transparent;box-shadow:var(--ring-1);color:var(--ink-3)}
@@ -65,7 +65,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .more-facets summary .cot-i{margin-left:auto;transition:transform var(--dur-fast) var(--ease-enter)}
 .more-facets[open] summary .cot-i{transform:rotate(180deg)}
 .more-facets__n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 var(--s2);border-radius:9px;background:var(--accent);
-  color:var(--ink-on-accent);font:600 var(--fs-11)/1 var(--font-data)}
+  color:var(--ink-on-accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .more-facets__n[hidden]{display:none}
 .more-facets>.toggles--glyphs{display:grid;gap:var(--s2);margin-top:var(--s2)}
 @media (hover:hover){.more-facets summary:hover{color:var(--ink-1)}}
@@ -87,7 +87,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam__group{display:flex;flex-direction:column;gap:2px}
 .fam .gh{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s2) var(--s2);font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-2)}
 .fam .gh .cot-i{width:16px;height:16px;color:var(--ink-3)}
-.fam .gh .n{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
+.fam .gh .n{margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3)}
 /* the row gap snaps down to 8, not up to 12: at 12 the narrower name column wraps 80 of 221 names at 1440 (51 at 8) */
 .fam .it{position:relative;display:flex;align-items:center;gap:var(--s2);width:100%;min-height:34px;flex:none;padding:var(--s2) var(--s2);border:0;
   border-radius:var(--control-radius);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left;
@@ -96,8 +96,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam .it .cot-c-sil{width:38px;height:12px;color:var(--ink-2)}
 /* a long name takes a second line (247 round 2: no ellipsis); most rows keep one */
 .it__name{flex:1;min-width:0;line-height:1.15;overflow-wrap:anywhere}
-.fam .it .e{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
-.it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
+.fam .it .e{margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
+.it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
 .fam .it[aria-selected=true] .cot-c-sil{color:var(--ink-1)}
 .fam .it:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
@@ -128,7 +128,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   white-space:nowrap;transition:background-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
 .layers button{height:34px;padding:0 var(--s3);color:var(--ink-3);font:500 var(--fs-13)/1 var(--font-body)}
 .layers button .cot-i,.tools button .cot-i{width:17px;height:17px}
-.layers .cot-c-kbd{min-width:0;height:auto;padding:0;box-shadow:none;color:var(--ink-3);font-size:var(--fs-11)}
+.layers .cot-c-kbd{min-width:0;height:auto;padding:0;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .layers button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--gallery-layer-on)}
 .layers button:disabled{color:var(--ink-4);cursor:not-allowed}
 .views{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px}
@@ -166,7 +166,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .stage .subs{position:absolute;z-index:var(--z-hud-controls);left:16px;top:60px;max-width:calc(100% - 180px)}
 /* a plate with its whole ring, never one coloured edge (the gauntlet's notification line) */
 .readout{left:16px;top:104px;width:min(280px,40%);padding:var(--s3);border-radius:var(--plate-radius);box-shadow:var(--ring-2)}
-.readout>div{display:flex;justify-content:space-between;gap:var(--s2);color:var(--accent-hi);font:500 var(--fs-11)/1 var(--font-data)}
+.readout>div{display:flex;justify-content:space-between;gap:var(--s2);color:var(--accent-hi);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .readout small{color:var(--ink-3);font:inherit}
 .readout strong{display:block;margin:var(--s2) 0 var(--s1);color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-display)}
 .readout p{margin:0;color:var(--ink-2);font:400 var(--fs-12)/1.45 var(--font-body)}
@@ -211,7 +211,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .facts>div{display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:var(--s2);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .facts .cot-i{width:16px;height:16px;color:var(--ink-3)}
 .facts b{font:700 var(--fs-16)/1 var(--font-display);white-space:nowrap}
-.facts b small{margin-left:2px;color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
+.facts b small{margin-left:2px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .dz-rules:empty{display:none}
 .dz-rules .is-dev{color:var(--text-warn)}
 .ratings{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -229,7 +229,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .vsc .s .cot-c-sil{width:64px;height:20px;color:var(--ink-2)}
 .vsc .mid{display:flex;flex-direction:column;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);text-align:center}
 .vsc .mid>div{display:grid;grid-template-columns:minmax(64px,auto) 20px minmax(64px,auto);align-items:center;gap:var(--s1)}
-.vsc .mid em small{margin-left:3px;color:var(--ink-3);font-size:var(--fs-11)}
+.vsc .mid em small{margin-left:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .vsc .mid em{font-style:normal;color:var(--ink-1)}
 .vsc .mid em:first-child{text-align:right}
 .vsc .mid em:last-child{text-align:left}
@@ -248,8 +248,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .shell>.cot-i{grid-row:span 2;width:24px;height:24px;color:var(--accent)}
 .shell-id{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
 .shell-id b{font:600 var(--fs-14)/1.1 var(--font-display);overflow-wrap:anywhere}
-.shell-id small{color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
-.shell-nums{display:flex;gap:var(--s3);color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);white-space:nowrap}
+.shell-id small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
+.shell-nums{display:flex;gap:var(--s3);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
 .shell-nums span{display:inline-flex;align-items:baseline;gap:2px}
 .shell-nums b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-display)}
 .shell-nums .cot-i{width:14px;height:14px;align-self:center}
@@ -279,7 +279,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .damage-targets button{justify-content:space-between;min-height:34px;background:transparent;box-shadow:none;text-align:left}
 .damage-targets button[aria-pressed=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on)}
 .damage-targets button>span{min-width:0}
-.damage-targets small{flex:none;color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
+.damage-targets small{flex:none;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .damage-targets [data-condition=yellow] small{color:var(--text-warn)}
 .damage-targets :is([data-condition=red],[data-condition=removed]) small{color:var(--text-danger)}
 .damage-condition{margin:0;padding:var(--s2) var(--s3);border-radius:var(--control-radius);background:var(--fill-quiet);color:var(--ink-1);font:500 var(--fs-12)/1.45 var(--font-body);overflow-wrap:anywhere}
