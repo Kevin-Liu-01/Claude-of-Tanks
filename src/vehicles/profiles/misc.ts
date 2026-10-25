@@ -2571,8 +2571,11 @@ function buildType90Turret(P: MiscBuilderPort): void {
     [-1.18, -1.155], [-1.30, -1.127], [-1.30, 1.19], [-1.20, 1.19], [-1.08, 1.70], [-0.93, 1.84], [-0.80, 1.92],
   ];
   // TANK-OPT companions (227): the band's open bottom shows the inside from below a thrown turret; polyTurret's
-  // closeBottom closes it. Held for the gun-hull lane's Type 90 batch (240): that lane passes `true` and regenerates.
-  P.add('turret', KIT.polyTurret(PLAN_LO, 0.70, 1.0, 1.0), 0, 0.03, 0);        // wall band 1.43..2.13 — the REAL near-vertical welded slab sides (the r6 1.423-1.446 underside base holds; §B7: the print's 1.77 wall top is the squashed read)
+  // closeBottom closes it. 253 (the STC-1 / STC-2 batch, which regenerates both consumers): closed. The seated band's
+  // right wall stands 8 mm higher at its front corner than its left (world 1.464 against 1.456), so from the right a
+  // level sightline under that edge met the left wall's inside — a slit along the ring line that STC-2's cheek
+  // carriers used to cover (tank-sealed-check: 5 open views once they went); the bottom fan meets every such ray.
+  P.add('turret', KIT.polyTurret(PLAN_LO, 0.70, 1.0, 1.0, true), 0, 0.03, 0);        // wall band 1.43..2.13 — the REAL near-vertical welded slab sides (the r6 1.423-1.446 underside base holds; §B7: the print's 1.77 wall top is the squashed read)
   P.add('turret', KIT.polyTurret(PLAN_HI, 0.08, 1.0, 1.0), 0, 0.73, 0);        // wall extension band 2.13..2.21 (plan unchanged — footprint is registration-neutral)
   P.add('turret', box(1.96, 0.36, 1.855), 0, 0.76, 0.5475);                    // roof plate x +-0.98, TOP 2.34 (the published datum), z_w -0.578..1.278 (r7: rear cap moved OFF station slab i5 [-1.224..-0.684] into i6 — a z-cap face paints the whole 1.98..2.34 band into its slab under the front-clip END-CAP law; the print's own sheet roof vanishes mid-slab and its i4/i5 tops read the 2.24 shelf line)
   for (const s of [-1, 1]) {
@@ -3076,6 +3079,10 @@ function buildType74(P: MiscBuilderPort): void {
   // sponson band (the long plain side read as a slab). Gussets hang 0.075 under the 1.375 fender line, 0.2 m clear of
   // the dead track's top run.
   for (const s of [-1, 1]) {
+    // the rear fender's inner return over the sprocket: the fitted shoes' rear wrap ends near z -3.29, which left the
+    // strip between the tail's notch panels (x 0.97) and the fender (x 1.05) open in plan (standard-check B2: two
+    // phase-only 6 cm holes at x ±1.01, z -3.35); the return overlaps the fender's inner edge by 1 cm
+    P.add('hull', box(0.10, 0.028, 0.32), s * 1.01, 1.361, -3.26);
     for (const z of [2.30, 1.40, 0.50, -0.40, -1.30, -2.20]) {
       P.add('hullDetail', box(0.026, 0.075, 0.07), s * 1.52, 1.3375, z);
       P.add('hullDetail', box(0.40, 0.022, 0.026), s * 1.31, 1.352, z);
