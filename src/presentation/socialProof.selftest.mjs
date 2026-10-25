@@ -88,9 +88,9 @@ assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-
 assert.match(styles, /\.press__quotes\{[^}]*grid-template-columns:repeat\(4,/, 'desktop shows the four posts in a row');
 assert.match(styles, /\.press__title em\{[^}]*color:var\(--gold\)/, 'only the Three.js name in the title takes the gold accent');
 // (2026-10-25 gauntlet, one accent and no other colour) the metric icons and the platform marks paint in ink
-assert.match(styles, /\.v5-social-metric-icon--view,\.v5-social-metric-icon--like\{color:var\(--ink-2\)\}/, 'the view and like icons paint in ink');
+assert.match(styles, /\.v5-social-metric-icon\{color:var\(--ink-2\);/, 'every metric icon paints in one ink');
+assert.doesNotMatch(styles, /\.v5-social-metric-icon--\w+\{[^}]*color:#/, 'no metric icon keeps a colour of its own');
 assert.match(styles, /\.v5-social-platform-icon--reddit\{[^}]*color:var\(--ink-1\)/, 'the Reddit mark paints in ink');
-for (const icon of ['comment', 'repost', 'bookmark']) assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#91a1ac`), `${icon} metric icon uses the shared neutral gray`);
 assert.match(styles, /\.v5-social-metric-icon\{[^}]*width:18px;height:18px/, 'metric icons use the enlarged presentation size');
 
 console.log('social proof selftest passed: the press band (Three.js, four posts, five threads, dated numbers)');

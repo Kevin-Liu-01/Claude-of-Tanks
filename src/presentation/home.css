@@ -55,12 +55,12 @@ img{display:block;max-width:100%}
 .hero__trailer-icon{display:none}
 /* the reel's pause: the media player's own control (mediaPlayer.css .cot-media-toggle), a disc on the scrim */
 .hero__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
-.hero__toggle .cot-i{width:16px;height:16px}
+.hero__toggle svg{display:block;width:16px;height:16px}
 .hero__toggle:hover{border-color:var(--accent);color:var(--accent-hi)}
 .hero__toggle[aria-pressed=true]{border-color:transparent;background:var(--accent);color:var(--ink-on-accent)}
 .hero__toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .hero__toggle[hidden]{display:none}
-.hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0 calc(var(--home-x) * -1);padding:0 var(--home-x);list-style:none;border-top:1px solid var(--line-1)}
+.hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0;padding:0;list-style:none;border-top:1px solid var(--line-1)}
 .hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3)}
 .hero__stats .cot-i{width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
@@ -133,7 +133,8 @@ img{display:block;max-width:100%}
 .play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
 .play-tile__nm a:focus-visible{outline:none}
 .play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--accent)}
-.play-tile__nm b{overflow:hidden;font:700 var(--fs-28)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
+/* a long name takes a second line, never an ellipsis */
+.play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
 .press{padding:var(--s7) 0 var(--s8);border-top:1px solid var(--line-1)}
@@ -153,8 +154,8 @@ img{display:block;max-width:100%}
 .press__src:hover,.press__src:focus-visible{color:var(--ink-1);box-shadow:var(--ring-3)}
 /* the quoted posts: four cards, each over its battle photo */
 .press__quotes{grid-area:quotes;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
-.press__quotes .v5-social-card__body blockquote{font-size:var(--fs-24)}
-.press__quotes .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20)}
+/* one size for every quote, the last line never a lone word */
+.press__quotes .v5-social-card__body blockquote,.press__quotes .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
 .press__quotes .v5-social-metrics{gap:var(--s4)}
 .press__quotes .v5-social-card__body{justify-content:flex-start}
 .press__quotes :is(.v5-social-metrics,.v5-social-card__identity small){font-size:max(var(--fs-floor-12),var(--fs-12))}
@@ -184,21 +185,19 @@ img{display:block;max-width:100%}
 .v5-social-platform-icon{display:inline-block;width:16px;height:16px;flex:none;background:currentColor;-webkit-mask:var(--social-platform-icon) center/contain no-repeat;mask:var(--social-platform-icon) center/contain no-repeat}
 .v5-social-platform-icon--x{--social-platform-icon:url('/brand/social/x.svg');color:var(--ink-1)}
 .v5-social-platform-icon--reddit{--social-platform-icon:url('/brand/social/reddit.svg');color:var(--ink-1)}
-.v5-social-metric-icon{display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--social-metric-icon) center/contain no-repeat;mask:var(--social-metric-icon) center/contain no-repeat}
+.v5-social-metric-icon{color:var(--ink-2);display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--social-metric-icon) center/contain no-repeat;mask:var(--social-metric-icon) center/contain no-repeat}
 .v5-social-metric-icon--view{--social-metric-icon:url('/brand/social/view.svg')}
 .v5-social-metric-icon--like{--social-metric-icon:url('/brand/social/like.svg')}
-.v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg');color:#91a1ac}
-.v5-social-metric-icon--view,.v5-social-metric-icon--like{color:var(--ink-2)}
-.v5-social-metric-icon--comment{--social-metric-icon:url('/brand/social/comment.svg');color:#91a1ac}
-.v5-social-metric-icon--repost{--social-metric-icon:url('/brand/social/repost.svg');color:#91a1ac}
+.v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg')}
+.v5-social-metric-icon--comment{--social-metric-icon:url('/brand/social/comment.svg')}
+.v5-social-metric-icon--repost{--social-metric-icon:url('/brand/social/repost.svg')}
 
 /* ---- the closing call: full-bleed art under its fade; the headline and its two calls on the open snow ---- */
-.v5-cta{position:relative;display:flex;align-items:flex-end;min-height:640px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
+.v5-cta{position:relative;display:flex;align-items:flex-end;min-height:560px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
 .v5-cta>img,.v5-cta>div{position:absolute;inset:0;width:100%;height:100%}
 .v5-cta>img{object-fit:cover;object-position:50% 100%}
 .v5-cta>div{background:var(--home-closing-grade)}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
-.v5-cta h2{max-width:clamp(620px,43vw,820px);margin:0 0 var(--s6);font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--s4)}
 
 /* the sections under the hero lay out only as they near the screen: the first frame draws the hero alone */
@@ -220,7 +219,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 @media (width < 768px){
   .home{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
   .home .public-nav__tools>.public-nav__cta{display:none}
-  .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--s4) var(--s4);background:var(--surface-page)}
+  .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) var(--s4);background:var(--surface-page)}
   .hero__still,.hero__clip{top:0;bottom:auto;height:640px;object-position:54% 50%}
   .hero__reel{bottom:auto;height:640px}
   .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
@@ -239,7 +238,6 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:max(var(--fs-floor-11),var(--fs-11))}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
-  .hero__stats li:last-child{display:none}
   .features{padding-top:var(--s6)}
   .features-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2)}
   .feat,.feat--wide{aspect-ratio:16/9}
@@ -264,13 +262,12 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .press__src{height:44px}
   .v5-social-card>a{padding:var(--s5)}
   .v5-social-card__identity em{display:none}
-  .v5-social-card__body blockquote{font-size:var(--fs-20)}
   /* the picture, then the words under it: no headline over a tank on a narrow screen */
   .v5-cta{flex-direction:column;align-items:stretch;min-height:0;padding:0 0 var(--s7)}
   .v5-cta>img{position:static;height:auto;aspect-ratio:16/9}
   .v5-cta>div{display:none}
   .v5-cta>.shell{margin-top:var(--s5)}
-  .v5-cta h2{max-width:none;font-size:var(--fs-36)}
+  .v5-cta .hero-actions>.cot-c-btn{flex:1 1 100%}
   .cot-media-toggle{top:14px;left:14px}
   /* the trailer's controls at the 44 px target */
   .film-btn,.hero__film-close{--h:44px}

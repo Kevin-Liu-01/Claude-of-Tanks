@@ -121,7 +121,9 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // and fact glyphs; 246: the facts strip's renderer glyph left with the strip, the modes and mechanics switch carries the
 // modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
 // (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
-const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'pause', 'close', 'fullscreen', 'sound'];
+const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'close', 'fullscreen', 'sound'];
+// the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place
+assert.match(homeSource, /data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="M4 2\.5h3v11H4zM9 2\.5h3v11H9z"\/>/, 'the reel\'s pause draws the player\'s glyph');
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }
