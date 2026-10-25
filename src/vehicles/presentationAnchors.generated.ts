@@ -295,7 +295,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   fv510: Object.freeze({ centerYM: 1.6974, topHalfM: 3.9236, sideHalfM: 1.9618 }),
   fv510_milan: Object.freeze({ centerYM: 1.6964, topHalfM: 3.9586, sideHalfM: 1.9793 }),
   griffin50mm: Object.freeze({ centerYM: 2.1812, topHalfM: 3.9502, sideHalfM: 2.3339 }),
-  griffin_viper: Object.freeze({ centerYM: 1.7247, topHalfM: 3.6561, sideHalfM: 1.8454 }),
+  griffin_viper: Object.freeze({ centerYM: 1.7124, topHalfM: 3.6561, sideHalfM: 1.8322 }),
   hayate_ifv: Object.freeze({ centerYM: 1.8157, topHalfM: 4.2974, sideHalfM: 2.1487 }),
   jpz_e100: Object.freeze({ centerYM: 1.7638, topHalfM: 7.5798, sideHalfM: 3.7899 }),
   k1a1: Object.freeze({ centerYM: 2.0351, topHalfM: 6.2985, sideHalfM: 3.1492 }),
