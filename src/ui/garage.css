@@ -67,6 +67,7 @@
 .cot-header-nav .record-badge{min-width:18px;height:18px;padding:0 var(--s1);display:inline-grid;place-items:center;
   color:var(--ink-on-accent);background:var(--accent);border-radius:var(--control-radius);
   font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);letter-spacing:normal;}
+.cot-header-nav .record-badge[hidden]{display:none;}
 .cot-header-nav .record-new{position:absolute;top:var(--s1);right:var(--s1);width:8px;height:8px;border-radius:50%;
   background:var(--accent-hi);}
 .cot-header-nav .record-new[hidden]{display:none;}

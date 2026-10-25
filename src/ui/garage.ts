@@ -659,7 +659,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" data-tip="${t('garage.nav.record')} (R)" ` +
     `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('record', 16, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.record')}</span>` +
-    `<span class="record-badge" aria-hidden="true">0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
+    `<span class="record-badge" aria-hidden="true" hidden>0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" data-tip="${t('garage.nav.docs')} (F1)">` +
     `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.docs')}</span>${keycap('F1')}</button>` +
     `</nav></div>` +
@@ -899,7 +899,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshServiceRecord() {
     const record = getPlayerRecord();
     const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
-    if (badge) badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches);
+    // the matches played, once there are any (a new player's "0" read as an empty alert)
+    if (badge) { badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches); badge.hidden = record.matches === 0; }
     const fresh = unseenAwardCount();
     const dot = root.querySelector<HTMLElement>('.cot-record-trigger .record-new');
     if (dot) dot.hidden = fresh === 0;
