@@ -417,9 +417,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   max-height:min(70vh,560px);padding:var(--s3);overflow-y:auto;border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2)}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
 .st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
-.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:var(--s3);min-height:34px;padding:0 var(--s1) 0 var(--s2);
+/* a delivery's name over its cost, the add or remove control beside both: the whole preset name always reads */
+.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px var(--s3);min-height:34px;padding:var(--s1) var(--s1) var(--s1) var(--s2);
   border-radius:var(--r1);color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body)}
-.st-queue .qn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-queue .qn{min-width:0}
+.st-queue .qc{grid-row:2}
+.st-queue .qr>:is(.cot-c-chip,.x){grid-column:2;grid-row:1/span 2}
 .st-queue .qc{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
 .st-queue .qr .cot-c-chip{height:26px;padding:0 var(--s2);font-size:var(--fs-12)}
 .st-queue .qr .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-3)}
