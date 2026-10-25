@@ -113,7 +113,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam[data-layout=grid] .it>.cot-c-sil{display:none}
 .fam[data-layout=grid] .it__name{position:absolute;left:8px;right:8px;bottom:8px;z-index:var(--z-lift);color:var(--ink-1);
   font:600 var(--fs-12)/1.1 var(--font-display);text-transform:uppercase}
-.fam[data-layout=grid] .it .e{position:absolute;right:8px;top:8px;z-index:var(--z-lift)}
+.fam[data-layout=grid] .it .e{position:absolute;right:8px;top:8px;z-index:var(--z-lift);padding:2px var(--s1);border-radius:var(--control-radius);
+  background:var(--glyph-plate)}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
@@ -359,18 +360,16 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .gallery-shell{grid-template-columns:minmax(0,1fr);grid-template-areas:"stage" "browse" "dossier"}
   .stage{height:clamp(320px,56svh,520px)}
   .browse{position:static;max-height:none;padding:var(--s3) var(--s3) 0;border-right:0}
-  /* the phone's filter rails scroll under an edge fade, never a chip cut at the screen edge; the end pad lets the last
-     chip leave the fade */
-  .flags,#classFacets,.toggles--glyphs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s6);
-    -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
+  /* the phone's filter rows wrap: every nation and class shows whole (a faded chip at the edge still read as cut) */
+  .flags,#classFacets,.toggles--glyphs{flex-wrap:wrap}
   .flags{display:flex}
   .flags button{flex:none;width:40px}
   .toggles .cot-c-chip{flex:none;height:36px}
   .toggles .cot-c-chip--compact{width:36px}
-  .toggles--glyphs .toggles{flex-wrap:nowrap}
+  .toggles--glyphs .toggles{flex-wrap:wrap}
   .layout-switch{display:none}
   .fam,.fam[data-layout=grid]{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(150px,42%);
-    gap:var(--s2);margin:0 -12px;padding:0 var(--s3) var(--s3);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding:0 12px}
+    gap:var(--s3);margin:0 -12px;padding:0 var(--s3) var(--s3);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding:0 12px}
   .fam .gh{display:none}
   .fam .it{scroll-snap-align:start}
   /* the strip's one row of cards (106.8 px each, at every phone width) and its 12 px foot, held before the script fills
