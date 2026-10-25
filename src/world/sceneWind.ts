@@ -15,6 +15,7 @@
 // sceneWind.selftest re-derives every row from those sources and fails on any drift.
 import type { MapId } from './maps/mapIds.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** The clouds' drift veers from the surface wind by this much (degrees, +X toward +Z: clockwise seen from above). */
 export const SCENE_WIND_VEER_DEG = 25;
 
@@ -79,5 +80,5 @@ export function sceneWindOf(config: { id?: string } | null | undefined): { scene
 
 function windOf(row: { dirDeg: number; speed: number }): SceneWind {
   const rad = row.dirDeg * Math.PI / 180;
-  return { surfaceDirDeg: row.dirDeg, dirX: Math.cos(rad), dirZ: Math.sin(rad), speed: row.speed, cloudDirDeg: (row.dirDeg + SCENE_WIND_VEER_DEG) % 360 };
+  return { surfaceDirDeg: row.dirDeg, dirX: detMath.cos(rad), dirZ: detMath.sin(rad), speed: row.speed, cloudDirDeg: (row.dirDeg + SCENE_WIND_VEER_DEG) % 360 };
 }

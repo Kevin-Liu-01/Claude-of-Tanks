@@ -66,7 +66,7 @@ async function prepare(): Promise<void> {
   if(focus==='aircraft')player.aerial={kind:'gunship',active:true,launching:false,x:0,y:220,z:0,yaw:0,pitch:-.6,batteryS:100,cooldownS:0};
   const frame: HudFrame = {timeS:135,mode:'battle',player,tanks,spotting:{isSpotted:()=>true},
     matchModeState:{id:focus==='aircraft'?'ac130':'zone_control',score:{alpha:240,bravo:180},target:750},
-    auxiliaryKeyLabels:{smoke:'G',lights:'N',roofGun:'B',missile:'E'},
+    auxiliaryKeyLabels:{smoke:'G',lights:'N',roofGun:'B',atgm:'Q'},
     aim:{distM:240,shellSlot:0,reload:{t:0,totalS:6},shells:[{name:'M829A2',type:'APFSDS',count:24},{name:'M830',type:'HEAT',count:12},{name:'M908',type:'HE',count:8}]}};
   await Promise.all([healthPanel(hud.root),hud.buildMinimapFromAsset({size:1200,minY:0,maxY:80,getHeightAt:()=>0,getGroundType:()=> 'grass'},'/minimaps/verdant.webp'),document.fonts.ready]);
   hud.setMode('battle'); for(let i=0;i<31;i++)hud.update(frame);

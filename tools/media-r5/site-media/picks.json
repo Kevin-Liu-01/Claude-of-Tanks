@@ -10,7 +10,7 @@
     "deliverFleet": "shots/media-r5/site50/deliver-fleet",
     "frames": "shots/media-r5/final/blur-r14/renders",
     "framesFallback": "shots/media-r5/final/blur-r13/renders",
-    "trailers": "shots/media-r5/trailers-r8/deliver",
+    "trailers": "shots/media-r5/trailers-r9/deliver",
     "home": "shots/media-r5/home-r2/deliver"
   },
   "takes": {
@@ -1597,16 +1597,16 @@
     "newMedia": "The landing page's new media (2026-10-19, the owner: \"all our new medai has to be shhown soomewhhere\", then \"either way all oour new frames need to goo up with no removals of old ones\"): the hero opens on six versus stills (public/media/versus-r1) before its six site fifty slides; the screenshot rail shows the combat round's four duels and seven of the 226/227 fleet takes before its eleven; the versus wall shows every versus still, the newest round first (2026-10-22, \"we need all on the site!\": round 7's close and top-down stills beside the earlier rounds'), under the versus films (versusFilms: each scene's moving take, public/media/versus-films-r1, muted loops that play in view); the trailers row plays the three trailers on a click. Every 226/227 fleet take is a site take (takes[id].fleet, its titles from the fleet roster), so its key moment and close portrait are published and join the visual archive.",
     "trailerPosters": {
       "trailer": {
-        "atS": 51,
-        "source": "shots/media-r5/trailers-r8/deliver"
+        "atS": 36.3,
+        "source": "shots/media-r5/trailers-r9/deliver"
       },
       "trailer-30": {
-        "atS": 14.2,
-        "source": "shots/media-r5/trailers-r8/deliver"
+        "atS": 21.4,
+        "source": "shots/media-r5/trailers-r9/deliver"
       },
       "trailer-vertical": {
         "atS": 13,
-        "source": "shots/media-r5/trailers-r8/deliver"
+        "source": "shots/media-r5/trailers-r9/deliver"
       }
     }
   },

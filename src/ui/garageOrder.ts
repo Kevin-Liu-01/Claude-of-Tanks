@@ -314,6 +314,16 @@ export function horizontalRailState(
   };
 }
 
+/** The extra end padding that lets a snapping rail's last stop rest on an item's start like every other stop, so
+ * the item before it never shows as a sliver at the start edge (owner 10-24). `stops` are the scroll offsets at which
+ * each item meets the snap line; `maxScroll` is the rail's reach without the extra. */
+export function horizontalRailEndPad(maxScroll: number, stops: readonly number[]): number {
+  if (!(maxScroll > 1)) return 0;
+  let next = Infinity;
+  for (const stop of stops) if (stop >= maxScroll - 0.5 && stop < next) next = stop;
+  return Number.isFinite(next) ? Math.max(0, Math.round((next - maxScroll) * 10) / 10) : 0;
+}
+
 /** Convert either a mouse wheel or a two-axis trackpad gesture into one
  * horizontal rail delta. DOM_DELTA_LINE/PAGE values are normalized to pixels. */
 export function horizontalRailWheelDelta(

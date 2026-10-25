@@ -564,3 +564,22 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   assert.ok(new Set(jobs.map(job => `${job.x.toFixed(1)}:${job.z.toFixed(1)}`)).size >= 3,
     'screening positions spread across the field');
 }
+
+// The modes' presentation order (owner 2026-10-25): one list every mode surface reads (Deploy's cards and tiles, the room
+// and LAN mode cards); every battle mode once; the wire's order (BATTLE_MODE_IDS) untouched.
+{
+  const { BATTLE_MODE_IDS, HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER } = await import('./gameModeCatalog.ts');
+  assert.deepEqual([...MODE_PRESENTATION_ORDER].sort(), [...BATTLE_MODE_IDS].sort(), 'every battle mode, once');
+  assert.deepEqual(MODE_PRESENTATION_ORDER.slice(0, 8),
+    ['standard', 'drone', 'zone_control', 'capture_the_flag', 'frontline_assault', 'turbo_ball', 'mars', 'endless_horde'],
+    'the owner\'s headline four, then the next four');
+  assert.equal(HEADLINE_MODE_COUNT, 4);
+  assert.deepEqual(BATTLE_MODE_IDS.slice(0, 3), ['standard', 'capture_the_flag', 'zone_control'], 'the wire\'s order stays');
+  const { readFileSync } = await import('node:fs');
+  const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+  const play = readFileSync(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
+  assert.match(garage, /deployCardsHTML\(MODE_PRESENTATION_ORDER\.slice\(1, HEADLINE_MODE_COUNT\), true\)/, 'Deploy\'s cards read the order');
+  assert.match(garage, /deployCardsHTML\(MODE_PRESENTATION_ORDER\.slice\(HEADLINE_MODE_COUNT\), false\)/, 'and its tiles');
+  assert.match(play, /MODE_PRESENTATION_ORDER as readonly string\[\]\)\.indexOf\(id\)/, 'the room mode cards sort by it');
+  assert.doesNotMatch(garage + play, /deployCardsHTML\(\['|leadingModes/, 'no surface keeps its own mode list');
+}

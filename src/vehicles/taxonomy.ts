@@ -85,16 +85,21 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't84bm_oplot_m', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
     'm3a3_bradley', 'bmpt_t90', 'cv90',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
+    // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
+    // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),
+    // the C2 Ariete and Type 10B prototypes, the CV90 Mk IV, the KF41 Lynx and its Italian build, the Borsuk, and the
+    // 1989 Type 89 and M551A1 TTS left next generation.
+    't72b3m_hetman_ii', 't72b3_zubr_ii', 't80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk',
+    't72b3_zubr', 't80u_yun', 't72b3m_kunlun', 't72b3_qilin', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
+    'challenger3_proto', 'challenger3', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
+    'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
   ]),
+  // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
+  // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
-    't72b3m_hetman_ii','t72b3_zubr_ii',
-    't80u_zoria','t72b3m_hetman','t72b3_sich','t80u_husarz','t72b3m_wilk','t72b3_zubr','t80u_yun','t72b3m_kunlun','t72b3_qilin','t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m',
-    // Source-specific prototypes join the existing next-generation families.
-    'kurganets25', 'griffin50mm', 'kf41_lynx', 'cv90_mk4', 'bmp3m_dragun125',
-    'kf51_panther', 't14_armata',
-    'challenger3_proto', 'challenger3', 'type10b', 'c2_ariete_proto', 'object148_proto', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'raiju_ifv', 'type89', 'lrmv_lynx', 'borsuk', 'cv90_mk4_concept', 'type100', 'ztz100', 'ztz100_prototype',
-    'object695',
+    't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
+    'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
+    'type100', 'ztz100', 'ztz100_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
   ]),
 });
 

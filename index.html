@@ -241,6 +241,9 @@
   <style>
     @layer reset,tokens,base,components,surfaces,utilities,overrides;
     @layer surfaces {
+    /* The game document declares the weight-voiced 'Cot UI' family alone (src/ui/fonts.ts, its cot:type marker): the
+       display voice is that family at 600/700 (Chakra Petch), so no surface's --font-display falls to a fallback face. */
+    :root { --font-display: var(--font-ui); }
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
@@ -270,10 +273,13 @@
         linear-gradient(180deg, oklch(from var(--surface-scene) l c h / .78) 0%, oklch(from var(--surface-scene) l c h / .44) 28%, oklch(from var(--surface-scene) l c h / .42) 58%, oklch(from var(--surface-scene) l c h / .86) 100%),
         radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
-    .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
+    .cot-boot-inner {
+      position: relative; z-index: 2; width: min(760px, calc(100vw - 32px)); text-align: center;
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "mark" "invite" "load" "slot" "links";
+    }
 
     /* --- emblem + wordmark ------------------------------------------------ */
-    .cot-boot-mark { display: block; width: clamp(170px, 20vw, 270px); height: auto; margin: 0 auto 6px; overflow: visible; }
+    .cot-boot-mark { grid-area: mark; display: block; width: clamp(170px, 20vw, 270px); height: auto; margin: 0 auto; overflow: visible; }
     /* the living mark: the commander's tank rolls along while the game loads (src/ui/brandMarkMotion.ts; reduced
        motion shows the static frame) */
     /* cot:brand-motion */
@@ -299,13 +305,12 @@
       .cot-mark--motion .mk-puff{display:none}}
     /* /cot:brand-motion */
     .cot-boot-invite {
-      display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
-      padding: 9px 15px; color: var(--ink-1); border: 1px solid oklch(from var(--accent) l c h / .48);
-      background: oklch(from var(--surface-plate) l c h / .72); box-shadow: var(--e2);
-      font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      grid-area: invite; display: none; width: fit-content; max-width: min(560px, 84vw); margin: 20px auto 0;
+      color: var(--ink-1); font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: .06em; text-transform: uppercase;
+      text-wrap: balance;
     }
     .cot-boot-invite.on { display: block; }
-    #cot-boot.has-invite .cot-boot-load { margin-top: 36px; }
+    #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
     /* Entrance motion is scoped to the class present in the inline first
        paint. bootScreen.ts permanently retires that class after this stagger,
        so image decode or later layout work cannot restart the animation. */
@@ -319,21 +324,22 @@
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(8px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { margin-top: 46px; }
+    .cot-boot-load { grid-area: load; margin-top: 26px; }
     #cot-boot.cot-boot-enter .cot-boot-load {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
     }
     .cot-boot-meta {
-      display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
+      display: flex; align-items: last baseline; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: var(--ink-2);
+      display: flex; flex-direction: column; justify-content: flex-end; min-height: calc(2 * 1.4em);
+      font-size: 14px; font-weight: 500; line-height: 1.4; text-align: left; color: var(--ink-2); text-wrap: pretty;
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .16); }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .42); }
     .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
@@ -346,30 +352,30 @@
 
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
-      box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
+      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
       font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: oklch(from var(--surface-plate) l c h / .82); text-align: left; }
+    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: var(--surface-raised); text-align: left; }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-links {
-      display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
-      gap: 10px; margin: 14px auto 0;
+      grid-area: links; display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
+      gap: 12px; margin: 14px auto 0;
     }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 118px; padding: 10px 15px; border: 1px solid var(--line-3); border-radius: 2px;
-      background: oklch(from var(--surface-plate) l c h / .55); color: var(--ink-1); cursor: pointer;
+      min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
+      background: var(--btn-secondary-fill); box-shadow: var(--btn-secondary-ring); color: var(--ink-1); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
-      letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
+      letter-spacing: var(--track-label-s); text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
         color .14s ease, background-color .14s ease, box-shadow .14s ease;
     }
     .cot-boot-links > .cot-boot-link {
-      width: auto; min-width: 0; height: 36px; padding: 0 14px;
+      width: auto; min-width: 0; height: 44px; padding: 0 18px;
     }
     #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
       animation: cot-boot-rise .26s cubic-bezier(.16,1,.3,1) backwards;
@@ -384,10 +390,10 @@
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
     .cot-github-stars {
       display: inline-flex; align-items: center; gap: 3px; padding-left: 7px;
-      border-left: 1px solid var(--line-3); color: var(--accent);
-       letter-spacing: .04em;
+      border-left: 1px solid var(--line-3); color: var(--ink-2);
+      letter-spacing: .04em;
     }
-    .cot-github-stars svg { width: 9px; height: 9px; fill: currentColor; stroke: none; }
+    .cot-github-stars svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
     .cot-github-stars [data-github-stars] {
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
     }
@@ -400,7 +406,7 @@
     @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
       transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
-      background: oklch(from var(--surface-plate) l c h / .82); box-shadow: var(--e2);
+      background: var(--surface-hover); box-shadow: var(--e2);
     }
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
@@ -434,82 +440,110 @@
     :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
     /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
-      box-sizing:border-box;width:min(860px,calc(100vw - 32px));max-width:none;
+      box-sizing:border-box;width:min(900px,calc(100vw - 32px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
-      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-plate);box-shadow:var(--e4);
+      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-raised);box-shadow:var(--e4);
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
+    #cot-boot.credits-open .cot-boot-inner { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
-    .cot-credits-profile{margin:0;padding:38px var(--s5);background:var(--surface-page);
+    .cot-credits-profile{margin:0;padding:32px;background:var(--surface-page);
       border-right:1px solid var(--line-1);display:flex;flex-direction:column;gap:var(--s5)}
     .cot-credits-portrait{box-sizing:border-box;display:block;width:100%;height:auto;aspect-ratio:1;
       object-fit:cover;object-position:center;border-radius:var(--control-radius);background:var(--surface-raised)}
-    .cot-credits-signature{display:flex;align-items:center;gap:var(--s3);color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
-    .cot-credits-signature img{width:36px;height:36px;object-fit:contain}
-    .cot-credits-signature strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s)}
-    .cot-credits-signature span{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
-    .cot-credits-copy{min-width:0;padding:45px 34px 34px;text-align:left}
-    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1.7 var(--font-display);
-      letter-spacing:var(--track-label);text-transform:uppercase}
-    .cot-credits h2{margin:var(--s3) 0 var(--s5);font:600 38px/1.06 var(--font-display);letter-spacing:var(--track-title)}
-    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body)}
-    .cot-credits-actions{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:var(--s2) var(--s3);
-      font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
+    .cot-credits-copy{min-width:0;padding:32px;text-align:left}
+    .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
+    .cot-credits p{max-width:64ch;margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
+    /* zh: a line breaks between any two characters, never before closing or after opening punctuation */
+    .cot-credits p:lang(zh-CN){line-break:strict}
+    .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:0 18px;
+      font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
-    .cot-credits-actions .cot-boot-link:last-child{background:transparent;box-shadow:none;color:var(--ink-3)}
-    .cot-credits-close{position:absolute;z-index:2;top:12px;right:12px;display:grid;place-items:center;
-      width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
+    .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
+    .cot-credits-close{position:absolute;z-index:2;top:20px;right:20px;display:grid;place-items:center;
+      width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
     .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 18px)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{width:100px;flex:none}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature{display:block;padding-right:18px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature img{width:28px;height:28px;margin-bottom:7px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-copy{padding:24px 22px}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits h2{font-size:32px;margin-bottom:20px}
+    /* a phone (the responsiveLayout.ts phone and compact bands, < 768 px): the splash's own media query, since the
+       credits can open before any module writes body[data-cot-width] */
+    @media (width < 768px) {
+      .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
+      .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
+      .cot-credits-grid{grid-template-columns:1fr}
+      .cot-credits-profile{flex-direction:row;align-items:center;padding:24px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
+      .cot-credits-portrait{width:100px;flex:none}
+      .cot-credits-copy{padding:24px}
+      .cot-credits h2{font-size:32px;margin-bottom:20px}
+      .cot-credits-actions{flex-direction:column;align-items:stretch}
+      .cot-credits-close{top:12px;right:12px}
+    }
+    /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
+    @media (height < 520px) {
+      .cot-credits-grid{grid-template-columns:132px minmax(0,1fr)}
+      .cot-credits-profile{flex-direction:column;padding:20px;border-right:1px solid var(--line-1);border-bottom:0}
+      .cot-credits-portrait{width:100%}
+      .cot-credits-copy{padding:20px 24px}
+      .cot-credits h2{font-size:28px;margin-bottom:12px}
+      .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
+      .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
+      .cot-credits-close{top:12px;right:12px}
+    }
     .cot-boot-gate {
-      margin-top: 26px; height: 22px;
+      grid-area: slot; align-self: start; margin-top: 34px; height: 22px;
       font-family: var(--font-ui);
       font-size: 14px; font-weight: 500;
       color: var(--ink-2); opacity: 0;
       transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
-    /* retry stands just under the centred column, outside its flow: a failure shows it without re-centring the splash */
+    /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
-      display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
-      height: 48px; margin: 18px 0 0; padding: 0 22px; white-space: nowrap;
+      grid-area: slot; align-self: start; justify-self: center; display: none;
+      height: 44px; margin: 34px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
-      background: var(--btn-primary-fill); color: var(--btn-primary-ink); cursor: pointer;
-      font: 700 15px/1 var(--font-ui);
-      letter-spacing: .06em; text-transform: uppercase;
+      background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
+      font: 700 13px/1 var(--font-ui);
+      letter-spacing: var(--track-label-s); text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
     .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
-    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-pct, .cot-boot-tip) { display: none; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage {
-      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: var(--ink-1);
+    #cot-boot:has(.cot-boot-gate.on) .cot-boot-fill::after { animation: none; opacity: 0; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
+    #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
+    .cot-boot-load { position: relative; }
+    .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 1.4; color: var(--text-danger); }
+    .cot-boot-alert svg { display: inline-block; vertical-align: -5px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
+    #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
+    .cot-boot-meta { position: relative; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+      content: ''; position: absolute; inset: -8px 0; z-index: -1; border-radius: var(--plate-radius);
+      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
     }
-    #cot-boot:has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
-    /* Retry joins the column right under the reason, before the links */
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-inner { display: flex; flex-direction: column; align-items: center; }
-    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-load, .cot-boot-links) { align-self: stretch; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { order: 1; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-retry { order: 2; position: static; transform: none; margin: 24px auto 0; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-links { order: 3; margin-top: 28px; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-gate { order: 4; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 0; }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
+    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+      background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
+    }
+    /* each tone has its own glyph: an error the alert, a slow load the clock, an offline one the info mark */
+    .cot-boot-alert svg + svg, .cot-boot-alert svg + svg + svg { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(1), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(1) { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(2), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(3) { display: inline-block; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
     .cot-boot-notice {
       margin: 8px auto 0; max-width: 420px; min-height: 0;
@@ -518,22 +552,30 @@
       color: var(--ink-3); text-align: center; opacity: 0; transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-notice.on { opacity: 1; }
-    @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+    @keyframes cot-gate { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
     .cot-boot-foot {
-      position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
+      position: absolute; right: 16px; bottom: 10px; z-index: 2;
       font-family: var(--font-ui);
-      font-size: 12px; font-weight: 500; color: var(--ink-4); text-align: center;
+      font-size: 12px; font-weight: 500; color: var(--ink-3); text-align: right;
     }
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
     @media (width < 768px) {
       .cot-boot-mark { width: 164px; }
-      .cot-boot-load { margin-top: 32px; }
+      .cot-boot-load { margin-top: 24px; }
       .cot-boot-tip { height: 144px; }
-      /* a failure's sentence takes the stage line and wraps to three on a phone: its room is held from the first
-         frame, so the centred splash never re-centres around it */
-      .cot-boot-stage { min-height: calc(3 * 1.3em); line-height: 1.3; }
+      .cot-boot-links { width: 100%; }
+    }
+    @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot { zoom: 1.3; } }
+    /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
+    @media (height < 520px) {
+      .cot-boot-mark { width: auto; height: min(34vh, 150px); }
+      .cot-boot-invite { margin-top: 20px; }
+      .cot-boot-load { margin-top: 24px; }
+      .cot-boot-tip { height: 48px; margin-top: 24px; visibility: hidden; }
+      .cot-boot-gate, .cot-boot-retry { margin-top: 24px; }
+      .cot-boot-links { margin-top: 24px; }
     }
     }
   </style>
@@ -696,13 +738,28 @@
         if (nav && nav.onLine === false) return 'offline';
         return 'stalled';
       }
-      const MESSAGES = {
+      const MESSAGES = /^\/cn(?:\/|$)/.test(location.pathname) ? {
+        chunk: '游戏文件下载失败',
+        driver: '显卡驱动无法启动。关闭其他 3D 标签页可能有帮助。',
+        script: '游戏启动时出错。',
+        slow: '当前网络下加载时间比预期更长。',
+        offline: '已有一段时间没有下载任何内容，请检查网络连接。',
+        stalled: '加载已停滞，一分钟内没有收到任何内容。',
+        offlineRetry: '你似乎已离线，网络恢复后游戏会自动重试。',
+        end: '。',
+        reload: '重试加载',
+        downloading: '正在下载游戏文件',
+      } : {
         chunk: 'A game file failed to download',
-        driver: 'The graphics driver refused to start. Close other 3D tabs or reload.',
-        script: 'The game hit an error while starting. Reload to try again.',
-        slow: 'Loading is taking longer than expected on this connection. Keep waiting or reload.',
-        offline: 'Nothing has downloaded for a while, so check your connection and reload.',
-        stalled: 'Loading stalled. Nothing has arrived for a minute, so reload to try again.',
+        driver: 'The graphics driver refused to start. Closing other 3D tabs can help.',
+        script: 'The game hit an error while starting.',
+        slow: 'Loading is taking longer than expected on this connection.',
+        offline: 'Nothing has downloaded for a while, so check your connection.',
+        stalled: 'Loading stalled. Nothing has arrived for a minute.',
+        offlineRetry: ' You appear to be offline. The game retries when the connection returns.',
+        end: '.',
+        reload: 'Retry loading',
+        downloading: 'Downloading game files',
       };
       function describe(reason) {
         const kind = classify(reason);
@@ -710,7 +767,8 @@
         const nav = globalThis.navigator;
         let text = MESSAGES[kind];
         if (kind === 'chunk' && file) text += ' (' + file + ')';
-        if (kind === 'chunk' && nav && nav.onLine === false) text += '. You appear to be offline. The game retries when the connection returns.';
+        if (kind === 'chunk') text += MESSAGES.end;
+        if (kind === 'chunk' && nav && nav.onLine === false) text += MESSAGES.offlineRetry;
         return { kind, text };
       }
       // A failed import names the entry script, not the dependency that 404ed;
@@ -756,13 +814,15 @@
         const stage = document.getElementById('cot-boot-stage');
         let retry = document.getElementById('cot-boot-retry');
         if (stage) stage.textContent = verdict.text;
+        const boot = document.getElementById('cot-boot');
+        if (boot) boot.dataset.stop = verdict.kind;
         // bootScreen removes its DOM after entry. A post-boot network failure
         // still needs a visible recovery action if the one automatic reload
         // has already been spent.
         if (!retry && window.__GAME_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
-          retry.textContent = 'Reload';
+          retry.textContent = MESSAGES.reload;
           retry.title = verdict.text;
           retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);color:var(--btn-primary-ink);font:700 12px var(--font-ui);cursor:pointer';
           document.body.appendChild(retry);
@@ -876,7 +936,7 @@
       function paintDownloadProgress() {
         if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
         const stage = document.getElementById('cot-boot-stage');
-        if (stage) stage.textContent = `Downloading game files · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        if (stage) stage.textContent = `${MESSAGES.downloading} · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
       }
       function noteNetworkProgress(entries) {
         let bytes = 0;
@@ -1055,6 +1115,7 @@
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
+          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
           <div class="cot-boot-pct num" id="cot-boot-pct">0%</div>
         </div>
@@ -1076,8 +1137,8 @@
           <svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z" />
           </svg>
-          <span>GitHub</span>
-          <span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span>
+          <span lang="en">GitHub</span>
+          <span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.7 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.5l-3.8 2 .7-4.3-3.1-3 4.3-.6Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span>
         </a>
       </div>
       <div class="cot-boot-gate" id="cot-boot-gate" data-i18n="boot.pressAnyKey">Tap or press any key to continue</div>
@@ -1092,16 +1153,14 @@
     <div class="cot-credits-grid">
       <figure class="cot-credits-profile">
         <img class="cot-credits-portrait" src="/brand/kevin-liu.jpg" width="460" height="460" alt="Kevin B. Liu" data-i18n-alt="credits.portraitAlt" loading="lazy" decoding="async" />
-        <figcaption class="cot-credits-signature"><img src="/brand/mark.svg" alt="" width="36" height="36" /><div><strong>CLAUDE OF TANKS</strong><span data-i18n="credits.originalGame">An original browser game</span></div></figcaption>
       </figure>
       <div class="cot-credits-copy">
-        <span class="cot-credits-kicker" data-i18n="credits.kicker">Creator / designer / director</span>
         <h2 id="cot-credits-title">Kevin B. Liu</h2>
         <p data-i18n="credits.body1">I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.</p>
         <p data-i18n="credits.body2">The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
         <div class="cot-credits-actions">
-          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer" data-i18n="credits.links.github">Kevin on GitHub</a>
-          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer" aria-label="Claude of Tanks source code on GitHub"><span data-i18n="credits.links.source">Source code</span><span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.github">Kevin on GitHub</span></a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer" aria-label="Claude of Tanks source code on GitHub"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.source">Source code</span><span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/NOTICE.md" target="_blank" rel="noopener noreferrer" data-i18n="credits.links.notice">Authorship notice</a>
         </div>
       </div>
@@ -1125,7 +1184,7 @@
           ? (chineseRoute ? 'LAN 对战' : 'LAN Battle')
           : (chineseRoute ? '私人对战' : 'Private Battle');
         const invitationTitle = hostName
-          ? (chineseRoute ? '加入 ' + hostName + ' 的 ' + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
+          ? (chineseRoute ? '加入 ' + hostName + ' 的' + (/^[A-Z]/.test(battleLabel) ? ' ' : '') + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
           : (chineseRoute ? '加入私人对战 ' + roomCode : 'Join Private Battle ' + roomCode);
         invite.textContent = invitationTitle;
         invite.classList.add('on');
@@ -1143,13 +1202,13 @@
       }
       open.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (!dialog.open) dialog.showModal();
+        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); }
       });
       close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
       });
-      dialog.addEventListener('close', () => open.focus());
+      dialog.addEventListener('close', () => { boot?.classList.remove('credits-open'); open.focus(); });
     })();
   </script>
 

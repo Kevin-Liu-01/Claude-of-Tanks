@@ -140,6 +140,8 @@ import {
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
+import './ui/components/figures.css';
+import './ui/components/notices.css';
 import './ui/garage.css';
 import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
@@ -2498,6 +2500,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     openBattle: (seconds: number) => openBattleRound(seconds),
     ensureWatch: () => watchOwner.preload(),
     scheduleDeferredWarm: scheduleDeferredCombatWarm,
+    // (battle-spikes-253) a session's first battle warms its GPU-heavy stages behind the veil; later battles skip it
+    warmFirstBattleCovered: (yieldForBudget, onProgress) => combatWarmComposition.warmFirstBattleCovered(yieldForBudget, onProgress),
     nextFrame,
     createLoadingYielder: createOpaqueLoadingYielder,
   }),
@@ -2562,7 +2566,7 @@ function importMultiplayerV2Modules() {
 }
 
 function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
-  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals, prebuildRosterVisuals }]) => {
+  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort, SIM_KERNELS_URL }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals, prebuildRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2622,6 +2626,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
         p2p: {
           createHostPort: createBrowserHostPort,
           manifestBase: COLLISION_MANIFEST_ROUTE,
+          // the world kernels, on unless ?simKernels=ts (src/mp/host/browserHostPort.ts, docs/RUST-KERNELS.md)
+          simKernelsUrl: SIM_KERNELS_URL,
           tier: getDeviceTier(),
           // a seat linking without a relay (a fallback, or a grant with no TURN server) leaves one `ice_degraded` note per reason
           createIceResolver: (mode, room) => createRoomIceResolver({
@@ -3898,6 +3904,7 @@ if (diagnosticsRequested) {
       isGarageModePreviewPending: () => garageModePreview.pending,
       isPedestalOnStage: () => pedestal.isOnStage(),
       getSelectedSpecId: () => selectedVehicle.id,
+      getWatchController: () => watchOwner.current?.controller ?? null,
       getPedestalCacheIds: () => [...pedestal.cacheIds],
       getWorldCacheIds: () => [...worldCache.keys()],
       getResidentLimits: () => ({ ...residentLimits }),

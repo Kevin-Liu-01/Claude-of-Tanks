@@ -1,18 +1,19 @@
 // The vehicle-controls row (the owner's "stuff you can do row"): the one ordering of its items for every mode and
-// both layouts. Desktop and touch share the same strip (.cot-vehicle-controls, battleHudLayout.css), a plain flex row
-// that scrolls sideways when narrow, so DOM order is the visual order, the Tab order and the screen-reader order.
-// Every keycap in the row names its own binding (E, F, V and the auxiliary keys); none is positional, so moving an
-// item never renumbers a key.
+// both layouts, the vehicle-action table's (src/game/vehicleActions.ts). Desktop and touch share the same strip
+// (.cot-vehicle-controls, battleHudLayout.css), a plain flex row that scrolls sideways when narrow, so DOM order is the
+// visual order, the Tab order and the screen-reader order. Every keycap in the row names its own binding (the table's
+// E, Q, C, V, G, N, B); none is positional, so moving an item never renumbers a key.
 //
 // Owner (2026-10-14): "in jump modes, jump should always be placed farthest left in the stuff u can do row" —
 // whatever the loadout, its equipment count or its cooldowns. A jump mode is any ruleset with a jump launch
 // (src/sim/matchRuleset.ts jumpMps); outside one the jump is hidden and the loadout keeps its own order.
 import type { MatchRuleset } from '../sim/matchRuleset.ts';
+import { VEHICLE_ACTIONS, type VehicleActionId } from '../game/vehicleActions.ts';
 
-type VehicleControlId = 'jump' | 'special' | 'drone' | 'missile' | 'smoke' | 'lights' | 'roofGun';
+type VehicleControlId = VehicleActionId;
 
-/** The loadout's own order: the vehicle's special action, its drone, the extra ATGM, smoke, lights, the roof gun. */
-const LOADOUT_ORDER: readonly VehicleControlId[] = Object.freeze(['special', 'drone', 'missile', 'smoke', 'lights', 'roofGun']);
+/** The loadout's own order (the table's): suspension, the ATGM, the reload, the drone, smoke, lights, the roof gun. */
+const LOADOUT_ORDER: readonly VehicleControlId[] = Object.freeze(VEHICLE_ACTIONS.map((def) => def.id).filter((id) => id !== 'jump'));
 /** A jump mode leads with the jump. */
 const JUMP_MODE_ORDER: readonly VehicleControlId[] = Object.freeze(['jump', ...LOADOUT_ORDER]);
 /** Elsewhere the hidden jump waits at the far end, so nothing in front of the loadout moves. */

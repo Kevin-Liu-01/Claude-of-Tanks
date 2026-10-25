@@ -5,6 +5,12 @@
  * message events to the `HostPort` shape the host runtime speaks. Browser-only; the receipts use the in-process pair.
  */
 import type { HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
+import simKernelsWasmUrl from '../../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm?url';
+
+/** The world kernels' module as the build serves it (on by default; ?simKernels=ts: null, the TypeScript): the host's
+ * Worker fetches it and builds its world on them. Read here, in the lazy multiplayer chunk, not at boot. */
+export const SIM_KERNELS_URL: string | null = typeof location === 'object'
+  && new URLSearchParams(location.search).get('simKernels') === 'ts' ? null : simKernelsWasmUrl;
 
 interface WorkerLike {
   postMessage(message: unknown, transfer?: ArrayBuffer[]): void;

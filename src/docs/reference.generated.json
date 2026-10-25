@@ -1052,7 +1052,7 @@
     },
     {
       "id": "type90_kyumaru",
-      "name": "Type 90 Kyū-maru",
+      "name": "STC-1",
       "nation": "Japan",
       "role": "mbt",
       "tier": 6,
@@ -1073,7 +1073,7 @@
     },
     {
       "id": "type90a",
-      "name": "Type 90A",
+      "name": "STC-2",
       "nation": "Japan",
       "role": "mbt",
       "tier": 8,
@@ -4572,7 +4572,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 10,
+      "smoke": 8,
       "lights": true,
       "roofGun": true,
       "missile": false,

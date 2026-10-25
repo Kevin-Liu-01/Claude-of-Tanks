@@ -447,7 +447,11 @@ export default defineConfig({
             // source already imports it and only the game boots it (in the ui icon library's it reached every docs page;
             // with the loading roster it added preload edges); the group takes exactly these two modules, none of their
             // dependencies.
-            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (premiere-site, the owner's primitives pass): the kit's vehicle identity (components/identity.ts: flag,
+            // silhouette, vehicle) rides here too. It imports the icon helpers and the flags, and loads where they do (the Gallery,
+            // the game's lazy screens); on its own it was one more Gallery boot request. The shell glyph map (shellIcons.ts,
+            // 0.7 KB) joins it too: the Garage and the Gallery share it now, and on its own it was one more boot request on both.
+            { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity|shellIcons|components[\\/]identity)\.ts$/, includeDependenciesRecursively: false },
             // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
             // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
             { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },
@@ -455,12 +459,15 @@ export default defineConfig({
             // rides with the type sheet (src/ui/fonts.ts), which injects through it and which 18 of its 24 callers import
             // already: on its own it became one more boot request on the game and Gallery pages for 0.3 KB, and beside
             // dom.ts it made every fonts importer preload the DOM helpers too. Exactly these two modules.
-            { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (premiere-site 250): the kit's escape helper (components/escape.ts, pure, 0.3 KB) rides here too: every
+            // page that builds kit markup or a kit notice (the game, the Gallery, the Field Manual) loads this chunk at boot, so
+            // the docs page's notices no longer pull the test-drive link's chunk and the fleet registry behind it.
+            { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers|components[\\/]escape)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (tech-tree view 252): the kit's markup factories (src/ui/components/components.ts and its escape
             // helper) ride in the chunk the game and the Gallery share at boot with the test-drive link, where they sat
             // before. The tech tree's lazy chunk is their third importer; on their own they became one more boot request on
-            // both pages. Exactly these three modules, none of their dependencies.
-            { name: 'testDriveLink', test: /[\\/]src[\\/](?:game[\\/]testDriveLink|ui[\\/]components[\\/](?:components|escape))\.ts$/, includeDependenciesRecursively: false },
+            // both pages. Exactly these modules, none of their dependencies (the escape helper moved to the fonts chunk, 250).
+            { name: 'testDriveLink', test: /[\\/]src[\\/](?:game[\\/]testDriveLink|ui[\\/]components[\\/]components)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F7): the site's one playback policy (src/presentation/mediaPlayer.ts, which imports
             // nothing) rides in the fleet takes' chunk. As a chunk of its own it became one more entry in the game entry's
             // preload list for the Garage's import('./fleetTakes.ts'), new bytes on every game boot; grouped with the

@@ -243,3 +243,14 @@ for (const id of mapIds) {
 }
 
 console.log('i18n.selftest.mjs: ' + en.size + ' keys verified across en-US and zh-CN');
+
+// (gauntlet 250, the coordinator's copy rule) no player-facing string in either catalog carries an em dash, typed or as an
+// entity: a pause is a colon, a full stop, a comma, parentheses or the " · " separator
+{
+  const { readFileSync: readCatalog } = await import('node:fs');
+  for (const file of ['i18nCatalog.en-US.json', 'i18nCatalog.zh-CN.json']) {
+    const catalog = JSON.parse(readCatalog(new URL(`./${file}`, import.meta.url), 'utf8'));
+    const dashed = Object.entries(catalog).filter(([, text]) => typeof text === 'string' && /—|&mdash;|&#8212;|&#x2014;/i.test(text)).map(([key]) => key);
+    assert.deepEqual(dashed, [], `${file}: em dashes in ${dashed.join(', ')}`);
+  }
+}

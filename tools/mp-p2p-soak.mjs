@@ -139,8 +139,15 @@ function observe(page, id) {
 }
 const relevantErrors = () => errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
 
+// The world kernels (src/world/wasmWorldKernels.ts) are on by default, as in the game. --sim-kernels=ts: every seat on the
+// TypeScript; --sim-kernels=wasm@1,3: those seats on the kernels and the rest on the TypeScript (a kernel host's keyframe
+// resumed by a TypeScript host, and back).
+const [simKernelsMode, simKernelsSeats] = argValue('sim-kernels', '').split('@');
+const simKernelsParam = (peer) => !simKernelsMode ? null
+  : simKernelsMode === 'wasm' && (!simKernelsSeats || simKernelsSeats.split(',').includes(String(peer.index))) ? 'wasm' : 'ts';
 function peerUrl(origin, peer) {
-  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire, ...(snapshotHz > 0 ? { snapshotHz: String(snapshotHz) } : {}) });
+  const kernels = simKernelsParam(peer);
+  const params = new URLSearchParams({ ...(kernels ? { simKernels: kernels } : {}), rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire, ...(snapshotHz > 0 ? { snapshotHz: String(snapshotHz) } : {}) });
   return `${origin}/mp-p2p-peer/?${params}`;
 }
 

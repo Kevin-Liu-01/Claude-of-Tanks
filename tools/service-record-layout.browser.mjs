@@ -84,7 +84,7 @@ try {
         });
         assert.deepEqual(violations, [], `${name}/${state}/${tab}`);
         if (tab === 'overview') {
-          assert.equal(await page.locator('.cot-record-overview [data-stat-icon] svg').count(), 10);
+          assert.equal(await page.locator('.cot-record-overview :is([data-stat-icon] svg, .cot-c-tile__label svg)').count(), 10);
           assert.equal(await page.locator('.cot-record-ring').count(), 0);
           assert.equal(await page.locator('.cot-modal__eyebrow').isVisible(), false);
           // the title is the accent token's colour (247: the record's colours are all tokens)

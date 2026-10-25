@@ -4,6 +4,7 @@ import { fallDamage } from './impact.ts';
 import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
 import type { NavigationBridgeDeck } from './bridgeDeckNavigation.ts';
 
+import * as detMath from './detMath.ts';
 export interface BotTerrainField {
   readonly bridgeDecks?: readonly NavigationBridgeDeck[];
   getHeightAt(x: number, z: number): number;
@@ -38,7 +39,7 @@ export function createBotTerrainSafety(field: BotTerrainField) {
   }
   function corridorSafe(entity: FallEntity, yaw: number, travel: number): boolean {
     const {x, z} = entity.state.pos;
-    const fx = Math.sin(yaw), fz = Math.cos(yaw), direction = Math.sign(travel) || 1;
+    const fx = detMath.sin(yaw), fz = detMath.cos(yaw), direction = Math.sign(travel) || 1;
     const halfLength = (entity.spec.dims.hullLengthM ?? entity.spec.dims.lengthM ?? 6) * .5;
     const reach = Math.abs(travel) + halfLength + 1;
     const count = Math.max(1, Math.ceil(reach / 1.5));
@@ -60,7 +61,7 @@ export function createBotTerrainSafety(field: BotTerrainField) {
   function jumpLandingSafe(entity: FallEntity, travel: number): boolean {
     const {x, z} = entity.state.pos, yaw = entity.state.yaw;
     const start = surfaceY(x, z);
-    const finish = surfaceY(x + Math.sin(yaw) * travel, z + Math.cos(yaw) * travel);
+    const finish = surfaceY(x + detMath.sin(yaw) * travel, z + detMath.cos(yaw) * travel);
     return Number.isFinite(start) && Number.isFinite(finish)
       && affordable(entity, start - finish, entity.modeJumpMps ?? 0);
   }

@@ -4,6 +4,7 @@
 // draw in the authoritative step is the first differing tick.
 import assert from 'node:assert/strict';
 import { runDeterminismAudit } from './sim-determinism-audit.mjs';
+import { serverWorldKernels } from '../server/match/simKernels.ts';
 
 const report = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7 });
 assert.ok(report.countsA.events > 0, 'the run produced events to compare');
@@ -26,6 +27,12 @@ const flown = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, dron
 assert.ok(flown.countsA.drones >= 2, `the drone run flew drones to compare (${flown.countsA.drones})`);
 assert.equal(flown.identical, true, `two drone runs diverged at tick ${flown.firstDiffTick} (${flown.finalA} vs ${flown.finalB})`);
 console.log(`sim determinism: drone mode identical (${flown.countsA.drones} drones flown; ${flown.wallMs} ms)`);
+// the WebAssembly kernels (docs/RUST-KERNELS.md, 2026-10-25): run B on them plays run A's match — the contact surface, the
+// grids, the dug ground mirrored onto the kernel and the support solve's samples — through h2's craters, bit for bit
+const onKernels = runDeterminismAudit({ mapId: 'verdant', ticks: 1800, seed: 7, craters: true, kernels: await serverWorldKernels('wasm') });
+assert.ok(onKernels.countsB.craters > 0, 'the kernel run dug craters too');
+assert.equal(onKernels.identical, true, `the kernels diverged from the TypeScript at tick ${onKernels.firstDiffTick} (${onKernels.finalA} vs ${onKernels.finalB})`);
+console.log(`sim determinism: the kernels play the TypeScript's crater match (${onKernels.countsB.craters} craters; ${onKernels.wallMs} ms)`);
 console.log(`sim determinism: two ${report.ticks}-tick runs identical (${report.countsA.crushes} crushes, ${report.countsA.hits} hits, `
   + `${report.countsA.events} events; ${report.wallMs} ms), with craters on (${dug.countsA.craters} craters; ${dug.wallMs} ms) and with `
   + `two turret bodies (${burned.wallMs} ms)`);

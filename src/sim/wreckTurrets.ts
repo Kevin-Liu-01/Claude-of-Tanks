@@ -20,6 +20,7 @@ import {
 } from '../world/collision.ts';
 import { createRigidShape, createRigidWorld, type RigidEnvironment, type RigidShape, type RigidWorld } from './rigidBody.ts';
 
+import * as detMath from './detMath.ts';
 /** The turret frame's gun droop on a wreck (rad, the barrel's line below the turret's horizontal): a dead gun's tube
  * sags on its trunnions, shallow enough that the barrel clears its own deck. */
 export const WRECK_GUN_DROOP_RAD = 0.06;
@@ -110,11 +111,11 @@ const ENVELOPE_DIRECTIONS: readonly Vec3[] = (() => {
   const phi = (1 + Math.sqrt(5)) / 2;
   const vertices: [number, number, number][] = [];
   for (const a of [-1, 1]) for (const b of [-1, 1]) vertices.push([0, a, b * phi], [a, b * phi, 0], [b * phi, 0, a]);
-  const unit = (x: number, y: number, z: number): Vec3 => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; };
+  const unit = (x: number, y: number, z: number): Vec3 => { const l = detMath.hypot(x, y, z); return [x / l, y / l, z / l]; };
   const out: Vec3[] = vertices.map((v) => unit(v[0], v[1], v[2]));
   for (let i = 0; i < vertices.length; i++) for (let j = i + 1; j < vertices.length; j++) {
     const a = vertices[i], b = vertices[j];
-    if (Math.abs(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - 2) < 1e-9) out.push(unit(a[0] + b[0], a[1] + b[1], a[2] + b[2]));
+    if (Math.abs(detMath.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - 2) < 1e-9) out.push(unit(a[0] + b[0], a[1] + b[1], a[2] + b[2]));
   }
   return out;
 })();
@@ -213,7 +214,7 @@ function insideConvex2d(hull: readonly [number, number][], x: number, z: number,
   for (let i = 0; i < hull.length; i++) {
     const a = hull[i], b = hull[(i + 1) % hull.length];
     const ex = b[0] - a[0], ez = b[1] - a[1];
-    const len = Math.hypot(ex, ez);
+    const len = detMath.hypot(ex, ez);
     if (len < 1e-9) continue;
     // left of each edge (inside) by the margin
     if ((ex * (z - a[1]) - ez * (x - a[0])) / len < margin) return false;
@@ -279,7 +280,7 @@ function buildProfile(spec: WreckTurretSpec, s: number): WreckTurretProfile {
   if (barrel && barrel.collision !== false && barrel.lengthM > 0.4) {
     const gp: Vec3 = [(armor!.gunPivot?.[0] ?? 0) * s, (armor!.gunPivot?.[1] ?? 0) * s, (armor!.gunPivot?.[2] ?? 0) * s];
     // the barrel frame: turret · T(gunPivot) · Rx(droop) — +Z dipping by the droop
-    const c = Math.cos(WRECK_GUN_DROOP_RAD), sn = Math.sin(WRECK_GUN_DROOP_RAD);
+    const c = detMath.cos(WRECK_GUN_DROOP_RAD), sn = detMath.sin(WRECK_GUN_DROOP_RAD);
     const from = Math.min(barrel.lengthM * s * 0.5, Math.max(0.3 * s, half[2] + center[2] - gp[2] - 0.15 * s));
     const to = barrel.lengthM * s;
     parts.push({
@@ -335,7 +336,7 @@ const COOK_OFF_MAX_MPS = 21;
 function cookOffSpeed(mps: number): number {
   if (mps <= COOK_OFF_KNEE_MPS) return Math.max(COOK_OFF_MIN_MPS, mps);
   const room = COOK_OFF_MAX_MPS - COOK_OFF_KNEE_MPS;
-  return COOK_OFF_KNEE_MPS + room * (1 - Math.exp(-(mps - COOK_OFF_KNEE_MPS) / room));
+  return COOK_OFF_KNEE_MPS + room * (1 - detMath.exp(-(mps - COOK_OFF_KNEE_MPS) / room));
 }
 
 /**
@@ -392,7 +393,7 @@ export function turretLaunchVelocity(
 /** The hull frame's rotation (three's Euler 'YXZ' of (−pitch, yaw, roll), as armor.ts and the visual compose it). */
 export function hullQuaternion(yaw: number, pitch: number, roll: number, out: Float64Array, offset = 0): void {
   const x = -pitch * 0.5, y = yaw * 0.5, z = roll * 0.5;
-  const c1 = Math.cos(x), s1 = Math.sin(x), c2 = Math.cos(y), s2 = Math.sin(y), c3 = Math.cos(z), s3 = Math.sin(z);
+  const c1 = detMath.cos(x), s1 = detMath.sin(x), c2 = detMath.cos(y), s2 = detMath.sin(y), c3 = detMath.cos(z), s3 = detMath.sin(z);
   out[offset] = s1 * c2 * c3 + c1 * s2 * s3;
   out[offset + 1] = c1 * s2 * c3 - s1 * c2 * s3;
   out[offset + 2] = c1 * c2 * s3 - s1 * s2 * c3;
@@ -401,7 +402,7 @@ export function hullQuaternion(yaw: number, pitch: number, roll: number, out: Fl
 
 /** q · Ry(angle) into out. */
 function yawAfter(q: Float64Array, qo: number, angle: number, out: Float64Array, oo: number): void {
-  const s = Math.sin(angle * 0.5), c = Math.cos(angle * 0.5);
+  const s = detMath.sin(angle * 0.5), c = detMath.cos(angle * 0.5);
   const x = q[qo], y = q[qo + 1], z = q[qo + 2], w = q[qo + 3];
   // (x, y, z, w) ⊗ (0, s, 0, c)
   out[oo] = x * c - z * s;
@@ -551,10 +552,10 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       if (!profile.shape) return false;
       turretSeat(tank, profile, seatPos, seatQ);
       const random = launchRandom(hashLaunch(seed, tank.id, tick));
-      turretLaunchVelocity(cause, (tank.spec.weightTons ?? 40) * profile.scale ** 3, random, v, profile.shape.mass);
+      turretLaunchVelocity(cause, (tank.spec.weightTons ?? 40) * detMath.pow(profile.scale, 3), random, v, profile.shape.mass);
       const state = tank.state;
       // the hull's own motion carries into the throw
-      const hvx = Math.sin(state.yaw) * state.speed, hvz = Math.cos(state.yaw) * state.speed;
+      const hvx = detMath.sin(state.yaw) * state.speed, hvz = detMath.cos(state.yaw) * state.speed;
       const hvy = Number.isFinite(state.verticalSpeed) ? state.verticalSpeed! : 0;
       let slot = world.spawn(profile.shape!, {
         x: seatPos[0], y: seatPos[1], z: seatPos[2], qx: seatQ[0], qy: seatQ[1], qz: seatQ[2], qw: seatQ[3],
@@ -587,7 +588,7 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
         const state = tank.state;
         const s = profile.scale;
         hullQuaternion(state.yaw, state.visualPitch, state.visualRoll, q, 0);
-        const vx0 = Math.sin(state.yaw) * state.speed, vz0 = Math.cos(state.yaw) * state.speed;
+        const vx0 = detMath.sin(state.yaw) * state.speed, vz0 = detMath.cos(state.yaw) * state.speed;
         const vy0 = Number.isFinite(state.verticalSpeed) ? state.verticalSpeed! : 0;
         const yawRate = Number.isFinite(state.yawRate) ? state.yawRate! : 0;
         const owner = ownerOf(tank.id);

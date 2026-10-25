@@ -192,6 +192,13 @@ const loadingOptions = {
   minimumVisiblePreBattleSeconds: 2,
   openBattle: (seconds) => { openedAt = seconds; events.push('battle:open'); },
   scheduleDeferredWarm: (generation) => { scheduledGeneration = generation; },
+  // (battle-spikes-253) a session's first battle's GPU-heavy warm, behind the veil
+  warmFirstBattleCovered: async (yieldForBudget, onProgress) => {
+    events.push('firstWarm');
+    await yieldForBudget(true);
+    onProgress(1);
+    return { ran: true, stages: { rareEffects: 3 }, totalMs: 3 };
+  },
   nextFrame: async () => { clock += 20; events.push('frame'); },
   createLoadingYielder: () => async () => { clock += 5; },
   now: () => clock,
@@ -206,7 +213,8 @@ try {
     'the exact tactical-map asset decodes alongside world construction');
   assert.equal(shown.mapName, 'Verdant Fields');
   assert.equal(shown.mode, 'Random Battle · Standard');
-  assert.equal(delayMs, 840, 'fast entries preserve the minimum loader dwell');
+  // (battle-spikes-253: the first battle's covered warm yields once, 5 ms of the fake clock, inside the dwell)
+  assert.equal(delayMs, 835, 'fast entries preserve the minimum loader dwell');
   assert.equal(openedAt, 2);
   assert.equal(scheduledGeneration, 7);
   assert.equal(fxGroup.userData.battleTexturesStaged, true);
@@ -219,6 +227,9 @@ try {
     'Return/Battle Again code is acquired before play, not on the result click');
   assert.ok(events.indexOf('acquisition:done') < events.indexOf('battle:setup'));
   assert.ok(events.indexOf('deployment:warm') < events.indexOf('loader:hide'));
+  assert.ok(events.indexOf('deployment:warm') < events.indexOf('firstWarm') && events.indexOf('firstWarm') < events.indexOf('loader:hide'),
+    'a session\'s first battle finishes its GPU-heavy warm after the deployment warm, behind the veil');
+  assert.deepEqual(globalThis.__BATTLE_LOAD.firstBattleWarm, { ran: true, stages: { rareEffects: 3 }, totalMs: 3 }, 'the load trace keeps its record');
   assert.ok(events.indexOf('reveal:m1a1_abrams_hc') < events.indexOf('camo:ready'),
     'early player upload still precedes final camouflage');
   assert.ok(events.indexOf('camo:ready') < events.indexOf('deployment:warm'));

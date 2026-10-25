@@ -10,6 +10,7 @@
 
 import { tankContactRect } from './tankContactShape.ts';
 
+import * as detMath from './detMath.ts';
 interface TankBodyState {
   pos: { x: number; y: number; z: number };
   yaw: number;
@@ -204,8 +205,8 @@ function includeTurretVerticalBounds(
   const state = entity.state;
   const pivot = entity.spec.armor?.turretPivot || [0, 0, 0];
   const turretYaw = state.turretYaw || 0;
-  const turretCos = Math.cos(turretYaw);
-  const turretSin = Math.sin(turretYaw);
+  const turretCos = detMath.cos(turretYaw);
+  const turretSin = detMath.sin(turretYaw);
   for (let index = 0; index < turret.length; index += 3) {
     const x = turret[index];
     const z = turret[index + 2];
@@ -230,16 +231,16 @@ function shellOverRect(entity: TankBodyEntity, rect: BodyContactFrame, highest: 
   const state = entity.state;
   const contact = entity.spec.armor?.bodyContactPoints;
   const pitch = state.visualPitch || 0, roll = state.visualRoll || 0;
-  const cosPitch = Math.cos(pitch), sinPitch = Math.sin(pitch);
-  const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
-  const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
+  const cosPitch = detMath.cos(pitch), sinPitch = detMath.sin(pitch);
+  const cosRoll = detMath.cos(roll), sinRoll = detMath.sin(roll);
+  const cosYaw = detMath.cos(state.yaw), sinYaw = detMath.sin(state.yaw);
   let best = highest ? -Infinity : Infinity;
   for (let cloud = 0; cloud < 2; cloud++) {
     const points = cloud === 0 ? contact?.hull : contact?.turret;
     if (!points || points.length < 3) continue;
     const pivot = cloud === 1 ? (entity.spec.armor?.turretPivot || _zeroPivot) : _zeroPivot;
     const frameYaw = cloud === 1 ? (state.turretYaw || 0) : 0;
-    const frameCos = Math.cos(frameYaw), frameSin = Math.sin(frameYaw);
+    const frameCos = detMath.cos(frameYaw), frameSin = detMath.sin(frameYaw);
     for (let index = 0; index + 2 < points.length; index += 3) {
       const localX = pivot[0] + points[index] * frameCos + points[index + 2] * frameSin;
       const localY = pivot[1] + points[index + 1];
@@ -285,10 +286,10 @@ function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array
   const state = entity.state;
   const pitch = state.visualPitch || 0;
   const roll = state.visualRoll || 0;
-  const cosPitch = Math.cos(pitch);
-  const sinPitch = Math.sin(pitch);
-  const cosRoll = Math.cos(roll);
-  const sinRoll = Math.sin(roll);
+  const cosPitch = detMath.cos(pitch);
+  const sinPitch = detMath.sin(pitch);
+  const cosRoll = detMath.cos(roll);
+  const sinRoll = detMath.sin(roll);
   const contact = entity.spec.armor?.bodyContactPoints;
   const hull = contact?.hull;
   if (hull && hull.length >= 3) {
@@ -435,8 +436,8 @@ function fillContactFrame(frame: BodyContactFrame, entity: TankBodyEntity | null
   const rect = tankContactRect(entity.spec);
   frame.halfWidth = rect.halfWidth;
   frame.halfLength = rect.halfLength;
-  frame.forwardX = Math.sin(state.yaw);
-  frame.forwardZ = Math.cos(state.yaw);
+  frame.forwardX = detMath.sin(state.yaw);
+  frame.forwardZ = detMath.cos(state.yaw);
   frame.rightX = frame.forwardZ;
   frame.rightZ = -frame.forwardX;
   frame.centerX = state.pos.x + frame.rightX * rect.centerX + frame.forwardX * rect.centerZ;
@@ -452,7 +453,7 @@ function prepareContactFrames(entities: readonly TankBodyEntity[]): void {
 function horizontalBodiesOverlap(a: BodyContactFrame, b: BodyContactFrame): boolean {
   const dx = a.centerX - b.centerX;
   const dz = a.centerZ - b.centerZ;
-  const outer = Math.hypot(a.halfLength, a.halfWidth) + Math.hypot(b.halfLength, b.halfWidth);
+  const outer = detMath.hypot(a.halfLength, a.halfWidth) + detMath.hypot(b.halfLength, b.halfWidth);
   if (dx * dx + dz * dz > outer * outer) return false;
   return rectsOverlap(
     a.centerX, a.centerZ,
@@ -522,10 +523,10 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   if (closing <= 0.8) return;
   const centerDx = upper.state.pos.x - lower.state.pos.x;
   const centerDz = upper.state.pos.z - lower.state.pos.z;
-  const rightX = Math.cos(upper.state.yaw);
-  const rightZ = -Math.sin(upper.state.yaw);
-  const forwardX = Math.sin(upper.state.yaw);
-  const forwardZ = Math.cos(upper.state.yaw);
+  const rightX = detMath.cos(upper.state.yaw);
+  const rightZ = -detMath.sin(upper.state.yaw);
+  const forwardX = detMath.sin(upper.state.yaw);
+  const forwardZ = detMath.cos(upper.state.yaw);
   const leverRight = clamp(
     -(centerDx * rightX + centerDz * rightZ) / Math.max(upperFrame.halfWidth, 0.1),
     -1,
@@ -548,12 +549,12 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   );
   upper.state._spring.pitchV += pitchKick;
   upper.state._spring.rollV += rollKick;
-  const upY = Math.cos(upper.state.visualPitch) * Math.cos(upper.state.visualRoll);
+  const upY = detMath.cos(upper.state.visualPitch) * detMath.cos(upper.state.visualRoll);
   if (Math.abs(pitchKick) + Math.abs(rollKick) >= STACK_TUMBLE_KICK || upY < 0.7) {
     upperBody.tumbling = true;
   }
   if (!onImpact) return;
-  const centerDistance = Math.hypot(centerDx, centerDz);
+  const centerDistance = detMath.hypot(centerDx, centerDz);
   const normalX = centerDistance > 1e-5 ? centerDx / centerDistance : 0;
   const normalZ = centerDistance > 1e-5 ? centerDz / centerDistance : 0;
   onImpact(upper, lower, closing, normalX, normalZ);

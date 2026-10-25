@@ -138,7 +138,9 @@ for (const [era, ids] of catalogByEra) {
     waveNations.add(getSpec(wave[1]).nation);
     assert.deepEqual(planBattleParticipantIds(game, 'm1a1_abrams_hc', false), staged, 'staged captures ignore session entropy');
   }
-  assert.equal(rosters.size, 64, '64 independent sessions yield 64 different sets, not just permutations of the same team');
+  // 2026-10-25: next generation holds only the clean-sheet hulls now (taxonomy.ts), so the M1A3's own-era pool is
+  // smaller and two of 64 seeded draws can share a set by chance; membership still changes, not just the order.
+  assert.ok(rosters.size >= 60, `64 independent sessions yield ${rosters.size} different sets, not just permutations of the same team`);
   assert.ok(waveNations.size >= 3, 'fresh sessions do not always open against the same wave nation');
   game.rosterSeed = 0;
 }

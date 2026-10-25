@@ -12,6 +12,7 @@ import {
   VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat, paddySheetCell,
 } from './visibleWater.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** (2026-10-12, item 4) A paddy's own surface's cell (m); the lattice cells it owns are visibleWater.ts paddySheetCell. */
 const PADDY_SURFACE_CELL_M = 2;
 /** (2026-10-15, the paddies' look pass; the coordinator: "muddy water … about 25 cm depth") The paddies the sheet's
@@ -291,7 +292,7 @@ export function* shallowWaterGeometrySteps(
     const h0 = field.getHeightAt(x, z); let top = h0;
     for (let a = 0; a < 12; a++) {
       const t = a * Math.PI / 6;
-      for (const r of [SEA_SHELF_RISE_M * 0.5, SEA_SHELF_RISE_M]) top = Math.max(top, field.getHeightAt(x + Math.cos(t) * r, z + Math.sin(t) * r));
+      for (const r of [SEA_SHELF_RISE_M * 0.5, SEA_SHELF_RISE_M]) top = Math.max(top, field.getHeightAt(x + detMath.cos(t) * r, z + detMath.sin(t) * r));
     }
     return (top - h0) / SEA_SHELF_RISE_M;
   };
@@ -1016,7 +1017,7 @@ export function createShallowWaterSurface(
       for (let i = 0; i < n; i++) {
         const s = sources[i];
         let dx = s.dirX ?? 0, dz = s.dirZ ?? 1;
-        const len = Math.hypot(dx, dz);
+        const len = detMath.hypot(dx, dz);
         if (Number.isFinite(len) && len > 1e-6) { dx /= len; dz /= len; } else { dx = 0; dz = 1; }
         const rawSpeed = Math.abs(s.speed ?? 0);
         const speed = Number.isFinite(rawSpeed) ? Math.min(1, rawSpeed / WAKE_FULL_SPEED_MPS) : 0;

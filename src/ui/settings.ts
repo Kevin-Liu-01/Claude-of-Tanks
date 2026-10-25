@@ -34,7 +34,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.ts';
+import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import {
@@ -215,10 +216,12 @@ const SETTINGS_CSS = `
   background:oklch(from var(--scrim) l c h / .7);font-family:var(--font-ui);color:var(--ink-1);
   -webkit-user-select:none;user-select:none;}
 .cot-settings.open{display:flex;animation:cotSetVeil var(--dur-base) var(--ease-enter);}
-/* the panel's reset spares the kit's buttons, whose layer the surfaces layer would otherwise override */
-.cot-settings :where(:not(.cot-c-btn)){box-sizing:border-box;margin:0;padding:0;}
-.cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
+/* the panel's reset spares every kit element (buttons, notices, swatches), whose components layer the surfaces layer
+   would otherwise override */
+.cot-settings :where(:not([class*="cot-c-"])){box-sizing:border-box;margin:0;padding:0;}
+.cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(1080px,88vh);max-height:88vh;
   display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
+.cot-set-panel:focus{outline:none;}
 .cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
 @keyframes cotSetVeil{from{opacity:0;}}
 @keyframes cotSetIn{from{opacity:0;transform:translateY(14px);}}
@@ -265,11 +268,14 @@ const SETTINGS_CSS = `
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
   box-shadow:var(--e1);}
-.cot-set-card .cot-set-group{margin:0 0 var(--s1);}
+/* the heading's label starts on the rows' inset (at the row glyphs); its (i) button ends at the card's edge, so the
+   glyph centred in it lines up with the controls' edge */
+.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2) 0;}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
-.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px;
+.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
-.cot-set-row:last-child{border-bottom:0;}
+.cot-set-row:not(:has(~ .cot-set-row)){border-bottom:0;}
+.cot-set-row:has(.cot-set-seg button:disabled):not(:has(.cot-set-seg button:enabled)) .cot-setting-label-text{color:var(--ink-3);}
 .cot-set-row:hover{background:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
@@ -277,70 +283,70 @@ const SETTINGS_CSS = `
 /* a setting's glyph: one grey, the accent only on a shell slot's number */
 .cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;color:var(--ink-3);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
-.cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
-  min-width:12px;height:12px;padding:0 2px;display:grid;place-items:center;border-radius:2px;
-  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
 .cot-setting-label-text{min-width:0;}
-.cot-set-row.conflict{background:oklch(from var(--danger) l c h / .12);box-shadow:inset 2px 0 0 var(--danger);}
-.cot-set-row.conflict .cot-chip{box-shadow:var(--ring-danger);}
+/* the rows in a conflict: the notice's warning tone, no stripe */
+.cot-set-row.conflict{background:color-mix(in srgb,var(--text-warn) 9%,transparent);}
+.cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
-.cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
-.cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
-  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-4);}
-.cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
-.cot-set-colhdr span.pad{width:72px;}
+.cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
+.cot-set-colhdr span{width:calc(92px * var(--cot-type-scale,1));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
+.cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
-.cot-chip{width:92px;height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
+.cot-chip{width:calc(92px * var(--cot-type-scale,1));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
-.cot-chip.padcol{width:72px;}
+.cot-chip svg{display:inline-block;width:14px;height:14px;vertical-align:middle;}
 .cot-chip:hover{background:var(--surface-hover);}
 .cot-chip:active{transform:translateY(var(--btn-press-drop));}
-.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:inset 0 0 0 1px var(--line-1);}
+.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:none;outline:1px dashed var(--ink-4);outline-offset:-1px;}
 .cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
   animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
 .cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
 .cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-seg button:focus-visible{box-shadow:var(--focus-ring);}
 .cot-set-slider input[type=range]:focus{outline:none;}
-.cot-set-slider input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cot-set-slider input[type=range]:focus-visible{box-shadow:var(--focus-ring);}
 @keyframes cotChipPulse{50%{opacity:.7;}}
-.cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;padding:var(--s2) var(--s3);align-items:center;gap:var(--s3);
-  background:oklch(from var(--danger) l c h / .12);box-shadow:inset 3px 0 0 var(--danger);border-radius:var(--control-radius);
-  font:500 max(13px,var(--fs-13))/1.4 var(--font-body);color:var(--ink-1);}
+/* the binding conflict is the kit's notice (components/notices.css); the panel only places and shows it */
+.cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;}
 .cot-set-conflict.show{display:flex;}
-.cot-set-conflict b{color:var(--text-danger);font-weight:600;}
-.cot-set-conflict .msg{flex:1;}
+.cot-set-conflict b{color:var(--text-warn);font-weight:600;}
 /* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
-.cot-set-ftr{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
+.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
-/* sliders: a line track with the accent's fill (--f set from JS) and a square knob */
+.cot-set-btn[hidden]{display:none;}
+/* a footer with nothing to offer (no Reset on this tab, no battle to leave) takes no room */
+.cot-set-ftr:not(:has(.cot-set-btn:not([hidden]))){display:none;}
+/* sliders: a line track with an ink fill (--f set from JS) and a square knob */
 .cot-set-slider{display:flex;align-items:center;gap:var(--s3);}
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
   background:transparent;}
 .cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
-  background:linear-gradient(90deg,var(--accent) var(--f),var(--line-2) var(--f));}
+  background:linear-gradient(90deg,var(--ink-2) var(--f),var(--ink-4) var(--f));}
 .cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
   border-radius:var(--control-radius);background:var(--ink-1);box-shadow:var(--e1);
   transition:transform var(--dur-fast) var(--ease-enter);}
 .cot-set-slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15);}
-.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-2);}
-.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--accent);}
+.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--ink-4);}
+.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
-.cot-set-slider input[type=number]{width:62px;height:30px;padding:0 var(--s2);text-align:right;
+.cot-set-slider input[type=number]{width:62px;height:36px;padding:0 var(--s2);text-align:right;
   font:500 max(13px,var(--fs-13))/1 var(--font-data);color:var(--ink-1);background:var(--surface-page);border:0;
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+.cot-set-slider .unit{width:16px;text-align:end;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+/* a multiplier has no unit, so its field ends on the controls' edge */
+.cot-set-slider .unit:empty{display:none;}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
-   (components.css .cot-c-seg) on the panel's own state class */
+   (components.css .cot-c-seg) on the panel's own state class; every inline control is 36 px tall */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
   box-shadow:var(--ring-1);}
-.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 13px;
+.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:30px;padding:0 13px;
   border:0;border-radius:var(--control-radius);background:transparent;cursor:pointer;white-space:nowrap;
   color:var(--ink-3);font:500 max(13px,var(--fs-13))/1 var(--font-body);
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
@@ -348,20 +354,35 @@ const SETTINGS_CSS = `
 .cot-set-seg button.sel{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
 .cot-set-seg button:disabled{color:var(--ink-4);cursor:not-allowed;}
 .cot-set-seg.onoff button{min-width:48px;}
+/* time of day (battleTimeChoices.ts): a multi-select, so the kit's chips (each its own pill, a tick when on) rather than
+   a segmented control; the legend names the group */
+.cot-settings .cot-battle-times{display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:0;border:0;min-width:0;}
+.cot-settings .cot-battle-times legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.cot-settings .cot-time-choice{flex:none;min-width:0;}
+.cot-settings .cot-time-content{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:0;height:36px;padding:0 var(--s3);
+  border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(13px,var(--fs-13))/1 var(--font-body);}
+.cot-settings .cot-time-content>svg{display:none;}
+.cot-settings .cot-time-check{flex:0 0 12px;width:12px;height:12px;border:0;color:var(--ink-1);visibility:hidden;}
+@media (hover:hover){.cot-settings .cot-time-choice:hover .cot-time-content{color:var(--ink-1);}}
+.cot-settings .cot-time-choice input:checked+.cot-time-content{background:var(--chip-fill-on);box-shadow:var(--ring-accent);color:var(--ink-1);}
+.cot-settings .cot-time-choice input:checked+.cot-time-content .cot-time-check{visibility:visible;border:0;background:none;color:var(--ink-1);}
+.cot-settings .cot-time-choice input:focus-visible+.cot-time-content{outline:none;box-shadow:var(--focus-ring);}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
-.cot-set-preview{margin:10px 10px 4px;max-width:640px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
+.cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
-.cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
+.cot-set-note{margin:var(--s3) 0 var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
+.cot-set-note.keep{text-wrap:balance;}
 .cot-set-note.folded{display:none;}
+.cot-set-body>.cot-set-note{margin-inline:var(--s3);}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
-.cot-set-info{order:2;display:inline-grid;place-items:center;width:28px;height:28px;flex:none;margin:-6px -4px -6px 0;padding:0;
-  border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);cursor:pointer;}
+/* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
+   heading's line so every heading keeps one height */
+.cot-set-info{--h:var(--cot-control-floor,36px);order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+.cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
-@media (hover:hover){.cot-set-info:hover{color:var(--ink-1);background:var(--fill-quiet);}}
-.cot-set-info:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
    paused lamp and listening pulse all freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
@@ -378,19 +399,26 @@ const SETTINGS_CSS = `
   background:var(--surface-plate);box-shadow:var(--ring-2);color:var(--ink-3);pointer-events:auto;
   transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
 .cot-gear:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-/* The strip clears the HUD's bottom stack (the shell tray and the vehicle-controls row above it end 120 px up). A fixed
-   box at left:50% shrinks to half the viewport, so max-content keeps one row until the edge clamps it. */
-.cot-hints{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:45;width:max-content;
-  display:none;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);pointer-events:none;
-  background:var(--hud-plate);box-shadow:var(--e1);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+/* The strip's seat (owner 2026-10-25: "fix the wasd bar ... above stuff"): the band over the vehicle-controls row, which
+   battleHudLayout.ts writes as --hud-systems-top (the tray's top less the row), on the centre line; under the sight's
+   notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
+   max-content keeps one row until the edge clamps it. */
+.cot-hints{position:fixed;left:var(--hud-hints-x,50%);top:var(--hud-hints-bottom,calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2)));
+  transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
+  display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
+  pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
+  font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
   text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints.show{display:flex;}
 .cot-hints.fade{opacity:0;}
-.cot-hints .hg{display:flex;align-items:center;gap:var(--s2);}
+.cot-hints .hg{display:flex;align-items:center;gap:var(--s2);transition:opacity var(--dur-base) var(--ease-exit);}
+.cot-hints .hg.done{opacity:0;}
 .cot-hints .hk{display:flex;gap:2px;}
-/* a flight (a drone, the gunship) flies on other keys (the class: hud.ts) */
-body.cot-hud-aerial .cot-hints{display:none;}
+/* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
+.cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
+/* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
+   spectated battle (owner 2026-10-25) */
+body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
@@ -402,25 +430,29 @@ body.cot-hud-aerial .cot-hints{display:none;}
 .cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
   text-transform:uppercase;}
 .cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
+/* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
+   the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
+.cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:18px;margin:4px 10px 8px;padding:10px 14px;
-  background:var(--surface-page);border:1px solid var(--line-control);color:var(--ink-1);}
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
+  border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
 .cot-a11y-preview .squad{color:var(--team-squad);border-radius:50%;outline:var(--team-squad-ring) solid var(--ink-1);}
 .cot-a11y-preview .sample{margin-left:auto;font-size:var(--fs-16);font-weight:600;}
-.cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px 8px;background:var(--hud-plate);
-  border:1px solid var(--line-3);}
-.cot-set-seg.wrap{flex-wrap:wrap;justify-content:flex-end;}
-.cot-set-seg .sw{display:inline-flex;gap:2px;margin-right:6px;}
+.cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px var(--s2);background:var(--hud-plate);
+  box-shadow:var(--ring-2);}
+.cot-set-seg.glyphs button{min-width:40px;padding:0 var(--s2);}
+.cot-set-seg .sw{display:inline-flex;gap:2px;}
 .cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
-.cot-a11y-custom{display:flex;align-items:center;gap:10px;}
-.cot-a11y-custom input[type=color]{width:44px;height:32px;padding:0;border:1px solid var(--line-control);background:none;cursor:pointer;}
-.cot-a11y-custom input[type=color]:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
-.cot-a11y-custom input[aria-invalid=true]{border-color:var(--danger);}
-.cot-set-note.refused{color:var(--text-danger);}
+.cot-a11y-custom{display:flex;align-items:center;gap:var(--s2);}
+/* each custom colour beside its team's shape (a team is shape plus colour) */
+.cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
+.cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
+.cot-set-refused{margin:var(--s2) var(--s2) 0;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -450,13 +482,22 @@ export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[strin
     [t('settings.group.fire'), ['fire']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
     [t('settings.group.sniper'), ['sniperToggle']],
-    [t('settings.group.menu'), ['settingsMenu']],
+    // (ESC opens the settings: the pause veil's cap names the same word, gauntlet r1)
+    [t('settings.title'), ['settingsMenu']],
   ];
 }
 
-/** A player's first battles show the controls strip as the tanks roll out; the count is the browser's. */
-const HINTS_KEY = 'cot.battle.hints.v1';
+/** The strip's groups by id, in battleControlHintGroups' order (each one leaves the strip once its control is used). */
+const HINT_GROUP_IDS = ['move', 'fire', 'aim', 'sniper', 'menu'] as const;
+type HintGroupId = typeof HINT_GROUP_IDS[number];
+/** A keyboard player's first HINT_BATTLES battles show the controls strip as the tanks roll out, while a group's control
+ *  is still unused (owner 2026-10-25: "only make it come up when its needed"). The browser keeps the count and what was
+ *  learned (v1 kept the count alone, read as the count here). */
+const HINTS_KEY = 'cot.battle.hints.v2';
+const HINTS_KEY_V1 = 'cot.battle.hints.v1';
 const HINT_BATTLES = 3;
+/** The strip's longest stay when its controls are not all used (it leaves sooner at the first engagement). */
+const HINT_STAY_MS = 30000;
 
 /**
  * Create the settings panel + garage gear button + battle controls-hint strip.
@@ -500,27 +541,29 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- DOM ---------------------------------------------------------------------
   const root = el('div', 'cot-settings');
   root.innerHTML =
-    `<div class="cot-set-panel" role="dialog" aria-modal="true" aria-label="${t('settings.title')}">` +
+    `<div class="cot-set-panel" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
-    `<div class="cot-set-tabs">` +
+    `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
-    `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}</button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
-    `<button class="cot-set-tab" data-tab="accessibility" type="button">${t('settings.tab.accessibility')}</button>` +
-    `<button class="cot-set-tab" data-tab="language" type="button">${t('settings.tab.language')}</button>` +
+    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel">${t('settings.tab.controls')}</button>` +
+    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.gameplay')}</button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.sound')}</button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.graphics')}</button>` +
+    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.accessibility')}</button>` +
+    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
     `</div>` +
-    `<div class="cot-set-conflict"><span class="msg"></span>` +
+    // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
+    `<div class="cot-set-conflict cot-c-notice" data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
+    `<span class="cot-c-notice__body"><span class="cot-c-notice__text msg"></span></span><span class="cot-c-notice__acts">` +
     `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
-    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></div>` +
-    `<div class="cot-set-body"></div>` +
+    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
+    `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn ghost reset cot-c-btn cot-c-btn--ghost" type="button">${t('settings.reset')}</button>` +
-    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button">${t('settings.leave')}</button>` +
-    `<button class="cot-set-btn resume cot-c-btn cot-c-btn--primary" type="button">${t('settings.resume')}</button></div>` +
+    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36" type="button">${t('settings.reset')}</button>` +
+    // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
+    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
 
@@ -529,7 +572,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.msg');
   const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
-  const resumeBtn = requiredElement<HTMLButtonElement>(root, '.resume');
 
   // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
   // .can-scroll pattern, split per edge so the top fade only appears once the
@@ -568,7 +610,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const icon = el('span', `cot-setting-icon tone-${spec.tone || 'steel'}`, lb);
     icon.setAttribute('aria-hidden', 'true');
     icon.innerHTML = uiIconSVG(spec.id, 16);
-    if (spec.badge) icon.dataset.badge = spec.badge;
     el('span', 'cot-setting-label-text', lb).textContent = label;
     return lb;
   }
@@ -690,7 +731,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   if (input.isTouchLayout && input.isTouchLayout()) {
     activeTab = 'gameplay';
     const tb = root.querySelector<HTMLButtonElement>('.cot-set-tab[data-tab="controls"]');
-    if (tb) tb.style.display = 'none';
+    if (tb) { tb.style.display = 'none'; tb.hidden = true; } // hidden: the roving keys pass it too
   }
   let capture: CaptureState | null = null; // { actionId, slot: 0|1|'pad', chip }
   let escHoldTimer: TimerHandle | null = null; // pending hold-Esc-to-bind timer during capture
@@ -728,14 +769,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- CONTROLS tab -----------------------------------------------------------
   const rowByAction = new Map<ActionId, ActionBindingRow>();
+  /** An arrow key's cap: the sprite's arrow and its spoken name (the input layer labels them ↑ ↓ ← →). */
+  const ARROW_KEY_GLYPHS: Readonly<Record<string, readonly [UiIconId, string]>> = {
+    '↑': ['moveForward', 'settings.bind.arrowUp'], '↓': ['moveBack', 'settings.bind.arrowDown'],
+    '←': ['steerLeft', 'settings.bind.arrowLeft'], '→': ['steerRight', 'settings.bind.arrowRight'],
+  };
 
   function chipText(actionId: ActionId, slotKey: BindingSlotKey): string {
     if (slotKey === 'pad') {
       const label = input.padLabelFor(input.getPadBinding(actionId));
-      return label === '—' ? t('settings.bind.empty') : label;
+      return label === '—' ? '' : label;
     }
     const label = input.labelFor(input.getBinding(actionId, slotKey));
-    return label === '—' ? t('settings.bind.empty') : label;
+    return label === '—' ? '' : label; // the input layer's '—' is an unbound slot: an empty cap
   }
 
   function makeChip(
@@ -772,12 +818,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     colhdr.innerHTML =
       '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';
     let lastGroup = null;
+    let card: HTMLDivElement = body;
     for (const def of input.actionDefs) {
       if (def.group !== lastGroup) {
-        el('div', 'cot-set-group', body).textContent = t(def.group);
+        card = groupCard(body, t(def.group)); // each group a card, as on every other tab
         lastGroup = def.group;
       }
-      const row = el('div', 'cot-set-row', body);
+      const row = el('div', 'cot-set-row', card);
       row.dataset.action = def.id;
       settingLabel(row, t(def.label), SETTINGS_ACTION_ICONS[def.id]);
       const chipsWrap = el('div', 'chips', row);
@@ -803,9 +850,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       for (const slotKey of [0, 1, 'pad'] as const satisfies readonly BindingSlotKey[]) {
         const chip = r.chips[slotKey];
         if (capture && capture.chip === chip) continue; // keep listening label
-        const t = chipText(def.id, slotKey);
-        chip.textContent = t;
-        chip.classList.toggle('empty', t === '—');
+        const text = chipText(def.id, slotKey);
+        const empty = text === '';
+        const arrow = ARROW_KEY_GLYPHS[text];
+        // an unbound slot is an empty cap (no dash in view) and an arrow key the sprite's arrow, each named for
+        // assistive tech
+        if (arrow) chip.innerHTML = uiIconSVG(arrow[0], 14);
+        else chip.textContent = empty ? '' : text;
+        chip.classList.toggle('empty', empty);
+        const name = empty ? t('settings.bind.unbound') : arrow ? t(arrow[1]) : '';
+        if (name) chip.setAttribute('aria-label', name);
+        else chip.removeAttribute('aria-label');
       }
     }
   }
@@ -837,7 +892,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     num.min = String(toD(min));
     num.max = String(toD(max));
     num.step = o.dispStep || '0.05';
-    el('span', 'unit', wrap).textContent = o.unit || '×';
+    el('span', 'unit', wrap).textContent = o.unit || ''; // a multiplier needs no unit mark
     const sync = () => {
       const v = input.getSettings()[key];
       range.value = String(v);
@@ -988,7 +1043,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     brainSeg.setAttribute('aria-label', brainLabel);
     const brainButtons: HTMLButtonElement[] = [];
     const alliesRow = el('div', 'cot-set-row', battle);
-    settingLabel(alliesRow, t('playMenu.brain.allies'), SETTINGS_OPTION_ICONS.aiDifficulty);
+    settingLabel(alliesRow, t('settings.gameplay.alliesJev'), { id: 'team' });
     const alliesSeg = el('div', 'cot-set-seg onoff', alliesRow);
     const alliesButtons: HTMLButtonElement[] = [];
     const brainNote = el('div', 'cot-set-note', battle);
@@ -1025,7 +1080,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.type = 'button';
       b.dataset.brainAllies = String(on);
       b.textContent = t(on ? 'settings.on' : 'settings.off');
-      b.setAttribute('aria-label', `${t('playMenu.brain.allies')}: ${b.textContent}`);
+      b.setAttribute('aria-label', `${t('settings.gameplay.alliesJev')}: ${b.textContent}`);
       b.addEventListener('click', () => {
         writeBrainSettings({ allies: on });
         syncBrain();
@@ -1035,7 +1090,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     syncBrain();
 
-    const times = el('fieldset', 'cot-battle-times', battle);
+    // time of day: a row like the others, its choices (any one or more) in the segmented look
+    const timesRow = el('div', 'cot-set-row', battle);
+    settingLabel(timesRow, t('garage.battle.timeOfDay'), SETTINGS_OPTION_ICONS.battleTimes).setAttribute('aria-hidden', 'true');
+    const times = el('fieldset', 'cot-battle-times', timesRow);
     times.innerHTML = battleTimeChoicesMarkup('cot-settings-time-hint', 'settings.battle.timeHint');
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
@@ -1214,7 +1272,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.type = 'button';
       b.textContent = name === 'auto'
         ? t('settings.preset.auto')
-        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
+        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra');
       b.dataset.name = name;
       b.addEventListener('click', () => {
         stagedPreset = name; // applied when the panel closes (commitGraphics)
@@ -1298,18 +1356,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   /** One segmented choice bound to a preference (aria-pressed on each option). */
   function a11ySeg<T extends string>(
     parent: HTMLElement, label: string, icon: SettingsIconSpec,
-    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, wrap = false,
+    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, glyphs = false,
   ): HTMLButtonElement[] {
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, icon);
-    const seg = el('div', `cot-set-seg${wrap ? ' wrap' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
+    const seg = el('div', `cot-set-seg${glyphs ? ' glyphs' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', label);
     const buttons = options.map(([value, text]) => {
       const b = el('button', '', seg);
       b.type = 'button';
       b.dataset.value = value;
-      b.textContent = text;
+      // glyph options (the team-colour presets) show their art; the name is the accessible name and the hover tip
+      if (glyphs) { b.setAttribute('aria-label', text); b.dataset.tip = text; } else b.textContent = text;
       b.addEventListener('click', () => {
         if (current() === value) return;
         choose(value);
@@ -1376,7 +1435,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       + '<span class="shape squad">&#9679;</span><span class="sample">' + t('settings.a11y.sample') + '</span><span class="hudnum num">88</span>';
     a11ySlider(vision, t('settings.a11y.textScale'), A11Y_ICONS.textScale, 'textScale', RANGES.textScale);
     a11ySlider(vision, t('settings.a11y.hudScale'), A11Y_ICONS.hudScale, 'hudScale', RANGES.hudScale);
-    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read.
+    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read; its
+    // name is the option's tip (six worded options did not fit beside the label and wrapped over it).
     const presetButtons = a11ySeg(vision, t('settings.a11y.colors'), A11Y_ICONS.colors,
       COLOR_PRESETS.map((preset) => [preset, t(`settings.a11y.preset.${preset}`)] as const),
       () => prefs().colorPreset, (preset: ColorPreset) => { saveAccessibility({ colorPreset: preset }); syncCustom(); }, true);
@@ -1391,7 +1451,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     };
     for (const button of presetButtons) {
       const preset = button.dataset.value as ColorPreset;
-      if (preset === 'custom') swatch(button, prefs().customOwn, prefs().customEnemy);
+      if (preset === 'custom') button.insertAdjacentHTML('afterbegin', uiIconSVG('brush', 16));
       else {
         const cvd = preset === 'default' ? {} : { cvd: preset };
         swatch(button, tokenValue('team-own', cvd), tokenValue('team-enemy', cvd));
@@ -1399,18 +1459,36 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     // Custom: own and enemy pickers; a pair under the colour-vision or contrast floors is refused (colorVision.ts).
     const customRow = el('div', 'cot-set-row', vision);
-    settingLabel(customRow, t('settings.a11y.preset.custom'), A11Y_ICONS.colors);
+    settingLabel(customRow, t('settings.a11y.preset.custom'), { id: 'brush' });
     const custom = el('div', 'cot-a11y-custom', customRow);
-    const ownPick = el('input', '', custom);
+    const shape = (side: string, entity: string): HTMLSpanElement => {
+      const mark = el('span', `cot-a11y-shape ${side}`, custom);
+      mark.setAttribute('aria-hidden', 'true');
+      mark.innerHTML = entity;
+      return mark;
+    };
+    const ownMark = shape('own', '&#9650;');
+    const ownPick = el('input', 'cot-c-swatch', custom);
     ownPick.type = 'color';
     ownPick.setAttribute('aria-label', t('hud.team.ally'));
-    const enemyPick = el('input', '', custom);
+    const enemyMark = shape('enemy', '&#9670;');
+    const enemyPick = el('input', 'cot-c-swatch', custom);
+    // each shape wears its picker's colour, so a refused pair shows what was picked
+    for (const [mark, pick] of [[ownMark, ownPick], [enemyMark, enemyPick]] as const) {
+      for (const type of ['input', 'change']) pick.addEventListener(type, () => mark.style.setProperty('color', pick.value));
+    }
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
-    const refused = el('div', 'cot-set-note refused', vision);
-    refused.setAttribute('role', 'status');
+    // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
+    const refused = el('div', 'cot-c-notice cot-set-refused', vision);
+    refused.dataset.severity = 'error';
+    refused.setAttribute('role', 'alert');
+    refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`
+      + '<span class="cot-c-notice__body"><span class="cot-c-notice__text"></span></span>';
+    const refusedText = requiredElement<HTMLSpanElement>(refused, '.cot-c-notice__text');
     const syncCustom = (): void => {
       ownPick.value = prefs().customOwn;
+      for (const mark of [ownMark, enemyMark]) mark.style.removeProperty('color'); // the saved pair: the team tokens again
       enemyPick.value = prefs().customEnemy;
       customRow.hidden = prefs().colorPreset !== 'custom';
       refused.hidden = true;
@@ -1426,7 +1504,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         return;
       }
       refused.hidden = false;
-      refused.textContent = t('settings.a11y.refused');
+      refusedText.textContent = t('settings.a11y.refused');
       const blames = (side: string): boolean => check.failures.some((f) => f.check.split(/[~ ]/)[0] === side
         || f.check.endsWith(`~${side}`));
       ownPick.setAttribute('aria-invalid', String(blames('own')));
@@ -1441,7 +1519,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
     const motion = groupCard(body, t('settings.a11y.motion'));
     a11ySeg<MotionMode>(motion, t('settings.a11y.reduceMotion'), A11Y_ICONS.motion,
-      [['system', t('settings.a11y.system')], ['reduce', t('settings.on')], ['full', t('settings.off')]],
+      [['system', t('settings.a11y.system')], ['full', t('settings.off')], ['reduce', t('settings.on')]],
       () => prefs().motion, (mode) => { saveAccessibility({ motion: mode }); });
     a11ySlider(motion, t('settings.a11y.shake'), A11Y_ICONS.shake, 'shake', RANGES.shake);
     a11ySlider(motion, t('settings.a11y.flash'), A11Y_ICONS.flash, 'flash', RANGES.flash);
@@ -1467,9 +1545,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- LANGUAGE tab -----------------------------------------------------------
   function renderLanguage() {
     body.textContent = '';
-    const langCard = groupCard(body, t('settings.language.title'));
+    const langCard = groupCard(body, t('settings.language.card'));
     const langRow = el('div', 'cot-set-row', langCard);
-    settingLabel(langRow, t('settings.language.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
+    settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
     const langSeg = el('div', 'cot-set-seg', langRow);
     const langBtns: HTMLButtonElement[] = [];
     const currentLocale = getLocale();
@@ -1499,11 +1577,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
-      t.classList.toggle('sel', t.dataset.tab === activeTab);
+      const on = t.dataset.tab === activeTab;
+      t.classList.toggle('sel', on);
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      if (on) root.querySelector('.cot-set-body')?.setAttribute('aria-labelledby', t.id);
     }
-    resetBtn.style.visibility =
-      activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility'
-        ? 'visible' : 'hidden';
+    resetBtn.hidden = !(activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility');
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
     else if (activeTab === 'accessibility') renderAccessibility();
@@ -1512,7 +1592,31 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
+    nameSegments();
     scheduleScrollFades(); // fades follow the fresh content's real overflow
+  }
+
+  // every segmented picker is a named group whose options say which one is on: a group without its own name takes its
+  // row's label, and one observer mirrors each option's .sel into aria-pressed (the pickers' handlers toggle the class)
+  const syncPressed = (option: Element): void => {
+    if (option instanceof HTMLButtonElement && !option.hasAttribute('role')) {
+      option.setAttribute('aria-pressed', String(option.classList.contains('sel')));
+    }
+  };
+  function nameSegments(): void {
+    for (const seg of body.querySelectorAll<HTMLElement>('div.cot-set-seg')) {
+      if (!seg.hasAttribute('role')) seg.setAttribute('role', 'group');
+      const label = seg.closest('.cot-set-row')?.querySelector('.cot-setting-label-text')?.textContent;
+      if (label && !seg.hasAttribute('aria-label')) seg.setAttribute('aria-label', label);
+      for (const option of seg.children) syncPressed(option);
+    }
+  }
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.target instanceof Element && record.target.parentElement?.classList.contains('cot-set-seg')) syncPressed(record.target);
+      }
+    }).observe(body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 
   // (owner, the 10-24 UI sweep: no helper text in view) a card's explanations fold behind one info button in its
@@ -1528,7 +1632,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (!card || !group) continue;
       let info = group.querySelector<HTMLButtonElement>('.cot-set-info');
       if (!info) {
-        const button = el('button', 'cot-set-info', group) as HTMLButtonElement;
+        const button = el('button', 'cot-set-info cot-c-btn cot-c-btn--icon cot-c-btn--ghost', group) as HTMLButtonElement;
         button.type = 'button';
         button.setAttribute('aria-expanded', 'false');
         button.setAttribute('aria-label', t('settings.notes.toggle'));
@@ -1633,8 +1737,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const defA = input.actionDefs.find((d) => d.id === c.actionId);
     const defB = input.actionDefs.find((d) => d.id === c.otherId);
     const codeLabel = c.pad
-      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })()
-      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.empty') : l; })();
+      ? (() => { const l = input.padLabelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })()
+      : (() => { const l = input.labelFor(c.code); return l === '—' ? t('settings.bind.unbound') : l; })();
     const slotTag = c.pad ? '' : ` (${SLOT_NAME[c.otherSlot]})`;
     conflictMsg.innerHTML =
       t('settings.conflict.message', {
@@ -1783,12 +1887,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // player back to CONTROLS every time.
     renderTab();
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
-    leaveBtn.style.display = canLeave ? 'block' : 'none';
-    // settings_ui r2: the footer primary reads RESUME only where there is a
-    // battle to resume — the garage gear context labels the same button CLOSE.
-    resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
+    leaveBtn.hidden = !canLeave;
     root.classList.add('open');
-    requiredElement<HTMLButtonElement>(root, '.cot-set-close').focus({ preventScroll: true });
+    requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);
@@ -1827,7 +1928,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
   requiredElement<HTMLButtonElement>(root, '.cot-set-close').addEventListener('click', () => api.close());
-  resumeBtn.addEventListener('click', () => api.close());
   leaveBtn.addEventListener('click', () => {
     if (!onLeaveBattle || !canLeaveBattle()) return;
     relockOnClose = false;
@@ -1872,6 +1972,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bindingsMutated();
   });
   const SETTINGS_TABS: readonly SettingsTab[] = ['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'];
+  // the strip is a tab list: arrows, Home and End move between the tabs (the kit's roving keys press each, so the click
+  // below switches)
+  const tabStrip = root.querySelector<HTMLElement>('.cot-set-tabs');
+  if (tabStrip) wireRovingKeys(tabStrip);
   for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
     t.addEventListener('click', () => {
       const tab = SETTINGS_TABS.find((id) => id === t.dataset.tab);
@@ -1967,6 +2071,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
     bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
     bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
+    // the player's first hit given or taken this battle (hud.ts): the strip has done its work
+    bus.on('ui:playerEngaged', () => fadeHints());
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react
@@ -1976,6 +2082,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus.on('killcam:begin', () => {
       kcReplay = true;
       hideResumeVeil();
+      hideHints();
       // never relock out of this close — the cursor must stay free for the
       // replay (and a gesture-less requestLock denial would falsely latch
       // the cursor-aim fallback)
@@ -2001,44 +2108,89 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   updateGear();
 
   // --- controls hint strip -----------------------------------------------------------
-  function hintGroup(label: string, actionIds: readonly ActionId[]): string {
+  function hintGroup(label: string, actionIds: readonly ActionId[], id: HintGroupId): string {
     const kbds = actionIds
-      .map((id) => `<kbd class="cot-c-kbd">${bindLabel(id)}</kbd>`)
+      .map((action) => `<kbd class="cot-c-kbd">${bindLabel(action)}</kbd>`)
       .join('');
-    return `<span class="hg"><span class="hk">${kbds}</span><span>${label}</span></span>`;
+    return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;
   }
 
-  // First-battle hints (247): a keyboard and mouse player's first HINT_BATTLES battles show the strip at the rollout,
-  // solo and network alike. A touch layout and a connected pad show none (the caps name keyboard keys), and a storage
-  // the browser refuses keeps the count for this page.
-  let hintBattles: number | null = null;
+  // First-battle hints (247; owner 2026-10-25): a keyboard and mouse player's first HINT_BATTLES battles show the strip at
+  // the rollout, solo and network alike, while any group's control is still unused. Each group leaves as its control is
+  // pressed (and stays learned), the strip once every group has, at the player's first engagement (hud.ts
+  // ui:playerEngaged), a kill cam, the battle's end, or after HINT_STAY_MS. A touch layout and a connected pad show none
+  // (the caps name keyboard keys); a storage the browser refuses keeps the record for this page. Its seat is the band
+  // over the vehicle-controls row (battleHudLayout.ts --hud-systems-top), and the scope, a flight, Watch and a
+  // spectated battle hide it (the sheet above).
+  let hintRecord: { battles: number; learned: Set<HintGroupId> } | null = null;
+  function hintsRecord(): { battles: number; learned: Set<HintGroupId> } {
+    if (hintRecord) return hintRecord;
+    hintRecord = { battles: 0, learned: new Set() };
+    try {
+      const raw = window.localStorage.getItem(HINTS_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw) as { battles?: number; learned?: string[] };
+        hintRecord.battles = Math.max(0, Number(stored.battles) || 0);
+        for (const id of stored.learned ?? []) if ((HINT_GROUP_IDS as readonly string[]).includes(id)) hintRecord.learned.add(id as HintGroupId);
+      } else {
+        hintRecord.battles = Math.max(0, Number(window.localStorage.getItem(HINTS_KEY_V1)) || 0);
+      }
+    } catch { /* a refused or unreadable record starts fresh for this page */ }
+    return hintRecord;
+  }
+  function saveHintsRecord(): void {
+    const record = hintsRecord();
+    try { window.localStorage.setItem(HINTS_KEY, JSON.stringify({ battles: record.battles, learned: [...record.learned] })); } catch { /* the record lasts this page */ }
+  }
   function takeFirstBattleHint(): boolean {
     if (input.isTouchLayout?.() || input.isPadConnected()) return false;
-    if (hintBattles === null) {
-      try { hintBattles = Math.max(0, Number(window.localStorage.getItem(HINTS_KEY)) || 0); } catch { hintBattles = 0; }
-    }
-    if (hintBattles >= HINT_BATTLES) return false;
-    hintBattles += 1;
-    try { window.localStorage.setItem(HINTS_KEY, String(hintBattles)); } catch { /* the count lasts this page */ }
+    const record = hintsRecord();
+    if (record.battles >= HINT_BATTLES || HINT_GROUP_IDS.every((id) => record.learned.has(id))) return false;
+    record.battles += 1;
+    saveHintsRecord();
     return true;
   }
 
+  let hintListeners: Array<() => void> = [];
   function hideHints() {
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
     if (hintFadeTimer) { clearTimeout(hintFadeTimer); hintFadeTimer = null; }
+    for (const off of hintListeners.splice(0)) off();
     hints.classList.remove('show', 'fade');
+  }
+  function fadeHints() {
+    if (!hints.classList.contains('show')) return;
+    for (const off of hintListeners.splice(0)) off();
+    hints.classList.add('fade');
+    hintFadeTimer = setTimeout(() => { hints.classList.remove('show', 'fade'); }, 400);
+  }
+  /** A group's control was used: it leaves the strip (and the record), and the strip with the last of them. */
+  function learnHint(id: HintGroupId) {
+    const record = hintsRecord();
+    if (!record.learned.has(id)) { record.learned.add(id); saveHintsRecord(); }
+    const group = hints.querySelector<HTMLElement>(`.hg[data-group="${id}"]`);
+    if (group && !group.classList.contains('done')) {
+      group.classList.add('done');
+      setTimeout(() => group.remove(), 240);
+    }
+    if (!hints.querySelector('.hg:not(.done)')) fadeHints();
   }
 
   function showHints() {
     hideHints();
-    hints.innerHTML = battleControlHintGroups(input.getSettings().rmbMode)
-      .map(([label, actionIds]) => hintGroup(label, actionIds))
-      .join('');
+    // its caps name keyboard keys: a touch layout never shows it, whoever asks (takeFirstBattleHint guards the rollout)
+    if (input.isTouchLayout?.()) return;
+    const record = hintsRecord();
+    const groups = battleControlHintGroups(input.getSettings().rmbMode)
+      .map(([label, actionIds], index) => ({ id: HINT_GROUP_IDS[index], label, actionIds }))
+      .filter(({ id }) => !record.learned.has(id));
+    if (!groups.length) return;
+    hints.innerHTML = groups.map(({ id, label, actionIds }) => hintGroup(label, actionIds, id)).join('');
+    for (const { id, actionIds } of groups) {
+      for (const action of actionIds) hintListeners.push(input.onAction(action, () => learnHint(id)));
+    }
     hints.classList.add('show');
-    hintTimer = setTimeout(() => {
-      hints.classList.add('fade');
-      hintFadeTimer = setTimeout(() => { hints.classList.remove('show', 'fade'); }, 400);
-    }, 8000);
+    hintTimer = setTimeout(fadeHints, HINT_STAY_MS);
   }
 
   const api = {
@@ -2049,7 +2201,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     toggle() { if (open) closePanel(); else openPanel(); },
     /** @returns {boolean} panel currently open (battle pauses while true) */
     isOpen: () => open,
-    /** Show the controls hint strip (current bindings); fades after 8 s. */
+    /** Show the controls hint strip: its groups not yet used, with the current bindings (each leaves as its control is
+     *  pressed; the strip at the first engagement or after HINT_STAY_MS). */
     showHints,
   };
 

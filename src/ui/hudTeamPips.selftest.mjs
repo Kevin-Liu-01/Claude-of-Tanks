@@ -4,6 +4,7 @@
 // from the shared markers (a contested zone's ring dashed in the contested ink), repainted only when its zone moves.
 import { created } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createTeamPips } from './hudTeamPips.ts';
 import { objectiveMarkers } from './minimapObjectives.ts';
 import { sideColor } from './objectiveGlyphs.ts';
@@ -57,4 +58,17 @@ strip.updateSectors(objectiveMarkers({ id: 'zone_control', perspectiveTeam: 'alp
 assert.deepEqual(chips().map((chip) => chip.getContext('2d').ops.length), before, 'an unchanged zone repaints nothing');
 strip.updateSectors([]);
 assert.equal(chips().length, 0, 'a mode without zones drops the chips');
-console.log('hudTeamPips.selftest: pips per side (the player ringed, the fallen struck, the departed gone, large teams to the rosters) and zone chips from the shared glyphs passed');
+// (owner 2026-10-25: the top block "less so big and wide") the pips ride the score plate where it hosts them, and the
+// strip under it is the zone chips alone
+const plate = document.createElement('div');
+const plated = createTeamPips(document.createElement('div'), plate);
+const platedRow = created.filter((node) => node.classes.has('cot-pips-row')).at(-1);
+assert.equal(platedRow.parentNode, plate, 'the pips\' row goes into the score plate');
+plated.updateTeams(roster, 'alpha', 'p');
+assert.equal(platedRow.hidden, false, 'two small teams show their pips in the plate');
+assert.equal(plated.root.classes.has('show'), false, 'without zones the strip under the plate stays hidden');
+plated.updateSectors(markers);
+assert.equal(plated.root.classes.has('show'), true, 'the zone chips show the strip under the plate');
+assert.match(readFileSync(new URL('./hudTeamPips.ts', import.meta.url), 'utf8'), /\.cot-top \.cot-pips-row \.pip::before\{-webkit-mask:none;mask:none;transform:skewX\(-24deg\)\}/,
+  'a pip in the plate is a slanted segment (a silhouette reads as a dash at its size)');
+console.log('hudTeamPips.selftest: pips per side (the player ringed, the fallen struck, the departed gone, large teams to the rosters), the pips in the score plate, and zone chips from the shared glyphs passed');

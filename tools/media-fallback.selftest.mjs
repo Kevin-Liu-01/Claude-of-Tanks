@@ -74,11 +74,6 @@ const KNOWN_GAPS = Object.freeze([
     match: /^\/media\/site50-r14\/loops\/(s04-column-under-fire|s20-road-return-fire|s21-fields-assault|s23-village-crossroads|s24-ice-duel|s33-water-tower|s34-furnace-salvo|s39-lakeside-village)\.webm$/,
     task: 'media: the topic headers\' 960 VP9 and phone H.264 rungs (SHOWCASE §4.7, the GO re-film)',
   },
-  {
-    // the landing's fleet tiles play the fleet takes over their poster <img> (tools/home-premiere.mjs)
-    match: /^\/media\/site50-r14\/fleet\/[\w-]+\.webm$/,
-    task: 'media: the fleet takes\' H.264 rung (fleet/index.json loopMp4; the landing\'s fleet tiles keep their poster)',
-  },
 ]);
 const gapFor = (ladder) => KNOWN_GAPS.find((gap) => ladder.some((entry) => gap.match.test(entry.src)));
 const usedGaps = new Set();
@@ -144,10 +139,18 @@ if (existsSync(join(ROOT, FLEET_INDEX))) {
 }
 
 // The topic headers' rung table is the disk.
-const { TOPIC_HERO_RUNGS, TOPIC_FIGURE_SIZES, topics } = await topicData();
+const { TOPIC_HERO_RUNGS, TOPIC_FIGURE_SIZES, topics, topicHeroLadder } = await topicData();
 for (const [take, rungs] of Object.entries(TOPIC_HERO_RUNGS)) {
   if (rungs.r960) assert.ok(existsPublic(`/media/site50-r14/loops/${take}-960.webm`), `${take}: its 960 rung ships`);
   if (rungs.phone) assert.ok(existsPublic(`/media/web-video-r1/${take}-mobile.mp4`), `${take}: its phone rung ships`);
+}
+// every loop hero's ladder (topics.ts topicHeroLadder, whichever collection holds it) is on disk
+for (const topic of Object.values(topics)) {
+  const ladder = topicHeroLadder(topic.hero);
+  if (!ladder) continue;
+  for (const file of [ladder.poster, ladder.still, ladder.wide, ladder.r960, ladder.phone].filter(Boolean)) {
+    assert.ok(existsPublic(file), `${ladder.take}: ${file} ships`);
+  }
 }
 for (const topic of Object.values(topics)) {
   const take = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(topic.hero)?.[1];

@@ -26,6 +26,7 @@ import { installProcessShutdown } from '../processShutdown.ts';
 import { createLogger, parseLogLevel } from '../match/log.ts';
 import { createRoomsServer } from './serve.ts';
 import { createRelayIssuer, pickRelayEnv } from '../relayCredentials.ts';
+import { ROOM_DEV_MAX_TEAM_SIZE } from '../../src/mp/room/protocol.ts';
 
 function integerEnv(name: string, fallback: number, low: number, high: number): number {
   const raw = process.env[name];
@@ -50,6 +51,10 @@ async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.env) {
   if (transport !== 'service' && transport !== 'p2p') throw new TypeError("COT_ROOMS_MATCH_TRANSPORT must be 'service' or 'p2p'");
   const relay = createRelayIssuer({ env: pickRelayEnv(env), warn: (line) => log.warn(line) });
   if (relay.source !== 'none') log.info(`relay credentials for browser-hosted matches: ${relay.source}`);
+  // (mp-scale-251) the dev override for bot-filled test rooms: a versus room may set teams up to this (the wire's 32 a
+  // side at most); unset, every room keeps its mode's sizes (src/sim/matchRuleset.ts roomSizeRulesFor), as the Worker does
+  const devMaxTeamSize = integerEnv('COT_ROOM_DEV_MAX_TEAM_SIZE', 0, 0, ROOM_DEV_MAX_TEAM_SIZE);
+  if (devMaxTeamSize) log.info(`dev override: versus rooms may set teams up to ${devMaxTeamSize}`);
   return createRoomsServer({
     host: env.COT_ROOMS_HOST || '0.0.0.0',
     port: integerEnv('COT_ROOMS_PORT', 8792, 1, 65535),
@@ -58,6 +63,7 @@ async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.env) {
     allowedOrigins,
     world,
     matchTransport: transport,
+    ...(devMaxTeamSize ? { guards: { maxTeamSize: devMaxTeamSize } } : {}),
     log,
     relayCredentials: () => relay.issue(),
   });

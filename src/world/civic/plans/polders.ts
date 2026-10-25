@@ -15,6 +15,7 @@
 // front on a brick-on-edge kerb, as a lane; the crowned causeway (road 2) takes none.
 import type { CivicPlan, CivicRect } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -75, x1: -12, z0: -30, z1: 36 } as const;
 const SW = { x0: -72, x1: -46, z0: -28, z1: -10 } as const;
 // (229 b2 r1, the gameplay critic's D1: the north lawn stood on the hulls' lines along z 22 and z 30 and lost 11 of its 12
@@ -22,7 +23,7 @@ const SW = { x0: -72, x1: -46, z0: -28, z1: -10 } as const;
 // x -55..-37)
 const NW = { x0: -55, x1: -37, z0: 26, z1: 35 } as const;
 const PUMP = { x: -59, z: -19 } as const, ROSE = { x: -46.5, z: 30.5 } as const;
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 /** A klinker walk round a lawn: four strips 1.2 m wide outside its kerb. */
 const walk = (r: CivicRect): Array<{ rect: CivicRect; kind: 'setts' }> => [
   { rect: { x0: r.x0 - 1.2, x1: r.x1 + 1.2, z0: r.z0 - 1.2, z1: r.z0 }, kind: 'setts' },

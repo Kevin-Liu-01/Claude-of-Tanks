@@ -158,11 +158,11 @@
    "id": "drone-tile",
    "file": "drone-480.webp",
    "mode": "drone",
-   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/drone #16, 3840x2160)",
+   "source": "in-engine Scene Studio still on release 251, HUD-free: an FPV drone dives on a burning T-80U by the kolkhoz gate on Verdant Fields, a Challenger 3 below (site50/drone-251b-out/drone-ve, 3840x2160, 2 ms)",
    "capture": {
-    "run": "battle-243c",
-    "slot": "modes/drone",
-    "candidate": 16,
+    "run": "drone-251b",
+    "slot": "deploy/drone",
+    "candidate": "ve",
     "crop": null
    },
    "width": 480,

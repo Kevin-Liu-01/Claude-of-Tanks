@@ -31,7 +31,7 @@ const SHELL: readonly string[] = [
   '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',
   '.cot-custom-select-copy',
   // settings
-  '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
+  '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn',
   // service record
   '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-card-head small',
   '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-plate small',
@@ -50,8 +50,8 @@ const DOCS: readonly string[] = [
   ...PUBLIC_NAV,
   '.docs-hero-actions a', '.docs-evidence dt',
   '.docs-evidence dd', '.kicker', '.docs-chapters-heading>p', '.docs-chapter-grid span', '.docs-chapter-grid strong', '.toc-head',
-  '.docs-toc a', '.docs-toc a span', '.toc-footer', '.callout', '.callout strong', '.principle p',
-  '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker', '.aside-card-copy',
+  '.docs-toc a', '.docs-toc a span', '.toc-footer',
+  '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker',
   '.aside-card-action', '.dm-side a', '.dm-grp', '.dm-crumb', '.dm-meta', '.dm-banner__cap', '.dm-toc a', '.topic-figure figcaption',
   '.footer-links a', '.footer-mark',
 ];
@@ -59,8 +59,8 @@ const DOCS: readonly string[] = [
 /** The landing page (src/presentation/home.css). */
 const HOME: readonly string[] = [
   ...PUBLIC_NAV,
-  '.btn', '.v5-social-proof__signals dt', '.hero__stats li', '.vs-where', '.fleet-facts dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
-  '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
+  '.btn', '.hero__stats li', '.press__stats dt', '.v5-social-card__identity em', '.v5-social-card__identity small', '.v5-social-metrics',
+  '.press__date',
 ];
 
 /** The 404 page (src/presentation/notFound.css): the search hits' chapter line (12 px); its other labels are 14 px and up. */

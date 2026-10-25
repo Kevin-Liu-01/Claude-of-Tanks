@@ -45,7 +45,7 @@ function waysSection(): string {
   const lobby = existsSync(join(ROOT, 'public', LOBBY_STILL))
     ? `<figure class="dm-figure">${pictureMarkup({ src: LOBBY_STILL, width: 1920, height: 1080, alt: t('docs.mp.lobbyAlt'), sizes: '(width < 1100px) 100vw, 60vw',
       rungs: [{ src: LOBBY_STILL.replace('-1920.', '-640.'), width: 640 }, { src: LOBBY_STILL, width: 1920 }] }, false)}</figure>` : '';
-  return p('docs.mp.waysLede') + `<ul class="dm-roles dm-roles--ways">${cards}</ul>${lobby}`;
+  return `<ul class="dm-roles dm-roles--ways">${cards}</ul>${lobby}`;
 }
 
 /** The seats drawn to scale: each side's pips up to the cap, the default team size filled, then the spectators'. */

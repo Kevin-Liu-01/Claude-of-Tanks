@@ -108,7 +108,9 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     fieldClearanceM: .03, hemFloorM: d.hullBottom - .05, maxHalfWidth: d.hullX + .14,
     // the owner's performance push (the coordinator, 2026-10-13): 70 % of each clump's cards, broader, so the clump covers
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
-    garnishBudget: {clumpCards: .7, lowShare: .35},
+    // 252: the Husarz gives back the 640 triangles its turret race (turretSeatRace.ts) draws at HIGH, under its frozen
+    // 141.6k ceiling (the owner: thin the garnish rather than raise ceilings): 50 % of each clump's cards, broader
+    garnishBudget: {clumpCards: d.id === 't80u_husarz' ? .5 : .7, lowShare: .35},
     // release 230 (the gun-hull lane; nationalGunClearance.selftest: the Zubr II's rear leaves 23.8 mm under its gun at yaw
     // 174): the Zubrs' hull suits keep under the main gun's continuous envelope, as the Ukrainian suits do (ghillieSuit.ts
     // conservativeGunEnvelope). The owner (2026-10-21): the Husarz keeps its engine-deck nets; its suit keeps 28.8 mm
