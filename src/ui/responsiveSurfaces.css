@@ -211,7 +211,7 @@ body[data-cot-width='tablet'] .cot-set-conflict{margin:8px 14px 0}
 body[data-cot-width='tablet'] .cot-set-ftr{padding:10px 14px 12px}
 
 /* PLAY / PRIVATE ROOM ---------------------------------------------------- */
-body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) var(--cot-edge) max(8px,env(safe-area-inset-bottom))}
+body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 body[data-cot-panels='overlay'] .cot-play .panel{width:min(960px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain}
 body[data-cot-width='tablet'] .cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='tablet'] .cot-play .room-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -237,8 +237,8 @@ body[data-cot-width='phone'] .cot-play .roomhead>.action{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .seats-count{font-size:var(--fs-20)}
 /* a phone's lobby actions share one row, so the roster keeps more of the screen */
 body[data-cot-width='phone'] .cot-play .control-actions{flex-wrap:wrap}
-/* Rejoin battle takes its own row above the three */
-body[data-cot-width='phone'] .cot-play .control-actions [data-action='rejoin']{order:-1;flex:1 1 100%}
+/* Rejoin battle takes its own row under the others: the primary comes last, as at every size */
+body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='rejoin']{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .version-refusal .cot-c-notice__acts{display:grid;grid-template-columns:1fr}
 body[data-cot-width='phone'] .cot-play .code{font-size:var(--fs-20)}
 body[data-cot-width='compact'] .cot-play .identity,
@@ -283,7 +283,7 @@ body:is([data-cot-height='short'],[data-cot-height='compact']) .cot-play .lobby.
 body[data-cot-height='short'] .cot-play .play-head{position:static;padding-block:var(--s3)}
 body[data-cot-height='short'] .cot-play .close{top:var(--s3)}
 /* a phone's sheet keeps an even 8 px all round */
-body[data-cot-width='phone'] .cot-play{padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
+body[data-cot-width='phone'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 /* a phone's room is a whole-screen sheet: it covers the Garage's tab bar instead of ending inside it */
 body[data-cot-width='phone'] .cot-play .panel{min-height:100%}
 

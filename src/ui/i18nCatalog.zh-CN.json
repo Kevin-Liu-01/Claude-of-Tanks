@@ -2218,7 +2218,7 @@
   "playMenu.failure.returnGarage": "返回车库",
   "playMenu.roomFailure.roomServiceUnavailable.title": "房间服务不可用",
   "playMenu.roomFailure.roomServiceUnavailable.detail": "请在网络恢复后重试。",
-  "playMenu.roomFailure.invalidRoomCode.title": "请检查房间代码",
+  "playMenu.roomFailure.invalidRoomCode.title": "请检查房间码",
   "playMenu.roomFailure.invalidRoomCode.detail": "房间码为六位字符。",
   "playMenu.roomFailure.expired.title": "房间不存在或已过期",
   "playMenu.roomFailure.expired.detail": "请向房主索取新邀请，或创建房间。",
