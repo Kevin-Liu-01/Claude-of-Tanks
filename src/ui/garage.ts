@@ -3246,11 +3246,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const rounds = autoloader ? autoloader.magazineSize : salvo!.rounds;
     const between = autoloader ? autoloader.intraClipS : salvo!.intervalS * loadoutReload *
       rulesetReloadMultiplier(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
-    const cell = (value: string, unit: string, label: string): string =>
-      `<div class="cot-mag-cell"><span>${label}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ''}</b></div>`;
+    // set as the readout's other figures are: a glyph beside the label over the value
+    const cell = (glyph: string, value: string, unit: string, label: string): string =>
+      `<div class="cot-mag-cell">${uiIconSVG(glyph, 16)}<span>${label}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ''}</b></div>`;
     return `<div class="cot-mag" role="group" aria-label="${t('garage.mag.heading')}">` +
-      cell(String(rounds), '', t(autoloader ? 'garage.mag.perClip' : 'garage.mag.perSalvo')) +
-      cell(between.toFixed(between < 1 ? 2 : 1), 's', t('garage.mag.between')) + `</div>`;
+      cell('ammoRack', String(rounds), '', t(autoloader ? 'garage.mag.perClip' : 'garage.mag.perSalvo')) +
+      cell('reload', between.toFixed(between < 1 ? 2 : 1), 's', t('garage.mag.between')) + `</div>`;
   }
 
   const ERA_GLYPH: Readonly<Record<string, string>> = Object.freeze({

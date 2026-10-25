@@ -157,9 +157,10 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-headline{display:grid;gap:var(--s3);}
 .cot-garage .cot-mag{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1);margin-top:var(--s3);}
 .cot-garage .cot-performance-section .cot-mag{margin:0 0 var(--s3);}
-.cot-garage .cot-mag-cell{display:flex;flex-direction:column;gap:var(--s1);min-width:0;padding:var(--s2);
+.cot-garage .cot-mag-cell{display:grid;grid-template-columns:16px minmax(0,1fr);align-items:center;gap:var(--s1) var(--s2);min-width:0;padding:var(--s2);
   border-radius:var(--control-radius);background:var(--fill-faint);box-shadow:var(--ring-1);}
-.cot-garage .cot-mag-cell b{font:600 max(var(--fs-floor-12),var(--fs-16))/1 var(--font-display);color:var(--ink-1);}
+.cot-garage .cot-mag-cell svg{grid-row:1/span 2;align-self:start;width:16px;height:16px;color:var(--ink-3);}
+.cot-garage .cot-mag-cell b{font:600 max(var(--fs-floor-12),var(--fs-16))/1 var(--font-data);color:var(--ink-1);}
 .cot-garage .cot-mag-cell b small{margin-left:2px;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);color:var(--ink-3);}
 .cot-garage .cot-mag-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);color:var(--ink-3);}
