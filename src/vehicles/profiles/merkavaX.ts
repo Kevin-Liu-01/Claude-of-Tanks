@@ -9,6 +9,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { profileSkirtGeometry, skirtBottomAt, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
+import { addGunFloodlight } from './gunFloodlight.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
@@ -1229,6 +1230,10 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
   if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
   P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
   if(candidate==='merkava4_trophy'){
+    // 2026-10-24 (the owner: "make the ... merkava mk 4 trophy ... have floodlights at front by guns"): the gun floodlight
+    // (gunFloodlight.ts) right of the gun, its back 6 cm ahead of the mount's 0.39 face and 30 cm ahead of the turret front
+    // beside it; its bracket's foot runs back into the mount where it is 0.21 m wide (z 0.24), 11 mm clear of the sleeve
+    addGunFloodlight(P,{side:'right',x:.40,y:.02,backZ:.45,anchorX:.19,anchorY:.05,anchorZ:.24});
     P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
     addTrophyWideSkirts(P);

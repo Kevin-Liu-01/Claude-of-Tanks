@@ -28,6 +28,7 @@ import {buildNationalDonorTurret,donorTurretSeatY,nationalDonorTurret} from './n
 import {buildUkraineDonorKit,buildHetmanIIDonorKit} from './ukraineDonorTurretKit.ts';
 import {buildPolandDonorKit,buildZubrIIDonorKit} from './polandDonorTurretKit.ts';
 import {buildChinaDonorKit} from './chinaDonorTurretKit.ts';
+import {addGunFloodlight,type GunFloodlightSeat} from './gunFloodlight.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
 function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<NationalModernizationConfig,'package'>):void {
@@ -81,6 +82,16 @@ function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
  P.topY=d.roofY;
 }
 
+// 2026-10-24 (the owner: "make the husarz and wilk and zoria ... have floodlights at front by guns"): a gun floodlight
+// right of the gun (gunFloodlight.ts), its back 6-7 cm ahead of both the cheek armour's front beside the gun (gun frame
+// 0.69, 0.74, 0.88) and the mantlet's nose with its gland (0.71, 0.75, 0.99), its bracket's foot in the nose 19 cm off
+// the bore (the gland's collar is 18.1 cm)
+const NATIONAL_GUN_FLOODLIGHTS:Readonly<Record<string,GunFloodlightSeat>>={
+ t80u_husarz:{side:'right',x:.40,y:.02,backZ:.77,anchorX:.19,anchorY:.05,anchorZ:.64},
+ t72b3m_wilk:{side:'right',x:.40,y:.02,backZ:.81,anchorX:.19,anchorY:.05,anchorZ:.68},
+ t80u_zoria:{side:'right',x:.40,y:.02,backZ:1.05,anchorX:.19,anchorY:.05,anchorZ:.92},
+};
+
 function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
@@ -103,6 +114,8 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  ({ua:buildNationalUkraine,pl:buildNationalPoland,ru:buildNationalRussia}[c.package])(P,c);
  P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
  mainWeapon(P,c);
+ const floodlight=NATIONAL_GUN_FLOODLIGHTS[c.id];
+ if(floodlight)addGunFloodlight(P,floodlight);
  const d=nationalModernizationDesign(c),l=NATIONAL_ROOF_LOADOUTS[c.id];
  nationalRoofSystems(P,l);nationalRoofWeapon(P,d.rws,d.cupola,l);
  if(c.package==='ua')addFieldRoofCage(P);
