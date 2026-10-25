@@ -279,6 +279,64 @@ after the build's transient arrays. Chrome's memory-infra dump by allocator (`--
 fix — dropping the dormant world's CPU copies where nothing reads them, releasing its GPU buffers, or ending the
 build's workers — and the receipt (`--gate`, tools/battle-memory-budget.json).
 
+## Memory: the dormant world's release, tried and reverted
+
+The probe's `--sequence` plays a map per battle in one page (a player on the random rotation). Before (Steinburg,
+Verdant, Steinburg, Desert): the Garage held two worlds (desktop keeps two) at 3.9-4.6 GB, the in-battle peak 5.5 GB.
+9ee50b12cd released a dormant world once another battlefield was asked for (a battle entry, the Garage's planned battle):
+one world was cached at a time and the renderer's geometries fell (1,065 -> 722), but the resident set rose (4.7, 5.5,
+5.8 GB after battles 2-4; the peak 6.4 GB) and the JS heap with it (259 -> 359 MB). A released world is not collected:
+something outside the cache keeps it, so releasing and rebuilding stacks copies where the cache reused one. Reverted
+(f2af3d2b3e). Next: the probe's `--leak-check` holds each battle's world weakly (marked with a class of its own) and says
+after the Garage's collections whether an evicted one is still alive; then a heap snapshot's retainers from the mark.
+
+In Node a Steinburg props build keeps 519 MB of ArrayBuffers alive against 222 MB in its group's geometry. Chrome's
+memory-infra dump in the Garage after a Steinburg battle: the renderer's partition_alloc array_buffer partition 1.28-1.5
+GB, the walk from the world, the game and the scene reaching 0.36-0.38 GB of it; the rest is held by closures and
+module state a property walk cannot see.
+
+## The Garage's background world build and presses
+
+nav-perf's phone census (4x CPU): the next battle's world builds behind the Garage and its steps met presses (stonePlan
+253 ms, sourcedTextureComposition 233, fractureSettle 192, botRoutePlanner 173, fortKit 132, rockCollision 98 and 76).
+- **Pacing** (engine/backgroundYield.ts, loaded with a build's first background slice): a 4 ms slice ends early when
+  `navigator.scheduling.isInputPending()` says input is waiting; a pointerdown or keydown, seen in the capture phase,
+  holds the next slice until that press's paint; the build resumes as a `scheduler.postTask` background task between
+  frames (no longer inside an animation callback), raced against 50 ms so a covered load can never starve it.
+- **Slices:** the scenery's field-works keep-out builds one objective access (navigation grid and floods) for its four
+  modes, not one each; a light wreck settles a body a slice; the rock colliders and beds go 8 a slice (were 48); with
+  the entry's slicing above (stonePlan, fortKit's footprint and pools). Byte-identical: the props hashes, the 33 exact
+  collision manifests and matchPlacement's pinned placement hash.
+- Open: sourcedTextureCompositionClient's main-thread part, groundCoverClearance, the terrain mask paint (nav-perf's full
+  stacks pending).
+
+## Draw count (the engine ruling's lever)
+
+The census's `--draw-attribution` (30 frames) and the frame recorder's draw columns. Diag build, cold, load 45-69 (the
+per-draw cost about 1.7x a quiet machine's):
+
+| Battle | Draws a frame | Programs | Switches | Submission | µs a draw |
+|---|---|---|---|---|---|
+| Verdant 7v7 | 722 | 120 | 231 | 22.5 ms | 32 |
+| Steinburg 14v14 | 1,126 | 137 | 359 | 39.6 ms | 36 |
+| Verdant 14v14 | 1,327 | 132 | 400 | 44.8 ms | 35 |
+| Steinburg 21v21 | 1,326 | 134 | 431 | 47.8 ms | 37 |
+| Verdant 21v21 | 1,343 | 127 | 423 | 47.5 ms | 36 |
+
+By owner (Steinburg 14v14, a frame): the world's shadow casters 424 and its main pass 179; the tanks 333 in the shadow
+maps and 444 in the main pass (16-31 a tank under 30 m, 13-22 at 30-180 m, 4-12 shadow draws a tank); effects 118. The
+world's shadow draws hold at 312-424 in every battle although a static shadow cache exists: the next run samples its
+decisions (`staticCacheFrame`) and the tanks' parts by pass before a lever is chosen.
+
+## The HUD's frame cost (UI-LOCKDOWN part E: 0.5 ms a frame)
+
+The Steinburg 14v14 profile: code under the HUD's sources costs 20.8 ms a second (about 1 ms a frame there).
+battleHudLayout.ts refresh() is 30 % of it: on the frames it runs it re-queries its ~40 selectors (querySelectorAll
+204 ms in the profile) and its first read forces a ~15 ms reflow (getClientRects 145 ms); the DOM census (`--dom-census`,
+120 frames) finds 3.6 reads a frame, median 0 ms, max 28. hud.ts drawMinimapChrome strokes the minimap's static grid,
+strips, vignette and frame on every redraw (its hottest line, ~206 ms). Both routed to premiere-battle (the layout's
+owner) with a proposal: re-query after a childList record, reads before writes; the chrome composited once.
+
 ## Hitches, not frames past 33 ms
 
 The census runs on a shared, loaded Mac:
