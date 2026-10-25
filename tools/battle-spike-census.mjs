@@ -775,8 +775,8 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
 function analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, endMs }) {
   const analysis = analyzeBattle({ readout, trace, observers, window: { fromMs: entryStartMs, toMs: endMs }, chunkOfUrl });
   const live = analyzeBattle({ readout, trace, observers, window: { fromMs: liveStartMs, toMs: endMs }, chunkOfUrl });
-  return { analysis, live: { intervals: live.intervals, heap: live.heap, links: live.links, firstDraws: live.firstDraws, summary: live.summary,
-    spikes: live.spikes.length, longTasks: live.longTasks.length } };
+  return { analysis, live: { intervals: live.intervals, heap: live.heap, links: live.links, firstDraws: live.firstDraws, draws: live.draws,
+    summary: live.summary, spikes: live.spikes.length, longTasks: live.longTasks.length } };
 }
 
 const readGz = (file) => JSON.parse(gunzipSync(readFileSync(file)).toString('utf8'));
