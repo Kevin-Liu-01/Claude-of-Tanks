@@ -39,7 +39,6 @@ import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { noticeRegion, notify, type NoticeSeverity } from '../ui/components/notice.ts';
-import { shellTypeLabel } from '../ui/shellLabels.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
@@ -1060,12 +1059,20 @@ function renderStats(record: GalleryRecord): void {
     return rows ? `<section class="stat-group"><h2>${icon(glyph, { size: 16 })}${esc(t(label))}</h2>${rows}</section>` : '';
   }).join('');
 }
+/** A shell type in the locale (脱壳弹, not APFSDS): the Garage's names, read by key so the page loads no Garage module
+ * (importing shellLabels.ts split it into a chunk of its own on the game's boot path). */
+const SHELL_TYPE_KEY = 'garage.shellType.';
+const shellTypeName = (type: string): string => {
+  const key = SHELL_TYPE_KEY + type.replace(/-(?:T|MP)$/, '');
+  const name = t(key);
+  return name === key ? type : name;
+};
 function renderAmmo(record: GalleryRecord): void {
   const best = Math.max(1, ...records.flatMap((other) => other.shells.map((shell) => shell.penetrationMm)));
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeLabel(type))}</small></span>`
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeName(type))}</small></span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
