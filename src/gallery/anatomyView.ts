@@ -204,6 +204,12 @@ function anatomyReadout(pick: AnatomyPick, metric: ArmorMetric): AnatomyReadout 
 export interface AnatomyView {
   readonly mode: AnatomyMode | null;
   readonly count: number;
+  /**
+   * Build the vehicle's layer off screen and link its programs before it first draws (click-perf-248: the first
+   * Armor/Modules/Crew press per tank compiled them in its first frame). Resolves once they are linked; a layer already
+   * showing another vehicle state is rebuilt in place by show instead.
+   */
+  prepare(vehicle: AnatomyVehicle): Promise<void>;
   show(mode: AnatomyMode, vehicle: AnatomyVehicle): void;
   hide(): void;
   /** Called by the render loop instead of renderer.render while a layer is on. */
@@ -294,6 +300,55 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
 
   function current(): ViewToggles { return toggles[mode || 'armor']; }
 
+  /** The vehicle's anatomy scene, built once per vehicle state (its key) and kept off screen until a layer shows it. */
+  function ensureScene(nextVehicle: AnatomyVehicle): void {
+    if (anatomy && vehicle?.key === nextVehicle.key) return;
+    const keep = pickKey(selected);
+    anatomy?.dispose();
+    restoreExterior();
+    vehicle = nextVehicle;
+    linked = null;
+    anatomy = buildAnatomyScene(nextVehicle.armor, { caliberMm: nextVehicle.caliberMm, modern: nextVehicle.modern, metric });
+    anatomy.frames.root.matrixAutoUpdate = false;
+    anatomy.frames.root.visible = false;
+    host.scene.add(anatomy.frames.root);
+    buildBadges();
+    selected = findPick(keep);
+  }
+
+  // The layer's programs, linked before it first draws: the anatomy's own materials, and the depth and glass overrides
+  // as they draw over each exterior mesh (KHR_parallel_shader_compile where the GPU has it). Once per vehicle state.
+  let linked: Promise<void> | null = null;
+  function linkPrograms(exteriorRoot: THREE.Object3D): Promise<void> {
+    if (!anatomy) return Promise.resolve();
+    const { renderer, scene, camera } = host;
+    const waits: Promise<unknown>[] = [renderer.compileAsync(anatomy.frames.root, camera, scene)];
+    // the meshes hideExterior moves to the glass pass
+    const exterior: Array<{ mesh: THREE.Mesh; material: THREE.Mesh['material'] }> = [];
+    exteriorRoot.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.layers.test(camera.layers) && !object.userData.shadowOnly
+        && !drawsNoColour(object)) exterior.push({ mesh: object, material: object.material });
+    });
+    // compile() reads each object's own material, never scene.overrideMaterial: the exterior wears each override for
+    // one synchronous submission and has its paint back before anything draws. The passes draw on the exterior layer,
+    // where no light is (lights gather by camera.layers in both render and compile), so they link with that mask.
+    const mask = camera.layers.mask;
+    camera.layers.set(EXTERIOR_LAYER);
+    try {
+      for (const override of [depth, ghost]) {
+        for (const entry of exterior) entry.mesh.material = override;
+        try {
+          waits.push(renderer.compileAsync(exteriorRoot, camera, scene));
+        } finally {
+          for (const entry of exterior) entry.mesh.material = entry.material;
+        }
+      }
+    } finally {
+      camera.layers.mask = mask;
+    }
+    return Promise.all(waits).then(() => undefined, () => undefined);
+  }
+
   function applyToggles(): void {
     if (!anatomy || !mode) return;
     const view = current();
@@ -333,7 +388,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         button.tabIndex = metric === value ? 0 : -1;
         button.dataset.uiSound = 'select';
         button.dataset.anatomyMetric = value;
-        button.title = t(`gallery.anatomy.metricTitle.${value}`);
+        button.dataset.tip = t(`gallery.anatomy.metricTitle.${value}`);
         button.textContent = t(`gallery.anatomy.metric.${value}`);
         seg.append(button);
       }
@@ -346,7 +401,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       button.dataset.anatomyToggle = toggle;
       button.dataset.uiSound = 'toggle';
       button.setAttribute('aria-pressed', String(view[toggle]));
-      button.title = t(`gallery.anatomy.toggle.${toggle}`);
+      button.setAttribute('aria-label', t(`gallery.anatomy.toggle.${toggle}`));
       button.innerHTML = uiIconSVG(CHIP_ICONS[toggle], 15);
       const label = document.createElement('span');
       label.textContent = t(`gallery.anatomy.toggle.${toggle}`);
@@ -539,19 +594,14 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         + (v.modules ? anatomy.parts.filter((part) => !TRACK_MODULES.has(part.module)).length : 0)
         + (v.crew ? anatomy.stations.length : 0);
     },
+    async prepare(nextVehicle) {
+      if (mode && !(anatomy && vehicle?.key === nextVehicle.key)) return;
+      ensureScene(nextVehicle);
+      linked ??= linkPrograms(nextVehicle.root);
+      await linked;
+    },
     show(nextMode, nextVehicle) {
-      const rebuilt = !anatomy || vehicle?.key !== nextVehicle.key;
-      if (rebuilt) {
-        const keep = pickKey(selected);
-        anatomy?.dispose();
-        restoreExterior();
-        vehicle = nextVehicle;
-        anatomy = buildAnatomyScene(nextVehicle.armor, { caliberMm: nextVehicle.caliberMm, modern: nextVehicle.modern, metric });
-        anatomy.frames.root.matrixAutoUpdate = false;
-        host.scene.add(anatomy.frames.root);
-        buildBadges();
-        selected = findPick(keep);
-      }
+      ensureScene(nextVehicle);
       if (mode !== nextMode) setSelected(null, false);
       mode = nextMode;
       if (anatomy) anatomy.frames.root.visible = true;

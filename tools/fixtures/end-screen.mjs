@@ -22,7 +22,7 @@ if(new URLSearchParams(location.search).has('scene')){
  scene.width=innerWidth;scene.height=innerHeight;document.body.prepend(scene);
  const still=new Image();still.onload=()=>{const c=scene.getContext('2d'),k=Math.max(scene.width/still.width,scene.height/still.height);
   c.drawImage(still,(scene.width-still.width*k)/2,(scene.height-still.height*k)/2,still.width*k,still.height*k);};
- still.src='/media/presentation-r1/ui_combat_firing.webp';
+ still.src='/media/site50-r14/stills/s226-church-duel.webp'; // a HUD-free battle frame (S12 retired presentation-r1's)
 }
 const host=document.createElement('div');host.className='cot-si-stats';document.body.append(host);
 const report=createEndScreen(bus,host);

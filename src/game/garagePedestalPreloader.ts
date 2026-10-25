@@ -66,7 +66,9 @@ export function createGaragePedestalPreloader({
   anisotropy,
   warn = (message, error) => console.warn(message, error),
   retainedIntentLimit = 4,
-  neighborDelayMs = 1800,
+  // the quiet window before neighbours warm: shorter since a hero build yields at its stage checkpoints and a press
+  // paints first (click-perf-248; it was 1800 ms)
+  neighborDelayMs = 1000,
   getSpeculativeIds = () => [],
   buildSpeculative = null,
 }: GaragePedestalPreloaderOptions): GaragePedestalPreloader {

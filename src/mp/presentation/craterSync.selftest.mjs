@@ -23,12 +23,14 @@ import { createDestructionMirror } from './destructionMirror.ts';
 const MAP = 'verdant';
 const standard = matchRulesetFor('standard');
 const ruleset = { ...standard, destruction: { ...standard.destruction, craters: true } };
-const heSlot = getSpec('t90am').gun.shells.findIndex((shell) => isHeClass(shell.type));
+// (2026-10-24) a T-90M: the T-90AM's gun-clearance curve (turret-scale-242) holds its gun over level ground across the
+// front arc, so its HE rounds aimed 1.7 degrees down dug 4 craters where the receipt judges 5 or more
+const heSlot = getSpec('t90m').gun.shells.findIndex((shell) => isHeClass(shell.type));
 assert.ok(heSlot >= 0, 'the T-90M carries an HE round');
 
 // ---- the authority: h2 fires its HE round into the ground in front of it, turning a little between shots
 const world = createDedicatedWorldCollision(MAP);
-const match = createAuthoritativeMatch({ players: [{ id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' }, { id: 'h2', specId: 't90am', team: 'bravo' }],
+const match = createAuthoritativeMatch({ players: [{ id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' }, { id: 'h2', specId: 't90m', team: 'bravo' }],
   mapId: MAP, seed: 11, countdownS: 0, gameMode: 'standard', worldCollision: world, ruleset });
 match.onMatchReady();
 const deliveries = []; // { tick, events: [...], log: entries | null } in arrival order

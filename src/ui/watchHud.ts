@@ -128,10 +128,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   bar.setAttribute('aria-label', t('watch.bar'));
   bar.innerHTML =
     '<div class="who" aria-live="polite"><span class="lead"></span><span class="mark"></span><b></b></div>'
-    + `<button type="button" class="wb prev" data-ui-sound="tick" aria-label="${t('watch.prev')}">${icon('chevronLeft', { size: 20 })}${keycap('Q')}</button>`
-    + `<button type="button" class="wb next" data-ui-sound="tick" aria-label="${t('watch.next')}">${icon('chevronRight', { size: 20 })}${keycap('E')}</button>`
-    + `<button type="button" class="wb drone" data-ui-sound="back" aria-label="${t('watch.drone')}">${icon('modeDrone', { size: 20 })}${keycap('V')}</button>`
-    + `<button type="button" class="wb lock" data-ui-sound="tick" aria-pressed="false" aria-label="${t('watch.lock')}">${icon('autoAim', { size: 20 })}${keycap('T')}</button>`
+    + `<button type="button" class="wb prev" data-tip data-ui-sound="tick" aria-label="${t('watch.prev')}">${icon('chevronLeft', { size: 20 })}${keycap('Q')}</button>`
+    + `<button type="button" class="wb next" data-tip data-ui-sound="tick" aria-label="${t('watch.next')}">${icon('chevronRight', { size: 20 })}${keycap('E')}</button>`
+    + `<button type="button" class="wb drone" data-tip data-ui-sound="back" aria-label="${t('watch.drone')}">${icon('modeDrone', { size: 20 })}${keycap('V')}</button>`
+    + `<button type="button" class="wb lock" data-tip data-ui-sound="tick" aria-pressed="false" aria-label="${t('watch.lock')}">${icon('autoAim', { size: 20 })}${keycap('T')}</button>`
     + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('Enter')}</button>`;
   const rail = document.createElement('div');
   rail.className = 'cot-watch-rail';

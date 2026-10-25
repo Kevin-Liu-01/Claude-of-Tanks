@@ -51,7 +51,7 @@ const TUCKS = Object.freeze([0, 0.2, 0.4, 0.6, 0.8, 1]);
 
 // Internal-layout families whose drivers recline (modern MBTs), and the ids of other families that do.
 const RECLINED_DRIVER_LAYOUTS = new Set([
-  'leopard', 'abrams', 'abramsX', 'm1a3', 'westernTwoPart', 'arieteManual', 'merkava', 'nationalSmDiesel',
+  'leopard', 'abrams', 'abramsX', 'ztz100HullCapsule', 'm1a3', 'westernTwoPart', 'arieteManual', 'merkava', 'nationalSmDiesel',
   'nationalSmTurbine', 'conceptAzHybrid', 'conceptMzHybrid', 'sovietAz', 'sovietMz', 'bustleAuto', 'fixedAuto',
   'kf51_evo', 'fictionalAuto', 'mbt70',
 ]);
@@ -616,11 +616,20 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed 
   const center = anchor.min.map((value, axis) => (value + anchor.max[axis]) / 2);
   const side = stationSide(station);
   const obstacleSets = [
-    { relaxed: null, boxes: obstacleBoxes(armor, frame, new Set([...HARD_OBSTACLES, ...SOFT_OBSTACLES])), crew: true },
-    { relaxed: 'stowage', boxes: obstacleBoxes(armor, frame, HARD_OBSTACLES), crew: true },
-    { relaxed: 'modules', boxes: [], crew: true },
+    { relaxed: null, boxes: obstacleBoxes(armor, frame, new Set([...HARD_OBSTACLES, ...SOFT_OBSTACLES])), crew: true, limbs: true },
+    { relaxed: 'stowage', boxes: obstacleBoxes(armor, frame, HARD_OBSTACLES), crew: true, limbs: true },
+    { relaxed: 'modules', boxes: [], crew: true, limbs: true },
     { relaxed: 'modules+crew', boxes: [], crew: false },
   ];
+  // (249) a placement whose hit shapes, held to the armour, come to fewer than the crew receipt's head, torso, thighs
+  // and shins (a pelvis in the turret ring's open gap loses both thighs to it) is passed over by the obstacle passes for
+  // the next; the bare pass, the cascade's gate and last resort, keeps it
+  const keepsLimbs = (candidate, py) => {
+    const offset = [candidate.px, py, candidate.pz];
+    let kept = 0;
+    for (const shape of candidate.body.parts.shapes) kept += clipToArmour(translate(shape, offset), armour).length;
+    return kept >= 5;
+  };
   const coarse = (kinds) => {
     const candidates = [];
     kinds.forEach((kind, rank) => {
@@ -678,6 +687,7 @@ function seatStation({ armor, anchor, frame, station, ladders, fallback, placed 
         }
         if (py === null) continue;
       }
+      if (set.limbs && !keepsLimbs(candidate, py)) continue;
       return { candidate, py, relaxed: set.relaxed };
     }
     return null;

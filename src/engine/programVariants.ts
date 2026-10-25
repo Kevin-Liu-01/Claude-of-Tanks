@@ -58,6 +58,21 @@ export function programVariantOrigin(material: Material): Material {
   return twinOrigin.get(material) ?? material;
 }
 
+/**
+ * (perf-252) A copied visual's materials in its source's split (cloneTankVisual: a battle build's twins): `copy` is the
+ * copy's own material for the original `source`. For a twin of `source` it returns the twin of the same variant over
+ * `copy`; for the original itself it records the variant the original kept, so a later re-seat (onlyAlreadySplit) finds
+ * the copy split as the build was. Returns `copy` for a material no pass split.
+ */
+export function programVariantCopy(sourceMaterial: Material, source: Material, copy: Material): Material {
+  const kept = keptVariant.get(source);
+  if (kept !== undefined && !keptVariant.has(copy)) keptVariant.set(copy, kept);
+  if (sourceMaterial === source) return copy;
+  if (twinOrigin.get(sourceMaterial) !== source) throw new Error('not a program-variant twin of that original');
+  for (const [variant, twin] of twins.get(source) ?? []) if (twin === sourceMaterial) return twinOf(copy, variant);
+  throw new Error('a program-variant twin without its variant');
+}
+
 type CompileShader = { uniforms: Record<string, unknown> };
 const sharing = new WeakSet<Material>();
 /**

@@ -49,6 +49,8 @@ for (const [kind, plan] of Object.entries(PROP_FRACTURE)) {
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
 // (E1, 2026-10-14: a kind whose build names its pieces settles into their heap first, lightWreck.ts; a kind that keeps
 // its own broken builder is never fractured)
-assert.match(props, /const legacyB = meta\.broken\(drng\);[\s\S]{0,1200}?const fracture = own \? undefined : PROP_FRACTURE\[kind\];\s*const geoB = settled \? settleLightWreck\(geoI, anatomy!, fractureSeed\(seed, kind\)\)\s*: fracture \? fractureProp\(geoI, fracture, fractureSeed\(seed, kind\)\) : legacyB;/,
+assert.match(props, /const brokenJob = vehiclePool && meta\.brokenJob \? meta\.brokenJob\(drng\) : null;\s*const legacyB = brokenJob \? null : meta\.broken\(drng\);[\s\S]{0,1600}?const fracture = own \? undefined : PROP_FRACTURE\[kind\];[\s\S]{0,400}?const geoB = settled \? settleLightWreck\(geoI, anatomy!, fractureSeed\(seed, kind\)\)\s*: fracture \? fractureProp\(geoI, fracture, fractureSeed\(seed, kind\)\)\s*: pendingJob !== null \? new THREE\.BufferGeometry\(\) : legacyB!;/,
+  // (perf-248) a pooled kind's job spends the legacy builder's draws (the kits' `spending`) and its body replaces the
+  // placeholder at the join (brokenVehiclePool.selftest holds the draws and the join)
   'the legacy builder runs first (the destructible stream unchanged), the intact build breaks');
 console.log(`propFracture selftest: ok — ${report.join(', ')}`);

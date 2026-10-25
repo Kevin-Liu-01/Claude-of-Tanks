@@ -802,8 +802,10 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         // (release 240, the owner: "make sure all tank turrets are clear of hulls": the pod stood 0.22-0.32 m over the fore
         // deck inside the turret's front volume, since release 231 removed its fairing; it seats on the upper glacis ahead of
         // the driver, its top under the bustle's 1.80 m (world) sweep line)
-        P.add('hull', box(0.26, 0.10, 0.16), 0.0, 1.409, 1.75);                    // driver thermal camera pod on the glacis
-        P.add('hullGlass', box(0.16, 0.05, 0.02), 0.0, 1.419, 1.835);
+        // (release 240: 8 cm tall, not 10, its base still on the glacis: at its 10 cm the main gun's -4.6 deg stop ahead
+        // passed 13 mm over it, inside the gun's 25 mm hull keep)
+        P.add('hull', box(0.26, 0.08, 0.16), 0.0, 1.399, 1.75);                    // driver thermal camera pod on the glacis
+        P.add('hullGlass', box(0.16, 0.04, 0.02), 0.0, 1.404, 1.835);
         P.add('turret', box(0.44, 0.34, 0.60), -1.14, localY(1.70), L(-1.35));     // yawing APU/shoulder box, zero-yaw world seat retained
         P.add('turretDark', box(0.38, 0.26, 0.02), -1.14, localY(1.68), L(-1.04));
         stowage(P, 'turretDetail', rng, [[0.62, 0.76, L(-2.06), 0.48, 0.18, 0.24]]);

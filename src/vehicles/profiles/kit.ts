@@ -2420,25 +2420,43 @@ function assembleAmericanRws(context: AmericanRwsBuildContext): THREE.Group {
   return fitting;
 }
 
+// The riding-station sweeps below pose every candidate triangle at every pitch step. They hold each section in two
+// scratch buffers (up to 7 xyz corners: a triangle gains at most one corner per clip) instead of a fresh array per corner
+// per pose, which was most of a cold US tank's build (click-perf-248); every value is computed exactly as before.
+const SWEEP_A = new Float64Array(21), SWEEP_B = new Float64Array(21), sweepCorner = new THREE.Vector3();
+/** Triangle t of T (xyz triples) posed by M into `out`; returns its corner count, 3. */
+function sweepTriangle(T: ArrayLike<number>, t: number, M: THREE.Matrix4, out: Float64Array): number {
+  for (let k = 0; k < 9; k += 3) {
+    sweepCorner.set(T[t + k]!, T[t + k + 1]!, T[t + k + 2]!).applyMatrix4(M);
+    out[k] = sweepCorner.x; out[k + 1] = sweepCorner.y; out[k + 2] = sweepCorner.z;
+  }
+  return 3;
+}
+/** The part of polygon `poly` (its `count` corners) where dir * (corner[axis] - bound) >= 0, into `out`; returns its count. */
+function clipSweep(poly: Float64Array, count: number, axis: number, bound: number, dir: number, out: Float64Array): number {
+  let n = 0;
+  for (let i = 0; i < count; i++) {
+    const p = i * 3, q = ((i + 1) % count) * 3, dp = dir * (poly[p + axis]! - bound), dq = dir * (poly[q + axis]! - bound);
+    if (dp >= 0) { out[n * 3] = poly[p]!; out[n * 3 + 1] = poly[p + 1]!; out[n * 3 + 2] = poly[p + 2]!; n++; }
+    if (dp * dq < 0) {
+      const u = dp / (dp - dq);
+      for (let k = 0; k < 3; k++) out[n * 3 + k] = poly[p + k]! + (poly[q + k]! - poly[p + k]!) * u;
+      n++;
+    }
+  }
+  return n;
+}
+
 /** Release 230: the lowest a riding station's moving parts come over the footprint x0..x1, z0..z1 (fitting frame) through
  * the pitch range and the recoil stroke (Infinity where nothing passes over it); `reach` bounds the distance from the
  * pivot's axis of the points that matter, so the poses step finely enough that none moves more than the air between two. */
 function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: number, z1: number, reach: number): number {
-  const { pivotY, pivotZ, stroke, triangles: T } = moving, air = RIDING_STATION_AIR_M, v = new THREE.Vector3();
+  const { pivotY, pivotZ, stroke, triangles: T } = moving, air = RIDING_STATION_AIR_M;
   const candidates: number[] = [];
   for (let t = 0; t < T.length; t += 9) {
     const a = Math.min(T[t]!, T[t + 3]!, T[t + 6]!), b = Math.max(T[t]!, T[t + 3]!, T[t + 6]!);
     if (b >= x0 - air && a <= x1 + air) candidates.push(t);
   }
-  const clip = (poly: number[][], axis: number, bound: number, dir: number): number[][] => {
-    const next: number[][] = [];
-    for (let i = 0; i < poly.length; i++) {
-      const p = poly[i]!, q = poly[(i + 1) % poly.length]!, dp = dir * (p[axis]! - bound), dq = dir * (q[axis]! - bound);
-      if (dp >= 0) next.push(p);
-      if (dp * dq < 0) { const u = dp / (dp - dq); next.push([0, 1, 2].map((k) => p[k]! + (q[k]! - p[k]!) * u)); }
-    }
-    return next;
-  };
   const step = Math.min(Math.PI / 180, air / Math.max(reach, 0.01));
   const poses: number[] = [];
   for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
@@ -2450,12 +2468,13 @@ function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: numbe
     const gunM = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
     for (const t of candidates) {
       const M = t / 9 < moving.gunTriangles ? gunM : full;
-      let poly: number[][] = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      let poly = SWEEP_A, spare = SWEEP_B, count = sweepTriangle(T, t, M, poly);
       for (const [axis, bound, dir] of [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const) {
-        poly = clip(poly, axis, bound, dir);
-        if (!poly.length) break;
+        count = clipSweep(poly, count, axis, bound, dir, spare);
+        const posed = poly; poly = spare; spare = posed;
+        if (!count) break;
       }
-      for (const p of poly) low = Math.min(low, p[1]!);
+      for (let i = 0; i < count; i++) low = Math.min(low, poly[i * 3 + 1]!);
     }
   }
   return low;
@@ -2593,20 +2612,18 @@ function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement, thin 
     full.copy(inv).multiply(pivot).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
     for (const t of candidates) {
       const M = t / 9 < moving.gunTriangles ? gunM : full;
-      let poly: number[][] = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      let poly = SWEEP_A, spare = SWEEP_B, count = sweepTriangle(T, t, M, poly);
       for (const [bound, dir] of [[-hc - air, 1], [hc + air, -1]] as const) {
-        const next: number[][] = [];
-        for (let i = 0; i < poly.length; i++) {
-          const p = poly[i]!, q = poly[(i + 1) % poly.length]!, dp = dir * (p[thin]! - bound), dq = dir * (q[thin]! - bound);
-          if (dp >= 0) next.push(p);
-          if (dp * dq < 0) { const u = dp / (dp - dq); next.push([0, 1, 2].map((k) => p[k]! + (q[k]! - p[k]!) * u)); }
-        }
-        poly = next;
-        if (!poly.length) break;
+        count = clipSweep(poly, count, thin, bound, dir, spare);
+        const posed = poly; poly = spare; spare = posed;
+        if (!count) break;
       }
-      if (!poly.length) continue;
+      if (!count) continue;
       let qa0 = Infinity, qb0 = Infinity, qa1 = -Infinity, qb1 = -Infinity;
-      for (const p of poly) { qa0 = Math.min(qa0, p[fa]!); qa1 = Math.max(qa1, p[fa]!); qb0 = Math.min(qb0, p[fb]!); qb1 = Math.max(qb1, p[fb]!); }
+      for (let i = 0; i < count; i++) {
+        const a = poly[i * 3 + fa]!, b = poly[i * 3 + fb]!;
+        qa0 = Math.min(qa0, a); qa1 = Math.max(qa1, a); qb0 = Math.min(qb0, b); qb1 = Math.max(qb1, b);
+      }
       if (qa1 < -ha - air || qa0 > ha + air || qb1 < -hb - air || qb0 > hb + air) continue;
       a0 = Math.min(a0, qa0); a1 = Math.max(a1, qa1); b0 = Math.min(b0, qb0); b1 = Math.max(b1, qb1);
     }

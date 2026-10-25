@@ -19,6 +19,7 @@ import {
 } from '../structureConnectivity.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, civilianVehicleOverrides } from './civilianVehicleKit.ts';
 import { CART_RECEIPTS, cartOverrides } from './cartKit.ts';
+import type { BrokenVehicleJob } from '../brokenVehicleJob.ts';
 import type { RunnerTrack } from './cartBodies.ts';
 import type { StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
@@ -42,6 +43,11 @@ export interface DestructiblePropType {
   h: number;
   build: PropBuilder;
   broken: PropBuilder | null;
+  /**
+   * (perf-248) `broken`'s draws from the destructible stream, the body left to a job the broken-vehicle pool builds off
+   * the main thread (civilianVehicleKit.ts, cartKit.ts; props.ts finalizeDestructiblePool)
+   */
+  brokenJob?: (rng: () => number) => BrokenVehicleJob;
   hw?: number;
   hl?: number;
   /** The map-vehicles lane (2026-10-06): a cart's body plan (cartKit.ts CartFootprint hull), local, flat [x, z, ...]. */
@@ -2094,6 +2100,7 @@ export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<str
   }
   for (const [kind, override] of Object.entries(cartOverrides(mapId, mobile))) {
     const entry = { ...CART_RECORD_FIELDS[kind as keyof typeof CART_RECORD_FIELDS], build: override.build, broken: override.broken,
+      brokenJob: override.brokenJob,
       instancePaint: override.instancePaint, ...(override.shadowBuild ? { shadowBuild: override.shadowBuild } : {}),
       // round 3 (wave 234: the airfield's cylinder cart "hovers"): every cart casts the sun's shadow on desktop through
       // its coarse stand-in (one instanced draw a cascade), the handcart and the sled under the size rule's 1.15 m too

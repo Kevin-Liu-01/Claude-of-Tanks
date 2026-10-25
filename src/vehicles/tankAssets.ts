@@ -247,6 +247,45 @@ export function metadataFingerprint(metadata: object | null): string {
 /** Geometry fingerprint used by both generator and release gate. Mesh order is
  * normalized so harmless scene traversal order changes do not stale assets. */
 export function geometryFingerprint(root: GeometryRootLike): string {
+  return meshFingerprint(root, false);
+}
+
+/**
+ * The rendered-asset staleness key (244, the icon manifest's `geometryHash` and the hero cards' `in`/`audit`): the
+ * geometry fingerprint of only what a colour camera can draw. A mesh counts when it and every ancestor are shown, it
+ * sits on the camera's layer 0 and one of its materials is visible and writes colour; shadow-only proxies, hidden
+ * meshes and interior fills cannot move a pixel of an icon or a hero card, so their changes no longer stale them. Crew
+ * volumes and crew seats are combat-anatomy data, never meshes: crew-fit work cannot move this key either.
+ *
+ * The browser is the only writer of this key (tools/icons-page.html, tools/hero-cards-page.html and the fleet asset check).
+ * A Node build of the same tank is not bit-identical everywhere: Node 24's V8 (13.6) and the capture Chrome's (151)
+ * round Math.sin/cos/tan/atan2/exp/log/cbrt/... differently in the last bit (measured 2026-10-24: 3-18 % of inputs;
+ * pow, sqrt and hypot agree), and near-degenerate geometry amplifies a last bit. In the measurement, the M1A2 family's
+ * turretEquipment ring triangulated differently (same vertex count, ~100 vertices re-ordered or re-paired), and one
+ * entry of t80u_kursk's smoke-bank world matrix differed. At 248, 216 of 221 tanks are bit-identical in both and those
+ * 5 are not. A Node-side fingerprint is advisory: it may move a key only where its full fingerprint equals a key the
+ * page wrote (every mesh identical). Otherwise re-render, or run genIcons --metadata-only, in the page.
+ */
+export function exteriorFingerprint(root: GeometryRootLike): string {
+  return meshFingerprint(root, true);
+}
+
+type FingerprintMesh = {
+  visible?: boolean;
+  parent?: FingerprintMesh | null;
+  layers?: { mask: number };
+  material?: { visible?: boolean; colorWrite?: boolean } | Array<{ visible?: boolean; colorWrite?: boolean }>;
+  userData?: { interiorFill?: boolean };
+};
+
+function cameraDraws(object: FingerprintMesh): boolean {
+  for (let node: FingerprintMesh | null | undefined = object; node; node = node.parent) if (node.visible === false) return false;
+  if (object.layers && (object.layers.mask & 1) === 0) return false;
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  return materials.some((material) => !!material && material.visible !== false && material.colorWrite !== false);
+}
+
+function meshFingerprint(root: GeometryRootLike, exteriorOnly: boolean): string {
   root.updateMatrixWorld(true);
   const digests: number[] = [];
   const instance = new Float32Array(16);
@@ -254,6 +293,7 @@ export function geometryFingerprint(root: GeometryRootLike): string {
     if (!(object.isMesh || object.isInstancedMesh) || !object.geometry || !object.geometry.getAttribute) return;
     // generated interior fills (interiorFills.ts) are not authored geometry: the original-model receipts ignore them
     if ((object as { userData?: { interiorFill?: boolean } }).userData?.interiorFill) return;
+    if (exteriorOnly && !cameraDraws(object as unknown as FingerprintMesh)) return;
     const position = object.geometry.getAttribute && object.geometry.getAttribute('position');
     if (!position || !position.array) return;
     let hash = fnvBytes(0x811c9dc5, new Uint8Array(position.array.buffer, position.array.byteOffset, position.array.byteLength));

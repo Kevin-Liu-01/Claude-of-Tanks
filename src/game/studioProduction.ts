@@ -1,6 +1,7 @@
 import type { BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import { normalizeStoryboard } from './studioTimeline.ts';
 import type { Storyboard } from './studioTimeline.ts';
+import { t } from '../ui/i18n.ts';
 
 /** Original, in-engine editorial recipes. No competing game's media or models. */
 export type ProductionFormat = 'landscape' | 'portrait' | 'square' | 'card';
@@ -37,14 +38,14 @@ type ProductionHeight = (x: number, z: number) => number;
 
 export function productionPreset(id: string): ProductionPreset {
   const preset = PRODUCTION_PRESETS.find(item => item.id === id);
-  if (!preset) throw new RangeError('Unknown production sequence');
+  if (!preset) throw new RangeError(t('studio.error.productionSequence'));
   return preset;
 }
 export function productionAspect(format: ProductionFormat): number {
   if (format === 'portrait') return 9 / 16;
   if (format === 'square') return 1;
   if (format === 'card') return 1.91;
-  if (format !== 'landscape') throw new RangeError('Unknown production format');
+  if (format !== 'landscape') throw new RangeError(t('studio.error.productionFormat'));
   return 16 / 9;
 }
 
@@ -54,7 +55,7 @@ export function reframeProductionPoint(pos: Vec3, target: Vec3, from: Production
   const ratio = productionDistanceScale(to) / productionDistanceScale(from);
   const next = pos.map((value, i) => target[i] + (value - target[i]) * ratio) as Vec3;
   next[1] = Math.max(next[1], height(next[0], next[2]) + 1.3);
-  if (!next.every(Number.isFinite)) throw new RangeError('Invalid camera ground or target');
+  if (!next.every(Number.isFinite)) throw new RangeError(t('studio.error.cameraTarget'));
   return next;
 }
 
@@ -74,7 +75,7 @@ export function productionCamera(rig: ProductionRigId, target: Vec3, headingDeg:
     hero: [-12, 17, 4.3, 40], track: [-13, -2, 1.9, 46], rear: [-10, -19, 5, 46],
     overhead: [-20, -23, 26, 52], detail: [-8, 9, 3.1, 34],
   };
-  if (!(rig in rigs)) throw new RangeError('Unknown camera rig');
+  if (!(rig in rigs)) throw new RangeError(t('studio.error.cameraRig'));
   const [side, forward, lift, fov] = rigs[rig];
   // A vertical frame widens the lens after a modest dolly back, instead of
   // pushing the camera deep into trees behind the reviewed square position.
@@ -83,7 +84,7 @@ export function productionCamera(rig: ProductionRigId, target: Vec3, headingDeg:
   const x = target[0] + (side * cos + forward * sin) * scale;
   const z = target[2] + (forward * cos - side * sin) * scale;
   const ground = height(x, z);
-  if (![...target, headingDeg, ground].every(Number.isFinite)) throw new RangeError('Invalid camera ground or target');
+  if (![...target, headingDeg, ground].every(Number.isFinite)) throw new RangeError(t('studio.error.cameraTarget'));
   return { pos: [x, Math.max(ground + 1.3, target[1] + (lift - 1.7) * scale), z], lookAt: [...target], fov: reframeProductionFov(fov, 'landscape', format) };
 }
 

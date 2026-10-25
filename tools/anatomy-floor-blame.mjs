@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { enableCombatAnatomyMeasurementMode } from '../src/vehicles/combatAnatomyMeasurementMode.ts';
 import { authorSite, parseStackFrames, rankFloorCulprits } from './anatomy-floor-ledger.mjs';
-import { rigidHullFrame } from './rigid-hull-frame.mjs';
+import { rigidHullFrame, rigidTurretFrame } from './rigid-hull-frame.mjs';
 
 // Before the fleet factory evaluates (gen-combat-anatomy's rule): measure the authored geometry, never the previous
 // generated calibration. Harmless when gen-combat-anatomy already enabled it.
@@ -48,6 +48,7 @@ function floorParts(id, { create = createTank } = {}) {
   });
   try {
     rigidHullFrame(tank, id);
+    rigidTurretFrame(tank);
     const root = tank.root;
     const hullRig = root.getObjectByName('rig_hull');
     const turretRig = root.getObjectByName('rig_turret');

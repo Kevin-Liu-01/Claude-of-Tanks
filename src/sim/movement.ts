@@ -1,5 +1,5 @@
 import { movementDispersionFactor } from './movementDispersion.ts';
-import { minimumMechanicalGunPitch } from './gunPitchLimits.ts';
+import { mechanicalGunPitchFloor, minimumMechanicalGunPitch } from './gunPitchLimits.ts';
 import type { GunPitchByYawCurve } from './gunPitchLimits.ts';
 import { usesLauncherMuzzles, type LauncherMuzzle } from './launcherPolicy.ts';
 /**
@@ -2907,6 +2907,26 @@ function clampCasemateYaw(
   return fixedMountYawPinned(state, steer, debuff);
 }
 
+/**
+ * (perf-249, the battle-scale profile: the per-call form re-validated the curve and ran its two floating modulos twice a
+ * step for every tank, ~2.5 % of a 16 v 16 step) the gun's mechanical low stop at a turret yaw: the curve's
+ * once-validated floor (gunPitchLimits.ts mechanicalGunPitchFloor, the per-call form to the bit), kept per spec while it
+ * holds the same curve and depression (the curves are module constants, never written once a spec takes one).
+ */
+const _gunPitchFloors = new WeakMap<MovementSpec, {
+  curve: GunPitchByYawCurve; depression: number | undefined; floor: (turretYaw: number) => number;
+}>();
+function mechanicalLowAt(spec: MovementSpec, turretYaw: number): number {
+  const curve = spec.gunPitchByYawDeg;
+  if (!curve) return minimumMechanicalGunPitch(spec, turretYaw);
+  let entry = _gunPitchFloors.get(spec);
+  if (!entry || entry.curve !== curve || entry.depression !== spec.gunDepressionDeg) {
+    entry = { curve, depression: spec.gunDepressionDeg, floor: mechanicalGunPitchFloor(spec) };
+    _gunPitchFloors.set(spec, entry);
+  }
+  return entry.floor(turretYaw);
+}
+
 function updateConventionalGunLay(
   spec: MovementSpec,
   state: TankState,
@@ -2919,7 +2939,7 @@ function updateConventionalGunLay(
   const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
   state.turretYaw = chaseAngle(state.turretYaw, solution.turretYaw, turretRate * dt);
   const yawPinned = clampCasemateYaw(state, gunArc, steer, debuff);
-  const mechanicalLow = minimumMechanicalGunPitch(spec, state.turretYaw);
+  const mechanicalLow = mechanicalLowAt(spec, state.turretYaw);
   const mechanicalHigh = spec.gunElevationDeg * DEG2RAD;
   const desiredGun = solution.gunPitch;
   const specPinned = yawPinned || desiredGun < mechanicalLow - 1e-4 ||
@@ -2971,7 +2991,7 @@ function updateGunLay(
   // Imported/held poses must obey the same finite deck boundary even when
   // no fresh aim point arrives. Other vehicles keep their original path.
   if (spec.gunPitchByYawDeg) {
-    const low = minimumMechanicalGunPitch(spec, state.turretYaw);
+    const low = mechanicalLowAt(spec, state.turretYaw);
     if (state.gunPitch < low) { state.gunPitch = low; state.atGunLimit = true; }
   }
   state.turretYawRate = wrapAngle(state.turretYaw - previousTurretYaw) / dt;

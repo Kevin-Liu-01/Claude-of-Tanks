@@ -24,10 +24,9 @@ import {
   CONCEPT_PROTOTYPE_FILTER_META,
   VEHICLE_BATTLE_ROLE_META,
   VEHICLE_BATTLE_ROLE_ORDER,
-  VEHICLE_CLASS_META,
-  VEHICLE_CLASS_ORDER,
   vehicleFacetLabel,
 } from '../vehicles/vehicleFacets.ts';
+import { classFacetsMarkup, facetButton, flagLabel as flagLabelOf, fleetClasses, nationFacetsMarkup, nationFlags } from './galleryFacets.ts';
 import {
   createSurfaceMarkup,
   MARKUP_OPERATIONS,
@@ -40,8 +39,6 @@ import { icon, type IconId } from '../ui/icons/icon.ts';
 import {
   esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
 } from '../ui/components/components.ts';
-// the shared component sheet, static in the components layer (brand-ui S2: the kit no longer mounts it)
-import '../ui/components/components.css';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
@@ -339,16 +336,20 @@ function anatomyVehicle(): AnatomyVehicle | null {
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
   anatomyReady = loadAnatomy().then(async (module) => {
-    clearTimeout(slow);
     // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
-    // microtask and held its paint (click-perf-244).
+    // microtask and held its paint (click-perf-244). The layer shows once its programs are linked (click-perf-248: its
+    // first frame compiled them); the loading toast covers a slow build or link.
     await afterNextPaint();
-    const vehicle = anatomyVehicle();
-    if (!vehicle || activeMode !== mode) return;
+    let vehicle = anatomyVehicle();
+    if (!vehicle || activeMode !== mode) { clearTimeout(slow); return; }
     if (!anatomyView) {
       anatomyView = module.createAnatomyView(anatomyHost());
       anatomyView.setMetric(armorMetric);
     }
+    await anatomyView.prepare(vehicle);
+    clearTimeout(slow);
+    vehicle = anatomyVehicle();
+    if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
     if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
@@ -625,18 +626,9 @@ function nationName(nation: string): string {
   const name = t(key);
   return name === key ? nation : name;
 }
-/** One flag per nation: the USSR, Russia and USSR/Russia vehicles share one taxonomy (SPEC 12.5). */
-const nationsByFlag = new Map<string, string[]>();
-for (const record of records) {
-  const code = flagIconCode(record.nation);
-  const list = nationsByFlag.get(code) ?? [];
-  if (!list.includes(record.nation)) list.push(record.nation);
-  nationsByFlag.set(code, list);
-}
-const flagLabel = (code: string): string => [...new Set((nationsByFlag.get(code) ?? []).map(nationName))].join(' / ');
-const flagCodes = [...nationsByFlag.keys()].sort((a, b) =>
-  records.filter((r) => flagIconCode(r.nation) === b).length - records.filter((r) => flagIconCode(r.nation) === a).length
-  || flagLabel(a).localeCompare(flagLabel(b)));
+/** One flag per nation (galleryFacets.ts, shared with the page's static shell). */
+const { codes: flagCodes, nations: nationsByFlag } = nationFlags(records);
+const flagLabel = (code: string): string => flagLabelOf(code, nationsByFlag, t);
 
 const GALLERY_ERA_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
   [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
@@ -656,27 +648,14 @@ const ROLE_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
 const eras = [...new Map(records.map((record) => [record.eraKey || '', record.era])).entries()]
   .filter(([key]) => key)
   .sort((a, b) => compareVehicleEras(a[0] as Parameters<typeof compareVehicleEras>[0], b[0] as Parameters<typeof compareVehicleEras>[1]));
-const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
+const classes = fleetClasses(records);
 const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
 
-/** A filter: a flag tile (`.flags`), a kit chip with a short label, or a glyph-only chip; the full name is its label. */
-/** A facet's button: a flag or a short chip named by its label, or (behind More filters) a glyph beside its own name. */
-function facetButton(attrs: string, pressed: boolean, label: string, content: string, kind: 'flag' | 'chip' | 'named', disabled = false): string {
-  const cls = kind === 'flag' ? '' : ' class="cot-c-chip"';
-  const name = kind === 'named' ? '' : ` aria-label="${esc(label)}" title="${esc(label)}"`;
-  const body = kind === 'named' ? `${content}<span>${esc(label)}</span>` : content;
-  return `<button type="button"${cls} ${attrs} aria-pressed="${pressed}"${name} data-ui-sound="toggle"${disabled ? ' disabled' : ''}>${body}</button>`;
-}
 function renderFacets(): void {
-  $('#nationFacets').innerHTML = facetButton('data-facet="nation" data-value=""', !browse.nation, t('gallery.archive.filter.allNations'),
-    icon('pixels', { size: 16 }), 'flag')
-    + flagCodes.map((code) => facetButton(`data-facet="nation" data-value="${esc(code)}"`, browse.nation === code, flagLabel(code),
-      `<img class="cot-c-flag" src="${esc(flagIconUrl(nationsByFlag.get(code)?.[0] || ''))}" alt="" width="20" height="15" draggable="false">`, 'flag')).join('');
-  $('#classFacets').innerHTML = classes.map((id) => {
-    const meta = VEHICLE_CLASS_META[id];
-    return facetButton(`data-facet="vehicleClass" data-value="${esc(id)}"`, browse.vehicleClass === id, vehicleFacetLabel(meta, t),
-      esc(vehicleFacetLabel(meta, t, { short: true })), 'chip');
-  }).join('');
+  // the nation and class rows: site/gallery.html ships their default state (tools/gallery-shell.mjs), so these renders
+  // fill the flags in and set the pressed state without moving anything
+  $('#nationFacets').innerHTML = nationFacetsMarkup({ codes: flagCodes, nations: nationsByFlag, selected: browse.nation, translate: t, flagSrc: flagIconUrl });
+  $('#classFacets').innerHTML = classFacetsMarkup(classes, browse.vehicleClass, t);
   $('#eraFacets').innerHTML = eras.map(([key, label]) => facetButton(`data-facet="era" data-value="${esc(key)}"`, browse.era === key, label,
     icon(GALLERY_ERA_ICONS[key] || 'clock', { size: 14 }), 'named')).join('');
   $('#roleFacets').innerHTML = roles.map((id) => facetButton(`data-facet="role" data-value="${esc(id)}"`, browse.role === id,
@@ -871,7 +850,6 @@ function syncSortDirection(): void {
   const label = t(browse.descending ? 'gallery.sort.descending' : 'gallery.sort.ascending');
   button.setAttribute('aria-pressed', String(browse.descending));
   button.setAttribute('aria-label', label);
-  button.title = label;
 }
 function syncLayoutSwitch(): void {
   for (const button of document.querySelectorAll<HTMLElement>('.layout-switch [data-value]')) {
@@ -969,7 +947,7 @@ function renderOverview(record: GalleryRecord): void {
     ['team', formatNumber(record.metrics.crewCount), unit('gallery.unit.crew'), t('gallery.stat.crew')],
     ['track', formatNumber(record.metrics.weightTons, { maximumFractionDigits: 1 }), unit('gallery.unit.t'), t('gallery.dossier.spec.weight')],
     ['shield', formatNumber(record.metrics.hp), unit('gallery.unit.hitPoints'), t('gallery.dossier.spec.hp')],
-  ].map(([glyph, value, suffix, label]) => `<div title="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
+  ].map(([glyph, value, suffix, label]) => `<div data-tip="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
     + `<b class="num">${value}${suffix}</b><span class="sr-only">${esc(label)}</span></div>`).join('');
   const rival = rivalId ? recordById.get(rivalId) : null;
   $('#ratingGrid').innerHTML = RATINGS.map(([key, label, glyph]) => {
@@ -1025,9 +1003,9 @@ function renderAmmo(record: GalleryRecord): void {
     const type = String(shell.type || '').toUpperCase();
     const glyph = SHELL_ICONS[type] || (/ATGM|MISSILE/.test(type) ? 'shellAtgm' : /HEAT/.test(type) ? 'shellHeat' : /FSDS/.test(type) ? 'shellApfsds' : 'shell');
     return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
-      + `<span class="shell-nums"><span title="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
-      + `<span title="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
-      + `<span title="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
+      + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
+      + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
+      + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
       + `<span class="sr-only">${esc(t('gallery.stat.penetration'))}</span>`
       + `${scale20(scaleCells(shell.penetrationMm, 0, best))}</div>`;
   }).join('');
@@ -1079,7 +1057,7 @@ function renderVersus(record: GalleryRecord): void {
     const digits = glyph === 'reload' ? 1 : 0;
     const value = (n: number, wins: boolean): string => `<em class="num${wins ? ' w' : ''}">${formatNumber(n, { maximumFractionDigits: digits })}`
       + `<small>${esc(t(unitKey))}</small></em>`;
-    return `<div title="${esc(t(label))}">${value(own, ownBetter)}${icon(glyph, { size: 14, label: t(label) })}${value(other, otherBetter)}</div>`;
+    return `<div data-tip="${esc(t(label))}">${value(own, ownBetter)}${icon(glyph, { size: 14, label: t(label) })}${value(other, otherBetter)}</div>`;
   }).join('');
   void drawTrueScale($<HTMLCanvasElement>('#versusScale'), [
     { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-1', facing: 'right' },
@@ -1109,7 +1087,7 @@ function renderDossier(record: GalleryRecord): void {
   $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
   const flagImage = $<HTMLImageElement>('#dossierFlag');
   flagImage.src = flagIconUrl(record.nation);
-  flagImage.title = nationName(record.nation);
+  flagImage.dataset.tip = nationName(record.nation);
   // the data voice's rules (the kit's .cot-c-rules): tier, class, role and era, a glyph and a value each
   const tags = [
     `<span>${esc(t('gallery.tier', { tier: record.tierNumeral }))}</span>`,

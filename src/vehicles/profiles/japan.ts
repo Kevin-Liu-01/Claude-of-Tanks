@@ -343,14 +343,17 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
     for (let i = 0; i < 5; i++) P.add('hullDetail', box(0.55, 0.018, 0.024),
       side * 0.63, 0.80 + i * 0.055, -3.058);
     P.add('hullDark', box(0.12, 0.10, 0.032), side * 0.96, 1.12, -3.06);
-    P.add('hull', box(0.34, 0.12, 0.62), side * 1.29, 1.40, -1.62);
-    P.add('hull', box(0.34, 0.11, 0.72), side * 1.29, 1.39, -0.55);
+    // (release 240: both fender boxes 3.5 cm lower, tops 1.42-1.425, under the bustle's 1.439 floor that turns over them)
+    P.add('hull', box(0.34, 0.12, 0.62), side * 1.29, 1.365, -1.62);
+    P.add('hull', box(0.34, 0.11, 0.72), side * 1.29, 1.365, -0.55);
     // Source-specific horizontal muffler canister on the exposed rear
     // fender, including both closed end bands and a short deck return.
-    P.add('hullDetail', cylZ(0.145, 0.92, 18), side * 1.30, 1.49, -1.72);
-    for (const z of [-2.18, -1.26]) P.add('hullDark', cylZ(0.158, 0.030, 18),
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 0.50 m aft, -1.76..-2.68, wholly past
+    // the bustle's low floor (1.439 to 2.05 m off the ring's axis, 1.548 to 2.25); its front stood 20 cm in it.
+    P.add('hullDetail', cylZ(0.145, 0.92, 18), side * 1.30, 1.49, -2.22);
+    for (const z of [-2.68, -1.76]) P.add('hullDark', cylZ(0.158, 0.030, 18),
       side * 1.30, 1.49, z);
-    P.add('hullDetail', box(0.035, 0.15, 0.34), side * 1.30, 1.42, -2.20);
+    P.add('hullDetail', box(0.035, 0.15, 0.34), side * 1.30, 1.42, -2.62);
   }
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.34, 0.16, 0.035), side * 0.91, 1.04, -3.075);

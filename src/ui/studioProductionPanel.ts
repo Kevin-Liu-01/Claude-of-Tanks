@@ -241,14 +241,15 @@ export function mountStudioProductionPanel(
         takeStatus('');
         refresh();
       })
-      .catch(() => { takesRequested = false; takeStatus(productionLabel('takesUnavailable'), true); });
+      .catch(() => { takesRequested = false; fleetSection.hidden = true; takeStatus(productionLabel('takesUnavailable'), true); });
   }
 
   // Every tank's own take (owner 2026-10-12): the index's fleet entries stay out of the list above and are reached by
   // a search instead. With no query the finder offers the take of the Director's featured tank, else of the tank last
   // selected in the Garage.
   const fleetSection = node('section', 'production-takes production-fleet');
-  fleetSection.hidden = true;
+  // the section holds its place from the first layout (its search waits for the index): appearing once the index arrived,
+  // it pushed the shot list 75 px down on a cold entry (248)
   const fleetSearchLabel = node('div', 'production-fleet-search');
   const fleetSearch = node('input');
   fleetSearch.type = 'search';
@@ -257,6 +258,7 @@ export function mountStudioProductionPanel(
   fleetSearch.spellcheck = false;
   fleetSearch.placeholder = t('studio.director.fleet.placeholder');
   fleetSearch.dataset.fleetSearch = '';
+  fleetSearch.disabled = true;
   fleetSearchLabel.append(fleetSearch);
   const fleetLibrary = node('div', 'production-library');
   const fleetStatus = node('div', 'production-status');
@@ -279,6 +281,7 @@ export function mountStudioProductionPanel(
         mapName(take.map)].join(' ').toLocaleLowerCase());
     }
     fleetSearch.setAttribute('aria-description', t('studio.director.fleet.intro', { count: takes.length }));
+    fleetSearch.disabled = !takes.length;
     fleetSection.hidden = !takes.length;
     if (takes.length) renderFleetTakes();
   }
@@ -484,5 +487,8 @@ export function mountStudioProductionPanel(
     }
   }
   refresh();
+  // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
+  // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
+  loadSiteTakes();
   return { refresh, setVisible, activate };
 }

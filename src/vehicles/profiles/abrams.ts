@@ -145,12 +145,17 @@ interface AbramsHullConfig {
     readonly bowStations?: readonly Vec2Tuple[];
   };
   readonly engineZ: number;
+  /** The engine grille beds' length (default 0.78 m scaled); a shorter deck plateau takes shorter beds. */
+  readonly engineBedLength?: number;
   readonly glacisTopZ: number;
   readonly periZ?: number;
   readonly periX?: number;
   readonly periH?: number;
   readonly periHump?: number;
   readonly periHumpH?: number;
+  /** Sinks the driver's periscopes into the glacis crest by this much (metres): their heads stay under the turret's
+   * front underside where it sweeps over them. */
+  readonly periSink?: number;
   /** No hull driver: the driver's periscopes are left off the glacis crest (the MBT-70's driver rides in the turret). */
   readonly noDriverPeriscopes?: boolean;
   /** No V splash board on the glacis (the MBT-70 carries its glacis armour array there). */
@@ -664,6 +669,10 @@ function surfaceNormalPatch(
 }
 
 const ERA_CONTACT_OFFSET = -0.006;
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the bustle-flank cassettes' foot (turret
+// frame) stands 1 cm over the engine-grille ribs (1.730) and 2 cm over the 1.713 deck plateau they sweep at the rear
+// bearings; at 0.08 it ran on both. (The held m1a1ha keeps 0.08.)
+const BUSTLE_ERA_FOOT_Y = 0.10;
 const eraFaceBase = (thickness: number, gap = 0.002): number => ERA_CONTACT_OFFSET + thickness + gap;
 
 // Hull skirts are vertical carriers, so their ERA must not be rolled like a
@@ -739,6 +748,13 @@ function skirtArmorFacePoint(face: ArmorFace, y: number, z: number): Vec3Tuple {
 // grows the cassette along the real normal.  This keeps the new bow arrays
 // flush on both the shallow Tejas-family glacis and the steeper M1A2 bow;
 // horizontal boxes would bridge air at their forward edges.
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the upper-glacis cassettes start at the
+// glacis break (2.48) and stand on the low plate (1.35), tops 1.47, under the turret's lowest band (1.52); their first
+// course stood 11-12 cm proud on the 1.51 periscope shelf at 1.92-2.38, where the turret's sides (1.53-1.60, 2.08-2.12 m
+// off the ring's axis at z 0.35) ran 8 cm through it at every forward bearing. Two courses fit the plate before its dip
+// at 3.52, so each array keeps its tiles and loses the course the turret overhangs.
+const TEJAS_GLACIS_COURSES: readonly number[] = [2.50, 2.92];
+
 function glacisArmorPatch(
   P: AbramsBuilderPort,
   bucket: string,
@@ -1390,7 +1406,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       for (const side of [-1, 1]) {
         // (r5 softSeams: from the rear's grazing deck angle the two grille
         // beds read as ink-black slatted bars on a deck the ref fuses)
-        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(bw * 0.48, 0.02, 0.78 * s), side * bw * 0.31, deckAt(g, ez) + 0.006, ez);
+        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(bw * 0.48, 0.02, g.engineBedLength ?? 0.78 * s), side * bw * 0.31, deckAt(g, ez) + 0.006, ez);
         for (const k of KIT.grilleIndices(P.q, 4, 2)) {
           P.add('hullDetail', box(bw * 0.44, 0.018, 0.045), side * bw * 0.31, deckAt(g, ez) + 0.010, ez + (k - 1.5) * 0.18 * s);
         }
@@ -1619,7 +1635,8 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       P.add('hull', frustum(0.4 * s, humpZ + 0.24 * s, humpZ - 0.2 * s, 0.32 * s, humpZ + 0.14 * s, humpZ - 0.16 * s, humpY - 0.02, humpY + (g.periHumpH ?? 0.07)), humpX, 0, 0);
     }
     if (!g.noDriverPeriscopes) for (const px of [-0.2, 0, 0.2]) {
-      periscope(P, 'hullDetail', humpX + px * s, humpY + (g.periHump ? (g.periHumpH ?? 0.07) : 0.008), humpZ + 0.04 * s);
+      periscope(P, 'hullDetail', humpX + px * s, humpY + (g.periHump ? (g.periHumpH ?? 0.07) : 0.008) - (g.periSink ?? 0),
+        humpZ + 0.04 * s);
     }
     // g.noCable (visual r2, tejas): the dark tube arcing across the glacis read
     // as a stray pole at critic zoom and the ref glacis carries no cable there
@@ -3771,7 +3788,7 @@ function abramsArmorHardware(
             for (let k = 0; k < 4; k++) {
               const z0 = -2.50 + k * 0.55;
               armorFlankPatch(P, 'turret', t, side,
-                0.08, 0.62, z0, z0 + 0.48, flankDepth, ERA_CONTACT_OFFSET);
+                heavy ? 0.08 : BUSTLE_ERA_FOOT_Y, 0.62, z0, z0 + 0.48, flankDepth, ERA_CONTACT_OFFSET);
               armorFlankPatch(P, 'turretDetail', t, side,
                 0.15, 0.55, z0 + 0.03, z0 + 0.45, 0.007, eraFaceBase(flankDepth));
               armorFlankPatch(P, 'turretDetail', t, side,
@@ -3825,10 +3842,12 @@ function abramsArmorHardware(
         const glacisDepth = modern ? 0.110 : 0.105;
         for (const side of [-1, 1]) {
           const abramsArmorHardwareHullCourse4 = (): void => {
+            // (the held m1a1ha keeps its three courses)
+            const courses = heavy ? [1.98, 2.45, 2.92] : TEJAS_GLACIS_COURSES;
             for (let col = 0; col < 2; col++) {
-              for (let row = 0; row < 3; row++) {
+              for (const zRear of courses) {
                 const x0 = 0.14 + col * 0.66, x1 = x0 + 0.57;
-                const zRear = 1.98 + row * 0.47, zFront = zRear + 0.39;
+                const zFront = zRear + 0.39;
                 glacisArmorPatch(P, 'hull', side, TEJAS_HULL.deck,
                   x0, x1, zRear, zFront, glacisDepth, ERA_CONTACT_OFFSET);
                 glacisArmorPatch(P, 'hullDetail', side, TEJAS_HULL.deck,
@@ -4252,6 +4271,13 @@ function tejasToneKit(P: AbramsBuilderPort): void {
 
 function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   let g = TEJAS_HULL;
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's rise stays under the
+  // turret's sides (1.55, 2.12 m off the ring's axis) to -1.77 and meets the 1.71 deck at -2.25; it reached 1.66 by -1.73,
+  // and the turret ran 12 cm through it at every rear bearing. The driver's periscopes sink 15 mm into the glacis crest:
+  // their heads stood 7 mm into the turret's front underside (1.546, 1.78 m out). (The held m1a1ha keeps the shared table.)
+  if (P.spec.id !== 'm1a1ha') {
+    g = { ...g, deck: g.deck.map(([z, y]) => (z === -1.73 ? [-1.77, 1.54] : [z, y]) as Vec2Tuple), periSink: 0.015 };
+  }
   // FAMILY VARIETY (owner directive 2026-08-03): per-variant rack-fill
   // layout — a dropped/shrunk duffel frees certified floor space for the
   // stowed fitting loadouts at the end of this builder. All fills stay in
@@ -4508,6 +4534,10 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     const bearingBottom = 1.450 - P.turretG.position.y;
     P.add('turret', cylY(1.25, 1.25, bearingTop - bearingBottom, 48),
       0, (bearingTop + bearingBottom) / 2, 0);
+    // Release 240: the bearing is coaxial and reaches 1.25, past the seat's keep radius (rim 0.96-1.05 + 2 cm,
+    // turretSeatRace.ts), which lifted its lower lip off the deck; a body of revolution turns unseen, so the seat keeps it
+    // as built (abramsTurretLift's circular cross-section at every azimuth).
+    P.turretG.userData.turretSeatKeepR = 1.27;
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
     // The photo-based armored face and round cradle pitch as one assembly.
@@ -4835,28 +4865,22 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           links.position.set(0.64, 1.392, 2.86);
           P.hullG.add(links);
         }
-        // Jerry can pair lashed on the left rear deck — BEHIND the bustle-rack
-        // sweep (§B5 audit this round: at (-1.32, -2.98) the can tops 2.16 sat
-        // inside the rack corner's swept annulus r<=3.63 at y>=1.88; re-seated
-        // at (-1.10, -3.40) the nearest can corner rides r 3.86 — clear of the
-        // rack (3.63) and shell (3.50) sweeps at every yaw).
-        {
-          const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, gap: 0.04,
-            slot: 'canvasCloth', seed: 9, rotation: [0, Math.PI / 2, 0] });
-          cans.position.set(-1.10, 1.713, -3.40);
-          P.hullG.add(cans);
-        }
+        // (Release 240: the jerry-can pair that stood here rides the rack extension's bracket, abramsM1A1Identity.ts
+        // addSaFit; on the deck its tops (2.2) stood 28 cm into the extension's sweep.)
         // Pioneer tools on the right mid deck (shovel + axe, §B3 named tells:
         // handle rod + blade plate, half-sunk clamps).
         // 2026-10-19 (owner float sweep): tools and clamps stood 65 mm over this deck; the set drops onto it
+        // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the set lies 62 cm forward on the flat
+        // 1.48 deck, tops 1.513 under the turret's lowest band (1.52) where its side overhangs them; aft, on the rise to
+        // the engine deck, it sat 10 cm inside the turret's side at rest.
         P.snapGroup('abrams-pioneer-tools', () => {
-        P.add('hullDark', cylZ(0.016, 0.62, 8), 1.52, 1.70, -1.05);        // shovel handle
-        P.add('hullDetail', box(0.13, 0.02, 0.22), 1.52, 1.70, -1.46);     // shovel blade
-        P.add('hullDark', cylZ(0.014, 0.55, 8), 1.30, 1.695, -1.10);       // axe handle
-        P.add('hullDetail', box(0.05, 0.024, 0.15), 1.30, 1.70, -1.44);    // axe head
-        for (const tz of [-0.88, -1.32]) {
+        P.add('hullDark', cylZ(0.016, 0.62, 8), 1.52, 1.496, -0.43);       // shovel handle
+        P.add('hullDetail', box(0.13, 0.02, 0.22), 1.52, 1.49, -0.84);     // shovel blade
+        P.add('hullDark', cylZ(0.014, 0.55, 8), 1.30, 1.494, -0.48);       // axe handle
+        P.add('hullDetail', box(0.05, 0.024, 0.15), 1.30, 1.492, -0.82);   // axe head
+        for (const tz of [-0.26, -0.70]) {
           const buildTejasFamilyHullCourse11 = (): void => {
-            P.add('hullDark', box(0.30, 0.016, 0.035), 1.41, 1.705, tz);
+            P.add('hullDark', box(0.30, 0.016, 0.035), 1.41, 1.505, tz);
           };
           buildTejasFamilyHullCourse11();     // clamp straps
         }
@@ -4909,7 +4933,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             for (let k = 0; k < 4; k++) {
               const z0 = -2.45 + k * 0.56;
               armorFlankPatch(P, 'turret', t, side,
-                0.08, 0.62, z0, z0 + 0.49, 0.145, ERA_CONTACT_OFFSET);
+                BUSTLE_ERA_FOOT_Y, 0.62, z0, z0 + 0.49, 0.145, ERA_CONTACT_OFFSET);
               armorFlankPatch(P, 'turretDetail', t, side,
                 0.15, 0.55, z0 + 0.035, z0 + 0.455, 0.007, eraFaceBase(0.145));
               armorFlankPatch(P, 'turretDetail', t, side,
@@ -4991,9 +5015,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         for (const side of [-1, 1]) {
           const buildTejasFamilyHullCourse12 = (): void => {
             for (let col = 0; col < 2; col++) {
-              for (let row = 0; row < 3; row++) {
+              for (const zRear of TEJAS_GLACIS_COURSES) {
                 const x0 = 0.14 + col * 0.66, x1 = x0 + 0.57;
-                const zRear = 1.96 + row * 0.47, zFront = zRear + 0.39;
+                const zFront = zRear + 0.39;
                 glacisArmorPatch(P, 'hull', side, TEJAS_HULL.deck,
                   x0, x1, zRear, zFront, 0.110, ERA_CONTACT_OFFSET);
                 glacisArmorPatch(P, 'hullDetail', side, TEJAS_HULL.deck,
@@ -5125,7 +5149,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             for (let k = 0; k < 4; k++) {
               const z0 = -2.47 + k * 0.57;
               armorFlankPatch(P, 'turret', t, side,
-                0.08, 0.64, z0, z0 + 0.50, 0.150, ERA_CONTACT_OFFSET);
+                BUSTLE_ERA_FOOT_Y, 0.64, z0, z0 + 0.50, 0.150, ERA_CONTACT_OFFSET);
               armorFlankPatch(P, 'turretDetail', t, side,
                 0.15, 0.57, z0 + 0.035, z0 + 0.465, 0.007, eraFaceBase(0.150));
               armorFlankPatch(P, 'turretDetail', t, side,
@@ -5211,9 +5235,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         for (const side of [-1, 1]) {
           const buildTejasFamilyHullCourse14 = (): void => {
             for (let col = 0; col < 2; col++) {
-              for (let row = 0; row < 3; row++) {
+              for (const zRear of TEJAS_GLACIS_COURSES) {
                 const x0 = 0.13 + col * 0.67, x1 = x0 + 0.58;
-                const zRear = 1.94 + row * 0.48, zFront = zRear + 0.40;
+                const zFront = zRear + 0.40;
                 glacisArmorPatch(P, 'hull', side, TEJAS_HULL.deck,
                   x0, x1, zRear, zFront, 0.120, ERA_CONTACT_OFFSET);
                 glacisArmorPatch(P, 'hullDetail', side, TEJAS_HULL.deck,
@@ -5241,11 +5265,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         if (!(p && p.noCable)) {
           const buildTejasFamilyHullCourse15 = (): void => {
             const cable = FITTINGS.towCable({ mats: P.mats, r: 0.013, eyes: false, seg: 24,
+              // (release 240: the run ends 1.33 m off the ring's axis, outside the turret's 1.25 coaxial bearing; it ran
+              // into the bearing's wall to 1.19)
               pts: [[1.00, 1.514, 2.02], [1.16, 1.459, 1.88], [1.30, 1.479, 1.42],
-                [1.32, 1.482, 0.98], [1.16, 1.483, 0.62]] });
+                [1.32, 1.482, 0.98], [1.30, 1.483, 0.62]] });
             P.hullG.add(cable);
             P.add('hullDark', box(0.05, 0.012, 0.05), 1.30, 1.477, 1.42);
-            P.add('hullDark', box(0.05, 0.012, 0.05), 1.17, 1.481, 0.80);
+            P.add('hullDark', box(0.05, 0.012, 0.05), 1.31, 1.481, 0.80);
           };
           buildTejasFamilyHullCourse15();
         }
@@ -5282,10 +5308,12 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         P.add('hullDetail', box(0.62, 0.36, 0.008), 0, 1.24, -3.9645);         // thermal panel face
         // §B3.2 urban-kit density — jerry can pair lashed on the left rear
         // deck (the §B5-proven corner seat behind the rack sweep, r >= 3.86).
+        // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 7 cm aft; the rack's corner (3.66 m
+        // off the ring's axis, 1.88-2.26 high) reached the pair's nearest corner (3.655), now 3.72 out.
         {
           const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, gap: 0.04,
             slot: 'canvasCloth', seed: 23, rotation: [0, Math.PI / 2, 0] });
-          cans.position.set(-1.10, 1.713, -3.40);
+          cans.position.set(-1.10, 1.713, -3.47);
           P.hullG.add(cans);
         }
         // Spare track links flat on the right glacis (§B3.2 links class).
@@ -5478,9 +5506,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         for (const side of [-1, 1]) {
           const buildTejasFamilyHullCourse17 = (): void => {
             for (let col = 0; col < 2; col++) {
-              for (let row = 0; row < 3; row++) {
+              for (const [row, zRear] of TEJAS_GLACIS_COURSES.entries()) {
                 const x0 = 0.14 + col * 0.66, x1 = x0 + 0.57;
-                const zRear = 1.92 + row * 0.47, zFront = zRear + 0.39;
+                const zFront = zRear + 0.39;
                 const stagger = (col + row) % 2 ? 0.010 : 0;
                 const depth = 0.105 + stagger;
                 glacisArmorPatch(P, 'hull', side, TEJAS_HULL.deck,
@@ -5753,8 +5781,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   buildTejasFamilyTurretStage2();
   // §B3.2 deck tie-down rings (all tejas-family marks — hull frame).
   const buildTejasFamilyHullStage5 = (): void => {
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the aft pair lies folded flat on the
+    // deck (top +10 mm), under the bustle armour's foot (1.72, 2.9 m off the ring's axis); standing, it rose 4 cm into
+    // it. (The held m1a1ha keeps its rings standing.)
     for (const [dx, dz] of [[-0.55, 2.75], [0.55, 2.75], [-0.86, -2.20], [0.86, -2.20]]) {
-      P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
+      const folded = dz < 0 && vid !== 'm1a1ha';
+      P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + (folded ? 0.002 : 0.006), dz,
+        folded ? 0 : Math.PI / 2, 0, 0);
     }
     abramsArmorHardware(P, vid, t);
     // Release 233 (owner: the HA, AIM, FEP, HC and SA "kinda samey"): each mark's own field kit.
@@ -5794,8 +5827,13 @@ const AX_HULL: AbramsHullConfig = {
   deck: [[3.97, 1.20], [3.86, 1.22], [3.74, 1.33], [3.55, 1.37], [3.30, 1.40],
     [3.10, 1.42], [2.98, 1.42], [2.88, 1.34], [2.68, 1.37], [2.52, 1.45],
     [2.36, 1.51], [2.20, 1.49], [2.02, 1.44], [1.70, 1.42], [1.20, 1.46],
-    [0.20, 1.54], [-0.60, 1.60], [-0.85, 1.50], [-1.30, 1.49], [-1.48, 1.62],
-    [-1.60, 1.72], [-2.28, 1.76], [-3.34, 1.76],
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the dip runs on to -2.46 at 1.55-1.585
+    // and the 1.76 engine deck begins at -2.75, past the reach of the turret's long front (its underside 1.59-1.69 to
+    // 2.5 m off the ring's axis); rising from -1.48 the deck stood 12-17 cm in it at the reversed bearings. The ramp
+    // steepens past -2.54 to meet the louvre panels' fore edge (1.734 at -2.625). The -0.60 crest stays under the
+    // turret's 1.587 sides at rest.
+    [0.20, 1.54], [-0.60, 1.575], [-0.85, 1.50], [-1.30, 1.49], [-1.48, 1.55],
+    [-2.46, 1.585], [-2.54, 1.645], [-2.625, 1.735], [-2.75, 1.76], [-3.34, 1.76],
     [-3.52, 1.71], [-3.70, 1.68], [-3.82, 1.56], [-3.97, 1.42]],
   // AXDED-R1 (dedicated round 2026-08-07): the workorder front rows read the
   // ref's underside FLOOR at 0.412 across |x| < 1.05 (28 columns of proc
@@ -5829,7 +5867,8 @@ const AX_HULL: AbramsHullConfig = {
   // exact class the flag was built for — the plate rendered blank camo
   // with every fitting buried). buildAbramsX authors its kit ON the wall.
   noRearFace: true,
-  engineZ: -2.95, glacisTopZ: 2.4, periZ: 2.95, noFrontFlaps: true,
+  // (release 240: the beds 0.60 m long and 9 cm aft, on the engine deck's plateau behind the turret's sweep)
+  engineZ: -3.04, engineBedLength: 0.60, glacisTopZ: 2.4, periZ: 2.95, noFrontFlaps: true,
   // Seat the continuous tow cable on the protected center glacis.  The
   // family-default endpoints cross AbramsX's elevated idler/shoe wrap; the
   // cable remains complete and visible here without entering either lane.
@@ -6322,6 +6361,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // frustum. The authoring offset is cancelled by the assembly rebase below.
     const bearingZ = -AX_TURRET_CONTENT_SHIFT_Z;
     P.add('turret', cylY(1.22, 1.26, .277, 48), 0, -.3985, bearingZ);
+    // (release 240: the seat keeps this coaxial bearing as built, past its 1.26 foot; at the receipt's 0.98 keep radius
+    // it lifted the bearing's lower lip, and the ring no longer read continuous round the yaw axis)
+    P.turretG.userData.turretSeatKeepR = 1.28;
     P.add('turretDark', cylY(1.235, 1.235, .025, 48), 0, -.265, bearingZ);
     // Faceted corner sensor pods — pylons carry them to the shell/deck so
     // articulation poses stay connected.
@@ -7718,7 +7760,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('turretDetail', box(0.69, 0.014, 0.026), 0, 0.523, 1.015);
     if (P.q) {
       for (const side of [-1, 1]) {
-        P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, -0.16, 2.30, -0.35, 0, 0);
+        // (release 240: the corner rods ride 21 cm higher, their feet over the turret's own underside; hanging to 1.564 they
+        // swept the engine deck at the reversed bearings)
+        P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, 0.05, 2.30, -0.35, 0, 0);
         P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.346, -0.01);
         P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.226, 0.89);
       }
@@ -8173,20 +8217,26 @@ function addM1A3HullCagesAndPowerpack(P: AbramsBuilderPort): void {
 
   // Hybrid-electric powerpack: separated cooling plenums, inverter boxes
   // and louvers expose the actual rear-mounted engine/transmission modules.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the stack steps up under the turret's
+  // rising underside (1.745 at 2.1 m off the ring's axis, 1.786 at 2.5, 1.806 at 2.7, 1.827 at 2.9): the plenum from
+  // -2.33 to 1.765, its cover from -2.55 to 1.7975 and six louvers from -2.78 to 1.817. The block (to 1.79 from -2.13),
+  // cover (1.8225 from -2.20) and louvers (1.839 from -2.32) stood 1.5-6.6 cm into it at the rear bearings.
   for (const side of [-1, 1]) {
-    P.addModuleVisual('engine', 'hull', box(1.30, 0.16, 1.30), side * 0.72, 1.71, -2.78);
-    P.addEquipment('hull', box(1.16, 0.035, 1.16), side * 0.72, 1.805, -2.78);
-    for (let k = 0; k < 7; k++) {
-      P.add('hullDark', box(1.02, 0.022, 0.045), side * 0.72, 1.828,
-        -3.24 + k * 0.15);
+    P.addModuleVisual('engine', 'hull', box(1.30, 0.16, 1.10), side * 0.72, 1.685, -2.88);
+    P.addEquipment('hull', box(1.16, 0.035, 0.81), side * 0.72, 1.78, -2.955);
+    for (let k = 0; k < 6; k++) {
+      P.add('hullDark', box(1.02, 0.022, 0.045), side * 0.72, 1.806,
+        -3.28 + k * 0.10);
     }
     P.addModuleVisual('transmission', 'hullDetail', box(0.42, 0.20, 0.55),
       side * 1.36, 1.70, -3.45);
   }
-  P.addModuleVisual('radio', 'hull', box(0.88, 0.13, 0.54), 0, 1.70, 1.25);
+  // (release 240: the radio housing 6 cm lower and the hatch rings seated on their hatches, under the turret sides'
+  // 1.71 lower edge as it turns over them; the housing stood 6 cm and the rings 1.4 cm into it)
+  P.addModuleVisual('radio', 'hull', box(0.88, 0.13, 0.54), 0, 1.64, 1.25);
   for (const x of [-0.72, 0, 0.72]) {
     P.addHatch('hull', cylY(0.27, 0.29, 0.055, 16), x, 1.66, 1.72);
-    P.add('hullDark', torus(0.26, 0.014, 18), x, 1.705, 1.72);
+    P.add('hullDark', torus(0.26, 0.014, 18), x, 1.689, 1.72);
   }
 }
 
@@ -8445,9 +8495,10 @@ function addM1A3UpgradeEquipment(P: AbramsBuilderPort, t: M1A3BuildLayout['t']):
     }
     // Armored cooling grilles on the rear quarter advertise the hybrid
     // powerpack without obscuring the top cooling outlets.
-    abramsServiceCase(P, 'hull', side * 1.57, 1.72, -3.23, .36, .24, .62);
+    // (release 240: 1.5 cm lower, the lids under the bustle's 1.843 underside 3.37 m off the ring's axis)
+    abramsServiceCase(P, 'hull', side * 1.57, 1.705, -3.23, .36, .24, .62);
     for (let k = 0; k < 5; k++) P.addEquipment('hullDark', box(.015, .022, .45),
-      side * 1.757, 1.635 + k * .039, -3.23);
+      side * 1.757, 1.62 + k * .039, -3.23);
   }
 }
 
@@ -8474,7 +8525,8 @@ function addAbramsXUpgradeEquipment(P: AbramsBuilderPort): void {
     abramsServiceCase(P, 'turret', side * 1.57, .373, -.93, .24, .14, .47);
     P.addEquipment('turretDark', box(.026, .16, .49), side * 1.693, .373, -.93);
     // Tie-down lugs anchor the added skirt protection to the fender crown.
-    for (const z of [-2.25, -.55, 1.1]) {
+    // (release 240: the middle lug moved from -0.55, where its ring stood 4.8 cm into the turret's flank rails)
+    for (const z of [-2.25, -1.0, 1.1]) {
       P.addEquipment('hull', box(.10, .045, .12), side * 1.735, deckAt(AX_HULL, z), z);
       P.addEquipment('hullDetail', torus(.027, .009, 10), side * 1.735,
         deckAt(AX_HULL, z) + .038, z, Math.PI / 2);

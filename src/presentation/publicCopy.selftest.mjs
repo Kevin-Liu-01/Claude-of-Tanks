@@ -26,6 +26,9 @@ const retiredPhrases = [
   'Contact sheets are the visual gate.',
   'Start the engine.',
   'Tanks in context.',
+  // the manual's old names (248: one title form, "<page> · Claude of Tanks"; the manual is the Field Manual)
+  'Technical Field Manual',
+  'Claude of Tanks Technical Manual',
 ];
 
 for (const file of [...pageFiles, ...supportingFiles]) {
@@ -34,6 +37,26 @@ for (const file of [...pageFiles, ...supportingFiles]) {
     assert.ok(!source.includes(phrase), `${file} reintroduced retired campaign copy: ${phrase}`);
   }
 }
+
+// the manual's titles name the page, then the game, in both catalogs: no manual suffix after the brand
+for (const locale of ['en-US', 'zh-CN']) {
+  const catalog = JSON.parse(readFileSync(join(ROOT, `src/ui/i18nCatalog.${locale}.json`), 'utf8'));
+  for (const [key, value] of Object.entries(catalog).filter(([key]) => /^metadata\.docs[A-Za-z]*\.title$/.test(key))) {
+    assert.match(value, /^[^·]+ · Claude of Tanks$/, `${locale} ${key} "${value}" is "<page> · Claude of Tanks"`);
+  }
+  // (249) one string for the head and the running page: each topic's title is its heading (the label), then the game
+  for (const [key, label] of Object.entries(catalog).filter(([key]) => /^docs\.topic\.[a-z]+\.label$/.test(key))) {
+    const slug = key.split('.')[2];
+    const title = catalog[`metadata.docs${slug[0].toUpperCase()}${slug.slice(1)}.title`];
+    assert.equal(title, `${label} · Claude of Tanks`, `${locale} the ${slug} title is its heading, then the game`);
+    if (locale === 'en-US') {
+      const head = readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8').match(/<title>([^<]+)<\/title>/)?.[1];
+      assert.equal(head, title.replace(/&/g, '&amp;'), `site/docs-${slug}.html's prerendered title is the catalog's`);
+    }
+  }
+}
+assert.match(readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8'), /document\.title = topic\.pageTitle;/,
+  'the running page sets the same catalog title the head carries');
 
 for (const file of pageFiles) {
   const html = readFileSync(join(ROOT, file), 'utf8');

@@ -9,7 +9,10 @@
 //   - the road wheels are wheels: a tyre band (rubber; steel on a wartime all-steel wheel), the dished disc, the hub cap
 //     and the nuts on the bolt circle, lying flat or leaning on an edge;
 //   - torn armour folded along a tear with the primer showing on the torn edge, a bent skirt or fender, a stowage bin
-//     with its lid sprung, a hatch lid, a drum or jerrycan, and on a post-war hulk its roof machine gun;
+//     with its lid sprung, a hatch lid, a drum or jerrycan;
+//   - no gun (248, the owner: "fix our double guns that are visible from wrecks of certain tanks"): the hulk keeps its
+//     own calibre-true roof gun on its turret (wrecks.ts bakes every drawn part but the burnt-away drapes), so a debris
+//     .50 lay a second gun beside every post-war hulk that carries one, and gave one to those that carry none;
 //   - every piece is seated on the terrain under its own footprint (planGroundedObbPose, a 2 cm embed), not in the
 //     hulk's plane, so nothing is buried whole and nothing floats.
 // Built in the vehicle toolkit (vehicleMesh.ts) in the burnt state's colours; the streams the wreck merge takes
@@ -27,8 +30,9 @@ const PRIMER = material('paint', linearHex(0x7a3424), 0.75, 0, 0, 1);
 const RUBBER = material('rubber', [0.028, 0.026, 0.024], 0.9, 0, 0, 1);
 const CANVAS = material('canvas', linearHex(0x3a362c), 0.95, 0, 0, 1);
 
-/** One piece in the hulk's frame: where it lies (x, z), its heading, and its footprint's half extents for the seat. */
+/** One piece in the hulk's frame: what it is, where it lies (x, z), its heading, and its footprint's half extents. */
 interface WreckDebrisPiece {
+  kind: 'track' | 'wheel' | 'plate' | 'skirt' | 'bin' | 'lid' | 'drum';
   geo: THREE.BufferGeometry;
   x: number;
   z: number;
@@ -43,7 +47,7 @@ interface WreckDebris {
 }
 
 interface WreckDebrisOptions {
-  /** A post-war vehicle (rubber-tyred wheels, end connectors, a roof machine gun); wartime: all-steel, single horns. */
+  /** A post-war vehicle (rubber-tyred wheels, end connectors, a jerrycan); wartime: all-steel, single horns. */
   modern?: boolean;
   /** The hulk's ground contact in its frame [minX, maxX, minZ, maxZ] (wrecks.ts WreckBake.contact): the debris lies round
    *  it, the thrown track off one side of it. */
@@ -187,21 +191,10 @@ function drum(rng: () => number, modern: boolean, seed: number) {
   return finish(mesh, seed);
 }
 
-/** The roof machine gun (a .50 on its cradle): the receiver, the barrel and its jacket, the spade grips. */
-function roofGun(rng: () => number, seed: number) {
-  const mesh = new VehicleMesh();
-  mesh.box(0, 0.09, 0, 0.2, 0.16, 0.6, STEEL_DARK, 0);
-  mesh.tube([[0, 0.12, 0.3], [0, 0.1 - rng() * 0.06, 1.35]], 0.025, 6, STEEL_DARK, { caps: true });
-  mesh.tube([[0, 0.12, 0.3], [0, 0.11, 0.62]], 0.045, 6, STEEL, { caps: true });
-  for (const x of [-0.08, 0.08]) mesh.box(x, 0.1, -0.36, 0.035, 0.12, 0.08, STEEL_DARK, 0);
-  mesh.box(0, 0.03, 0.05, 0.36, 0.06, 0.2, RUST, 0);
-  return finish(mesh, seed);
-}
-
 /**
  * The debris of one hulk, piece by piece in its frame (+z its nose): a thrown track off one side from the rear, two or
- * three road wheels, torn plates, a bent skirt, a stowage bin, a hatch lid, a drum, and on a post-war hulk its roof gun,
- * each clear of the hull's ground contact.
+ * three road wheels, torn plates, a bent skirt, a stowage bin, a hatch lid and a drum, each clear of the hull's ground
+ * contact.
  */
 export function buildWreckDebris(seed: number, opts: WreckDebrisOptions = {}): WreckDebris {
   const rng = mulberry32((seed ^ 0x71ac5eed) >>> 0);
@@ -209,8 +202,9 @@ export function buildWreckDebris(seed: number, opts: WreckDebrisOptions = {}): W
   const [cx0, cx1, cz0, cz1] = opts.contact ?? (modern ? [-1.85, 1.85, -4.0, 4.0] : [-1.6, 1.6, -3.3, 3.3]);
   const pieces: WreckDebrisPiece[] = [];
   let serial = 0;
-  const add = (made: { geo: THREE.BufferGeometry; hw: number; hl: number }, x: number, z: number, yaw: number): void => {
-    pieces.push({ geo: made.geo, x, z, yaw, hw: made.hw, hl: made.hl });
+  const add = (kind: WreckDebrisPiece['kind'], made: { geo: THREE.BufferGeometry; hw: number; hl: number }, x: number, z: number,
+    yaw: number): void => {
+    pieces.push({ kind, geo: made.geo, x, z, yaw, hw: made.hw, hl: made.hl });
   };
   // the thrown track: off one side, from the rear sprocket, in short runs snaking back and out
   const side = rng() < 0.5 ? -1 : 1;
@@ -221,7 +215,7 @@ export function buildWreckDebris(seed: number, opts: WreckDebrisOptions = {}): W
     const made = trackRun(rng, modern, shoes, seed + serial++);
     const len = made.hl * 2;
     x += Math.sin(heading) * len * 0.5; z += Math.cos(heading) * len * 0.5;
-    add(made, x, z, heading);
+    add('track', made, x, z, heading);
     x += Math.sin(heading) * (len * 0.5 + 0.04); z += Math.cos(heading) * (len * 0.5 + 0.04);
     heading += side * (rng() - 0.3) * 0.5;
   }
@@ -232,13 +226,12 @@ export function buildWreckDebris(seed: number, opts: WreckDebrisOptions = {}): W
     return [Math.sin(a) * ex, Math.cos(a) * ez];
   };
   const wheels = 2 + (rng() < 0.4 ? 1 : 0);
-  for (let k = 0; k < wheels; k++) { const [px, pz] = ring(0.6, 2.6); add(roadWheel(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  for (let k = 0; k < 2; k++) { const [px, pz] = ring(0.8, 3.2); add(tornPlate(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  { const [px, pz] = ring(0.4, 1.6); add(bentSkirt(rng, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  { const [px, pz] = ring(0.5, 2.2); add(stowageBin(rng, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  { const [px, pz] = ring(0.8, 3.5); add(hatchLid(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  { const [px, pz] = ring(1.0, 3.0); add(drum(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
-  if (modern && rng() < 0.6) { const [px, pz] = ring(0.8, 2.8); add(roofGun(rng, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  for (let k = 0; k < wheels; k++) { const [px, pz] = ring(0.6, 2.6); add('wheel', roadWheel(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  for (let k = 0; k < 2; k++) { const [px, pz] = ring(0.8, 3.2); add('plate', tornPlate(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  { const [px, pz] = ring(0.4, 1.6); add('skirt', bentSkirt(rng, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  { const [px, pz] = ring(0.5, 2.2); add('bin', stowageBin(rng, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  { const [px, pz] = ring(0.8, 3.5); add('lid', hatchLid(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
+  { const [px, pz] = ring(1.0, 3.0); add('drum', drum(rng, modern, seed + serial++), px, pz, rng() * Math.PI * 2); }
   let tris = 0;
   for (const p of pieces) tris += (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3;
   return { pieces, tris: tris | 0 };

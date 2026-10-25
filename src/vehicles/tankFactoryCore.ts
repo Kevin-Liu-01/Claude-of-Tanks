@@ -20,8 +20,12 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
-import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
-import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
+import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
+import {
+  FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
+  type FarHull, type FarWheel,
+} from './farLod.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
@@ -42,7 +46,7 @@ import {
 } from './factoryGeometry.ts';
 import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
-  createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
+  createTankMaterials, makeBurnUniforms, applyBurnHook, removeBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS,
 } from './materials.ts';
@@ -124,7 +128,7 @@ import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
 } from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
-import { splitProgramVariants } from '../engine/programVariants.ts';
+import { programVariantOrigin, splitProgramVariants } from '../engine/programVariants.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -1202,7 +1206,7 @@ export interface TankFactoryOptions {
    * also bakes pure translations (more draws saved, but float rounding of the baked
    * positions moved up to 1,615 px in the P21 captures); 'off' keeps the separate
    * draws (A/B receipts and probes). */
-  staticDrawMerge?: 'off' | 'identity' | 'translations';
+  staticDrawMerge?: 'off' | 'identity' | 'translations' | 'dual';
   /** Build the deferred assembly (TankBuilderPort.afterAssemble: a suit or field net) inside the core, where it ran
    * before 2026-10-16, instead of in its own slices after the core checkpoint. Only the parity receipts pass it
    * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical.
@@ -1301,6 +1305,8 @@ export interface TankVisual {
   awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
+  /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
+  releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
   stageBattleDetailsForWarm(): () => void;
   /** The turret ring as built, hull frame (turretRingWell.ts): what a wreck's ring plate and a hulk's well are sized
@@ -1308,6 +1314,9 @@ export interface TankVisual {
   turretRingSeat(): TurretRingSeat | null;
   resetDestroyed(): void;
   resetForGaragePresentation(): void;
+  /** (perf-255) Build the far LOD now (a battle visual streamer's budgeted slice) instead of the first frame the vehicle
+   * stands that far; false when it has none or has built it. */
+  prepareFarLod?(): boolean;
   setVisible(visible: boolean): void;
   dispose(): void;
 }
@@ -1418,7 +1427,7 @@ export interface StaticDetailRecord {
   baseVisible: boolean;
 }
 
-interface BattleDetailGroup {
+export interface BattleDetailGroup {
   parent: THREE.Object3D;
   group: THREE.Group;
 }
@@ -1724,17 +1733,36 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // coplanar layers, so every color-pass mesh carries it; the root closure costs no parent walk per draw.
 export function installVehicleGroundReference(root: THREE.Object3D): void {
   root.traverse((object) => {
-    if (!(object as THREE.Mesh).isMesh) return;
-    const before = object.onBeforeRender, after = object.onAfterRender;
-    object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
-      setVehicleGroundFromRoot(root);
-      before.apply(this, args);
-    };
-    object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
-      after.apply(this, args);
-      resetVehicleGround();
-    };
+    if ((object as THREE.Mesh).isMesh) wrapVehicleGround(object, root);
   });
+}
+
+/** (perf-255) A fixed coplanar depth offset on one draw (installCoplanarDepthLayers' hook, for the far LOD's stand-ins). */
+function installFixedDepth(object: VehicleMesh, materials: THREE.Material[], depth: number, ties: number): void {
+  const previous = object.onBeforeRender;
+  object.onBeforeRender = function applyCoplanarDepthLayer(
+    renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, geometry: THREE.BufferGeometry,
+    renderedMaterial: THREE.Material, group: THREE.Group,
+  ) {
+    if (previous) previous.call(this, renderer, scene, camera, geometry, renderedMaterial, group);
+    if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
+    renderedMaterial.polygonOffset = true;
+    renderedMaterial.polygonOffsetFactor = 0;
+    renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(depth, ties, (camera as THREE.PerspectiveCamera | null)?.near ?? 0);
+  };
+}
+
+/** One draw's ground reference around its render hooks (installVehicleGroundReference; the far LOD's stand-ins). */
+function wrapVehicleGround(object: THREE.Object3D, root: THREE.Object3D): void {
+  const before = object.onBeforeRender, after = object.onAfterRender;
+  object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
+    setVehicleGroundFromRoot(root);
+    before.apply(this, args);
+  };
+  object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
+    after.apply(this, args);
+    resetVehicleGround();
+  };
 }
 
 function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[] {
@@ -1779,13 +1807,21 @@ function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[]
   return records.map(({ object, materials }, index) => ({ object, materials, layer: index + 1 }));
 }
 
-export function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
+export function installCoplanarDepthLayers(
+  root: THREE.Object3D, records: readonly CoplanarLayerRecord[],
+  /** (perf-250) the 'dual' merge's far layer order: an object in it draws with its far offset while `mode.far` holds, and
+   * a far copy (in it alone) always does; the root's record of the layers is the near order's, the identity build's. */
+  dual?: { readonly far: readonly CoplanarLayerRecord[]; readonly mode: { readonly far: boolean } },
+): void {
   let top = 0;
-  for (const { object, materials, layer, depth = layer, ties = 0 } of records) {
-    object.userData.coplanarDepthLayer = layer;
-    object.userData.coplanarDepthOffset = depth;
-    object.userData.coplanarDepthTies = ties;
-    top = Math.max(top, depth);
+  const farOf = new Map<THREE.Object3D, CoplanarLayerRecord>();
+  if (dual) for (const record of dual.far) farOf.set(record.object, record);
+  const install = (object: VehicleMesh, materials: THREE.Material[], depth: number, ties: number,
+    far: CoplanarLayerRecord | null): void => {
+    const farDepth = far ? far.depth ?? far.layer : depth, farTies = far ? far.ties ?? 0 : ties;
+    const mode = far ? dual!.mode : null;
+    // (perf-255) the offset this draw takes in the far order (the far LOD's stand-ins take their sources')
+    if (far) { object.userData.coplanarFarDepthOffset = farDepth; object.userData.coplanarFarDepthTies = farTies; }
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
       renderer: THREE.WebGLRenderer,
@@ -1799,15 +1835,38 @@ export function installCoplanarDepthLayers(root: THREE.Object3D, records: readon
       if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
       renderedMaterial.polygonOffset = true;
       renderedMaterial.polygonOffsetFactor = 0;
+      const useFar = mode !== null && mode.far;
       // exact ties climb more under a deeper near plane (the Gallery's tight one): coplanarDepth.ts coplanarDepthUnits
-      renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(depth, ties,
+      renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(useFar ? farDepth : depth, useFar ? farTies : ties,
         (camera as THREE.PerspectiveCamera | null)?.near ?? 0);
     };
+  };
+  for (const { object, materials, layer, depth = layer, ties = 0 } of records) {
+    object.userData.coplanarDepthLayer = layer;
+    object.userData.coplanarDepthOffset = depth;
+    object.userData.coplanarDepthTies = ties;
+    top = Math.max(top, depth);
+    install(object, materials, depth, ties, farOf.get(object) ?? null);
+    farOf.delete(object);
+  }
+  // the far copies (the far order's own records): they draw only in the far mode, with their far offsets
+  for (const record of farOf.values()) {
+    const depth = record.depth ?? record.layer, ties = record.ties ?? 0;
+    record.object.userData.coplanarDepthLayer = record.layer;
+    record.object.userData.coplanarDepthOffset = depth;
+    record.object.userData.coplanarDepthTies = ties;
+    install(record.object, record.materials, depth, ties, null);
   }
   root.userData.coplanarDepthLayerCount = records.length;
   // the deepest offset any record draws with: one unit past it is in front of every layer
   root.userData.coplanarDepthTop = top;
 }
+
+/** (perf-250) The 'dual' static merge draws a vehicle's far copies from this screen-equivalent camera distance (m) and its
+ * parts again under FAR_MERGE_RETURN_M: past ~25 m the translated merge's float rounding moves no pixel a player can see
+ * (the coordinator's ruling on the CPU render pairs), nearer the parts draw exactly as the identity build. */
+export const FAR_MERGE_ENTER_M = 30;
+export const FAR_MERGE_RETURN_M = 27;
 
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
 // shells, wheels and track band carry the silhouette. The renderer drives
@@ -7844,7 +7903,7 @@ function* prepareTankDecorationSteps(
 function defaultStaticDrawMerge(): NonNullable<TankFactoryOptions['staticDrawMerge']> {
   const requested = typeof location !== 'undefined'
     ? new URLSearchParams(location.search).get('staticmerge') : null;
-  return requested === 'off' || requested === 'translations' ? requested : 'identity';
+  return requested === 'off' || requested === 'translations' || requested === 'dual' ? requested : 'identity';
 }
 
 /**
@@ -9761,6 +9820,12 @@ export interface TankRuntimeEnv {
 /** A clone's runtime takes its source's finished tail (cloneTankVisual) instead of running it. */
 interface TankRuntimeAdoption {
   mobileDetailObjects: StaticDetailRecord[];
+  /** (perf-252) a battle build's tail in the clone's terms: its detail groups, the dual merge's far copies, and the depth
+   * orders its runtime installs (the far one only with far copies) */
+  battleDetailGroups: BattleDetailGroup[];
+  farMergeRuns: FarMergeRun[];
+  depthLayers: CoplanarLayerRecord[];
+  farLayers: CoplanarLayerRecord[] | null;
 }
 
 /** A finished visual's runtime record: what cloneTankVisual copies a clone's runtime from. */
@@ -9768,6 +9833,9 @@ interface TankCloneSource {
   env: TankRuntimeEnv;
   mobileDetailObjects: StaticDetailRecord[];
   depthLayers: CoplanarLayerRecord[];
+  battleDetailGroups: BattleDetailGroup[];
+  farMergeRuns: FarMergeRun[];
+  farLayers: CoplanarLayerRecord[] | null;
 }
 export const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
 
@@ -9860,7 +9928,13 @@ export function* createTankRuntimeSteps(
   // camoSeed/quality never move wheels), so re-attachment on every build is
   // an idempotent overwrite. Gearless builds (community GLB placeholders)
   // publish nothing and keep the legacy plate+AABB path untouched.
-  if (P.gear && P.gear.trackHitbox) attachTrackShapes(armor, P.gear.trackHitbox);
+  // (249) A combat-rig row hands the builders an authoring copy of the armor (authoringRigSpec); the prisms go onto the
+  // shared combat armor as well, which the copy's writes never reached (every such tank fought without track prisms).
+  if (P.gear && P.gear.trackHitbox) {
+    attachTrackShapes(armor, P.gear.trackHitbox);
+    const combatArmor = getSpec(specId).armor;
+    if (combatArmor !== armor) attachTrackShapes(combatArmor, P.gear.trackHitbox);
+  }
 
   // ---- state ----
   let destroyed = false;
@@ -9987,6 +10061,187 @@ export function* createTankRuntimeSteps(
   let mobileDetailObjects: StaticDetailRecord[] = [];
   let mobileDetailsVisible = true;
   let battleDetailGroups: BattleDetailGroup[] = [];
+  // (perf-250) the 'dual' static merge's far copies and the mode the depth hooks read (applyFarMerge)
+  let farMergeRuns: FarMergeRun[] = [];
+  const farMergeMode = { far: false };
+  /** Draw each copied run as its far copy or as its parts; a distance-detail run keeps that policy's visibility too. */
+  const applyFarMerge = (far: boolean): void => {
+    farMergeMode.far = far;
+    for (const run of farMergeRuns) {
+      const shown = !run.detail || mobileDetailsVisible;
+      run.copy.visible = shown && far;
+      for (const source of run.sources) source.visible = shown && !far;
+    }
+  };
+  // (perf-255) the far LOD (farLod.ts): a battle build's stand-ins past FAR_LOD_ENTER_M, built from its own tree the
+  // first time it goes that far; the detail they stand in for is parked while they draw, and the gear's runtime rests
+  const farLodEnabled = batchStatic && staticDrawMerge === 'dual' && !geometryOnly;
+  let farLod: { hull: FarHull; gear: THREE.Mesh | null; gearParked: THREE.Object3D[]; meshes: THREE.Mesh[] } | null = null;
+  let farLodActive = false;
+  let unparkFarLod: (() => void) | null = null;
+  const buildFarLod = (): NonNullable<typeof farLod> => {
+    const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
+    for (const cluster of destructibleClusters.values()) {
+      for (const range of cluster.ranges) pinnedPositions.add(range.position);
+      for (const drape of cluster.drapes ?? []) pinnedPositions.add(drape.position);
+    }
+    root.updateMatrixWorld(true);
+    const hull = buildFarHull(root, (mesh) => ({
+      depth: (mesh.userData.coplanarFarDepthOffset ?? mesh.userData.coplanarDepthOffset ?? 0) as number,
+      ties: (mesh.userData.coplanarFarDepthTies ?? mesh.userData.coplanarDepthTies ?? 0) as number,
+    }), (mesh) => {
+      const geometry = mesh.geometry;
+      if (equipmentDamage.ownsGeometry(geometry) || weaponDamage.ownsGeometry(geometry)) return false;
+      if (pinnedPositions.has(geometry.getAttribute('position')) || decalMeshes.includes(mesh as VehicleMesh)) return false;
+      if (mesh.userData.vehicleMarking || mesh.userData.authoredShadowProxy) return false;
+      // the gear's static draws (a wheel bay's shadow wall, its covers) join it; the bands, which the gear's runtime
+      // deforms, and every buffer a runtime writes do not
+      if (mesh.name === 'gearTrackBandL' || mesh.name === 'gearTrackBandR') return false;
+      for (const attribute of Object.values(geometry.attributes)) {
+        if ((attribute as THREE.BufferAttribute).usage !== THREE.StaticDrawUsage) return false;
+      }
+      return true;
+    });
+    for (const geometry of hull.geometries) disposables.push(geometry);
+    // the gear: each wheel station once, each end wheel, as low cylinders. A station is its tyre layer's (its centre, its
+    // radius); its rubber share is the ring its tyre shows past its set's painted layers (discs, rims, faces), measured on
+    // the layers' own geometry about the axle. A wheel set with no tyre layer, and every end wheel, is steel (all paint).
+    const wheels: FarWheel[] = [];
+    let tyre: THREE.Material | null = null, paint: THREE.Material | null = null;
+    const replaced = new Set<THREE.Object3D>();
+    /** A wheel layer's reach about its axle and its width along it, on its own geometry. */
+    const extentOf = (geometry: THREE.BufferGeometry): { radial: number; width: number } => {
+      const position = geometry.getAttribute('position');
+      let radial = 0, xMin = Infinity, xMax = -Infinity;
+      for (let i = 0; i < position.count; i++) {
+        radial = Math.max(radial, Math.hypot(position.getY(i), position.getZ(i)));
+        xMin = Math.min(xMin, position.getX(i)); xMax = Math.max(xMax, position.getX(i));
+      }
+      return { radial, width: position.count ? xMax - xMin : 0 };
+    };
+    const addStation = (wheel: FarWheel): void => {
+      const reach = (other: FarWheel): number => Math.max(other.r, wheel.r) * 0.5;
+      if (wheels.some((other) => Math.sign(other.x) === Math.sign(wheel.x) && Math.abs(other.z - wheel.z) < reach(other)
+        && Math.abs(other.y - wheel.y) < reach(other))) return;
+      wheels.push(wheel);
+    };
+    const units = P.gear ? (P.gear.__units ?? [P.gear]) : [];
+    for (const unit of units) {
+      const env = GEAR_RUNTIME_ENVS.get(unit);
+      if (!env) continue;
+      const tyreLayers = env.made.filter(({ im }) => /Tires$/.test(im.name));
+      for (const { im } of env.made) {
+        replaced.add(im);
+        // (a plain mesh draws the original: an instanced layer's material may be its instanced-variant twin)
+        const material = programVariantOrigin(Array.isArray(im.material) ? im.material[0] : im.material);
+        if (!tyre && /Tires$/.test(im.name)) tyre = material;
+        if (!paint && /Discs$/.test(im.name)) paint = material;
+      }
+      for (const { im, list } of [...tyreLayers, ...env.made.filter((layer) => !tyreLayers.includes(layer))]) {
+        // a tyre layer's stations take its set's measures: the rubber ring past the painted layers, the width of the
+        // tyre or the disc (a dual wheel is one wide cylinder, as it reads); other stations a generic width, all paint
+        let share = 0, width = 0;
+        if (tyreLayers.some((layer) => layer.im === im)) {
+          const set = im.name.slice(0, -'Tires'.length);
+          const tyreExtent = extentOf(im.geometry);
+          let painted = 0;
+          width = tyreExtent.width;
+          for (const layer of env.made) {
+            if (layer.im === im || !layer.im.name.startsWith(set) || /(Tires|Insets)$/.test(layer.im.name)) continue;
+            const extent = extentOf(layer.im.geometry);
+            painted = Math.max(painted, extent.radial);
+            if (/Discs$/.test(layer.im.name)) width = Math.max(width, extent.width);
+          }
+          share = tyreExtent.radial > 0 ? Math.min(0.45, Math.max(0, 1 - painted / tyreExtent.radial)) : 0;
+        }
+        for (const entry of list) {
+          const w = width > 0 ? width : entry.road ? env.wheelW : env.wheelW * 0.6;
+          addStation({ x: entry.x, y: entry.y, z: entry.z, r: entry.r, w, tyre: share });
+        }
+      }
+      for (const side of [-1, 1] as const) {
+        for (const end of [env.sprocket, env.idler]) {
+          wheels.push({ x: side * env.xcForSide(side), y: end.y, z: end.z, r: end.r, w: env.wheelW * 0.8, tyre: 0 });
+        }
+      }
+    }
+    tyre ??= mats.dark;
+    paint ??= mats.wheels ?? mats.dark;
+    let gear: THREE.Mesh | null = null;
+    const gearParked: THREE.Object3D[] = [];
+    if (wheels.length) {
+      const geometry = farWheelsGeometry(wheels);
+      disposables.push(geometry);
+      gear = new THREE.Mesh(geometry, [tyre, paint]);
+      gear.name = 'farLodRunningGear';
+      gear.visible = false;
+      gear.castShadow = false;
+      gear.receiveShadow = true;
+      gear.userData.farLod = true;
+      hullG.add(gear);
+      // the draws the stand-in replaces: the wheel layers, the roller spindles and the end wheels. The bands stay at the
+      // pose the gear last left them, the shoes and links too (their own 150 m tiers hide them before this range), and
+      // the gear's static draws are the far hull's.
+      hullG.traverse((object) => {
+        const draw = object as THREE.Object3D & { isInstancedMesh?: boolean; isBatchedMesh?: boolean };
+        if (object === gear || !(draw.isInstancedMesh || draw.isBatchedMesh)) return;
+        if (replaced.has(object) || /^gear(RoadWheel|ReturnRoller|EndWheel)/.test(object.name)) gearParked.push(object);
+      });
+    }
+    const meshes = [...hull.meshes, ...(gear ? [gear] : [])];
+    // each hull stand-in draws at its sources' far depth offset (coplanar parts keep their winners), then the ground
+    // reference around it, as every finished draw
+    for (const stand of hull.meshes) {
+      installFixedDepth(stand as VehicleMesh, [stand.material as THREE.Material], stand.userData.coplanarDepthOffset as number,
+        stand.userData.coplanarDepthTies as number);
+    }
+    for (const mesh of meshes) wrapVehicleGround(mesh, root);
+    root.userData.farLod = { hullTrianglesBefore: hull.trianglesBefore, hullTrianglesAfter: hull.trianglesAfter,
+      hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.length };
+    return { hull, gear, gearParked, meshes };
+  };
+  /** The far LOD built under the far detail state (the distance hand-offs' and the far copies'), whatever the vehicle
+   * shows now: a battle visual streamer prepares it before the vehicle has synced at range. */
+  const buildFarLodAtRange = (): NonNullable<typeof farLod> => {
+    const mobileWas = mobileDetailsVisible, attachedWas = battleDetailsAttached, farWas = farMergeMode.far;
+    if (mobileWas) {
+      mobileDetailsVisible = false;
+      for (const record of mobileDetailObjects) record.object.visible = false;
+    }
+    setBattleDetailsAttached(false);
+    if (farMergeRuns.length) applyFarMerge(true);
+    try {
+      return buildFarLod();
+    } finally {
+      if (mobileWas) {
+        mobileDetailsVisible = true;
+        for (const record of mobileDetailObjects) record.object.visible = record.baseVisible;
+      }
+      if (farMergeRuns.length) applyFarMerge(farWas);
+      setBattleDetailsAttached(attachedWas);
+    }
+  };
+  /** Show the far stand-ins (building them the first time, one vehicle at a time) or the detail again. */
+  const setFarLod = (on: boolean): void => {
+    if (on) {
+      if (!farLod) {
+        const startedAt = performance.now();
+        if (!claimFarLodBuild(startedAt)) return;
+        farLod = buildFarLod();
+        const endedAt = performance.now();
+        noteFarLodBuild(startedAt, endedAt);
+        (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((endedAt - startedAt) * 10) / 10;
+      }
+      unparkFarLod = parkDraws([...farLod.hull.sources, ...farLod.gearParked]);
+      for (const mesh of farLod.meshes) mesh.visible = true;
+    } else {
+      unparkFarLod?.();
+      unparkFarLod = null;
+      if (farLod) for (const mesh of farLod.meshes) mesh.visible = false;
+      gearForceUpdate = true;
+    }
+    farLodActive = on;
+  };
   let battleDetailsAttached = true;
   function setBattleDetailsAttached(attached: boolean): void {
     if (!battleDetailGroups.length || attached === battleDetailsAttached) return;
@@ -10484,6 +10739,7 @@ export function* createTankRuntimeSteps(
             || (battleDetailsAttached ? viewDistM < 122 : viewDistM < 96);
           setBattleDetailsAttached(shouldAttach);
         }
+        let detailChanged = false;
         if (mobileDetailObjects.length) {
           // Hysteresis prevents tiny cosmetics from toggling when a vehicle
           // hovers around the handoff. Callers without a battle-camera distance
@@ -10492,10 +10748,26 @@ export function* createTankRuntimeSteps(
             || (mobileDetailsVisible ? viewDistM < 66 : viewDistM < 52);
           if (shouldShow !== mobileDetailsVisible) {
             mobileDetailsVisible = shouldShow;
+            detailChanged = true;
             for (const record of mobileDetailObjects) {
               record.object.visible = record.baseVisible && shouldShow;
             }
           }
+        }
+        if (farMergeRuns.length) {
+          // (perf-250) the far copies past FAR_MERGE_ENTER_M of screen-equivalent distance; the parts themselves, the
+          // identity build to the byte, nearer, in every inspection context (no distance: the killcam, the Garage, the
+          // Studio) and on a wreck
+          const far = viewDistM !== undefined && !destroyed
+            && (farMergeMode.far ? viewDistM >= FAR_MERGE_RETURN_M : viewDistM >= FAR_MERGE_ENTER_M);
+          if (far !== farMergeMode.far || detailChanged) applyFarMerge(far);
+        }
+        if (farLodEnabled) {
+          // (perf-255) the far LOD past FAR_LOD_ENTER_M of screen-equivalent distance (back under FAR_LOD_RETURN_M); never
+          // with no distance (an inspection view) or on a wreck
+          const far = viewDistM !== undefined && !destroyed
+            && (farLodActive ? viewDistM >= FAR_LOD_RETURN_M : viewDistM >= FAR_LOD_ENTER_M);
+          if (far !== farLodActive) setFarLod(far);
         }
         root.position.copy(renderState.pos);
       };
@@ -10683,7 +10955,8 @@ export function* createTankRuntimeSteps(
         : (viewDistM <= GEAR_MID_RATE_M ? GEAR_MID_INTERVAL_S : GEAR_FAR_INTERVAL_S);
       const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
-      const gearVisible = root.visible !== false && detailVisible !== false;
+      // (perf-255) a far-LOD'd vehicle's gear rests: its stand-in draws (the bands hold their last pose)
+      const gearVisible = root.visible !== false && detailVisible !== false && !farLodActive;
       const syncFromStateAssemblyStage6 = (): void => {
         if (gearVisible !== gearWasVisible) {
           if (gearVisible) gearForceUpdate = true;
@@ -11026,6 +11299,8 @@ export function* createTankRuntimeSteps(
      */
     setDestroyed(opts) {
       if (destroyed) return;
+      // (perf-255) the wreck captures and restores the detail: never the far stand-ins
+      if (farLodActive) setFarLod(false);
       // Battle warm normally prepares these exact maps behind the loading
       // cover. Keep setDestroyed self-contained for screenshots, Studio, and
       // any recovery path that intentionally bypasses the warm coordinator.
@@ -11113,6 +11388,18 @@ export function* createTankRuntimeSteps(
       return [...wreckFallbackWarmSources];
     },
 
+    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r7': the Garage's own programs were
+    // linked without it, so the hero it adopts back from a battle drops the disarmed hooks (the next battle's prewarmBurn
+    // puts them back) and its Garage paint compiles as its build did
+    releaseBurnHooks() {
+      if (destroyed) return;
+      root.traverse((o) => {
+        if (!isVehicleMesh(o)) return;
+        const mm = Array.isArray(o.material) ? o.material : [o.material];
+        for (const sm of mm) removeBurnHook(sm, burnU);
+      });
+    },
+
     /** Shared fallback used by non-standard fittings during the wreck sweep. */
     getWreckFallbackMaterial() {
       mats.prepareBurnt?.();
@@ -11164,6 +11451,8 @@ export function* createTankRuntimeSteps(
           mesh.visible = wasVisible !== false;
         }
         for (const d of decalMeshes) d.visible = true;
+        // (perf-250) the captured visibility may be the far copies' from before the wreck: the mode as it stands now
+        if (farMergeRuns.length) applyFarMerge(farMergeMode.far);
         // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
         // the spec pivot is only where the procedural turret sits; a GLB
         // swap seats turretG on the model's real ring (t90am restaged 1.21 m
@@ -11214,6 +11503,14 @@ export function* createTankRuntimeSteps(
      * visual to avoid rebuilding its geometry, so every battle-owned pose
      * layer must be cleared before the garage render loop stops syncing it.
      */
+    prepareFarLod() {
+      if (!farLodEnabled || farLod || destroyed) return false;
+      const startedAt = performance.now();
+      farLod = buildFarLodAtRange();
+      (root.userData.farLod as { buildMs?: number }).buildMs = Math.round((performance.now() - startedAt) * 10) / 10;
+      return true;
+    },
+
     resetForGaragePresentation() {
       this.resetDestroyed();
       groundSampler = null;
@@ -11230,6 +11527,9 @@ export function* createTankRuntimeSteps(
           record.object.visible = record.baseVisible;
         }
       }
+      // (perf-250) the parts, never the far copies, in the Garage
+      if (farMergeRuns.length) applyFarMerge(false);
+      if (farLodActive) setFarLod(false);
     },
 
     setVisible(v) { root.visible = v; },
@@ -11273,6 +11573,15 @@ export function* createTankRuntimeSteps(
   // A clone's tree is its source's finished one (decorated, filled, normalized and layered): only its state is new.
   if (adoption) {
     mobileDetailObjects = adoption.mobileDetailObjects;
+    battleDetailGroups = adoption.battleDetailGroups;
+    farMergeRuns = adoption.farMergeRuns;
+    // the render hooks every finished mesh carries: its coplanar depth layer (mode-aware where the build has far
+    // copies), then the ground reference around it
+    if (adoption.farLayers) installCoplanarDepthLayers(root, adoption.depthLayers, { far: adoption.farLayers, mode: farMergeMode });
+    else installCoplanarDepthLayers(root, adoption.depthLayers);
+    installVehicleGroundReference(root);
+    // (perf-252) a battle build's pooled rigid stock: the clone draws its source's and holds its own lease on it
+    if (batchStatic && !staticPreview) releaseBattleGeometry = leaseSharedBattleGeometry(root);
     return visual;
   }
 
@@ -11450,32 +11759,39 @@ export function* createTankRuntimeSteps(
     // P21 (staticDrawMerge.ts): fold contiguous same-material runs of the final
     // layer order into one draw per articulation owner, then move every
     // per-mesh reference a runtime owner holds onto the merged draw.
-    const mergeBattleStaticRuns = (
-      records: CoplanarLayerRecord[], bakeTranslations: boolean,
-    ): CoplanarLayerRecord[] => {
+    const staticMergeOptions = (bakeTranslations: boolean, dual: boolean,
+      onMerge: (sources: readonly VehicleMesh[], merged: VehicleMesh) => void) => {
       const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) pinnedPositions.add(range.position);
         for (const drape of cluster.drapes ?? []) pinnedPositions.add(drape.position);
       }
       const shadowDetail = vehicleShadowDetailOf(root);
-      const replaced = new Map<THREE.Object3D, VehicleMesh>();
-      const result = mergeContiguousStaticRuns(records, disposables, {
+      return {
         bakeTranslations,
-        isPinned: (mesh) => equipmentDamage.ownsGeometry(mesh.geometry)
+        dual,
+        isPinned: (mesh: VehicleMesh) => equipmentDamage.ownsGeometry(mesh.geometry)
           || weaponDamage.ownsGeometry(mesh.geometry)
           || pinnedPositions.has(mesh.geometry.getAttribute('position'))
           || decalMeshes.includes(mesh),
         isShareable: isBattleShareableMesh,
         staticGearName: BATTLE_STATIC_BATCH_NAME,
-        nearShadow: new Set(shadowDetail?.detail ?? []),
-        detail: new Set(mobileDetailObjects.map((record) => record.object)),
-        onMerge: (sources, merged) => {
+        nearShadow: new Set<THREE.Object3D>(shadowDetail?.detail ?? []),
+        detail: new Set<THREE.Object3D>(mobileDetailObjects.map((record) => record.object)),
+        onMerge,
+      };
+    };
+    const mergeBattleStaticRuns = (
+      records: CoplanarLayerRecord[], bakeTranslations: boolean,
+    ): CoplanarLayerRecord[] => {
+      const shadowDetail = vehicleShadowDetailOf(root);
+      const replaced = new Map<THREE.Object3D, VehicleMesh>();
+      const result = mergeContiguousStaticRuns(records, disposables, staticMergeOptions(bakeTranslations, false,
+        (sources, merged) => {
           transferVehicleNightLenses(sources, merged);
           transferSmokeSockets(sources, merged);
           for (const source of sources) replaced.set(source, merged);
-        },
-      });
+        }));
       if (result.merges) {
         const swap = <T extends { object: THREE.Object3D }>(entries: readonly T[], make: (entry: T, object: VehicleMesh) => T): T[] => {
           const seen = new Set<THREE.Object3D>();
@@ -11516,10 +11832,29 @@ export function* createTankRuntimeSteps(
     if (batchStatic && staticDrawMerge !== 'off') {
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
+    // (perf-250) the 'dual' merge: the identity build exactly, plus each translated run's merged copy beside it, hidden;
+    // the far layer order is the identity records with every copied run's parts replaced by its copy
+    let farLayers: CoplanarLayerRecord[] | null = null;
+    if (batchStatic && staticDrawMerge === 'dual') {
+      farMergeRuns = mergeContiguousStaticRuns(depthLayers, disposables, staticMergeOptions(true, true, () => {})).duals;
+      if (farMergeRuns.length) {
+        const copied = new Set<THREE.Object3D>(farMergeRuns.flatMap((run) => run.sources));
+        farLayers = [...depthLayers.filter((record) => !copied.has(record.object)),
+          ...farMergeRuns.map((run) => ({ object: run.copy, materials: [run.copy.material as THREE.Material], layer: run.layer }))];
+      }
+      root.userData.staticMergeFarCopies = farMergeRuns.length;
+      root.userData.staticMergeFarSavedDraws = farMergeRuns.reduce((sum, run) => sum + run.sources.length - 1, 0);
+    }
     // 243: offsets bounded by contact, then the markings' draws above the armour they are painted on (coplanarDepth.ts)
     depthLayers = assignCoplanarDepth(root, depthLayers);
     depthLayers = [...depthLayers, ...markingDepthRecords(root, depthLayers, decalMeshes)];
-    installCoplanarDepthLayers(root, depthLayers);
+    if (farLayers) {
+      farLayers = assignCoplanarDepth(root, farLayers);
+      farLayers = [...farLayers, ...markingDepthRecords(root, farLayers, decalMeshes)];
+      installCoplanarDepthLayers(root, depthLayers, { far: farLayers, mode: farMergeMode });
+    } else {
+      installCoplanarDepthLayers(root, depthLayers);
+    }
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();
@@ -11547,6 +11882,7 @@ export function* createTankRuntimeSteps(
 
     TANK_CLONE_SOURCES.set(visual, {
       env: { ...env, deferredAssembly: [], assembledChildren: null }, mobileDetailObjects, depthLayers,
+      battleDetailGroups, farMergeRuns, farLayers,
     });
     visualCompleted = true;
     return visual;

@@ -34,7 +34,7 @@ export const ZTZ100_PROTOTYPE_DATUMS = Object.freeze({
 
 // ------------------------------------------------------------------------------------------------------- hull
 const H = {
-  belly: 0.35, tub: 0.96, sponson: 1.08, fender: 1.30, roof: 1.41, deck: 1.50, deckZ: -2.40,
+  belly: 0.35, tub: 0.96, sponson: 1.08, fender: 1.30, roof: 1.41, deck: 1.50, deckZ: -2.62,
   glacisTopZ: 0.95, noseZ: ZTZ100_PROTOTYPE_DATUMS.noseZ, noseY: ZTZ100_PROTOTYPE_DATUMS.noseY, sternZ: ZTZ100_PROTOTYPE_DATUMS.sternPlateZ,
   skirtAft: 1.765, skirtFwd: 1.849, skirtLow: 1.707, skirtLip: 1.60, skirtStep: 0.82, lipY: 0.62, hem: 0.50, curtain: 0.04,
 } as const;
@@ -145,8 +145,9 @@ function skirts(P: TankBuilderPort): void {
     for (const dz of [-0.30, 0, 0.30]) P.add('hullDark', part(box(0.012, 0.28, 0.02), 'sponson-box-rib'), s * (H.skirtFwd + 0.012), 1.2075, 1.903 + dz);
     // aft sponson boxes above the aft skirt band (measured x 1.592–1.765, y 1.03–1.50, z −3.25..−1.32)
     for (const [z0, z1] of [[-3.25, -2.34], [-2.32, -1.32]]) {
-      P.addEquipment('hull', part(box(0.17, 0.47, z1 - z0), 'sponson-box-aft'), s * (H.skirtAft - 0.085 + 0.004), 1.265, (z0 + z1) / 2);
-      for (const dz of [-0.28, 0, 0.28]) P.add('hullDark', part(box(0.012, 0.36, 0.02), 'sponson-box-rib'), s * (H.skirtAft + 0.01), 1.265, (z0 + z1) / 2 + dz);
+      // (release 240: tops 1.43, not 1.50, under the turret's 1.44 floor that turns over them 1.8-2.0 m off the ring's axis)
+      P.addEquipment('hull', part(box(0.17, 0.40, z1 - z0), 'sponson-box-aft'), s * (H.skirtAft - 0.085 + 0.004), 1.23, (z0 + z1) / 2);
+      for (const dz of [-0.28, 0, 0.28]) P.add('hullDark', part(box(0.012, 0.31, 0.02), 'sponson-box-rib'), s * (H.skirtAft + 0.01), 1.23, (z0 + z1) / 2 + dz);
     }
   }
 }
@@ -185,17 +186,23 @@ function bow(P: TankBuilderPort): void {
   P.add('hullDark', part(box(0.20, 0.08, 0.08), 'bow-sensor'), 0, 1.10, 3.58, 0.3, 0, 0);
   P.add('hullDark', part(box(2.10, 0.05, 0.05), 'nose-strip'), 0, 0.86, 3.40, 0.55, 0, 0);
   for (let i = 0; i < 8; i++) P.add('hullDetail', part(cylZ(0.016, 0.012, 8), 'nose-strip-bolt'), -0.91 + i * 0.26, 0.86, 3.43, 0.55, 0, 0);
-  P.add('hullDark', part(cylY(0.15, 0.15, 0.03, 24), 'roof-vent'), 1.10, H.roof + 0.015, -1.90);
-  for (const r of [0.05, 0.10, 0.14]) P.add('hullDark', part(torus(r, 0.005, 20), 'roof-vent-ring'), 1.10, H.roof + 0.03, -1.90, Math.PI / 2, 0, 0);
+  // (release 240: the vent 1 cm lower, top 1.430, and its rings half-sunk on it, under the turret's 1.44 floor 3 cm over
+  // the roof; KIT.torus is already flat, and an extra half-turn had stood the rings up 14.5 cm into it)
+  P.add('hullDark', part(cylY(0.15, 0.15, 0.03, 24), 'roof-vent'), 1.10, H.roof + 0.005, -1.90);
+  for (const r of [0.05, 0.10, 0.14]) P.add('hullDark', part(torus(r, 0.005, 20), 'roof-vent-ring'), 1.10, H.roof + 0.018, -1.90);
 }
 
 /** Engine deck: twin louvre fields either side of a spine, filler caps, exhaust housing and the slatted deck rack. */
 function deck(P: TankBuilderPort): void {
-  for (const s of [-1, 1]) louvreField(P, 'hull', 'deck-grille', [s * 0.80, H.deck + 0.018, -2.92], 1.10, 0.84, 8, 'up');
-  P.add('hullDetail', part(box(0.16, 0.03, 0.90), 'deck-spine'), 0, H.deck + 0.015, -2.92);
-  for (const s of [-1, 1]) P.add('hullDark', part(cylY(0.09, 0.09, 0.03, 16), 'filler-cap'), s * 0.55, H.deck + 0.015, -2.48);
-  P.add('hull', part(box(0.40, 0.14, 0.60), 'exhaust-housing'), -1.35, H.deck + 0.07, -2.20);
-  for (let i = 0; i < 5; i++) P.add('hullDark', part(box(0.012, 0.09, 0.06), 'exhaust-louvre'), -1.556, H.deck + 0.07, -2.42 + i * 0.11);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck steps up at -2.62, past the
+  // turret's 1.44 floor (2.0 m off the ring's axis), and its furniture sits behind the step: louvre fields and spine
+  // 0.68 m long, the filler caps on the spine, the exhaust housing at the left edge; stepping up at -2.40 the deck and its
+  // kit stood 6-21 cm in the turret's sweep.
+  for (const s of [-1, 1]) louvreField(P, 'hull', 'deck-grille', [s * 0.80, H.deck + 0.018, -3.00], 1.10, 0.68, 7, 'up');
+  P.add('hullDetail', part(box(0.16, 0.03, 0.68), 'deck-spine'), 0, H.deck + 0.015, -3.00);
+  for (const z of [-2.72, -3.28]) P.add('hullDark', part(cylY(0.07, 0.07, 0.03, 16), 'filler-cap'), 0, H.deck + 0.030, z);
+  P.add('hull', part(box(0.30, 0.14, 0.50), 'exhaust-housing'), -1.50, H.deck + 0.07, -2.95);
+  for (let i = 0; i < 5; i++) P.add('hullDark', part(box(0.012, 0.09, 0.06), 'exhaust-louvre'), -1.656, H.deck + 0.07, -3.17 + i * 0.11);
   // slatted stowage rack behind the bustle (measured x ±0.959, y 1.78–2.15, z −3.21..−2.96)
   // the rack stands on the deck: a dense bin from 1.52 to 2.15 with slat ribs (measured x ±0.959, z −3.21..−2.96)
   P.addEquipment('hull', part(box(1.90, 0.61, 0.24), 'deck-rack-floor'), 0, 1.835, -3.085);
@@ -222,7 +229,9 @@ function stern(P: TankBuilderPort): void {
   }
   // slat cage (the reference's rear render): eight horizontal bars from y 0.68 to 1.48 wrap the stern 0.70 m behind
   // the stern plate (measured rear extreme z −4.08) and run along both rear flanks at x ±1.80 to z −0.40, on posts
-  const cageY0 = 0.68, cageY1 = 1.48, cageBars = 8, cageZ = ZTZ100_PROTOTYPE_DATUMS.sternScreenZ + 0.02, cageX = 1.80;
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the cage tops 1.39 (rail 1.425), under the
+  // turret's 1.44 floor that its flank runs reach forward to z -0.40; at 1.48 the rail stood 8 cm in it)
+  const cageY0 = 0.68, cageY1 = 1.39, cageBars = 8, cageZ = ZTZ100_PROTOTYPE_DATUMS.sternScreenZ + 0.02, cageX = 1.80;
   // the bin body the bars wrap (the reference reads a dense stowage bin, and the top silhouette must be closed)
   P.add('hullDark', part(box(cageX * 2 - 0.04, cageY1 - cageY0 - 0.04, -(cageZ + 0.02) + (H.sternZ - 0.02)), 'cage-bin'),
     0, (cageY0 + cageY1) / 2, (cageZ + 0.02 + H.sternZ - 0.02) / 2);

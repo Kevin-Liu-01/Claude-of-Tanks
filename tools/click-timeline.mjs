@@ -59,6 +59,21 @@ const PROBE = `(() => {
       if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) < 0.05) return false; }
     return true; };
   rec.shown = (sel) => rec.visible(document.querySelector(sel));
+  // --layout-trace: while armed, each layout-reading DOM call records its caller (the frame below this probe)
+  rec.layoutReads = []; rec.layoutArmed = false;
+  const traceRead = (name) => { if (!rec.layoutArmed) return;
+    const frames = String(new Error().stack || '').split('\\n').slice(3, 6).map((line) => line.trim());
+    rec.layoutReads.push({ name, frames }); };
+  const wrapMethod = (proto, name) => { const original = proto[name]; if (typeof original !== 'function') return;
+    proto[name] = function (...args) { traceRead(name); return original.apply(this, args); }; };
+  const wrapGetter = (proto, name) => { const d = Object.getOwnPropertyDescriptor(proto, name); if (!d || !d.get) return;
+    Object.defineProperty(proto, name, { ...d, get() { traceRead(name); return d.get.call(this); } }); };
+  if (window.__cotLayoutTrace) {
+    for (const name of ['getBoundingClientRect', 'getClientRects', 'scrollIntoView']) wrapMethod(Element.prototype, name);
+    for (const name of ['offsetWidth', 'offsetHeight', 'offsetLeft', 'offsetTop']) wrapGetter(HTMLElement.prototype, name);
+    for (const name of ['clientWidth', 'clientHeight', 'scrollWidth', 'scrollHeight', 'scrollTop', 'scrollLeft']) wrapGetter(Element.prototype, name);
+    const gcs = window.getComputedStyle; window.getComputedStyle = function (...args) { traceRead('getComputedStyle'); return gcs.apply(window, args); };
+  }
   const describe = (node) => { if (!node || node.nodeType !== 1) return null;
     const cls = typeof node.className === 'string' ? node.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
     return node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') + (cls ? '.' + cls : ''); };
@@ -133,11 +148,30 @@ async function settle(page, quietMs = 600, maxMs = 6000) {
 }
 
 /** One measured press: INP, processing, input delay, the overlapping LoAF scripts, long tasks, time to shown / done. */
-async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs }) {
-  const t0 = await page.evaluate(() => performance.now());
+async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null }) {
+  // --cpu-profile=<dir>: a sampled V8 profile of the press and its next two frames, for attributing inside one handler
+  // (it stalled on the game page's first press in click-perf-248; --layout-trace names the forced layouts instead)
+  const profiler = cpuProfile ? await page.createCDPSession() : null;
+  if (profiler) {
+    await profiler.send('Profiler.enable');
+    await profiler.send('Profiler.setSamplingInterval', { interval: 500 });
+    await profiler.send('Profiler.start');
+  }
+  const t0 = await page.evaluate(() => { window.__click.layoutReads.length = 0; window.__click.layoutArmed = true; return performance.now(); });
   let error = null;
   if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
   else await press(page, selector, touch).catch((cause) => { error = firstLine(cause); });
+  // the press's task and its next two frames: what the layout tracer (when on) attributes
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
+  const layoutReads = await page.evaluate(() => { window.__click.layoutArmed = false; return window.__click.layoutReads.splice(0); }).catch(() => []);
+  if (profiler) {
+    const { profile } = await profiler.send('Profiler.stop').catch(() => ({ profile: null }));
+    if (profile) {
+      mkdirSync(cpuProfile.dir, { recursive: true });
+      writeFileSync(join(cpuProfile.dir, `${cpuProfile.name}.cpuprofile`), JSON.stringify(profile));
+    }
+    await profiler.detach().catch(() => {});
+  }
   const stamp = () => page.evaluate(() => performance.now());
   let shownAt = null;
   let doneAt = null;
@@ -150,7 +184,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       .catch((cause) => { error = `not done: ${firstLine(cause)}`; });
   }
   await settle(page, quietMs);
-  const data = await page.evaluate((from, inputs) => {
+  const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
     const events = rec.events.filter((e) => e.start >= from - 5 && inputs.includes(e.name));
     const first = events.find((e) => e.id) || events[0] || null;
@@ -163,14 +197,26 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
     // Every event of the interaction ends at the same paint; its handlers' time is the largest of theirs (a click's
     // handlers, not its pointerdown's), its input delay the first event's.
     const processing = group.reduce((most, e) => Math.max(most, e.processingEnd - e.processingStart), 0);
+    // a transition's whole window (press to done): its long frames, the longest first, so a covered load names what
+    // held its main thread
+    const spanLoafs = spanEnd == null ? null : rec.loafs.filter((l) => l.start + l.duration >= from && l.start <= spanEnd)
+      .sort((a, b) => b.duration - a.duration).slice(0, 16);
+    const spanLong = spanEnd == null ? null : rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= spanEnd);
     const lastSwitch = Array.isArray(window.__GARAGE_SWITCH) ? window.__GARAGE_SWITCH[window.__GARAGE_SWITCH.length - 1] : null;
     return { duration, processing: Math.round(processing),
       inputDelay: first ? Math.round(first.processingStart - first.start) : 0, event: slowest?.name ?? null, target: slowest?.target ?? null,
       loafs, longtaskMs: Math.round(longtasks.reduce((sum, t) => sum + t.duration, 0)), longtasks: longtasks.length,
+      ...(spanLoafs ? { spanLoafs, spanLongtaskMs: Math.round(spanLong.reduce((sum, t) => sum + t.duration, 0)), spanLongtasks: spanLong.length } : {}),
       garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null,
-      garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null };
-  }, t0, INPUT_EVENTS);
-  return { error, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
+      garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null,
+      battleLoad: window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null,
+      studioLoad: window.__STUDIO_LOAD ? JSON.parse(JSON.stringify(window.__STUDIO_LOAD)) : null,
+      studioReentry: window.__STUDIO_REENTRY ?? null,
+      countdownWarm: window.__BATTLE_COUNTDOWN_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_COUNTDOWN_WARM)) : null,
+  deferredWarm: window.__BATTLE_DEFERRED_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM)) : null,
+  visualLoads: Array.isArray(window.__VISUAL_LOAD_TIMINGS) ? JSON.parse(JSON.stringify(window.__VISUAL_LOAD_TIMINGS.slice(-40))) : null };
+  }, t0, INPUT_EVENTS, done && doneAt != null ? doneAt : null);
+  return { error, layoutReads, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
     doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
 }
 
@@ -180,6 +226,16 @@ const closeSettings = async (page, ctx) => {
   if (!await page.evaluate(() => window.__click.shown('.cot-settings.open'))) return;
   await tapOrClick(page, '.cot-settings.open .cot-set-close, .cot-settings.open .resume', ctx).catch(() => pressKey(page, 'Escape'));
   await waitFor(page, `!shown('.cot-settings.open')`, 10000);
+};
+// Leave the Studio only when it opened: an Escape over the Garage opens Settings, which then covers the bar for every
+// later press (the brand lead's trace, 2026-10-24); a Settings left open is closed
+const leaveStudio = async (page, ctx) => {
+  if (await page.evaluate(expression(`shown('.cot-studio')`)).catch(() => false)) {
+    await pressKey(page, 'Escape');
+    await waitFor(page, GARAGE_BACK, 60000).catch(() => {});
+  }
+  if (await page.evaluate(expression(`shown('.cot-settings.open')`)).catch(() => false)) await closeSettings(page, ctx);
+  await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
 };
 const openDeploy = async (page, ctx) => {
   if (await page.evaluate(() => window.__click.shown('#cot-battle-menu.open'))) return;
@@ -208,6 +264,12 @@ export const PATHS = [
     // Cards 1-4, twice: the first round builds each tank, the second reveals it from the hero cache.
     press: (page, i) => target(page, '.cot-cards .cot-card', (i % 4) + 1),
     shown: ROSTER_SHOWN, done: ROSTER_DONE, doneTimeoutMs: 60000 },
+  // Garage tank switching by the carousel's next arrow and by the ArrowRight key (2026-10-24: "switching between tanks
+  // in garage is very laggy"); a key press marks <body> so the switch's done check reads the selected card.
+  { id: 'roster-next', doc: 'game', reps: 8,
+    press: (page) => target(page, '.cot-car-arrow.next'), done: ROSTER_DONE, doneTimeoutMs: 60000 },
+  { id: 'roster-key', doc: 'game', reps: 8, key: 'ArrowRight',
+    press: (page) => target(page, 'body'), done: ROSTER_DONE, doneTimeoutMs: 60000 },
   { id: 'roster-chip', doc: 'game', reps: 5,
     press: (page, i) => target(page, '.cot-country-chips .cot-country-chip', i + 1), done: ROSTER_DONE, doneTimeoutMs: 60000,
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-country-chips .cot-country-chip', 0), ctx).catch(() => {}); } },
@@ -219,6 +281,10 @@ export const PATHS = [
       await waitFor(page, `shown('.cot-settings.open')`, 15000); },
     press: (page, i) => target(page, `.cot-set-tab[data-tab="${SETTINGS_TABS[(i + 1) % SETTINGS_TABS.length]}"]`),
     shown: `document.querySelector('[data-click-target]')?.classList.contains('sel')`, teardown: closeSettings },
+  // the service record (Record in the top bar): its dialog, stylesheets and tooltip sheet load on first use
+  { id: 'record-open', doc: 'game', reps: 3,
+    press: (page) => target(page, '.cot-record-trigger'), shown: `shown('#cot-record-modal')`, shownTimeoutMs: 20000,
+    after: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000).catch(() => {}); } },
   { id: 'deploy-open', doc: 'game', reps: 5,
     press: (page) => target(page, '[data-nav=deploy], .cot-battle-mode'), shown: `shown('#cot-battle-menu.open')`, after: closeDeploy },
   { id: 'deploy-mode', doc: 'game', reps: 6, setup: openDeploy,
@@ -237,9 +303,68 @@ export const PATHS = [
       await run('deploy-map-pick', () => target(page, '.cot-map-card .cot-map-select', i + 1), {});
     } },
   { id: 'studio-open', doc: 'game', reps: 3,
-    press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`,
-    doneTimeoutMs: 60000,
+    press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
+    done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000,
     after: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, GARAGE_BACK, 60000); } },
+  // a cold Studio entry left with Escape while its battlefield still streams, then entered again: the second press's
+  // shell (shown) and its finished entry (done)
+  { id: 'studio-reenter', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      // a phone's Studio button is in the Garage's menu: the menu opens before the measured press
+      const studio = async () => {
+        const inBar = await page.$eval('[data-nav=studio]', (el) => el.getBoundingClientRect().width > 0
+          && getComputedStyle(el).display !== 'none').catch(() => false);
+        if (inBar) return target(page, '[data-nav=studio]');
+        await tapOrClick(page, await target(page, '.cot-mobile-nav-trigger'), ctx);
+        await waitFor(page, `shown('#cot-mobile-nav-menu')`, 10000);
+        return target(page, '[data-mobile-nav="studio"]');
+      };
+      await run('studio-cold', studio, { shown: `shown('.cot-studio')`, shownTimeoutMs: 60000, quietMs: 1 });
+      await page.evaluate(() => { window.__STUDIO_REENTRY = { loadingAtExit: !!(window.__STUDIO_LOAD && !window.__STUDIO_LOAD.done) }; });
+      await leaveStudio(page, ctx);
+      // the press waits out the exit's transition (a press during it is not taken), as a player's would
+      await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+      await sleep(800);
+      await run('studio-reenter', studio, { shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
+        done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 120000 });
+      await leaveStudio(page, ctx);
+      await sleep(1500);
+    } },
+  // a Studio press as soon as the Garage is back from a Studio exit, its transition still on (the press was dropped
+  // before brand-ui-248 cb70fbec8a): whether the transition was on at the press is in studioReentry.transOnAtPress
+  { id: 'studio-exit-press', doc: 'game', reps: 3,
+    script: async (page, i, run, ctx) => {
+      await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx);
+      await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 120000).catch(async (cause) => {
+        console.log(`    #${i} entry did not open, state: ${JSON.stringify(await page.evaluate(() => ({
+          phase: window.__DEBUG?.game?.phase ?? null, trans: !!document.querySelector('.cot-trans.on'),
+          studioEl: !!document.querySelector('.cot-studio'), bodyData: Object.entries(document.body.dataset).map(([k, v]) => `${k}=${v}`).join(' ').slice(0, 300),
+        })).catch(() => null))}`);
+        throw cause;
+      });
+      await sleep(800);
+      await pressKey(page, 'Escape');
+      await waitFor(page, GARAGE_BACK, 60000);
+      const studioState = () => page.evaluate(() => ({
+        phase: window.__DEBUG?.game?.phase ?? null, studioActive: window.__STUDIO?.active ?? null,
+        trans: !!document.querySelector('.cot-trans.on'), studioEl: !!document.querySelector('.cot-studio'),
+        studioShown: !!document.querySelector('.cot-studio') && getComputedStyle(document.querySelector('.cot-studio')).display !== 'none',
+        garage: !!document.querySelector('.cot-garage'), settings: !!document.querySelector('.cot-settings.open'),
+        button: (() => { const b = document.querySelector('[data-nav=studio]');
+          return b ? { disabled: b.disabled, aria: b.getAttribute('aria-disabled'), pe: getComputedStyle(b).pointerEvents } : null; })(),
+        bodyData: Object.entries(document.body.dataset).map(([k, v]) => `${k}=${v}`).join(' ').slice(0, 300),
+        studioLoad: window.__STUDIO_LOAD ? { done: window.__STUDIO_LOAD.done, stage: window.__STUDIO_LOAD.stage } : null,
+      })).catch((error) => ({ error: String(error).slice(0, 120) }));
+      const sample = await run('studio-exit-press', async () => {
+        const selector = await target(page, '[data-nav=studio]');
+        await page.evaluate(() => { window.__STUDIO_REENTRY = { transOnAtPress: !!document.querySelector('.cot-trans.on') }; });
+        return selector;
+      }, { shown: `shown('.cot-studio')`, shownTimeoutMs: 30000,
+        done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 60000 });
+      if (sample.error) console.log(`    #${i} missed press, state: ${JSON.stringify(await studioState())}`);
+      await leaveStudio(page, ctx);
+      await sleep(1500);
+    } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
     press: (page, i) => target(page, '.cot-studio .workspace-nav button', i + 1),
@@ -247,18 +372,22 @@ export const PATHS = [
   { id: 'battle', doc: 'battle', reps: 2,
     script: async (page, i, run, ctx) => {
       await page.evaluate(() => { window.__BATTLE_REVEAL = null; });
+      await ctx.programs(`garage-${i}`);
       await openDeploy(page, ctx);
       await run('deploy-launch', () => target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), {
         shown: `shown('.cot-bl.on')`, done: `!!window.__BATTLE_REVEAL`, doneTimeoutMs: 240000 });
+      await ctx.programs(`battle-${i}`);
       await page.evaluate(() => window.__DEBUG.slayEnemies());
-      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es-btn.ghost')`, 120000);
+      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
       await settle(page, 800, 8000);
-      await run('end-to-garage', () => target(page, '.cot-es.show .cot-es-btn.ghost'), { shown: `shown('.cot-trans.on') || shown('.cot-garage')`,
+      await run('end-to-garage', () => target(page, '.cot-es.show [data-es-action="garage"]'), { shown: `shown('.cot-trans.on') || shown('.cot-garage')`,
         done: GARAGE_BACK, doneTimeoutMs: 120000 });
+      await ctx.programs(`return-${i}`);
       if (i < 1) return;
       await openDeploy(page, ctx);
       await run('watch-enter', () => target(page, '#cot-battle-menu [data-battle-watch]'), {
-        shown: `document.documentElement.dataset.watch != null`, done: `!!document.querySelector('.cot-watch .who b')?.textContent`, doneTimeoutMs: 240000 });
+        shown: `document.documentElement.dataset.watch != null`, shownTimeoutMs: 120000,
+        done: `!!document.querySelector('.cot-watch .who b')?.textContent`, doneTimeoutMs: 240000 });
       await settle(page, 1500, 15000);
       for (let hop = 0; hop < 5; hop += 1) await run('watch-hop', () => target(page, `.cot-watch .wb.${hop % 2 ? 'prev' : 'next'}`), {});
       await run('watch-drone', () => target(page, '.cot-watch .wb.drone'), {});
@@ -277,14 +406,57 @@ export const PATHS = [
       && (window.__TANK_GALLERY.getState().mode === 'appearance' || window.__TANK_GALLERY.getState().overlayCount > 0)`, doneTimeoutMs: 60000 },
 ];
 
-async function runPath({ page, path, reps, touch, log }) {
+// The renderer's live programs (name, use count, key), so a path can diff the sets two states link: a long key keeps
+// its head, its length and a hash of the whole.
+const PROGRAM_KEYS = `(() => {
+  const hash = (text) => { let h = 2166136261; for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return (h >>> 0).toString(16); };
+  const programs = (window.__DEBUG?.renderer?.info?.programs ?? []).map((program) => {
+    const key = String(program.cacheKey ?? '');
+    return { name: program.name, used: program.usedTimes, hash: hash(key), key: key.length > 900 ? key.slice(0, 900) + '…' + key.length + ':' + hash(key) : key };
+  });
+  // every material in the scene with the program it last bound (hash of its key), the object and whether it draws
+  const renderer = window.__DEBUG?.renderer;
+  const materials = [];
+  window.__DEBUG?.scene?.traverse?.((object) => {
+    const list = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    if (!list.length) return;
+    let shown = true;
+    const chain = [];
+    for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 5) chain.push(node.name || node.type); }
+    for (const material of list) {
+      const program = renderer?.properties?.get?.(material)?.currentProgram;
+      if (program) materials.push({ material: material.name || material.type, shown, chain: chain.join(' < '), hash: hash(String(program.cacheKey ?? '')),
+        skin: /juggernaut/.test(String(material.onBeforeCompile)), burn: !!material.userData?.__burnU, id: material.id });
+    }
+  });
+  // the scene's lights as a render collects them (visible down the chain), each with its owner chain
+  const lights = [];
+  window.__DEBUG?.scene?.traverse?.((object) => {
+    if (!object.isLight) return;
+    let shown = true;
+    const chain = [];
+    for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 4) chain.push(node.name || node.type); }
+    lights.push({ type: object.type, shown, intensity: object.intensity, shadow: !!object.castShadow, layers: object.layers.mask, chain: chain.join(' < ') });
+  });
+  return { programs, lights, materials, pedTrace: (window.__PED_TRACE ?? []).slice(-40) };
+})()`;
+
+async function runPath({ page, path, reps, touch, log, profileDir = null, outDir = null, label = '' }) {
   const samples = [];
-  const ctx = { touch };
+  const ctx = {
+    touch,
+    programs: async (name) => {
+      if (!outDir) return;
+      const list = await page.evaluate(PROGRAM_KEYS).catch(() => null);
+      if (list) writeFileSync(join(outDir, `programs.${label}.${name}.json`), JSON.stringify(list, null, 1));
+    },
+  };
   const run = async (kind, pick, spec, i) => {
     let sample;
     try {
       const selector = await pick();
-      sample = await measure(page, { selector, touch, ...spec });
+      const cpuProfile = profileDir ? { dir: profileDir, name: `${label}.${kind}.${i}` } : null;
+      sample = await measure(page, { selector, touch, cpuProfile, ...spec });
     } catch (cause) {
       sample = { error: firstLine(cause), duration: null, loafs: [], longtaskMs: 0, longtasks: 0 };
     }
@@ -297,9 +469,15 @@ async function runPath({ page, path, reps, touch, log }) {
   let failures = 0;
   for (let i = 0; i < reps && failures < 2; i += 1) {
     if (path.script) {
-      await path.script(page, i, (kind, pick, spec) => run(kind, pick, spec, i), ctx);
+      // a script that fails part way keeps the samples it took (the rest of the run goes on without it)
+      try {
+        await path.script(page, i, (kind, pick, spec) => run(kind, pick, spec, i), ctx);
+      } catch (cause) {
+        log(`  ${path.id} #${i} stopped: ${firstLine(cause)}`);
+        break;
+      }
     } else {
-      const sample = await run(path.id, () => path.press(page, i), { shown: path.shown, done: path.done, doneTimeoutMs: path.doneTimeoutMs }, i);
+      const sample = await run(path.id, () => path.press(page, i), { shown: path.shown, done: path.done, doneTimeoutMs: path.doneTimeoutMs, key: path.key }, i);
       failures = sample.error ? failures + 1 : 0;
       if (path.after) await path.after(page, ctx).catch((cause) => log(`  after: ${firstLine(cause)}`));
     }
@@ -361,12 +539,27 @@ async function main() {
     page.setDefaultTimeout(180000);
     await page.setViewport(profile.viewport);
     if (profile.userAgent) await page.setUserAgent(profile.userAgent);
+    page.on('pageerror', (error) => log(`  [${base.label}:${doc} page error] ${firstLine(error)}`));
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
+    if (flag('layout-trace')) await page.evaluateOnNewDocument('window.__cotLayoutTrace = true;');
+    // --busy=<everyMs>:<workMs>: a loaded main thread (a timer burning workMs every everyMs), as a polling probe or a busy
+    // phone makes it
+    const busy = option('busy', '');
+    if (busy) {
+      const [every, work] = busy.split(':').map(Number);
+      await page.evaluateOnNewDocument(`setInterval(() => { const end = performance.now() + ${work}; while (performance.now() < end) {} }, ${every});`);
+    }
     await page.evaluateOnNewDocument(PROBE);
     const url = new URL(DOCS[doc].url, base.url).href;
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
     log(`warming ${base.label}:${doc} ${url}`);
     await rewarmPage(page);
+    // the boot's own stage timings (main.ts BOOT_TIMINGS), kept beside the run
+    const boot = await page.evaluate(() => ({ ms: window.__BOOT_MS ?? null, timings: window.__BOOT_TIMINGS ?? null })).catch(() => null);
+    if (boot?.timings) {
+      mkdirSync(join(out, base.label), { recursive: true });
+      writeFileSync(join(out, base.label, `boot.${doc}.${profileName}.json`), `${JSON.stringify(boot, null, 1)}\n`);
+    }
     return page;
   };
 
@@ -412,9 +605,12 @@ async function main() {
           log(`${base.label} ${path.id} (${profileName})`);
           let samples = [];
           let error = null;
+          mkdirSync(join(out, base.label), { recursive: true });
           try {
             if (path.setup) await path.setup(page, { touch });
-            samples = await runPath({ page, path, reps: reps ?? path.reps, touch, log });
+            samples = await runPath({ page, path, reps: reps ?? path.reps, touch, log,
+              profileDir: option('cpu-profile', '') ? resolve(option('cpu-profile', '')) : null, outDir: join(out, base.label),
+              label: `${base.label}.${profileName}` });
             if (path.teardown) await path.teardown(page, { touch });
           } catch (cause) {
             error = firstLine(cause);

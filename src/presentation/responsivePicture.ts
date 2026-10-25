@@ -32,6 +32,8 @@ const RUNG_CONVENTIONS: ReadonlyArray<{ readonly test: RegExp; readonly rungs: R
   { test: /^(\/media\/site50-r14\/(?:stills\/[\w-]+?|frames\/b\d+-[\w-]+?))(?<!-thumb)(\.webp)$/, rungs: [['$1-thumb$2', 640]] },
   // the home r2 shots (site50-r14/home): <name>.webp and <name>-640.webp
   { test: /^(\/media\/site50-r14\/home\/(?:features|modes|mechanics)\/[\w-]+?)(?<!-640)(\.webp)$/, rungs: [['$1-640$2', 640]] },
+  // the interface set (ui-246): <name>.webp and <name>-640.webp; the portrait phone shot ships one file
+  { test: /^(\/media\/ui-246\/(?!watch-mobile)[\w-]+?)(?<!-640)(\.webp)$/, rungs: [['$1-640$2', 640]] },
   // the battlefields' map art: /maps/<id>.webp at 3840 and its 1280 card, /maps/cards/<id>.webp
   { test: /^\/maps\/([\w-]+)\.webp$/, rungs: [['/maps/cards/$1.webp', 1280]] },
 ];

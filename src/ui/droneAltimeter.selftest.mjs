@@ -21,7 +21,7 @@ assert.ok(uiIconIds().includes('altitude') && uiIconSVG('altitude', 24).includes
 const hud = readFileSync(new URL('./aerialHud.ts', import.meta.url), 'utf8');
 assert.match(hud, /const timer=instrument\(telemetry,'reload'[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*const altimeter=instrument\(telemetry,'altitude',t\('flight\.altitude'\)\)/,
   'the altimeter is the second drone instrument, beside the battery');
-assert.match(hud, /altimeter\.host\.hidden=!drone/, 'the gunship never shows the drone altimeter');
+assert.match(hud, /setHidden\(altimeter\.host,!drone\)/, 'the gunship never shows the drone altimeter');
 assert.match(hud, /formatDroneAltitude\(view\.y-field\.getHeightAt\(view\.x,view\.z\)\)/, 'height above the ground under the airframe');
 const shell = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 assert.match(shell, /createAerialHud\(root,bus,\(\) => heightFieldRef\)/, 'the HUD hands the drone its terrain height field');

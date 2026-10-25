@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 849,
+ "count": 857,
  "collections": [
   {
    "key": "scenes",
@@ -14,7 +14,7 @@
    },
    "count": 227,
    "sets": 14,
-   "bytes": 5145905
+   "bytes": 5145898
   },
   {
    "key": "vehicles",
@@ -28,7 +28,7 @@
    },
    "count": 394,
    "sets": 14,
-   "bytes": 23923262
+   "bytes": 23923637
   },
   {
    "key": "duels",
@@ -98,7 +98,7 @@
    },
    "count": 67,
    "sets": 2,
-   "bytes": 946843
+   "bytes": 948181
   },
   {
    "key": "interface",
@@ -107,12 +107,12 @@
     "zh-CN": "界面"
    },
    "blurb": {
-    "en-US": "The game's screens: in battle, the Tank Gallery and the Scene Studio.",
-    "zh-CN": "游戏的各个界面：战斗中、坦克画廊与场景工作室。"
+    "en-US": "The game's screens: in battle, the Garage, the Tank Gallery and the Scene Studio.",
+    "zh-CN": "游戏的各个界面：战斗中、车库、坦克画廊与场景工作室。"
    },
-   "count": 11,
-   "sets": 3,
-   "bytes": 49827
+   "count": 19,
+   "sets": 4,
+   "bytes": 80321
   }
  ]
 }

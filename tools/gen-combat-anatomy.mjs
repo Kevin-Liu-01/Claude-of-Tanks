@@ -25,7 +25,8 @@ import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
-import { rigidHullFrame } from './rigid-hull-frame.mjs';
+import { plateFittedCell } from './plate-fitted-cell.mjs';
+import { rigidHullFrame, rigidTurretFrame } from './rigid-hull-frame.mjs';
 import {
   acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readCommittedCalibrations,
   readFloorLedger, seedFloorRows, writeFloorLedger,
@@ -269,6 +270,10 @@ function convexCell(points) {
   return { ...pointBounds(vertices), vertices, faces };
 }
 
+// 247: plate-fitted cells (tools/plate-fitted-cell.mjs) for these ids: faces on the armour's own plates instead of the
+// support hull's 26-vertex facets (the 243 critics read K2's turret cheek as a red/green/orange patchwork).
+const PLATE_FIT_IDS = new Set(['k2_black_panther']);
+
 function trianglePolygon(object, triangle, relative, a, b, c, roofY) {
   const position = object.geometry.getAttribute('position');
   const index = object.geometry.index;
@@ -324,7 +329,7 @@ const HULL_LATERAL_CUTS = Object.freeze({
   t72b3_zubr_ii: [-1.104, 1.104],
 });
 
-function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null) {
+function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
@@ -365,7 +370,7 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, 
 
   const cells = [];
   for (const slices of pointsByBand) for (const points of slices) {
-    const cell = convexCell(points);
+    const cell = plateFit ? plateFittedCell(uniquePointCloud(points)) : convexCell(points);
     if (cell) cells.push(bands ? { ...cell, lateralBand: true } : cell);
   }
   return cells;
@@ -608,6 +613,7 @@ function receiptFor(id) {
     const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
     rigidHullFrame(tank, id);
+    rigidTurretFrame(tank);
     // Only the explicitly structural armor buckets calibrate shell collision.
     // Painted equipment can share the same material, but its semantic role
     // keeps MGs, sights, antennas, launchers and stowage out of these bounds.
@@ -633,9 +639,10 @@ function receiptFor(id) {
       turret,
       hullCollision: stockCapture?.hullCollision ?? collisionCells(
         tank.root, hullRig, 'hull', hull, HULL_SLICE_TARGET_M, MAX_HULL_SLICES, HULL_LATERAL_CUTS[id] ?? null,
+        PLATE_FIT_IDS.has(id),
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
-        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES,
+        tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, null, PLATE_FIT_IDS.has(id),
       ) : []),
       hullStructures,
       turretStructures,

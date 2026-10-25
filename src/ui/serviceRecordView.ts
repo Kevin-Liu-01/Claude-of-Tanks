@@ -203,7 +203,7 @@ function medals(view: ServiceRecordView): string {
       const tally = view.medals[medal.id];
       const fresh = unseen.has(`medal:${medal.id}`);
       return `<article class="cot-record-medal${tally ? ' is-earned' : ' is-locked'}${fresh ? ' is-new' : ''}" data-medal="${medal.id}">` +
-        `<div class="cot-record-medal-art"><button type="button" class="cot-record-medal-inspect" data-medal-tip="${medal.id}" aria-label="${safe(medalName(medal.id))} — ${safe(t('garage.record.requirement'))}">${medalSVG(medal, 88, { locked: !tally })}</button></div>` +
+        `<div class="cot-record-medal-art"><button type="button" class="cot-record-medal-inspect" data-medal-tip="${medal.id}" aria-label="${safe(medalName(medal.id))}: ${safe(t('garage.record.requirement'))}">${medalSVG(medal, 88, { locked: !tally })}</button></div>` +
         `<div class="cot-record-medal-copy"><strong>${medalName(medal.id)}</strong>` +
         (tally
           ? `<span class="cot-record-medal-count">×${num(tally.count)}<small>${t('garage.record.firstEarned', { date: when(tally.first) })}</small></span>`

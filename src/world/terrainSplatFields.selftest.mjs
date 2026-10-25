@@ -73,7 +73,8 @@ function fixture({ closeThrows = false } = {}) {
     ...['fieldSample', 'wrapUnit', 'sampleSplatNoise', 'makeShaderNoiseTexture',
       'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps', 'stackLandUseBake', 'snowRockHoldLine'].map(declaration),
     material,
-    ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
+    // (perf-248) the shore and the folds the build and the ring worker share (terrain.ts createShoreAt, foldFieldSteps)
+    ...['createShoreAt', 'foldFieldSteps', 'buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
     'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`

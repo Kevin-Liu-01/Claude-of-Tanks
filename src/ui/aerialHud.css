@@ -1,6 +1,6 @@
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-.cot-flight-hud{position:absolute;inset:0;pointer-events:none;color:#e1f5ee;text-shadow:0 1px 3px #000}
+.cot-flight-hud{position:absolute;inset:0;pointer-events:none;color:var(--ink-1);text-shadow:0 1px 3px var(--surface-scene)}
 .cot-flight-hud[hidden],.cot-flight-hud [hidden]{display:none!important}
 .flight-sight{position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);background:
  linear-gradient(currentColor,currentColor) left top/12px 1px,
@@ -12,37 +12,37 @@
  linear-gradient(currentColor,currentColor) right bottom/12px 1px,
  linear-gradient(currentColor,currentColor) right bottom/1px 12px;background-repeat:no-repeat}
 .flight-sight::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor}
-.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px 12px;background:linear-gradient(145deg,rgba(29,40,48,.96),rgba(7,13,18,.95));border:1px solid #61717b;border-top:2px solid #efad47;box-shadow:0 4px 18px #0009,inset 0 1px #ffffff0c;box-sizing:border-box;pointer-events:auto;color:#e8edf0}
+.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);border-top:2px solid var(--accent);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
 .flight-heading{display:flex;align-items:center;gap:10px;min-height:38px}
-.flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:#ffc46b;background:#b777222b;clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
+.flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:var(--accent-hi);background:oklch(from var(--accent-lo) l c h / .169);clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
 .flight-emblem svg{width:23px;height:23px}
 .flight-identity{display:flex;flex-direction:column;gap:3px;min-width:0}
-.flight-identity strong{font-size:12px;letter-spacing:.1em;color:#ffc46b;white-space:nowrap}
-.flight-feed{font-size:11px;font-weight:700;letter-spacing:.07em;color:#91a3af}
+.flight-identity strong{font-size:var(--battle-fs-12);letter-spacing:.1em;color:var(--accent-hi);white-space:nowrap}
+.flight-feed{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3)}
 .cot-flight-hud .flight-telemetry{display:flex;gap:10px;align-items:center;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
-.flight-instrument{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
-.flight-icon{display:inline-flex;align-items:center;justify-content:center;color:#adbdc8}
+.flight-instrument{display:flex;align-items:center;gap:var(--s1);font-size:var(--battle-fs-11);white-space:nowrap}
+.flight-icon{display:inline-flex;align-items:center;justify-content:center;color:var(--ink-2)}
 .flight-instrument .flight-icon svg{width:15px;height:15px}
-.cot-flight-hud .flight-battery{display:block;width:100%;height:5px;margin:7px 0 9px;appearance:none;background:#344049;border:0}
-.flight-battery::-webkit-meter-bar{height:5px;background:#344049;border:0;border-radius:0}
-.flight-battery::-webkit-meter-optimum-value{background:#f0b452}.flight-battery::-moz-meter-bar{background:#f0b452}
-.low-battery .flight-battery::-webkit-meter-optimum-value{background:#f26957}.low-battery .flight-instrument:first-child{color:#ff9b7f}
-.cot-flight-hud .flight-weapons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
-.flight-weapon,.cot-drone-return{-webkit-tap-highlight-color:transparent;border:1px solid #52616b;border-bottom:2px solid #6b7c89;background:linear-gradient(#25333d,#111b23);color:#e3ebef;font:inherit;cursor:pointer;min-height:44px}
-.flight-weapon{position:relative;display:flex;align-items:center;min-height:62px;padding:8px 18px 8px 8px;gap:7px;text-align:left}
-.flight-weapon-icon{display:flex;flex:0 0 24px;color:#bac8d2}.flight-weapon-icon svg{width:24px;height:30px}
+.cot-flight-hud .flight-battery{display:block;width:100%;height:5px;margin:7px 0 9px;appearance:none;background:oklch(from var(--surface-hover) .36 c h);border:0}
+.flight-battery::-webkit-meter-bar{height:5px;background:oklch(from var(--surface-hover) .36 c h);border:0;border-radius:0}
+.flight-battery::-webkit-meter-optimum-value{background:var(--accent-hi)}.flight-battery::-moz-meter-bar{background:var(--accent-hi)}
+.low-battery .flight-battery::-webkit-meter-optimum-value{background:var(--danger)}.low-battery .flight-instrument:first-child{color:oklch(from var(--danger) .79 .127 h)}
+.cot-flight-hud .flight-weapons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:var(--s2) 0}
+.flight-weapon,.cot-drone-return{-webkit-tap-highlight-color:transparent;border:1px solid var(--ink-4);border-bottom:2px solid oklch(from var(--ink-4) .58 c h);background:linear-gradient(oklch(from var(--surface-hover) .31 c h),var(--surface-menu));color:var(--ink-1);font:inherit;cursor:pointer;min-height:44px}
+.flight-weapon{position:relative;display:flex;align-items:center;min-height:62px;padding:var(--s2) 18px var(--s2) var(--s2);gap:7px;text-align:left}
+.flight-weapon-icon{display:flex;flex:0 0 24px;color:var(--ink-2)}.flight-weapon-icon svg{width:24px;height:30px}
 .flight-weapon-copy{display:flex;flex-direction:column;min-width:0;gap:5px}
-.flight-weapon-copy strong{font-size:11px;line-height:1.15}.flight-weapon small{font-size:11px;letter-spacing:0em;color:#9dabb6}
-.flight-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 2px;border:1px solid #82909a;border-radius:2px;font-family:inherit;font-size:11px;font-weight:700;color:#c1cbd2;box-sizing:border-box}
+.flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.15}.flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0em;color:var(--ink-3)}
+.flight-key{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 2px;border:1px solid var(--ink-3);border-radius:2px;font-family:inherit;font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-2);box-sizing:border-box}
 .flight-weapon>.flight-key{position:absolute;top:4px;right:4px}
-.flight-weapon[aria-pressed=true]{border-color:#efad47;background:linear-gradient(#5e4828,#2c251a);color:#ffdb9f;box-shadow:inset 0 0 12px #eaa33412}
-.flight-weapon[aria-pressed=true] .flight-weapon-icon,.flight-weapon[aria-pressed=true] small{color:#ffc46b}
-.flight-weapon.reloading small{color:#f5a955}
-.flight-weapon:focus-visible,.cot-drone-return:focus-visible{outline:2px solid #ffe0a6;outline-offset:2px}
+.flight-weapon[aria-pressed=true]{border-color:var(--accent);background:linear-gradient(oklch(from var(--accent-lo) .42 .056 h),var(--surface-hover));color:var(--accent-hi);box-shadow:inset 0 0 12px oklch(from var(--accent) l c h / .071)}
+.flight-weapon[aria-pressed=true] .flight-weapon-icon,.flight-weapon[aria-pressed=true] small{color:var(--accent-hi)}
+.flight-weapon.reloading small{color:var(--accent)}
+.flight-weapon:focus-visible,.cot-drone-return:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 .flight-weapon:active,.cot-drone-return:active{filter:brightness(1.25)}
 .flight-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.flight-hint{font-size:11px;color:#a9b6c0;line-height:1.4;max-width:350px}
-.cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:11px}
+.flight-hint{font-size:var(--battle-fs-11);color:var(--ink-2);line-height:1.4;max-width:350px}
+.cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:var(--battle-fs-11)}
 .cot-drone-return .flight-icon svg{width:17px;height:17px}
 /* Owner 2026-10-14: no recall until the pilot is in the drone's feed; the control stands dimmed and inert until then. */
 .cot-drone-return:disabled{cursor:default;opacity:.42;filter:saturate(.3)}.cot-drone-return:disabled:active{filter:saturate(.3)}
@@ -54,13 +54,13 @@
 /* The tank row while a recalled drone flies home and lands (data-phase=returning, ui/droneControlState.ts): busy rather
    than refused, so it keeps full strength in the amber of a drone in use, and its drone keeps settling down onto the pad
    while the countdown runs to the relaunch. */
-.cot-vehicle-controls>.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
+.cot-vehicle-controls>.cot-drone-control[data-phase=returning]{opacity:1;color:var(--accent-hi);box-shadow:inset 0 -2px oklch(from var(--accent-hi) l c h / .6)}
 /* The touch action dock (body.cot-touch-layout[data-hud-dock], battleHudLayout.css) restates every tile's colour and
    shadow at (0,3,2), dims a cooling tile's icon to half at (0,5,2) and rings a tile in the open More panel at (0,5,2),
    and its cooldown shade (::after) covers an inset underline. On the dock the cue outranks all of them at (0,6,2): the
    amber icon at full strength, an amber bottom edge (the border, outside the shade) and an amber ring and glow.
    droneReturningCascade.selftest.mjs resolves the winning declarations on desktop, the touch strip and the dock. */
-body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;border-bottom-color:#efb84e;box-shadow:0 4px 13px rgba(0,0,0,.4),0 0 0 1px rgba(239,184,78,.5),0 0 10px rgba(239,184,78,.32)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;color:var(--accent-hi);border-bottom-color:var(--accent-hi);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 10px oklch(from var(--accent-hi) l c h / .32)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning] .si{opacity:1}
 .cot-drone-control[data-phase=returning] .si svg{animation:drone-homing 1.2s cubic-bezier(.3,.6,.4,1) infinite}
 @keyframes drone-homing{0%{transform:translateY(-3px);opacity:.45}70%,100%{transform:none;opacity:1}}
@@ -74,19 +74,19 @@ html[data-flight=drone] .cot-touch .jump,html[data-flight=gunship] .cot-touch .j
 html[data-flight=gunship] .cot-touch-aim .aimpad{width:100%}
 html[data-flight=gunship] .cot-touch .scope{left:max(16px,env(safe-area-inset-left))!important;right:auto!important}
 html[data-flight=drone] .cot-touch .flight-climb{display:flex}
-.cot-touch .flight-climb{display:none;position:absolute;right:max(16px,env(safe-area-inset-right));bottom:30px;width:64px;height:64px;align-items:center;justify-content:center;border-radius:8px;border:2px solid #d49b45;background:linear-gradient(#403522,#15212a);color:#ffce86;flex-direction:column;gap:3px;pointer-events:auto;touch-action:none;font-size:12px}
+.cot-touch .flight-climb{display:none;position:absolute;right:max(16px,env(safe-area-inset-right));bottom:30px;width:64px;height:64px;align-items:center;justify-content:center;border-radius:8px;border:2px solid var(--accent);background:linear-gradient(oklch(from var(--surface-hover) .34 c h),var(--surface-hover));color:var(--accent-hi);flex-direction:column;gap:3px;pointer-events:auto;touch-action:none;font-size:var(--battle-fs-12)}
 html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-shells,.cot-drive,.cot-dp,.cot-vehicle-controls,.cot-tgt){display:none!important}
 @media(pointer:coarse){
  .cot-flight-hud .flight-console{width:min(480px,calc(100% - 260px));bottom:max(8px,env(safe-area-inset-bottom));padding:6px 7px}
  .flight-heading{min-height:30px;gap:6px;flex-wrap:wrap}.flight-emblem{flex-basis:30px;height:30px}.flight-emblem svg{width:20px;height:20px}
- .flight-identity strong{font-size:11px}.flight-feed{font-size:11px}.flight-instrument{font-size:11px}.cot-flight-hud .flight-telemetry{gap:8px}
+ .flight-identity strong{font-size:var(--battle-fs-11)}.flight-feed{font-size:var(--battle-fs-11)}.flight-instrument{font-size:var(--battle-fs-11)}.cot-flight-hud .flight-telemetry{gap:var(--s2)}
  .cot-flight-hud .flight-telemetry{flex:1 0 auto}.flight-instrument .flight-icon svg{width:12px;height:12px}
- .cot-flight-hud .flight-battery{height:3px;margin:4px 0}.flight-battery::-webkit-meter-bar{height:3px}
- .flight-hint{display:none}.flight-actions{justify-content:flex-end}.cot-drone-return{min-height:44px;padding:4px 7px;font-size:11px}
+ .cot-flight-hud .flight-battery{height:3px;margin:var(--s1) 0}.flight-battery::-webkit-meter-bar{height:3px}
+ .flight-hint{display:none}.flight-actions{justify-content:flex-end}.cot-drone-return{min-height:44px;padding:var(--s1) 7px;font-size:var(--battle-fs-11)}
  .flight-weapon{min-height:57px;padding:5px 3px;flex-direction:column;gap:3px;justify-content:center;text-align:center}
  .flight-weapon-icon{flex-basis:auto}.flight-weapon-icon svg{width:20px;height:21px}
- .flight-weapon-copy{gap:3px}.flight-weapon-copy strong{font-size:11px}.flight-weapon small{font-size:11px}.cot-flight-hud .flight-weapons{margin-bottom:0;gap:4px}
- .flight-key{min-width:13px;height:14px;font-size:11px}.flight-weapon>.flight-key{top:2px;right:2px}
+ .flight-weapon-copy{gap:3px}.flight-weapon-copy strong{font-size:var(--battle-fs-11)}.flight-weapon small{font-size:var(--battle-fs-11)}.cot-flight-hud .flight-weapons{margin-bottom:0;gap:var(--s1)}
+ .flight-key{min-width:13px;height:14px;font-size:var(--battle-fs-11)}.flight-weapon>.flight-key{top:2px;right:2px}
 }
 @media(max-width:450px) and (orientation:portrait){.cot-flight-hud .flight-console{width:calc(100% - 24px);bottom:175px}}
 
@@ -96,108 +96,108 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-climb svg{width:21px;height:21px}
 
 /* Override the shared HUD reset with explicit component spacing. */
-.cot-flight-hud .flight-weapon{padding:8px 22px 8px 10px}
+.cot-flight-hud .flight-weapon{padding:var(--s2) 22px var(--s2) 10px}
 .cot-flight-hud .cot-drone-return{padding:6px 10px}
-.cot-flight-hud .flight-view-switch{border:1px solid #60717d;background:#101d25;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px;padding:6px 9px;flex-shrink:0;justify-content:center}
-.flight-view-switch:hover{border-color:#efad47;background:#293129}
-.flight-view-switch:focus-visible{outline:2px solid #ffcf87;outline-offset:2px}
+.cot-flight-hud .flight-view-switch{border:1px solid var(--ink-4);background:var(--surface-menu);color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px;padding:6px 9px;flex-shrink:0;justify-content:center}
+.flight-view-switch:hover{border-color:var(--accent);background:var(--surface-hover)}
+.flight-view-switch:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 .flight-view-switch:disabled{opacity:.6;cursor:default}
-.flight-view-switch .flight-feed{display:flex;align-items:center;gap:6px;color:#c5d8dc;letter-spacing:.06em}
-.flight-cycle-icon{display:inline-flex;color:#efad47}.flight-cycle-icon svg{width:12px;height:12px}
+.flight-view-switch .flight-feed{display:flex;align-items:center;gap:6px;color:var(--ink-2);letter-spacing:var(--battle-track-status)}
+.flight-cycle-icon{display:inline-flex;color:var(--accent)}.flight-cycle-icon svg{width:12px;height:12px}
 .flight-optic-icon,.flight-view-track{display:none}
 @media(pointer:coarse){
- .cot-flight-hud .flight-console{padding:6px 8px}
- .cot-flight-hud .flight-weapon{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:4px;text-align:left;padding:5px 4px;min-height:48px}
+ .cot-flight-hud .flight-console{padding:6px var(--s2)}
+ .cot-flight-hud .flight-weapon{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:var(--s1);text-align:left;padding:5px var(--s1);min-height:48px}
  .cot-flight-hud .flight-weapon-icon svg{width:16px;height:20px}
  .cot-flight-hud .flight-weapon>.flight-key{display:none}
  .cot-flight-hud .flight-weapons{margin:6px 0 0}
  .cot-flight-hud .cot-drone-return{padding:5px 9px}
  .cot-flight-hud .flight-view-switch{padding:5px 7px}
- .flight-heading{flex-wrap:nowrap;gap:6px}.cot-flight-hud .flight-telemetry{flex:1 1 auto;gap:4px}
- .flight-identity strong{font-size:11px}.flight-view-switch .flight-feed{font-size:11px}
+ .flight-heading{flex-wrap:nowrap;gap:6px}.cot-flight-hud .flight-telemetry{flex:1 1 auto;gap:var(--s1)}
+ .flight-identity strong{font-size:var(--battle-fs-11)}.flight-view-switch .flight-feed{font-size:var(--battle-fs-11)}
  .flight-emblem{display:none}
 }
 
 @media(pointer:coarse){.flight-view-key{display:none}}
 
 .flight-support{display:flex;gap:5px;flex-shrink:0}
-.cot-flight-hud .flight-supply{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:44px;min-height:44px;padding:4px 7px;border:1px solid #73816f;background:#1a2928;color:#dbece2;cursor:pointer}
-.flight-supply .flight-icon svg{width:18px;height:18px}.flight-supply small{font-size:11px}.flight-supply .flight-key{position:absolute;right:2px;top:2px;font-size:11px;min-width:11px;height:12px}
-.flight-supply:disabled{opacity:.45;cursor:default}.flight-supply:focus-visible{outline:2px solid #ffd596;outline-offset:2px}
+.cot-flight-hud .flight-supply{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:44px;min-height:44px;padding:var(--s1) 7px;border:1px solid oklch(from var(--ink-4) .59 c h);background:var(--surface-hover);color:var(--ink-1);cursor:pointer}
+.flight-supply .flight-icon svg{width:18px;height:18px}.flight-supply small{font-size:var(--battle-fs-11)}.flight-supply .flight-key{position:absolute;right:2px;top:2px;font-size:var(--battle-fs-11);min-width:11px;height:12px}
+.flight-supply:disabled{opacity:.45;cursor:default}.flight-supply:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 @media(pointer:coarse){.flight-supply .flight-key{display:none}.cot-flight-hud[data-kind=gunship] .flight-telemetry{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0}.cot-flight-hud[data-kind=gunship] .flight-support{margin-left:auto}}
 @media(pointer:coarse) and (orientation:portrait){.cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px)}}
 
 /* Drone flight keeps the scene open: instrument rail and two matching hexagons. */
-.cot-flight-hud[data-kind=drone]{--flight-accent:#ffc46b;--flight-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
-.cot-flight-hud[data-kind=drone][data-view=infrared]{--flight-accent:#daf4ff}
-.cot-flight-hud[data-kind=drone][data-view=thermal]{--flight-accent:#ffb16d}
-.cot-flight-hud[data-kind=drone][data-view=night]{--flight-accent:#b4ee8c}
+.cot-flight-hud[data-kind=drone]{--flight-accent:var(--accent-hi);--flight-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
+.cot-flight-hud[data-kind=drone][data-view=infrared]{--flight-accent:var(--ink-1)}
+.cot-flight-hud[data-kind=drone][data-view=thermal]{--flight-accent:var(--accent-hi)}
+.cot-flight-hud[data-kind=drone][data-view=night]{--flight-accent:var(--battle-nv)}
 .cot-flight-hud[data-kind=drone] .flight-console{
  display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;width:min(460px,calc(100% - 48px));
  padding:0;border:0;background:none;box-shadow:none;pointer-events:none;
 }
 .cot-flight-hud[data-kind=drone] :is(.flight-heading,.flight-actions){display:contents}
 .cot-flight-hud[data-kind=drone] :is(.flight-emblem,.flight-identity>strong){display:none}
-.flight-designation{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:center;gap:7px;color:#ffd18b;font-size:11px;font-weight:700;letter-spacing:.12em;line-height:18px}
+.flight-designation{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:center;gap:7px;color:var(--accent-hi);font-size:var(--battle-fs-11);font-weight:700;letter-spacing:var(--track-label);line-height:18px}
 .flight-designation .flight-icon{color:inherit}.flight-designation svg{width:19px;height:19px}
 .cot-flight-hud[data-kind=drone] .flight-telemetry{
  grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
- width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,#071219b3 20% 80%,transparent);
+ width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,var(--battle-chip-plate) 20% 80%,transparent);
 }
-.cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:15px;line-height:22px;font-weight:700;letter-spacing:.01em}
-.cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid #c0d4db40}
+.cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:var(--battle-fs-15);line-height:22px;font-weight:700;letter-spacing:.01em}
+.cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid var(--line-3)}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon{color:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon svg{width:16px;height:16px}
 .cot-flight-hud[data-kind=drone] .flight-battery{grid-column:1/-1;grid-row:3;height:3px;margin:0 0 2px;pointer-events:none}
 .cot-flight-hud[data-kind=drone] .flight-battery::-webkit-meter-bar{height:3px}
 .cot-flight-hud[data-kind=drone] .flight-battery::-webkit-meter-optimum-value{background:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-battery::-moz-meter-bar{background:var(--flight-accent)}
-.cot-flight-hud[data-kind=drone].low-battery .flight-battery::-webkit-meter-optimum-value{background:#ff8b70}
-.cot-flight-hud[data-kind=drone].low-battery .flight-battery::-moz-meter-bar{background:#ff8b70}
+.cot-flight-hud[data-kind=drone].low-battery .flight-battery::-webkit-meter-optimum-value{background:var(--danger)}
+.cot-flight-hud[data-kind=drone].low-battery .flight-battery::-moz-meter-bar{background:var(--danger)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return){
- position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:8px 18px;border:0;
- border-radius:0;background:none;box-shadow:none;pointer-events:auto;color:#edf4f5;gap:8px;
- font-size:12px;line-height:1.2;text-shadow:0 1px 3px #000;filter:drop-shadow(0 2px 4px #0008);
+ position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:var(--s2) 18px;border:0;
+ border-radius:0;background:none;box-shadow:none;pointer-events:auto;color:var(--ink-1);gap:var(--s2);
+ font-size:var(--battle-fs-12);line-height:1.2;text-shadow:0 1px 3px var(--surface-scene);filter:drop-shadow(0 2px 4px oklch(from var(--surface-scene) l c h / .533));
 }
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before,
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{
  content:'';position:absolute;inset:0;z-index:-1;clip-path:var(--flight-cut);pointer-events:none;
 }
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:#81929b}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px;background:linear-gradient(155deg,#233641ec,#081219f5)}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:var(--ink-3)}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px;background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] .flight-view-switch{grid-column:1;grid-row:4;display:grid;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:9px;row-gap:5px;align-content:center}
 .cot-flight-hud[data-kind=drone] .flight-view-switch::before{background:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-optic-icon{grid-column:1;grid-row:1/3;display:flex;color:var(--flight-accent)}
 .flight-optic-icon svg{width:22px;height:22px}
-.cot-flight-hud[data-kind=drone] .flight-feed{grid-column:2;grid-row:1;min-width:0;width:100%;color:inherit;font-size:11px;font-weight:700;letter-spacing:.02em}
+.cot-flight-hud[data-kind=drone] .flight-feed{grid-column:2;grid-row:1;min-width:0;width:100%;color:inherit;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.02em}
 .cot-flight-hud[data-kind=drone] .flight-feed>span:first-child{flex:1}
 .cot-flight-hud[data-kind=drone] .flight-cycle-icon{display:none}
-.cot-flight-hud[data-kind=drone] .flight-view-track{grid-column:2;grid-row:2;display:flex;gap:4px;height:3px}
+.cot-flight-hud[data-kind=drone] .flight-view-track{grid-column:2;grid-row:2;display:flex;gap:var(--s1);height:3px}
 .flight-view-track .scope-vision-step.active{background:var(--flight-accent);box-shadow:none}
 .cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:4;justify-content:center}
-.cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:#ffcf87}
-.cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:#e2edf01c;color:#e5eff2;min-width:19px;height:20px}
-.cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:11px;line-height:1.5;color:#c2d0d5}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,#354d59f5,#172832f5)}
-.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,#233641ec,#081219f5)}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px #fff)}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::before{background:#fff}
+.cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
+.cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:oklch(from var(--ink-1) l c h / .11);color:var(--ink-1);min-width:19px;height:20px}
+.cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:var(--battle-fs-11);line-height:1.5;color:var(--ink-2)}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .41 c h / .961),var(--hud-plate-strong))}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--ink-1))}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::before{background:var(--ink-1)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::after{inset:3px}
-.cot-flight-hud[data-kind=drone] .flight-sight{width:36px;height:18px;background:none;border-inline:1px solid #e1f5ee99}
+.cot-flight-hud[data-kind=drone] .flight-sight{width:36px;height:18px;background:none;border-inline:1px solid oklch(from var(--ink-1) l c h / .6)}
 .cot-flight-hud[data-kind=drone] .flight-sight::before{content:'';position:absolute;width:9px;height:1px;left:50%;top:50%;transform:translate(-50%,-50%);background:currentColor}
 .cot-flight-hud[data-kind=drone] .flight-sight::after{width:1px;height:9px}
-html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:#142530e8;box-shadow:inset 0 2px #ffd18b,inset 0 -2px #bd914d}
+html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:var(--hud-plate);box-shadow:inset 0 2px var(--accent-hi),inset 0 -2px var(--accent-lo)}
 @media(pointer:coarse){
- .cot-flight-hud[data-kind=drone] .flight-console{width:min(360px,calc(100% - 260px));gap:5px 8px}
- .cot-flight-hud[data-kind=drone] .flight-designation{font-size:11px;line-height:16px;letter-spacing:.05em}
+ .cot-flight-hud[data-kind=drone] .flight-console{width:min(360px,calc(100% - 260px));gap:5px var(--s2)}
+ .cot-flight-hud[data-kind=drone] .flight-designation{font-size:var(--battle-fs-11);line-height:16px;letter-spacing:.05em}
  .cot-flight-hud[data-kind=drone] .flight-designation svg{width:16px;height:16px}
- .cot-flight-hud[data-kind=drone] .flight-instrument{font-size:11px;gap:4px;line-height:18px}
+ .cot-flight-hud[data-kind=drone] .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1);line-height:18px}
  .cot-flight-hud[data-kind=drone] .flight-telemetry{padding:3px 0}
  .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon svg{width:13px;height:13px}
- .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return){min-height:46px;padding:7px 13px;gap:5px;font-size:11px}
+ .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return){min-height:46px;padding:7px 13px;gap:5px;font-size:var(--battle-fs-11)}
  .cot-flight-hud[data-kind=drone] .flight-view-switch{grid-template-columns:16px minmax(0,1fr);row-gap:5px}
  .cot-flight-hud[data-kind=drone] .flight-optic-icon svg{width:16px;height:16px}
- .cot-flight-hud[data-kind=drone] .flight-feed{font-size:11px;letter-spacing:0}
+ .cot-flight-hud[data-kind=drone] .flight-feed{font-size:var(--battle-fs-11);letter-spacing:0}
  .cot-flight-hud[data-kind=drone] .flight-view-track{gap:3px}
  .cot-flight-hud[data-kind=drone] .flight-hint,.cot-flight-hud[data-kind=drone] .flight-key{display:none}
 }
@@ -210,27 +210,27 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 
 /* Gunship: open fire-control rack, independent weapon channels and ground support. */
 .flight-weapon-compact{display:none}
-.cot-flight-hud[data-kind=gunship]{--flight-accent:#ffc46b;--flight-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
-.cot-flight-hud[data-kind=gunship][data-view=infrared]{--flight-accent:#daf4ff}
-.cot-flight-hud[data-kind=gunship][data-view=thermal]{--flight-accent:#ffb16d}
-.cot-flight-hud[data-kind=gunship][data-view=night]{--flight-accent:#b4ee8c}
+.cot-flight-hud[data-kind=gunship]{--flight-accent:var(--accent-hi);--flight-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
+.cot-flight-hud[data-kind=gunship][data-view=infrared]{--flight-accent:var(--ink-1)}
+.cot-flight-hud[data-kind=gunship][data-view=thermal]{--flight-accent:var(--accent-hi)}
+.cot-flight-hud[data-kind=gunship][data-view=night]{--flight-accent:var(--battle-nv)}
 .cot-flight-hud[data-kind=gunship] .flight-console{
  --gunship-width:min(600px,calc(100% - var(--hud-flight-right-clearance,248px) - 24px));
- display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:var(--gunship-width);
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);width:var(--gunship-width);
  left:min(50%,calc(100% - var(--hud-flight-right-clearance,248px) - var(--gunship-width)/2));
  padding:0;border:0;background:none;box-shadow:none;pointer-events:none;
 }
 .cot-flight-hud[data-kind=gunship] :is(.flight-heading,.flight-support,.flight-actions){display:contents}
 .cot-flight-hud[data-kind=gunship] :is(.flight-emblem,.flight-identity>strong,.flight-telemetry,.flight-cycle-icon){display:none}
-.cot-flight-hud[data-kind=gunship] .flight-designation{justify-content:flex-start;padding:0 16px;gap:8px;letter-spacing:.15em}
-.cot-flight-hud[data-kind=gunship] .flight-designation::after{content:'';height:1px;background:linear-gradient(90deg,#d59a4970,transparent);flex:1;order:1}
-.cot-flight-hud[data-kind=gunship] .gunship-role{order:2;font-size:11px;color:#c4d1d7;letter-spacing:.04em}
-.cot-flight-hud[data-kind=gunship] .flight-weapons{grid-column:1/-1;grid-row:2;gap:8px;margin:0;pointer-events:none}
+.cot-flight-hud[data-kind=gunship] .flight-designation{justify-content:flex-start;padding:0 var(--s4);gap:var(--s2);letter-spacing:.15em}
+.cot-flight-hud[data-kind=gunship] .flight-designation::after{content:'';height:1px;background:linear-gradient(90deg,oklch(from var(--accent) l c h / .439),transparent);flex:1;order:1}
+.cot-flight-hud[data-kind=gunship] .gunship-role{order:2;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:.04em}
+.cot-flight-hud[data-kind=gunship] .flight-weapons{grid-column:1/-1;grid-row:2;gap:var(--s2);margin:0;pointer-events:none}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){
  position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:9px 18px;
- border:0;border-radius:0;background:none;box-shadow:none;color:#e6eef1;pointer-events:auto;
- font:inherit;font-size:11px;line-height:1.2;filter:drop-shadow(0 2px 3px #0009);cursor:pointer;
- --control-edge:#6a7d89;--control-fill:#101e28eb;
+ border:0;border-radius:0;background:none;box-shadow:none;color:var(--ink-1);pointer-events:auto;
+ font:inherit;font-size:var(--battle-fs-11);line-height:1.2;filter:drop-shadow(0 2px 3px oklch(from var(--surface-scene) l c h / .6));cursor:pointer;
+ --control-edge:oklch(from var(--ink-4) .58 c h);--control-fill:var(--hud-plate);
 }
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before,
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{
@@ -239,66 +239,66 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before{background:var(--control-edge)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{inset:1px;background:var(--control-fill)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon{display:grid;grid-template-columns:26px minmax(0,1fr);gap:9px;min-height:66px;text-align:left;align-items:center}
-.cot-flight-hud[data-kind=gunship] .flight-weapon-icon{display:flex;color:#c3d1d8}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-icon{display:flex;color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:26px;height:30px}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:5px}
-.cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:11px;line-height:1.2}
-.cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:11px;letter-spacing:0em;color:#b6c7cd}
-.cot-flight-hud[data-kind=gunship] .flight-weapon-copy::after{content:'';position:absolute;left:18px;right:18px;bottom:5px;height:2px;background:#9caebc88;transform:scaleX(var(--weapon-ready,1));transform-origin:left}
-.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:#ffc46b;--control-fill:linear-gradient(135deg,#67491dec,#302314f0);color:#ffdf9f}
-.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] :is(.flight-weapon-icon,small){color:#ffdb9f}
-.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:#ffc46b}
-.cot-flight-hud[data-kind=gunship] .flight-key{border:0;border-radius:3px;background:#dfebef20;color:#dce6ed;min-width:17px;height:17px}
-.cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:11px}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.2}
+.cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0em;color:var(--ink-2)}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy::after{content:'';position:absolute;left:18px;right:18px;bottom:5px;height:2px;background:oklch(from var(--ink-3) l c h / .533);transform:scaleX(var(--weapon-ready,1));transform-origin:left}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:var(--accent-hi);--control-fill:linear-gradient(135deg,oklch(from var(--accent-lo) .43 .072 h / .925),var(--hud-plate-strong));color:var(--accent-hi)}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] :is(.flight-weapon-icon,small){color:var(--accent-hi)}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:var(--accent-hi)}
+.cot-flight-hud[data-kind=gunship] .flight-key{border:0;border-radius:3px;background:oklch(from var(--ink-1) l c h / .125);color:var(--ink-1);min-width:17px;height:17px}
+.cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:var(--battle-fs-11)}
 .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
-.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:4px;font-size:11px;letter-spacing:0;white-space:nowrap}
+.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
 .cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
-.cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;grid-column:2;grid-row:2;gap:4px;height:3px}
+.cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;grid-column:2;grid-row:2;gap:var(--s1);height:3px}
 .cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:center;gap:7px}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=ammo]{grid-column:2}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
 .cot-flight-hud[data-kind=gunship] .flight-supply small{font:inherit;font-weight:700}
-.cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:static;font-size:11px}
-.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal] .flight-icon{color:#b2e29e}
+.cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:static;font-size:var(--battle-fs-11)}
+.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal] .flight-icon{color:var(--ok)}
 .cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
-.cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:11px;color:#c6d2d8}
-.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:#304550ee}
-.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:none;filter:drop-shadow(0 0 4px #fff)}
-.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::before{background:#fff}
+.cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:var(--battle-fs-11);color:var(--ink-2)}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:oklch(from var(--surface-hover) .38 c h / .933)}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--ink-1))}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::before{background:var(--ink-1)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::after{inset:3px}
-.gunship-solution{position:absolute;top:50%;left:50%;width:220px;transform:translate(-50%,-50%);color:var(--flight-accent);text-shadow:0 1px 2px #000,0 0 6px #000;pointer-events:none}
-.gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.gunship-solution{position:absolute;top:50%;left:50%;width:220px;transform:translate(-50%,-50%);color:var(--flight-accent);text-shadow:0 1px 2px var(--surface-scene),0 0 6px var(--surface-scene);pointer-events:none}
+.gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.01em;white-space:nowrap}
 .gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
-.gunship-solution .flight-instrument{font-size:11px;gap:4px}
+.gunship-solution .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1)}
 .gunship-solution .flight-icon{color:inherit}
-.cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent);transition:width .12s,height .12s}
+.cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent);transition:width var(--dur-instant),height var(--dur-instant)}
 .cot-flight-hud[data-kind=gunship][data-weapon='0'] .flight-sight{width:28px;height:28px}
-.cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight{width:52px;height:52px;border:1px solid #dceee77a;border-radius:50%;background:none}
+.cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight{width:52px;height:52px;border:1px solid var(--line-control);border-radius:50%;background:none}
 .cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight::before{content:'';position:absolute;inset:8px;border:1px solid currentColor;border-radius:50%;opacity:.5}
 .cot-flight-hud[data-kind=gunship][data-weapon='2'] .flight-sight{width:38px;height:38px;transform:translate(-50%,-50%) rotate(45deg)}
 .cot-flight-hud[data-kind=gunship].weapon-reloading .flight-sight{opacity:.55}
 @media(pointer:coarse){
  .cot-flight-hud[data-kind=gunship] .flight-console{left:50%;width:min(480px,calc(100% - 184px));gap:6px;bottom:max(8px,env(safe-area-inset-bottom))}
  .cot-flight-hud[data-kind=gunship] .flight-weapons{gap:6px}
- .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){min-height:46px;padding:6px 12px;font-size:11px}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){min-height:46px;padding:6px var(--s3);font-size:var(--battle-fs-11)}
  .cot-flight-hud[data-kind=gunship] .flight-weapon{grid-template-columns:16px minmax(0,1fr);gap:5px}
  .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:16px;height:21px}
  .cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:3px}
- .cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{display:none;font-size:11px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{display:none;font-size:var(--battle-fs-11)}
  .cot-flight-hud[data-kind=gunship] .flight-weapon-copy .flight-weapon-compact{display:block}
- .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:11px;letter-spacing:0;white-space:nowrap}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
  .cot-flight-hud[data-kind=gunship] :is(.flight-key,.flight-hint){display:none}
- .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-template-columns:15px minmax(0,1fr);gap:4px}
+ .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-template-columns:15px minmax(0,1fr);gap:var(--s1)}
  .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:15px;height:15px}
- .cot-flight-hud[data-kind=gunship] .flight-feed{font-size:11px}
+ .cot-flight-hud[data-kind=gunship] .flight-feed{font-size:var(--battle-fs-11)}
  .cot-flight-hud[data-kind=gunship] .flight-supply{gap:5px}
  .cot-flight-hud[data-kind=gunship] .flight-supply .flight-icon svg{width:16px;height:16px}
- .cot-flight-hud[data-kind=gunship] .flight-designation{font-size:11px;padding:0 12px;line-height:16px}
- .cot-flight-hud[data-kind=gunship] .gunship-role{font-size:11px}
- .gunship-solution{width:190px}.gunship-solution .flight-instrument{font-size:11px}
- .gunship-solution-label{font-size:11px;bottom:calc(100% + 18px)}
+ .cot-flight-hud[data-kind=gunship] .flight-designation{font-size:var(--battle-fs-11);padding:0 var(--s3);line-height:16px}
+ .cot-flight-hud[data-kind=gunship] .gunship-role{font-size:var(--battle-fs-11)}
+ .gunship-solution{width:190px}.gunship-solution .flight-instrument{font-size:var(--battle-fs-11)}
+ .gunship-solution-label{font-size:var(--battle-fs-11);bottom:calc(100% + 18px)}
 }
 @media(pointer:coarse) and (orientation:portrait){
  .cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}
@@ -315,11 +315,13 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 }
 @media(prefers-reduced-motion:reduce){.cot-flight-hud[data-kind=gunship] .flight-sight{transition:none}}
 
-.cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:#131d20;color:#e5f1e9;font-size:12px;letter-spacing:.18em;text-shadow:0 2px 4px #000;isolation:isolate}
-.cot-drone-signal-loss::before{content:'';position:absolute;inset:0;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;animation:drone-signal-grain .16s steps(2) infinite}
-.cot-drone-signal-loss::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#0003 3px 4px);pointer-events:none}
+.cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:var(--surface-menu);color:var(--ink-1);font-size:var(--battle-fs-12);letter-spacing:.18em;text-shadow:0 2px 4px var(--surface-scene);isolation:isolate}
+/* the grain moves as a layer (a transform the compositor runs), not by repainting its background's position (249) */
+.cot-drone-signal-loss{overflow:hidden}
+.cot-drone-signal-loss::before{content:'';position:absolute;inset:-48px;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;will-change:transform;animation:drone-signal-grain .16s steps(2) infinite}
+.cot-drone-signal-loss::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,oklch(from var(--surface-scene) l c h / .2) 3px 4px);pointer-events:none}
 .cot-drone-signal-loss[hidden],.cot-scope-vision[hidden]{display:none!important}
-@keyframes drone-signal-grain{to{background-position:41px 27px}}
+@keyframes drone-signal-grain{to{transform:translate(41px,27px)}}
 @media(prefers-reduced-motion:reduce){.cot-drone-signal-loss::before{animation:none}}
 /* Drone static off (Accessibility): a lost feed shows its plain plate and words, no noise and no scan lines */
 :root[data-drone-static=off] .cot-drone-signal-loss::before,:root[data-drone-static=off] .cot-drone-signal-loss::after{display:none}
@@ -331,35 +333,35 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
    takes the compact touch plate in the same seat. Touch seats it left of the sight (below), clear of the ammo and
    consumables column and FIRE on the right. */
 .cot-hud .cot-scope-vision{
- --scope-accent:#ffc46b;--scope-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);
+ --scope-accent:var(--accent-hi);--scope-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);
  position:absolute;left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%);isolation:isolate;
  display:flex;gap:9px;align-items:center;justify-content:center;min-width:156px;min-height:48px;
- padding:7px 19px;pointer-events:auto;border:0;border-radius:0;background:none;color:#e8f0f1;
- font:inherit;font-size:11px;line-height:1.15;cursor:pointer;filter:drop-shadow(0 2px 5px #0009);-webkit-tap-highlight-color:transparent;
+ padding:7px 19px;pointer-events:auto;border:0;border-radius:0;background:none;color:var(--ink-1);
+ font:inherit;font-size:var(--battle-fs-11);line-height:1.15;cursor:pointer;filter:drop-shadow(0 2px 5px oklch(from var(--surface-scene) l c h / .6));-webkit-tap-highlight-color:transparent;
 }
 .cot-scope-vision::before,.cot-scope-vision::after{content:'';position:absolute;pointer-events:none;clip-path:var(--scope-cut);z-index:-1}
-.cot-scope-vision::before{inset:0;background:color-mix(in srgb,var(--scope-accent) 60%,#41515a)}
-.cot-scope-vision::after{inset:1px;background:linear-gradient(165deg,#24353eea,#091219f5)}
-.cot-scope-vision[data-view=infrared]{--scope-accent:#daf4ff}
-.cot-scope-vision[data-view=thermal]{--scope-accent:#ff9a60}
-.cot-scope-vision[data-view=night]{--scope-accent:#a0e888}
+.cot-scope-vision::before{inset:0;background:color-mix(in srgb,var(--scope-accent) 60%,oklch(from var(--surface-hover) .42 c h))}
+.cot-scope-vision::after{inset:1px;background:linear-gradient(165deg,oklch(from var(--surface-hover) .32 c h / .918),var(--hud-plate-strong))}
+.cot-scope-vision[data-view=infrared]{--scope-accent:var(--ink-1)}
+.cot-scope-vision[data-view=thermal]{--scope-accent:var(--accent)}
+.cot-scope-vision[data-view=night]{--scope-accent:var(--battle-nv)}
 .cot-scope-vision:hover::before,.cot-scope-vision:focus-visible::before{background:var(--scope-accent)}
-.cot-scope-vision:hover::after{background:linear-gradient(165deg,#344955f5,#111e28f5)}
+.cot-scope-vision:hover::after{background:linear-gradient(165deg,oklch(from var(--surface-hover) .39 c h / .961),var(--hud-plate-strong))}
 .cot-scope-vision:focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--scope-accent))}
 .cot-scope-vision:focus-visible::after{inset:2px}
-.cot-scope-vision:active::after{background:#304454}
+.cot-scope-vision:active::after{background:oklch(from var(--surface-hover) .38 c h)}
 .cot-scope-vision .scope-vision-emblem{display:flex;flex-shrink:0;color:var(--scope-accent)}
 .scope-vision-emblem svg{width:22px;height:22px}
 .cot-scope-vision .scope-vision-copy{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
 .scope-vision-label{font-weight:700;letter-spacing:.04em;white-space:nowrap}
-.cot-scope-vision .scope-vision-track{display:flex;gap:4px;width:100%;height:3px}
-.scope-vision-step{flex:1;min-width:9px;background:#52636c;transform:skewX(-22deg)}
+.cot-scope-vision .scope-vision-track{display:flex;gap:var(--s1);width:100%;height:3px}
+.scope-vision-step{flex:1;min-width:9px;background:var(--ink-4);transform:skewX(-22deg)}
 .scope-vision-step.active{background:var(--scope-accent);box-shadow:0 0 5px color-mix(in srgb,var(--scope-accent) 55%,transparent)}
-.cot-scope-vision .flight-key{color:#d2dde0;border-color:#71868d;min-width:18px;height:19px}
+.cot-scope-vision .flight-key{color:oklch(from var(--ink-2) .89 c h);border-color:oklch(from var(--ink-3) .61 c h);min-width:18px;height:19px}
 .scope-vision-cycle{display:flex;color:var(--scope-accent)}.scope-vision-cycle svg{width:13px;height:13px}
 @media(pointer:coarse),(max-width:539px){
  .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}
- .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;min-height:46px;padding:6px 12px;gap:6px;font-size:11px}
+ .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;min-height:46px;padding:6px var(--s3);gap:6px;font-size:var(--battle-fs-11)}
  .scope-vision-emblem svg{width:16px;height:16px}.scope-vision-label{letter-spacing:0}
  .cot-scope-vision .scope-vision-copy{gap:5px}.scope-vision-step{min-width:7px}
 }
@@ -377,7 +379,7 @@ body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
    view changes, the plate keeps its glyph and a 2-3 letter tag, on its seat's sight-side edge; hover, focus and a touch
    long-press unfold it. */
 .cot-hud .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible){width:auto;min-width:0;padding:6px 14px;gap:5px}
-.cot-scope-vision .scope-vision-tag{display:none;font-weight:700;font-size:11px;line-height:1;letter-spacing:.06em;color:var(--scope-accent)}
+.cot-scope-vision .scope-vision-tag{display:none;font-weight:700;font-size:var(--battle-fs-11);line-height:1;letter-spacing:var(--battle-track-status);color:var(--scope-accent)}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) .scope-vision-tag{display:block}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) :is(.scope-vision-copy,.flight-key,.scope-vision-cycle){display:none}
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}

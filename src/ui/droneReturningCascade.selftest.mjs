@@ -396,16 +396,16 @@ for (const context of contexts) {
   assert.equal(motion.value.split(/\s+/)[0], context.env.reducedMotion ? 'none' : 'drone-homing', `${context.name}: the drone settles onto the pad${context.env.reducedMotion ? ' (still, reduced motion)' : ''}`);
   table.push(`${context.name.padEnd(36)} svg    animation           <- ${label(animation.at(-1))}`);
   assert.equal(button.opacity, '1', `${context.name}: the tile keeps full strength`);
-  assert.match(button.color, /^#ffdc94$/i, `${context.name}: amber`);
+  assert.match(button.color, /^var\(--accent-hi\)$/, `${context.name}: amber (the accent's high step)`);
   // Distinct from a plain cooling control on the same row: another colour and, on the dock, an undimmed icon.
   const plain = resolve(smoke, 'color', context.env).at(-1);
   assert.notEqual(plain?.value, button.color, `${context.name}: a cooling smoke tile is not amber like the returning drone`);
   if (context.dock) {
-    assert.equal(button['border-bottom-color'], '#efb84e', `${context.name}: an amber bottom edge (the shade cannot cover the border)`);
-    assert.match(button['box-shadow'], /rgba\(239,184,78/, `${context.name}: an amber ring and glow`);
+    assert.equal(button['border-bottom-color'], 'var(--accent-hi)', `${context.name}: an amber bottom edge (the shade cannot cover the border)`);
+    assert.match(button['box-shadow'], /oklch\(from var\(--accent-hi\)/, `${context.name}: an amber ring and glow`);
     assert.equal(resolve(smokeSi, 'opacity', context.env).at(-1)?.value, '.5', `${context.name}: a plain cooling tile's icon is dimmed, the returning one is not`);
   } else {
-    assert.match(button['box-shadow'], /^inset 0 -2px #efb84e99$/, `${context.name}: the strip keeps its amber underline`);
+    assert.match(button['box-shadow'], /^inset 0 -2px oklch\(from var\(--accent-hi\) l c h \/ \.6\)$/, `${context.name}: the strip keeps its amber underline`);
   }
 }
 assert.ok(dockCompetitors >= 4, `the dock's own tile rules were matched and outranked (${dockCompetitors})`);

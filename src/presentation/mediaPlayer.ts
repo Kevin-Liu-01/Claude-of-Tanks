@@ -68,6 +68,8 @@ export type MediaMode = 'loop' | 'hover' | 'click';
 export interface MediaPlayerOptions {
   /** The control's accessible name for the state it would change to (play when paused, pause when playing). */
   readonly label: (playing: boolean) => string;
+  /** A short hover tip for the control (the kit's hover tip, components/hoverTip.ts); without one it shows the label. */
+  readonly tip?: (playing: boolean) => string;
   readonly mode?: MediaMode;
   /** Start the transfer within the near margin instead of when the frame plays (page loops). */
   readonly warm?: boolean;
@@ -441,7 +443,9 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
     control.hidden = !show;
     const label = options.label(playing);
     control.setAttribute('aria-label', label);
-    control.title = label;
+    const tip = options.tip?.(playing);
+    if (tip) control.dataset.tip = tip;
+    else delete control.dataset.tip;
     control.dataset.state = playing ? 'playing' : 'paused';
     glyph.setAttribute('d', playing ? MEDIA_PAUSE_ICON : MEDIA_PLAY_ICON);
   };
@@ -672,7 +676,8 @@ export type MediaLabels = (playing: boolean, video: HTMLVideoElement) => string;
  * Mount the page's players: `video[data-media-player]` (`loop` by default, `hover` or `click`) and the earlier
  * `video[data-autoplay-video]` loops. Each keeps its poster in `data-poster` until it is near the viewport.
  */
-export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: MediaLabels): MediaPlayer[] {
+export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: MediaLabels,
+  tips?: (playing: boolean) => string): MediaPlayer[] {
   const mounted: MediaPlayer[] = [];
   for (const video of videos) {
     if (video.dataset.mediaMounted) continue;
@@ -684,6 +689,7 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
       mode,
       warm: mode === 'loop',
       label: (playing) => labels(playing, video),
+      ...(tips ? { tip: tips } : {}),
       controlClass: video.dataset.controlClass || 'cot-media-toggle',
     });
     player.show({

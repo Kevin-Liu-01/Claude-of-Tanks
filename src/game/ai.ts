@@ -49,6 +49,7 @@ import {
   rayCollisionClearanceEntry2,
   type CollisionRecord,
   type CollisionShape,
+  type ObstacleQuery,
 } from '../world/collision.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
@@ -375,6 +376,9 @@ export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+
 
 const TAU = Math.PI * 2;
 const DEFAULT_SEED = 7001;
+/** The widest box (in obstacle-grid cells) the bots' box queries walk on the grid (ai.ts obstaclesInBox). */
+const BOX_GRID_MAX_CELLS = 256;
+const ascending = (a: number, b: number): number => a - b;
 
 /**
  * Difficulty tiers (§3.6 locked values):
@@ -2795,6 +2799,43 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /**
+   * (perf-249, the battle-scale profile: findBlockingObstacle read every solid's box on the map, ~2.5 % of a 16 v 16
+   * Verdant step) the indices into `obstacles`, ascending, of the solids whose box meets [minX, maxX] x [minZ, maxZ], from
+   * the obstacle grid (world/collision.ts createObstacleGrid: its box test is the scan's own); or null where the grid
+   * cannot answer for the list, and the caller scans it whole: no grid, a grid over another list or another order, or a
+   * box it cannot walk (not finite, or wider than BOX_GRID_MAX_CELLS cells). The same solids, in the list's order: the
+   * same first nearest entry, ties included.
+   */
+  const boxRecords: CollisionRecord[] = [];
+  const boxSlots: number[] = [];
+  let gridList: readonly AiObstacle[] | null = null, gridListLength = -1, gridMatchesList = false;
+  function obstaclesInBox(minX: number, minZ: number, maxX: number, maxZ: number): readonly number[] | null {
+    const query = deps.queryObstacles as ((ObstacleQuery & NonNullable<AiDependencies['queryObstacles']>) | null | undefined);
+    const order = query?.rayOrder;
+    if (!query || !order) return null;
+    if (gridList !== obstacles || gridListLength !== obstacles.length) {
+      gridList = obstacles;
+      gridListLength = obstacles.length;
+      gridMatchesList = order.count === obstacles.length;
+      // (a box the grid cannot place, not finite, is one the scan never passes: the list is scanned whole)
+      for (let i = 0; gridMatchesList && i < obstacles.length; i++) {
+        const o = obstacles[i];
+        if (order.slotOf.get(o as CollisionRecord) !== i || !(Number.isFinite(o.min[0]) && Number.isFinite(o.max[0])
+          && Number.isFinite(o.min[2]) && Number.isFinite(o.max[2]))) gridMatchesList = false;
+      }
+    }
+    if (!gridMatchesList || !(Number.isFinite(minX) && Number.isFinite(minZ) && Number.isFinite(maxX) && Number.isFinite(maxZ))) return null;
+    const cells = (Math.floor(maxX * order.inv) - Math.floor(minX * order.inv) + 1)
+      * (Math.floor(maxZ * order.inv) - Math.floor(minZ * order.inv) + 1);
+    if (!(cells <= BOX_GRID_MAX_CELLS)) return null;
+    query(minX, minZ, maxX, maxZ, boxRecords);
+    boxSlots.length = boxRecords.length;
+    for (let i = 0; i < boxRecords.length; i++) boxSlots[i] = order.slotOf.get(boxRecords[i])!;
+    boxRecords.length = 0;
+    return boxSlots.sort(ascending);
+  }
+
   function findBlockingObstacle(
     sourceX: number,
     sourceZ: number,
@@ -2816,8 +2857,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const pad = margin * 2 + 0.01;
     const minX = Math.min(sourceX, endX) - pad, maxX = Math.max(sourceX, endX) + pad;
     const minZ = Math.min(sourceZ, endZ) - pad, maxZ = Math.max(sourceZ, endZ) + pad;
-    for (let i = 0; i < obstacles.length; i++) {
-      const o = obstacles[i];
+    const inBox = obstaclesInBox(minX, minZ, maxX, maxZ);
+    const count = inBox ? inBox.length : obstacles.length;
+    for (let i = 0; i < count; i++) {
+      const o = inBox ? obstacles[inBox[i]] : obstacles[i];
       if (o.max[0] < minX || o.min[0] > maxX || o.max[2] < minZ || o.min[2] > maxZ) continue;
       if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
       const entry = rayCollisionClearanceEntry2(
@@ -4281,7 +4324,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateArcLimit(dt: number, timeS: number, tolerance: number): number {
     const state = entity.state;
     const pitchError = fireGate.pitchError;
-    const gunReady = losClear && fireGate.reactionReady
+    // (perf-249, the bot receipts' bisect: 6a943e4eee's gun clearance curves) a rack with nothing that can hurt the target
+    // has no shot to lay: a spent-rack Challenger 2 retiring with its gun laid back over its engine deck (+3.9 to +5 degrees
+    // there) took the arc limit's flat-ground leg again and again, 128 s to clear 240 m instead of 94
+    const gunReady = losClear && !emptyRack && fireGate.reactionReady
       && fireGate.reloadReady && fireGate.rangeReady;
     if ((state.atGunLimit || pitchError > 0.1) && gunReady && pitchError >= tolerance * 1.5) {
       arcLimitedT += dt;
@@ -4615,7 +4661,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       Math.atan2(aimPoint.x - st.pos.x, aimPoint.z - st.pos.z) -
       st.yaw - st.turretYaw,
     )) > 0.02;
-    if (mode !== 'engage' || !target || !losClear || !st.atGunLimit || yawPinned) {
+    // (perf-249) nor does a rack with nothing that can hurt the target back up for depression (updateArcLimit's rule): it
+    // has no shot to lay, and the back-up faces the hull it may be leaving
+    if (mode !== 'engage' || !target || !losClear || !st.atGunLimit || yawPinned || emptyRack) {
       gunLimitT = 0;
       return;
     }

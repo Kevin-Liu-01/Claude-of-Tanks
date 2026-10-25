@@ -10,6 +10,8 @@ type TopicMedia = readonly [string, string];
 interface TopicDefinition {
   label: string;
   title: string;
+  /** The tab title, the head's own string (metadata.docs<Topic>.title: "<label> · Claude of Tanks"). */
+  pageTitle: string;
   lede: string;
   hero: string;
   icon: DocsIconKey;
@@ -31,6 +33,7 @@ export const topics: Record<string, TopicDefinition> = {
   modes: {
     label: t('docs.topic.modes.label'),
     title: t('docs.topic.modes.title'),
+    pageTitle: t('metadata.docsModes.title'),
     lede: t('docs.topic.modes.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'modes',
@@ -43,6 +46,7 @@ export const topics: Record<string, TopicDefinition> = {
   controls: {
     label: t('docs.topic.controls.label'),
     title: t('docs.topic.controls.title'),
+    pageTitle: t('metadata.docsControls.title'),
     lede: t('docs.topic.controls.lede'),
     hero: '/media/site50-r14/loops/s26-minaret-fire.webm',
     icon: 'interface',
@@ -55,6 +59,7 @@ export const topics: Record<string, TopicDefinition> = {
   start: {
     label: t('docs.topic.start.label'),
     title: t('docs.topic.start.title'),
+    pageTitle: t('metadata.docsStart.title'),
     lede: t('docs.topic.start.lede'),
     hero: '/media/site50-r14/loops/s226-church-duel.webm',
     icon: 'manual',
@@ -67,6 +72,7 @@ export const topics: Record<string, TopicDefinition> = {
   tanks: {
     label: t('docs.topic.tanks.label'),
     title: t('docs.topic.tanks.title'),
+    pageTitle: t('metadata.docsTanks.title'),
     lede: t('docs.topic.tanks.lede'),
     hero: '/media/site50-r14/loops/s05-barn-advance.webm',
     icon: 'fleet',
@@ -79,6 +85,7 @@ export const topics: Record<string, TopicDefinition> = {
   combat: {
     label: t('docs.topic.combat.label'),
     title: t('docs.topic.combat.title'),
+    pageTitle: t('metadata.docsCombat.title'),
     lede: t('docs.topic.combat.lede'),
     hero: '/media/site50-r14/loops/s24-ice-duel.webm',
     icon: 'combat',
@@ -91,6 +98,7 @@ export const topics: Record<string, TopicDefinition> = {
   battlefields: {
     label: t('docs.topic.battlefields.label'),
     title: t('docs.topic.battlefields.title'),
+    pageTitle: t('metadata.docsBattlefields.title'),
     lede: t('docs.topic.battlefields.lede'),
     hero: '/maps/fjord.webp',
     icon: 'battlefields',
@@ -102,6 +110,7 @@ export const topics: Record<string, TopicDefinition> = {
   build: {
     label: t('docs.topic.build.label'),
     title: t('docs.topic.build.title'),
+    pageTitle: t('metadata.docsBuild.title'),
     lede: t('docs.topic.build.lede'),
     hero: '/media/site50-r14/loops/s23-village-crossroads.webm',
     icon: 'build',
@@ -115,13 +124,14 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.build.s6.t'), t('docs.topic.build.s6.p1'), t('docs.topic.build.s6.p2')],
     ],
     media: [
-      ['/media/showcase-r2/15_studio_workspace.webp', t('docs.topic.build.media1')],
+      ['/media/ui-246/studio-workspace.webp', t('docs.topic.build.media1')],
       ['/media/site50-r14/frames/sheet-2.webp', t('docs.topic.build.media2')],
     ],
   },
   models: {
     label: t('docs.topic.models.label'),
     title: t('docs.topic.models.title'),
+    pageTitle: t('metadata.docsModels.title'),
     lede: t('docs.topic.models.lede'),
     hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
     icon: 'models',
@@ -136,13 +146,14 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.models.s6.t'), t('docs.topic.models.s6.p1'), t('docs.topic.models.s6.p2')],
     ],
     media: [
-      ['/media/showcase-r2/11_gallery_hero.webp', t('docs.topic.models.media1')],
-      ['/media/presentation-r1/ui_tank_closeup_modern.webp', t('docs.topic.models.media2')],
+      ['/media/ui-246/gallery-hero.webp', t('docs.topic.models.media1')],
+      ['/media/ui-246/garage-closeup.webp', t('docs.topic.models.media2')],
     ],
   },
   ai: {
     label: t('docs.topic.ai.label'),
     title: t('docs.topic.ai.title'),
+    pageTitle: t('metadata.docsAi.title'),
     lede: t('docs.topic.ai.lede'),
     hero: '/media/site50-r14/loops/s04-column-under-fire.webm',
     icon: 'ai',
@@ -164,6 +175,7 @@ export const topics: Record<string, TopicDefinition> = {
   audio: {
     label: t('docs.topic.audio.label'),
     title: t('docs.topic.audio.title'),
+    pageTitle: t('metadata.docsAudio.title'),
     lede: t('docs.topic.audio.lede'),
     hero: '/media/site50-r14/loops/s34-furnace-salvo.webm',
     icon: 'audio',
@@ -176,6 +188,7 @@ export const topics: Record<string, TopicDefinition> = {
   simulation: {
     label: t('docs.topic.simulation.label'),
     title: t('docs.topic.simulation.title'),
+    pageTitle: t('metadata.docsSimulation.title'),
     lede: t('docs.topic.simulation.lede'),
     hero: '/media/site50-r14/loops/s24-ice-duel.webm',
     icon: 'simulation',
@@ -188,7 +201,7 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.simulation.s6.t'), t('docs.topic.simulation.s6.p1'), t('docs.topic.simulation.s6.p2')],
     ],
     media: [
-      ['/media/showcase-r2/25_live_killcam_xray.webp', t('docs.topic.simulation.media1')],
+      ['/media/ui-246/killcam-xray.webp', t('docs.topic.simulation.media1')],
       ['/media/site50-r14/stills/s27-caravanserai-kill.webp', t('docs.topic.simulation.media2')],
     ],
   },
@@ -196,6 +209,7 @@ export const topics: Record<string, TopicDefinition> = {
   rendering: {
     label: t('docs.topic.rendering.label'),
     title: t('docs.topic.rendering.title'),
+    pageTitle: t('metadata.docsRendering.title'),
     lede: t('docs.topic.rendering.lede'),
     hero: '/media/site50-r14/loops/s20-road-return-fire.webm',
     icon: 'rendering',
@@ -209,7 +223,7 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.rendering.s5.t'), t('docs.topic.rendering.s5.p1'), t('docs.topic.rendering.s5.p2')],
     ],
     media: [
-      ['/media/showcase-r2/19_live_sniper.webp', t('docs.topic.rendering.media1')],
+      ['/media/ui-246/battle-sight.webp', t('docs.topic.rendering.media1')],
       ['/media/site50-r14/stills/s38-church-knockout-close.webp', t('docs.topic.rendering.media2')],
     ],
   },
@@ -218,6 +232,7 @@ export const topics: Record<string, TopicDefinition> = {
   multiplayer: {
     label: t('docs.topic.multiplayer.label'),
     title: t('docs.topic.multiplayer.title'),
+    pageTitle: t('metadata.docsMultiplayer.title'),
     lede: t('docs.topic.multiplayer.lede'),
     hero: '/media/site50-r14/loops/s18-street-knockout.webm',
     icon: 'multiplayer',
@@ -231,6 +246,7 @@ export const topics: Record<string, TopicDefinition> = {
   studio: {
     label: t('docs.topic.studio.label'),
     title: t('docs.topic.studio.title'),
+    pageTitle: t('metadata.docsStudio.title'),
     lede: t('docs.topic.studio.lede'),
     hero: '/media/site50-r14/loops/s33-water-tower.webm',
     icon: 'studio',
@@ -245,6 +261,7 @@ export const topics: Record<string, TopicDefinition> = {
   filming: {
     label: t('docs.topic.filming.label'),
     title: t('docs.topic.filming.title'),
+    pageTitle: t('metadata.docsFilming.title'),
     lede: t('docs.topic.filming.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'filming',
@@ -287,12 +304,12 @@ for (const [slug, keys] of Object.entries(FIELD_GUIDES)) {
 export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, number]>> = {
   '/media/filming-r1/plan-view.webp': [2000, 594],
   '/media/filming-r1/previz-sheet.webp': [1920, 720],
-  '/media/presentation-r1/ui_tank_closeup_modern.webp': [1920, 1080],
-  '/media/showcase-r2/11_gallery_hero.webp': [1920, 1080],
-  '/media/showcase-r2/15_studio_workspace.webp': [1920, 1080],
-  '/media/showcase-r2/19_live_sniper.webp': [1920, 1080],
-  '/media/showcase-r2/25_live_killcam_xray.webp': [1920, 1080],
   '/media/site50-r14/frames/sheet-2.webp': [2400, 540],
+  '/media/ui-246/battle-sight.webp': [1920, 1080],
+  '/media/ui-246/gallery-hero.webp': [1920, 1080],
+  '/media/ui-246/garage-closeup.webp': [1920, 1080],
+  '/media/ui-246/killcam-xray.webp': [1920, 1080],
+  '/media/ui-246/studio-workspace.webp': [1920, 1080],
 };
 const DEFAULT_FIGURE_SIZE = [1920, 1080] as const;
 /** A figure fills the article column (about 760 px; the full width on narrow screens). */
@@ -400,7 +417,7 @@ function mountSearchEntry(root: HTMLElement): void {
     input.select();
   });
   const kbd = root.querySelector('.dm-search kbd');
-  if (kbd && !/Mac|iP(?:hone|ad|od)/.test(navigator.platform)) kbd.textContent = 'Ctrl K';
+  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
 }
 
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
@@ -454,7 +471,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">Cmd K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
+    + `<kbd class="cot-c-kbd" aria-hidden="true">${t('docs.search.shortcutMac')}</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
@@ -482,7 +499,7 @@ function renderTopicPage(): void {
   const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
   const slug: TopicId = isTopicId(last) ? last : 'simulation';
   const topic = topics[slug];
-  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
+  document.title = topic.pageTitle;
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
   const prerendered = root.dataset.prerendered === slug && root.dataset.prerenderedLocale === getLocale() && root.querySelector('.dm');
@@ -503,7 +520,8 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
     void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
-      (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' })));
+      (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' }),
+      (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip')));
   }
   const article = root.querySelector<HTMLElement>('article');
   if (article && reference) {

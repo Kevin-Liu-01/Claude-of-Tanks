@@ -1,7 +1,7 @@
 // The tactical map's water is the water a player can see (visibleWater.ts; the Kestrel water plan's phase 2). A CPU
 // parity receipt: it holds the raster against the CPU water mask (heightField.getWaterMaskAt, the material's own ramp)
 // and the water sheet's REAL geometry (shallowWaterGeometrySteps, run here), not against GPU pixels. On each of the
-// twelve liquid battlefields:
+// thirteen liquid battlefields:
 //   - the raster sits on the sheet's own 8 m grid (four cells a side per sheet cell) and uses the sheet's admission rule
 //     (a cell is built when a corner or its centre carries a mask above WATER_SHEET_MIN_COVERAGE, 0.002) and its
 //     discard (VISIBLE_WATER_MIN, 0.015) — shallowWater.ts imports all three from visibleWater.ts;
@@ -136,7 +136,8 @@ for (const id of MAP_IDS) {
   assert.equal(visibleWaterAt(raster, -half - 1, 0), false, `${id}: nothing past the square`);
   rows.push({ id, sheetM2: sheetWater * cellM * cellM, outsideDiscsM2: outsideDiscs * cellM * cellM, paddyWet, reads: raster.samples, ms });
 }
-assert.equal(liquidMaps, 12, 'twelve liquid battlefields');
+// Frontier Basin joined with its two liquid mill ponds (5b848317f9, 2026-10-22; minimapLiquidWater names it too)
+assert.equal(liquidMaps, 13, 'thirteen liquid battlefields');
 const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
 assert.ok(byId.polders.outsideDiscsM2 > 0, 'Tidegate Polders: its canals (water outside every lake and marsh) are on the raster');
 assert.ok(byId.delta.paddyWet > 0, `Jade River Delta: the paddies' wet mask is read and left off the raster (${byId.delta.paddyWet} cells)`);

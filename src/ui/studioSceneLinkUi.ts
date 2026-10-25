@@ -9,6 +9,7 @@ import {
 } from '../game/studioSceneShare.ts';
 import { getLocale, t } from './i18n.ts';
 import { pathForLocale } from './localeRouting.ts';
+import { uiIconSVG } from './uiIcons.ts';
 
 interface SceneLinkCopyEnv {
   readonly origin: string;
@@ -33,9 +34,9 @@ interface SceneLinkNotice {
  * a link is ever part of this markup; the notice writes every message and detail as text.
  */
 export const SCENE_LINK_GLYPHS = Object.freeze({
-  link: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M10.2 13.8a4 4 0 0 0 5.7 0l3.4-3.4a4 4 0 0 0-5.7-5.7l-1.2 1.2M13.8 10.2a4 4 0 0 0-5.7 0l-3.4 3.4a4 4 0 0 0 5.7 5.7l1.2-1.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-  broken: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="m13.3 6.1 1-1a4 4 0 0 1 5.6 5.6l-1 1M10.7 17.9l-1 1a4 4 0 0 1-5.6-5.6l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 3v3M3 8h3M16 21v-3M21 16h-3M9 15l6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>',
-  done: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55"/><path d="m7.4 12.4 3.2 3.2 6-6.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  link: uiIconSVG('link', 16),
+  broken: uiIconSVG('lampWarn', 22),
+  done: uiIconSVG('check', 22),
 });
 
 function encodeFailure(encoded: Exclude<SceneLinkEncoded, { ok: true }>): { message: string; detail: string } {

@@ -628,7 +628,9 @@ export function createGaragePedestalRuntime({
     stillValid: () => boolean = () => true,
     protectedIds: readonly string[] = [],
   ): Promise<boolean> => {
-    if (disposed || getDeviceTier() === 'mobile' || !isBootComplete() || getPhase() !== 'garage') return false;
+    if (disposed || !isBootComplete() || getPhase() !== 'garage') return false;
+    // a phone builds only the next card ahead (the neighbours come next first), within its three residents
+    if (getDeviceTier() === 'mobile' && protectedIds[0] !== specId) return false;
     if (cache.has(specId) || specId === getSelectedId() || current?.specId === specId) return false;
     if (cache.size >= residentLimit) {
       const displaceable = [...cache.values()].some((visual) => !visual.__everShown
@@ -726,6 +728,9 @@ export function createGaragePedestalRuntime({
       const revealCached = () => {
         if (!canStage() || cachedToken !== pollToken || !cached) return;
         if (cache.get(specId) !== cached || !reusable(cached)) return;
+        // (transitions-249) a hero a battle start parked its dormant skin on, and no battle adopted back, wears it again
+        // before it shows (a hero already wearing it is left as it is)
+        prepareVisual?.(cached, getSpec(specId));
         current = cached;
         touch(specId, cached);
         parked.delete(cached);

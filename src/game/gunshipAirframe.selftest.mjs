@@ -144,7 +144,7 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   assert.doesNotMatch(src('src/game/gunshipVisual.ts'), /tankRoot\.visible = false/, "the sync never hides the anchor itself");
   assert.match(src('src/ui/hud.ts'), /flier\?\.aerial\?\.kind !== 'gunship' \|\| flier\.visual\?\.root\?\.visible === false/,
     "the gimbal's sight shows only through the lens");
-  assert.match(src('src/ui/aerialHud.ts'), /solution\.hidden=drone\|\|!lensUp;sight\.hidden=!drone&&!lensUp;/);
+  assert.match(src('src/ui/aerialHud.ts'), /setHidden\(solution,drone\|\|!lensUp\);setHidden\(sight,!drone&&!lensUp\);/);
 }
 
 // ---- the rest of the AC-130 warm path, under the cover ----

@@ -243,12 +243,14 @@ function poolFinalizer(fixture, field, drng, overrides = {}) {
     ownBroken: new Set(),
     // (Lane C, #8 r2) the set piece kinds that draw their intact instances in the baked bucket (props.ts setPieceSpans):
     // the fixture's walls are none
-    setPieceSpans: new Map(), ...overrides };
+    setPieceSpans: new Map(),
+    // (perf-248) the build offers finished pools for their programs, and the broken-vehicle pool is the browser's: none here
+    offerPrograms: () => {}, vehiclePool: null, pendingBroken: [], ...overrides };
   const functions = new Function('bindings', `const {
     THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
     heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
     DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed,
-    ownBroken, setPieceSpans
+    ownBroken, setPieceSpans, offerPrograms, vehiclePool, pendingBroken
   } = bindings; ${prepareSource}; ${finalSource};
   return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
   return { ...functions, group: bindings.group };
