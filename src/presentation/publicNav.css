@@ -26,23 +26,22 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 
 @layer surfaces{
 .public-skip{position:fixed;left:var(--s4);top:var(--s3);z-index:var(--z-modal);padding:var(--s3) var(--s4);border-radius:var(--control-radius);background:var(--accent);color:var(--ink-on-accent);
-  font:700 var(--fs-14)/1 var(--font-ui);text-decoration:none;transform:translateY(-300%)}
+  font:700 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-ui);text-decoration:none;transform:translateY(-300%)}
 .public-skip:focus{transform:none}
 
 /* the bar: static chrome, sticky on every page (the landing floats it over its hero until the page scrolls) */
-.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--surface-nav) 94%,transparent);
-  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);border-bottom:1px solid var(--line-1);background:var(--surface-nav)}
 .public-nav__inner{display:flex;align-items:center;gap:var(--s5);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));height:100%;margin-inline:auto}
 .public-nav__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
 .public-nav__links{position:relative;display:flex;align-items:center;gap:var(--s6);margin-left:var(--s5)}
-.public-nav__links a,.public-nav__menu-links a{position:relative;display:inline-flex;align-items:center;gap:var(--s2);height:40px;font:500 var(--fs-14)/1 var(--font-ui);color:var(--ink-2);text-decoration:none;
+.public-nav__links a,.public-nav__menu-links a{position:relative;display:inline-flex;align-items:center;gap:var(--s2);height:40px;font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-ui);color:var(--ink-2);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter)}
 .public-nav__links a:hover,.public-nav__links a[aria-current=page]{color:var(--ink-1)}
 .public-nav__links a[aria-current=page]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
 .public-nav__icon{opacity:.82}
 .public-nav__tools{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .public-nav__lang,.public-footer__lang{display:inline-flex;height:36px;border:1px solid var(--line-2);border-radius:var(--control-radius);overflow:hidden}
-.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 var(--fs-13)/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
+.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .public-nav__lang a:hover,.public-footer__lang a:hover{color:var(--ink-1)}
 :root:not(:lang(zh)) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
@@ -53,9 +52,6 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__cta svg{width:16px;height:16px}
 .public-nav__menu-trigger{display:none;place-items:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-1);cursor:pointer}
 .public-nav__menu[hidden]{display:none}
-/* the bar's blur makes it the containing block of its fixed descendants: while the menu is open the bar drops it, so
-   the menu fills the screen under the bar instead of the bar's own 56 px */
-.public-nav:has(.public-nav__menu:not([hidden])){-webkit-backdrop-filter:none;backdrop-filter:none}
 .public-nav__menu{position:fixed;inset:var(--shell-nav-h) 0 0;z-index:var(--z-menu);display:flex;flex-direction:column;gap:var(--s5);padding:var(--s5) var(--shell-gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px));
   overflow:auto;background:var(--surface-page)}
 .public-nav__menu-links{display:flex;flex-direction:column}
@@ -70,12 +66,12 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-footer__inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s5) var(--s7);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto}
 .public-footer__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
 .public-footer__links{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5)}
-.public-footer__links a{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1.4 var(--font-ui);color:var(--ink-2);text-decoration:none}
+.public-footer__links a{display:inline-flex;align-items:center;gap:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-ui);color:var(--ink-2);text-decoration:none}
 .public-footer__links a:hover{color:var(--ink-1)}
-.public-footer__stars{min-width:3ch;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-3)}
+.public-footer__stars{min-width:3ch;font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3)}
 .public-footer__stars[data-github-stars-state='failed']{display:none}
 .public-footer__credit{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3);margin:0;padding-top:var(--s4);border-top:1px solid var(--line-1);
-  font:400 var(--fs-13)/1.4 var(--font-ui);color:var(--ink-3)}
+  font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-ui);color:var(--ink-3)}
 .public-footer__credit a{display:inline-flex;align-items:center;gap:var(--s2);color:var(--ink-3);text-decoration:none}
 .public-footer__credit a:hover{color:var(--ink-1)}
 .public-footer__credit img{border-radius:var(--r1)}
@@ -84,17 +80,27 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   .public-nav__links{display:none}
   .public-nav__menu-trigger{display:inline-grid}
 }
+@media (width < 1100px){
+  .public-footer__inner{grid-template-columns:1fr;gap:var(--s5)}
+  .public-footer__lang{justify-self:start}
+}
 @media (width < 768px){
   :root{--shell-nav-h:56px}
   .public-nav__tools>.public-nav__lang,.public-nav__tools>.public-nav__icon-link{display:none}
-  .public-footer__inner{grid-template-columns:1fr;gap:var(--s5)}
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
 /* a phone's footer: the language switch keeps its own width, the links two to a row (no link left alone on a line), each
    row a 44 px target on touch */
-@media (width < 768px){.public-footer__lang{justify-self:start}}
-@media (width < 520px){.public-footer__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1) var(--s4)}}
-@media (pointer:coarse){.public-footer__links a{min-height:var(--btn-h-m)}}
+@media (width < 520px){.public-footer__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--s4)}
+  .public-footer__links a{min-height:var(--btn-h-m)}}
+/* touch, at any width (a landscape phone is wider than the phone band): the bar's Play, the language switches, the icon
+   links and the footer links are 44 px targets */
+@media (pointer:coarse){
+  .public-nav__cta{--h:var(--btn-h-m)}
+  :is(.public-nav__lang,.public-footer__lang){height:var(--btn-h-m)}
+  .public-nav__icon-link{width:var(--btn-h-m);height:var(--btn-h-m)}
+  .public-footer__links a{min-height:var(--btn-h-m)}
+}
 /* a phone (the 520 px band edge) keeps the menu button on the bar: Play now becomes its glyph (named, its tip on hover); the
    menu repeats it in full */
 @media (width < 520px){

@@ -359,5 +359,4 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-keys .cot-c-kbd{vertical-align:middle}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
-@media (pointer:coarse){.public-nav__cta{--h:var(--btn-h-m)}}
 }
