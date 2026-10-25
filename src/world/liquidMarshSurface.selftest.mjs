@@ -202,7 +202,7 @@ for (const seed of [1337, 2049]) {
   }
 }
 
-let checkedWater = 0, worstBankGrade = 0, worstBankSite = '';
+let checkedWater = 0, worstBankGrade = 0, worstBankSite = '', worstRiseGrade = 0, worstRiseSite = '', rises = 0;
 const receipts = [];
 for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
   const config = (await import(`./maps/${name}.ts`)).default;
@@ -238,12 +238,36 @@ for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
           checkedWater++;
           coreCount++;
           assert.equal(field._noVeg(x, z), true, `${name}: open water excludes foliage`);
-        } else if (band >= 0.94) {
+        } else if (band >= 0.94 && field.getWaterMaskAt(x, z) === 0) {
+          // the dry bank: graded, never steeper than 75 % (a sample under the water's edge is the waterline's rise below)
           bankCount++; maxBank = Math.max(maxBank, slope);
           if (slope > worstBankGrade) {
             worstBankGrade = slope; worstBankSite = `${name}/${seed}/${kind} ${x},${z} band=${band}`;
           }
         }
+      }
+      // (251) the waterline's own rise. Since the water banks (230, 2807b6d767, waterBank.ts) the bed under the water's
+      // edge climbs from the floor to the lip across the mask's ramp, the depth and the lip on a smoothstep's S. A point
+      // on it reads the S's local peak, two to three times the rise's grade: Mangrove's 36 m channels read 0.88 where a
+      // band sample fell on one. Every crossing of this line, marched at 0.1 m, holds the 75 % on its mean grade, and
+      // the dry bank keeps the local law above.
+      const c = Math.cos(angle), s = Math.sin(angle);
+      let run = null;
+      for (let r = radius * 0.85; r <= radius * 1.3; r += 0.1) {
+        const x = marsh.x + c * r, z = marsh.z + s * r;
+        const m = field._roadDist(x, z) < 20 || pads.some(p => Math.hypot(x - p.x, z - p.z) < 28) ? -1 : field.getWaterMaskAt(x, z);
+        if (m > 0 && m < 0.98) {
+          const h = field.getHeightAt(x, z);
+          if (!run) run = { r0: r, h0: h };
+          run.r1 = r; run.h1 = h;
+          continue;
+        }
+        if (run && m >= 0 && run.r1 > run.r0) {
+          const grade = Math.abs(run.h1 - run.h0) / (run.r1 - run.r0);
+          rises++;
+          if (grade > worstRiseGrade) { worstRiseGrade = grade; worstRiseSite = `${name}/${seed}/${kind} ${x.toFixed(2)},${z.toFixed(2)}`; }
+        }
+        run = null;
       }
     }
   }
@@ -259,6 +283,7 @@ for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
 }
 assert.ok(checkedWater > 300, 'real river/pond cores are exercised, not just synthetic geometry');
 assert.ok(worstBankGrade < 0.75, `graded near shores exceed 75% slope (${worstBankGrade}; ${worstBankSite})`);
+assert.ok(rises > 1000 && worstRiseGrade < 0.75, `the waterlines' rises exceed 75% grade (${worstRiseGrade}; ${worstRiseSite}; ${rises} rises)`);
 const source = await readFile(new URL('./terrain.ts', import.meta.url), 'utf8');
 assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt,/,
   'the existing texture bake and live water query share the protected wetness callback');

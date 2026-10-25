@@ -112,13 +112,16 @@ export const ROAD_LIFE_SEATS: Readonly<Record<string, readonly CivicFurniture[]>
 
   // @map delta
   // 20 vehicles and 6 carts; rotation twins about (-4, 14); on the shoulder; seats the hulls left alone in 6 zone and 6 Frontline base battles
+  // (251, the world-receipts lane, by hand: the search's tool is gone) Delta's roads run on its west half, so the twins
+  // east of the centre stand off any road. Four of them stood in its trees (parkedVehicleSeparation). The jeep, sedan and
+  // pickup run moved 7.75 m to (+7.49, -2.01) and the flatbed 0.75 m west, each clear of every record by 0.6 m or more.
   delta: [
     { kind: 'jeep', x: -286.69, z: 396.72, yawDeg: -158.7 },
-    { kind: 'jeep', x: 278.69, z: -368.72, yawDeg: 21.3 },
+    { kind: 'jeep', x: 286.18, z: -370.73, yawDeg: 21.3 },
     { kind: 'sedan', x: -284.45, z: 402.28, yawDeg: -157.8 },
-    { kind: 'sedan', x: 276.45, z: -374.28, yawDeg: 22.2 },
+    { kind: 'sedan', x: 283.94, z: -376.29, yawDeg: 22.2 },
     { kind: 'pickup', x: -282.21, z: 407.85, yawDeg: -158 },
-    { kind: 'pickup', x: 274.21, z: -379.85, yawDeg: 22 },
+    { kind: 'pickup', x: 281.7, z: -381.86, yawDeg: 22 },
     { kind: 'sedan', x: -263.86, z: -495.35, yawDeg: 25.4 },
     { kind: 'sedan', x: 255.86, z: 523.35, yawDeg: -154.6 },
     { kind: 'wagon', x: -261.26, z: -489.95, yawDeg: 25.1 },
@@ -132,7 +135,7 @@ export const ROAD_LIFE_SEATS: Readonly<Record<string, readonly CivicFurniture[]>
     { kind: 'wagon', x: -422.31, z: -101.87, yawDeg: 6.3 },
     { kind: 'wagon', x: 414.31, z: 129.87, yawDeg: -173.7 },
     { kind: 'truckflatbed', x: -336.19, z: 301.26, yawDeg: 23 },
-    { kind: 'truckflatbed', x: 328.19, z: -273.26, yawDeg: -157 },
+    { kind: 'truckflatbed', x: 327.44, z: -273.26, yawDeg: -157 },
     { kind: 'handcart', x: -235.89, z: -461.03, yawDeg: -154.3 },
     { kind: 'handcart', x: 227.89, z: 489.03, yawDeg: 25.7 },
     { kind: 'handcart', x: -256.45, z: 499.49, yawDeg: 21.9 },
