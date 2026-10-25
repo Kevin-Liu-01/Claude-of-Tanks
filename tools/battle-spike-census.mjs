@@ -128,7 +128,7 @@ export function parseCensusArgs(argv) {
 // ---------------------------------------------------------------------------------------------- page side
 
 /** Before boot: the preset, every mode's team arrangement, and the long-task, long-animation-frame and decode observers. */
-function installCensusObservers({ preset, allies, enemies }) {
+export function installCensusObservers({ preset, allies, enemies }) {
   const census = { tasks: [], loaf: [], decodes: [] };
   window.__CENSUS = census;
   try {
@@ -176,7 +176,7 @@ function installCensusObservers({ preset, allies, enemies }) {
 }
 
 /** The player drives and fires (the perf probe's drive: W held, A/D alternating, forceFire); drone mode launches its drone. */
-async function driveBattle(page, { seconds, mode }) {
+export async function driveBattle(page, { seconds, mode }) {
   await page.evaluate(() => { window.__DEBUG.flags.forceFire = true; });
   await page.keyboard.down('KeyW');
   const until = Date.now() + seconds * 1000;
@@ -384,7 +384,7 @@ export function summarizeCpuProfile(profile, seconds, { resolve = null, top = 40
 }
 
 /** Resolve a dist script position to its source through the script's own map (dist/assets/<file>.map), when present. */
-async function sourceResolver(root) {
+export async function sourceResolver(root) {
   let TraceMap, originalPositionFor;
   try { ({ TraceMap, originalPositionFor } = await import('@jridgewell/trace-mapping')); } catch { return null; }
   const maps = new Map();
