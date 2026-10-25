@@ -225,6 +225,15 @@ const CSS = `
   animation-name:cotPlayEdge;animation-fill-mode:both;animation-timing-function:linear;animation-range:calc(100% - var(--s6)) 100%}
 }
 @keyframes cotPlayEdge{from{opacity:1}to{opacity:0}}
+/* the sticky head and foot: what scrolls under them fades into their plate while they stand stuck (scroll-state queries;
+   a browser without them shows the plain edge) */
+.cot-play :is(.play-head,.lobby.show .controls){container-type:scroll-state}
+.cot-play .play-head h2::after,.cot-play .lobby.show .control-options::before{content:'';position:absolute;left:0;right:0;height:var(--s6);
+  background:var(--play-plate);pointer-events:none;opacity:0}
+.cot-play .play-head h2::after{top:100%;mask-image:linear-gradient(var(--surface-scene),transparent)}
+.cot-play .lobby.show .control-options::before{bottom:100%;mask-image:linear-gradient(transparent,var(--surface-scene))}
+@container scroll-state(stuck: top){.cot-play .play-head h2::after{opacity:1}}
+@container scroll-state(stuck: bottom){.cot-play .lobby.show .control-options::before{opacity:1}}
 .cot-play .play-head{position:sticky;top:calc(-1 * var(--s5));z-index:5;flex-shrink:0;margin:calc(-1 * var(--s5)) calc(-1 * var(--s5)) 0;
   padding:var(--s5) 64px var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
@@ -440,7 +449,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-copy{display:grid;align-items:center;gap:var(--s3);padding:var(--s4)}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
+.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) minmax(82px,auto);align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
@@ -458,7 +467,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-play .player .team{color:var(--ink-3)}.cot-play .player.alpha .team{color:var(--team-own)}.cot-play .player.bravo .team{color:var(--team-enemy)}
 .cot-play .player.offline .name{color:var(--ink-3)}
-.cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
+.cot-play .player :is(.ready,.wait){white-space:nowrap}.cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
 
 /* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
