@@ -12,7 +12,8 @@
   display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding:10px var(--s3) var(--s3);box-sizing:border-box;
   color:var(--ink-2);background:var(--surface-menu);
   border:1px solid var(--accent-lo);box-shadow:var(--e3);
-  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;}
+  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;
+  contain:content;}
 .cot-facet-panel[hidden]{display:none;}
 /* The Garage's side of the filter, loaded with the panel: the open rail lifts over the side cards and the
    Battle/Multiplayer buttons (which otherwise paint over it on phones; menus, drawers and the nav stay above), the

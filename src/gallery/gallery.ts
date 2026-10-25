@@ -806,9 +806,20 @@ function renderRoster(): void {
     ? formatNumber(records.length) : `${formatNumber(filteredRecords.length)}/${formatNumber(records.length)}`;
   count.setAttribute('aria-label', t('gallery.count', { shown: filteredRecords.length, total: records.length }));
 }
-/** Scroll the fleet list itself (never the page) so a row is in view. */
+/** Scroll the fleet list itself (never the page) so a row is in view, in the frame's callback: a press that marks the
+ *  selection and then measured the list laid it out inside the press (perf 249); several presses reveal the last row. */
+let revealPending: HTMLElement | null = null;
 function revealRow(row: HTMLElement | null): void {
   if (!row) return;
+  const queued = revealPending;
+  revealPending = row;
+  if (!queued) requestAnimationFrame(() => {
+    const target = revealPending;
+    revealPending = null;
+    if (target?.isConnected) revealRowNow(target);
+  });
+}
+function revealRowNow(row: HTMLElement): void {
   const list = vehicleList.getBoundingClientRect();
   const box = row.getBoundingClientRect();
   if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
@@ -881,18 +892,19 @@ tabsHost.innerHTML = tabs({
 const markupTab = $<HTMLButtonElement>('#dossierTabs [data-tab="markup"]');
 function selectTab(tab: DossierTab, focus = false): void {
   activeTab = tab;
-  // the strip's geometry is read before any write, so a tab change costs at most one layout (not a read after writes)
-  const target = tabsHost.querySelector<HTMLElement>(`[role=tab][data-tab="${tab}"]`);
-  const list = target?.parentElement;
-  const scrollTo = target && list && (target.offsetLeft < list.scrollLeft
-    || target.offsetLeft + target.offsetWidth > list.scrollLeft + list.clientWidth) ? target.offsetLeft - 16 : null;
   for (const button of tabsHost.querySelectorAll<HTMLElement>('[role=tab]')) {
-    const on = button === target;
+    const on = button.dataset.tab === tab;
     button.setAttribute('aria-selected', String(on));
     button.tabIndex = on ? 0 : -1;
     if (on && focus) button.focus({ preventScroll: true });
+    const list = button.parentElement;
+    // the strip brings the tab into view in the frame's callback, with the frame's own layout (perf 249)
+    if (on && list) requestAnimationFrame(() => {
+      if (button.offsetLeft < list.scrollLeft || button.offsetLeft + button.offsetWidth > list.scrollLeft + list.clientWidth) {
+        list.scrollLeft = button.offsetLeft - 16;
+      }
+    });
   }
-  if (list && scrollTo !== null) list.scrollLeft = scrollTo;
   for (const id of DOSSIER_TABS) $<HTMLElement>(`#dossier-${id}`).hidden = id !== tab;
   const record = selectedId ? recordById.get(selectedId) : null;
   if (tab === 'overview' && record) renderVersus(record); // its canvas measures its box once it shows

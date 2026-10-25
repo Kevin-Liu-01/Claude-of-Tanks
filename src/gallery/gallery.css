@@ -90,7 +90,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam .gh .n{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
 /* the row gap snaps down to 8, not up to 12: at 12 the narrower name column wraps 80 of 221 names at 1440 (51 at 8) */
 .fam .it{position:relative;display:flex;align-items:center;gap:var(--s2);width:100%;min-height:34px;flex:none;padding:var(--s2) var(--s2);border:0;
-  border-radius:var(--control-radius);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
+  border-radius:var(--control-radius);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left;
+  /* a row out of the list's view skips its style, layout and paint (perf 249: 221 rows); a grid card keeps its ratio */
+  content-visibility:auto;contain-intrinsic-block-size:auto 34px}
 .fam .it .cot-c-sil{width:38px;height:12px;color:var(--ink-2)}
 /* a long name takes a second line (247 round 2: no ellipsis); most rows keep one */
 .it__name{flex:1;min-width:0;line-height:1.15;overflow-wrap:anywhere}

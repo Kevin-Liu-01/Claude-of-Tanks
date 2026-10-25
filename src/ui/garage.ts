@@ -2846,6 +2846,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       try { onTankIntent(specId); } catch (_) { /* optional warm path */ }
     }, 90);
   };
+  // the strip listens once for every card (perf 249: 221 cards carried five listeners each); a drag's trailing click
+  // stops in the strip's capture phase before it reaches here
+  const cardFrom = (target: EventTarget | null): HTMLElement | null =>
+    target instanceof Element ? target.closest<HTMLElement>('.cot-card[data-spec-id]') : null;
+  const crossesCard = (event: PointerEvent): HTMLElement | null => {
+    const card = cardFrom(event.target);
+    return card && !(event.relatedTarget instanceof Node && card.contains(event.relatedTarget)) ? card : null;
+  };
+  cardsEl.addEventListener('pointerover', (event) => {
+    const card = crossesCard(event);
+    if (card) signalTankIntent(card.dataset.specId || '');
+  }, { passive: true });
+  cardsEl.addEventListener('pointerout', (event) => {
+    const card = crossesCard(event);
+    if (card) clearTankIntent(card.dataset.specId || '');
+  }, { passive: true });
+  cardsEl.addEventListener('focusin', (event) => {
+    const card = cardFrom(event.target);
+    if (card) signalTankIntent(card.dataset.specId || '', true);
+  });
+  for (const type of ['touchstart', 'pointerdown'] as const) {
+    cardsEl.addEventListener(type, (event) => {
+      const card = cardFrom(event.target);
+      if (card) signalTankIntent(card.dataset.specId || '', true);
+    }, { passive: true });
+  }
+  cardsEl.addEventListener('click', (event) => {
+    const card = cardFrom(event.target);
+    if (!card?.dataset.specId) return;
+    emit('ui:click', {});
+    api.setSelected(card.dataset.specId);
+  });
   function initializeTankCards(): void {
     for (const spec of specs) {
       const card = document.createElement('div');
@@ -2872,15 +2904,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || t('garage.card.devTag')}</span>` : '') +
         `<div class="nm"><span class="nmt"></span></div><span class="cot-fav" aria-hidden="true">${uiIconSVG('star', 14)}</span>`;
       requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
-      card.addEventListener('pointerenter', () => signalTankIntent(spec.id), { passive: true });
-      card.addEventListener('pointerleave', () => clearTankIntent(spec.id), { passive: true });
-      card.addEventListener('focusin', () => signalTankIntent(spec.id, true));
-      card.addEventListener('touchstart', () => signalTankIntent(spec.id, true), { passive: true });
-      card.addEventListener('pointerdown', () => signalTankIntent(spec.id, true), { passive: true });
-      card.addEventListener('click', () => {
-        emit('ui:click', {});
-        api.setSelected(spec.id);
-      });
       cardsEl.appendChild(card);
       cardById.set(spec.id, card);
       const countryCards = cardsByCountry.get(cardCountry) || [];

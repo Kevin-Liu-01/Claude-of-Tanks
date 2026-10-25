@@ -83,7 +83,8 @@ for (const seed of [1, 7, 2024]) {
     'the props\' local types take them by name, last, and an unknown name throws');
   const desert = readFileSync(new URL('../desert.ts', import.meta.url), 'utf8');
   const badlands = readFileSync(new URL('../badlands.ts', import.meta.url), 'utf8');
-  assert.match(desert, /destructibleBuildings: \['deserttent', 'commandtent', 'checkpointhut', 'guardpost'\],\n\s*structureVariants: \{ checkpointhut: 'ksargate' \},/,
+  // (world props, 64cba413b0: the layout's rotational centre, with its comment, sits between the list and the variants)
+  assert.match(desert, /destructibleBuildings: \['deserttent', 'commandtent', 'checkpointhut', 'guardpost'\],\n(?:\s*\/\/.*\n|\s*rotationalCentre: \[0, 0\],\n)*\s*structureVariants: \{ checkpointhut: 'ksargate' \},/,
     'Desert: its gates\' checkpoints and the scattered one the gate post (the list keeps its entry: every later seat stays)');
   // (the Redrock lane, round 9: Redrock's checkpoints are the Wadi Rum kit's own fuel and water post now — the gauntlet's
   // wave 261 read the gate post at its fuel points as "a plain tan cube" — and its pillboxes the desert post's sangar)
