@@ -1571,8 +1571,6 @@ body.cot-debug-hud .cot-net{display:none!important;}
    battle (the meter's own ping cell carries it while that shows), the settings gear and its key. */
 .cot-net-units{display:flex;align-items:center;}
 .cot-net:not(.metered) .cot-net-units,.cot-net.metered .cot-net-link,.cot-net-link[hidden]{display:none;}
-body.cot-mp-battle :is(.cot-net-link,.cot-net-unit.ping){display:none;}
-body.cot-mp-battle .cot-net:not(.metered) .cot-hud-gear{padding-left:0;border-left:0;}
 .cot-net-link{display:flex;align-items:center;gap:6px;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok);text-transform:none;}
 .cot-net-link b{min-width:6ch;font-weight:500;}
 .cot-net-link[data-tone=warn]{color:var(--text-warn);}.cot-net-link[data-tone=bad]{color:var(--text-danger);}
@@ -2400,7 +2398,7 @@ export function initHud(bus: EventBus): HudRuntime {
     netPingValue.classList.toggle('num', ping > 0); // a ticking ms readout; the local link stays a word
     setText(netPingLabel, ping > 0 ? t('hud.net.ms') : t('hud.net.link'));
     setAttr(netPingUnit, 'class', `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`);
-    setAttr(netUnits, 'aria-label', ping > 0 && !document.body.classList?.contains('cot-mp-battle')
+    setAttr(netUnits, 'aria-label', ping > 0
       ? t('hud.net.ariaLive', { fps, ping })
       : t('hud.net.ariaLocal', { fps }));
   }

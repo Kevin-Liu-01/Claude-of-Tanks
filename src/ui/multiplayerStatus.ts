@@ -268,9 +268,6 @@ export function createMultiplayerStatusSurface({
   ensureStyle(STYLE_ID, MP_STATUS_CSS, 'surfaces');
   const parent = container ?? document.body;
   const root = createElement('div', `cot-mp-status ${host}`, parent);
-  // 252 (the coordinator's ruling on the owner's duplicated ping): in battle this strip owns the link; the HUD hides its
-  // own signal and ping while the class stands (hud.ts).
-  if (host === 'battle') document.body.classList?.add('cot-mp-battle');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', t('mpStatus.aria'));
   const strip = createElement('button', 'cot-mp-strip unknown', root);
@@ -438,7 +435,6 @@ export function createMultiplayerStatusSurface({
       disposed = true;
       banner.remove();
       root.remove();
-      if (host === 'battle') document.body.classList?.remove('cot-mp-battle');
       if (host === 'battle') relayout();
     },
   };
