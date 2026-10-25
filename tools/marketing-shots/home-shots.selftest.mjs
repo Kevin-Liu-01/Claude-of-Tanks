@@ -5,7 +5,9 @@
 // tile its picture and its name (the mechanics' paragraphs left the page); the kill cam and the Studio share one row.
 // Every slot is a pick in tools/media-r5/site-media/picks.json; the mode tiles take the Deploy screen's own stills once
 // public/media/deploy-r1 carries a mode's moment; the retired captures (old tier naming and interface, the pre-Premiere
-// Garage and HUD) are gone.
+// Garage and HUD) are gone. Since the 2026-10-25 redesign (owner: "use the videos and pics to show off game features")
+// the features are the curated home-r2 set (public/media/home-r2/manifest.json, home-premiere.mjs) and the modes and
+// mechanics are one rail of large cards behind the switch.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -30,13 +32,13 @@ const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 // --- every slot is a pick, every pick a slot -------------------------------------------------------------------
 // (246) the Garage and multiplayer features showed the pre-Premiere Garage and HUD: they left the landing
 const RETIRED_FEATURES = new Set(['garage', 'multiplayer']);
-const GROUPS = ['features', 'mechanics', 'modes'];
+const GROUPS = ['mechanics', 'modes'];
 const slots = [...home.matchAll(/<(img|video) data-home-slot="([^"]+)"[^>]*>/g)].map((m) => ({ tag: m[0], kind: m[1], slot: m[2] }));
 const deployTile = (id) => new RegExp(`<figure class="play-tile[^"]*" data-mode="${id}"><img src="/media/deploy-r1/${id}-(?:480|1280)\\.webp"`).test(home);
 const picked = GROUPS.flatMap((group) => picks.home[group].map((entry) => ({ group, entry, slot: `${group}/${entry.id}` })))
   .filter(({ group, entry }) => !(group === 'features' && RETIRED_FEATURES.has(entry.id)))
   .filter(({ group, entry }) => !(group === 'modes' && deployTile(entry.id)));
-assert.deepEqual(slots.map((s) => s.slot).sort(), [...picked.map((p) => p.slot), 'features/studio'].sort(),
+assert.deepEqual(slots.map((s) => s.slot).sort(), picked.map((p) => p.slot).sort(),
   'home.html carries exactly the picked slots (a mode on its Deploy still carries none)');
 assert.equal(new Set(slots.map((s) => s.slot)).size, slots.length, 'no slot appears twice');
 for (const retired of RETIRED_FEATURES) assert.ok(!home.includes(`${C}/home/features/${retired}`), `the ${retired} feature left the landing`);
@@ -56,13 +58,6 @@ for (const { group, entry, slot } of picked) {
   }
   assert.ok(en[attr(tag, 'data-i18n-alt')] && zh[attr(tag, 'data-i18n-alt')], `${slot} alt key is in both catalogs`);
 }
-const studio = slots.find((s) => s.slot === 'features/studio');
-assert.equal(studio.kind, 'video', 'the Scene Studio card keeps its loop');
-const studioVideo = home.match(/<video data-home-slot="features\/studio"[^]*?<\/video>/)[0];
-const ownLoop = `${C}/home/features/studio.mp4`;
-assert.ok(studioVideo.includes(`data-src="${built.has(ownLoop) ? ownLoop : picks.home.studio.standIn.video}"`),
-  'the Studio card plays its delivered loop, or the landing-r1 recording until it is delivered');
-
 // --- the retired captures (the X tier naming and the old interface) are gone ---------------------------------------
 for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer-r1/dual-perspective.webp',
   '/media/showcase-r2/13_gallery_modules.webp', '/media/showcase-r2/25_live_killcam_xray.webp',
@@ -72,7 +67,7 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 
 // --- the modes: every mode, in the battle setup's order, with its own name and icon and no copy ----------------------
 const playSection = home.match(/<!--home:play-->([\s\S]*?)<!--\/home:play-->/)?.[1] ?? '';
-const panel = (name) => playSection.match(new RegExp(`<div class="play-grid" data-play-panel="${name}"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-grid"|<p class="play-more")`))?.[1] ?? '';
+const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" data-play-panel="${name}" tabindex="0" role="group" aria-labelledby="play-title"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
 const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)">([\s\S]*?)<\/figure>/g)];
 assert.deepEqual(cards.map((c) => c[1]), [...BATTLE_MODE_IDS], 'one tile per battle mode, in BATTLE_MODE_IDS order (the practice modes are not battles)');
 assert.deepEqual(picks.home.modes.map((m) => m.id), [...BATTLE_MODE_IDS], 'one mode shot per battle mode');
@@ -82,9 +77,10 @@ for (const [, id, body] of cards) {
     `${id} is named as the battle setup names it`);
   assert.doesNotMatch(body, /<p\b/, `${id} carries its name only`);
 }
-assert.equal((panel('modes').match(/play-tile--lead/g) || []).length, 1, 'one lead mode tile');
-assert.match(playSection, /data-play-tab="modes" aria-checked="true">[^]*?<span class="cot-c-tabs__count num" lang="en">\{\{COT_BATTLE_MODES\}\}<\/span>/,
-  'the modes switch counts the registry (productStats.ts, BATTLE_MODE_IDS) and opens first');
+assert.equal((panel('modes').match(/play-tile--lead/g) || []).length, 0, 'every mode card is a large card: no lead');
+assert.match(playSection, /data-play-tab="modes" aria-checked="true">/, 'the modes open first');
+// (2026-10-25 gauntlet) the hero's counts carry the numbers; the switch names its sets only
+assert.doesNotMatch(playSection, /cot-c-tabs__count/, 'the switch repeats no count');
 
 // --- the mechanics: three sets of nine behind the switch, each tile named in both languages ----------------------------
 const sets = ['gunnery', 'battlefield', 'beyond'];
@@ -97,12 +93,10 @@ for (const { id, key } of mechanicCards) {
   assert.ok(en[key] && zh[key] && en[key] !== zh[key], `${key} in both languages`);
 }
 for (const name of sets) {
-  const tiles = (panel(name).match(/<figure class="play-tile/g) || []).length, lead = (panel(name).match(/play-tile--lead/g) || []).length;
-  // the lead takes four cells of the four-wide grid: the set's rows stay full
-  assert.equal(lead, 1, `${name}: one lead tile`);
-  assert.equal((tiles + 3 * lead) % 4, 0, `${name}: rows of four`);
+  assert.equal((panel(name).match(/<figure class="play-tile/g) || []).length, 9, `${name}: nine large cards`);
   assert.ok(playSection.includes(`data-i18n="home.mechanics.group.${name}"`), `${name} names its set on the switch`);
 }
+assert.match(playSection, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the rail has previous and next arrows');
 
 // --- the page as served: vite's HTML transforms (vite.config.ts: the app version, then cot-product-stats) leave no
 // {{...}} token behind (the coordinator, 2026-10-13: a raw "{{COT_BATTLE_MODES}}" heading must never ship)
@@ -110,7 +104,7 @@ for (const name of sets) {
   const served = renderProductStats(replaceAppVersionTokens(home, 'v0.0.0+selftest'));
   const left = [...new Set(served.match(/\{\{[^{}]*\}\}/g) ?? [])];
   assert.deepEqual(left, [], `site/home.html as served carries no unresolved token (${left.join(', ')})`);
-  const modesCount = served.match(/data-play-tab="modes"[^]*?<span class="cot-c-tabs__count num" lang="en">([^<]*)</)?.[1] ?? '';
-  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the modes switch as served counts the modes (${modesCount})`);
+  const modesCount = served.match(/<li>[^]*?<b>([^<]*)<\/b><span data-i18n="home\.stats\.modes">/)?.[1] ?? '';
+  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the hero's mode count as served counts the modes (${modesCount})`);
 }
-console.log(`home-shots.selftest: ${picked.length + 1} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);
+console.log(`home-shots.selftest: ${picked.length} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);
