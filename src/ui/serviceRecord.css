@@ -138,7 +138,7 @@
 .cot-record-battle summary{position:relative;padding:var(--s3) var(--s7) var(--s3) var(--s4);list-style:none;cursor:pointer}
 .cot-record-battle summary::-webkit-details-marker{display:none}
 .cot-record-battle summary:hover{background:var(--fill-faint)}
-.cot-record-battle-row{display:grid;grid-template-columns:140px minmax(0,1fr) 72px 96px auto;align-items:center;gap:var(--s4)}
+.cot-record-battle-row{display:grid;grid-template-columns:140px minmax(0,1fr) 88px 100px auto;align-items:center;gap:var(--s4)}
 /* a render's hull sits low in its frame: the art rides to its box's top, so the tank centres on the row's text */
 .cot-record-vehicle{display:block;width:140px;height:88px;object-fit:contain;object-position:50% 0;filter:var(--sil-shadow)}
 .cot-record-vehicle.aircraft{display:grid;place-items:center;color:var(--ink-2)}
@@ -181,7 +181,7 @@
   .cot-record-outcome.win-rate{grid-column:1/-1}
   .cot-record-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
-  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 68px 84px}
+  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 84px 92px}
   .cot-record-vehicle{width:96px;height:64px}
   .cot-record-outcome:not(.win-rate){padding-bottom:var(--s4)}
   .cot-record-expand{top:var(--s3);translate:0}
@@ -210,7 +210,7 @@
   .cot-record-medal-art svg{width:72px}
   .cot-record-card{padding:var(--s4)}
   .cot-record-battle summary{padding:var(--s3) var(--s6) var(--s3) var(--s3)}
-  .cot-record-battle-row{grid-template-columns:72px minmax(0,1fr) auto;gap:var(--s2) var(--s3)}
+  .cot-record-battle-row{grid-template-columns:84px minmax(0,1fr) auto;gap:var(--s2) var(--s3)}
   .cot-record-vehicle{width:72px;height:52px}
   .cot-record-battle-what{grid-column:2/-1}
   .cot-record-battle-num.kills{grid-row:2;grid-column:1}
