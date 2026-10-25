@@ -681235,28 +681235,28 @@
           "sha256": "136d45af548a81e83c6254004128fe9aae7739d5ca34e4f9dbfa68d1ade8c058"
         },
         "armorSide": {
-          "file": "merkava1b_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 111872,
-          "sha256": "bf0abd185479c25e676f6e25d59ae389569af33b799bbb4ca5e17dcfd4915ddc"
+          "file": "merkava1b_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 35960,
+          "sha256": "a83957515557dad5ca548a912456022fe82e22e7044dbe10f60b950929aa11b4"
         },
         "modulesSide": {
-          "file": "merkava1b_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 117646,
-          "sha256": "5fe15cfd5c3e6a95f3bb8f330ba9113466289ff93d7cb651b87d615d5a88abcb"
+          "file": "merkava1b_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 40108,
+          "sha256": "5ee96bf1e7da03d4af1f6db4096484929d1833e242a1503b31fbc037fed50cc9"
         },
         "crewSide": {
-          "file": "merkava1b_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 107345,
-          "sha256": "c0abf39435f1731502ed24201e4a8693085350fbe156742a051f0f8560aa8bd0"
+          "file": "merkava1b_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38442,
+          "sha256": "42e051d417bc12f02f61555452807df43faa5074503cec684f02d259987feb68"
         },
         "markings": {
           "file": "merkava1b_markings.png",
@@ -681265,6 +681265,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava1b_technical.json",
+          "mime": "application/json",
+          "bytes": 5120,
+          "sha256": "5f51cd663f360566901bbd35c6939dc02beeef5c655047bb88e3a691f5a90ddd"
         }
       }
     },
@@ -683128,28 +683134,28 @@
           "sha256": "c724ccebe51564376fa1f7da2f32b404d92f5cf9700120e7b5402f6bc03b1249"
         },
         "armorSide": {
-          "file": "merkava2b_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 110257,
-          "sha256": "c644f6e8b119c1e73c4e48446e96656dcd6d2f953b4b83f4a5075f4eb1c8edec"
+          "file": "merkava2b_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 34502,
+          "sha256": "4f653815c5bf76dcd688149ed3db4aeb9ce9506119376dbddfe6378b783b32c5"
         },
         "modulesSide": {
-          "file": "merkava2b_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 116806,
-          "sha256": "480a50782d7094abe808a197c5a5cd9a8ee40536cf00bde5fb36bc5696e3613d"
+          "file": "merkava2b_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38692,
+          "sha256": "744b275cf7bf7ed711fc623fbfc1d0b75c97fa20f7075bdffb95f912e4e8ea44"
         },
         "crewSide": {
-          "file": "merkava2b_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 106516,
-          "sha256": "f4e850edd0a5c213fb3ec0da636e419d91bbbd4d15cc32a8096d5e16b2243f77"
+          "file": "merkava2b_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 36984,
+          "sha256": "8aacf16d4e53479028a2a11960b8e274194bf7418b5b1bc30dec802828c91382"
         },
         "markings": {
           "file": "merkava2b_markings.png",
@@ -683158,6 +683164,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava2b_technical.json",
+          "mime": "application/json",
+          "bytes": 4880,
+          "sha256": "6f23e54642f5bccb1dcd00d8564f6edf79574d1b145fa3848ff5025321e41127"
         }
       }
     },
@@ -685331,28 +685343,28 @@
           "sha256": "76b3d945d8220d7d2f86eb00bcdb86bf38390dc7456893455d44a0467fa36715"
         },
         "armorSide": {
-          "file": "merkava2d_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 121366,
-          "sha256": "6cfb21a597ff8788dda8c36bee8654504bf7269f665762e6443c8bccbe5270b6"
+          "file": "merkava2d_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38070,
+          "sha256": "8d1e2437cac5fc0fd93ae6d09c3fe5c94efcd1e29acd6c7f1ee85a4025ad0c5a"
         },
         "modulesSide": {
-          "file": "merkava2d_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 128062,
-          "sha256": "d0af80a371bc72e9f93420fd998981314b0083ab76b568410a0aca63a5b137ef"
+          "file": "merkava2d_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 41292,
+          "sha256": "a6e2e7339056d81400dccf2f6dd130d75855c16e9aaa9f423ad6b9a524545d6f"
         },
         "crewSide": {
-          "file": "merkava2d_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 117940,
-          "sha256": "212c9c5427323bc303de0153ed20b47d69332ce846d18d1fa44143d5b18d0967"
+          "file": "merkava2d_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 39280,
+          "sha256": "cb82b4223c032485e713057c01a2055b3b2dc9e397c61b642bf89f506ed33b4d"
         },
         "markings": {
           "file": "merkava2d_markings.png",
@@ -685361,6 +685373,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava2d_technical.json",
+          "mime": "application/json",
+          "bytes": 4925,
+          "sha256": "c9830dc6163956c6081502f44c5229453bece67065bd8048a414ed9e6c3b7d9d"
         }
       }
     },
@@ -687573,13 +687591,13 @@
             "name": "gunner",
             "min": [
               0.5946,
-              -1.0084,
-              -0.324
+              -0.82,
+              -0.3908
             ],
             "max": [
               1.054,
-              0,
-              0.3637
+              0.5321,
+              0.4305
             ],
             "turretLocal": true
           },
@@ -687587,14 +687605,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5339,
-              -0.9868,
-              -1.0976
+              0.5839,
+              -0.9543,
+              -1.048
             ],
             "max": [
-              0.9933,
-              0,
-              -0.4099
+              0.9236,
+              0.4335,
+              -0.2324
             ],
             "turretLocal": true
           },
@@ -687603,20 +687621,20 @@
             "name": "loader",
             "min": [
               -1.0933,
-              -0.9868,
-              -0.9648
+              -0.9855,
+              -0.7763
             ],
             "max": [
               -0.6339,
-              0,
-              -0.277
+              0.4345,
+              -0.2655
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "a14b11dc",
-      "metadataHash": "d7b30775",
+      "metadataHash": "e4e68c30",
       "presentationAnchor": {
         "xM": -0.0053,
         "zM": -0.8152
@@ -687722,28 +687740,28 @@
           "sha256": "45f175948cb461d3d0fc12eb0d034d5b948923575ecb091818da8e051dd39a63"
         },
         "armorSide": {
-          "file": "merkava3_baz_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 105774,
-          "sha256": "aa36ce836466d65b7b0666d58be7ff3dc7c3bfb3b7dfbc1ac7369ea77e1b3fe1"
+          "file": "merkava3_baz_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 33668,
+          "sha256": "60d4f8905456b5f1437c2192df25397ce6b8bcddc3172d49898078ed1903cf7c"
         },
         "modulesSide": {
-          "file": "merkava3_baz_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 106316,
-          "sha256": "f742e9ab49a46403f30247bce461ac62e42a7beaac4853ad0080a2dabfb28e8e"
+          "file": "merkava3_baz_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 33834,
+          "sha256": "118cadda87a6e1953b831052315bcfa6dfd29a966b1e091f9be76120477feb1f"
         },
         "crewSide": {
-          "file": "merkava3_baz_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 98311,
-          "sha256": "2b3666580d2530d1e3ebd73dd4dad36e234e0d7d60b9867c4a2aeee7b056e118"
+          "file": "merkava3_baz_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 31876,
+          "sha256": "b71c78d6e3a0a8b6cdb86cc123eac74d515e0d51597d2c49e06d09234a3f8a54"
         },
         "markings": {
           "file": "merkava3_baz_markings.png",
@@ -687752,6 +687770,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava3_baz_technical.json",
+          "mime": "application/json",
+          "bytes": 4767,
+          "sha256": "b298755742cec3208cd47fe0294652091645ad884ea91773be23fad574499ce1"
         }
       }
     },
@@ -689954,13 +689978,13 @@
             "name": "commander",
             "min": [
               0.1843,
-              -0.7989,
-              -1.261
+              -0.7957,
+              -1.2722
             ],
             "max": [
               0.6437,
-              -0.0389,
-              -0.4395
+              -0.0357,
+              -0.4295
             ],
             "turretLocal": true
           },
@@ -689968,7 +689992,7 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.914,
+              -0.9437,
               -0.9855,
               -0.9197
             ],
@@ -689982,7 +690006,7 @@
         ]
       },
       "geometryHash": "d90243d4",
-      "metadataHash": "f9ecb9df",
+      "metadataHash": "48edb3e7",
       "presentationAnchor": {
         "xM": -0.0006,
         "zM": -0.8042
@@ -690089,28 +690113,28 @@
           "sha256": "9ea195edebe8936b892dcf57960bdb5f1f2dccd8dae534d4c8533ef5924ce9c0"
         },
         "armorSide": {
-          "file": "merkava3c_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 116965,
-          "sha256": "e88ecf21f30009e05e91afc0cb44c31f4e0c83739e32e251e0eea850d91e0ace"
+          "file": "merkava3c_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 44538,
+          "sha256": "7ec55b75f343c8fe2437705cab0569867deee359115597d53f1e37ce0f9e0e51"
         },
         "modulesSide": {
-          "file": "merkava3c_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 117630,
-          "sha256": "8a75beddfb5f851e95e8779b5d28da86aa1970c897a3f56f129c39cd60b79eef"
+          "file": "merkava3c_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 44584,
+          "sha256": "b4e98483aece7bf5851a2d48153c484b5991d5b4f36e20e9ebeba58c85a968d0"
         },
         "crewSide": {
-          "file": "merkava3c_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 111363,
-          "sha256": "a0832b51ee9d8488aff21c0b61444149d95c4c4e5b8622e10481080f60cadf64"
+          "file": "merkava3c_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 44224,
+          "sha256": "fee73b0e96d78d073b1e44a2d34e676870ad6a8001cc0e670d0e73f2bca8a59c"
         },
         "markings": {
           "file": "merkava3c_markings.png",
@@ -690119,6 +690143,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava3c_technical.json",
+          "mime": "application/json",
+          "bytes": 4758,
+          "sha256": "f2a5d3558e1e37442d772138070c46b86d0e430ae3193c7c90206ac279b7bd09"
         }
       }
     },
@@ -691775,13 +691805,13 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.4301,
+              0.6301,
               -1.0319,
               0.2465
             ],
             "max": [
-              0.8895,
-              0.0073,
+              1.0895,
+              0.0074,
               1.0679
             ],
             "turretLocal": true
@@ -691790,14 +691820,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.3712,
-              -1.0598,
-              -0.7908
+              0.5712,
+              -1.0698,
+              -0.8408
             ],
             "max": [
-              0.8306,
+              1.0306,
               0.0131,
-              0.0519
+              0.0019
             ],
             "turretLocal": true
           },
@@ -691805,13 +691835,13 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.8659,
-              -1.12,
-              -0.1833
+              -1.0559,
+              -1.096,
+              -0.1897
             ],
             "max": [
-              -0.4262,
-              0.6534,
+              -0.6262,
+              0.6616,
               0.2082
             ],
             "turretLocal": true
@@ -691819,7 +691849,7 @@
         ]
       },
       "geometryHash": "29cfbdba",
-      "metadataHash": "6c9d573a",
+      "metadataHash": "8a6ca1c8",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0039
@@ -691877,28 +691907,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "merkava3d_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 87610,
-          "sha256": "9736b2d18d400099996bd563459453d81423dfd78dc5d66f13acba009e8e52c4"
+          "file": "merkava3d_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 23976,
+          "sha256": "a1814a5c42e05dc69d877968c626b41139001cad4aac58d89c470df5e2b610ee"
         },
         "modulesSide": {
-          "file": "merkava3d_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 84146,
-          "sha256": "b0664c057647de968d8cd249179c0f783a6e74337b62771b26b7a04300061cc0"
+          "file": "merkava3d_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 23930,
+          "sha256": "2ccefe2fba8bdc80e1f93f376aa8fa1963c6f4eb02f3e119a250a7ed435585d2"
         },
         "crewSide": {
-          "file": "merkava3d_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 78832,
-          "sha256": "3624634e8def079b9fdee932ac62c8b43554da61b734dd17d335523eed0ac2d1"
+          "file": "merkava3d_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 22770,
+          "sha256": "47575ac86f26735470ad8a02fe2d6041701854cf7d43e678e2c096233fbabcef"
         },
         "angle": {
           "file": "merkava3d_angle.webp",
@@ -691955,6 +691985,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava3d_technical.json",
+          "mime": "application/json",
+          "bytes": 4247,
+          "sha256": "06d7955a2103e72b3f988ea1ded31ae3e9929d97bc1da72459e4217c8317a6e1"
         }
       }
     },
@@ -693180,14 +693216,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.5771,
-              0.0577,
-              0.0602
+              0.5926,
+              -0.5687,
+              0.0995
             ],
             "max": [
-              1.0365,
-              0.7406,
-              0.8384
+              1.0211,
+              0.7834,
+              0.6357
             ],
             "turretLocal": true
           },
@@ -693195,14 +693231,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.6156,
-              -0.9762,
-              -0.7144
+              0.5156,
+              -0.9719,
+              -0.8766
             ],
             "max": [
-              1.075,
-              -0.0162,
-              0.1038
+              0.975,
+              -0.0119,
+              -0.034
             ],
             "turretLocal": true
           },
@@ -693210,13 +693246,13 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.9153,
-              -1.04,
-              -0.4615
+              -1.075,
+              -1.02,
+              -0.4729
             ],
             "max": [
-              -0.5156,
-              0.536,
+              -0.6156,
+              0.5045,
               0.038
             ],
             "turretLocal": true
@@ -693224,7 +693260,7 @@
         ]
       },
       "geometryHash": "9e9a1e79",
-      "metadataHash": "493bdf19",
+      "metadataHash": "f9aaf683",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": -0.0078
@@ -693281,28 +693317,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "merkava4_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 87069,
-          "sha256": "647b90f4a6458d0923f34c81ffefd73cf120f995f92aaea00c5d53d25a33788e"
+          "file": "merkava4_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 23948,
+          "sha256": "eb71e4da992edfab69675fed1091cdcb22664d1ae398b2ce26a0be05f64265b9"
         },
         "modulesSide": {
-          "file": "merkava4_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 88839,
-          "sha256": "78974f7d65ba6058b7d70df4f9f1162a1b9d3a41baee0d5b0c93cc3e6ef20001"
+          "file": "merkava4_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 24468,
+          "sha256": "35c29438c1fb792bbd0b1f4286434f0d2eb60e21d171d1d83be92b1628730f99"
         },
         "crewSide": {
-          "file": "merkava4_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 79862,
-          "sha256": "d6952ac6233c72b922fa321ee9a7792172efaab733b1100210ac26fa8003a64f"
+          "file": "merkava4_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 23012,
+          "sha256": "05533255588b7233ebe09c48dc5215cfc69c4bde0cabe5f5f400dd9043f90ff8"
         },
         "angle": {
           "file": "merkava4_angle.webp",
@@ -693359,6 +693395,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava4_technical.json",
+          "mime": "application/json",
+          "bytes": 4453,
+          "sha256": "a23279ec1da475f2e01ee5afdf478bf66d731857344fb80beedbee734ff281c7"
         }
       }
     },
@@ -694650,28 +694692,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "merkava4_barak_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 103046,
-          "sha256": "ec1dd312f8988475b1ef80b63a0608c3a04f85d6ed19481d533dc516d57def69"
+          "file": "merkava4_barak_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 30612,
+          "sha256": "84f314ed29f23c19d914792b2454b09a42cee669fb8e09406d1884b6c7ae8b71"
         },
         "modulesSide": {
-          "file": "merkava4_barak_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 105708,
-          "sha256": "07877bc613a05624871529263c9708bd34800764ab79a36e03b6c521a2ab5122"
+          "file": "merkava4_barak_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 32142,
+          "sha256": "5ff5a10f651512b1905459ddbbaa9cc58fd16c05c549e963e61cfea6acc32ea3"
         },
         "crewSide": {
-          "file": "merkava4_barak_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 96330,
-          "sha256": "e81a3a1a0c7f3b1289c122bc804715ed89ada0163f4c2af45dffb74c689109c3"
+          "file": "merkava4_barak_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 29622,
+          "sha256": "bdad82c7c3683dcf57cadfd8c08b11e0184cb885ab256c5e62b7cd5995600b56"
         },
         "angle": {
           "file": "merkava4_barak_angle.webp",
@@ -694728,6 +694770,12 @@
           "mime": "image/png",
           "bytes": 35820,
           "sha256": "20b46fc0915bdb4c17038ff8d52f69c2611cff7a0c3d9578de7d399c2894062d"
+        },
+        "technicalLabels": {
+          "file": "merkava4_barak_technical.json",
+          "mime": "application/json",
+          "bytes": 4197,
+          "sha256": "0a87c3f21f0b9816ad2ae227d922d00d8f7cd4dd6331d1a07fd4cbd4a3ed8650"
         }
       }
     },
@@ -695955,13 +696003,13 @@
             "name": "gunner",
             "min": [
               0.5771,
-              0.0577,
-              0.0624
+              -0.68,
+              0.1111
             ],
             "max": [
               1.0365,
-              0.7306,
-              0.8384
+              0.6721,
+              0.6057
             ],
             "turretLocal": true
           },
@@ -695969,14 +696017,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5656,
-              -1.0308,
-              -0.6661
+              0.5156,
+              -1.0119,
+              -0.9266
             ],
             "max": [
-              1.025,
-              -0.0208,
-              0.156
+              0.975,
+              -0.0219,
+              -0.084
             ],
             "turretLocal": true
           },
@@ -695984,13 +696032,13 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.9153,
-              -1.06,
-              -0.4615
+              -1.075,
+              -1.04,
+              -0.4729
             ],
             "max": [
-              -0.5156,
-              0.516,
+              -0.6156,
+              0.5045,
               0.038
             ],
             "turretLocal": true
@@ -695998,7 +696046,7 @@
         ]
       },
       "geometryHash": "02d57eef",
-      "metadataHash": "6726001f",
+      "metadataHash": "3c8ecd45",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0438
@@ -696055,28 +696103,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "merkava4_trophy_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 128944,
-          "sha256": "038a53be28a63fb931e7521d4d8478695ce2c81462ba7b61fb1e4f0da626edab"
+          "file": "merkava4_trophy_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 41836,
+          "sha256": "c11684698122dd2d76b15cc0aabbc7bbb5f6897b36855ce30579eed2331c21e9"
         },
         "modulesSide": {
-          "file": "merkava4_trophy_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 131435,
-          "sha256": "6dd852b97cdd40edc472eb2892a738bcf27f1e3ac2b6de59b7e8a438975f81a7"
+          "file": "merkava4_trophy_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38950,
+          "sha256": "a6521448b6c02417c3b91875f59ba46b33c4758a160210d2ff32be453c079294"
         },
         "crewSide": {
-          "file": "merkava4_trophy_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 118381,
-          "sha256": "0856c6cc330ecf3f77506e44c472e983ee8b566346b9e5c9fdf64257f9c5c393"
+          "file": "merkava4_trophy_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38214,
+          "sha256": "7fcc2cff91e318ea3438cfbb83fe0a01e719be39ce42a352f60b682e4533a4c7"
         },
         "angle": {
           "file": "merkava4_trophy_angle.webp",
@@ -696133,6 +696181,12 @@
           "mime": "image/png",
           "bytes": 34030,
           "sha256": "079c231f4c80f9baaa046c3acf648619e99800303baa66ef8c9f8ef5147331cb"
+        },
+        "technicalLabels": {
+          "file": "merkava4_trophy_technical.json",
+          "mime": "application/json",
+          "bytes": 5121,
+          "sha256": "d6fb9f7b33aaf9c2572e4d8e5e4349678001a2fcb7c113c2cbd78dec1c20221d"
         }
       }
     },
@@ -698053,14 +698107,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.3974,
-              -1.1248,
-              -1.2443
+              0.6474,
+              -1.0312,
+              -1.4943
             ],
             "max": [
-              0.8568,
-              -0.062,
-              -0.4016
+              1.0871,
+              -0.1412,
+              -0.6516
             ],
             "turretLocal": true
           },
@@ -698068,21 +698122,21 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -1.0471,
-              -1.1884,
-              -0.8053
+              -1.1068,
+              -1.1484,
+              -0.9553
             ],
             "max": [
               -0.6474,
-              0.5774,
-              -0.4139
+              0.5816,
+              -0.5639
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "231ff2d6",
-      "metadataHash": "8bd6222a",
+      "metadataHash": "bef21c53",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.38
@@ -698188,28 +698242,28 @@
           "sha256": "44039aef1f8417b97c5421dec7ecefd5ba1104e49cc3d695e43fdcdd20dadf82"
         },
         "armorSide": {
-          "file": "merkava4b_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 131987,
-          "sha256": "cd8a6bcc22e9b36092abba729a7de6eb15a4bc70a4f822042711cee23a76a56f"
+          "file": "merkava4b_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 49718,
+          "sha256": "242f68df2a58d6c809b922edca4a6b42cbd029731f5a8367e129e2e3f7aa89b0"
         },
         "modulesSide": {
-          "file": "merkava4b_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 136638,
-          "sha256": "5e951fc54ff8851fc82ea345131718688620623f53a01105e309b6651d75e2e7"
+          "file": "merkava4b_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 50018,
+          "sha256": "994b20b4b270a19af2b54c20897d72eb5fcfc9001762a1ec0b357b3684e3feb1"
         },
         "crewSide": {
-          "file": "merkava4b_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 126485,
-          "sha256": "c0ed94aa0ddc7ae34a348f840fdb1d32c6fcbb5c0655551cfc88667fb87472a7"
+          "file": "merkava4b_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 48308,
+          "sha256": "70a0fb3fdf36f63b6f78bf439ec48e575c5c469f2f94679466611aba5a3e8be4"
         },
         "markings": {
           "file": "merkava4b_markings.png",
@@ -698218,6 +698272,12 @@
           "mime": "image/png",
           "bytes": 33397,
           "sha256": "28a1c7147b1bf50fe70a3370138621f413f8be53249ba3a8bc1663cd7de8dad6"
+        },
+        "technicalLabels": {
+          "file": "merkava4b_technical.json",
+          "mime": "application/json",
+          "bytes": 5022,
+          "sha256": "87e0f6358084fe1fd6546f16c82983cbace3057139b84296e051fe77a2c83e88"
         }
       }
     },
@@ -699297,28 +699357,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "namer_ifv_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 136989,
-          "sha256": "c6849b891af42dae615092656f82b4262e97c1bc850b0f911593aa251ce34243"
+          "file": "namer_ifv_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38496,
+          "sha256": "4e3ff13df797b8a32bd191a482a2a764748413a0d6e6e5800e6c3c60cf9adfd2"
         },
         "modulesSide": {
-          "file": "namer_ifv_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 144457,
-          "sha256": "0dabe4bab7e4eec10e835f57dc2845600d6bec1b1e61997eff2233323223fa74"
+          "file": "namer_ifv_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 42916,
+          "sha256": "997479173d545bd5687a37191d5b18710cdfaf9b02c673af3871bf9133492e21"
         },
         "crewSide": {
-          "file": "namer_ifv_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 132379,
-          "sha256": "c2debcfaa53b6057d0511b269fd313f1f27790a436a9aec6177773a4b77760ba"
+          "file": "namer_ifv_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 40300,
+          "sha256": "27ed466828c43a2f87496e864455cc8af6ce14288635083e67d5002af3d77cc8"
         },
         "angle": {
           "file": "namer_ifv_angle.webp",
@@ -699375,6 +699435,12 @@
           "mime": "image/png",
           "bytes": 35145,
           "sha256": "9081ed8251919f29a5a849fd2117ce14872ed9469be5f101d662d6680c50079a"
+        },
+        "technicalLabels": {
+          "file": "namer_ifv_technical.json",
+          "mime": "application/json",
+          "bytes": 4187,
+          "sha256": "9b699af42d442a56c3bc09ef02fd6f13dc5ecfdb8d398eac62bf755608cafe8e"
         }
       }
     },
@@ -735718,13 +735784,13 @@
             "name": "gunner",
             "min": [
               0.2067,
-              -1.0127,
-              -0.0983
+              -0.9647,
+              -0.0483
             ],
             "max": [
               0.6661,
-              -0.0027,
-              0.7231
+              -0.0047,
+              0.7731
             ],
             "turretLocal": true
           },
@@ -735733,13 +735799,13 @@
             "name": "commander",
             "min": [
               0.0444,
-              -1.12,
-              -0.4226
+              -1.1057,
+              -0.6156
             ],
             "max": [
               0.5038,
-              -0.01,
-              0.3614
+              -0.0029,
+              0.227
             ],
             "turretLocal": true
           },
@@ -735748,7 +735814,7 @@
             "name": "loader",
             "min": [
               -0.8661,
-              0.2122,
+              0.1722,
               -0.6714
             ],
             "max": [
@@ -735761,7 +735827,7 @@
         ]
       },
       "geometryHash": "bc7917a9",
-      "metadataHash": "ec6e9518",
+      "metadataHash": "d9ee627b",
       "presentationAnchor": {
         "xM": 0.0009,
         "zM": -0.0714
@@ -735816,28 +735882,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "sabra_mk2_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 102088,
-          "sha256": "ca49d32d0684c349824ee8e558111fde8f31dc8ca75576caf7c52f352a5427df"
+          "file": "sabra_mk2_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 28736,
+          "sha256": "4ab147a39b6a0eab76a3450cdc1ecb420a78e0a1e56b74c418afed81c0ed7dc2"
         },
         "modulesSide": {
-          "file": "sabra_mk2_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 108904,
-          "sha256": "68b2a718744a5468493fe2d6944177f80a0f85951e79f2aac5d94518d813529c"
+          "file": "sabra_mk2_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 33714,
+          "sha256": "57774cdfed937fd5658b6f0590304f5291c53ab498e5f9ada158fd4952aaaa06"
         },
         "crewSide": {
-          "file": "sabra_mk2_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 98061,
-          "sha256": "47530e9a34f7222f5d78a56f3577e9f08a5b0b59d11a662ccdc2be793b0e2d60"
+          "file": "sabra_mk2_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 30780,
+          "sha256": "ddb8bdce244ad8ab2d828422532e849c0e64b1dc39a015d0fa5c31ce6a86513a"
         },
         "angle": {
           "file": "sabra_mk2_angle.webp",
@@ -735894,6 +735960,12 @@
           "mime": "image/png",
           "bytes": 35550,
           "sha256": "bc82e4fa353b6b910961cb3d9ffe346cbf33af579b813ad983ba9b1fe1bc3249"
+        },
+        "technicalLabels": {
+          "file": "sabra_mk2_technical.json",
+          "mime": "application/json",
+          "bytes": 5443,
+          "sha256": "ccc4e6e09f663378ce4d93be17b39993849172bbabde324a57cce4c5d1bfee74"
         }
       }
     },
