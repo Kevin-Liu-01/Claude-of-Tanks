@@ -7,9 +7,9 @@
 // in the `components` cascade layer: a surface restyles a component without !important (src/ui/styleLayers.ts).
 //
 // The kit is deliberately small (owner 2026-10-22: less is more). It holds what the rebuilt surfaces use: buttons,
-// key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed 20-cell scale,
-// and the vehicle identity (flag, silhouette, name). Plates are classes. Modal, select, slider and tooltip keep their
-// existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
+// key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed
+// 20-cell scale, stat tiles, empty states and the vehicle identity (flag, silhouette, name). Plates are classes.
+// Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
 import { flagIconUrl } from '../flags.ts';
@@ -295,6 +295,45 @@ export function statRow(options: StatRowOptions): string {
     + `<span class="cot-c-stat__label">${esc(options.label)}</span>`
     + `<span class="cot-c-stat__value"><b class="num">${esc(options.value)}</b>${unit}${delta}</span>`
     + `${scale20(options.cells, options.rivalCells)}</div>`;
+}
+
+/* ------------------------------------------------------------------------------------------------ stat tiles */
+
+interface StatTileOptions {
+  readonly label: string;
+  /** The figure, as text; or valueIcon draws a status glyph in its place (survived, destroyed). */
+  readonly value?: string;
+  readonly valueIcon?: IconId;
+  readonly icon?: IconId;
+  /** One line under the figure (a ratio, a date). */
+  readonly note?: string;
+  readonly className?: string;
+}
+
+/** One figure with its name (a record's battles, a battle's accuracy): the glyph and name over the figure. */
+export function statTile(options: StatTileOptions): string {
+  const value = options.valueIcon ? icon(options.valueIcon, { size: 24 }) : esc(options.value ?? '');
+  const note = options.note ? `<small class="cot-c-tile__note">${esc(options.note)}</small>` : '';
+  return `<div class="cot-c-tile${options.className ? ` ${options.className}` : ''}"><span class="cot-c-tile__label">`
+    + `${options.icon ? icon(options.icon, { size: 16 }) : ''}${esc(options.label)}</span><strong class="cot-c-tile__value">${value}</strong>${note}</div>`;
+}
+
+/* ------------------------------------------------------------------------------------------------ empty states */
+
+interface EmptyStateOptions {
+  readonly text: string;
+  readonly icon?: IconId;
+  /** The one way forward (Clear filters): a quiet button with the caller's data attributes. */
+  readonly action?: { readonly label: string; readonly attrs?: Attrs };
+  readonly className?: string;
+}
+
+/** What a list says when it has nothing to show: one line, an optional glyph and at most one action. */
+export function emptyState(options: EmptyStateOptions): string {
+  const action = options.action
+    ? `<button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press"${attrs(options.action.attrs)}>${esc(options.action.label)}</button>` : '';
+  return `<div class="cot-c-empty${options.className ? ` ${options.className}` : ''}">${options.icon ? icon(options.icon, { size: 24 }) : ''}`
+    + `<p>${esc(options.text)}</p>${action}</div>`;
 }
 
 /* ----------------------------------------------------------------------------------------- vehicle identity */

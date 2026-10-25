@@ -12,6 +12,8 @@ import {
 import { formatDate, formatNumber, t } from './i18n.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { emptyState, statTile } from './components/components.ts';
+import type { IconId } from './icons/icon.ts';
 // The garage's Service Record: career totals, the medal case, achievement
 // tiers and the last battles, each with its kills laid out as a chain of
 // thought. Rendered on demand into the record dialog (serviceRecordDialog.ts
@@ -122,8 +124,9 @@ function statLabel(label: string, icon: UiIconId): string {
   return `<span class="cot-record-stat-label" data-stat-icon="${icon}">${uiIconSVG(icon, 16)}${label}</span>`;
 }
 
-function metric(label: string, value: string, icon: UiIconId, note = ''): string {
-  return `<div class="cot-record-metric">${statLabel(label, icon)}<strong>${value}</strong>${note ? `<small>${note}</small>` : ''}</div>`;
+/** A record figure: the kit's stat tile (cot-record-metric is the layouts' and the browser receipts' hook). */
+function metric(label: string, value: string, icon: IconId, note = ''): string {
+  return statTile({ label, value, icon, note, className: 'cot-record-metric' });
 }
 
 /** Victories, draws and defeats as one bar, each part as long as its count (an empty record draws an empty track). */
@@ -176,7 +179,7 @@ function overview(view: ServiceRecordView): string {
       ? `<div class="cot-record-latest-row">${latest.map((medal) =>
         `<button type="button" class="cot-record-latest-medal" data-medal-tip="${medal.id}">${medalSVG(medal, 48)}` +
         `<span>${medalName(medal.id)}</span></button>`).join('')}</div>`
-      : `<div class="cot-record-empty">${t('garage.record.noMedals')}</div>`) +
+      : emptyState({ text: t('garage.record.noMedals'), className: 'cot-record-empty' })) +
     `</section>`;
 
   // batch 19/20 (2026-09-14): the campaign ladder's standing — operations cleared, stars, best push
@@ -188,7 +191,7 @@ function overview(view: ServiceRecordView): string {
       `<div>${statLabel(t('garage.record.campaignStars'), 'star')}<b>${num(ladder.stars)} / ${num(ladder.maxStars)}</b></div>` +
       `<div>${statLabel(t('garage.record.campaignPush'), 'moveForward')}<b>${num(front.bestLine)} / ${num(front.total)}</b></div>` +
       `<div>${statLabel(t('garage.record.campaignHeld'), 'shield')}<b>${num(front.held)}</b></div></div>`
-    : `<div class="cot-record-empty">${t('garage.record.campaignNone')}</div>`;
+    : emptyState({ text: t('garage.record.campaignNone'), className: 'cot-record-empty' });
   const campaign = `<section class="cot-record-card cot-record-campaign"><header class="cot-record-card-head">${uiIconSVG('battleRecord', 15)}` +
     `<strong>${t('garage.record.campaign')}</strong><small>${safe(t(`campaign.op.${ladder.next.id}.title`))}</small></header>${standing}</section>`;
   return `${career}<div class="cot-record-cards">${reasoningCard}${latestCard}</div>${campaign}`;
@@ -260,7 +263,7 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
 const ROW_MEDALS = 4;
 
 function history(view: ServiceRecordView, names: RecordViewNames): string {
-  if (!view.history.length) return `<div class="cot-record-empty">${t('garage.record.historyEmpty')}</div>`;
+  if (!view.history.length) return emptyState({ text: t('garage.record.historyEmpty'), icon: 'battleRecord', className: 'cot-record-empty' });
   const rows = view.history.map((battle) => {
     const awarded = battle.medals.map((id) => MEDALS.find((entry) => entry.id === id)).filter((medal) => medal != null);
     const rowMedals = awarded.slice(0, ROW_MEDALS).map((medal) => medalSVG(medal, 28)).join('') +
@@ -283,7 +286,8 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       metric(t('garage.record.accuracy'), `${shotAccuracy(battle.hits, battle.shots)}%`, 'scope', accuracy) +
       metric(t('garage.record.duration'), clock(battle.durationS), 'clock') +
       metric(t('garage.record.longestChain'), num(battle.bestChain), 'statChain') +
-      metric(t(battle.survived ? 'garage.record.survived' : 'garage.record.destroyedStatus'), uiIconSVG(battle.survived ? 'shield' : 'skull', 24), battle.survived ? 'shield' : 'skull') +
+      statTile({ label: t(battle.survived ? 'garage.record.survived' : 'garage.record.destroyedStatus'), valueIcon: battle.survived ? 'shield' : 'skull',
+        icon: battle.survived ? 'shield' : 'skull', className: 'cot-record-metric' }) +
       `</div>${awards}<div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong></div>` +
       `${trace(battle, names)}</div></details></li>`;
   }).join('');

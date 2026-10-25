@@ -1,4 +1,15 @@
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+
+// The view draws its figures and empty states with the kit (components.ts), whose flag SVGs import as Vite asset URLs:
+// they resolve to their public path, as the build does.
+registerHooks({
+  resolve(specifier, context, next) {
+    const flag = /flags\/4x3\/([a-z]+)\.svg\?url$/.exec(specifier);
+    if (flag) return { url: `data:text/javascript,export default '/flags/${flag[1]}.svg'`, shortCircuit: true };
+    return next(specifier, context);
+  },
+});
 
 const store = new Map();
 globalThis.localStorage = {
@@ -73,7 +84,8 @@ for (const id of ['chain_of_thought', 'step_by_step', 'zero_shot', 'few_shot']) 
 const career = overview.slice(0, overview.indexOf('<div class="cot-record-cards">'));
 assert.doesNotMatch(career, /cot-record-ring|--record-pct/, 'win rate is a regular stat, never a clipped badge');
 assert.match(career, /cot-record-outcome win-rate.*?<strong>100%<\/strong>/);
-const statIcons = [...career.matchAll(/data-stat-icon="([^"]+)"/g)].map(match => match[1]);
+// every stat glyph is a sprite icon (data-icon), the outcome labels' and the kit stat tiles' alike
+const statIcons = [...career.matchAll(/data-icon="([^"]+)"/g)].map(match => match[1]);
 assert.equal((career.match(/<svg /g) || []).length, 10, 'every stat resolves to real vector artwork');
 assert.equal(statIcons.length, 10, 'each career stat has its own adjacent vector icon');
 assert.equal(new Set(statIcons).size, 10, 'career icons distinguish all ten stats');

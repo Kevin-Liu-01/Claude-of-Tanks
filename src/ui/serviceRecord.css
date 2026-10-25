@@ -45,13 +45,12 @@
 .cot-record-body:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .cot-service-record .cot-record-stat-label{display:flex;align-items:center;gap:6px;font-size:var(--fs-12);line-height:1.3;color:var(--ink-3)}
 .cot-record-stat-label svg{flex:none;width:16px;height:16px;color:var(--accent)}
-.cot-record-empty{padding:var(--s6) var(--s4);border:1px dashed var(--line-2);text-align:center;font-size:var(--fs-14);line-height:1.6;color:var(--ink-3)}
 .cot-record-new{position:absolute;top:var(--s2);right:var(--s2);padding:3px 6px;border-radius:var(--r1);background:var(--accent);color:var(--ink-on-accent);font:700 var(--fs-11)/1.2 var(--font-ui)}
 
 /* overview: the scoreboard (the win rate over one victory/draw/defeat bar), the six career figures, the cards */
 .cot-record-overview{display:grid;gap:var(--s4)}
 .cot-record-outcomes{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:var(--s3)}
-.cot-record-outcome,.cot-record-metric{min-width:0;overflow-wrap:anywhere}
+.cot-record-outcome{min-width:0;overflow-wrap:anywhere}
 .cot-record-outcome{display:flex;flex-direction:column;justify-content:end;padding:var(--s4);background:var(--surface-page);box-shadow:var(--ring-1)}
 .cot-record-outcome strong{display:block;margin-top:var(--s2);font:600 var(--fs-28)/1 var(--font-display);color:var(--ink-1)}
 .cot-record-outcome.win strong{color:var(--text-ok)}
@@ -62,10 +61,8 @@
 .cot-record-split .win{background:var(--ok)}
 .cot-record-split .draw{background:var(--ink-3)}
 .cot-record-split .loss{background:var(--danger)}
-.cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;border:1px solid var(--line-1);background:var(--line-1)}
-.cot-record-metric{padding:var(--s4);background:var(--surface-scene)}
-.cot-record-metric strong{display:block;margin-top:var(--s2);font:600 var(--fs-20)/1.2 var(--font-display);color:var(--ink-1)}
-.cot-record-metric small{display:block;margin-top:2px;font-size:var(--fs-11);color:var(--ink-3)}
+/* the figures are the kit's stat tiles (statTile), the overview's and each battle's alike */
+.cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s2)}
 .cot-record-cards{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:var(--s4);margin-top:var(--s5)}
 .cot-record-card{min-width:0;padding:var(--s5);background:var(--surface-page);box-shadow:var(--ring-1)}
 .cot-record-reasoning{background:linear-gradient(135deg,var(--accent-wash),transparent 60%),var(--surface-page)}
@@ -159,7 +156,6 @@
 .cot-record-battle[open] .cot-record-expand{rotate:180deg}
 .cot-record-battle-body{padding:var(--s4) var(--s5);border-top:1px solid var(--line-2);background:color-mix(in srgb,var(--surface-scene) 94%,transparent)}
 .cot-record-battle-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);margin-bottom:var(--s4)}
-.cot-record-battle-metrics .cot-record-metric{padding:var(--s3);background:var(--surface-page);box-shadow:var(--ring-1)}
 .cot-record-battle-awards{display:flex;flex-wrap:wrap;gap:var(--s1);margin-bottom:var(--s4)}
 .cot-record-battle-awards button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;border:0;border-radius:var(--r2);background:none;cursor:help}
 .cot-record-battle-awards button:hover{background:var(--surface-hover)}
