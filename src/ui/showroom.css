@@ -291,17 +291,20 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 }
 /* the equipment picker opens over the stage above the band, every item in view */
 body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + var(--s1));
-  left:var(--edge);right:var(--fleet-right);top:auto;bottom:calc(var(--band-bottom) + var(--slot) + var(--lt-cap) + var(--s2));
-  width:auto;max-height:calc(100% - var(--column-top) - var(--band-bottom) - var(--slot) - var(--lt-cap) - var(--s3));overflow:hidden;
+  left:var(--edge);right:auto;top:auto;bottom:calc(var(--band-bottom) + var(--slot) + var(--lt-cap) + var(--s2));
+  width:max-content;max-width:calc(100% - var(--edge) - var(--fleet-right));max-height:calc(100% - var(--column-top) - var(--band-bottom) - var(--slot) - var(--lt-cap) - var(--s3));overflow:hidden;
   border-radius:var(--plate-radius);}
 body[data-cot-panels='persistent'] .cot-eqpick.open{display:flex;flex-direction:column;}
 /* 25 items and Empty (equipment 249): a glyph and the item's short name per tile, the full name and what it does in the
    hover tip; the grid scrolls only if a short window still can't hold it */
-body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:var(--s1);
+/* the picker takes the width its tiles need (a category of five does not leave a band-wide panel empty), up to the band */
+body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:var(--s1);
   max-height:none;min-height:0;flex:0 1 auto;}
 /* a docked window 520-719 px tall: the picker spans the column too, so every item stays in view, and the column steps
    aside while it is open (no figure half under its edge) */
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick{right:var(--edge);}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick{max-width:calc(100% - 2 * var(--edge));}
+/* the picker opens over the name's place: the name steps aside while it is open */
+body[data-cot-panels='persistent'] .cot-garage.picker-open .cot-lt-head{visibility:hidden;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage.picker-open :is(.stats,.cot-stations){visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-eqpick{padding:var(--s2) var(--s3);}
 body[data-cot-panels='persistent'] .cot-eqpick :is(.ph,.chips){margin-bottom:var(--s2);}
