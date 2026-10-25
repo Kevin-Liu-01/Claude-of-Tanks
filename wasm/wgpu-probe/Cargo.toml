@@ -1,0 +1,34 @@
+# cot-wgpu-probe — the renderer spike for docs RUST-ENGINE-DECISION: the same terrain + tanks + shadow-mapped scene the
+# three.js probe draws (web/probe.mjs), drawn by wgpu on WebGPU from Rust compiled to WebAssembly. A standalone crate
+# (not in any Cargo workspace), never compiled by Vite. `node tools/wgpu-probe-build.mjs` builds pkg/ and the page.
+[package]
+name = "cot-wgpu-probe"
+version = "0.1.0"
+edition = "2024"
+authors = ["Kevin B. Liu"]
+license = "MIT"
+publish = false
+rust-version = "1.90"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# the browser backend only: no wgpu-core, no native Metal/Vulkan tree (those crates are not in the offline cache)
+wgpu = { version = "30", default-features = false, features = ["webgpu", "wgsl"] }
+bytemuck = { version = "1", features = ["derive"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
+
+# An empty workspace table keeps this crate standalone wherever it sits.
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false

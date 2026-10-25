@@ -1,0 +1,4 @@
+# build outputs: node tools/wgpu-probe-build.mjs
+/target/
+/pkg/
+/dist/
