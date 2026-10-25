@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { makeBurnUniforms, applyBurnHook } from './materials.ts';
+import { makeBurnUniforms, applyBurnHook, removeBurnHook } from './materials.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
 
 const mats = readFileSync(new URL('./materials.ts', import.meta.url), 'utf8');
@@ -94,6 +94,41 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
   assert.ok(twin.customProgramCacheKey().endsWith('|burn-r7') && original.customProgramCacheKey().endsWith('|burn-r7'), 'both programs key the burn');
   original.dispose();
 }
+
+// 2026-10-24 (transitions-249): the Garage adopting a surviving battle hero takes its disarmed hook off again, so its
+// paint keys as its Garage build did; another visual's hook, or a hook wrapped again since, stays; the next battle hooks
+// it again
+{
+  const a = makeBurnUniforms(7), b = makeBurnUniforms(31);
+  const hooked = new THREE.MeshStandardMaterial();
+  const ownHook = () => {};
+  hooked.onBeforeCompile = ownHook;
+  hooked.customProgramCacheKey = () => 'veh-ambient-floor-v5';
+  const ownKey = hooked.customProgramCacheKey;
+  assert.equal(applyBurnHook(hooked, a), true);
+  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r7');
+  assert.equal(removeBurnHook(hooked, b), false, 'another visual\'s driver cannot take this hook off');
+  let version = hooked.version;
+  assert.equal(removeBurnHook(hooked, a), true);
+  assert.ok(hooked.onBeforeCompile === ownHook && hooked.customProgramCacheKey === ownKey, 'the chain and the key as they were');
+  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5');
+  assert.equal(hooked.userData.__burnU, undefined);
+  assert.equal(hooked.version, version + 1, 'the material recompiles');
+  assert.equal(removeBurnHook(hooked, a), false, 'once');
+  assert.equal(applyBurnHook(hooked, a), true, 'the next battle hooks it again');
+  assert.equal(hooked.customProgramCacheKey(), 'veh-ambient-floor-v5|burn-r7');
+  const outer = hooked.onBeforeCompile;
+  hooked.onBeforeCompile = function (shader, renderer) { outer.call(this, shader, renderer); };
+  assert.equal(removeBurnHook(hooked, a), false, 'a hook wrapped again since stays');
+  const plain = new THREE.MeshStandardMaterial();
+  assert.equal(applyBurnHook(plain, a), true);
+  assert.equal(removeBurnHook(plain, a), true);
+  assert.ok(!Object.prototype.hasOwnProperty.call(plain, 'onBeforeCompile')
+    && !Object.prototype.hasOwnProperty.call(plain, 'customProgramCacheKey'), 'a material with no own hook gets the prototype back');
+  hooked.dispose(); plain.dispose();
+}
+assert.match(core, /releaseBurnHooks\(\) \{\s*if \(destroyed\) return;[\s\S]{0,240}removeBurnHook\(sm, burnU\)/,
+  'an intact visual drops its own disarmed hooks');
 
 // ---- the mirror: what a hull does over its burn ----------------------------------------------------------------------
 const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };

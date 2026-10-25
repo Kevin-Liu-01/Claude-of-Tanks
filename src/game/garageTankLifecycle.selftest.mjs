@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {syncJuggernautVisual,pulseJuggernautImpact} from './juggernautVisual.ts';
+import {syncJuggernautVisual,pulseJuggernautImpact,prepareGarageTankEnergyVisual,hasGarageTankEnergyVisual} from './juggernautVisual.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
@@ -157,6 +157,25 @@ console.log('garageTankLifecycle.selftest: FX and tank state end at the garage b
  clearBattleAfterExit({game,preservedVisual:visual});
  assert.ok(mesh.material === source,'preserved and pooled actors are also cleared by roster teardown');assert.equal(root.scale.x,1);
  mesh.geometry.dispose();source.dispose();
+}
+
+// transitions-249: the hero the Garage adopted keeps the dormant Garage skin its adoption installed (clearing it drew the
+// battle paint in the Garage's first frames); any other actor's skin, and a preserved hero's battle aura, are cleared
+{
+ const dims={widthM:3,hullLengthM:7,heightM:3};
+ const make=()=>{const root=new THREE.Group(),source=new THREE.MeshStandardMaterial(),mesh=new THREE.Mesh(new THREE.BoxGeometry(),source);root.add(mesh);return {root,source,mesh};};
+ const hero=make(),other=make();
+ prepareGarageTankEnergyVisual(hero.root,dims);prepareGarageTankEnergyVisual(other.root,dims);
+ const heroSkin=hero.mesh.material;
+ assert.ok(heroSkin!==hero.source&&hasGarageTankEnergyVisual(hero.root));
+ const visual={root:hero.root},otherVisual={root:other.root,dispose(){},setVisible(){}};
+ const game={allTanks:[{visual,team:'ally',isPlayer:true},{visual:otherVisual,team:'enemy'}],tanks:[],shells:[]};
+ clearBattleAfterExit({game,preservedVisual:visual});
+ assert.ok(hero.mesh.material===heroSkin&&hasGarageTankEnergyVisual(hero.root),'the adopted hero keeps its Garage skin');
+ assert.ok(other.mesh.material===other.source&&!hasGarageTankEnergyVisual(other.root),'every other actor is cleared');
+ const main=await readFile(new URL('../main.ts',import.meta.url),'utf8');
+ assert.match(main,/prepareVisual: \(visual\) => \{\s*\(visual as \{ releaseBurnHooks\?\(\): void \}\)\.releaseBurnHooks\?\.\(\);\s*prepareGarageTankEnergyVisual\(/,
+  'the Garage drops a battle hero\'s burn hooks before its skin compiles');
 }
 
 // A wreck can save a live shield material, then restore it after death has

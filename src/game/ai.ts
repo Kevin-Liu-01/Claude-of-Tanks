@@ -4324,7 +4324,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateArcLimit(dt: number, timeS: number, tolerance: number): number {
     const state = entity.state;
     const pitchError = fireGate.pitchError;
-    const gunReady = losClear && fireGate.reactionReady
+    // (perf-249, the bot receipts' bisect: 6a943e4eee's gun clearance curves) a rack with nothing that can hurt the target
+    // has no shot to lay: a spent-rack Challenger 2 retiring with its gun laid back over its engine deck (+3.9 to +5 degrees
+    // there) took the arc limit's flat-ground leg again and again, 128 s to clear 240 m instead of 94
+    const gunReady = losClear && !emptyRack && fireGate.reactionReady
       && fireGate.reloadReady && fireGate.rangeReady;
     if ((state.atGunLimit || pitchError > 0.1) && gunReady && pitchError >= tolerance * 1.5) {
       arcLimitedT += dt;
@@ -4658,7 +4661,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       Math.atan2(aimPoint.x - st.pos.x, aimPoint.z - st.pos.z) -
       st.yaw - st.turretYaw,
     )) > 0.02;
-    if (mode !== 'engage' || !target || !losClear || !st.atGunLimit || yawPinned) {
+    // (perf-249) nor does a rack with nothing that can hurt the target back up for depression (updateArcLimit's rule): it
+    // has no shot to lay, and the back-up faces the hull it may be leaving
+    if (mode !== 'engage' || !target || !losClear || !st.atGunLimit || yawPinned || emptyRack) {
       gunLimitT = 0;
       return;
     }

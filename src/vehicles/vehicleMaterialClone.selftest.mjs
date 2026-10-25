@@ -11,7 +11,7 @@
 // dispose. Canvas storage is a CPU-only fixture: shader ownership is checked, never painted pixels or WebGL.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { cloneVehicleMaterial, vehicleAmbientFloorHook } from './materials.ts';
+import { cloneVehicleMaterial, copyVehicleMaterial, vehicleAmbientFloorHook } from './materials.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from '../game/juggernautVisual.ts';
@@ -259,6 +259,44 @@ try {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
   assert.ok(twinSkins > 0, `the battle build's twin-drawn meshes wear skins of their own (${twinSkins})`);
+  // copyVehicleMaterial (cloneTankVisual's per-visual copy, 6b2bbed99e; reviewed in vehicleMaterialRawClone, transitions-
+  // 249): every define of its source (the field-dust opt-out included), its registration family, its compile chain and
+  // its program key, so the copy draws with its source's program under its own cascade entry and is released with it
+  {
+    let rubber = null, paint = null;
+    for (const visual of visuals) visual.root.traverse((object) => {
+      for (const material of [].concat(object.material ?? [])) {
+        const origin = programVariantOrigin(material);
+        if (!registered.has(origin) || origin.userData.__burnU) continue;
+        if (!rubber && origin.defines?.COT_NO_FIELD_DUST) rubber = origin;
+        if (!paint && !origin.defines?.COT_NO_FIELD_DUST) paint = origin;
+      }
+    });
+    assert.ok(rubber && paint, 'a pristine registered rubber and paint to copy');
+    for (const source of [rubber, paint]) {
+      const copy = copyVehicleMaterial(source);
+      assert.notEqual(copy, source);
+      assert.ok(registered.has(copy), `${source.name}: the copy joins the cascade registration`);
+      assert.deepEqual(copy.defines, source.defines, `${source.name}: every define of its source`);
+      assert.equal(copy.customProgramCacheKey(), source.customProgramCacheKey(), `${source.name}: its source's program key`);
+      const before = cascadeCallbacks;
+      const shader = shaderFor(copy);
+      assert.equal(cascadeCallbacks, before + 1, `${source.name}: the copy's own cascade hook runs when it compiles`);
+      assert.ok(shader.fragmentShader.includes('float vehFill'), `${source.name}: the readability floor chains after it`);
+      // its owner releases it as a visual releases its own materials (tankVisualClone.ts dispose)
+      engineCtx.releaseShadowMaterial(copy);
+      copy.dispose();
+      assert.ok(released.has(copy), `${source.name}: the copy's cascade entry is its own to release`);
+      assert.ok(cascadeShaders.has(source), `${source.name}: releasing the copy leaves its source's cascade entry`);
+    }
+    rubber.userData.__burnU = {};
+    try { assert.throws(() => copyVehicleMaterial(rubber), /burnt/, 'a burnt source is never copied'); }
+    finally { delete rubber.userData.__burnU; }
+    const stray = new THREE.MeshStandardMaterial();
+    stray.defines = { ...stray.defines, USE_CSM: 1 };
+    assert.throws(() => copyVehicleMaterial(stray), /unregistered cascade/, 'nor an unregistered cascade material');
+    stray.dispose();
+  }
 } finally {
   for (const visual of visuals) visual.dispose();
   restoreCanvas();
