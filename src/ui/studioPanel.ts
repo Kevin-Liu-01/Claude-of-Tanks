@@ -1617,7 +1617,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmBlurRow.append(filmBlur.row, filmShake.row);
   filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
-  const filmSummary = el('div', 'recStatus', '');
+  const filmSummary = el('div', 'recStatus filmSummary', '');
   secCap.appendChild(filmSummary);
   const filmBtn = kitButton(t('studio.film.export'), 'primary', 'deploy');
   filmBtn.classList.add('cot-c-btn--wide');
@@ -1733,10 +1733,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const format = S.productionFormat;
       const { width, height } = filmOutputSize(format, Number(filmSize.select.value));
       const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value) }), 0, S.durationMs);
-      filmSummary.textContent = t('studio.film.summary', {
+      const summary = t('studio.film.summary', {
         ratio: formatRatio(format),
         width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
       });
+      filmSummary.replaceChildren(...summary.split(' · ').map((part) => el('span', null, part)));
     } catch (error) {
       filmSummary.textContent = errorMessage(error);
     }

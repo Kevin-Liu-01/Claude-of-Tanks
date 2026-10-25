@@ -16,6 +16,7 @@
 .cot-studio *{box-sizing:border-box}
 .cot-studio :is(h2,h3,p){margin:0}
 .cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px}
+.cot-studio .cot-c-chip{font-size:max(var(--fs-floor-11),var(--fs-13))}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */
 .cot-studio [hidden][hidden]{display:none}
 /* Quick (brand-ui SPEC 12.6) leaves the fine controls to Pro; the doubled attribute outranks the rows' own display */
@@ -61,7 +62,7 @@ body[data-studio-settling] #app{visibility:hidden}
 /* under 1680 px the header's secondary chips (commands, the scene link, the Gallery) keep their glyphs and give up their
    words to the screen (the words stay their names), so Export film, Exit and Hide controls stay on screen at 1440 */
 @media (width < 1680px){
-  .st-head .r :is(.cmd,[data-scene-link-copy],.gal) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .st-head .r :is(.cmd,[data-scene-link-copy],.gal,.que) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .st-head .r .cmd .cot-c-kbd{display:none}
 }
 .st-head .cmd .cot-c-kbd{margin-left:2px}
@@ -127,8 +128,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-giz .ax--y{stroke:var(--ok)}
 .st-giz .hd{fill:var(--ink-1)}
 .st-giz .o{fill:var(--accent)}
-.st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);padding:var(--s2) var(--s2);border-radius:var(--r1);background:var(--hud-plate);
-  color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);white-space:nowrap}
+.st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);max-width:calc(100% - 32px);padding:var(--s2) var(--s2);border-radius:var(--r1);
+  background:var(--hud-plate);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-data)}
 .st-fc b{color:var(--ink-1);font-weight:500}
 /* the frame (09-studio .frame): the format's aspect, the dark outside, thirds and a safe area; never in an export */
 .studio-frame-guides{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;container-type:size}
@@ -231,9 +232,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sw .cot-c-chip{width:auto;height:22px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .st-insp .cot-c-seg{display:flex;flex-wrap:wrap}
 .st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 var(--s3);font-size:max(var(--fs-floor-11),var(--fs-12))}
-/* the seven times of day wrap as their names need, every row filling the control edge to edge (a fixed grid squeezed
-   Golden hour against its neighbour and left one cell spanning two) */
-.st-insp .cot-c-seg.times .cot-c-seg__opt{flex:1 1 auto;min-width:0;padding:0 var(--s2);white-space:nowrap}
+/* the seven times of day stand four over three, each row's cells equal and edge to edge (a free wrap left 5 + 2 or 6 + 1) */
+.st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(12,minmax(0,1fr))}
+.st-insp .cot-c-seg.times .cot-c-seg__opt{grid-column:span 3;min-width:0;padding:0 2px;white-space:nowrap}
+.st-insp .cot-c-seg.times .cot-c-seg__opt:nth-child(n+5){grid-column:span 4}
 /* the five sun presets likewise fill their two rows */
 .cot-studio .sunPresets .cot-c-chip:last-child:nth-child(3n+2){grid-column:span 2}
 /* the map and tank pickers */
@@ -324,6 +326,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .planView canvas{border-radius:var(--r1);box-shadow:var(--ring-1)}
 .cot-studio .recStatus{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.4 var(--font-data)}
 .cot-studio .recStatus.on{color:var(--text-danger)}
+/* the film's summary wraps by whole facts (a dot or a lone word never dangles at a line's end) */
+.cot-studio .filmSummary{display:flex;flex-wrap:wrap;column-gap:var(--s3)}
+.cot-studio .filmSummary>span{white-space:nowrap}
 /* the Director (studioProductionPanel.ts): curated sequences, a featured tank, the shot list, rigs and exports */
 .cot-studio .director{display:flex;flex-direction:column;gap:var(--s4)}
 .cot-studio .director-head{display:none}
@@ -348,7 +353,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .production-transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s2)}
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);text-align:center}
 /* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
-.st-insp .production-transport output{display:none}
+/* the sequence's scrub carries its clock, so the slider reads as the shot list's time */
+.cot-studio .production-scrubrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s3)}
+.cot-studio .production-scrubrow output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
@@ -414,18 +421,22 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .tk--sound svg{position:absolute;inset:4px 0;width:100%;height:calc(100% - 8px);pointer-events:none}
 .st-tl .tk--sound path{stroke:var(--ink-3);stroke-width:1;vector-effect:non-scaling-stroke}
 .st-tl .tk--sound svg.stale path{stroke:var(--ink-4)}
-.st-tl .ph{position:absolute;top:0;bottom:0;left:calc(150px + (100% - 150px) * var(--t,0));z-index:var(--z-lift);width:2px;margin-left:-1px;
+/* the playhead stands on the scrub's thumb: the range insets half its 11 px thumb and the ruler's 2 px pad at each end */
+.st-tl .ph{position:absolute;top:0;bottom:0;left:calc(var(--lb,150px) + 7.5px + (100% - var(--lb,150px) - 15px) * var(--t,0));z-index:var(--z-lift);width:2px;margin-left:-1px;
   background:var(--accent);pointer-events:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
 .st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
   max-height:min(70vh,560px,calc(100dvh - 64px));padding:var(--s3) var(--s3) var(--s6);overflow-y:auto;border-radius:var(--r2);
-  background:var(--surface-menu);box-shadow:var(--e2);
-  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent);mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent)}
+  background:var(--surface-menu);box-shadow:var(--e2)}
+/* its foot fades where the list continues: a sticky shade in the menu's own colour (a mask let the frame show through) */
+.st-queue::after{content:'';position:sticky;bottom:calc(-1 * var(--s6));flex:none;height:var(--s6);margin:calc(-1 * var(--s6)) calc(-1 * var(--s3)) calc(-1 * var(--s6));
+  background:linear-gradient(180deg,transparent,var(--surface-menu));pointer-events:none}
 /* the queue names itself; its foot (start, clear) stands over the fade when there are jobs */
 .st-queue .qh{margin:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
-.st-queue:has(.qf:not([hidden])){padding-bottom:var(--s3);-webkit-mask-image:none;mask-image:none}
+.st-queue:has(.qf:not([hidden])){padding-bottom:var(--s3)}
+.st-queue:has(.qf:not([hidden]))::after{display:none}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
 .st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
 /* a delivery's name over its cost, the add or remove control beside both: the whole preset name always reads */
@@ -497,7 +508,7 @@ body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.s
 /* a tablet's narrow viewport and bars keep every control on screen: the secondary chips keep their glyphs (their names stay
    accessible), the header drops its key caps, and the viewport's two chip groups never meet */
 body[data-cot-width='tablet'] .st-head .r :is(.cot-c-kbd,.studio-panel-toggle){display:none}
-body[data-cot-width='tablet'] .st-head .r .cot-c-btn--ghost .cot-c-btn__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-cot-width='tablet'] .st-head .r :is(.cot-c-btn--ghost,.cot-c-btn--primary) .cot-c-btn__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-width='tablet'] :is(.st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,
   .st-tl .tp .r .cot-c-chip__label){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-width='tablet'] .st-vpt{max-width:calc(100% - 156px);flex-wrap:wrap}
@@ -530,6 +541,10 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .w
   .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
   height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 var(--s3)}
+/* a phone's header keeps Exit in reach: the scene link moves to the palette and the format switch sets its segments tight */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head{gap:var(--s2);padding:0 var(--s3)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r [data-scene-link-copy]{display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .cot-c-seg__opt{min-width:0;padding:0 var(--s2)}
 /* the queue keeps to the frame's row on a phone, clear of the transport under it */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{max-height:calc(40dvh - var(--s2))}
 /* the Field frames read as one column on a phone: the cards fill the dialog, with no sideways fade */
@@ -542,7 +557,7 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip:first-child .cot-c-chip__label{min-width:0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-lanes{grid-template-columns:72px minmax(0,1fr);grid-auto-rows:minmax(24px,1fr)}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl .ph{left:calc(72px + (100% - 72px) * var(--t,0))}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl{--lb:72px}
 body[data-cot-height='short'] .st-app{grid-template-rows:50px minmax(0,1fr) 0 35px}
 /* the six workspaces stand without the gaps between groups, so the last one is never under the transport */
 body[data-cot-height='short'] .st-out{gap:0;padding-block:var(--s2)}
