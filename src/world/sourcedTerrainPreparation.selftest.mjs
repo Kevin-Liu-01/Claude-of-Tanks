@@ -458,7 +458,7 @@ await withFixture(async f => {
     const texture = new THREE.Texture();
     terrain.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: texture })));
     const vegetation = { group: new THREE.Group(), treeObstacles: [],
-      setGroundCoverClearance() {}, dispose() { events.push('vegetation'); } };
+      *groundCoverSealSteps() {}, dispose() { events.push('vegetation'); } };
     const props = { group: new THREE.Group(), obstacles: [], colliders: [],
       registerDestructibles: () => () => events.push('unregister') };
     const field = { _layout: { spawns: { player: { x: 0, z: 0, yaw: 0 }, enemies: [] } },

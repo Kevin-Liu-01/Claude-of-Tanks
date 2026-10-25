@@ -316,7 +316,12 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
   its bounds. Over the fleet at HIGH and LOW (442 builds): the same answer on all 2,757 queries, 1.1 s against 21.9 s.
   The Abrams X profile body (4.1 s and 1.5 s at 4x) is still one step: its authored stages are drained synchronously,
   and yielding inside it needs the profile's run serial (spareTrackRunTag) to tolerate another build between stages.
-- Open: groundCoverClearance (the vegetation's synchronous seal), the terrain mask paint.
+- **The world's assembly** (map.ts assembleWorld: one 164 ms task on a desktop Verdant entry, the ground cover's seal 94
+  of it) is a step generator: createMap drains it, createMapAsync paces the fine-sliced build between its steps (seven
+  of its own, and the seal a step per grass mesh). The group stays hidden from its scene add to its last step; a pace
+  that throws (a cancelled build) lets the assembly finish so the coordinator releases a whole world. Byte-identical:
+  Verdant, Urban and Alpine through createMapAsync and Verdant through createMap, HEAD against the lane in Node.
+- Open: the terrain mask paint.
 
 ## Draw count (the engine ruling's lever)
 

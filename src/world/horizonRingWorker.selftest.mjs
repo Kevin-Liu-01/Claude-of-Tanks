@@ -321,7 +321,7 @@ assert.match(mapSource, /withdrawHorizonRing\(ringSource\);\s*ringSource\.dispos
 {
   const props = mapSource.indexOf('const props = await createPropsAsync(');
   const finish = mapSource.indexOf('await finishHorizonRingAsync(terrain, ');
-  const assemble = mapSource.indexOf('const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);');
+  const assemble = mapSource.indexOf('const world = await assembleWorldPaced(engineCtx, config, heightField, terrain, vegetation, props,');
   assert.ok(props > 0 && finish > props && assemble > finish, 'map.ts finishes the ring after the props, before the world is assembled');
 }
 // the hook: the installed pipeline is the module's; a supply serves its own map and variant only, until withdrawn
