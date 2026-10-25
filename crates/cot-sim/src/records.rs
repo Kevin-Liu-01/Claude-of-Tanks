@@ -30,8 +30,9 @@ pub struct Part {
 #[derive(Clone, Debug)]
 #[allow(missing_docs)] // (the fields are the TypeScript's, named alike)
 pub enum PartKind {
-    /// A box yawed like a hull: forward (sin yaw, cos yaw) by `hl`, right (cos yaw, −sin yaw) by `hw`.
-    Obb { cx: f64, cz: f64, hw: f64, hl: f64, yaw: f64 },
+    /// A box yawed like a hull: forward (sin yaw, cos yaw) by `hl`, right (cos yaw, −sin yaw) by `hw`; `cos` and `sin`
+    /// are its yaw's, worked out once (Part::obb) — the very values the TypeScript computes on every test.
+    Obb { cx: f64, cz: f64, hw: f64, hl: f64, yaw: f64, cos: f64, sin: f64 },
     /// A circle.
     Circle { cx: f64, cz: f64, r: f64 },
     /// A convex outline (x, z pairs) and its drawn top's planes (`[ox, oz, a0, b0, c0, …]`).
@@ -71,6 +72,11 @@ pub struct Record {
 }
 
 impl Part {
+    /// A yawed box, its yaw's cos and sin worked out once.
+    pub fn obb(cx: f64, cz: f64, hw: f64, hl: f64, yaw: f64, y: Option<(f64, f64)>) -> Part {
+        Part { kind: PartKind::Obb { cx, cz, hw, hl, yaw, cos: jsmath::cos(yaw), sin: jsmath::sin(yaw) }, y }
+    }
+
     fn y1_or(&self, record_max_y: f64) -> f64 {
         self.y.map_or(record_max_y, |(_, y1)| y1)
     }
@@ -156,9 +162,8 @@ impl Record {
                 let (dx, dz) = (x - cx, z - cz);
                 dx * dx + dz * dz <= r * r
             }
-            PartKind::Obb { cx, cz, hw, hl, yaw } => {
+            PartKind::Obb { cx, cz, hw, hl, cos: c, sin: s, .. } => {
                 let (dx, dz) = (x - cx, z - cz);
-                let (c, s) = (jsmath::cos(*yaw), jsmath::sin(*yaw));
                 let along = dx * s + dz * c;
                 let across = dx * c - dz * s;
                 along.abs() <= *hl && across.abs() <= *hw
@@ -310,9 +315,9 @@ fn simple_footprint_contains(part: &Part, x: f64, z: f64) -> bool {
             let radius = r + 0.0;
             dx * dx + dz * dz <= radius * radius
         }
-        PartKind::Obb { cx, cz, hw, hl, yaw } => {
+        PartKind::Obb { cx, cz, hw, hl, cos, sin, .. } => {
             let (dx, dz) = (x - cx, z - cz);
-            let (forward_x, forward_z) = (jsmath::sin(*yaw), jsmath::cos(*yaw));
+            let (forward_x, forward_z) = (*sin, *cos);
             let (right_x, right_z) = (forward_z, -forward_x);
             (dx * right_x + dz * right_z).abs() <= hw + 0.0 && (dx * forward_x + dz * forward_z).abs() <= hl + 0.0
         }

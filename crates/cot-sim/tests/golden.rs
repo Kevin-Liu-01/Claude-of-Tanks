@@ -686,7 +686,7 @@ fn golden_part(part: &GoldenPart) -> cot_sim::records::Part {
     let y = |y: &Option<[JsNum; 2]>| y.map(|[a, b]| (a.f64(), b.f64()));
     let all = |v: &[JsNum]| v.iter().map(|n| n.f64()).collect::<Vec<_>>();
     match part {
-        GoldenPart::Obb { cx, cz, hw, hl, yaw, y: yy } => Part { kind: PartKind::Obb { cx: cx.f64(), cz: cz.f64(), hw: hw.f64(), hl: hl.f64(), yaw: yaw.f64() }, y: y(yy) },
+        GoldenPart::Obb { cx, cz, hw, hl, yaw, y: yy } => Part::obb(cx.f64(), cz.f64(), hw.f64(), hl.f64(), yaw.f64(), y(yy)),
         GoldenPart::Circle { cx, cz, r, y: yy } => Part { kind: PartKind::Circle { cx: cx.f64(), cz: cz.f64(), r: r.f64() }, y: y(yy) },
         GoldenPart::Convex { points, tp, y: yy } => Part { kind: PartKind::Convex { points: all(points), tp: tp.as_ref().map(|t| all(t)) }, y: y(yy) },
     }

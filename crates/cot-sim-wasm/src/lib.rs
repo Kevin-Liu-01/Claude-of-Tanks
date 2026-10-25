@@ -426,7 +426,10 @@ fn read_part(v: &[f64], i: &mut usize) -> Option<Part> {
     let y = if has_y { Some((y0, y1)) } else { None };
     let kind = match kind {
         0 => return None,
-        1 => PartKind::Obb { cx: next(), cz: next(), hw: next(), hl: next(), yaw: next() },
+        1 => {
+            let (cx, cz, hw, hl, yaw) = (next(), next(), next(), next(), next());
+            return Some(Part::obb(cx, cz, hw, hl, yaw, y));
+        }
         2 => PartKind::Circle { cx: next(), cz: next(), r: next() },
         _ => {
             let n = next() as usize;
