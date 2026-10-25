@@ -3898,6 +3898,7 @@ if (diagnosticsRequested) {
       isGarageModePreviewPending: () => garageModePreview.pending,
       isPedestalOnStage: () => pedestal.isOnStage(),
       getSelectedSpecId: () => selectedVehicle.id,
+      getWatchController: () => watchOwner.current?.controller ?? null,
       getPedestalCacheIds: () => [...pedestal.cacheIds],
       getWorldCacheIds: () => [...worldCache.keys()],
       getResidentLimits: () => ({ ...residentLimits }),
