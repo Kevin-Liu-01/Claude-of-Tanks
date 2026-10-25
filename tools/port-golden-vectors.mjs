@@ -1,0 +1,208 @@
+#!/usr/bin/env node
+/**
+ * port-golden-vectors.mjs — the TypeScript simulation as the oracle for its
+ * Rust port (docs/PORT-BEVY.md "Parity").
+ *
+ * Evaluates the ported functions on fixed inputs through the TypeScript
+ * modules under src/ and writes the results, as exact doubles, to
+ * crates/cot-sim/tests/golden/<module>.json. `cargo test -p cot-sim` reads the
+ * same files and holds the Rust functions to the bits.
+ *
+ *   node tools/port-golden-vectors.mjs          # rewrite the vectors
+ *   node tools/port-golden-vectors.mjs --check  # verify the committed vectors
+ *                                                 (the receipt registered in
+ *                                                 npm test)
+ *
+ * Numbers are emitted by JSON.stringify, whose shortest round-trip form
+ * decodes to the identical double in serde_json; a non-finite value is
+ * written as the string "NaN" / "Infinity" / "-Infinity".
+ */
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Vector3 } from 'three';
+import { mulberry32 } from '../src/game/stateCore.ts';
+import {
+  GRAVITY_SCALE,
+  GUIDED_MISSILE_TURN_RATE_RAD_S,
+  SHELL_MAX_LIFETIME_S,
+  aimElevationRad,
+  applyDispersion,
+  createShell,
+  guideShellToward,
+  penAtDistanceMm,
+  shellGravityMps2,
+  solveBallisticGunLay,
+  stepShell,
+} from '../src/sim/ballistics.ts';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const OUT_DIR = path.join(ROOT, 'crates', 'cot-sim', 'tests', 'golden');
+const CHECK = process.argv.includes('--check');
+
+const num = (v) => (Number.isFinite(v) ? v : Object.is(v, NaN) ? 'NaN' : v > 0 ? 'Infinity' : '-Infinity');
+const vec = (v) => ({ x: num(v.x), y: num(v.y), z: num(v.z) });
+const sha = (rel) => createHash('sha256').update(readFileSync(path.join(ROOT, rel))).digest('hex');
+
+// ---------------------------------------------------------------- rng ------
+function rngVectors() {
+  const seeds = [0, 1, -1, 1337, 2001, 2002, 3000, 4000, 5000, 6000, 123456789,
+    2147483647, -2147483648, 4294967296, 4294967297, 1e20, 0.9, -7.9, 21000, 52000];
+  return {
+    source: 'src/game/stateCore.ts',
+    sourceSha256: sha('src/game/stateCore.ts'),
+    cases: seeds.map((seed) => {
+      const r = mulberry32(seed);
+      const draws = [];
+      for (let i = 0; i < 48; i++) draws.push(r());
+      return { seed, draws };
+    }),
+  };
+}
+
+// --------------------------------------------------------- ballistics ------
+function ballisticsVectors() {
+  const specs = {
+    apfsds: { velocityMps: 1750, pen100Mm: 640, pen1000Mm: 590, pen2000Mm: 540, caliberMm: 120 },
+    heat: { velocityMps: 1140, pen100Mm: 480, pen1000Mm: 480, caliberMm: 120 },
+    he: { velocityMps: 800, pen100Mm: 60, pen1000Mm: 60, caliberMm: 125 },
+    atgm: { velocityMps: 300, guided: true, pen100Mm: 800, pen1000Mm: 800, guidanceTurnRateRadS: 1.6 },
+    atgmDefault: { velocityMps: 260, guided: true, pen100Mm: 700, pen1000Mm: 700 },
+    lob: { velocityMps: 240, gravityScale: 0.5, pen100Mm: 90, pen1000Mm: 80 },
+    negScale: { velocityMps: 900, gravityScale: -2, pen100Mm: 200, pen1000Mm: 150 },
+    nanScale: { velocityMps: 900, gravityScale: NaN, pen100Mm: 200, pen1000Mm: 150 },
+    zeroFar: { velocityMps: 900, pen100Mm: 200, pen1000Mm: 150, pen2000Mm: 0 },
+    slow: { velocityMps: 40, pen100Mm: 30, pen1000Mm: 20 },
+  };
+  const distances = [0, 50, 100, 250, 500, 999, 1000, 1000.5, 1001, 1500, 2000, 2500, 3000, -50];
+  const dt = 1 / 60;
+
+  const gravity = Object.entries(specs).map(([name, spec]) => ({ spec: name, expect: num(shellGravityMps2(spec)) }));
+  gravity.push({ spec: null, expect: num(shellGravityMps2(null)) });
+
+  const pen = [];
+  for (const [name, spec] of Object.entries(specs)) {
+    for (const distM of distances) pen.push({ spec: name, distM, expect: num(penAtDistanceMm(spec, distM)) });
+  }
+
+  const elevation = [];
+  for (const distM of [10, 100, 400, 1000, 2500, 8000, 60000]) {
+    for (const v of [40, 240, 800, 1140, 1750]) elevation.push({ distM, velocityMps: v, expect: num(aimElevationRad(distM, v)) });
+  }
+
+  const muzzle = new Vector3(12.5, 2.3, -8.75);
+  const aims = [
+    [412.0, 1.1, 260.0], [-300.5, 40.0, 1200.0], [12.5, 2.3, -8.75], [12.5, 30.0, -8.75],
+    [1800.0, -20.0, 1800.0], [60.0, 6.0, 60.0], [-4500.0, 900.0, 100.0],
+  ];
+  const lay = [];
+  const out = new Vector3();
+  for (const [name, spec] of Object.entries(specs)) {
+    for (const a of aims) {
+      const aim = new Vector3(...a);
+      out.set(0, 0, 0);
+      const ok = solveBallisticGunLay(out, muzzle, aim, spec);
+      lay.push({ spec: name, muzzle: vec(muzzle), aim: vec(aim), ok, out: vec(out) });
+    }
+  }
+  out.set(0.1, 0.2, 0.3);
+  lay.push({ spec: 'apfsds', muzzle: vec(muzzle), aim: null, ok: solveBallisticGunLay(out, muzzle, null, specs.apfsds), out: vec(out) });
+
+  const flights = [];
+  const dirs = [[0.7, 0.05, 0.71], [0, 1, 0], [-0.2, 0.3, 0.9], [1, 0, 0]];
+  for (const [name, spec] of Object.entries(specs)) {
+    for (const d of dirs) {
+      const dir = new Vector3(...d).normalize();
+      const shell = createShell(spec, 'p1', name === 'apfsds', muzzle, dir, 7);
+      const samples = [];
+      const record = (step) => samples.push({ step, pos: vec(shell.pos), prevPos: vec(shell.prevPos), vel: vec(shell.vel), ageS: num(shell.ageS), distM: num(shell.distM), dead: shell.dead });
+      record(0);
+      for (let step = 1; step <= 370; step++) {
+        stepShell(shell, dt);
+        if (step === 1 || step === 2 || step === 30 || step === 120 || step === 359 || step === 360 || step === 361 || step === 370) record(step);
+      }
+      flights.push({ spec: name, dir: vec(dir), gravityMps2: num(shell.gravityMps2), samples });
+    }
+  }
+
+  const guidance = [];
+  for (const name of ['atgm', 'atgmDefault', 'apfsds']) {
+    const spec = specs[name];
+    const shell = createShell(spec, 'p2', false, muzzle, new Vector3(0, 0, 1), 9);
+    const cursor = new Vector3(180, 25, 420);
+    const samples = [];
+    for (let step = 1; step <= 240; step++) {
+      const applied = guideShellToward(shell, cursor, dt);
+      stepShell(shell, dt);
+      if (step === 1 || step === 5 || step === 60 || step === 120 || step === 240) samples.push({ step, applied, pos: vec(shell.pos), vel: vec(shell.vel) });
+    }
+    guidance.push({ spec: name, cursor: vec(cursor), samples });
+  }
+  {
+    const shell = createShell(specs.atgm, 'p2', false, muzzle, new Vector3(0, 0, 1), 10);
+    guidance.push({ spec: 'atgm-null-aim', cursor: null, samples: [{ step: 1, applied: guideShellToward(shell, null, dt), pos: vec(shell.pos), vel: vec(shell.vel) }] });
+    const back = createShell(specs.atgm, 'p2', false, muzzle, new Vector3(0, 0, 1), 11);
+    const behind = new Vector3(muzzle.x, muzzle.y, muzzle.z - 100);
+    guidance.push({ spec: 'atgm-antiparallel', cursor: vec(behind), samples: [{ step: 1, applied: guideShellToward(back, behind, dt), pos: vec(back.pos), vel: vec(back.vel) }] });
+  }
+
+  const dispersion = [];
+  for (const seed of [6000, 6001, 6002, 6003, 42]) {
+    for (const [dx, dy, dz] of [[0, 0, 1], [0.6, 0.1, 0.79], [0, 0.995, 0.1], [0, -1, 0]]) {
+      for (const sigma of [0.002, 0.0125, 0.03]) {
+        const rng = mulberry32(seed);
+        const dir = new Vector3(dx, dy, dz).normalize();
+        const before = vec(dir);
+        // Pull 8 shots from one generator so the re-placement branch is exercised.
+        const shots = [];
+        for (let i = 0; i < 8; i++) {
+          dir.set(dx, dy, dz).normalize();
+          applyDispersion(dir, sigma, rng);
+          shots.push(vec(dir));
+        }
+        dispersion.push({ seed, dir: before, sigmaRad: sigma, shots });
+      }
+    }
+  }
+  {
+    const dir = new Vector3(0, 0, 1);
+    applyDispersion(dir, 0, mulberry32(1));
+    dispersion.push({ seed: 1, dir: { x: 0, y: 0, z: 1 }, sigmaRad: 0, shots: [vec(dir)] });
+  }
+
+  return {
+    source: 'src/sim/ballistics.ts',
+    sourceSha256: sha('src/sim/ballistics.ts'),
+    constants: { GRAVITY_SCALE, SHELL_MAX_LIFETIME_S, GUIDED_MISSILE_TURN_RATE_RAD_S, dt },
+    specs: Object.fromEntries(Object.entries(specs).map(([name, spec]) => [name,
+      Object.fromEntries(Object.entries(spec).map(([field, value]) => [field, typeof value === 'number' ? num(value) : value]))])),
+    cases: { gravity, pen, elevation, lay, flights, guidance, dispersion },
+  };
+}
+
+// --------------------------------------------------------------- main ------
+const modules = { rng: rngVectors(), ballistics: ballisticsVectors() };
+mkdirSync(OUT_DIR, { recursive: true });
+let drift = 0;
+for (const [name, data] of Object.entries(modules)) {
+  const file = path.join(OUT_DIR, `${name}.json`);
+  const text = `${JSON.stringify({ generator: 'tools/port-golden-vectors.mjs', ...data }, null, 1)}\n`;
+  if (CHECK) {
+    const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
+    if (current !== text) {
+      drift += 1;
+      console.error(`[port-golden] ${path.relative(ROOT, file)} differs from the TypeScript source of truth`);
+    }
+  } else {
+    writeFileSync(file, text);
+    console.log(`[port-golden] wrote ${path.relative(ROOT, file)} (${text.length} bytes)`);
+  }
+}
+if (CHECK) {
+  if (drift) {
+    console.error(`[port-golden] ${drift} golden file(s) drifted: run \`node tools/port-golden-vectors.mjs\` and re-run \`cargo test -p cot-sim\``);
+    process.exit(1);
+  }
+  console.log('[port-golden] committed golden vectors match the TypeScript modules');
+}
