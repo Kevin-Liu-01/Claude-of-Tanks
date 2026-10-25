@@ -12,6 +12,9 @@ interface AccessWorld {
 const ACCESS_DRIVETRAIN = { enginePowerHp: 900, weightTons: 60,
   terrainResistance: { hard: 1, medium: 1.2, soft: 1.8 } };
 
+/** A world's objective access (its navigation grid, the dry view and both deployments' reachability): the same for every mode. */
+export type ObjectiveAccess = ReturnType<typeof createObjectiveAccess>;
+
 export function createObjectiveAccess(world: AccessWorld, anchors: PlacementAnchors) {
   const field = world.heightField;
   const navigation = createBotNavigationGrid({ heightField: field, queryObstacles: world.queryObstacles,
