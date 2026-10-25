@@ -462,7 +462,7 @@
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
     .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
-    .cot-credits-close{position:absolute;z-index:2;top:20px;right:20px;display:grid;place-items:center;
+    .cot-credits-close{position:absolute;z-index:2;top:32px;right:32px;display:grid;place-items:center;
       width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--btn-secondary-ring);color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
@@ -478,7 +478,7 @@
       .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:32px;margin-bottom:20px}
       .cot-credits-actions{flex-direction:column;align-items:stretch}
-      .cot-credits-close{top:12px;right:12px}
+      .cot-credits-close{top:24px;right:24px}
     }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (height < 520px) {
@@ -489,7 +489,7 @@
       .cot-credits h2{font-size:28px;margin-bottom:12px}
       .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
       .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
-      .cot-credits-close{top:12px;right:12px}
+      .cot-credits-close{top:24px;right:24px}
     }
     .cot-boot-gate {
       grid-area: slot; align-self: start; margin-top: 24px; height: 22px;
@@ -501,8 +501,8 @@
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
-      grid-area: slot; align-self: start; justify-self: center; display: none;
-      height: 44px; margin: 24px 0 0; padding: 0 18px; white-space: nowrap;
+      grid-area: slot; align-self: center; justify-self: center; display: none;
+      height: 44px; margin: 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -532,9 +532,12 @@
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
-    /* a slow load's bar stays live 8 px under its plate, in the same 21 px the other stops leave below the row */
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 17px; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 0; }
+    /* a slow load's plate wraps its row and its live bar: the bar keeps the place it had while loading (9 px under the
+       row), and the plate ends 8 px under it, inside the 21 px every stop leaves below its row */
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 9px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 8px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-bar { margin-inline: 14px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta::before { inset: -9px 0 -21px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
     #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
@@ -580,6 +583,7 @@
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
       .cot-boot-gate, .cot-boot-retry { margin-top: 12px; }
+      .cot-boot-retry { align-self: start; }
       .cot-boot-links { margin-top: 24px; }
     }
     }
