@@ -20,7 +20,7 @@ const f = (n: number): string => String(Math.round(n * 10) / 10);
 /** A line chart: series over two axes, a legend under it, and an accessible name. */
 export function lineChart(options: { readonly x: Axis; readonly y: Axis; readonly series: readonly ChartSeries[]; readonly title: string }): string {
   const { x, y, series, title } = options;
-  const W = 640, H = 300, left = 52, right = 16, top = 14, bottom = 40;
+  const W = 640, H = 300, left = 64, right = 36, top = 14, bottom = 40;
   const sx = (v: number): number => left + ((v - x.min) / (x.max - x.min)) * (W - left - right);
   const sy = (v: number): number => top + (1 - (Math.min(v, y.max) - y.min) / (y.max - y.min)) * (H - top - bottom);
   const grid = y.ticks.map((v) => `<line class="g" x1="${left}" x2="${W - right}" y1="${f(sy(v))}" y2="${f(sy(v))}"/>`

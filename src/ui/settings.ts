@@ -268,9 +268,8 @@ const SETTINGS_CSS = `
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
   box-shadow:var(--e1);}
-/* the heading's label starts on the rows' inset (at the row glyphs); its (i) button ends at the card's edge, so the
-   glyph centred in it lines up with the controls' edge */
-.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2) 0;}
+/* the heading sits on the rows' inset: its label starts at the row glyphs and its (i) ends at the controls' edge */
+.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2);}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
@@ -281,7 +280,8 @@ const SETTINGS_CSS = `
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
 /* a setting's glyph: one grey, the accent only on a shell slot's number */
-.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;color:var(--ink-3);}
+/* a row's glyph starts on its box's edge, so the glyph, the heading's label and the control under it share one edge */
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--ink-3);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
 .cot-setting-label-text{min-width:0;}
 /* the rows in a conflict: the notice's warning tone, no stripe */
@@ -380,7 +380,9 @@ const SETTINGS_CSS = `
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
    heading's line so every heading keeps one height */
-.cot-set-info{--h:var(--cot-control-floor,36px);order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+/* the (i) is its glyph's size on the line (so it ends where the controls end); its hit area reaches the control floor */
+.cot-set-info{--h:16px;order:2;flex:none;margin-block:0;color:var(--ink-3);}
+.cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2);}
 .cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
 /* settings_ui r2: the panel respects reduced motion — enter transition,

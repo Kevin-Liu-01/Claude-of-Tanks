@@ -165,6 +165,8 @@ body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);wh
 body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 body[data-cot-width='phone'] .cot-set-tab.sel::after{left:4px;right:4px}
+/* a two-character tab still meets the touch floor */
+body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,
@@ -184,7 +186,7 @@ body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 auto}
+body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 0}
 body[data-cot-width='phone'] .cot-settings .cot-battle-times{width:100%}
 body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 auto}
 body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
@@ -194,6 +196,8 @@ body[data-cot-width='phone'] .cot-set-seg:has(> :nth-child(5)){display:grid;grid
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
 body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+/* on touch a segmented control's options are its full height (44 px), the same as every other control */
+body[data-cot-input='coarse'] .cot-set-seg{padding:0}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}

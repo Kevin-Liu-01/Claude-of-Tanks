@@ -171,7 +171,7 @@
   "href": "/docs/combat#special",
   "title": "Spaced armor, ERA and HE",
   "chapter": "Armor, angling and spotting",
-  "text": "Not every plate is solid steel, and not every shell needs to go through. Air gaps cost HEAT 5 % of its penetration per 10 cm. ERA takes a fixed bite out of HEAT and a share of a kinetic round; a tandem warhead goes through it unless the block is built against tandems. HE never bounces: it blasts what it hits, plate or not."
+  "text": "Not every plate is solid steel, and not every shell needs to go through. Air gaps cost HEAT 5 % of its penetration per 10 cm. ERA takes a fixed bite out of HEAT and a share of a kinetic round; a tandem warhead goes through it unless the block is built against tandems. HE never bounces: it blasts what it hits, plate or not."
  },
  {
   "href": "/docs/combat#modules",
@@ -405,7 +405,7 @@
   "href": "/docs/simulation#topic-section-2",
   "title": "The host runs the match",
   "chapter": "Simulation and authority",
-  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. This differs from the older dedicated-server architecture still documented for historical reference. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
+  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
  },
  {
   "href": "/docs/simulation#topic-section-3",
