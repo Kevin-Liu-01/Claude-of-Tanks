@@ -11,14 +11,29 @@
  * that withholds, freezes or retracts its acknowledgements otherwise drew a
  * full keyframe on every snapshot, about 8x an honest stream on the host
  * player's uplink. With the bucket empty it gets nothing until a token
- * returns: without a baseline it has nothing to apply a delta to. The 2 s
+ * returns: without a baseline it has nothing to apply a delta to. The periodic
  * cadence never draws on the bucket.
+ *
+ * Each viewer's periodic keyframes land on its own slot of the cycle
+ * (mp-scale-251, docs/MULTIPLAYER-V2.md §13.30): every viewer welcomed at a
+ * match's start otherwise drew its keyframe on the same snapshot, and a 14v14
+ * host sent 28 keyframes (≈ 90 KB) in one tick, a burst seven times the median
+ * tick's on a home uplink. A periodic keyframe is due on the viewer's slot,
+ * once a cycle; a snapshot skipped on the slot puts it on the next one, which is
+ * never more than a cycle after the last keyframe. A forced keyframe off the
+ * slot costs at most one more keyframe, at the next slot.
  */
 import { NO_TICK, TICK_HZ } from '../../src/mp/wire/constants.ts';
 import { buildSnapshotPacket, encodeMessage } from '../../src/mp/wire/codec.ts';
 import type { SnapshotFrame } from '../../src/mp/wire/messages.ts';
 
-const KEYFRAME_INTERVAL_TICKS = TICK_HZ * 2;
+/**
+ * A viewer's periodic keyframe (mp-scale-251): every six seconds, was two. A delta against the viewer's acknowledged
+ * frame is exact, a viewer that loses its baseline asks for a keyframe at once (NO_TICK, the bucket above), and the
+ * room's two-second keyframe contract is the host's sealed migration keyframe (matchHostCore broadcastKeyframe), not
+ * this one. The two-second cadence cost a 14v14 viewer 13 of its 92 kbit/s of snapshots, a 32v32 viewer 27 of 144.
+ */
+export const KEYFRAME_INTERVAL_TICKS = TICK_HZ * 6;
 const FORCED_KEYFRAME_BURST = 8;
 const FORCED_KEYFRAME_REFILL_TICKS = TICK_HZ / 2;
 const HISTORY_FRAMES = 64;
@@ -50,7 +65,19 @@ export interface ViewerPublisher {
 
 interface HeldFrame { frame: SnapshotFrame; sentAtMs: number; acked: boolean }
 
-export function createViewerPublisher(): ViewerPublisher {
+export interface ViewerPublisherOptions {
+  /** The viewer's slot in the keyframe cycle (ticks, 0 to KEYFRAME_INTERVAL_TICKS - 1; keyframeSlotFor). */
+  keyframeSlotTicks?: number;
+  /** Ticks between this viewer's snapshots: a slot is met by the snapshot that falls in it. */
+  snapshotEveryTicks?: number;
+}
+
+/** A viewer's keyframe slot from its seat: seats spread over the cycle by the golden ratio, so any number of them stays apart. */
+export function keyframeSlotFor(seat: number): number {
+  return Math.floor(((seat * 0.6180339887498949) % 1) * KEYFRAME_INTERVAL_TICKS);
+}
+
+export function createViewerPublisher({ keyframeSlotTicks = 0, snapshotEveryTicks = 1 }: ViewerPublisherOptions = {}): ViewerPublisher {
   const history = new Map<number, HeldFrame>();
   const stats = { keyframes: 0, deltas: 0, bytes: 0, missingBaselines: 0, keyframeRequests: 0, forcedKeyframesWithheld: 0 };
   let ackedTick = NO_TICK;
@@ -96,7 +123,10 @@ export function createViewerPublisher(): ViewerPublisher {
     publish(frame, nowMs) {
       const baseline = ackedTick === NO_TICK ? null : history.get(ackedTick)?.frame ?? null;
       if (ackedTick !== NO_TICK && !baseline) stats.missingBaselines++;
-      const due = frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS;
+      // on the viewer's slot; two seconds after the last keyframe only when a skipped snapshot missed the slot (the
+      // next slot is then less than two seconds on, so the cadence is back on it)
+      const due = frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS
+        || (frame.tick + KEYFRAME_INTERVAL_TICKS - keyframeSlotTicks) % KEYFRAME_INTERVAL_TICKS < snapshotEveryTicks;
       const forced = keyframeRequested || !baseline;
       refill(frame.tick);
       if (forced && !due) {

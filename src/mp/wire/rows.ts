@@ -170,6 +170,58 @@ export function diffEntityRow(row: EntityRow, base: EntityRow | null, packetTick
   return { entityId: row.entityId, mask, fields, mirrors, era };
 }
 
+function varintBytes(value: number): number {
+  let bytes = 1;
+  while (value >= 0x80) { value = Math.floor(value / 0x80); bytes++; }
+  return bytes;
+}
+
+/**
+ * The bytes `row` takes against `base` (null: a keyframe row): the groups diffEntityRow would choose and their sizes,
+ * without building the patch (mp-scale-251: the snapshot budget weighs each due row before the frame is encoded). An
+ * ERA list counts a byte an index and a string a byte a character; the AGE group is not counted (a fresh row is the
+ * packet's own tick). The budget weighs against the row the viewer holds, which its acknowledged baseline may trail.
+ */
+export function estimateEntityRowBytes(row: EntityRow, base: EntityRow | null): number {
+  let mask = 0;
+  let bytes = 0;
+  const status = packStatus(row);
+  if ((row.auxiliaryJson || '') !== (base?.auxiliaryJson || '')) { mask |= ROW_GROUP.AUXILIARY; bytes += 2 + (row.auxiliaryJson || '').length; }
+  if (base ? !sameWreckBody(row.wreckBody, base.wreckBody) : !!row.wreckBody) { mask |= ROW_GROUP.WRECK_BODY; bytes += row.wreckBody ? 21 : 1; }
+  if (!base) {
+    mask |= KEYFRAME_GROUPS;
+    bytes += 12 + 4 + 2 + 4 + 4 + 2 + 2 + 4 + 2 + varintBytes(row.ammo0) + varintBytes(row.ammo1) + varintBytes(row.ammo2) + 2;
+    if (!(status & STATUS_GUN_RELOAD_MIRRORS)) { mask |= ROW_GROUP.GUN_RELOAD; bytes += 4; }
+    if (row.eraSpent.length) { mask |= ROW_GROUP.ERA_RESET; bytes += 1 + row.eraSpent.length; }
+    return 1 + varintBytes(mask) + bytes;
+  }
+  if (row.x !== base.x || row.y !== base.y || row.z !== base.z) {
+    const relative = Math.abs(row.x - base.x) <= MAX_POS_REL_MM && Math.abs(row.y - base.y) <= MAX_POS_REL_MM && Math.abs(row.z - base.z) <= MAX_POS_REL_MM;
+    mask |= relative ? ROW_GROUP.POS_REL : ROW_GROUP.POS_ABS; bytes += relative ? 6 : 12;
+  }
+  if (row.speed !== base.speed || row.verticalSpeed !== base.verticalSpeed) { mask |= ROW_GROUP.VEL; bytes += 4; }
+  if (row.yaw !== base.yaw) { mask |= ROW_GROUP.YAW; bytes += 2; }
+  if (row.pitch !== base.pitch || row.roll !== base.roll) {
+    const relative = Math.abs(angleUnitsDelta(base.pitch, row.pitch)) <= MAX_TILT_REL_UNITS && Math.abs(angleUnitsDelta(base.roll, row.roll)) <= MAX_TILT_REL_UNITS;
+    mask |= relative ? ROW_GROUP.TILT_REL : ROW_GROUP.TILT_ABS; bytes += relative ? 2 : 4;
+  }
+  if (row.turretYaw !== base.turretYaw || row.gunPitch !== base.gunPitch) { mask |= ROW_GROUP.TURRET; bytes += 4; }
+  if (row.hp !== base.hp) { mask |= ROW_GROUP.HP; bytes += 2; }
+  if (row.maxHp !== base.maxHp) { mask |= ROW_GROUP.MAX_HP; bytes += 2; }
+  if (row.reload !== base.reload || row.reloadTotal !== base.reloadTotal) { mask |= ROW_GROUP.RELOAD; bytes += 4; }
+  if (!(status & STATUS_GUN_RELOAD_MIRRORS) && (row.gunReload !== base.gunReload || row.gunReloadTotal !== base.gunReloadTotal)) {
+    mask |= ROW_GROUP.GUN_RELOAD; bytes += 4;
+  }
+  if (row.magazineRounds !== base.magazineRounds || row.magazineCapacity !== base.magazineCapacity) { mask |= ROW_GROUP.MAGAZINE; bytes += 2; }
+  if (row.ammo0 !== base.ammo0 || row.ammo1 !== base.ammo1 || row.ammo2 !== base.ammo2) {
+    mask |= ROW_GROUP.AMMO; bytes += varintBytes(row.ammo0) + varintBytes(row.ammo1) + varintBytes(row.ammo2);
+  }
+  if (status !== packStatus(base)) { mask |= ROW_GROUP.STATUS; bytes += 2; }
+  if (!sameEra(row.eraSpent, base.eraSpent)) { mask |= ROW_GROUP.ERA_RESET; bytes += 1 + row.eraSpent.length; }
+  if (mask === 0) return 0;
+  return 1 + varintBytes(mask) + bytes;
+}
+
 function statusFields(status: number): Pick<EntityRow, 'reloadKind' | 'gunReloadKind' | 'shellSlot' | 'flags'> {
   return {
     reloadKind: (status >> STATUS_RELOAD_KIND_SHIFT) & 3,

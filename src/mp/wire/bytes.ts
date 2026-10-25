@@ -114,6 +114,13 @@ export class ByteWriter {
     this.cursor += 4;
   }
 
+  f64(value: number): void {
+    if (!Number.isFinite(value)) throw new WireError('range', 'f64 must be finite');
+    this.ensure(8);
+    this.view.setFloat64(this.cursor, value, true);
+    this.cursor += 8;
+  }
+
   /** Unsigned LEB128, at most five bytes (u32). */
   varint(value: number): void {
     if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) throw new WireError('range', `varint out of range: ${value}`);
@@ -181,6 +188,22 @@ export class ByteReader {
     this.cursor += 4;
     if (!Number.isFinite(value)) throw new WireError('range', 'f32 field is not finite');
     return value;
+  }
+
+  f64(): number {
+    this.need(8);
+    const value = this.view.getFloat64(this.cursor, true);
+    this.cursor += 8;
+    if (!Number.isFinite(value)) throw new WireError('range', 'f64 field is not finite');
+    return value;
+  }
+
+  /** A reader over the next `length` bytes (this one moves past them): a bounded section of the frame. */
+  take(length: number): ByteReader {
+    this.need(length);
+    const section = new ByteReader(this.bytes.subarray(this.cursor, this.cursor + length));
+    this.cursor += length;
+    return section;
   }
 
   varint(): number {

@@ -6,6 +6,7 @@
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
 import { readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
+import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
   CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
@@ -275,9 +276,11 @@ function writeEvents(writer: ByteWriter, message: EventMessage): void {
       writer.u8(EVENT_KIND_OTHER);
       writer.string(event.kind, MAX_ID_BYTES);
     } else writer.u8(known);
-    const json = JSON.stringify(event.payload);
-    if (typeof json !== 'string' || json[0] !== '{') throw new WireError('bad_json', 'event payload must be a JSON object');
-    writer.string(json, MAX_EVENT_JSON_BYTES);
+    // wire 8: the payload in binary (eventPayload.ts), length-prefixed
+    const payload = event.encoded ?? encodeEventPayload(event.payload);
+    if (payload.byteLength > MAX_EVENT_JSON_BYTES) throw new WireError('bad_length', `event payload exceeds ${MAX_EVENT_JSON_BYTES} bytes`);
+    writer.varint(payload.byteLength);
+    writer.raw(payload);
   }
 }
 
@@ -541,13 +544,8 @@ function readEvents(reader: ByteReader): EventMessage {
     if (kindIndex === EVENT_KIND_OTHER) kind = reader.string(MAX_ID_BYTES);
     else if (kindIndex < EVENT_KIND_NAMES.length) kind = EVENT_KIND_NAMES[kindIndex]!;
     else throw new WireError('range', `event kind out of range: ${kindIndex}`);
-    const json = reader.string(MAX_EVENT_JSON_BYTES);
-    let payload: unknown;
-    try { payload = JSON.parse(json); } catch { throw new WireError('bad_json', 'event payload is not JSON'); }
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      throw new WireError('bad_json', 'event payload must be a JSON object');
-    }
-    events.push({ kind, payload: payload as Record<string, unknown> });
+    const length = reader.count(MAX_EVENT_JSON_BYTES);
+    events.push({ kind, payload: readEventPayload(reader.take(length)) });
   }
   return { type: MESSAGE_TYPE.EVENT, tick, events };
 }

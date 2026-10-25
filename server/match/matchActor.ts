@@ -31,16 +31,19 @@ import type {
   EntityRow, EventMessage, HelloMessage, InputMessage, ResumeHintMessage, RosterEntry, ShellRow, SnapshotFrame, WireEvent, WireMessage,
 } from '../../src/mp/wire/messages.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeVelocity } from '../../src/mp/wire/quantize.ts';
+import { estimateEntityRowBytes } from '../../src/mp/wire/rows.ts';
+import { createEventPayloadCache } from '../../src/mp/wire/eventPayload.ts';
 import { MATCH_BUILD, compareMatchBuilds, matchBuildRefusalCode, matchBuildRefused } from '../../src/mp/wire/matchBuild.ts';
 import { captureEntityRow, captureMeta, captureViewerState, createEraIndexer } from './entityRows.ts';
 import {
-  INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, beginSnapshot, createViewerInterest, engageEntity, needsFreshRow, recordRow, viewerTierFor,
+  HOST_UPLINK_TARGET_BPS, INTEREST_ENGAGED_TICKS, INTEREST_NEAR_MISS_M, MAX_DEFERRED_STALENESS, beginSnapshot, createViewerInterest,
+  deferRow, engageEntity, mustRefreshRow, needsFreshRow, recordRow, rowStaleness, snapshotRowBudgetBytes, viewerTierFor,
 } from './interestTiers.ts';
 import type { InterestTier, ViewerInterest } from './interestTiers.ts';
 import { createSeatInputBuffer, type SeatInputBuffer } from './inputBuffer.ts';
 import { createLagCompensation, createLatencyTracker, type LagCompensation, type LatencyTracker } from './lagCompensation.ts';
 import { createFixedStepLoop, type FixedStepLoop } from './loop.ts';
-import { createViewerPublisher, type ViewerPublisher } from './publisher.ts';
+import { createViewerPublisher, keyframeSlotFor, type ViewerPublisher } from './publisher.ts';
 import { createChatLimiter, normalizeChatText, type ChatLimiter } from './chat.ts';
 import type { ClientLink } from './link.ts';
 import { silentLogger, type Logger } from './log.ts';
@@ -127,6 +130,36 @@ export interface MatchActorOptions {
    * refused with PROTOCOL_VERSION and a refusal code, one whose authority alone differs is admitted and logged.
    */
   build?: string;
+  /**
+   * (mp-scale-251) Phase timings for the scaling bench (tools/mp-scale-bench.mjs): the actor reads `profile.clock` around
+   * the authority's step, the event fan-out and each viewer's frame build, encode and send, and the authority reads it
+   * around its spotting update. Never given in a match: without it no clock is read.
+   */
+  profile?: MatchActorProfile;
+  /**
+   * The host uplink the snapshot budget shares among the viewers (bits per second; HOST_UPLINK_TARGET_BPS by default,
+   * interestTiers.ts): each viewer's due mid and far rows are refreshed most stale first within its share, and the
+   * rest wait a snapshot. 0 turns the budget off (the tiers' cadences alone).
+   */
+  uplinkTargetBps?: number;
+}
+
+/** Accumulated phase timings (ms) of a profiled actor (MatchActorOptions.profile). */
+export interface MatchActorProfile {
+  clock: () => number;
+  /** The authority's step, spotting included. */
+  stepMs: number;
+  /** Of which the spotting update. */
+  spottingMs: number;
+  /** The event fan-out: each viewer's observable events, encoded and sent. */
+  eventsMs: number;
+  /** Each viewer's frame: the spotting-filtered viewer snapshot, the tiered rows, shells and meta. */
+  buildMs: number;
+  /** Each viewer's packet: keyframe or delta against its baseline, encoded. */
+  encodeMs: number;
+  sendMs: number;
+  ticks: number;
+  frames: number;
 }
 
 /** Rows the interest tiers published (refreshed) and held per tier (P3b, 2026-09-29). */
@@ -137,6 +170,8 @@ export interface InterestStats {
   held: number;
   /** Entities per tier in the newest snapshot (summed over viewers on the actor total). */
   population: [number, number, number];
+  /** Due rows the snapshot budget held back a snapshot, cumulative (interestTiers.ts). */
+  deferred: number;
 }
 
 export interface ActorClientStats {
@@ -318,7 +353,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated',
     log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
-    endedLingerTicks, resume = null, build = MATCH_BUILD,
+    endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS,
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
   if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs))) {
@@ -394,6 +429,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       ...(effectiveBattleLimitS != null ? { battleLimitS: effectiveBattleLimitS } : {}),
       worldCollision: collision,
       shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
+      ...(profile ? { profile } : {}),
     });
     lagComp = createLagCompensation({ entities: authority.entities });
     bound.hook = lagComp;
@@ -408,6 +444,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     lagComp.bind(entity, entityId - 1);
   }
   const era = createEraIndexer();
+  // the snapshot budget's scratch (buildFrame): the due mid and far rows of one viewer's frame, reused for every frame
+  let rowBudgetBytes = Infinity;
+  const dueIds = new Int32Array(MAX_ENTITIES + 1);
+  const dueTiers = new Uint8Array(MAX_ENTITIES + 1);
+  const dueStaleness = new Float64Array(MAX_ENTITIES + 1);
+  const dueOrder = new Int32Array(MAX_ENTITIES + 1);
+  const dueRows: Array<EntityRow | null> = new Array(MAX_ENTITIES + 1).fill(null);
+  // each event's wire payload, encoded once however many viewers receive it (eventPayload.ts)
+  const eventPayloadOf = createEventPayloadCache();
   const rulesetJson = JSON.stringify(ruleset);
 
   // ---- clients
@@ -660,12 +705,16 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       const events = authority.eventsForViewer(client.viewerId);
       if (!events.length) continue;
       for (const event of events) engageFromEvent(client, event as unknown as Record<string, unknown>, tick);
-      const message: EventMessage = {
-        type: MESSAGE_TYPE.EVENT, tick,
-        events: events.map((event) => ({ kind: String(event.type), payload: event as Record<string, unknown> })),
-      };
       let bytes: Uint8Array;
-      try { bytes = encodeMessage(message); } catch (error) {
+      try {
+        const message: EventMessage = {
+          type: MESSAGE_TYPE.EVENT, tick,
+          events: events.map((event) => ({
+            kind: String(event.type), payload: event as Record<string, unknown>, encoded: eventPayloadOf(event as Record<string, unknown>),
+          })),
+        };
+        bytes = encodeMessage(message);
+      } catch (error) {
         actorLog.warn('event batch dropped', { player: client.playerId, error: String(error) });
         continue;
       }
@@ -714,6 +763,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const vy = viewer ? viewer.state.pos.y : 0;
     const vz = viewer ? viewer.state.pos.z : 0;
     beginSnapshot(interest);
+    // the rows that must be fresh go first and spend the budget; the due mid and far rows queue for what is left
+    let budget = rowBudgetBytes;
+    let queued = 0;
     for (const row of snapshot.entities) {
       const entityId = entityIdOf.get(row.id);
       const entity = entityId == null ? null : entityByWireId.get(entityId);
@@ -725,10 +777,56 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         const dz = entity.state.pos.z - vz;
         tier = viewerTierFor(interest, entityId, tick, dx * dx + dy * dy + dz * dz);
       }
-      const fresh = needsFreshRow(interest, entityId, tier, snapshotIndex);
-      const captured = fresh ? rowFor(entity, entityId, tick) : interest.rows[entityId]!;
-      recordRow(interest, entityId, tier, snapshotIndex, captured, fresh);
-      entities.push(captured);
+      if (!needsFreshRow(interest, entityId, tier, snapshotIndex)) {
+        const held = interest.rows[entityId]!;
+        recordRow(interest, entityId, tier, snapshotIndex, held, false);
+        entities.push(held);
+        continue;
+      }
+      const captured = rowFor(entity, entityId, tick);
+      const staleness = budget === Infinity ? 0 : rowStaleness(interest, entityId, tier, snapshotIndex);
+      if (budget === Infinity || staleness >= MAX_DEFERRED_STALENESS || mustRefreshRow(interest, entityId, snapshotIndex, tick, entity === viewer)) {
+        if (budget !== Infinity) budget -= estimateEntityRowBytes(captured, interest.rows[entityId]);
+        recordRow(interest, entityId, tier, snapshotIndex, captured, true);
+        entities.push(captured);
+        continue;
+      }
+      dueIds[queued] = entityId;
+      dueTiers[queued] = tier;
+      dueRows[queued] = captured;
+      dueStaleness[queued] = staleness;
+      dueOrder[queued] = queued;
+      queued++;
+    }
+    if (queued) {
+      // most overdue first, the nearer tier first among equals (insertion sort over at most MAX_ENTITIES slots)
+      const before = (a: number, b: number): boolean => dueStaleness[a]! > dueStaleness[b]!
+        || (dueStaleness[a] === dueStaleness[b] && dueTiers[a]! < dueTiers[b]!);
+      for (let i = 1; i < queued; i++) {
+        const slot = dueOrder[i]!;
+        let j = i - 1;
+        while (j >= 0 && before(slot, dueOrder[j]!)) { dueOrder[j + 1] = dueOrder[j]!; j--; }
+        dueOrder[j + 1] = slot;
+      }
+      for (let i = 0; i < queued; i++) {
+        const slot = dueOrder[i]!;
+        const entityId = dueIds[slot]!;
+        const tier = dueTiers[slot]! as InterestTier;
+        const captured = dueRows[slot]!;
+        dueRows[slot] = null;
+        const cost = estimateEntityRowBytes(captured, interest.rows[entityId]);
+        if (cost <= budget) {
+          budget -= cost;
+          recordRow(interest, entityId, tier, snapshotIndex, captured, true);
+          entities.push(captured);
+        } else {
+          // held one snapshot more: the viewer keeps its row, due again next snapshot
+          deferRow(interest, entityId);
+          const held = interest.rows[entityId]!;
+          recordRow(interest, entityId, tier, snapshotIndex, held, false);
+          entities.push(held);
+        }
+      }
     }
     entities.sort((a, b) => a.entityId - b.entityId);
     const shells: ShellRow[] = [];
@@ -762,6 +860,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function publishSnapshots(tick: number): void {
     const nowMs = now();
+    // every viewer's row budget this snapshot: the host's uplink target shared by its viewers (interestTiers.ts)
+    rowBudgetBytes = uplinkTargetBps > 0 ? snapshotRowBudgetBytes(clients.size, snapshotHz, uplinkTargetBps) : Infinity;
     for (const client of [...clients.keys()]) {
       const buffered = client.link.bufferedAmount;
       if (buffered > BACKPRESSURE_HARD_BYTES) {
@@ -789,7 +889,17 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       }
       let published: { bytes: Uint8Array; keyframe: boolean } | null;
       try {
-        published = client.publisher.publish(buildFrame(client, tick), nowMs);
+        if (profile) {
+          const built = profile.clock();
+          const frame = buildFrame(client, tick);
+          const encoded = profile.clock();
+          published = client.publisher.publish(frame, nowMs);
+          profile.buildMs += encoded - built;
+          profile.encodeMs += profile.clock() - encoded;
+          profile.frames++;
+        } else {
+          published = client.publisher.publish(buildFrame(client, tick), nowMs);
+        }
       } catch (error) {
         // one viewer's unencodable frame (e.g. a keyframe over the wire cap) never starves the rest of the match
         client.droppedSnapshots++;
@@ -801,10 +911,12 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         continue;
       }
       if (!published) continue; // a forced keyframe inside its minimum interval (publisher.ts)
+      const sent = profile ? profile.clock() : 0;
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
       }
+      if (profile) profile.sendMs += profile.clock() - sent;
     }
     authority.afterSnapshotBroadcast();
   }
@@ -840,9 +952,22 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
-    authority.step({ dt, inputs: collectInputs(tick) });
+    if (profile) {
+      const stepped = profile.clock();
+      authority.step({ dt, inputs: collectInputs(tick) });
+      profile.stepMs += profile.clock() - stepped;
+      profile.ticks++;
+    } else {
+      authority.step({ dt, inputs: collectInputs(tick) });
+    }
     if (!ended) lagComp.record(tick);
-    deliverEvents(tick);
+    if (profile) {
+      const delivered = profile.clock();
+      deliverEvents(tick);
+      profile.eventsMs += profile.clock() - delivered;
+    } else {
+      deliverEvents(tick);
+    }
     settleVerdict(tick);
     if (tick % snapshotEveryTicks === 0) publishSnapshots(tick);
     if (ended && tick - verdictTick >= lingerTicks()) stop(CLOSE_REASON.MATCH_ENDED, verdict?.result ?? '');
@@ -911,7 +1036,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       link, seat: claims.seat, entityId, entity, playerId: seatSpec.playerId, name: seatSpec.name, team: seatSpec.team,
       viewerId: spectator ? `spectator:${seatSpec.playerId}` : seatSpec.playerId, spectator,
       capabilities: hello.capabilities & HELLO_CAPABILITY.SHOT_FEEDBACK,
-      input: createSeatInputBuffer(), publisher: createViewerPublisher(), interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
+      input: createSeatInputBuffer(),
+      publisher: createViewerPublisher({ keyframeSlotTicks: keyframeSlotFor(claims.seat), snapshotEveryTicks }),
+      interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
     };
@@ -944,12 +1071,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       keyframes: client.publisher.stats.keyframes, droppedSnapshots: client.droppedSnapshots, events: client.events,
       rttMs: client.latency.owdMs * 2, rewindTicks: client.latency.rewindTicks(TICK_MS),
       inputMargin: client.input.marginTicks, bufferTicks: client.input.bufferTicks,
-      interest: { published: [...client.interest.published], held: client.interest.held, population: [...client.interest.population] },
+      interest: {
+        published: [...client.interest.published], held: client.interest.held, population: [...client.interest.population],
+        deferred: client.interest.deferredRows,
+      },
     }));
   }
 
   function interestTotals(): InterestStats {
-    const totals: InterestStats = { published: [0, 0, 0], held: 0, population: [0, 0, 0] };
+    const totals: InterestStats = { published: [0, 0, 0], held: 0, population: [0, 0, 0], deferred: 0 };
     for (const client of clients.keys()) {
       const interest = client.interest;
       for (let tier = 0; tier < 3; tier++) {
@@ -957,6 +1087,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         totals.population[tier] += interest.population[tier]!;
       }
       totals.held += interest.held;
+      totals.deferred += interest.deferredRows;
     }
     return totals;
   }

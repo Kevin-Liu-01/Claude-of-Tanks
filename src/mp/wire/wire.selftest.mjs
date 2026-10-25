@@ -384,8 +384,9 @@ console.log(`wire.selftest: 600 rounds of every message type and ${frames} delta
   assert.equal(decodeMessage(badTeam).error.code, 'range');
   const badUtf8 = encodeMessage({ type: MESSAGE_TYPE.CHAT, text: 'ab' }).slice(); badUtf8[badUtf8.length - 1] = 0xff;
   assert.equal(decodeMessage(badUtf8).error.code, 'bad_utf8');
+  // wire 8: an event's payload is a tagged binary object (eventPayload.ts); a payload that is not an object is bad_json
   const badJson = encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 1, events: [{ kind: 'chat', payload: { x: 1 } }] }).slice();
-  badJson[badJson.length - 1] = 0x5b; // '}' -> '['
+  badJson[9] = 6; // the payload's object tag (version, type, u32 tick, count, kind, length) -> a string's
   assert.equal(decodeMessage(badJson).error.code, 'bad_json');
   const arrayJson = new Uint8Array([...encodeMessage({ type: MESSAGE_TYPE.EVENT, tick: 1, events: [] })]);
   arrayJson[arrayJson.length - 1] = 1; // count 1 with no body -> truncated, never a throw

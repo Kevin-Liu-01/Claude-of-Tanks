@@ -320,6 +320,12 @@ export interface NewModeCheckpoint {
 }
 
 export interface AuthoritativeMatchOptions {
+  /**
+   * (mp-scale-251) A bench's phase profile: the spotting update's time accumulates into `spottingMs`, read with the
+   * bench's own `clock`. Never given in a match; nothing in the step reads a clock without it, and nothing reads it
+   * back, so the simulation is the same with or without it.
+   */
+  profile?: { clock: () => number; spottingMs: number } | null;
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
   seed?: number;
@@ -824,6 +830,7 @@ export function createAuthoritativeMatch({
   ruleset: rulesetOption,
   worldCollision = null,
   shellRewind = null,
+  profile = null,
 }: AuthoritativeMatchOptions = {}): AuthoritativeMatch {
   if (!Array.isArray(players) || players.length < 1 || players.length > MAX_AUTHORITATIVE_PLAYERS) {
     throw new TypeError(`players must contain 1-${MAX_AUTHORITATIVE_PLAYERS} records`);
@@ -2258,9 +2265,11 @@ export function createAuthoritativeMatch({
   }
 
   function updateVisibility(): void {
+    const started = profile ? profile.clock() : 0;
     for (const event of spotting.update(SIM_DT, timeS)) {
       emit('tank_spotted', { ...event });
     }
+    if (profile) profile.spottingMs += profile.clock() - started;
   }
 
   function finishMatch(nextResult: MatchResult, reason: string): void {
