@@ -1,4 +1,5 @@
 import { ensureStyle } from './styleLayers.ts';
+import { icon } from './icons/icon.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 
 let nextId = 0;
@@ -13,13 +14,17 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   const label = config.label ?? select.closest('label')?.querySelector('span')?.textContent ?? select.getAttribute('aria-label') ?? '';
   ensureStyle('cot-custom-select-style', `
 .cot-custom-select-trigger:disabled{opacity:.55;cursor:default}
-.cot-custom-select-trigger{display:flex!important;align-items:center;gap:var(--s2);width:100%;min-width:0;min-height:40px;
- padding:var(--s2) var(--s3)!important;border:0!important;border-radius:var(--control-radius);background:var(--fill-quiet)!important;
+.cot-custom-select-trigger{display:flex!important;align-items:center;gap:var(--s2);width:100%;min-width:0;min-height:36px;
+ padding:var(--s1) var(--s3)!important;border:0!important;border-radius:var(--control-radius);background:var(--fill-quiet)!important;
  box-shadow:var(--ring-2);color:var(--ink-1)!important;font:500 max(13px,var(--fs-13))/1.3 var(--font-body);text-align:left;cursor:pointer}
-.cot-custom-select-trigger::after{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
- transform:rotate(45deg);margin-left:auto;flex-shrink:0}
+/* the open and chosen marks are the sprite's chevron and tick (24 grid, 1.5 stroke), never drawn borders */
+.cot-custom-select-chev,.cot-custom-select-tick{display:flex;flex-shrink:0;margin-left:auto;color:var(--ink-3)}
+.cot-custom-select-chev svg,.cot-custom-select-tick svg{width:16px;height:16px}
+.cot-custom-select-trigger[aria-expanded=true] .cot-custom-select-chev{rotate:180deg}
+.cot-custom-select-tick{visibility:hidden;color:var(--ink-1)}
+.cot-custom-select-list [aria-selected=true] .cot-custom-select-tick{visibility:visible}
 .cot-custom-select-trigger[aria-expanded=true]{background:var(--surface-hover)!important;box-shadow:var(--ring-accent)}
-.cot-custom-select-trigger:focus-visible,.cot-custom-select-list [role=option]:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.cot-custom-select-trigger:focus-visible,.cot-custom-select-list [role=option]:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-custom-select-list{position:fixed;inset:auto;margin:0;padding:var(--s1);box-sizing:border-box;border:0;border-radius:var(--plate-radius);
  background:var(--surface-menu);color:var(--ink-1);box-shadow:var(--e3);overflow:auto;overscroll-behavior:contain;
  scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;color-scheme:dark;font-family:var(--font-body)}
@@ -30,8 +35,6 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
  text-align:left;cursor:pointer}
 .cot-custom-select-list [role=option]:hover{background:var(--surface-hover);color:var(--ink-1)}
 .cot-custom-select-list [aria-selected=true]{background:var(--accent-wash);color:var(--ink-1)}
-.cot-custom-select-list [aria-selected=true]::after{content:'';width:5px;height:10px;margin:0 var(--s1) 3px auto;flex-shrink:0;
- border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg)}
 .cot-custom-select-trigger .cot-flag,.cot-custom-select-list .cot-flag{display:block;width:22px;height:16px;object-fit:cover;flex-shrink:0}
 .cot-custom-select-mark{display:flex;align-items:center;justify-content:center;width:22px;height:16px;flex-shrink:0;color:var(--ink-3)}
 .cot-custom-select-mark svg{width:18px;height:18px}
@@ -41,6 +44,8 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   const trigger = document.createElement('button');
   trigger.type = 'button'; trigger.className = 'cot-custom-select-trigger';
   trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false');
+  const chevron = document.createElement('span'); chevron.className = 'cot-custom-select-chev'; chevron.setAttribute('aria-hidden', 'true');
+  chevron.innerHTML = icon('chevronDown', { size: 16 });
   const list = document.createElement('div'); list.className = 'cot-custom-select-list';
   list.id = `cot-custom-select-${++nextId}`; list.popover = 'auto';
   list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', label);
@@ -61,7 +66,8 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
       option.setAttribute('role', 'option'); option.dataset.value = entry.id;
       option.innerHTML = config.iconHTML?.(entry.id) ?? '';
       const text = document.createElement('span'); text.className = 'cot-custom-select-copy'; text.textContent = entry.label;
-      option.append(text); return option;
+      const tick = document.createElement('span'); tick.className = 'cot-custom-select-tick'; tick.innerHTML = icon('check', { size: 16 });
+      option.append(text, tick); return option;
     });
     list.replaceChildren(...options);
   }
@@ -75,7 +81,9 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   function refresh(): void {
     rebuildOptions();
     const index = select.selectedIndex;
-    trigger.replaceChildren(...Array.from(options[index]?.childNodes ?? [], node => node.cloneNode(true)));
+    const chosen = Array.from(options[index]?.childNodes ?? [], node => node.cloneNode(true))
+      .filter(node => !(node instanceof Element && node.classList.contains('cot-custom-select-tick')));
+    trigger.replaceChildren(...chosen, chevron);
     trigger.setAttribute('aria-label', `${label}: ${entries[index]?.label ?? ''}`);
     trigger.disabled = select.disabled || !options.some(option => !option.disabled);
     options.forEach((option, i) => option.setAttribute('aria-selected', String(i === index)));

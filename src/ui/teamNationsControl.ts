@@ -10,7 +10,6 @@ import { ensureStyle } from './styleLayers.ts';
 import { flagIconHTML } from './flags.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { FONT_COND } from './fonts.ts';
 import { countryNation, type CountryId } from '../sim/countries.ts';
 import type { TeamNationsId } from '../sim/matchRuleset.ts';
 
@@ -28,20 +27,20 @@ interface TeamNationsControlOptions {
 
 export function createTeamNationsControl(options: TeamNationsControlOptions): { root: HTMLElement; render(): void } {
   ensureStyle('cot-team-nations-style', `
-.cot-teams{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.cot-teams>b{font:700 11px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;color:#cfd9e0;min-width:54px}
-.cot-teams [role=radiogroup]{display:inline-flex;border:1px solid rgba(255,255,255,.16);border-radius:6px;overflow:hidden}
-.cot-teams button{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:transparent;border:0;
-  color:#aebcc6;font:700 11px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;cursor:pointer;min-height:34px}
-.cot-teams button+button{border-left:1px solid rgba(255,255,255,.16)}
-.cot-teams button[aria-checked=true]{background:rgba(255,255,255,.12);color:#f2f6f8}
-.cot-teams button:disabled{cursor:default;opacity:.62}
-.cot-teams button:focus-visible{outline:2px solid #e8c15a;outline-offset:-2px}
-.cot-teams .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
-.cot-teams .vs{opacity:.55;font-size:11px}
+.cot-teams{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+.cot-teams>b{min-width:54px;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);
+  text-transform:uppercase;color:var(--ink-3)}
+.cot-teams [role=radiogroup]{display:inline-flex;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-teams button{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);height:30px;padding:0 var(--s3);border:0;
+  border-radius:var(--control-radius);background:transparent;color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer}
+.cot-teams button[aria-checked=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
+.cot-teams button:disabled{cursor:default;color:var(--ink-4)}
+.cot-teams button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-teams .cot-flag{border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
-@media(max-width:480px){.cot-teams button{padding:7px 9px}}
+@media(pointer:coarse){.cot-teams button{height:auto;min-height:var(--cot-control-floor,44px)}}
 `, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-teams';

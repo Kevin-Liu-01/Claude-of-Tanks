@@ -51,7 +51,7 @@ function classesSection(): string {
       + `<h3>${icon(CLASS_ICONS[cls] ?? 'vehicle', { size: 18 })}<span>${esc(vehicleFacetLabel(meta, t))}</span><b>${ids.length}</b></h3>`
       + `<p>${flagMarkup(fleet.get(lead)!.countryCode, 'cot-c-flag cot-c-flag--sm')}<span>${esc(fleet.get(lead)!.name)}</span></p></div></article>`;
   }).join('');
-  return `<p>${esc(t('docs.tanks.classesLede', { tanks: String(fleet.size), classes: String(shown.length) }))}</p><div class="dm-classes">${cards}</div>`;
+  return `<div class="dm-classes">${cards}</div>`;
 }
 
 function rolesSection(): string {

@@ -32,5 +32,5 @@
 .cot-c-swatch::-webkit-color-swatch{border:0;border-radius:var(--control-radius)}
 .cot-c-swatch::-moz-color-swatch{border:0;border-radius:var(--control-radius)}
 .cot-c-swatch:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-c-swatch[aria-invalid=true]{box-shadow:var(--ring-danger)}
+.cot-c-swatch[aria-invalid=true]{outline:2px solid var(--danger);outline-offset:2px}
 }

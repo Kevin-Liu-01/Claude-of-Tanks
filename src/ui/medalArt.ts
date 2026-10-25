@@ -145,7 +145,7 @@ export function achievementSVG(def: AchievementDef, tier: number, width = 40, cl
   for (let i = 0; i < 3; i++) {
     const x = 16 + i * 8;
     pips += `<polygon points="${x},40 ${x + 2.6},42.6 ${x},45.2 ${x - 2.6},42.6" fill="${i < reached ? hi : '#0b0f13'}" ` +
-      `stroke="${i < reached ? shade : '#56616b'}" stroke-width=".8"/>`;
+      `stroke="${i < reached ? shade : '#6d7882'}" stroke-width=".8"/>`;
   }
   return `<svg class="${cls}" viewBox="0 0 48 52" width="${width}" height="${Math.round(width * 1.0833)}" aria-hidden="true">` +
     `<defs><linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/>` +

@@ -128,7 +128,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
-  // the core cards' badges (the direction's .badge): the chosen mode, and the mode the campaign plays
+  // the core cards' badge (the direction's .badge): the mode the campaign plays (the ring says which mode is chosen)
   const badges = [...menu.querySelectorAll<HTMLButtonElement>('.cot-deploy-cards .cot-battle-choice')].map((card) => {
     const badge = document.createElement('span');
     badge.className = 'cot-c-tag cot-deploy-badge';
@@ -198,7 +198,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const action = op.status === 'locked'
       ? `<span class="cot-deploy-brief-lock">${uiIconSVG('battlePrivate', 18)}${t('campaign.lockedHint', { index: op.index - 1 })}</span>`
       : `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary" data-campaign-launch="${op.id}" data-map-id="${op.mapId}">` +
-        `${t(op.status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}${uiIconSVG('chevronRight', 18)}</button>`;
+        `${uiIconSVG('deploy', 18)}${t(op.status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
     const bars = Array.from({ length: op.difficulties }, (_, slot) => `<i class="${slot < op.difficulty ? 'on' : ''}"></i>`).join('');
     const stars = [0, 1, 2].map((slot) => `<i class="${slot < op.stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('');
     const plate = CAMPAIGN_PLATES[op.id] ?? `/maps/cards/${op.mapId}.webp`;
@@ -231,11 +231,9 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     brief,
     render() {
       for (const { card, badge } of badges) {
-        const chosen = card.getAttribute('aria-pressed') === 'true';
-        const label = chosen ? t('garage.deploy.selected') : card.dataset.gameMode === 'frontline_assault' ? t('campaign.heading') : '';
+        const label = card.dataset.gameMode === 'frontline_assault' ? t('campaign.heading') : '';
         badge.textContent = label;
         badge.hidden = !label;
-        badge.classList.toggle('cot-c-tag--accent', chosen);
       }
       const last = host.lastBattle();
       const offered = last?.gameMode ? host.modeOf(last.gameMode) : null;

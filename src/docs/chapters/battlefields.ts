@@ -3,7 +3,7 @@
 // (src/ui/regionTags.ts) and its name in the reader's locale; the random rotation, the gravity worlds, the time-of-day
 // weights (src/engine/battleWeatherPolicy.ts) and the Proving Ground's lanes and plate rack (PROVING_GROUND_RULES) are
 // the game's own. Node only (tools/docs-prerender.mjs).
-import { MAP_IDS, RANDOM_BATTLE_MAP_IDS } from '../../world/maps/mapIds.ts';
+import { MAP_IDS } from '../../world/maps/mapIds.ts';
 import { mapRegionTags, regionTagIcon } from '../../ui/regionTags.ts';
 import { BATTLE_TIMES, TIME_WEIGHTS } from '../../engine/battleWeatherPolicy.ts';
 import { MARS_GRAVITY_OPTIONS, PROVING_GROUND_RULES } from '../../sim/matchRuleset.ts';
@@ -67,8 +67,7 @@ function breaksSection(): string {
 export function battlefieldsSections(): RichSection[] {
   const gravity = Object.entries(MARS_GRAVITY_OPTIONS).map(([id, option]) => `${t(`docs.battlefields.gravity.${id}`)} ${option.gravityScale} g`).join(' · ');
   const sections: Array<[string, string, string]> = [
-    ['maps', t('docs.battlefields.maps'), `<p>${esc(t('docs.battlefields.mapsLede', { maps: String(MAP_IDS.length), random: String(RANDOM_BATTLE_MAP_IDS.length) }))}</p>`
-      + `${landscapes()}<ul class="dm-maps">${MAP_IDS.map(mapCard).join('')}</ul>`],
+    ['maps', t('docs.battlefields.maps'), `${landscapes()}<ul class="dm-maps">${MAP_IDS.map(mapCard).join('')}</ul>`],
     ['breaks', t('docs.battlefields.breaks'), breaksSection()],
     ['gravity', t('docs.battlefields.gravity'), `<p>${esc(t('docs.battlefields.gravityLede', { options: gravity }))}</p>`],
     ['time', t('docs.battlefields.time'), timeOfDay()],

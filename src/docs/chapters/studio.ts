@@ -57,7 +57,7 @@ function openSection(): string {
   const workspace = existsSync(join(ROOT, 'public', WORKSPACE_STILL))
     ? `<figure class="dm-figure">${pictureMarkup({ src: WORKSPACE_STILL, width: 1920, height: 1080, alt: t('docs.studio.workspaceAlt'), sizes: '(width < 1100px) 100vw, 60vw',
       rungs: [{ src: WORKSPACE_STILL.replace('-1920.', '-640.'), width: 640 }, { src: WORKSPACE_STILL, width: 1920 }] }, false)}</figure>` : '';
-  return p('docs.studio.openLede') + workspace
+  return workspace
     + `<ul class="dm-roles dm-roles--ways">${ways.map(([glyph, title, body]) => `<li>${icon(glyph, { size: 22 })}<div><b>${esc(t(title))}</b>`
       + `<p>${esc(t(body))}</p></div></li>`).join('')}</ul>`
     + `<h3>${esc(t('docs.studio.takes'))}</h3>${takesStrip()}`;

@@ -3856,7 +3856,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const deployCampaignCount = requiredElement<HTMLElement>(battleMenu, '[data-deploy-campaign-count]');
   const deployTabs = requiredElement<HTMLElement>(battleMenu, '.cot-deploy-tablist');
   const deployPanels = [...battleMenu.querySelectorAll<HTMLElement>('[data-deploy-panel]')];
-  const clockText = (seconds: number | null): string => seconds == null ? '∞'
+  const clockText = (seconds: number | null): string => seconds == null ? t('garage.deploy.none')
     : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
   function deployFacts(mode: GameModeId) {
     const ruleset = matchRulesetFor(mode, null, readTeamArrangement(mode));
@@ -3869,8 +3869,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
       victory: target == null ? null : String(target),
       gravity: ruleset.gravityScale === 1 ? null : `${Math.round(ruleset.gravityScale * 100) / 100} g`,
-      speed: ruleset.speedMultiplier === 1 ? null : `×${Math.round(ruleset.speedMultiplier * 100) / 100}`,
-      boss: ruleset.juggernaut ? `×${ruleset.juggernaut.hpScale}` : null,
+      speed: ruleset.speedMultiplier === 1 ? null : t('garage.deploy.times', { value: String(Math.round(ruleset.speedMultiplier * 100) / 100) }),
+      boss: ruleset.juggernaut ? t('garage.deploy.times', { value: String(ruleset.juggernaut.hpScale) }) : null,
       equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
       ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
     };
@@ -3955,7 +3955,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           ladder.map((step) => `<i class="${step.status === 'cleared' ? 'd' : step === next ? 'c' : ''}"></i>`).join('')}</div>` +
         `<b>${t(`campaign.op.${operation.id}.title`)}</b>${rules([['map', t(`map.${operation.mapId}`)]])}` +
         `<button type="button" class="cot-c-btn cot-c-btn--36" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}"` +
-        `${status === 'locked' ? ' disabled' : ''}>${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}${uiIconSVG('chevronRight', 16)}</button></div></article>`);
+        `${status === 'locked' ? ' disabled' : ''}>${uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button></div></article>`);
     }
     deployLower.innerHTML = parts.join('');
     for (const battle of getRecentBattles()) {
@@ -3977,7 +3977,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const action = status === 'locked'
         ? `<span class="cot-deploy-op-lock" data-tip="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
         : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
-          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+          uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
       // the operation's battlefield, as the Garage's map cards show it
       const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
       return `<article class="cot-deploy-op ${status}" role="listitem" aria-label="${escapeHtmlAttribute(title)}">` +
