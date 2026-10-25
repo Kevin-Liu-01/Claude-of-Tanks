@@ -166,7 +166,9 @@ body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 body[data-cot-width='phone'] .cot-set-tab.sel::after{left:4px;right:4px}
 /* a two-character tab still meets the touch floor */
-body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px);justify-content:center;text-align:center}
+/* the scrolling tab row clips below its box, so a phone's indicator stands on the row's rule inside it */
+body[data-cot-width='phone'] .cot-set-tab.sel::after{bottom:0}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,

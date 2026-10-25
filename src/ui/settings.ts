@@ -381,7 +381,9 @@ const SETTINGS_CSS = `
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
    heading's line so every heading keeps one height */
 /* the (i) is its glyph's size on the line (so it ends where the controls end); its hit area reaches the control floor */
-.cot-set-info{--h:16px;order:2;flex:none;margin-block:0;color:var(--ink-3);}
+.cot-set-info{--h:16px;order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+/* the touch floors size the (i)'s hit area, never its box: a heading with an (i) is as tall as one without */
+body.cot-touch-layout .cot-settings .cot-set-info,body[data-cot-input='coarse'] .cot-settings .cot-set-info{min-height:0;}
 .cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2) calc(-1 * var(--s1));}
 body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2);}
 .cot-set-info svg{width:16px;height:16px;}
@@ -429,7 +431,7 @@ body.cot-hud-aerial .cot-hints{display:none;}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s3) var(--s2) var(--s2);padding:var(--s2) var(--s3);
   border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
