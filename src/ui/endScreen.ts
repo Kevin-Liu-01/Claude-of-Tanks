@@ -397,7 +397,9 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:var(--ink-4);}
 .cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);flex:1;min-height:0;padding:var(--s3);}
 .cot-es .es-roster{display:flex;min-width:0;min-height:0;flex-direction:column;}
-.cot-es .es-roster-cols{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:var(--s2);padding:0 28px 6px 54px;
+/* (the heads over the rows' own columns: the name's at 84 px, the damage's 34 px in from the row's end, gauntlet r5 read
+   COMBATANT 30 px left of the names and the damage head 6 px right of its figures) */
+.cot-es .es-roster-cols{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:var(--s2);padding:0 34px 6px 84px;
   font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase;color:oklch(from var(--ink-4) .58 c h);}
 .cot-es .es-roster-cols span:last-child{text-align:right;}
 .cot-es .es-roster-list{flex:1;min-height:0;padding-top:7px;overflow-y:auto;border-top:1px solid var(--line-3);
@@ -654,21 +656,39 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   const markMore = (panel: HTMLElement): void => {
     panel.classList.toggle('more', panel.scrollHeight - panel.scrollTop - panel.clientHeight > 2);
   };
-  /** A column that scrolls ends on a whole part (a row, the medals, the best shot), the cue under it, never across one
-   *  (gauntlet r4: a faded row sliced by the panel's edge at every wide window, the medals' borders cut at 844x390): its
-   *  height is capped (--es-fit) at the last part its layout height holds whole. Measured on a resize, not a scroll. */
+  /** A column that scrolls shows whole parts (a row, the medals, the best shot) and its cue under the last of them, never
+   *  a part cut across (gauntlet r4: a faded row sliced by the panel's edge at every wide window, the medals' borders cut
+   *  at 844x390): the cue's band (--es-cue-h) runs from the last whole part's foot to the column's, over the part it would
+   *  cut, so the column keeps its height (r5: a capped column broke the two columns' level bottoms). Only a column that
+   *  scrolls (a narrower window's record column flows inside the report, which scrolls); measured on a resize. */
   const fitPanel = (panel: HTMLElement): void => {
-    panel.style.removeProperty('--es-fit');
+    panel.classList.remove('more');
+    panel.style.removeProperty('--es-cue-h');
+    const overflowY = getComputedStyle(panel).overflowY;
     const room = panel.clientHeight;
-    if (panel.scrollHeight - room <= 2) { markMore(panel); return; }
+    if ((overflowY !== 'auto' && overflowY !== 'scroll') || panel.scrollHeight - room <= 2) return;
     const top = panel.getBoundingClientRect().top - panel.scrollTop;
     let fit = 0;
     for (const part of panel.querySelectorAll<HTMLElement>(FIT_PARTS)) {
+      if (!part.getClientRects().length) continue;
       const bottom = part.getBoundingClientRect().bottom - top;
       if (bottom <= room - FIT_CUE_H && bottom > fit) fit = bottom;
     }
-    if (fit > FIT_CUE_H) panel.style.setProperty('--es-fit', `${Math.ceil(fit + FIT_CUE_H)}px`);
+    panel.style.setProperty('--es-cue-h', `${Math.floor(Math.max(FIT_CUE_H, room - fit))}px`);
     markMore(panel);
+  };
+  /** Each scrolling column's cue (a chevron at its foot while more lies below), measured now and on every resize. */
+  const armCues = (report: HTMLElement): void => {
+    moreObserver?.disconnect();
+    for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
+      const cue = el('div', 'es-more', panel);
+      cue.innerHTML = uiIconSVG('chevronDown', 16);
+      cue.setAttribute('aria-hidden', 'true');
+      panel.addEventListener('scroll', () => markMore(panel), { passive: true });
+      moreObserver?.observe(panel);
+      for (const section of panel.children) if (section !== cue) moreObserver?.observe(section);
+      fitPanel(panel); // at once too: the observer's first word waits on a rendering step
+    }
   };
   // the column's box (a resize) and its sections (late art, the hero tile, a tab's swap) change what lies below
   const moreObserver = typeof ResizeObserver === 'function'
@@ -925,7 +945,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
@@ -1037,7 +1057,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const score = el('div', 'es-score', headline);
       score.setAttribute('role', 'img');
       score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
-      score.innerHTML = `<span class="o">${own}</span><span class="sep" aria-hidden="true">–</span><span class="e">${enemy}</span>`;
+      score.innerHTML = `<span class="o">${own}</span><span class="sep" aria-hidden="true">:</span><span class="e">${enemy}</span>`;
     }
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
@@ -1073,7 +1093,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const score = el('div', 'es-score', headline);
     score.setAttribute('role', 'img');
     score.setAttribute('aria-label', t('endScreen.watch.scoreAria', { alpha: fmtN(alpha), bravo: fmtN(bravo) }));
-    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="sep" aria-hidden="true">–</span><span class="e">${fmtN(bravo)}</span>`;
+    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="sep" aria-hidden="true">:</span><span class="e">${fmtN(bravo)}</span>`;
     host.dataset.score = `${Math.round(alpha)}:${Math.round(bravo)}`;
     el('div', 'es-rule', hero);
     if (sum.finalBlow) {
@@ -1516,6 +1536,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         report.style.setProperty('--i', nextI());
         renderTeamDebrief(report, sum);
         renderBattleBeats(res, sum);
+        armCues(report);
         renderEndActions(sum);
         fillFlags();
         host.classList.add('show');
@@ -1547,21 +1568,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
       renderBattleBeats(res, sum);
-      moreObserver?.disconnect();
-      // (each scrolling column's cue: a chevron at its foot while more lies below)
-      for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
-        el('div', 'es-more', panel).innerHTML = uiIconSVG('chevronDown', 14);
-        panel.lastElementChild?.setAttribute('aria-hidden', 'true');
-      }
-      for (const panel of report.querySelectorAll<HTMLElement>('.es-debrief')) {
-        panel.addEventListener('scroll', () => markMore(panel), { passive: true });
-        moreObserver?.observe(panel);
-        for (const section of panel.children) moreObserver?.observe(section);
-        fitPanel(panel); // at once too: the observer's first word waits on a rendering step
-      }
-      report.addEventListener('scroll', () => markMore(report), { passive: true });
-      moreObserver?.observe(report);
-      fitPanel(report);
+      armCues(report);
       renderEndActions(sum);
       fillFlags();
 

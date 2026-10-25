@@ -272,7 +272,7 @@ assert.match(shotInfo,
   /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-card-top,var\(--cot-si-roster-bottom,272px\)\);width:320px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
   'desktop ballistic reports must use the compact centered-lane composition');
 assert.match(shotInfo,
-  /\.cot-si-diag\{display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
+  /\.cot-si-diag\{(?:zoom:var\(--hud-report-zoom,1\);)?display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
   'desktop penetration schematics must fill the available report frame');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='compact'\] \.cot-si-diag\{[\s\S]*grid-template-columns:78px 154px/,

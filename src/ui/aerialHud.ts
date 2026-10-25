@@ -227,9 +227,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       if(!wasActive)hintUntil=takeFlightHint(view.kind)?now+FLIGHT_HINT_S:-1;
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;
       const carrier=player?.state?.pos,range=carrier?Math.hypot(view.x-carrier.x,view.z-carrier.z):0;
-      setHidden(timer.host,!drone);setHidden(link.host,!drone);setHidden(speedometer.host,!drone);setHidden(altimeter.host,!drone);
+      setHidden(timer.host,!drone);setHidden(link.host,!drone);setHidden(speedometer.host,!drone);
       const field=drone?ground():null;
-      setText(altimeter.value,field?formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)):'—');
+      // (no ground under it yet, no reading: a dash stood for the altitude, gauntlet r5; a battle's field lands with its map)
+      setHidden(altimeter.host,!field);if(field)setText(altimeter.value,formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)));
       setHidden(zoom.host,drone);setHidden(distance.host,drone);
       setText(timer.value,`${Math.ceil(view.batteryS)}\u202fs`);setText(link.value,`${Math.round(range)}\u202fm`);setText(speedometer.value,`${Math.round(speed*3.6)}\u202fkm/h`);
       setText(zoom.value,`×${(55/fov).toFixed(1)}`);setText(distance.value,`${Math.round(dist)}\u202fm`);

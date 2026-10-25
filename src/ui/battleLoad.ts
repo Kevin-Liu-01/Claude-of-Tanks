@@ -114,6 +114,8 @@ const PORTRAIT = "body[data-cot-orientation='portrait']:is([data-cot-width='phon
   + ":is([data-cot-height='standard'],[data-cot-height='tall'])";
 /** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
 const CARD_TEAM_MAX = 7;
+/** A side longer than this sets its short-landscape rows without the side render (responsiveSurfaces.css .team.long). */
+const LONG_SIDE = 10;
 /** The narrowest window whose cards hold a 13-character driver and a one-line vehicle name. */
 const CARD_MIN_WIDTH = 1680;
 /** A name in Latin letters alone (battleLoad's .lat: Chinese's lifted label sizes are for Chinese text). */
@@ -174,9 +176,9 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team{--bl-count:1;--bl-row-height:30px;--bl-row-gap:3px;--bl-row-inset:7px;--bl-heading:28px;min-width:0;min-height:0;align-self:center;
   height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
   display:grid;grid-template-rows:auto minmax(0,1fr);}
-.cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
+.cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:var(--s2);padding:0 8px 8px;
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
-.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
+.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}.cot-bl .thead .flags:empty{display:none;}
 .cot-bl .team.ally .thead{color:var(--text-own);}
 .cot-bl .team.foe .thead{color:var(--text-enemy);flex-direction:row-reverse;}
 /* (each side's name on a plate of its own, in its team's ink: red on the pale sky read 1.2:1 with a halo alone, and a
@@ -195,15 +197,17 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   scrollbar-width:none;}
 .cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
 .cot-bl .rows::-webkit-scrollbar{display:none}
-/* A sheet row on the HUD's plate (the art behind it is busy): the side's ink on its outer edge, the nation's flag, the
-   vehicle's own side render facing the other side, its name, and who drives it at the row's far end. */
+/* A sheet row on the HUD's strong plate (the art behind it is busy, and showed through a glass row, gauntlet r5): the
+   side's ink on its outer edge, the nation's flag, the vehicle's own side render facing the other side, its name, and
+   who drives it at the row's far end. */
 .cot-bl .row{position:relative;display:flex;align-items:center;gap:8px;min-height:0;padding:0 8px;border-radius:var(--r1);
-  background:var(--battle-chip-plate);box-shadow:var(--ring-1);}
+  background:var(--hud-plate-strong);box-shadow:var(--ring-1);}
 .cot-bl .team.foe .row{flex-direction:row-reverse;}
 .cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
 .cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
-.cot-bl .row.me{background:var(--accent-wash);border-left-color:var(--accent);box-shadow:var(--ring-accent);}
+.cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
+  border-left-color:var(--accent);box-shadow:var(--ring-accent);}
 /* the tier only where the battle mixes tiers (a rank every row shares says nothing) */
 .cot-bl .row .tier{flex:0 0 22px;text-align:center;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--accent-hi);}
 .cot-bl:not(.mixed-tiers) .row .tier{display:none;}
@@ -214,7 +218,8 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 /* a flag's box is held before flags.ts fills it (after the rows), so the name beside it never moves when it lands */
 .cot-bl .row .fl{display:flex;flex:none;}.cot-bl .row .fl:empty:not([data-nation]){display:none;}
 .cot-bl .row .fl[data-nation]{width:16px;height:12px;}
-.cot-bl .row .fl .cot-flag{display:block;box-shadow:var(--flag-ring);}
+/* (the flag fills its seat, so a smaller seat sets a smaller flag: the 16 x 12 image ran past a short row's 14 x 10) */
+.cot-bl .row .fl .cot-flag{display:block;width:100%;height:100%;box-shadow:var(--flag-ring);}
 .cot-bl .row .nm{flex:0 1 auto;min-width:0;font:600 max(var(--battle-fs-13),var(--fs-13))/1.2 var(--font-ui);color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
@@ -294,6 +299,9 @@ ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
    r2) */
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);}
 ${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:var(--s4);}
+/* (the vehicle's name in a column of its own width, so the drivers beside it start on one line: each began where its
+   vehicle's name ended, gauntlet r5) */
+${WIDE} .cot-bl .team:not(.cards) .row .nm{flex:0 1 clamp(132px,7.6vw,200px);}
 ${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:var(--s4);}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
@@ -673,6 +681,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     // r3: about 7 characters at 1280, 10 at 1440)
     const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX && (typeof innerWidth !== 'number' || innerWidth >= CARD_MIN_WIDTH);
     if (cards) team.classList.add('cards'); else team.classList.remove('cards');
+    // (a long side: a short landscape's 15 px rows drop the side render and set a smaller flag, gauntlet r5)
+    if (Math.max(rows.length, reserved) > LONG_SIDE) team.classList.add('long'); else team.classList.remove('long');
     const decorated: [HTMLElement, string][] = [];
     host.textContent = '';
     for (let slot = 0; slot < reserved; slot += 1) {

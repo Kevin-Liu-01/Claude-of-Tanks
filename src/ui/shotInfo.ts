@@ -315,6 +315,9 @@ const LOG_CUE_H = 18;
 
 const COL = {
   green: 'var(--ok)',
+  // (a shot that goes through in the sight's own green, tokens.json battle-pen: a mint value under the green ring read as
+  // two greens, gauntlet r5)
+  pen: 'var(--battle-pen)',
   red: 'var(--danger)',
   yellow: 'var(--warn)',
   text: 'var(--ink-1)',
@@ -399,7 +402,8 @@ const SI_CSS = `
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
   align-items:center;font-size:var(--battle-fs-12);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
-.cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
+/* (the row's glyph at 12 px in the label's ink: at 9 px in ink-3 it read as a speck, gauntlet r5) */
+.cot-si-kv .cot-si-k svg{width:12px;height:12px;flex:0 0 auto;color:var(--ink-2);}
 .cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
   letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
@@ -408,16 +412,18 @@ const SI_CSS = `
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
 .cot-si-kv.pen b{white-space:nowrap;}
-.cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 5px 1px;
+.cot-si-kv b .q{display:inline-flex;align-items:center;height:16px;box-sizing:border-box;margin-left:5px;padding:0 5px;
   /* (the kit's chip, in sentence case, its ink the qualifier's: an outlined capitals chip beside the ribbon's sentence-case
      one read as two chip styles, gauntlet r4) */
   border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
-  text-transform:none;vertical-align:1px;line-height:1.25;font-weight:700;}
+  text-transform:none;vertical-align:middle;line-height:1;font-weight:700;}
+/* (centred in its chip by the box, not the line: the label sat 2 px under its top edge and 5 over its foot, gauntlet r5) */
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
-.cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
+/* (the plan at the card's width over the map: battleHudLayout.ts --hud-report-zoom) */
+.cot-si-diag{zoom:var(--hud-report-zoom,1);display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
   justify-content:center;width:100%;margin:0;padding:var(--s1) 5px;border:1px solid var(--line-1);border-radius:var(--r1);}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .box:first-child{width:90px!important;height:90px!important;}
@@ -446,15 +452,17 @@ const SI_CSS = `
   border:1px solid currentColor;padding:1.5px var(--s1) 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
 .cot-si-log{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:none;
-  pointer-events:auto;background:var(--hud-plate);border:1px solid transparent;border-radius:var(--r1);
+  pointer-events:auto;background:var(--hud-plate-strong);border:1px solid transparent;border-radius:var(--r1);
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
 /* (a chevron on the plate under the last whole row while more lies below, the plate's own edge kept: a mask erased it,
-   a fade lay across a sliced row) */
+   a fade lay across a sliced row; its band runs from that row's foot to the plate's, opaque and taking no flow (fitLog
+   --si-cue-h): an 18 px cue over a stale cap let the next row's first line show through it, gauntlet r5) */
 .cot-si-log .more-cue{display:none}
-.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;height:18px;
-  border-top:1px solid var(--line-1);background:var(--hud-plate);color:var(--ink-3);pointer-events:none}
+.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:flex-end;justify-content:center;
+  height:var(--si-cue-h,18px);margin-top:calc(-1 * var(--si-cue-h,18px));padding-bottom:3px;box-sizing:border-box;
+  border-top:1px solid var(--line-2);background:var(--hud-plate-strong);color:var(--ink-2);pointer-events:none}
 .cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
@@ -836,8 +844,8 @@ function penetrationPresentation(
   // average at this range stays in the row's title (the roll is within 25 % of it), not as a second figure
   const effective = Math.round(ev.effectiveMm || 0);
   const through = ev.kind === 'pen' || ev.kind === 'he_pen';
-  const verdict = ev.kind === 'ricochet' ? '#9fb0bf' : effective > 0 ? (through ? COL.green : COL.red)
-    : (cut ? fresh : roll) >= nominal ? COL.green : COL.red;
+  const verdict = ev.kind === 'ricochet' ? '#9fb0bf' : effective > 0 ? (through ? COL.pen : COL.red)
+    : (cut ? fresh : roll) >= nominal ? COL.pen : COL.red;
   return {
     html: `<span style="color:${verdict}">${arrow}${roll}</span> mm`,
     qualifier,
@@ -1022,25 +1030,26 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   const markLogMore = (): void => {
     logPanel.classList.toggle('more', logPanel.scrollTop + logPanel.clientHeight < logPanel.scrollHeight - 1);
   };
-  /** A log taller than its dock ends on a whole row, its cue under it (--si-log-fit caps it at the last row its dock holds
-   *  whole: gauntlet r4 found a row sliced through its glyphs at 1280, 1024 and 900 wide); measured as it fills and as the
-   *  planner resizes its dock, never on a scroll. */
+  /** A log taller than its dock shows whole rows, its cue's band from the last whole row's foot to its own (--si-cue-h:
+   *  gauntlet r4 found a row sliced through its glyphs at 1280, 1024 and 900 wide); measured as it fills, as the planner
+   *  resizes its dock and as its rows change size (a face landing), never on a scroll. */
   const fitLog = (): void => {
-    logPanel.style.removeProperty('--si-log-fit');
+    logPanel.classList.remove('more');
+    logPanel.style.removeProperty('--si-cue-h');
     const room = logPanel.clientHeight;
-    if (logPanel.scrollHeight - room > 1) {
-      const top = logPanel.getBoundingClientRect().top - logPanel.scrollTop;
-      let fit = 0;
-      for (const part of logPanel.querySelectorAll<HTMLElement>('.sec,.cot-si-lrow')) {
-        const bottom = part.getBoundingClientRect().bottom - top;
-        if (bottom <= room - LOG_CUE_H && bottom > fit) fit = bottom;
-      }
-      if (fit > 0) logPanel.style.setProperty('--si-log-fit', `${Math.ceil(fit + LOG_CUE_H)}px`);
+    if (logPanel.scrollHeight - room <= 1) return;
+    const top = logPanel.getBoundingClientRect().top - logPanel.scrollTop;
+    let fit = 0;
+    for (const part of logPanel.querySelectorAll<HTMLElement>('.sec,.cot-si-lrow')) {
+      const bottom = part.getBoundingClientRect().bottom - top;
+      if (bottom <= room - LOG_CUE_H && bottom > fit) fit = bottom;
     }
+    logPanel.style.setProperty('--si-cue-h', `${Math.floor(Math.max(LOG_CUE_H, room - fit))}px`);
     markLogMore();
   };
   logPanel.addEventListener('scroll', markLogMore, { passive: true });
-  if (typeof ResizeObserver === 'function') new ResizeObserver(fitLog).observe(logPanel);
+  const logObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(fitLog) : null;
+  logObserver?.observe(logPanel);
   logPanel.tabIndex = 0;
   const toastHost = el('div', 'cot-si-toasthost', root);
   toastHost.setAttribute('role', 'status');
@@ -1381,8 +1390,16 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="n">${escapeHtml(e.attacker)}</span>` +
         `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
-    // a log taller than its dock fades its last row out rather than cutting it (measured a frame later, off any press)
-    el('div', 'more-cue', logPanel).innerHTML = uiIconSVG('chevronDown', 12);
+    // a log taller than its dock ends on a whole row, its cue under it (measured a frame later, off any press, and again
+    // whenever a row changes size)
+    const cue = el('div', 'more-cue', logPanel);
+    cue.innerHTML = uiIconSVG('chevronDown', 14);
+    cue.setAttribute('aria-hidden', 'true');
+    if (logObserver) {
+      logObserver.disconnect();
+      logObserver.observe(logPanel);
+      for (const row of logPanel.children) if (row !== cue) logObserver.observe(row);
+    }
     requestAnimationFrame(fitLog);
   }
 

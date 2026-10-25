@@ -75,8 +75,10 @@ const CSS = `
    of FIRE's amber read as a second kit, gauntlet r4) */
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:1;border-color:var(--line-control);
   background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);}
-.cot-touch .fire.alt .lb{color:var(--ink-1);}
-/* (the left FIRE names itself as every round control does: unnamed, it read as an odd amber button, gauntlet r3) */
+/* (the left trigger is FIRE's second hand, its shell alone on the secondary finish, the name spoken (aria-label) and
+   shown once, under FIRE: named, the screen read FIRE twice in two styles, gauntlet r5; as an amber twin, a second kit,
+   r4) */
+.cot-touch .fire.alt .lb{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-touch .fire.alt svg{width:20px;height:34px}
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
    buttons dim to a muted shell on a danger rim, in colour only */
@@ -153,11 +155,12 @@ body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:52px;heig
   opacity:0;pointer-events:none;transform:scale(.94);transform-origin:right center;
   transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
-body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left:4px;top:40%;
-  transform:translateY(-50%);font:700 18px/1 ${FONT_COND};color:var(--accent-hi);}
+/* (the tray's way is the sprite's chevron, hud.ts .tchev: a typed "‹" was a glyph of its own, gauntlet bar line 3) */
+body.cot-touch-layout .cot-shell.sel .tchev{display:flex;position:absolute;left:2px;top:40%;transform:translateY(-50%);color:var(--accent-hi);}
+body.cot-touch-layout .cot-shell.sel .tchev svg{display:block;width:14px;height:14px;}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
-body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›';}
+body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel .tchev{transform:translateY(-50%) scaleX(-1);}
 /* The type label sits on the slot's floor, and so does the shell: scaled from its base 11 px up, its tail keeps 3 px
    from the label at every touch slot height (critic r4b: APFSDS crossed the dart's tail) */
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
@@ -165,11 +168,12 @@ body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{displa
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
 body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:-.06em}
 body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-fig-11);}
-/* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
-   keyline + glow (the desktop .sel border alone washes out at phone size) */
+/* the selected round in the kit's selected look, the system tiles' and the Watch bar's (the accent's ring on its wash),
+   its frame in the bright accent for a glance at phone size (gauntlet r5: a brown gradient and a 16 px glow were a fourth
+   selected state and an elevation of their own) */
 body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom-color:var(--accent-hi);
-  background:linear-gradient(180deg,oklch(from var(--accent-lo) .30 .045 h / .97),var(--hud-plate-strong));
-  box-shadow:inset 0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 16px oklch(from var(--accent) l c h / .5);}
+  background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
+  box-shadow:var(--ring-accent);}
 /* (the selected tile's code is the figures' 11 px in every locale, a hair tighter so a six-letter code clears both
    borders: at 13 px in zh it ran past them, gauntlet r3) */
 body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:-.06em;}
@@ -199,7 +203,8 @@ body.cot-touch-layout .cot-net{top:max(8px,env(safe-area-inset-top));
   left:calc(max(8px,env(safe-area-inset-left)) + 124px);right:auto;width:max-content;z-index:24;}
 /* The former Garage shortcut occupied the first 44 px of this corner. With
    battle exit living in Settings, let the minimap own the safe-area top row. */
-body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;
+/* (on the touch layout's 12 px gutter with the dial, the stick and the right column: at 8, gauntlet r5) */
+body.cot-touch-layout .cot-minimap{left:max(var(--s3),env(safe-area-inset-left));right:auto;
   top:max(8px,env(safe-area-inset-top));bottom:auto;
   width:calc(116px * var(--mm-k,1))!important;height:calc(116px * var(--mm-k,1))!important;opacity:.86;z-index:24;}
 body.cot-touch-layout .cot-drive{display:block!important;left:calc(max(14px,env(safe-area-inset-left)) + 150px);
@@ -676,7 +681,7 @@ export function createTouchControls({
   // Losing the page (app switch, notification shade, tab change) must drop every held
   // touch: the fire gesture AND the joystick / aim pad / pinch (2026-09-14 touch QA: the
   // knob stayed 40 px off centre and the tank kept driving after a backgrounded hold).
-  const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.innerHTML=`${uiIconSVG('moveForward',21)}<span>${t('flight.climb')}</span>`;root.append(climb);
+  const climb=document.createElement('button');climb.type='button';climb.className='flight-climb';climb.innerHTML=`${uiIconSVG('moveForward',21)}<span>${t('flight.climb')}</span>`;climb.setAttribute('aria-label',t('flight.climb'));root.append(climb);
   climb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();climb.setPointerCapture(e.pointerId);input.pressVirtual('handbrake');});
   const releaseClimb=()=>input.releaseVirtual('handbrake');
   climb.addEventListener('pointerup',releaseClimb);climb.addEventListener('pointercancel',releaseClimb);climb.addEventListener('lostpointercapture',releaseClimb);

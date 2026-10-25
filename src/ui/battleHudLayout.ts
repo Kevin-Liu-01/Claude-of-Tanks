@@ -99,7 +99,9 @@ function hintsPlace(width: number, height: number, corners: readonly (DOMRect | 
   let left = 16, right = width - 16;
   let beside: DOMRect | null = null;
   for (const box of corners) {
-    if (!box || box.width < 1 || box.top < height / 2) continue;
+    // (a box reaching into the lower half counts: the large map's top above the middle let the ribbon run 4 px from it
+    // at 1280x720, gauntlet r5)
+    if (!box || box.width < 1 || box.bottom < height / 2) continue;
     if (box.right < width / 2) {
       if (box.right + 16 > left) { left = box.right + 16; beside = box; }
     } else if (box.left > width / 2) right = Math.min(right, box.left - 16);
@@ -184,6 +186,13 @@ const SYSTEMS_GAP = 3;
 const RIBBON_W = 520;
 /** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
 const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
+/** How near the rack's width a centred strip or ribbon snaps to the rack's edges. */
+const RACK_SNAP = 40;
+/** A portrait phone's personal feed under the global one: at most this wide. */
+const KILL_LANE_MAX_W = 400;
+/** The shot card's plan (shotInfo.ts .cot-si-diag, 90 + 9 + 172 px) and the card's insets round it; the narrowest map whose
+ *  width the report takes. */
+const REPORT_DIAG_W = 271, REPORT_INSET_W = 20, REPORT_MIN_W = 220;
 /** What the shot report docked under the right roster leaves the global feed between them: one kill row and its gaps
  *  (at 32 px the row did not fit, and the feed vanished while a report showed, gauntlet r3 at 1280x720 down to 900x700). */
 const REPORT_FEED_ROOM = 8 + 26 + 8;
@@ -811,13 +820,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
       slots.sort((a, b) => a.left - b.left);
     }
-    const overSlots = fillRack && tiles.length > 0 && tiles.length === slots.length;
+    // (fewer tiles than slots stand over the middle slots, one a slot: three or five tiles sharing six slots' width set
+    // their dividers mid-slot, gauntlet r5)
+    const overSlots = fillRack && tiles.length > 0 && tiles.length <= slots.length;
+    const firstSlot = overSlots ? Math.floor((slots.length - tiles.length) / 2) : 0;
     if (overSlots || tilesOverSlots) {
       for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) {
         if (!node.style) continue;
         const at = overSlots ? tiles.indexOf(node) : -1;
-        const w = at >= 0 ? `${slots[at].width}px` : '';
-        const dx = at > 0 ? `${slots[at].left - slots[at - 1].right}px` : '';
+        const slot = at >= 0 ? slots[firstSlot + at] : null;
+        const w = slot ? `${slot.width}px` : '';
+        const dx = !slot ? '' : at > 0 ? `${slot.left - slots[firstSlot + at - 1].right}px`
+          : firstSlot > 0 ? `${slot.left - systemsLeft}px` : '';
         if (node.style.getPropertyValue('--hud-tile-w') !== w) node.style.setProperty('--hud-tile-w', w);
         if (node.style.getPropertyValue('--hud-tile-dx') !== dx) node.style.setProperty('--hud-tile-dx', dx);
       }
@@ -864,9 +878,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const clearTop = portraitSightClearTop(systemsTop, systemsHeight, height / 2, floor, ceiling);
       if (clearTop !== systemsTop) {
         systemsTop = clearTop;
-        // Level with the ammo tray: the row sits left of it, whole, rather than scrolling under it.
+        // Level with the ammo tray: the row sits left of it, whole, rather than scrolling under it; clear of it, on the
+        // window's centre line with the score, the sight and the hull plate (gauntlet r5: centred on the tray, it was
+        // pressed to the right edge)
         if (ammo && systemsTop + systemsHeight > ammo.top && systemsTop < ammo.bottom) {
           systemsLeft = Math.max(12, ammo.left - 8 - dockWidth);
+        } else {
+          systemsLeft = Math.max(12, Math.floor((width - Math.min(dockWidth, Math.max(0, naturalWidth - 2))) / 2));
         }
       }
     }
@@ -1114,11 +1132,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // that end above the personal lane are two or more, and holds those rows: in half the window its two callsigns read
     // "Command…", gauntlet r3 at 390x844. Its depth follows the lanes' anchors, never their rows, so nothing moves as kills
     // come and go.
+    // (a touch layout's two lanes keep one 29 px row pitch, each lane's first row a whole number of rows from the other's,
+    // by the smaller move down: the later lane to the next row, or the earlier onto the later's; their rows sat 2-14 px
+    // apart in one band, gauntlet r5)
+    const pitchOff = touch ? Math.abs(leftAnchor - rightAnchor) % 29 : 0;
+    if (pitchOff) {
+      const leftLater = leftAnchor >= rightAnchor;
+      if (29 - pitchOff <= pitchOff) { if (leftLater) leftAnchor += 29 - pitchOff; else rightAnchor += 29 - pitchOff; }
+      else if (leftLater) rightAnchor += pitchOff; else leftAnchor += pitchOff;
+    }
     const wideFeedRows = touch && width < height && width < 600 && !!map && map.left < width / 2
       ? Math.floor((leftAnchor - 8 - rightAnchor + 3) / 29) : 0;
     const wideFeed = wideFeedRows >= 2;
     const wideFeedWidth = wideFeed ? width - map!.right - 8 : 0;
     setBodyVar('--hud-kill-right-width', wideFeed ? `${Math.floor(wideFeedWidth)}px` : '');
+    // (... and the personal lane under it the window's width, the global feed's rows ending above it: in half the window
+    // its callsigns read "Commander_Long…" beside a damage row printing the whole name, gauntlet r5)
+    const wideLeftFeed = wideFeed ? Math.floor(Math.min(width - 24, KILL_LANE_MAX_W)) : 0;
+    setBodyVar('--hud-kill-left-width', wideFeed ? `${wideLeftFeed}px` : '');
     // (on mouse the plan's countdown band above already keeps the lanes off it)
     const leftKillBottom = !plan && countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd;
@@ -1196,7 +1227,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
       // (the kill lanes by the places and heights this pass gives them, while they hold a row)
       const soft = boxes(TOUCH_NOTICE_SOFT);
-      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: sideWidth, y1: leftAnchor + killHeightLeft });
+      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: wideFeed ? wideLeftFeed : sideWidth, y1: leftAnchor + killHeightLeft });
       if (killsRight) soft.push({ x0: width - (wideFeed ? wideFeedWidth : sideWidth), y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
       // (the map apart: through the scope a notice that finds no clear place covers it before the sight's readouts)
       touchPlan = planTouchNotices({ width, height, top, obstacles, soft, labels: boxes(TOUCH_NOTICE_LABELS),
@@ -1279,22 +1310,36 @@ export function installBattleHudLayout(root: HTMLElement): void {
     markRosterMore('.cot-ear.r', rosterRight[1]);
     const lowerCorners = [read('.cot-dp'), read('.cot-drive'), map];
     const rackCentre = fillRack ? systemsLeft + systemsWidth / 2 : width / 2;
-    const hints = hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8);
+    // (a strip or a ribbon within RACK_SNAP of the rack's width takes the rack's edges, where the rack lies inside its
+    // gap: at 1024x600 both stood 2-3 px inside the row under them, gauntlet r5)
+    const onRack = (place: { width: number; x: number; bottom: number }, cap: number) => {
+      const w = Math.min(cap, place.width);
+      const inside = systemsLeft >= place.x - place.width / 2 - 1 && systemsLeft + systemsWidth <= place.x + place.width / 2 + 1;
+      return fillRack && inside && Math.abs(w - systemsWidth) <= RACK_SNAP
+        ? { ...place, width: systemsWidth, x: rackCentre } : { ...place, width: w };
+    };
+    const hints = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8), Infinity);
     // (the kill ribbon in the same gap, at most its 520 px: on a 900 px window it would cross the speedometer; under
-    // RIBBON_TIGHT it drops its cause chip and the streak's word, under RIBBON_LEAST it does not show)
-    const ribbonGap = hintsPlace(width, height, lowerCorners, rackCentre, 0);
-    // (over a flight's console where that stands higher, centred on it and no wider: gauntlet r4 at 900x700 set it 57 px
-    // off the drone's console under it)
+    // RIBBON_TIGHT it drops its cause chip, the streak's word and the silhouette, under RIBBON_LEAST it does not show)
+    const ribbonGap = onRack(hintsPlace(width, height, lowerCorners, rackCentre, 0), RIBBON_W);
+    // (over a flight's console where that stands higher, centred on it and as wide: gauntlet r4 at 900x700 set it 57 px
+    // off the drone's console under it; r5 found it narrower than the gunship's console from 1440 and the drone's at 900)
     const flightConsole = read('.cot-flight-hud:not([hidden]) .flight-console');
     const overConsole = !!flightConsole && flightConsole.top < systemsTop;
     const ribbon = overConsole && flightConsole
-      ? { x: flightConsole.left + flightConsole.width / 2, width: Math.min(ribbonGap.width, flightConsole.width) } : ribbonGap;
+      ? { x: flightConsole.left + flightConsole.width / 2, width: flightConsole.width } : ribbonGap;
     const ribbonNode = root.querySelector<HTMLElement>('.cot-ribbon');
     if (ribbonNode?.classList) {
-      const ribbonWidth = Math.min(RIBBON_W, ribbon.width);
+      const ribbonWidth = ribbon.width;
       if (ribbonNode.classList.contains('tight') !== ribbonWidth < RIBBON_TIGHT) ribbonNode.classList.toggle('tight', ribbonWidth < RIBBON_TIGHT);
       if (ribbonNode.classList.contains('cramped') !== ribbonWidth < RIBBON_LEAST) ribbonNode.classList.toggle('cramped', ribbonWidth < RIBBON_LEAST);
     }
+    const reportWidth = !touch && map && map.left > width / 2 && map.bottom > height / 2 && map.width >= REPORT_MIN_W
+      ? Math.floor(Math.min(map.width, 300, width / 2 - 24)) : 0;
+    // (the report and the log over a mouse layout's map take its width, their left edges on its edge, the card's plan
+    // scaled to it: 50 px wider, they stood 50 px left of the map under them, gauntlet r5)
+    setBodyVar('--hud-report-width', reportWidth ? `${reportWidth}px` : '');
+    setBodyVar('--hud-report-zoom', reportWidth ? Math.min(1, (reportWidth - REPORT_INSET_W) / REPORT_DIAG_W).toFixed(3) : '');
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
@@ -1312,7 +1357,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // the kill ribbon rests over the systems row, or over a flight's console where that stands higher (the drone's, the
       // gunship's: owner 2026-10-25, "fix overlapping uis like in ac 130")
       'ribbon-top': Math.min(systemsTop, flightConsole?.top ?? Infinity),
-      'ribbon-x': ribbon.x, 'ribbon-w': Math.min(RIBBON_W, ribbon.width),
+      'ribbon-x': ribbon.x, 'ribbon-w': ribbon.width,
       // the first battles' controls strip (settings.ts) stays on the centre line between the lower corners' instruments
       // (the hull panel and the dial left, the map right) and wraps its groups to fit (gauntlet r1: 900x700 ran it over
       // both)

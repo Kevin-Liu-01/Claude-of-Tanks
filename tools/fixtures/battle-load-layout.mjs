@@ -36,6 +36,6 @@ const mapId = params.get('map');
 // the chip and the plan's objectives name one mode (&mode=<id>, Turbo Ball unless set), as the game's entries pass both
 const modeId = params.get('mode') || 'turbo_ball';
 screen.show({mapName:params.get('name') || 'Steinburg', mode:battleLoadModeLabel(modeId), thumb:`/maps/${mapId || 'urban'}.webp`,
-  ...(mapId ? {biome:mapId, modeId} : {}), allies:[], enemies:[]});
+  modeId, ...(mapId ? {biome:mapId} : {}), allies:[], enemies:[]});
 window.__LOAD_LAYOUT.roster(Number(params.get('allies') ?? 7), Number(params.get('enemies') ?? 7));
 screen.progress(.97, 'Priming deployment view');
