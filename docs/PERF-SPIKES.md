@@ -118,6 +118,42 @@ Causes:
 
 `node tools/battle-spike-analysis.selftest.mjs` proves the attribution on a synthetic battle whose causes are known.
 
+## The census's result (ab1)
+
+The A/B ran base 3852a725d4 against the lane: the heat stand-ins and the bots' first-step fix (runtime as
+ffa2158835).
+
+- **What was played:** 35 complete pairs over Verdant (standard), Steinburg (zone control), Cinder Junction (capture
+  the flag), Sirocco Wadi (AC-130), Amberford (drone), Ironworks (frontline assault) and Suzhou Creek (standard), at
+  7/14/21 v 21, cold and warm.
+- **Conditions:** 35 s of combat each; the governor pinned; the loaded Mac (load 30–60, other sessions' Chromes on
+  the GPU).
+- **Evidence:** `~/cot-lanes/battle-spikes-253-evidence/ab1`.
+
+| Over the 35 pairs | Base | Lane | Change |
+|---|---|---|---|
+| Hitches (whole battle) | 835 | 616 | −26 % |
+| Hitches, live combat | 607 | 391 | −36 % |
+| GPU-busy hitches | 69 | 37 | −46 % |
+| Program links in live combat | 714 | 359 | −50 % |
+| Cold battles' hitches | 515 | 383 | −26 % |
+| Warm battles' hitches | 320 | 233 | −27 % |
+
+The hitch threshold follows each battle's median. As a check free of it, the 21 pairs whose live medians agree within
+2 ms:
+
+- live frames past 100 ms: 51 → 32 (−37 %);
+- live frames past 50 ms: 1,166 → 1,107 (−5 %; that band is mostly the machine's load).
+
+**Memory.** The browser's resident set (renderer and GPU process) peaks at 5.0–6.1 GB in the heavier maps, on both
+builds alike:
+
+- Steinburg and Cinder Junction lead;
+- a page's second battle peaks 0.3–0.6 GB over its first.
+
+The census's 6 GB guard sits at that footprint: it stopped base Steinburg 21 v 21's warm battle and base Cinder
+Junction 7 v 7's first try. The growth between battles is its own finding for the memory lockdown, not this lane's.
+
 ## Hitches, not frames past 33 ms
 
 The census runs on a shared, loaded Mac:
