@@ -2197,7 +2197,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const via = (button: HTMLButtonElement) => () => { if (!button.disabled) button.click(); };
     const text = (node: Element): string => node.textContent?.trim() ?? '';
     const selected = S._internal.selected;
-    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: 'Space', keywords: 'play pause' });
+    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: t('studio.ws.spaceKey'), keywords: 'play pause' });
     add('restart', t('studio.restart'), via(restartBtn), { keywords: 'restart beginning' });
     add('step', t('studio.stepOneFrame'), via(stepBtn), { keywords: 'step frame next' });
     if (!undoBtn.disabled) add('undo', t('studio.ws.cmd.undo'), via(undoBtn), { hint: UNDO_KEY, keywords: 'undo' });
@@ -2928,12 +2928,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const id = S.mapId;
       if (!id) return;
       const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
+      // the map's name in the locale (翠野原, not Verdant Fields), its own name where the catalog has none
+      const nameKey = `map.${id}`;
+      const name = t(nameKey) === nameKey ? info.name || id : t(nameKey);
       mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
-      mapName.textContent = info.name || id;
+      mapName.textContent = name;
       mapId.textContent = id;
-      projectName.textContent = info.name || id;
+      projectName.textContent = name;
       mapRowThumb.src = imageFor(MAP_THUMBS, id) || '';
-      mapRow.pick.querySelector('.nm')!.textContent = info.name || id;
+      mapRow.pick.querySelector('.nm')!.textContent = name;
       lightRow.pick.querySelector('.nm')!.textContent = t(`atmosphere.${S.timeOfDay}`);
       if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
