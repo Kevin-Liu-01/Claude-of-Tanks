@@ -228,6 +228,7 @@
   "docs.archive.title": "Vehicles in game scenes",
   "docs.archive.lede": "The fifty frames and the stills of the site's takes: the game's own vehicles, maps and effects, rendered at 4K.",
   "docs.archive.closeAria": "Close field frames",
+  "docs.archive.loadFailed": "The field frames did not load",
   "docs.footer.docsGallery": "Tank Gallery",
   "docs.footer.docsGarage": "Garage",
   "docs.footer.docsStudio": "Scene Studio",

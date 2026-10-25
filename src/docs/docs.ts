@@ -1,4 +1,5 @@
 import { t } from '../ui/i18n.ts';
+import { noticeRegion, notify } from '../ui/components/notice.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
@@ -20,14 +21,12 @@ if (searchHost && searchInput) {
   if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
 }
 
-let toastTimer = 0;
-function announce(message: string): void {
-  const toast = document.querySelector<HTMLElement>('#docsToast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1600);
+/** The archive failed to load: the kit's error notice inside the open dialog (the top layer hides a page toast), with a
+ *  Retry that runs the same load again. */
+function loadFailed(retry: () => Promise<unknown>): void {
+  if (archiveDialog) noticeRegion('docs-archive', { host: archiveDialog, placement: 'bottom', limit: 1 });
+  notify({ id: 'docs-archive-load', region: archiveDialog?.open ? 'docs-archive' : 'menu', severity: 'error',
+    text: t('docs.archive.loadFailed'), retry });
 }
 
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');
@@ -40,7 +39,7 @@ function stopArchiveMotion(): void {
   archiveDialog?.querySelectorAll<HTMLVideoElement>('video').forEach((video) => video.pause());
 }
 
-function mountArchiveMotionInfo(): void {
+function mountArchiveMotionInfo(): Promise<unknown> {
   archiveMotionPromise ??= Promise.all([
     import('../presentation/captureRecipes.ts'),
     import('../ui/contextInfo.ts'),
@@ -68,28 +67,27 @@ function mountArchiveMotionInfo(): void {
         } : null,
       }));
     });
-  }).catch((error: RuntimeValue) => {
-    archiveMotionPromise = null;
-    announce(error instanceof Error ? error.message : String(error));
   });
+  return archiveMotionPromise.catch((error: RuntimeValue) => { archiveMotionPromise = null; throw error; });
 }
+
+/** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it). */
+function mountArchiveBody(): Promise<unknown> {
+  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
+    .then(([{ mountMediaArchive }]) => mountMediaArchive(
+      document.querySelector('#docsArchiveBody'),
+      { mode: 'wall', limit: 330, filters: false },
+    ));
+  return archiveMountPromise.catch((error: RuntimeValue) => { archiveMountPromise = null; throw error; });
+}
+const loadArchive = (): Promise<unknown> => Promise.all([mountArchiveBody(), mountArchiveMotionInfo()]);
 
 archiveOpen?.addEventListener('click', () => {
   if (!archiveDialog) return;
   // The dialog's loops play under the site's one policy (publicPages.ts mounts them through mediaPlayer.ts): once the
   // dialog shows them, two at most, one transfer at a time, never under reduced motion or data saving.
   archiveDialog.showModal();
-  // the wall's sheet loads with its module (the dialog's frame is docs.css): nothing on the page's first paint waits for it
-  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
-    .then(([{ mountMediaArchive }]) => mountMediaArchive(
-      document.querySelector('#docsArchiveBody'),
-      { mode: 'wall', limit: 330, filters: false },
-    ))
-    .catch((error: RuntimeValue) => {
-      archiveMountPromise = null;
-      announce(error instanceof Error ? error.message : String(error));
-    });
-  mountArchiveMotionInfo();
+  void loadArchive().catch(() => loadFailed(loadArchive));
 });
 archiveClose?.addEventListener('click', () => archiveDialog?.close());
 archiveDialog?.addEventListener('close', stopArchiveMotion);

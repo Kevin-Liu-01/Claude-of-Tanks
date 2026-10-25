@@ -395,8 +395,10 @@ assert.match(responsiveSurfaces,
   'the graphics recovery title must reflow without overflowing small screens');
 assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
   'Gallery feedback toasts must be viewport-bounded');
-assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Docs feedback toasts must be viewport-bounded');
+// the Field Manual's notices are the kit's (components/notices.css): a region bounded to the viewport, text that wraps
+assert.match(docs, /@import url\('\.\.\/ui\/components\/notices\.css'\);/, 'the Field Manual loads the kit\'s notices');
+assert.match(await readFile(new URL('./components/notices.css', import.meta.url), 'utf8'),
+  /\.cot-c-notices\{[^}]*width:min\(420px,calc\(100vw - 32px\)\)/, 'notices are viewport-bounded');
 
 for (const [source, pattern, label] of [
   [transition, /\.cot-trans\{position:fixed/, 'state transition'],

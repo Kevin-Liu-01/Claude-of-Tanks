@@ -228,6 +228,7 @@
   "docs.archive.title": "游戏场景中的载具",
   "docs.archive.lede": "五十帧画面与网站各镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。",
   "docs.archive.closeAria": "关闭战场帧",
+  "docs.archive.loadFailed": "战场帧未能加载",
   "docs.footer.docsGallery": "坦克画廊",
   "docs.footer.docsGarage": "车库",
   "docs.footer.docsStudio": "场景工作室",
