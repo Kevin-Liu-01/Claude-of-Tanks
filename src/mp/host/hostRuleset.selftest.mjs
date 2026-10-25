@@ -70,6 +70,28 @@ const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: 
   pair.main.close();
 }
 
+// ---- the authority validates a seat's equipment (equipment-249): the room only shape-checks the ids, so a hostile or stale
+// list reaches the actor; the actor keeps the catalog's items this hull may fit, once each, three at most, in the mode's rules
+{
+  const hostile = ['bogus', 'thermal_sight', 'thermal_sight', 'loader_kit', 'rammer', 'optics', 'camo_net', 'toolbox'];
+  const boot = async (mode, roomId) => {
+    const pair = createHostPortPair();
+    const core = createMatchHostCore({ port: pair.worker, buildWorld: async () => 'terrain', reportIntervalMs: 60_000, keyframeIntervalMs: 60_000, configIntervalMs: 60_000 });
+    const ready = new Promise((resolve, reject) => pair.main.onMessage((message) => { if (message.type === 'ready') resolve(message); if (message.type === 'boot_failed') reject(new Error(message.error)); }));
+    const hostileSeats = [{ ...seats[0], equipment: hostile }, seats[1]];
+    pair.main.post({ type: 'boot', config: { roomId, matchId: `m-${roomId}`, generation: 1, mapId: 'verdant', mode, seed: 7, seats: hostileSeats, bots: [], countdownS: 1, battleLimitS: null, hostSecret: 'host-secret-0123456789abcdef', manifestBase: null, resume: null, arrangement: null, campaignOperationId: null } });
+    await ready;
+    const equip = core.actor?.authority.entities.find((entity) => entity.specId === 'm1a1_abrams_hc')?.equip;
+    core.dispose();
+    pair.main.close();
+    return equip;
+  };
+  assert.deepEqual(await boot('standard', 'EQUIP1'), ['thermal_sight', 'rammer', 'optics'],
+    'unknown ids, repeats, a loader kit on a manual loader and the fourth item are dropped at the authority');
+  assert.deepEqual(await boot('ac130', 'EQUIP2'), ['rammer', 'toolbox'],
+    'a mode that bans scouting drops the scouting items at the authority');
+}
+
 // ---- the LAN helper's in-process match (matchTransport 'service') takes the same table
 {
   const created = [];
@@ -98,5 +120,5 @@ let widest = { bytes: 0, label: '' };
   }
 }
 
-console.log(`mp host ruleset: the room\'s arrangement and campaign operation reach the host actor (browser core, sealed config, in-process service); `
+console.log(`mp host ruleset: the room\'s arrangement and campaign operation reach the host actor (browser core, sealed config, in-process service); the actor validates a seat\'s equipment; `
   + `every mode x arrangement x operation fits the WELCOME (widest ${widest.bytes} B of ${MAX_RULESET_JSON_BYTES}: ${widest.label}) pass`);

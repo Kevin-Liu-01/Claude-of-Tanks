@@ -23,17 +23,30 @@
 //   engineFire  × on fire IGNITE odds   sim/damage.ts applyModuleDamage
 //   fireTicks   × on fire duration      sim/damage.ts applyModuleDamage
 //   extinguish  × on self-extinguish    sim/damage.ts tickFire
-//   moduleHp    × per-module max HP     applyEquipmentToCombat (below)
+//   moduleHp    × per-module max HP     applyEquipmentToCombat (below): the
+//                                        tracks, ammo rack, fuel tank, gun, gun
+//                                        mount, turret ring, engine, transmission,
+//                                        autoloader, feed and optics
 //   view/viewStill/camo/camoStill       sim/spotting.ts EQUIPMENT table
 //                                        (same ids — spotting owns vision)
-// Nothing in the catalog is cosmetic-only.
+// Nothing in the catalog is cosmetic-only. Every effect is authority-side or
+// already on the wire (VIEWER_EQUIPMENT), so the catalog never changes the
+// wire. Stacked effects are bounded (EQUIP_LIMITS), and a mode can ban
+// categories or items (matchRuleset.ts equipmentBan).
+//
+// The catalog (owner 2026-10-24: "make equipment have a lot more options"):
+// 25 items in five categories, firepower, mobility, protection, survivability
+// and scouting. An item may need a turret, an autoloader or a hand-loaded gun.
 
 
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 
 type EquipmentEra = 'all' | 'modern';
-type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';
-type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank';
+export type EquipmentCategoryId = 'all' | 'fire' | 'mobility' | 'protection' | 'survival' | 'recon';
+type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank' | 'gun' | 'gunMount' | 'turretRing'
+  | 'engine' | 'transmission' | 'autoloader' | 'feedSystem' | 'optics';
+/** What a vehicle must have for an item to mount: a turret, an autoloader, or a hand-loaded gun. */
+export type EquipmentNeed = 'turret' | 'autoloader' | 'manualLoader';
 
 interface EquipmentEffects {
   reload?: number;
@@ -59,6 +72,7 @@ export interface EquipmentItem {
   desc: string;
   effects: EquipmentEffects;
   spot?: boolean;
+  needs?: EquipmentNeed;
 }
 
 interface EquipmentCategory {
@@ -72,6 +86,7 @@ interface EquipmentSpecLike {
   gun?: {
     autoloader?: object;
   };
+  armor?: { turretless?: boolean } | null;
 }
 
 interface EquipmentStatsSpec extends EquipmentSpecLike {
@@ -140,7 +155,7 @@ const SCALAR_EQUIPMENT_MULTIPLIERS: readonly ScalarEquipmentMultiplier[] = [
 export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
   // --- FIREPOWER -----------------------------------------------------------
   {
-    id: 'rammer', name: 'Gun Rammer', short: 'Rammer', cat: 'fire', era: 'all',
+    id: 'rammer', name: 'Gun Rammer', short: 'Rammer', cat: 'fire', era: 'all', needs: 'manualLoader',
     desc: '-10% reload time',
     effects: { reload: 0.90 },
   },
@@ -160,21 +175,21 @@ export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
     effects: { reload: 0.975, aimTime: 0.975 }, // view/camo via spotting table
     spot: true,
   },
-  // --- RECON ---------------------------------------------------------------
   {
-    id: 'optics', name: 'Coated Optics', short: 'Optics', cat: 'recon', era: 'all',
-    desc: '+10% view range',
-    effects: {}, spot: true,
+    // a trade: rounds stowed by the breech load faster and burn sooner
+    id: 'ready_rack', name: 'Ready-Rack Stowage', short: 'Ready Rack', cat: 'fire', era: 'all', needs: 'manualLoader',
+    desc: '-6% reload time, -15% ammo rack durability',
+    effects: { reload: 0.94, moduleHp: { ammoRack: 0.85 } },
   },
   {
-    id: 'binoculars', name: 'Binocular Telescope', short: 'Binocs', cat: 'recon', era: 'all',
-    desc: '+25% view range while stationary',
-    effects: {}, spot: true,
+    id: 'fire_control', name: 'Fire-Control Computer', short: 'FCS', cat: 'fire', era: 'modern',
+    desc: '-6% aim time, -10% dispersion on the move',
+    effects: { aimTime: 0.94, bloom: 0.90 },
   },
   {
-    id: 'camo_net', name: 'Camouflage Net', short: 'Camo Net', cat: 'recon', era: 'all',
-    desc: '+12% concealment while stationary',
-    effects: {}, spot: true,
+    id: 'loader_kit', name: 'Autoloader Service Kit', short: 'Loader Kit', cat: 'fire', era: 'all', needs: 'autoloader',
+    desc: '-6% magazine reload, +50% autoloader and feed durability',
+    effects: { reload: 0.94, moduleHp: { autoloader: 1.5, feedSystem: 1.5 } },
   },
   // --- MOBILITY ------------------------------------------------------------
   {
@@ -187,16 +202,42 @@ export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
     desc: '+50% track durability',
     effects: { moduleHp: { trackL: 1.5, trackR: 1.5 } },
   },
+  {
+    id: 'turret_drive', name: 'Powered Turret Drive', short: 'Turret Drive', cat: 'mobility', era: 'modern', needs: 'turret',
+    desc: '+20% turret traverse',
+    effects: { turret: 1.20 },
+  },
+  {
+    id: 'drivetrain', name: 'Reinforced Drivetrain', short: 'Drivetrain', cat: 'mobility', era: 'all',
+    desc: '+40% engine and +60% transmission durability',
+    effects: { moduleHp: { engine: 1.4, transmission: 1.6 } },
+  },
+  // --- PROTECTION ----------------------------------------------------------
+  {
+    id: 'spall_liner', name: 'Spall Liner', short: 'Spall Liner', cat: 'protection', era: 'all',
+    desc: '-25% HE splash damage, -50% crew hits from splash',
+    effects: { heSplash: 0.75, crewHe: 0.5 },
+  },
+  {
+    id: 'skirts', name: 'Side Skirts', short: 'Skirts', cat: 'protection', era: 'all',
+    desc: '-12% HE splash damage, +25% track durability',
+    effects: { heSplash: 0.88, moduleHp: { trackL: 1.25, trackR: 1.25 } },
+  },
+  {
+    id: 'ring_guard', name: 'Turret Ring Guard', short: 'Ring Guard', cat: 'protection', era: 'all', needs: 'turret',
+    desc: '+60% turret ring and +30% gun mount durability',
+    effects: { moduleHp: { turretRing: 1.6, gunMount: 1.3 } },
+  },
+  {
+    id: 'mantlet_shield', name: 'Mantlet Shield', short: 'Mantlet', cat: 'protection', era: 'all',
+    desc: '+40% gun and +30% optics durability',
+    effects: { moduleHp: { gun: 1.4, optics: 1.3 } },
+  },
   // --- SURVIVABILITY -------------------------------------------------------
   {
     id: 'toolbox', name: 'Toolbox', short: 'Toolbox', cat: 'survival', era: 'all',
     desc: '+25% repair speed',
     effects: { repair: 1.25 },
-  },
-  {
-    id: 'spall_liner', name: 'Spall Liner', short: 'Spall Liner', cat: 'survival', era: 'all',
-    desc: '-25% HE splash damage, -50% crew hits from splash',
-    effects: { heSplash: 0.75, crewHe: 0.5 },
   },
   {
     id: 'wet_rack', name: 'Wet Ammo Rack', short: 'Wet Rack', cat: 'survival', era: 'all',
@@ -213,6 +254,37 @@ export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
     desc: 'Fires burn half as long and self-extinguish 2x as often',
     effects: { fireTicks: 0.5, extinguish: 2.0 },
   },
+  {
+    id: 'fire_blankets', name: 'Fire Blankets', short: 'Blankets', cat: 'survival', era: 'all',
+    desc: 'Fires burn 25% shorter and self-extinguish 1.5x as often',
+    effects: { fireTicks: 0.75, extinguish: 1.5 },
+  },
+  // --- SCOUTING ------------------------------------------------------------
+  {
+    id: 'optics', name: 'Coated Optics', short: 'Optics', cat: 'recon', era: 'all',
+    desc: '+10% view range',
+    effects: {}, spot: true,
+  },
+  {
+    id: 'binoculars', name: 'Binocular Telescope', short: 'Binocs', cat: 'recon', era: 'all',
+    desc: '+25% view range while stationary',
+    effects: {}, spot: true,
+  },
+  {
+    id: 'camo_net', name: 'Camouflage Net', short: 'Camo Net', cat: 'recon', era: 'all',
+    desc: '+12% concealment while stationary',
+    effects: {}, spot: true,
+  },
+  {
+    id: 'exhaust_baffles', name: 'Exhaust Baffles', short: 'Baffles', cat: 'recon', era: 'all',
+    desc: '+4% concealment, moving or still',
+    effects: {}, spot: true,
+  },
+  {
+    id: 'thermal_sight', name: 'Thermal Sight', short: 'Thermal', cat: 'recon', era: 'modern',
+    desc: '+15% view range',
+    effects: {}, spot: true,
+  },
 ];
 
 /** id -> catalog item. */
@@ -224,9 +296,10 @@ export const EQUIPMENT_BY_ID: ReadonlyMap<string, EquipmentItem> = new Map(
 export const EQUIP_CATEGORIES: readonly EquipmentCategory[] = [
   { id: 'all', label: 'All' },
   { id: 'fire', label: 'Firepower' },
-  { id: 'recon', label: 'Recon' },
   { id: 'mobility', label: 'Mobility' },
-  { id: 'survival', label: 'Survival' },
+  { id: 'protection', label: 'Protection' },
+  { id: 'survival', label: 'Survivability' },
+  { id: 'recon', label: 'Scouting' },
 ];
 
 /**
@@ -239,14 +312,32 @@ export function equipEligible(
   item: EquipmentItem | string,
   spec?: EquipmentSpecLike | null,
 ): boolean {
+  return equipIneligibility(item, spec) === null;
+}
+
+/** Why an item cannot mount on a vehicle, or null when it can. */
+export type EquipmentIneligibility = 'unknown' | 'era' | EquipmentNeed;
+
+/**
+ * The reason an item cannot mount on this spec (null: it can). The checks run without a spec too, as a catalog
+ * listing does: then only the item's existence is checked.
+ */
+export function equipIneligibility(
+  item: EquipmentItem | string,
+  spec?: EquipmentSpecLike | null,
+): EquipmentIneligibility | null {
   const it = typeof item === 'string' ? EQUIPMENT_BY_ID.get(item) : item;
-  if (!it) return false;
-  // Magazine autoloaders cannot mount a gun rammer in the WoT equipment
-  // model. Vents can still improve the full magazine load; the intra-clip
-  // mechanism delay remains fixed.
-  if (it.id === 'rammer' && spec?.gun?.autoloader) return false;
-  if (it.era === 'all') return true;
-  return !!spec && it.era === 'modern' && isPostwarVehicleEra(spec.era);
+  if (!it) return 'unknown';
+  if (!spec) return it.era === 'modern' ? 'era' : null; // a modern item needs a postwar spec, as it always has
+  // Magazine autoloaders cannot mount a gun rammer or a ready rack in the WoT
+  // equipment model (vents still improve the full magazine load); the
+  // autoloader's own kit needs one.
+  const autoloader = !!spec.gun?.autoloader;
+  if (it.needs === 'manualLoader' && autoloader) return 'manualLoader';
+  if (it.needs === 'autoloader' && !autoloader) return 'autoloader';
+  if (it.needs === 'turret' && spec.armor?.turretless) return 'turret';
+  if (it.era === 'modern' && !isPostwarVehicleEra(spec.era)) return 'era';
+  return null;
 }
 
 /**
@@ -270,6 +361,43 @@ export function sanitizeLoadout(
     }
   }
   return out;
+}
+
+/** Why the picker cannot fit an item: the hull's gate (equipIneligibility) or the mode's rules. */
+export type EquipmentLock = EquipmentIneligibility | 'mode';
+
+export interface EquipmentPickerItem {
+  readonly item: EquipmentItem;
+  /** null when the item can be fitted. */
+  readonly lock: EquipmentLock | null;
+  /** The slot it is fitted in, or -1. */
+  readonly fittedSlot: number;
+}
+
+export interface EquipmentPickerGroup {
+  readonly category: EquipmentCategory;
+  readonly items: readonly EquipmentPickerItem[];
+}
+
+/**
+ * The picker's contents for one hull and its loadout: each category in catalog order (the "All" chip is the caller's)
+ * with every item, its lock and the slot it sits in. `allows` is the mode's filter, rulesetAllowsEquipment bound to the
+ * ruleset the loadout will play (matchRuleset.ts); the Garage, which picks for every mode, passes none. The same gates
+ * run at spawn, so a fittable tile here is an item the authority keeps.
+ */
+export function equipmentPicker(
+  spec: EquipmentSpecLike | null | undefined,
+  loadout: readonly string[],
+  allows?: (id: string) => boolean,
+): EquipmentPickerGroup[] {
+  return EQUIP_CATEGORIES.filter((category) => category.id !== 'all').map((category) => ({
+    category,
+    items: EQUIPMENT_CATALOG.filter((item) => item.cat === category.id).map((item) => ({
+      item,
+      lock: equipIneligibility(item, spec) ?? (allows && !allows(item.id) ? 'mode' : null),
+      fittedSlot: loadout.indexOf(item.id),
+    })),
+  }));
 }
 
 const storageKey = (specId: string): string => `cot.equip.${specId}`;
@@ -337,6 +465,34 @@ function applyModuleEquipmentEffects(
 }
 
 /**
+ * The bounds a loadout's stacked effects stay in (a multiplier past them is
+ * held at the bound). Every loadout the catalog allowed before 2026-10-24, and
+ * every bot loadout, sits inside them, so their numbers are unchanged.
+ */
+export const EQUIP_LIMITS = Object.freeze({
+  reload: 0.85, aimTime: 0.82, bloom: 0.70, heSplash: 0.60, crewHe: 0.45, engineFire: 0.40, fireTicks: 0.40,
+  traverse: 1.25, turret: 1.35, repair: 1.50, extinguish: 2.50, moduleHpMax: 2.00,
+} as const);
+
+function boundEquipmentMultipliers(m: EquipmentMultipliers): void {
+  m.reload = Math.max(EQUIP_LIMITS.reload, m.reload);
+  m.aimTime = Math.max(EQUIP_LIMITS.aimTime, m.aimTime);
+  m.bloom = Math.max(EQUIP_LIMITS.bloom, m.bloom);
+  m.heSplash = Math.max(EQUIP_LIMITS.heSplash, m.heSplash);
+  m.crewHe = Math.max(EQUIP_LIMITS.crewHe, m.crewHe);
+  m.engineFire = Math.max(EQUIP_LIMITS.engineFire, m.engineFire);
+  m.fireTicks = Math.max(EQUIP_LIMITS.fireTicks, m.fireTicks);
+  m.traverse = Math.min(EQUIP_LIMITS.traverse, m.traverse);
+  m.turret = Math.min(EQUIP_LIMITS.turret, m.turret);
+  m.repair = Math.min(EQUIP_LIMITS.repair, m.repair);
+  m.extinguish = Math.min(EQUIP_LIMITS.extinguish, m.extinguish);
+  for (const moduleId of Object.keys(m.moduleHp) as EquipmentModuleId[]) {
+    const factor = m.moduleHp[moduleId];
+    if (factor !== undefined) m.moduleHp[moduleId] = Math.min(EQUIP_LIMITS.moduleHpMax, factor);
+  }
+}
+
+/**
  * Fold a loadout into the combat/movement/repair multiplier record the sim
  * hooks read off CombatState.equipMults. Every field defaults to 1 (or {})
  * so hooks can multiply blindly.
@@ -358,6 +514,7 @@ export function computeEquipMults(
     applyScalarEquipmentEffects(m, it.effects);
     applyModuleEquipmentEffects(m, it.effects);
   }
+  boundEquipmentMultipliers(m);
   return m;
 }
 
