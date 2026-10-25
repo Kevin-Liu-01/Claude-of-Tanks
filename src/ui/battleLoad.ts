@@ -166,7 +166,7 @@ const CSS = `
   height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
   display:grid;grid-template-rows:auto minmax(0,1fr);}
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
-  font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
+  font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
 .cot-bl .team.ally .thead{color:var(--text-own);border-bottom:1px solid var(--team-own);}
 .cot-bl .team.foe .thead{color:var(--text-enemy);border-bottom:1px solid var(--team-enemy);flex-direction:row-reverse;}
@@ -174,7 +174,9 @@ const CSS = `
 .cot-bl .thead .n{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
-.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),var(--bl-row-height));align-content:start;
+/* (a long side's rows give up height, to 20 px, before any row leaves the panel: 14 a side sliced its 12th row at
+   1024x600, gauntlet r1) */
+.cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(20px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
 .cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
@@ -189,7 +191,7 @@ const CSS = `
 .cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
 .cot-bl .row.me{background:var(--accent-wash);border-left-color:var(--accent);box-shadow:var(--ring-accent);}
 /* the tier only where the battle mixes tiers (a rank every row shares says nothing) */
-.cot-bl .row .tier{flex:0 0 22px;text-align:center;font:500 var(--fs-11)/1 var(--font-mono);color:var(--accent-hi);}
+.cot-bl .row .tier{flex:0 0 22px;text-align:center;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);color:var(--accent-hi);}
 .cot-bl:not(.mixed-tiers) .row .tier{display:none;}
 .cot-bl .row .sil{flex:0 0 56px;height:100%;max-height:26px;background-repeat:no-repeat;
   background-image:var(--side-img),radial-gradient(closest-side,var(--fill-scale),transparent);
@@ -199,11 +201,12 @@ const CSS = `
 .cot-bl .row .fl{display:flex;flex:none;}.cot-bl .row .fl:empty:not([data-nation]){display:none;}
 .cot-bl .row .fl[data-nation]{width:16px;height:12px;}
 .cot-bl .row .fl .cot-flag{display:block;box-shadow:var(--flag-ring);}
-.cot-bl .row .nm{flex:0 1 auto;min-width:0;font:600 var(--fs-13)/1.2 var(--font-ui);color:var(--ink-1);
+.cot-bl .row .nm{flex:0 1 auto;min-width:0;font:600 max(var(--battle-fs-13),var(--fs-13))/1.2 var(--font-ui);color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:var(--accent-hi);}
-.cot-bl .row .cs{flex:0 4 auto;min-width:0;margin-left:auto;font:500 var(--fs-11)/1.2 var(--font-mono);color:var(--ink-3);
+/* (the driver in the UI face: the mono ran a callsign a third wider and was a third family, gauntlet r1) */
+.cot-bl .row .cs{flex:0 4 auto;min-width:0;margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui);color:var(--ink-3);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .cs{margin-left:0;margin-right:auto;}
 .cot-bl .row.me .cs{color:var(--accent-hi);}
@@ -224,7 +227,7 @@ const CSS = `
   transition:transform var(--dur-fast) linear;}
 .cot-bl .fbar i.c b{background:var(--accent);}
 .cot-bl.on .fbar i b{will-change:transform;}
-.cot-bl .fpct{flex:none;min-width:4ch;text-align:right;font:500 var(--fs-13)/1 var(--font-mono);color:var(--ink-3);}
+.cot-bl .fpct{flex:none;min-width:4ch;text-align:right;font:500 max(var(--battle-fs-13),var(--fs-13))/1 var(--font-mono);color:var(--ink-3);}
 .cot-bl .count{margin-top:13px;text-align:center;font:700 var(--fs-15)/1 var(--font-ui);line-height:30px;
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1);height:30px;}
 .cot-bl .count b{color:var(--accent-hi);font-size:var(--fs-24);}
@@ -272,11 +275,12 @@ ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}
-${WIDE} .cot-bl .team.cards{--bl-row-height:104px;--bl-row-gap:6px;--bl-heading:0px;--bl-row-inset:0px;height:auto;align-self:end;}
+${WIDE} .cot-bl .team.cards{--bl-row-height:118px;--bl-row-gap:6px;--bl-heading:0px;--bl-row-inset:0px;height:auto;align-self:end;}
 ${WIDE} .cot-bl .team.cards .thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 ${WIDE} .cot-bl .team.cards .rows{grid-template-rows:var(--bl-row-height);grid-template-columns:repeat(var(--bl-count),minmax(0,1fr));
   gap:var(--bl-row-gap);overflow:visible;}
-${WIDE} .cot-bl .vs{align-self:end;padding-bottom:34px;}
+/* (beside the hero cards the VS stands level with their bands; beside the sheets of a long side it centres between them) */
+${WIDE} .cot-bl .teams:has(>.team.cards) .vs{align-self:end;padding-bottom:34px;}
 /* A hero card (the live hero card's layers, heroCard.ts): the nation's flag and the vehicle over the card's ground, the
    vehicle's name in the band under it, the side's ink along the floor, the player's card ringed in the accent. */
 ${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;isolation:isolate;container-type:size;background:var(--surface-raised);
@@ -291,14 +295,15 @@ ${WIDE} .cot-bl .team.cards .row.card .fl{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card.cot-hc .sil{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-index:var(--battle-z-card-fade);left:0;right:0;bottom:0;height:calc(var(--hc-band) + 8px);
   background:var(--media-fade);pointer-events:none;}
-${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 var(--fs-11)/1.1 var(--font-ui);
+${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.1 var(--font-ui);
   text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:left;}
 ${WIDE} .cot-bl .team.foe.cards .row.card .nm{text-align:left;}
-/* the driver under the vehicle's name: the band grows a line so the tank keeps clear of both */
-${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:42px;}
+/* the driver under the vehicle's name: the band holds a two-line name and the driver, so the tank keeps clear of all
+   three (gauntlet r1: "LEOPARD / 2A5" ran its first line over the tank) */
+${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:54px;}
 ${WIDE} .cot-bl .team.cards .row.card.has-cs .nm{bottom:24px;}
 ${WIDE} .cot-bl .team.cards .row.card .cs{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:7px;margin:0;
-  font:500 var(--fs-11)/1.2 var(--font-mono);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 ${WIDE} .cot-bl .team.cards .row.card.me .cs{color:var(--accent-hi);}
 ${WIDE} .cot-bl .team.cards .row.card .tier{position:absolute;z-index:var(--battle-z-card-text);top:6px;left:6px;flex:none;padding:2px 4px;border-radius:var(--r1);
   background:var(--glyph-plate);}

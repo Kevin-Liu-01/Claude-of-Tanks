@@ -125,12 +125,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-special{right:182px}
 
 /* Debrief actions get their own row. Only the report scrolls, so the last
-   combatant can never disappear behind a fixed Battle Again/Garage footer. */
+   combatant can never disappear behind a fixed Battle Again/Garage footer. The report takes the window's height (a
+   600 px cap left a 2560x1440 report 420 px of empty floor, gauntlet r1). */
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es{
   height:var(--cot-viewport-height,100dvh);box-sizing:border-box;padding:var(--s3) var(--cot-edge);overflow:hidden;
 }
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-report{
-  flex:1 1 0;min-height:0;max-height:600px;overflow:auto;overscroll-behavior:contain;
+  flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;pointer-events:auto;
 }
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{

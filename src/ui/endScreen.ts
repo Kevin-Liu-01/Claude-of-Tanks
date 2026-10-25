@@ -305,6 +305,7 @@ const ES_CSS = `
 .cot-es .es-campaign .stars i{color:var(--ink-4);}
 .cot-es .es-campaign .stars i.on{color:var(--accent);}.cot-es .es-campaign .stars i.on svg{fill:currentColor}
 .cot-es .es-campaign .cn{margin-top:6px;font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);}
+.cot-es .ss .seg{white-space:nowrap;}
 /* --- two-column debrief --------------------------------------------------- */
 .cot-es .es-report{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
   align-items:stretch;gap:var(--s3);width:1160px;max-width:96vw;height:clamp(300px,45vh,390px);
@@ -381,15 +382,16 @@ body.cot-es-armed .cot-end{display:none !important;}
   border-bottom:1px solid var(--line-3);margin-bottom:var(--s1);
   display:flex;justify-content:space-between;}
 .cot-es .es-ph .ph-title{display:flex;align-items:center;gap:7px}.cot-es .es-ph svg{flex:0 0 auto}
-.cot-es .es-ph.ally{color:${COL.green};border-bottom-color:oklch(from var(--team-own) l c h / .35);}
-.cot-es .es-ph.foe{color:${COL.red};border-bottom-color:oklch(from var(--team-enemy) l c h / .35);}
+.cot-es .es-ph.ally{color:var(--text-own);border-bottom-color:oklch(from var(--team-own) l c h / .35);}
+.cot-es .es-ph.foe{color:var(--text-enemy);border-bottom-color:oklch(from var(--team-enemy) l c h / .35);}
 .cot-es .es-scoreboard{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:86px;
   padding:10px 22px;border-bottom:1px solid var(--line-2);background:var(--battle-chip-plate);}
 .cot-es .es-score-side{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s3);}
 .cot-es .es-score-side.foe{text-align:right;grid-template-columns:auto 1fr}.cot-es .es-score-copy{min-width:0}
 .cot-es .es-score-side .sl{font:700 var(--battle-fs-12) ${FONT_COND};letter-spacing:var(--track-label);text-transform:uppercase;}
 .cot-es .es-score-side .sl{display:flex;align-items:center;gap:7px}.cot-es .es-score-side.foe .sl{justify-content:flex-end}
-.cot-es .es-score-side.ally .sl{color:${COL.green}}.cot-es .es-score-side.foe .sl{color:${COL.red}}
+/* (each side in its team's ink: Alpha read mint green beside its blue flag and title, gauntlet r1) */
+.cot-es .es-score-side.ally .sl{color:var(--text-own)}.cot-es .es-score-side.foe .sl{color:var(--text-enemy)}
 .cot-es .es-score-side .ss{margin-top:5px;font-size:var(--battle-fs-11);color:var(--ink-3);}
 .cot-es .es-score-side .sn{font:700 38px ${FONT_COND};color:var(--ink-1);line-height:1;}
 .cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:var(--ink-4);}
@@ -422,8 +424,8 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .ov{text-align:right;font:700 11.5px ${FONT_COND};line-height:1;color:var(--ink-1);
   letter-spacing:-.01em;}
 .cot-es .es-tr .obar{display:block;height:2px;background:oklch(from var(--ink-3) l c h / .16);overflow:hidden;}
-.cot-es .es-tr .obar i{display:block;height:100%;background:${COL.green};}
-.cot-es .es-tr.foe .obar i{background:${COL.red};}.cot-es .es-tr.me .obar i{background:${COL.gold};}
+.cot-es .es-tr .obar i{display:block;height:100%;background:var(--team-own);}
+.cot-es .es-tr.foe .obar i{background:var(--team-enemy);}.cot-es .es-tr.me .obar i{background:${COL.gold};}
 .cot-es .es-tr.me .ov{color:${COL.gold};}
 .cot-es .es-tr .st{display:grid;place-items:center;flex:0 0 18px;
   color:${COL.green};filter:drop-shadow(0 0 5px oklch(from var(--ok) l c h / .3));}
@@ -606,6 +608,12 @@ function vehicleName(specId: string | null | undefined): string {
  *   so main.ts's veilHud/statsRoot seams keep addressing the live surface
  * @returns {{show:Function,hide:Function,visible:boolean,root:HTMLElement}}
  */
+/** A " · " line as its parts: a wrapped line starts with its dot, never ends on one (gauntlet r1: "5 / 21 survived ·" over
+ *  "111,300 damage"). */
+function dotLine(text: string): string {
+  return text.split(' · ').map((part, index) => `<span class="seg">${index ? '·\u00a0' : ''}${escapeHtml(part)}</span>`).join(' ');
+}
+
 export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
   ensureFonts();
   ensureStyle('cot-es-style', ES_CSS, 'surfaces');
@@ -989,7 +997,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const score = el('div', 'es-score', headline);
       score.setAttribute('role', 'img');
       score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
-      score.innerHTML = `<span class="o">${own}</span><span class="e">${enemy}</span>`;
+      score.innerHTML = `<span class="o">${own}</span><span class="sep" aria-hidden="true">–</span><span class="e">${enemy}</span>`;
     }
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
@@ -1185,6 +1193,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     for (const beat of beats) {
       const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
       mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
+      if (beat.labelled) mark.style.setProperty('--room', beat.room.toFixed(3));
       if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
       else mark.dataset.tip = beatText(beat, rows);
       el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
@@ -1354,12 +1363,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     scoreboard.innerHTML =
       '<div class="es-score-side ally"><div class="es-score-copy">' +
       `<div class="sl">${watchedView ? sideFlag('alpha') : uiIconSVG('team', 16)}<span>${allyTitle()}</span></div>` +
-      `<div class="ss">${t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) })}</div>` +
+      `<div class="ss">${dotLine(t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) }))}</div>` +
       `</div><div class="sn">${fmtN(allyStats.kills)}</div></div>` +
       '<div class="es-score-dash">—</div>' +
       `<div class="es-score-side foe"><div class="sn">${fmtN(enemyStats.kills)}</div>` +
       `<div class="es-score-copy"><div class="sl"><span>${enemyTitle()}</span>${watchedView ? sideFlag('bravo') : uiIconSVG('team', 16)}</div>` +
-      `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
+      `<div class="ss">${dotLine(t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) }))}</div>` +
       '</div></div>';
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),

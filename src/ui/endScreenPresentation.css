@@ -16,6 +16,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-ban.v{color:var(--accent)}body[d
 body[data-cot-width] .cot-es.cot-es--record .es-ban.n{color:var(--ink-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-score{display:inline-flex;gap:.3em;font:700 clamp(26px,4.5vw,78px)/.84 var(--font-ui)}
 body[data-cot-width] .cot-es.cot-es--record .es-score .o{color:var(--team-own)}
+/* (the two sides' kills read as a score, not one figure: "40 40" read 4040, gauntlet r1) */
+body[data-cot-width] .cot-es.cot-es--record .es-score .sep{color:var(--ink-3);font-weight:500}
 body[data-cot-width] .cot-es.cot-es--record .es-score .e{color:transparent;-webkit-text-stroke:var(--hollow-stroke) var(--team-enemy)}
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-score .e{color:var(--team-enemy);-webkit-text-stroke:0}
 body[data-cot-width] .cot-es.cot-es--record .es-rule{display:none}
@@ -112,30 +114,32 @@ body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){display:g
   grid-template-rows:minmax(0,1fr);gap:var(--s3);overflow:hidden;background:none;box-shadow:none;margin-top:var(--s4)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>:is(.es-debrief,.es-debrief[hidden]){display:block;min-height:0;
   height:auto;overflow:auto;scrollbar-width:thin;border-radius:var(--r1);box-shadow:var(--e2)}
-/* less text (page 11): the tallies are their glyph over their figure (the label on hover and for screen readers), and the
-   result's flavour line goes the same way (the card names the vehicle, the chips the battle) */
-body[data-cot-width]:not(.cot-touch-layout) .cot-es.cot-es--record:has(.es-report>.personal) :is(.es-tal .k>span,.es-mini .mk>span,.es-hero .es-sub){
+/* less text (page 11): the result's flavour line is for screen readers (the card names the vehicle, the chips the
+   battle); the tallies keep their names beside their glyphs, as the narrower windows do (gauntlet r1: a glyph over "0" or
+   "900" named nothing) */
+body[data-cot-width]:not(.cot-touch-layout) .cot-es.cot-es--record:has(.es-report>.personal) .es-hero .es-sub{
   position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 body[data-cot-width]:not(.cot-touch-layout) .cot-es.cot-es--record:has(.es-report>.personal) :is(.es-tal .k,.es-mini .mk){color:var(--ink-3)}
-body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-debrief.more{-webkit-mask-image:var(--battle-scroll-fade);
-  mask-image:var(--battle-scroll-fade)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-rosters{grid-template-columns:minmax(0,1fr)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-rematch{grid-column:1/-1}
 }
+/* a report column that scrolls fades at its foot while more lies below, at every window (gauntlet r1: the narrower ones
+   cut their medals at the action bar with no cue) */
+body[data-cot-width] .cot-es.cot-es--record .es-debrief.more{-webkit-mask-image:var(--battle-scroll-fade);mask-image:var(--battle-scroll-fade)}
 /* every vehicle carries its flag beside its silhouette (11-end-screen .who) */
 body[data-cot-width] .cot-es.cot-es--record .fl{display:inline-flex;flex:0 0 auto}
 /* a flag's box is held before flags.ts fills it (after the report is up), so nothing beside it moves when it lands */
 body[data-cot-width] .cot-es.cot-es--record .fl[data-nation]{width:16px;height:12px}
 /* the battle's timeline (11-end-screen .beat): one line from the start to the result, a diamond per beat (the enemy's
    ink for what the player lost), its label above and its battle time under it; the wide windows of standard height */
-body[data-cot-width] .cot-es.cot-es--record .es-beat{position:relative;flex:0 0 auto;align-self:stretch;height:64px;margin:14px 30px 0 22px}
+body[data-cot-width] .cot-es.cot-es--record .es-beat{position:relative;flex:0 0 auto;align-self:stretch;height:64px;margin:14px 30px 0 22px;container-type:inline-size}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .ln{position:absolute;inset:31px 0 auto;height:2px;background:var(--line-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .ev{position:absolute;top:32px;width:0;height:0}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .d{position:absolute;left:-6px;top:-6px;width:12px;height:12px;transform:rotate(45deg);
   background:var(--accent);box-shadow:var(--battle-beat-ring)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .d.loss{background:var(--team-enemy)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .lb{position:absolute;bottom:14px;left:0;transform:translateX(-50%);display:flex;
-  align-items:center;gap:6px;max-width:180px;padding:5px var(--s2);white-space:nowrap;border-radius:var(--chip-radius);
+  align-items:center;gap:6px;max-width:min(280px,calc(var(--room,.12) * 100cqi - 8px));padding:5px var(--s2);white-space:nowrap;border-radius:var(--chip-radius);
   background:var(--battle-tip-plate);box-shadow:var(--e1);font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .lb svg{flex:0 0 auto;color:var(--ink-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .tx{min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -201,7 +205,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:156px}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{max-height:150px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:74px;padding:10px var(--s3);gap:6px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:var(--battle-fs-28)}
-body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:var(--fs-40)}
+/* (the lead tile is its accent alone, on the grid with the others: a 40 px figure stood it 16 px taller, gauntlet r1) */
 /* the rosters as the direction's tables: one line a row, the side's head over glyph columns, no scoreboard (the
    headline carries the score) */
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{display:none}

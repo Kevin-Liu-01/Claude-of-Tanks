@@ -28,7 +28,7 @@ if(new URLSearchParams(location.search).has('scene')){
 }
 const host=document.createElement('div');host.className='cot-si-stats';document.body.append(host);
 const report=createEndScreen(bus,host);
-const rows=(side,count)=>Array.from({length:count},(_,i)=>({id:`${side}-${i}`,name:i?'Commander_Long_Name_'+i:'Kestrel_77',specId:i%2?'t90am':'m1a1_abrams_hc',kills:i%5,dmg:8400-i*310,dead:i>4,isPlayer:side==='ally'&&i===0}));
+const rows=(side,count)=>Array.from({length:count},(_,i)=>({id:`${side}-${i}`,name:i||side!=='ally'?'Commander_Long_Name_'+i:'Kestrel_77',specId:i%2?'t90am':'m1a1_abrams_hc',kills:i%5,dmg:8400-i*310,dead:i>4,isPlayer:side==='ally'&&i===0}));
 const summary={playerVehicle:'M1A1 Abrams HC',playerSpecId:'m1a1_abrams_hc',map:getLocalizedMapName('verdant'),mapId:'verdant',mode:'zone_control',timeS:480,reason:'elimination',stats:{dealt:8420,received:1230,blocked:3600,fired:20,hits:17,pens:12,assist:900},kills:rows('kill',5),bestShot:{damage:1840,targetName:'T-90M',zone:zoneLabel('turret'),distM:630,destroyed:true},allies:rows('ally',21),enemies:rows('enemy',21),awards:{medals:['chain_of_thought','ace_gunner','first_blood','long_shot'],achievements:[{id:'chain_thinker',tier:2}],bestChain:4},
  beats:[{t:41,kind:'spot'},{t:135,kind:'kill',id:'enemy-1',specId:'t90am'},{t:278,kind:'zone',own:true,label:'B'},{t:362,kind:'kill',id:'enemy-3',specId:'t90am'},{t:400,kind:'loss',id:'trackL'},{t:455,kind:'kill',id:'enemy-6',specId:'m1a1_abrams_hc'}]};
 function show(result='victory',room=false,awards=true){
