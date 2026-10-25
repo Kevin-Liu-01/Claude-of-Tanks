@@ -282,8 +282,9 @@ const SETTINGS_CSS = `
   min-width:12px;height:12px;padding:0 2px;display:grid;place-items:center;border-radius:2px;
   font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
 .cot-setting-label-text{min-width:0;}
-.cot-set-row.conflict{background:oklch(from var(--danger) l c h / .12);box-shadow:inset 2px 0 0 var(--danger);}
-.cot-set-row.conflict .cot-chip{box-shadow:var(--ring-danger);}
+/* the rows in a conflict: the notice's warning tone, no stripe */
+.cot-set-row.conflict{background:color-mix(in srgb,var(--text-warn) 9%,transparent);}
+.cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
 .cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
@@ -307,12 +308,10 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]:focus{outline:none;}
 .cot-set-slider input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 @keyframes cotChipPulse{50%{opacity:.7;}}
-.cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;padding:var(--s2) var(--s3);align-items:center;gap:var(--s3);
-  background:oklch(from var(--danger) l c h / .12);box-shadow:inset 3px 0 0 var(--danger);border-radius:var(--control-radius);
-  font:500 max(13px,var(--fs-13))/1.4 var(--font-body);color:var(--ink-1);}
+/* the binding conflict is the kit's notice (components/notices.css); the panel only places and shows it */
+.cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;}
 .cot-set-conflict.show{display:flex;}
-.cot-set-conflict b{color:var(--text-danger);font-weight:600;}
-.cot-set-conflict .msg{flex:1;}
+.cot-set-conflict b{color:var(--text-warn);font-weight:600;}
 /* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
 .cot-set-ftr{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
@@ -418,7 +417,7 @@ body.cot-hud-aerial .cot-hints{display:none;}
 .cot-set-seg .sw{display:inline-flex;gap:2px;}
 .cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
 .cot-a11y-custom{display:flex;align-items:center;gap:var(--s2);}
-.cot-set-note.refused{color:var(--text-danger);}
+.cot-set-refused{margin:var(--s2) var(--s2) 0;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
@@ -511,9 +510,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.accessibility')}</button>` +
     `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
     `</div>` +
-    `<div class="cot-set-conflict"><span class="msg"></span>` +
+    // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
+    `<div class="cot-set-conflict cot-c-notice" data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('lampWarn', 20)}</span>` +
+    `<span class="cot-c-notice__body"><span class="cot-c-notice__text msg"></span></span><span class="cot-c-notice__acts">` +
     `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
-    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></div>` +
+    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn ghost reset cot-c-btn cot-c-btn--ghost" type="button">${t('settings.reset')}</button>` +
@@ -1407,8 +1408,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const enemyPick = el('input', 'cot-c-swatch', custom);
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
-    const refused = el('div', 'cot-set-note refused', vision);
-    refused.setAttribute('role', 'status');
+    // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
+    const refused = el('div', 'cot-c-notice cot-set-refused', vision);
+    refused.dataset.severity = 'error';
+    refused.setAttribute('role', 'alert');
+    refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('lampDown', 20)}</span>`
+      + '<span class="cot-c-notice__body"><span class="cot-c-notice__text"></span></span>';
+    const refusedText = requiredElement<HTMLSpanElement>(refused, '.cot-c-notice__text');
     const syncCustom = (): void => {
       ownPick.value = prefs().customOwn;
       enemyPick.value = prefs().customEnemy;
@@ -1426,7 +1432,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         return;
       }
       refused.hidden = false;
-      refused.textContent = t('settings.a11y.refused');
+      refusedText.textContent = t('settings.a11y.refused');
       const blames = (side: string): boolean => check.failures.some((f) => f.check.split(/[~ ]/)[0] === side
         || f.check.endsWith(`~${side}`));
       ownPick.setAttribute('aria-invalid', String(blames('own')));

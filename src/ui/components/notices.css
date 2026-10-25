@@ -24,11 +24,12 @@
 .cot-c-notice__count{flex:none;align-self:center;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
 .cot-c-notice__acts{display:flex;flex-wrap:wrap;align-self:center;gap:var(--s2)}
 .cot-c-notice__close{flex:none;margin:-6px -6px -6px 0}
+.cot-c-notice[hidden]{display:none}
 .cot-c-notice--banner{width:100%;border-radius:0}
 .cot-c-notice--toast{box-shadow:var(--e3);
   transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter)}
 .cot-c-notice--toast[data-state]{opacity:0;transform:translateY(4px)}
-.cot-c-notice--toast:focus-visible{outline:none;box-shadow:var(--e3),var(--focus-ring)}
+.cot-c-notice--toast:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media (prefers-reduced-motion:reduce){.cot-c-notice--toast[data-state]{transform:none}}
 
 /* ---- a placed region: a fixed column of toasts that never moves the page ---- */
