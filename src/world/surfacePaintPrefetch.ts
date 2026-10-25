@@ -21,6 +21,7 @@ export function surfacePaintKey(request: SurfacePaintRequest): string {
   switch (request.kind) {
     case 'hay': return `hay|${request.size}|${request.seed}`;
     case 'fieldStone': return `fieldStone|${request.size}|${request.seed}|${request.lithology ?? 'fieldstone'}`;
+    case 'fieldMud': return `fieldMud|${request.size}|${request.seed}`;
     case 'rockDetail': return `rockDetail|${request.lithology}|${request.noiseSeed}`;
     case 'structureDetail': return `structureDetail|${request.detail}|${request.noiseSeed}`;
     default: throw new Error(`Unknown surface paint ${(request as { kind?: string }).kind}`);
