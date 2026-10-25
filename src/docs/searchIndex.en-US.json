@@ -51,7 +51,7 @@
   "href": "/docs/controls#keys",
   "title": "Keys, mouse and gamepad",
   "chapter": "Controls and Watch",
-  "text": "Every action and its default keys, named as the settings list them. Change any of them in Settings. Movement Action Keys Gamepad Move forward W – Move back S – Steer left A – Steer right D – Handbrake SPACE A Flip tank F – Combat Action Keys Gamepad Fire gun LMB RT Sniper mode L-SHIFT LT Shell slot 1 1 D-UP Shell slot 2 2 D-LEFT Shell slot 3 3 D-RIGHT Drop ammunition supplies J – Drop health supplies K – Cycle sensor view I – Drone V – Smoke G – Lights N – Auto gun B – Special action E LB Reload magazine C D-DOWN Auto-aim lock T – Armor overlay (hitboxes) H – Consumables Action Keys Gamepad Repair kit 4 X First aid kit 5 Y Fire extinguisher 6 B Camera Action Keys Gamepad Gun hold (free aim) CAPS L-ALT RB Aim / free look (RMB) RMB – Zoom in WHEEL ↑ – Zoom out WHEEL ↓ – Interface Action Keys Gamepad Minimap zoom M BACK Shot info log L – Performance overlay F8 – Network details F3 – Leave battle F4 – Reset Range R – Moving Targets Y – Settings menu ESC START"
+  "text": "Movement Action Keys Gamepad Move forward W – Move back S – Steer left A – Steer right D – Handbrake SPACE A Flip tank F – Combat Action Keys Gamepad Fire gun LMB RT Sniper mode L-SHIFT LT Shell slot 1 1 D-UP Shell slot 2 2 D-LEFT Shell slot 3 3 D-RIGHT Drop ammunition supplies J – Drop health supplies K – Cycle sensor view I – Drone V – Smoke G – Lights N – Auto gun B – Special action E LB Reload magazine C D-DOWN Auto-aim lock T – Armor overlay (hitboxes) H – Consumables Action Keys Gamepad Repair kit 4 X First aid kit 5 Y Fire extinguisher 6 B Camera Action Keys Gamepad Gun hold (free aim) CAPS L-ALT RB Aim / free look (RMB) RMB – Zoom in WHEEL ↑ – Zoom out WHEEL ↓ – Interface Action Keys Gamepad Minimap zoom M BACK Shot info log L – Performance overlay F8 – Network details F3 – Leave battle F4 – Reset Range R – Moving Targets Y – Settings menu ESC START"
  },
  {
   "href": "/docs/controls#hold",
@@ -87,7 +87,7 @@
   "href": "/docs/modes#glance",
   "title": "At a glance",
   "chapter": "Game modes",
-  "text": "Each row opens its mode below. Mode Win by Clock Respawn Sides Standard Battle Destroy every enemy 15 min — 7 v 7 Capture the Flag 3 captures 15 min 6 s 7 v 7 Zone Control 750 points 15 min 6 s 7 v 7 Gravity Mode 750 points 12 min 6 s 7 v 7 Gun Game A kill with all 5 guns 15 min 4 s 7 v 7 Drone 20 kills 10 min 6 s 7 v 7 Realistic Destroy every enemy 15 min — 7 v 7 Endless Horde Survive the waves — — 5 v 20 Frontline Assault Take every sector, hold the last 20 s 12 min — 4 v 12 AC-130 Escort half to extraction 8 min — 5 v 12 Juggernaut Kill the boss, or outlast the clock 10 min 6 s 1 v 12 Infected Survive 3 min 3 min 5 s 10 v 5 Turbo Ball 5 goals 10 min 3 s 7 v 7 Proving Ground Practice, no score — 3 s 5 lanes Your spawn Enemy spawn A A Zone or sector Flag base Goal Ball"
+  "text": "Mode Win by Clock Respawn Sides Standard Battle Destroy every enemy 15 min — 7 v 7 Capture the Flag 3 captures 15 min 6 s 7 v 7 Zone Control 750 points 15 min 6 s 7 v 7 Gravity Mode 750 points 12 min 6 s 7 v 7 Gun Game A kill with all 5 guns 15 min 4 s 7 v 7 Drone 20 kills 10 min 6 s 7 v 7 Realistic Destroy every enemy 15 min — 7 v 7 Endless Horde Survive the waves — — 5 v 20 Frontline Assault Take every sector, hold the last 20 s 12 min — 4 v 12 AC-130 Escort half to extraction 8 min — 5 v 12 Juggernaut Kill the boss, or outlast the clock 10 min 6 s 1 v 12 Infected Survive 3 min 3 min 5 s 10 v 5 Turbo Ball 5 goals 10 min 3 s 7 v 7 Proving Ground Practice, no score — 3 s 5 lanes Your spawn Enemy spawn A A Zone or sector Flag base Goal Ball"
  },
  {
   "href": "/docs/modes#team",
@@ -123,7 +123,7 @@
   "href": "/docs/tanks#classes",
   "title": "Classes",
   "chapter": "Tanks and equipment",
-  "text": "221 tanks in 9 classes. Each card shows the class's highest-tier tank. Main battle tank 159 AbramsX Medium tank 7 Carro 45t Heavy tank 1 KV-2 Light tank 6 BMP-3M Dragun 125 Infantry fighting vehicle 35 Ajax Armored personnel carrier 1 Ares APC Tank destroyer 7 AFT-10 Self-propelled anti-aircraft 1 M6 Linebacker Fire support vehicle 4 BMPT T-90 Open any of them in the Tank Gallery"
+  "text": "221 tanks in 9 classes. Main battle tank 159 AbramsX Medium tank 7 Carro 45t Heavy tank 1 KV-2 Light tank 6 BMP-3M Dragun 125 Infantry fighting vehicle 35 Ajax Armored personnel carrier 1 Ares APC Tank destroyer 7 AFT-10 Self-propelled anti-aircraft 1 M6 Linebacker Fire support vehicle 4 BMPT T-90 Open any of them in the Tank Gallery"
  },
  {
   "href": "/docs/tanks#roles",

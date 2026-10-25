@@ -318,6 +318,8 @@ const SETTINGS_CSS = `
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
 .cot-set-btn[hidden]{display:none;}
+/* a footer with nothing to offer (no Reset on this tab, no battle to leave) takes no room */
+.cot-set-ftr:not(:has(.cot-set-btn:not([hidden]))){display:none;}
 /* sliders: a line track with an ink fill (--f set from JS) and a square knob */
 .cot-set-slider{display:flex;align-items:center;gap:var(--s3);}
 .cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
@@ -536,8 +538,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn reset cot-c-btn" type="button">${t('settings.reset')}</button>` +
-    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button">${t('settings.leave')}</button>` +
-    `<button class="cot-set-btn resume cot-c-btn cot-c-btn--primary" type="button">${t('settings.resume')}</button></div>` +
+    // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
+    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
 
@@ -546,7 +548,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.msg');
   const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
-  const resumeBtn = requiredElement<HTMLButtonElement>(root, '.resume');
 
   // settings_ui r2: overflow-gated scroll fades on the rows area (garage r9
   // .can-scroll pattern, split per edge so the top fade only appears once the
@@ -1453,7 +1454,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const refused = el('div', 'cot-c-notice cot-set-refused', vision);
     refused.dataset.severity = 'error';
     refused.setAttribute('role', 'alert');
-    refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('lampDown', 20)}</span>`
+    refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`
       + '<span class="cot-c-notice__body"><span class="cot-c-notice__text"></span></span>';
     const refusedText = requiredElement<HTMLSpanElement>(refused, '.cot-c-notice__text');
     const syncCustom = (): void => {
@@ -1856,10 +1857,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // player back to CONTROLS every time.
     renderTab();
     const canLeave = !!(canLeaveBattle() && onLeaveBattle);
-    leaveBtn.style.display = canLeave ? 'block' : 'none';
-    // settings_ui r2: the footer primary reads RESUME only where there is a
-    // battle to resume — the garage gear context labels the same button CLOSE.
-    resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
+    leaveBtn.hidden = !canLeave;
     root.classList.add('open');
     requiredElement<HTMLElement>(root, '.cot-set-panel').focus({ preventScroll: true });
     scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
@@ -1900,7 +1898,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   root.addEventListener('mousedown', (e) => e.stopPropagation()); // keep clicks off the game layer
   requiredElement<HTMLButtonElement>(root, '.cot-set-close').addEventListener('click', () => api.close());
-  resumeBtn.addEventListener('click', () => api.close());
   leaveBtn.addEventListener('click', () => {
     if (!onLeaveBattle || !canLeaveBattle()) return;
     relockOnClose = false;

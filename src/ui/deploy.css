@@ -65,7 +65,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-card-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cot-garage .cot-deploy-card .choice-icon{position:absolute;z-index:var(--z-lift);left:12px;top:12px;width:38px;height:38px;
   display:grid;place-items:center;border-radius:var(--control-radius);background:var(--glyph-plate);box-shadow:var(--ring-3);
-  color:var(--mode-color);}
+  color:var(--ink-1);}
 .cot-garage .cot-deploy-card .choice-icon svg{width:21px;height:21px;}
 .cot-garage .cot-deploy-card .cot-deploy-choice-t{position:absolute;z-index:var(--z-lift);left:14px;right:12px;bottom:12px;
   display:flex;flex-direction:column;gap:var(--s3);}
@@ -82,7 +82,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-rows .cot-battle-choice{display:flex;align-items:center;gap:var(--s3);min-height:54px;padding:0 var(--s3) 0 var(--s2);border:0;
   border-radius:var(--control-radius);background:var(--row-plate);box-shadow:var(--e1);color:var(--ink-1);text-align:left;cursor:pointer;}
 .cot-garage .cot-deploy-rows .choice-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:var(--control-radius);
-  background:var(--fill-soft);color:var(--mode-color);}
+  background:var(--fill-soft);color:var(--ink-1);}
 .cot-garage .cot-deploy-rows .choice-icon svg{width:21px;height:21px;}
 .cot-garage .cot-deploy-rows .choice-name{display:block;margin-bottom:var(--s2);font:600 var(--fs-15)/1 var(--font-display);text-transform:uppercase;}
 .cot-garage .cot-deploy-rows .cot-battle-choice[aria-pressed='true']{box-shadow:var(--ring-accent);background:var(--accent-wash);}
@@ -288,8 +288,9 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-battle-menu.open .cot-time-choice{flex:none;min-width:0;}
 .cot-garage .cot-battle-menu.open .cot-time-content{flex-direction:row;}
 .cot-garage .cot-battle-menu.open .cot-time-content svg{width:16px;height:16px;flex:none;}
+/* a chosen time or side reads as every selected tile does: the accent edge over the accent wash */
 .cot-garage .cot-battle-menu.open :is(.cot-sides-choice[aria-pressed='true'],.cot-time-choice input:checked+.cot-time-content){
-  background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+  background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent);}
 .cot-garage .cot-battle-menu.open .cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
 .cot-garage .cot-battle-menu.open .cot-battle-times small,.cot-garage .cot-battle-menu.open .cot-time-check{display:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-sides-custom{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:end;}
@@ -448,4 +449,13 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
 }
 /* touch: the screen's tabs and option pickers meet the control floor (44 px) */
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tablist [role=tab],.cot-c-seg__opt,.cot-time-content,.cot-sides-choice){min-height:var(--cot-control-floor);}
+/* the scrim token under a picture card's title band (the band reaches the card's edges), so the name holds 4.5:1 over the
+   brightest art */
+.cot-garage .cot-deploy-card .cot-deploy-choice-t{left:0;right:0;bottom:0;padding:var(--s5) var(--s3) var(--s3) 14px;
+  background:linear-gradient(0deg,var(--scrim) 60%,transparent);}
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-deploy-choice-t{margin:0 calc(var(--s2) * -1) calc(var(--s2) * -1) calc(var(--s3) * -1);
+  padding:var(--s4) var(--s2) var(--s2) var(--s3);background:linear-gradient(0deg,var(--scrim) 60%,transparent);}
+/* a phone's dock is fixed over the screen's foot: the battlefield picker keeps its height free, so it scrolls clear */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open{--deploy-dock-h:calc(58px + var(--s3) + max(10px,env(safe-area-inset-bottom)) + 1px);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-pop{padding-bottom:calc(var(--s3) + var(--deploy-dock-h));}
 }

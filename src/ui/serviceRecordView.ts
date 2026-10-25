@@ -211,7 +211,7 @@ function medals(view: ServiceRecordView): string {
         (tally
           ? `<span class="cot-record-medal-count">${t('garage.record.earnedCount', { count: num(tally.count) })}<small>${t('garage.record.firstEarned', { date: when(tally.first) })}</small></span>`
           : `<span class="cot-record-medal-count none cot-record-sr">${t('garage.record.notEarned')}</span>`) +
-        `</div>${fresh ? tag(t('garage.record.new'), 'ok').replace('class="', 'class="cot-record-new ') : ''}</article>`;
+        `</div>${fresh ? tag(t('garage.record.new'), 'ok', 'cot-record-new') : ''}</article>`;
     }).join('');
     return `<section class="cot-record-medal-group" data-group="${group}">` +
       `<h3><span>${t(`service.group.${group}`)}</span><small>${num(earned)} / ${num(list.length)}</small></h3>` +
@@ -228,7 +228,7 @@ function achievementCard(entry: AchievementProgress, fresh: boolean): string {
   return `<article class="cot-record-ach tier-${tier}${fresh ? ' is-new' : ''}" data-achievement="${def.id}">` +
     `<button type="button" class="cot-record-ach-art" data-achievement-tip="${def.id}" data-award-tier="${tier || 1}" aria-label="${safe(t(`service.achievement.${def.id}.name`))}">${achievementSVG(def, tier, 64)}</button>` +
     `<div class="cot-record-ach-copy"><div class="cot-record-ach-title"><strong>${t(`service.achievement.${def.id}.name`)}</strong>` +
-    `${fresh ? tag(t('garage.record.new'), 'ok').replace('class="', 'class="cot-record-new ') : ''}${tier ? `<span class="cot-record-tier">${ROMAN[tier]}</span>` : ''}</div>` +
+    `${fresh ? tag(t('garage.record.new'), 'ok', 'cot-record-new') : ''}${tier ? `<span class="cot-record-tier">${ROMAN[tier]}</span>` : ''}</div>` +
     `<p>${t(`service.achievement.${def.id}.desc`, { target: num(target) })}</p>` +
     `<div class="cot-record-bar" role="progressbar" aria-label="${safe(t(`service.achievement.${def.id}.name`))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${pct.toFixed(1)}%"></i></div>` +
     `<div class="cot-record-ach-meta"><span>${num(Math.min(value, target))} / ${num(target)}</span>` +

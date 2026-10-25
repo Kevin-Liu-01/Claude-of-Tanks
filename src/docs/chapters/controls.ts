@@ -129,7 +129,7 @@ function hudSection(): string {
 
 export function controlsSections(): RichSection[] {
   const sections: Array<[string, string, string]> = [
-    ['keys', t('docs.controls.keys'), `<p>${esc(t('docs.controls.keysLede'))}</p>${bindingTables()}`],
+    ['keys', t('docs.controls.keys'), bindingTables()],
     ['hold', t('docs.controls.hold'), `<p>${esc(t('docs.controls.holdLede'))}</p><ul class="dm-chips">`
       + `${SWITCHABLE.map((id) => `<li>${esc(t(ACTION_DEFS.find((action) => action.id === id)?.label ?? id))}</li>`).join('')}`
       + `<li>${esc(t('docs.controls.holdRoster'))}</li></ul>`],

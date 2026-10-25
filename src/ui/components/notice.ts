@@ -25,7 +25,7 @@ import { attrs, esc, type Attrs } from './escape.ts';
 export type NoticeSeverity = 'info' | 'success' | 'warning' | 'error' | 'progress';
 
 /** Each severity's glyph (its tone comes from notices.css). */
-const GLYPH: Readonly<Record<NoticeSeverity, IconId>> = { info: 'info', success: 'check', warning: 'lampWarn', error: 'lampDown', progress: 'clock' };
+const GLYPH: Readonly<Record<NoticeSeverity, IconId>> = { info: 'info', success: 'check', warning: 'lampWarn', error: 'alert', progress: 'clock' };
 /** How long a toast stays by severity, in ms; null: until it is dismissed (an error, a progress). */
 const DURATION: Readonly<Record<NoticeSeverity, number | null>> = { info: 4500, success: 4500, warning: 7000, error: null, progress: null };
 

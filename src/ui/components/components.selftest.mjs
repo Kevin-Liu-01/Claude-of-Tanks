@@ -189,7 +189,7 @@ assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'u
 /* 4. notifications ------------------------------------------------------------------------------------------- */
 const { notice, banner, NoticeQueue, toastDuration } = await import('./notice.ts');
 const inline = notice({ severity: 'error', text: 'Refused <colours>', detail: 'Below the floor', actions: [{ label: 'Fix', primary: true, attrs: { 'data-fix': true } }] });
-assert.match(inline, /^<div class="cot-c-notice" data-severity="error" role="alert"><span class="cot-c-notice__glyph"><svg [^>]*><use href="#i-lampDown"\/>/, 'an error is an alert with its glyph');
+assert.match(inline, /^<div class="cot-c-notice" data-severity="error" role="alert"><span class="cot-c-notice__glyph"><svg [^>]*><use href="#i-alert"\/>/, 'an error is an alert with its stroke alert glyph (250 ruling: not the filled lamp)');
 assert.match(inline, /Refused &lt;colours&gt;<\/span><span class="cot-c-notice__detail">Below the floor<\/span>/, 'text and detail escaped');
 assert.match(inline, /<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--primary" data-ui-sound="press" data-fix>Fix<\/button>/);
 assert.match(notice({ text: 'Saved', severity: 'success' }), /role="status"/, 'any other severity is a status');

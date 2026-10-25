@@ -91,8 +91,8 @@ export function chip(options: ChipOptions): string {
 
 type TagTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 /** A short status word (New, Recommended, Campaign 3/6): at most 14 characters. */
-export function tag(text: string, tone: TagTone = 'neutral'): string {
-  return `<span class="cot-c-tag cot-c-tag--${tone}">${esc(text)}</span>`;
+export function tag(text: string, tone: TagTone = 'neutral', className = ''): string {
+  return `<span class="cot-c-tag cot-c-tag--${tone}${className ? ` ${esc(className)}` : ''}">${esc(text)}</span>`;
 }
 
 interface StatChipOptions {
