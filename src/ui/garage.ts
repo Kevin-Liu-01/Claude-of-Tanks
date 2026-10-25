@@ -2920,6 +2920,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         specs,
         setFilter: setRosterFacetFilter,
         click: () => emit('ui:click', {}),
+        onOpenChange: (open) => root.classList.toggle('facets-open', open),
       }));
     facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
   });

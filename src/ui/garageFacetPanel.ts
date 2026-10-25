@@ -43,6 +43,8 @@ interface GarageFacetHost {
   setFilter(match: ((id: string) => boolean) | null): void;
   /** UI click feedback. */
   click?(): void;
+  /** Hears the panel open and close (the docked Garage clears its band from under the panel). */
+  onOpenChange?(open: boolean): void;
 }
 
 export interface GarageFacetPanel {
@@ -271,10 +273,15 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     open = value;
     panel.hidden = !value;
     host.toggle.setAttribute('aria-expanded', String(value));
+    host.onOpenChange?.(value);
     if (value) {
       fit();
-      // Focus the search on a fine pointer; on touch it would raise the keyboard over the roster.
-      if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) input.focus();
+      // Focus the search on a fine pointer; on touch it would raise the keyboard over the roster. A docked Garage keeps
+      // its search in the strip (the panel's is hidden), so focus lands on the first chip.
+      if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) {
+        if (input.getClientRects().length) input.focus();
+        else panel.querySelector<HTMLElement>('.cot-facet-option')?.focus();
+      }
     } else if (restoreFocus) {
       host.toggle.focus();
     }

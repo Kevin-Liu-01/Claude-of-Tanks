@@ -193,6 +193,8 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{overflow-y:auto;overscroll-behavior:contain;}
 body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
+/* the roster filter opens over the band's place: the band steps aside while it is open, so no control is half under it */
+body[data-cot-panels='persistent'] .cot-garage.facets-open .cot-lower-third{visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;overflow:visible;height:auto;}
 /* a window 520-719 px tall keeps the nations and the kinds on one strip each (under an edge fade), so the sheet's room
    goes to whole rows of paint rather than wrapped chips over a sliced one */

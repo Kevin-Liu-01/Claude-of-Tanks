@@ -120,8 +120,9 @@ const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url)
 const garageText = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
 assert.match(panelCss, /\.cot-facet-rowwrap\{position:relative;min-width:0;/, 'a swipe row never widens the panel (blind re-check 2026-10-21)');
 assert.match(panelCss, /grid-template-columns:minmax\(0,1fr\)/, 'the panel column never grows past the panel');
-assert.match(panelCss, /\.cot-facet-rowwrap\[data-more\*='l'\]::before,\.cot-facet-rowwrap\[data-more\*='r'\]::after\{opacity:1;\}/,
-  'the edge cue shows where chips continue');
+assert.match(panelCss, /\.cot-facet-rowwrap\[data-more='r'\] \.cot-facet-row\{[^}]*mask-image:linear-gradient\(90deg/,
+  'the edge cue shows where chips continue: the side with more fades (the gauntlet 10-25)');
+assert.doesNotMatch(panelCss, /\.cot-facet-rowwrap::after\{[^}]*content/, 'no arrow glyph over the chips');
 assert.match(panelCss, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
   'an open panel lifts the rail over the side cards and the Battle and Multiplayer buttons');
 assert.doesNotMatch(garageText, /facetToggle[^\n]*'\.code'/, 'the Filter toggle is an icon: its name rides in aria-label and title');

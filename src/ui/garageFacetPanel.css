@@ -94,23 +94,30 @@ body[data-cot-panels='overlay'] .cot-facet-rowwrap{margin-inline:-10px;}
 body[data-cot-panels='overlay'] .cot-facet-row{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
   scrollbar-width:none;padding-inline:10px;scroll-padding-inline:10px;}
 body[data-cot-panels='overlay'] .cot-facet-row::-webkit-scrollbar{display:none;}
-.cot-facet-rowwrap::before,.cot-facet-rowwrap::after{position:absolute;top:9px;bottom:0;width:44px;z-index:1;display:flex;
-  align-items:center;pointer-events:none;opacity:0;transition:opacity var(--dur-fast);
-  font:700 max(24px,var(--fs-24))/1 var(--facet-font);color:var(--accent-hi);}
-.cot-facet-rowwrap::before{content:'\2039';left:0;justify-content:flex-start;padding-left:6px;
-  background:linear-gradient(270deg,transparent,var(--facet-bg) 62%);}
-.cot-facet-rowwrap::after{content:'\203A';right:0;justify-content:flex-end;padding-right:6px;
-  background:linear-gradient(90deg,transparent,var(--facet-bg) 62%);}
-.cot-facet-rowwrap[data-more*='l']::before,.cot-facet-rowwrap[data-more*='r']::after{opacity:1;}
+/* the side with more chips fades out (the gauntlet 10-25: an orange arrow over a solid wash read as a chip cut mid-word);
+   the row's end pad lets its last chip scroll clear of the fade */
+body[data-cot-panels='overlay'] .cot-facet-row{padding-inline-end:var(--s6);}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='r'] .cot-facet-row{
+  -webkit-mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,var(--graphite-900) calc(100% - 32px),transparent);}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='l'] .cot-facet-row{
+  -webkit-mask-image:linear-gradient(270deg,var(--graphite-900) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(270deg,var(--graphite-900) calc(100% - 32px),transparent);}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='lr'] .cot-facet-row{
+  -webkit-mask-image:linear-gradient(90deg,transparent,var(--graphite-900) 32px,var(--graphite-900) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,transparent,var(--graphite-900) 32px,var(--graphite-900) calc(100% - 32px),transparent);}
+/* a docked Garage keeps its search in the strip, so the panel shows no second one */
+body[data-cot-panels='persistent'] .cot-facet-search{display:none;}
 /* A short landscape phone (390 px tall): the panel tops out at the screen's edge over the rail, so its rows sit closer and
    its padding is slimmer, and all three rows fit with no scroll (it overflowed by a few px). */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-panel{gap:5px;padding:6px 10px 6px;align-content:start;}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap{padding-top:6px;}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap::before,
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap::after{top:6px;}
+/* and its head keeps the tally, the search and close on one row, so the three rows of chips fit whole */
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-tally{margin-right:0;}
+body[data-cot-height='short'][data-cot-panels='overlay'] :is(.cot-facet-tally b,.cot-facet-tally>.num:not(b)){font-size:var(--fs-20);}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-search{order:2;flex:1 1 120px;}
 body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close,.cot-facet-search input){min-height:44px;}
 body[data-cot-input='coarse'] .cot-facet-search input{height:44px;}
 body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
-@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close,
-  .cot-facet-rowwrap::before,.cot-facet-rowwrap::after{transition:none;}}
+@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close{transition:none;}}
 }
