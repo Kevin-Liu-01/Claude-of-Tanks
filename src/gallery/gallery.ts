@@ -352,7 +352,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
-    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
+    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
   }, () => {
     clearTimeout(slow);
     showToast(t('gallery.anatomy.loadFailed'));
@@ -439,9 +439,11 @@ function frameView(requestedName = 'hero'): void {
   });
 }
 
-function showToast(message: string): void {
+function showToast(message: string, { visual = true } = {}): void {
   const toast = $('#toast');
   toast.textContent = message;
+  // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
+  toast.classList.toggle('sr', !visual);
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
@@ -819,7 +821,10 @@ function revealRow(row: HTMLElement | null): void {
     if (target?.isConnected) revealRowNow(target);
   });
 }
-function revealRowNow(row: HTMLElement): void {
+function revealRowNow(row: HTMLElement, settle = true): void {
+  // the rows skip rendering off view (content-visibility), so their heights are estimates until they show: once the
+  // first scroll has laid the rows near the target out, a second pass in the next frame lands it exactly
+  if (settle) requestAnimationFrame(() => { if (row.isConnected) revealRowNow(row, false); });
   const list = vehicleList.getBoundingClientRect();
   const box = row.getBoundingClientRect();
   if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
@@ -913,13 +918,35 @@ wireRoving(tabsHost, (value) => selectTab(value as DossierTab));
 
 const DIAGRAMS = [['armor_side', 'garage.dossier.image.armorSide'], ['modules_side', 'garage.dossier.image.modulesSide'],
   ['crew_side', 'garage.dossier.image.crewSide']] as const;
+// the switch names each drawing by its layer (the long names wrapped onto a second row); the long name is its alt
+const DIAGRAM_SHORT: Readonly<Record<typeof DIAGRAMS[number][0], string>> = Object.freeze({
+  armor_side: 'gallery.view.mode.armor', modules_side: 'gallery.view.mode.modules', crew_side: 'gallery.view.mode.crew',
+});
 let diagram: typeof DIAGRAMS[number][0] = 'armor_side';
 $<HTMLElement>('#diagramSwitch').innerHTML = DIAGRAMS.map(([view, key]) => `<button type="button" role="radio" class="cot-c-seg__opt"`
-  + ` data-value="${view}" aria-checked="${view === diagram}" tabindex="${view === diagram ? 0 : -1}" data-ui-sound="select">${esc(t(key))}</button>`).join('');
+  + ` data-value="${view}" aria-checked="${view === diagram}" tabindex="${view === diagram ? 0 : -1}" data-ui-sound="select"`
+  + ` aria-label="${esc(t(key))}">${esc(t(DIAGRAM_SHORT[view]))}</button>`).join('');
 wireRoving($<HTMLElement>('#diagramSwitch'), (value) => { diagram = value as typeof diagram; renderDiagram(); });
 const diagramImage = $<HTMLImageElement>('#diagramImage');
 diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.hidden = true; });
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
+// the drawing's labels are drawn into it (about 5 px at the dossier's width): a press shows it at the window's size,
+// where they read; a press or Escape puts it back
+const diagramFigure = diagramImage.closest('figure')!;
+const setDiagramZoom = (on: boolean): void => {
+  diagramFigure.classList.toggle('is-zoomed', on);
+  diagramImage.setAttribute('aria-expanded', String(on));
+};
+diagramImage.tabIndex = 0;
+diagramImage.setAttribute('role', 'button');
+diagramImage.setAttribute('aria-expanded', 'false');
+diagramFigure.addEventListener('click', () => setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')));
+diagramImage.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')); }
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && diagramFigure.classList.contains('is-zoomed')) { event.stopPropagation(); setDiagramZoom(false); }
+}, true);
 function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
@@ -1189,7 +1216,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   }
   renderLegend();
   updateUrl();
-  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
+  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }), { visual: false });
 }
 
 function disposeTank(): void {

@@ -119,13 +119,13 @@ const STYLE = `
 .co[aria-pressed="true"]{background:var(--gallery-callout-on);box-shadow:var(--ring-accent)}
 .co[aria-pressed="true"]::after{background:var(--accent)}
 .co-crew{display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--co-tone);border-radius:50%;
-  background:var(--hud-plate);color:var(--co-tone);font:500 var(--fs-11)/1 var(--font-data)}
+  background:var(--hud-plate);color:var(--co-tone);font:600 max(11px,var(--fs-11))/1 var(--font-data)}
 .co-crew[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-hi);color:var(--ink-on-accent)}
 .co.is-off,.co-crew.is-off{display:none}
 @media (pointer:coarse){.subs .cot-c-chip{height:40px}.co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
 @media (width < 768px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}
   #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);width:100%}
-  #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}}
+}
 `;
 
 // Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
@@ -439,14 +439,15 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       barElement.style.background = `linear-gradient(90deg, ${armorRampGradient()})`;
       const ticks = document.createElement('div');
       ticks.className = 'anatomy-ramp-ticks';
-      // the last tick sits right-aligned at the bar's end; a tick within 9 % of it would print into it (900 under 2,000+)
+      // the major ticks alone (the UI gauntlet: 650, 900 and 1,200+ printed into each other on a 260 px bar); the last
+      // sits right-aligned at the bar's end, and a tick within 12 % of it would print into it
       const lastAt = armorRampPosition(ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1]);
       for (const mm of ARMOR_RAMP_TICKS) {
-        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.09) continue;
+        if (![0, 100, 300, 650, 1200].includes(mm)) continue;
+        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.12) continue;
         const tick = document.createElement('span');
         tick.style.left = `${(armorRampPosition(mm) * 100).toFixed(1)}%`;
         tick.textContent = mm >= 1200 ? `${formatNumber(mm)}+` : formatNumber(mm);
-        if (![0, 100, 300, 650, 1200].includes(mm)) tick.dataset.minor = '';
         ticks.append(tick);
       }
       scale.append(barElement, ticks);
@@ -506,7 +507,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         // A second crew member in one role (assistant loader, second weapon operator) reads L2, G2.
         const count = (roleCount.get(pick.station.role) || 0) + 1;
         roleCount.set(pick.station.role, count);
-        element.textContent = `${CREW_ROLE_LETTERS[pick.station.role]}${count > 1 ? count : ''}`;
+        // the seat's mark in the page's language (zh: 长 炮 装 驾 通), the letter where a catalog has none
+        const mark = t(`gallery.crew.mark.${pick.station.role}`);
+        element.textContent = `${mark.startsWith('gallery.') ? CREW_ROLE_LETTERS[pick.station.role] : mark}${count > 1 ? count : ''}`;
         element.setAttribute('aria-label', crewName(pick.station.crew));
         element.title = crewName(pick.station.crew);
       }

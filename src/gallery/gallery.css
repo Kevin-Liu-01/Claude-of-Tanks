@@ -181,7 +181,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 
 /* --------------------------------------------------------------------------------------------- the dossier (.dossier) */
 .dossier{grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface-page);border-left:1px solid var(--line-1)}
-.dossier-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+.dossier-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);padding-bottom:28px}
 .take{position:relative;aspect-ratio:16/9;flex:none;overflow:hidden;background:var(--surface-raised)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -200,7 +202,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   overflow-wrap:anywhere;text-wrap:balance}
 :lang(zh-CN) .take .nm h1{line-height:1.15}
 .dz-tabs{position:sticky;top:0;z-index:var(--z-hud-world);padding:0 var(--g-pad);background:var(--surface-page)}
-.dz-tabs .cot-c-tabs{gap:var(--s5);overflow-x:auto;scrollbar-width:none}
+.dz-tabs .cot-c-tabs{gap:var(--s3);overflow-x:auto;scrollbar-width:none}
 .dz-tabs .cot-c-tabs__tab{font-size:var(--fs-14)}
 .dz{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3) var(--g-pad) var(--s4)}
 .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
@@ -308,12 +310,16 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .markup-selection small{display:block;color:var(--ink-3)}
 .markup-action-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 
-.toast{position:fixed;z-index:var(--z-toast);left:calc(var(--g-browse) + (100vw - var(--g-browse) - var(--g-dossier)) / 2);bottom:144px;
-  max-width:calc(100vw - 24px);width:max-content;padding:var(--s2) var(--s3);border-radius:var(--control-radius);
-  background:var(--surface-menu);box-shadow:var(--ring-accent);color:var(--ink-1);font:500 var(--fs-12)/1.4 var(--font-body);text-align:center;white-space:normal;
+/* the page's one notice (the UI gauntlet's notification line: no coloured edge or outline): a raised plate over the
+   dossier's actions, where its trigger (copy link, copy data, the markup tools) sits */
+.toast{position:fixed;z-index:var(--z-toast);left:calc(100vw - var(--g-dossier) / 2);bottom:88px;
+  max-width:calc(100vw - 24px);width:max-content;padding:var(--s2) var(--s4);border-radius:var(--plate-radius);
+  background:var(--surface-menu);box-shadow:var(--ring-2),var(--e3);color:var(--ink-1);font:500 max(11px,var(--fs-13))/1.4 var(--font-body);text-align:center;white-space:normal;
   overflow-wrap:anywhere;opacity:0;pointer-events:none;transform:translate(-50%,8px);
   transition:opacity var(--dur-base) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+/* an announcement for assistive technology alone (a layer's volume count) */
+.toast.sr{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);opacity:1;box-shadow:none}
 
 /* ---------------------------------------------------------------------------------------------------- responsive */
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
@@ -330,7 +336,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .stage{height:clamp(360px,58svh,620px)}
   .browse{position:sticky;top:0;align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - 56px);border-top:1px solid var(--line-1)}
   .dossier{border-top:1px solid var(--line-1)}
-  .dossier-scroll{overflow:visible}
+  .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
   .toast{left:50%}
 }
@@ -375,4 +381,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
   .fam .it{min-height:44px}
   .order__dir,.order__sort select{min-height:40px;min-width:40px}
 }
+/* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
+#dossier-anatomy figure img{cursor:zoom-in}
+#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;margin:0;padding:var(--s5);
+  background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
+#dossier-anatomy figure.is-zoomed img{width:auto;max-width:100%;max-height:100%;height:auto;cursor:zoom-out}
 }
