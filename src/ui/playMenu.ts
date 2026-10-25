@@ -458,6 +458,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
+/* a co-op foot has two columns (1.6fr 1fr, 2.6 shares): the team words stand on its second */
+.cot-play:where(:has(.control-options>.field[hidden])) .player{--foot-track:calc((100% + 2 * var(--s4) - var(--s3)) / 2.6)}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
@@ -467,7 +469,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
 .cot-play .vehicle-icon{--w:58px;--h:42px;width:var(--w);height:var(--h);flex:0 0 var(--w);object-fit:cover;
   object-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y))}.cot-play .vehicle-icon:is(.missing,.placeholder){visibility:hidden}
-.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;line-height:1.3;text-wrap:pretty}
+.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.3;text-wrap:pretty}
 .cot-play .vehicle-copy{display:grid;min-width:0;gap:var(--s1)}
 .cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-play .player .team{color:var(--ink-3)}.cot-play .player.alpha .team{color:var(--team-own)}.cot-play .player.bravo .team{color:var(--team-enemy)}

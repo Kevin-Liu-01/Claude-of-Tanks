@@ -249,8 +249,6 @@ body[data-cot-width='phone'] .cot-play .room-action{min-height:124px}
 /* a phone's roster card: the vehicle's name under the player's, on one edge (no picture) */
 body[data-cot-width='compact'] .cot-play .vehicle-icon,
 body[data-cot-width='phone'] .cot-play .vehicle-icon{display:none}
-body[data-cot-width='compact'] .cot-play .vehicle-name,
-body[data-cot-width='phone'] .cot-play .vehicle-name{font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-width='compact'] .cot-play .controls,
 body[data-cot-width='phone'] .cot-play .controls,
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .controls{
@@ -273,7 +271,7 @@ body[data-cot-width='phone'] .cot-play .battlefield-card{grid-template-columns:1
 body[data-cot-width='compact'] .cot-play .battlefield-art,
 body[data-cot-width='phone'] .cot-play .battlefield-art{min-height:82px;border-right:0;border-bottom:1px solid var(--line-1)}
 body[data-cot-width='compact'] .cot-play .battlefield-copy,
-body[data-cot-width='phone'] .cot-play .battlefield-copy{grid-column:auto;grid-template-columns:1fr;padding:var(--s3);gap:var(--s3)}
+body[data-cot-width='phone'] .cot-play .battlefield-copy{grid-column:auto;grid-template-columns:1fr;padding:var(--s4);gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .control-actions .action{flex:1 1 128px}
 body[data-cot-width='phone'] .cot-play .control-actions .action{flex:1 1 0;min-width:0;padding-inline:var(--s2)}
 body[data-cot-width='compact'] .cot-play .menu-select--map .menu-select-list,
@@ -282,6 +280,8 @@ body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .room-a
 /* a short or compact screen: the lobby's controls end the roster, so the roster keeps the screen; the head is lower and stays */
 body:is([data-cot-height='short'],[data-cot-height='compact']) .cot-play .lobby.show .controls{position:static}
 body[data-cot-height='short'] .cot-play .play-head{padding-block:var(--s3)}
+/* a short screen with a refusal: the head scrolls with the room, so the roster keeps the screen */
+body[data-cot-height='short'] .cot-play .play-head:has(.version-refusal:not([hidden])){position:static}
 body[data-cot-height='short'] .cot-play .close{top:var(--s3)}
 /* a phone's sheet keeps an even 8 px all round */
 body[data-cot-width='phone'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
