@@ -138,6 +138,9 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 /* Chat and touch controls are siblings of the HUD, so its cinematic veil
    alone cannot hide them during the killcam/results handoff. */
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
+/* the replay owns the screen: the battle's own strips outside the HUD's root step aside too (owner 2026-10-25, "fix
+   overlapping uis") */
+body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibility:hidden!important}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -185,7 +188,7 @@ body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show,
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show.quiet{display:flex}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-mode-status{
-  left:0;top:0;transform:none;width:auto;min-height:48px;padding:0 calc(var(--s3) + 16px) 0 var(--s3);gap:var(--s3);align-items:center;
+  left:0;top:0;transform:none;width:auto;min-height:var(--hud-band-h,44px);padding:0 calc(var(--s3) + 16px) 0 var(--s3);gap:var(--s3);align-items:center;
   clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);border-radius:0;box-shadow:none;white-space:nowrap;letter-spacing:normal}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi{display:grid;place-items:center;flex:none;width:30px;height:30px}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi svg{width:24px;height:24px}
@@ -198,13 +201,12 @@ body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{
 }
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{font-size:var(--battle-fs-11)}
 :lang(zh-CN) body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font-size:var(--battle-fs-13)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-ear.l{top:56px}
 /* The top-right corner (hud.ts .cot-net) on the mouse layouts with room beside the score: a right trapezoid mirrored
    from the mission plate, hung from the window's corner, holding the readout (while shown), the link's ping and the
    settings gear with its key; the right roster starts under it. Phone- and compact-width windows keep the readout's
    lane under the objective (below), the gear in it without its key. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-net{
-  top:0;right:0;min-height:48px;padding:0 var(--s3) 0 calc(var(--s3) + 16px);gap:var(--s3);background:var(--hud-plate);
+  top:0;right:0;min-height:var(--hud-band-h,44px);padding:0 var(--s3) 0 calc(var(--s3) + 16px);gap:var(--s3);background:var(--hud-plate);
   clip-path:polygon(0 0,100% 0,100% 100%,16px 100%);text-shadow:none}
 @media (hover:hover) and (pointer:fine){
   body[data-cot-battle-layout]:not(.cot-touch-layout):not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-hud-gear .cot-c-kbd{display:inline-flex;padding:0 6px}

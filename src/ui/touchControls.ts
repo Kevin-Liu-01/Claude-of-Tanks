@@ -126,9 +126,10 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
 body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear{display:none!important;}
-body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
-body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
-body.cot-touch-layout .cot-top .tm{font-size:var(--battle-fs-12);}
+body.cot-touch-layout .cot-top{top:0;min-height:36px;padding:max(4px,env(safe-area-inset-top)) 22px 5px;column-gap:var(--s2);z-index:30;}
+body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:20px;}
+body.cot-touch-layout .cot-top .tm{font-size:15px;}
+body.cot-touch-layout .cot-top .sc .bar{width:20px;}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
 body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;}
 /* Ammo is directly above the equipment/consumable stack, leaving the top

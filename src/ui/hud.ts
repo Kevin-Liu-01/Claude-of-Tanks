@@ -29,6 +29,7 @@ import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
 import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
+import { vehicleAction } from '../game/vehicleActions.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { getLocale, t } from './i18n.ts';
@@ -269,7 +270,7 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
 interface HudHeightField {
@@ -1468,31 +1469,36 @@ const HUD_CSS = `
 /* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
 .cot-hitmark{position:absolute;z-index:var(--hud-layer-sight);left:0;top:0;width:${HIT_MARK_BOX_PX}px;height:${HIT_MARK_BOX_PX}px;
   display:none;pointer-events:none;}
-/* The score plate (brand-ui H1, the direction's 06-battle-hud.html .score): a trapezoid on the HUD plate, each side's
-   points beside the bar of its share of what wins it, the clock in the data voice over its label. It hangs from the
-   window's top edge (owner 2026-10-24: "make the trapezoid on top of score be attached to top of screen"), the corner
-   plates beside it (the mission plate left, the readout and the settings gear right). */
-.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(604px,calc(100vw - 24px));
-  min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,150px) minmax(0,1fr);
-  align-items:center;padding:0 56px;isolation:isolate;overflow:hidden;
+/* The score plate (brand-ui H1, the direction's 06-battle-hud.html .score): a trapezoid on the HUD plate hung from the
+   window's top edge (owner 2026-10-24: "make the trapezoid on top of score be attached to top of screen"), hugging what
+   it holds (owner 2026-10-25: "AND MAKE THIS TOP THING LESS SO BIG AND WIDE"): each side's points beside a short bar of
+   its share of what wins it, the clock between them, and the team strip's pips along its lower edge where they show
+   (hudTeamPips.ts). It is the top band's height (--hud-band-h), as the corner plates beside it are (the mission plate
+   left, the readout and the settings gear right: battleHudLayout.css). */
+.cot-hud{--hud-band-h:44px;}
+.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);
+  width:max-content;max-width:min(400px,calc(100vw - 24px));min-height:var(--hud-band-h);
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-content:center;align-items:center;
+  column-gap:var(--s3);row-gap:3px;padding:var(--s1) 30px 5px;isolation:isolate;overflow:hidden;
   background:var(--hud-plate);border-radius:0;
-  clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);}
+  clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,16px 100%);}
 
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
-.cot-top .sc{display:flex;align-items:center;gap:var(--s3);min-width:0;}
+.cot-top .sc{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);min-width:0;}
 .cot-top .sc.enemy{flex-direction:row-reverse;}
 /* the side carries the team; a label shows only where it says more (the Horde's wave and remaining) */
 .cot-top .team-label[data-default]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
-.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:36px;font-weight:700;line-height:1;
-  letter-spacing:0;}
-.cot-top .fg{color:var(--hud-own);}
+/* (two figures' width held, so a score reaching 10 does not widen the plate) */
+.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
+  letter-spacing:0;min-width:2ch;}
+.cot-top .fg{color:var(--hud-own);text-align:right;}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
    transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
    a gauge, never as an empty slot (H1 critics), and any point on the board shows a stub (setScoreBars) */
-.cot-top .sc .bar{position:relative;flex:0 1 96px;width:96px;height:4px;overflow:hidden;
+.cot-top .sc .bar{position:relative;flex:none;width:28px;height:3px;overflow:hidden;
   background:color-mix(in srgb,var(--hud-own) 24%,transparent);}
 .cot-top .sc.enemy .bar{background:color-mix(in srgb,var(--hud-enemy) 24%,transparent);}
 .cot-top .sc .bar i{display:block;height:100%;transform:scaleX(var(--p,0));transform-origin:left;
@@ -1500,11 +1506,11 @@ const HUD_CSS = `
 .cot-top .sc.ally .bar i{background:var(--hud-own);}
 .cot-top .sc.enemy .bar i{background:var(--hud-enemy);transform-origin:right;}
 .cot-top .fe .of{font-size:.5em;font-weight:700;letter-spacing:0;margin-left:2px;opacity:.82;}
-.cot-top .tm-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
+.cot-top .tm-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
 .cot-top .tm-block .tm{order:1;}.cot-top .tm-block .tm-label{order:2;}
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
 .cot-top .tm-label:empty{display:none;}
-.cot-top .tm{font:500 30px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
+.cot-top .tm{font:500 18px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
 /* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
 .cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp var(--dur-screen) steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:var(--warn);}
@@ -1594,9 +1600,9 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:56px;width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:calc(var(--hud-band-h) + 8px);width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
 .cot-ear.l{left:0;}
-.cot-ear.r{right:0;top:var(--hud-roster-top-right,56px);}
+.cot-ear.r{right:0;top:var(--hud-roster-top-right,calc(var(--hud-band-h) + 8px));}
 .cot-ear .hd{flex-shrink:0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;color:var(--ink-3);
   font-family:${FONT_COND};
   text-transform:uppercase;padding:var(--s1) 10px;display:flex;justify-content:space-between;
@@ -1739,7 +1745,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rost
 /* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
    the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
 html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
-html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}
+html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:var(--hud-watch-top,calc(var(--inset-top) + 40px));bottom:auto}
 /* the coordinator's 11 px floor (246): no HUD text under 11 px on any device. A label that cannot fit there reads as its
    glyph or its state's ink, its words in its title and for a screen reader; a figure stays visible (.num). The systems
    row: a control's name is its glyph, a count it shows (a cooldown, the smoke charges) a figure, as a touch tile shows it */
@@ -2199,6 +2205,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let tgtPendingTransform: string | null = null;
   let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
   let aimTargetId: string | null = null;
+  /** Whether the player has given or taken a hit this battle (re-armed when the HUD hides between battles). */
+  let playerEngaged = false;
   let lastTanksRef: HudTank[] | null = null;  // roster snapshot for the forced-still target scan
   let forcedStill = false;  // true between forceAimDisplay and the next update
   let dmgPanelRef: DamagePanelController | null = null;   // mounted damage panel (turret-bearing feed)
@@ -2236,8 +2244,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
-  // the team strip under the score: a silhouette per tank and a chip per capture zone (hudTeamPips.ts)
-  const teamPips = createTeamPips(root);
+  // the team strip: a silhouette pip per tank along the score plate's lower edge, a chip per capture zone under it
+  // (hudTeamPips.ts)
+  const teamPips = createTeamPips(root, topPlate);
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
   let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
@@ -2645,10 +2654,15 @@ export function initHud(bus: EventBus): HudRuntime {
     button.addEventListener('pointercancel', () => { touchId = -1; });
     button.addEventListener('click', (event) => { event.stopPropagation(); if (event.detail === 0) act(); });
   };
+  // The row's tiles are the vehicle-action table's (src/game/vehicleActions.ts), each on its own key on every vehicle
+  // (owner 2026-10-25: "consistent which keys do what and their order with each other"): the suspension (E) on a
+  // hydropneumatic hull, the ATGM (Q) beside a conventional round, the magazine reload (C) on an autoloader.
   const specialButton = el('button', 'cot-special', controlsRow);
   specialButton.type = 'button';
   specialButton.hidden = true;
-  specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span><small class="system-status"></small>';
+  specialButton.innerHTML = `<span class="si">${uiIconSVG(vehicleAction('suspension').glyph, 22, 'currentColor')}</span>`
+    + `<span class="sl">${t(vehicleAction('suspension').label)}</span><span class="sk">E</span><small class="system-status"></small>`;
+  specialButton.dataset.tip = t(vehicleAction('suspension').help);
   bindControl(specialButton, () => { if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {}); });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('button', 'cot-jump', controlsRow);
@@ -2661,7 +2675,6 @@ export function initHud(bus: EventBus): HudRuntime {
   jumpHint.setAttribute('aria-label', t('hud.jump'));
   jumpHint.dataset.tip = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word in the hover tip)
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
-  const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
   const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
   const specialStatus = requireElement<HTMLElement>(specialButton, 'small');
@@ -2677,7 +2690,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
-  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
   const missileLabel=requireElement<HTMLElement>(missileButton,'.sl'),missileKey=requireElement<HTMLElement>(missileButton,'.sk');
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
@@ -2688,6 +2701,13 @@ export function initHud(bus: EventBus): HudRuntime {
     bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
   }
   bindControl(missileButton, toggleExtraMissile);
+  // Q (input.ts 'atgm', playerBattleActions.ts) toggles the same way the tile does
+  bus.on('ui:atgmToggle', toggleExtraMissile);
+  const reloadButton=el('button','cot-auxiliary cot-reload-control',controlsRow);reloadButton.type='button';reloadButton.hidden=true;
+  reloadButton.innerHTML=`<span class="si">${uiIconSVG('autoloader',18)}</span><span class="sl">${t(vehicleAction('reload').label)}</span><span class="sk">C</span><small class="system-status"></small>`;
+  reloadButton.dataset.tip=t(vehicleAction('reload').help);reloadButton.setAttribute('aria-label',t(vehicleAction('reload').label));
+  const reloadLabel=requireElement<HTMLElement>(reloadButton,'.sl'),reloadKey=requireElement<HTMLElement>(reloadButton,'.sk');
+  bindControl(reloadButton, () => { if (!reloadButton.hidden && !reloadButton.disabled) bus.emit('ui:magazineReload', {}); });
   let defaultLightsOn=false;
   bus.on('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on:boolean}).on;});
   const auxiliaryButtons = (['smoke','lights','roofGun'] as const).map(action=>{
@@ -2699,7 +2719,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
   const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
-  const vehicleControls={jump:jumpHint,special:specialButton,drone:droneButton,missile:missileButton,
+  const vehicleControls={jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,
     smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
   let controlsJumpMode:boolean|null=null;
   function setControlsJumpMode(on:boolean):void{
@@ -2773,20 +2793,17 @@ export function initHud(bus: EventBus): HudRuntime {
     if (descriptor) {
       previousConventionalSlot = Math.max(0, player?.spec?.gun?.shells.findIndex(shell => !shell.guided) ?? 0);
       specialKind = descriptor.kind;
-      const icon = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE ? 'missileRack'
-        : specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM ? 'track'
-          : specialKind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD ? 'autoloader' : null;
-      specialIcon.innerHTML = icon ? uiIconSVG(icon, 22, 'currentColor') : '';
-      specialLabel.textContent = descriptor.shortLabel;
-      specialLabel.dataset.short = descriptor.shortLabel;
-      specialButton.dataset.tip = descriptor.label ?? '';
-      specialButton.setAttribute('aria-label', descriptor.label || t('hud.special.unavailable'));
-      specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
-      specialButton.hidden = specialKind === SPECIAL_ACTION_KINDS.NONE;
+      const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+      specialLabel.dataset.short = t(vehicleAction('suspension').label);
+      specialButton.setAttribute('aria-label', specialLabel.dataset.short);
+      specialButton.classList.toggle('show', suspension);
+      specialButton.hidden = !suspension;
     }
     missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
-    setHidden(missileButton,extraMissileSlot<0||specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
+    setHidden(missileButton,extraMissileSlot<0||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
+    const autoloaded=!!player?.spec?.gun?.autoloader;
+    setHidden(reloadButton,!autoloaded);
     const combat=player?.combat;
     const emptyMissileLabel=depletedMissileLabel(combat,extraMissileSlot,player?.spec?.gun?.shells[extraMissileSlot]);
     const missileEmpty=emptyMissileLabel!==null;
@@ -2801,30 +2818,26 @@ export function initHud(bus: EventBus): HudRuntime {
     // visibly latched for as long as that slot remains selected; 1/2/3 are
     // the only actions that clear it. True modes continue to use action.active.
     const active = specialActionIsActive(action, player?.combat?.shellSlot);
-    const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
-      ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
     setControlText(missileLabel,!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm'),!missileEmpty&&missileWait>0);
     setAttr(missileButton, 'aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
-    const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
-    // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
+    // A magazine reload with nothing stowed to load is spent: no countdown, no pointless reload.
     // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
     const cards=aim?.shells??lastShells;
-    const specialEmpty=specialMissileEmpty||(specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD
-      &&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true));
-    const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
-      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    setControlText(specialLabel,wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'',wait>0);
-    const specialName = specialButton.dataset.tip || '';
-    setAttr(specialButton, 'aria-label', specialMissileEmpty ? `${specialName} ${emptyMissileLabel}` : specialName || t('hud.special.unavailable'));
+    const reloadEmpty=autoloaded&&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true);
+    const reloadWait=autoloaded&&!reloadEmpty?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
+    setControlText(reloadLabel,reloadWait>0?t('systems.cooldown',{seconds:reloadWait}):t(vehicleAction('reload').label),reloadWait>0);
+    reloadButton.classList.toggle('empty',reloadEmpty);
+    setDisabled(reloadButton,!canControl||!autoloaded||reloadEmpty);
+    const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+    setControlText(specialLabel,specialLabel.dataset.short||'',false);
     setText(specialStatus, '');
-    specialButton.classList.toggle('empty', specialEmpty);
-    specialButton.classList.toggle('active', active&&!specialEmpty);
+    specialButton.classList.toggle('active', active&&suspension);
     // (toggle with its force writes nothing when unchanged; remove() always rewrites the class attribute)
     specialButton.classList.toggle('pending', false);
-    setDisabled(specialButton, !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialEmpty);
-    setAttr(specialButton, 'aria-pressed', active ? 'true' : 'false');
+    setDisabled(specialButton, !canControl || !suspension);
+    setAttr(specialButton, 'aria-pressed', active&&suspension ? 'true' : 'false');
   }
 
   const shellBox = el('div', 'cot-shells', root);
@@ -7362,9 +7375,9 @@ export function initHud(bus: EventBus): HudRuntime {
       target.classList.add('deny');
     }
     if (includeSpecial) {
-      specialButton.classList.remove('deny');
-      void specialButton.offsetWidth;
-      specialButton.classList.add('deny');
+      missileButton.classList.remove('deny');
+      void missileButton.offsetWidth;
+      missileButton.classList.add('deny');
     }
   }
   on('ui:ammoSelectionDenied', ({ slot, guided }) => {
@@ -7558,6 +7571,11 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
+    // the player's first hit given or taken this battle: the first battles' controls strip has done its work (settings.ts)
+    if (!playerEngaged && playerId != null && (hit.attackerId === playerId || hit.targetId === playerId)) {
+      playerEngaged = true;
+      bus.emit('ui:playerEngaged', {});
+    }
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       killRibbon.damage(hit.targetId, hit.damage);
@@ -7736,6 +7754,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function applyMode(): void {
+    if (mode === 'hidden') playerEngaged = false;
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';markGunDry(false);}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
     // the layout owner holds a medal card placed clear of the battle sight only while the scope is up (battleHudLayout.ts);
@@ -7808,7 +7827,9 @@ export function initHud(bus: EventBus): HudRuntime {
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)setText(item.key,frame.auxiliaryKeyLabels[item.action]);
-      setText(missileKey,frame.auxiliaryKeyLabels.missile);
+      setText(missileKey,frame.auxiliaryKeyLabels.atgm || 'Q');
+      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine || 'C');
+      setText(specialKey,frame.auxiliaryKeyLabels.specialAction || 'E');
       setText(droneKey,frame.auxiliaryKeyLabels.drone || 'V');
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');

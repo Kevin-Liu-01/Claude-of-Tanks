@@ -217,6 +217,9 @@ const ctx = reticle.getContext('2d');
 const traySlots = created.filter((element) => element.classes.has('cot-shell'));
 const specialButton = created.find((element) => element.classes.has('cot-special'));
 const missileButton = created.find((element) => element.classes.has('cot-auxiliary') && element.innerHTML.includes('>ATGM<'));
+// (owner 2026-10-25, src/game/vehicleActions.ts) the ATGM is its own tile on Q on every launcher, the magazine reload its
+// own on C on every autoloader; the special tile is the suspension alone
+const reloadButton = created.find((element) => element.classes.has('cot-reload-control'));
 assert.equal(traySlots.length, 3);
 hud.setMode('battle');
 
@@ -395,8 +398,8 @@ const DRY_RING = 16;
   assert.deepEqual(view.dryCount, ['0'], 'the chambered count reads 0 in the empty ink');
 }
 
-// 6. An autoloader (M1A3: four-round magazine, a guided round in slot 1): short of stowage, then dry; its guided
-// special control is struck once the last missile is gone.
+// 6. An autoloader (M1A3: four-round magazine, a guided round in slot 1): short of stowage, then dry; its ATGM tile is
+// struck once the last missile is gone.
 {
   const tank = tankOf('m1a3', [2, 4, 0]);
   let view = frame(tank);
@@ -407,14 +410,16 @@ const DRY_RING = 16;
   assert.equal(tank.combat.shellSlot, 1, 'the empty cannon falls back to the guided round');
   assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 0, 4, 0],
     'the guided round is loaded (a live sight) while the cannon rack shows every shell spent');
-  assert.equal(specialButton.classes.has('empty'), false, 'the guided special control is live');
+  assert.equal(missileButton.classes.has('empty'), false, 'the ATGM tile is live');
+  assert.equal([missileButton.hidden, reloadButton.hidden, specialButton.hidden].join(), 'false,false,true',
+    'a launcher on an autoloader shows the ATGM and the reload tiles, and no suspension');
   while (fire(tank));
   view = frame(tank, { advance: 0.5 });
   assert.equal(view.sweep, false);
   assert.equal(view.countdown, null);
   assert.deepEqual([view.readyShells, view.spentShells, view.struck], [0, 4, 1], 'every shell spent, the rack struck');
   assert.equal(view.dryRound, 0, 'a rack is struck itself; no extra single round');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'the spent guided control is struck');
+  assert.equal(missileButton.classes.has('empty') && missileButton.disabled, true, 'the spent ATGM tile is struck');
 }
 
 // 6b. A magazine-reload hull (Type 90: three-round bustle): the reload control is spent once nothing is stowed.
@@ -422,14 +427,14 @@ const DRY_RING = 16;
   const tank = tankOf('type90', [1, 0, 0]);
   let view = frame(tank);
   assert.deepEqual([view.readyShells, view.spentShells], [1, 2], 'one round stowed: one ready shell, two spent slots');
-  assert.equal(specialButton.classes.has('empty'), false, 'a round is stowed: the reload control is live');
+  assert.equal(reloadButton.classes.has('empty'), false, 'a round is stowed: the reload control is live');
   assert.ok(fire(tank));
   view = frame(tank, { advance: 0.5 });
   assert.deepEqual([view.readyShells, view.spentShells, view.struck, view.sweep], [0, 3, 1, false]);
-  const label = specialButton.querySelector('.sl');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true,
+  const label = reloadButton.querySelector('.sl');
+  assert.equal(reloadButton.classes.has('empty') && reloadButton.disabled, true,
     'the magazine-reload control is struck and disabled: nothing stowed to load');
-  assert.equal(label.textContent, label.dataset.short, 'with no countdown');
+  assert.doesNotMatch(label.textContent, /\d/, 'with no countdown');
 }
 
 // 7. A guided salvo rack (ZTZ-100 prototype): nothing stowed while the salvo counter still holds one missile.
@@ -442,18 +447,19 @@ const DRY_RING = 16;
     'the rack never reads a missile that is not there');
 }
 
-// 8. A spent ATGM launcher while the autocannon fires (BWP-1's guided special; MBT-70's extra launcher beside its
-// hydropneumatic special): the control is struck, its count is spoken only, the sight stays live.
+// 8. A spent ATGM launcher while the autocannon fires (BWP-1's launcher; MBT-70's beside its hydropneumatic
+// suspension): the ATGM tile is struck, its count is spoken only, the sight stays live.
 {
   const tank = tankOf('bwp1');
   const slot = tank.spec.gun.shells.findIndex((shell) => shell.guided === true);
   tank.combat.ammo[slot] = 0;
   const view = frame(tank);
   assert.equal(view.ringInk !== INK.dryRing && view.dryRound === 0, true, 'the selected autocannon is loaded');
-  const label = specialButton.querySelector('.sl');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'the guided special is struck');
-  assert.equal(label.textContent, label.dataset.short, 'no "0/N" text on the control');
-  assert.notEqual(specialButton.getAttribute('aria-label'), specialButton.title, 'the spoken label carries the count');
+  const label = missileButton.querySelector('.sl');
+  assert.equal(missileButton.classes.has('empty') && missileButton.disabled, true, 'the ATGM tile is struck');
+  assert.equal(label.textContent, 'ATGM', 'no "0/N" text on the control');
+  assert.match(missileButton.getAttribute('aria-label'), /^ATGM \S/, 'the spoken label carries the count');
+  assert.equal(specialButton.hidden, true, 'a launcher without suspension shows no suspension tile');
   // the autocannon's three-digit count tightens its slot's bottom row (critic r3: APFSDS180); two digits do not
   assert.ok(tank.combat.ammo[0] >= 100 && traySlots[0].classes.has('wide'), `a ${tank.combat.ammo[0]}-round slot is wide`);
   assert.equal(traySlots[slot].classes.has('wide'), false, 'an empty launcher slot is not');
@@ -513,12 +519,12 @@ const fills = (ops, style) => ops.filter((op) => op.op === 'fillRect' && op.styl
   const tank = tankOf('type90', [0, 0, 0]);
   let view = frame(tank);
   assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 3, 0, 0]);
-  assert.equal(specialButton.classes.has('empty'), false,
+  assert.equal(reloadButton.classes.has('empty'), false,
     'the magazine-reload control is not struck: nothing reads spent under the mark, from the first frame');
   unlimitedRounds = false;
   view = frame(tank);
   assert.deepEqual([view.ringInk, view.readyShells, view.struck], [INK.dryRing, 0, 1]);
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'finite and empty: struck');
+  assert.equal(reloadButton.classes.has('empty') && reloadButton.disabled, true, 'finite and empty: struck');
 }
 
 // 13. Between two rounds of a clip the rack shows the cycle itself: the round being chambered (the next to fire, the

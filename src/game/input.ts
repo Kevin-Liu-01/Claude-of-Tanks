@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
+import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
 import { getLocale } from '../ui/i18n.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
@@ -69,18 +70,22 @@ export const ACTION_DEFS = [
   { id: 'shell1', label: 'action.shell1', group: 'settings.group.combat' },
   { id: 'shell2', label: 'action.shell2', group: 'settings.group.combat' },
   { id: 'shell3', label: 'action.shell3', group: 'settings.group.combat' },
-  { id: 'supplyAmmo', label: 'flight.supply.ammo', group: 'settings.group.combat' },
-  { id: 'supplyHeal', label: 'flight.supply.heal', group: 'settings.group.combat' },
-  { id: 'aerialVision', label: 'flight.view.action', group: 'settings.group.combat' },
-  { id: 'drone', label: 'systems.drone', group: 'settings.group.combat' },
-  { id: 'smoke', label: 'systems.smoke', group: 'settings.group.combat' },
-  { id: 'lights', label: 'systems.lights', group: 'settings.group.combat' },
-  { id: 'roofGun', label: 'systems.roofGun', group: 'settings.group.combat' },
-  { id: 'specialAction', label: 'action.specialAction', group: 'settings.group.combat' },
-  { id: 'reloadMagazine', label: 'action.reloadMagazine', group: 'settings.group.combat' },
   // round 30 (owner 2026-09-20): auto-aim and the armour overlay get desktop keys
   { id: 'autoAim', label: 'action.autoAim', group: 'settings.group.combat' },
   { id: 'hitboxOverlay', label: 'action.hitboxOverlay', group: 'settings.group.combat' },
+  // The vehicle's actions, in the vehicle-action table's order with its names (src/game/vehicleActions.ts; owner
+  // 2026-10-25: "consistent which keys do what and their order with each other"); the table's jump is selfRight's.
+  { id: 'specialAction', label: 'vehicleActions.suspension', group: 'settings.group.vehicle' },
+  { id: 'atgm', label: 'systems.atgm', group: 'settings.group.vehicle' },
+  { id: 'reloadMagazine', label: 'vehicleActions.reload', group: 'settings.group.vehicle' },
+  { id: 'drone', label: 'systems.drone', group: 'settings.group.vehicle' },
+  { id: 'smoke', label: 'systems.smoke', group: 'settings.group.vehicle' },
+  { id: 'lights', label: 'systems.lights', group: 'settings.group.vehicle' },
+  { id: 'roofGun', label: 'systems.roofGun', group: 'settings.group.vehicle' },
+  // a flight's console (the drone and the AC-130), in the table's order
+  { id: 'aerialVision', label: 'flight.view.action', group: 'settings.group.flight' },
+  { id: 'supplyAmmo', label: 'flight.supply.ammo', group: 'settings.group.flight' },
+  { id: 'supplyHeal', label: 'flight.supply.heal', group: 'settings.group.flight' },
   { id: 'consumable1', label: 'action.consumable1', group: 'settings.group.consumables' },
   { id: 'consumable2', label: 'action.consumable2', group: 'settings.group.consumables' },
   { id: 'consumable3', label: 'action.consumable3', group: 'settings.group.consumables' },
@@ -228,7 +233,8 @@ export interface InputLayer {
 }
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps gun hold, RMB aim,
- *  1/2/3 shells, E special action, F self-right, 4/5/6 consumables, wheel zoom,
+ *  1/2/3 shells, the vehicle-action table's keys (E suspension, Q ATGM, C reload, F self-right: vehicleActions.ts),
+ *  4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
  *  Shift toggles sniper mode. Caps Lock holds the current physical turret
  *  rotation and gun elevation while the camera and live sight remain free.
@@ -243,21 +249,14 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   left: 'KeyA',
   right: 'KeyD',
   handbrake: 'Space',
-  selfRight: 'KeyF',
   fire: 'Mouse0',
   sniperToggle: 'ShiftLeft',
   shell1: 'Digit1',
   shell2: 'Digit2',
   shell3: 'Digit3',
-  specialAction: 'KeyE',
-  drone: 'KeyV',
-  aerialVision: 'KeyI',
-  supplyAmmo: 'KeyJ',
-  supplyHeal: 'KeyK',
-  smoke: 'KeyG',
-  lights: 'KeyN',
-  roofGun: 'KeyB',
-  reloadMagazine: 'KeyC',
+  // the vehicle's and a flight's actions: F jump / self-right, E suspension, Q ATGM, C reload, V drone, G smoke, N lights,
+  // B roof gun, I sensor view, J and K supplies, the same on every vehicle (src/game/vehicleActions.ts)
+  ...vehicleActionDefaultKeys(),
   autoAim: 'KeyT', // round 30: lock the sight to the enemy nearest the reticle (T again releases)
   hitboxOverlay: 'KeyH', // round 30: toggle the armour / hitbox overlay while aiming
   consumable1: 'Digit4',
@@ -567,7 +566,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       }
     }
     // Newly introduced defaults must not steal an existing player's custom key.
-    for (const action of ['smoke','lights','roofGun'] as const) {
+    for (const action of ['smoke','lights','roofGun','atgm'] as const) {
       const primary=storedMaps[0];
       if(isRecord(primary) && Object.prototype.hasOwnProperty.call(primary,action))continue;
       const code=maps[0][action];

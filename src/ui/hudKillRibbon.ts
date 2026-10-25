@@ -29,7 +29,7 @@ function inWindow(times: Float64Array, now: number): number {
 }
 
 const CSS = `
-.cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:50%;top:var(--hud-systems-top,80%);
+.cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:50%;top:var(--hud-ribbon-top,var(--hud-systems-top,80%));
   transform:translate(-50%,calc(-100% - 12px));width:min(520px,calc(100vw - 32px));display:none;flex-direction:column;
   background:var(--hud-plate-strong);border-radius:var(--r1);box-shadow:var(--battle-edge-own);color:var(--ink-1);
   pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--dur-base) var(--ease-exit),visibility var(--dur-base) step-end}

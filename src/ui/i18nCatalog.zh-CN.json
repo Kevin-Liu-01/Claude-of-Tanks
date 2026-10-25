@@ -882,9 +882,9 @@
   "garage.dossier.stat.stock": "原值 {value}",
   "garage.dossier.magazine.heading": "弹仓自动装弹机",
   "garage.dossier.magazine.spec": "{size} 发 · {cycle} 秒单发 · {reload} 秒全装",
-  "garage.dossier.special.press": "按 E 或对应编号弹药槽选中，单击发射，再用光标制导。",
+  "garage.dossier.special.press": "按 Q 选中，单击发射，再用光标制导。",
   "garage.dossier.special.hydro": "按 E 切换精密悬挂俯仰，控制车体姿态。",
-  "garage.dossier.special.autoreload": "当弹仓不满时按 E 提前开始整仓装填。",
+  "garage.dossier.special.autoreload": "当弹仓不满时按 C 提前开始整仓装填。",
   "garage.dossier.special.ekey": "E 键",
   "garage.dossier.special.activation": "按 E 或对应编号弹药槽激活。",
   "garage.dossier.shell.carried": "{n} 携带",
@@ -5193,5 +5193,12 @@
   "media.versus.place.vs08WinterCv90Bmp3R7Top": "霜谷，白天，俯瞰",
   "media.versus.title.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰：Stridsvagn 122 对 T-80BV",
   "media.versus.match.vs09AlpineStrv122T80bvR7Top": "Stridsvagn 122 对 T-80BV",
-  "media.versus.place.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰"
+  "media.versus.place.vs09AlpineStrv122T80bvR7Top": "冰川关，白天，俯瞰",
+  "settings.group.vehicle": "车辆",
+  "settings.group.flight": "飞行",
+  "vehicleActions.suspension": "悬挂",
+  "vehicleActions.suspension.help": "以车体俯仰调整炮位：悬挂抬起或压低车头。",
+  "vehicleActions.reload": "装填",
+  "vehicleActions.reload.help": "弹仓打空之前提前整仓装填。",
+  "vehicleActions.jump.help": "推动战车腾空，地面或空中均可。"
 }

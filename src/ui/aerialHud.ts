@@ -5,6 +5,7 @@ import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { dronePhase } from './droneControlState.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { vehicleAction } from '../game/vehicleActions.ts';
 import { t, getLocale } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
@@ -97,7 +98,9 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const link=instrument(telemetry,'radio',t('flight.link'));
   const speedometer=instrument(telemetry,'speed',t('flight.speed'));
   const support=node('div','flight-support',heading);
-  const supplyButtons=([{kind:'ammo',action:'supplyAmmo',glyph:'shell',key:'J'},{kind:'heal',action:'supplyHeal',glyph:'medkit',key:'K'}] as const).map(item=>{
+  // the supplies' glyphs and keys are the vehicle-action table's (src/game/vehicleActions.ts FLIGHT_ACTIONS)
+  const supplyButtons=([{kind:'ammo',action:'supplyAmmo'},{kind:'heal',action:'supplyHeal'}] as const).map(entry=>{
+    const def=vehicleAction(entry.action),item={...entry,glyph:def.glyph,key:def.key.slice(3)};
     const button=node('button','flight-supply',support);button.type='button';button.dataset.supply=item.kind;
     icon(button,item.glyph);const status=node('small','',button),key=node('kbd','flight-key',button);key.textContent=item.key;
     button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship'&&!button.disabled)bus.emit('ui:'+item.action,{});});return{...item,button,status,key};
