@@ -243,6 +243,11 @@ interface StudioContext {
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
+  /**
+   * (lockdown-251) Link and reflect the lit world's programs between frames, so the first Studio frame binds them
+   * ready (613 ms of uniform reflection waiting on links in one task of the spike census). `current` false stops it.
+   */
+  prepareWorldPrograms?(current: () => boolean): Promise<void>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -5641,6 +5646,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       mark('worldAndFx');
       setWorldDormant(false);
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
+      stillOwned();
+      // the programs the applied light keys, ready before the first Studio frame binds them
+      await ctx.prepareWorldPrograms?.(owns);
       stillOwned();
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
