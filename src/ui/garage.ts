@@ -249,6 +249,23 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
 /** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.
  *  The paint left the stations for the band under the name, where it is always in view. */
 /** The paints the band offers beside the one the tank wears, in this order (those the catalog carries). */
+/**
+ * A scrolling grid stands a whole number of its rows tall, so a sheet or picker never ends on a sliced row (the gauntlet
+ * 10-25); its `can-scroll` fade on the last row says more waits below. Read on a resize or a redraw, never in a scroll.
+ */
+function fitWholeRows(grid: HTMLElement): void {
+  grid.style.maxHeight = '';
+  const style = getComputedStyle(grid);
+  const cell = [...grid.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0);
+  if (cell && grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
+    const gap = parseFloat(style.rowGap) || 0;
+    const pad = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    const rows = Math.floor((grid.clientHeight - pad + gap) / (cell.offsetHeight + gap));
+    if (rows >= 1) grid.style.maxHeight = `${rows * (cell.offsetHeight + gap) - gap + pad}px`;
+  }
+  grid.classList.toggle('can-scroll', grid.scrollHeight > grid.clientHeight + 1);
+}
+
 const BAND_PAINT_PICKS: readonly string[] = Object.freeze(['factory', 'auto', 'summer', 'desert', 'winter', 'digital']);
 const GARAGE_STATIONS = Object.freeze([
   ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
@@ -1921,17 +1938,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the grid is drawn, never in a scroll.
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cgrid.camo');
-    if (!cg) return;
-    cg.style.maxHeight = '';
-    const card = [...cg.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetHeight > 0);
-    if (card && cg.scrollHeight > cg.clientHeight + 1 && getComputedStyle(cg).overflowY !== 'visible') {
-      const gap = parseFloat(getComputedStyle(cg).rowGap) || 0;
-      const rows = Math.floor((cg.clientHeight + gap) / (card.offsetHeight + gap));
-      if (rows >= 1) cg.style.maxHeight = `${rows * (card.offsetHeight + gap) - gap}px`;
-    }
-    cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
+    if (cg) fitWholeRows(cg);
   };
   window.addEventListener('resize', fitCamoRows);
+  window.addEventListener('resize', () => {
+    const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .pgrid');
+    if (grid) fitWholeRows(grid);
+  });
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
   // so window resize alone is insufficient to keep the fade affordance true.
@@ -2380,6 +2393,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `${uiIconSVG('close', 18)}</button></div>` +
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
+    // a picker that scrolls ends on a whole row of tiles, never a sliced one
+    requestAnimationFrame(() => { const grid = eqpickEl.querySelector<HTMLElement>('.pgrid'); if (grid) fitWholeRows(grid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
