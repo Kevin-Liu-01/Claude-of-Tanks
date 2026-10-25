@@ -157,6 +157,7 @@ import {
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,
@@ -3329,19 +3330,26 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
+  // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
+  const stages = frameStages;
+  stages?.stage(FRAME_STAGE.spotting);
   stepSpotting(game, bus);
   retargetObjectiveBots(game);
+  stages?.stage(FRAME_STAGE.bots);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
   if (game.jev && game._jevView) game.jev.step(game._jevView);
   stepBotControllers(game);
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
+  stages?.stage(FRAME_STAGE.aerial);
   const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.
   _aerialWorldGame = game; _aerialWorldSource = world;
   for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);
   _aerialWorldGame = null; _aerialWorldSource = null;
+  stages?.stage(FRAME_STAGE.movement);
   stepTankMovement(game, bus, world, rig, collider);
+  stages?.stage(FRAME_STAGE.contacts);
   resolveTankBodyContacts(game.tanks, SIM_DT,
     (upper, lower, closing, nx, nz) =>
       collider.queueRam(upper, lower, closing, nx, nz));
@@ -3350,13 +3358,18 @@ export function simStep(
   stepRolloverRecovery(game, bus);
   // the hulls have moved: the turret bodies meet them where they stand now, before any shell this step is traced
   game._wreckTurrets?.step(game.tanks);
+  stages?.stage(FRAME_STAGE.fire);
   stepReloadAndFire(game, bus, rig);
   stepAuxiliarySystems(game, world, bus);
   game.killcam?.recordSimStep(game);
+  stages?.stage(FRAME_STAGE.shells);
   stepShells(game, bus, world);
+  stages?.stage(FRAME_STAGE.damage);
   stepFireDamage(game, bus);
   tickRepairs(game, bus, SIM_DT);
+  stages?.stage(FRAME_STAGE.destruction);
   stepDestruction(game, bus, world);
+  stages?.stage(FRAME_STAGE.mode);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
 }
 

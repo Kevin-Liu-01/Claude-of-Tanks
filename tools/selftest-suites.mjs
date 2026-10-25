@@ -786,6 +786,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
+    'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
+    'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
     'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
@@ -1627,6 +1630,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.underFire.selftest.mjs',
     // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
     'src/game/ai.colliderStop.selftest.mjs',
+    'src/game/ai.gridOrderShared.selftest.mjs', // battle-spikes-253: the bots' grid-order check one walk a list, not one a bot
     // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
     'src/game/ai.lastRun.selftest.mjs',
     // 2026-10-09 (gameplay lane): a pivot never drives past 4 m/s (botModes Aegis Crossing Turbo Ball, the 896-point fall).

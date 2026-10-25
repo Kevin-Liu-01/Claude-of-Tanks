@@ -1,5 +1,6 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 
 interface BattlePauseInfo {
   paused: boolean;
@@ -235,6 +236,7 @@ export function createBattleFrameRuntime({
     );
     while (simulationAccumulator >= simulationDt) {
       stepSimulation();
+      frameStages?.stage(FRAME_STAGE.pose);
       presentation.captureSoloPose();
       simulationAccumulator -= simulationDt;
     }
@@ -250,11 +252,13 @@ export function createBattleFrameRuntime({
       followNetworkCountdown();
       simulationAccumulator = 0;
     } else if (game.preBattleS > 0) {
+      frameStages?.stage(FRAME_STAGE.countdown);
       advanceCountdown(wallDtSeconds);
       simulationAccumulator = 0;
     } else {
       advanceSoloSimulation(appliedDtSeconds);
     }
+    frameStages?.stage(FRAME_STAGE.pose);
     presentation.updateResult();
   };
 
@@ -265,6 +269,7 @@ export function createBattleFrameRuntime({
     livePaused: boolean,
   ): number => {
     const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    frameStages?.stage(FRAME_STAGE.presentation);
     if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
     return alpha;
   };
@@ -302,10 +307,12 @@ export function createBattleFrameRuntime({
     const livePaused = paused && inBattle && !killcamActive && !game.result;
     const appliedDtSeconds = applyPauseEdge(livePaused, dtSeconds);
     pauseInfo.lastDtR = appliedDtSeconds;
+    frameStages?.stage(FRAME_STAGE.input);
     pollFrameInput(appliedDtSeconds, inBattle, paused, killcamActive, cameraLocked);
 
     // A persistent Garage room is pumped before the event-paced early return
     // in main. Every other phase reaches this owner and pumps exactly once.
+    frameStages?.stage(FRAME_STAGE.network);
     if (game.phase !== 'garage') network.pump(appliedDtSeconds, nowMs);
     const networkActive = network.isActive();
     if (inBattle && networkActive) networkBattleOwned = true;

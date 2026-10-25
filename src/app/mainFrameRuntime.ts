@@ -22,6 +22,7 @@ import type { CameraFrameInput } from '../game/playerFrameInput.ts';
 import type { SniperFillRuntime } from '../game/sniperFillRuntime.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { WorldFramePresentationRuntime } from '../world/worldFramePresentationRuntime.ts';
+import { FRAME_STAGE, frameStages } from '../game/stateCore.ts';
 import type {
   MainFxRuntime,
   MainGameState,
@@ -231,6 +232,7 @@ export function createMainFrameRuntime({
     frame: BattleFrameReceipt,
     dtSeconds: number,
   ): void => {
+    frameStages?.stage(FRAME_STAGE.camera);
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
@@ -251,18 +253,24 @@ export function createMainFrameRuntime({
     dtSeconds: number,
     fx: MainFxRuntime | null,
   ): void => {
+    const stages = frameStages;
+    stages?.stage(FRAME_STAGE.world);
     worldFramePresentation.update(dtSeconds, frame.inBattle, frame.killcamActive);
+    stages?.stage(FRAME_STAGE.fx);
     fx?.update(
       frame.livePaused ? 0 : dtSeconds * (frame.killcamActive ? killcam.fxTimeScale : 1),
       game.shells,
       camera,
       resolveFxSubject,
     );
+    stages?.stage(FRAME_STAGE.matchWorld);
     matchModeWorld.update(
       frame.inBattle ? game.matchModeState as MatchModePresentationState : null,
       game.timeS,
     );
+    stages?.stage(FRAME_STAGE.hud);
     battleHudFrame.update(frame.inBattle, frame.killcamActive);
+    stages?.stage(FRAME_STAGE.audio);
     audioListener.update(dtSeconds, frame.inBattle, frame.killcamActive);
   };
 
@@ -285,7 +293,10 @@ export function createMainFrameRuntime({
       game.phase === 'garage' && !garageShadowsDirty,
     );
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
+    const stages = frameStages;
+    stages?.stage(FRAME_STAGE.lighting);
     lighting.update(false, dtSeconds);
+    stages?.stage(FRAME_STAGE.post);
     const postStartedAt = profileGarageReturn ? performance.now() : 0;
     camera.userData.scopeVision = rig.mode === 'SNIPER' && !game.player?.aerial?.active ? aerialVisionCode(getScopeVision()) : 0;
     const thermal = frame.inBattle && !frame.killcamActive && !game.player?.combat?.destroyed && camera.userData.thermalFlight === true;
@@ -299,6 +310,7 @@ export function createMainFrameRuntime({
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
     if (game.phase === 'garage') clearGaragePresentationDirty();
     if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
+    stages?.stage(FRAME_STAGE.perfHud);
     perfHud.update(dtSeconds * 1000);
     if (profileGarageReturn) {
       trace.mark?.('garage:return-frame', {
@@ -327,13 +339,23 @@ export function createMainFrameRuntime({
     const appliedDtSeconds = frame.dtSeconds;
     updateCombatCamera(frame, appliedDtSeconds);
     updateCinematicVeil(frame.killcamActive);
+    frameStages?.stage(FRAME_STAGE.sniperFill);
     sniperFill.update();
     updateWorldPresentation(frame, appliedDtSeconds, fx);
+    frameStages?.stage(FRAME_STAGE.night);
     updateNightLighting?.();
     renderPresentation(frame, appliedDtSeconds, frameWallDtSeconds);
   };
 
   const tick = (nowMs: number): void => {
+    // the spike census's recorder, when installed (game/frameStages.ts): the frame's begin and end around its work
+    const stages = frameStages;
+    stages?.begin(nowMs);
+    runTick(nowMs);
+    stages?.end();
+  };
+
+  const runTick = (nowMs: number): void => {
     scheduleFrame();
     if (lastMs < 0) lastMs = nowMs;
     const frameWallDtS = Math.max(0, (nowMs - lastMs) / 1000);
