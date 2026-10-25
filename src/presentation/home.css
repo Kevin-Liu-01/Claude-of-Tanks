@@ -1,8 +1,7 @@
-/* The landing (site/home.html): the Premiere direction's own pages (streams/brand-ui/phase2/bui01/src/pages
-   01-landing-hero, 02-landing-versus-wall, 03-landing-fleet-wall, 90-phone-landing) on the shared kit
-   (src/ui/components/components.css, imported here; DIRECTION.md maps the classes) and the tokens. tools/home-premiere.mjs
-   writes the hero, versus, fleet and battlefield markup; the sections under them speak the same grammar: a display
-   headline, picture cards with their fade, kit buttons. Tokens only; the page's own values are the surface-home group. */
+/* The landing (site/home.html) on the shared kit (src/ui/components/components.css, imported here) and the tokens:
+   the hero reel, the features, the press band and the closing call (owner 2026-10-25: "make /home look a ton better, use
+   its graphics better"). tools/home-premiere.mjs writes the hero and the features from public/media/home-r2. Tokens only;
+   the page's own values are the surface-home group. */
 @import url('../ui/components/components.css');
 @import url('../ui/tokens/surface-home.css');
 /* the manual-start block and the hero card layers ride in this one sheet: no extra stylesheet on the path to first paint */
@@ -34,30 +33,14 @@ img{display:block;max-width:100%}
   transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter)}
 .home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:var(--side-plate)}
 
-/* ---- the section grammar (02 header, 03 header): a display headline, the accent count, the hollow noun ---- */
-.home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
-.home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
-/* a section's switch never runs past the screen: a narrow one scrolls its options in place */
-:is(.home-head,.bf-head)>.cot-c-seg{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
-:is(.home-head,.bf-head)>.cot-c-seg::-webkit-scrollbar{display:none}
-:is(.home-head,.bf-head)>.cot-c-seg>.cot-c-seg__opt{flex:none}
-
-/* ---- vehicle identity: flag, silhouette, name (direction .flag, .silm; the kit's cot-c-flag, cot-c-sil) ---- */
-.vs-duel{display:flex;align-items:center;gap:var(--s3);min-width:0;flex-wrap:nowrap}
-.vs-side{display:inline-flex;align-items:center;gap:var(--s2);min-width:0}
-.vs-side b{overflow:hidden;font:700 var(--vs-name,var(--fs-15))/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
-.vs-side .cot-c-sil{width:var(--sil-w,42px);height:var(--sil-h,14px);color:var(--ink-1);filter:var(--sil-shadow)}
-.vs-side .cot-c-flag{width:var(--flag-w,16px);height:calc(var(--flag-w,16px) * .75)}
-.vs-mark{flex:none;font-size:var(--vs-mark,var(--fs-11))}
-.vs-where{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-12)/1 var(--font-body);color:var(--ink-2);white-space:nowrap}
-.vs-where .cot-i{width:14px;height:14px}
-
-/* ---- 01 the living versus hero: the headline in the sky, the duel named on the road, the counts on the floor ---- */
-.hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:1fr auto auto;
-  grid-template-areas:"card card" "match scene" "stats stats";min-height:max(640px,var(--cot-viewport-height,100dvh));
-  padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
-.hero__still{position:absolute;left:0;right:0;bottom:0;z-index:-2;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
+/* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
+.hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
+  min-height:max(640px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
+.hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
+.hero__still{z-index:-3}
+.hero__reel{position:absolute;inset:0;z-index:-2;pointer-events:none}
+.hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
+.hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-hero-grade)}
 .hero__card{grid-area:card;align-self:start;max-width:min(1000px,72vw)}
 /* the H1 is the horizontal lockup (SPEC 3.1), set at display size in the sky */
@@ -69,182 +52,89 @@ img{display:block;max-width:100%}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
 .hero__dur{font:500 var(--fs-14)/1 var(--font-data);letter-spacing:normal}
-.hero__matchup{grid-area:match;align-self:end;display:flex;align-items:center;gap:var(--s5);margin-bottom:var(--s6);--vs-name:var(--fs-24);--sil-w:74px;--sil-h:24px;--flag-w:30px;--vs-mark:var(--fs-15)}
-.hero__matchup .vs-duel{gap:var(--s5)}
-.hero__matchup .vs-side{gap:var(--s3)}
-.hero__matchup .vs-mark{padding:var(--s2) var(--s3);letter-spacing:var(--track-label);box-shadow:var(--home-vs-ring)}
-.hero__matchup .vs-where{gap:var(--s3);margin-left:var(--s3);padding-left:var(--s5);border-left:1px solid var(--line-2);font-size:var(--fs-14)}
-.hero__matchup .vs-where .cot-i{width:16px;height:16px}
-.hero__scene{grid-area:scene;align-self:end;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--s3);margin-bottom:var(--s6)}
+.hero__toggle{position:absolute;right:var(--home-x);bottom:calc(50px + var(--s4));z-index:var(--z-lift)}
+.hero__toggle[hidden]{display:none}
 .hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0 calc(var(--home-x) * -1);padding:0 var(--home-x);list-style:none;border-top:1px solid var(--line-1)}
 .hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:500 var(--fs-13)/1 var(--font-body);color:var(--ink-3)}
 .hero__stats .cot-i{width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
+/* the trailer: a dialog over the page, its sound on the viewer's press */
+.hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
+.hero__film::backdrop{background:var(--scrim)}
+.hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift)}
 
-/* ---- 02 the versus wall: one big duel that plays, two beside it, the rest below play on hover ---- */
-.versus{padding:var(--s8) 0 var(--s7)}
-.vs-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:dense;gap:var(--s3)}
-.vs-tile{margin:0;aspect-ratio:16/9;--sil-w:34px;--sil-h:11px;--vs-name:var(--fs-13)}
-.vs-tile[hidden]{display:none}
-.vs-tile--big{grid-column:span 8;grid-row:span 2;aspect-ratio:auto;--sil-w:74px;--sil-h:24px;--flag-w:30px;--vs-name:var(--fs-28);--vs-mark:var(--fs-14)}
-.vs-tile--mid{grid-column:span 4;--sil-w:46px;--sil-h:15px;--vs-name:var(--fs-16)}
-.vs-tile--sm{grid-column:span 3}
-/* four to a row, a small tile names both tanks in full: the flags stay, the silhouettes give way */
-@media (width >= 1100px){.vs-tile--sm .cot-c-sil{display:none}}
-.vs-tile__film{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
-.vs-tile__film.has-frame{opacity:1}
-.vs-tile__idx{position:absolute;right:12px;top:10px;font:500 var(--fs-12)/1 var(--font-data);color:var(--home-idx-ink);text-shadow:var(--home-idx-shadow)}
-.vs-tile__meta{position:absolute;left:16px;right:16px;bottom:13px;display:flex;flex-direction:column;gap:var(--s2);margin:0}
-.vs-tile--big .vs-tile__meta{left:26px;bottom:24px;gap:var(--s3)}
-.vs-tile--big .vs-mark{padding:var(--s2) var(--s2);box-shadow:var(--home-vs-ring)}
-.vs-tile--big .vs-where{font-size:var(--fs-14)}
-.vs-tile--big .vs-where .cot-i{width:16px;height:16px}
-.vs-tile--sm .vs-tile__meta{left:12px;right:12px;bottom:10px}
-.vs-tile:not(.vs-tile--big) .vs-duel{gap:var(--s2)}
-.vs-tile:not(.vs-tile--big) .vs-side{gap:var(--s2)}
-.vs-row2{display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}
-.vs-acts{display:flex;gap:var(--s3);margin-top:var(--s1)}
-.vs-tile .cot-media-toggle{top:12px;bottom:auto;left:12px;right:auto}
-.vs-tile:not(.vs-tile--big) .cot-media-toggle,.fleet-tile .cot-media-toggle{display:none}
+/* ---- the features: one large picture or loop each, its name the way in (a row of one runs the page's width) ---- */
+.features{padding:var(--s7) 0 var(--s8)}
+.features-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+.feat{margin:0;aspect-ratio:16/9}
+.feat--wide{grid-column:1 / -1;aspect-ratio:21/9}
+.feat>img,.feat>video{transition:transform var(--dur-stage) var(--ease-camera)}
+.feat>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
+.feat>video.has-frame{opacity:1}
+.feat .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
+.feat__cap{position:absolute;inset:0;display:flex;align-items:flex-end;margin:0;padding:var(--s5) var(--s6)}
+.feat__link{display:inline-flex;align-items:center;gap:var(--s3);font:700 clamp(var(--fs-28),2.6vw,var(--fs-44))/.95 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.feat--wide .feat__link{font-size:clamp(var(--fs-36),4vw,var(--fs-76))}
+/* the whole picture answers the link; the player's own control stays above it */
+.feat__link::after{content:'';position:absolute;inset:0}
+.feat__link b{color:var(--gold)}
+.feat__link .cot-i{flex:none;width:24px;height:24px;color:var(--accent);transition:transform var(--dur-fast) var(--ease-enter)}
+.feat__link:focus-visible{outline:none}
+.feat:has(.feat__link:focus-visible){box-shadow:var(--home-pick-ring)}
+@media (hover:hover) and (pointer:fine){
+  .feat:hover>img,.feat:hover>video{transform:scale(1.02)}
+  .feat:hover .feat__link .cot-i{transform:translateX(4px)}
+}
 
-/* ---- 03 the fleet wall: twelve takes around the featured vehicle's plate ---- */
-.fleet{padding:var(--s7) 0 var(--s8)}
-.fleet-wall{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
-/* the wall's facets (03 .facets): All, the nations' flags and the classes, the search at the row's end, the count */
-.fleet-facets{display:flex;align-items:center;gap:var(--s2);min-width:0;margin-bottom:var(--s3)}
-.fleet-facets__set{display:flex;align-items:center;gap:var(--s2)}
-.fleet-facets__set+.fleet-facets__set{margin-left:var(--s3)}
-.fleet-facets .cot-c-flag{display:block}
-.fleet-search{display:flex;align-items:center;gap:var(--s2);width:250px;height:30px;margin-left:auto;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
-.fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.fleet-search:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
-.fleet-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
-.fleet-search input::placeholder{color:var(--ink-3)}
-.fleet-search input::-webkit-search-cancel-button{display:none}
-.fleet-count{flex:none;margin:0;font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-3)}
-.fleet-count:empty{display:none}
-@media (width < 1100px){.fleet-facets{flex-wrap:wrap}.fleet-search{order:1;flex:1 1 100%;width:auto;margin-left:0}}
-@media (width < 768px){.fleet-facets__set{flex-wrap:wrap}.fleet-facets__set+.fleet-facets__set{margin-left:0}}
-.fleet-tile{display:block;aspect-ratio:16/9;text-decoration:none}
-/* a filtered wall's empty cells (fleetWall.ts): the desktop grid keeps its three rows; the narrow ones close up */
-.fleet-gap{aspect-ratio:16/9}
-@media (width < 1100px){.fleet-gap{display:none}}
-.fleet-tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
-.fleet-tile>video.has-frame{opacity:1}
-.fleet-tile:hover,.fleet-tile:focus-visible,.fleet-tile.is-featured{outline:none;box-shadow:var(--home-pick-ring)}
-/* the playing take's progress (03): publicPages.ts sets the loop's length and position as it plays */
-.fleet-tile__progress{position:absolute;left:0;right:0;bottom:0;height:2px;overflow:hidden;background:var(--fill-scale);opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-enter)}
-.fleet-tile__progress i{display:block;height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center}
-.fleet-tile.is-playing .fleet-tile__progress{opacity:1}
-.fleet-tile.is-playing .fleet-tile__progress i{animation:fleet-progress var(--loop-s) linear var(--loop-at) infinite}
-@keyframes fleet-progress{to{transform:scaleX(1)}}
-.fleet-tile__id{position:absolute;left:10px;right:10px;bottom:9px;display:flex;align-items:center;gap:var(--s2);min-width:0}
-.fleet-tile__id .cot-c-sil{width:34px;height:11px;color:var(--ink-1);filter:var(--sil-shadow)}
-.fleet-tile__id b{overflow:hidden;font:700 var(--fs-13)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
-/* the plate is a grid so the art's height is definite: the hero card sizes its tank in container units, and a size
-   container that takes its height from flex and min-height reports 0 cqh, which drew the tank at 0 px */
-.fleet-feature{grid-column:5 / span 2;grid-row:1 / span 3;display:grid;grid-template-rows:minmax(220px,1fr) auto auto;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.fleet-feature__art{position:relative;height:100%;overflow:hidden;
-  --hc-band:40px;--hc-share:0.7;--hc-hshare:0.7;--hc-cxr:0.56;
-  --hc-flag-mask:radial-gradient(ellipse 70% 84% at 96% 0%,var(--ink-1) 0%,var(--ink-1) 40%,color-mix(in srgb,var(--ink-1) 68.4%,transparent) 62.5%,color-mix(in srgb,var(--ink-1) 31.6%,transparent) 77.5%,transparent 100%)}
-.fleet-feature__name{position:absolute;left:18px;top:16px;right:18px;z-index:var(--z-lift);display:flex;align-items:center;gap:var(--s3);margin:0;font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.fleet-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:0;background:var(--line-1);border-top:1px solid var(--line-1)}
-.fleet-facts div{display:flex;flex-direction:column;gap:var(--s2);padding:var(--s3) var(--s3);background:var(--surface-page)}
-.fleet-facts .cot-i{width:17px;height:17px;color:var(--ink-3)}
-.fleet-facts dt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.fleet-facts dd{margin:0}
-.fleet-facts b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
-.fleet-facts small{margin-left:3px;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
-.fleet-feature__acts{display:flex;gap:var(--s3);padding:var(--s3) var(--s4);background:var(--surface-page);border-top:1px solid var(--line-1)}
-.fleet-feature__acts .cot-c-btn--primary{flex:1}
+/* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
+.home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
+.play{padding:var(--s7) 0}
+.play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
+/* a narrow switch scrolls its options in place */
+.play-acts>.cot-c-seg{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.play-acts>.cot-c-seg::-webkit-scrollbar{display:none}
+.play-acts>.cot-c-seg>.cot-c-seg__opt{flex:none}
+.play-acts .cot-c-btn--icon:disabled{opacity:.4;cursor:default}
+.play-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--s3) * 2) / 2.4);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+.play-rail::-webkit-scrollbar{display:none}
+.play-rail[hidden]{display:none}
+.play-rail:focus-visible{outline-offset:2px}
+.play-tile{margin:0;aspect-ratio:16/9;scroll-snap-align:start}
+.play-tile__nm{position:absolute;left:var(--s5);right:var(--s5);bottom:var(--s4);display:flex;align-items:center;margin:0;color:var(--ink-1)}
+.play-tile__nm a{display:inline-flex;align-items:center;gap:var(--s3);min-width:0}
+.play-tile__nm a::after{content:'';position:absolute;inset:0}
+.play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
+.play-tile__nm a:focus-visible{outline:none}
+.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--accent)}
+.play-tile__nm b{overflow:hidden;font:700 var(--fs-28)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
 
-/* the battlefields (03 .bf): every map in a rail, its art, its minimap, its landscapes */
-.bf{margin-top:var(--s7)}
-.bf-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s3) var(--s5);margin-bottom:var(--s3)}
-.bf-title{margin:0;font:700 var(--fs-36)/.9 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.bf-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 50px) / 5.4);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
-.bf-rail::-webkit-scrollbar{display:none}
-.bf-rail:focus-visible{outline-offset:2px}
-.bf-card{display:block;aspect-ratio:16/10;scroll-snap-align:start;text-decoration:none}
-.bf-card[hidden]{display:none}
-.bf-card.is-lead,.bf-card:hover,.bf-card:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
-.bf-card__mm{position:absolute;right:9px;top:9px;width:30%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);box-shadow:var(--home-inset-ring)}
-.bf-card__mm img{width:100%;height:100%;object-fit:cover}
-.bf-card__nm{position:absolute;left:12px;right:12px;bottom:11px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
-.bf-card__nm b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.bf-card__tags{display:flex;gap:var(--s2);color:var(--ink-2)}
-.bf-card__tags .cot-i{width:14px;height:14px}
-
-/* ---- the beats under the walls: the trailer beside its loops, the modes and mechanics behind one switch, the kill
-   cam and the Studio. Names sit over the pictures' fade, as on the walls; no copy under them ---- */
-.motion{padding:var(--s7) 0 var(--s8)}
-.motion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
-.motion-trailer{position:relative;grid-column:span 2;grid-row:span 2;margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.motion-trailer video{display:block;width:100%;height:100%;object-fit:cover;background:var(--surface-scene)}
-.motion-trailer video[hidden]{display:none}
-/* the vertical cut keeps its whole frame */
-.motion-trailer video[data-trailer]{object-fit:contain}
-.motion-trailer .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
-.motion-trailer.has-cut .cot-media-toggle{display:none}
-.motion-cuts{position:absolute;left:var(--s4);top:var(--s4);z-index:var(--z-lift);background:var(--side-plate);transition:opacity var(--dur-fast) var(--ease-enter)}
-.motion-cuts .cot-c-seg__opt{font:500 var(--fs-13)/1 var(--font-data)}
-.motion-cuts .cot-c-seg__opt[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
-.motion-trailer.is-playing:not(:hover,:focus-within) .motion-cuts{opacity:0}
-.motion-loop{margin:0;aspect-ratio:16/9}
-.motion-loop .cot-media-toggle{top:10px;bottom:auto;left:10px;right:auto}
-.play{padding:var(--s8) 0 0}
-.play-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;gap:var(--s3)}
-.play-grid[hidden],.play-more[hidden]{display:none}
-.play-tile{margin:0;aspect-ratio:16/9}
-.play-tile--lead{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
-.play-tile__nm{position:absolute;left:14px;right:14px;bottom:12px;display:flex;align-items:center;gap:var(--s3);margin:0;color:var(--ink-1)}
-.play-tile__nm .cot-i{flex:none;width:18px;height:18px;color:var(--accent)}
-.play-tile__nm b{overflow:hidden;font:700 var(--fs-16)/1.05 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
-.play-tile--lead .play-tile__nm{left:24px;bottom:22px;gap:var(--s4)}
-.play-tile--lead .play-tile__nm .cot-i{width:28px;height:28px}
-.play-tile--lead .play-tile__nm b{font-size:var(--fs-36);line-height:.94;white-space:normal}
-.play-more{display:flex;justify-content:flex-end;margin:var(--s5) 0 0}
-.shots{padding-top:var(--s7)}
-.shots-acts{display:flex;align-items:center;gap:var(--s2)}
-.shots-acts .cot-c-btn--icon:disabled{opacity:.4;cursor:default}
-.shots-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px) / 4.4);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
-.shots-rail::-webkit-scrollbar{display:none}
-.shots-rail:focus-visible{outline-offset:2px}
-.shots-tile{margin:0;aspect-ratio:16/9;scroll-snap-align:start}
-/* nothing sits on a screenshot, so it keeps its whole frame: no fade */
-.shots-tile::after{content:none}
-.replay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);padding-top:var(--s7)}
-.replay-card{min-width:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
-.replay-card__media{position:relative;margin:0;aspect-ratio:16/9;background:var(--surface-scene)}
-.replay-card__media>:is(img,video){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.replay-card__media .cot-media-toggle{top:12px;bottom:auto;left:12px;right:auto}
-.replay-card__row{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s5)}
-.replay-card h2{margin:0;font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-
-
-/* social proof */
-.v5-social-proof{position:relative;padding-block:var(--s8);overflow:hidden;background:var(--surface-page)}
-.v5-social-proof__intro{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(410px,.6fr);align-items:end;gap:var(--s7);margin-bottom:var(--s6)}
-.v5-social-proof__platforms{display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s4)}
-.v5-social-proof__intro header>p:last-child{max-width:760px;margin:var(--s4) 0 0;color:var(--ink-2);font:400 var(--fs-16)/1.55 var(--font-body)}
-.v5-social-proof h2{max-width:960px;margin:0;font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase}
-.v5-social-proof h2 span{display:block;white-space:nowrap}
-.v5-social-proof h2 em{color:var(--gold);font-style:normal}
-.v5-social-platform-icon{display:inline-block;width:22px;height:22px;flex:none;background:currentColor;-webkit-mask:var(--social-platform-icon) center/contain no-repeat;mask:var(--social-platform-icon) center/contain no-repeat}
-.v5-social-platform-icon--x{--social-platform-icon:url('/brand/social/x.svg');color:var(--ink-1)}
-.v5-social-platform-icon--reddit{--social-platform-icon:url('/brand/social/reddit.svg');color:var(--home-reddit)}
-.v5-social-proof__signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;margin:0;background:var(--line-1);box-shadow:var(--e1)}
-.v5-social-proof__signals div{min-height:104px;padding:var(--s5);background:var(--surface-scene)}
-.v5-social-proof__signals dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
-.v5-social-proof__signals dt .v5-social-metric-icon{width:16px;height:16px}
-.v5-social-proof__signals dd{margin:var(--s2) 0 0;color:var(--gold);font:700 var(--fs-40)/1 var(--font-display)}
-.v5-social-proof__x-grid{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--s3)}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;grid-column:span 4;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
+/* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
+.press{padding:var(--s7) 0 var(--s8);border-top:1px solid var(--line-1)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:end;gap:var(--s6) var(--s7)}
+/* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
+.home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+.press__title{grid-area:title}
+.press__title em{font-style:normal;color:var(--gold);-webkit-text-stroke:0;text-shadow:none}
+.press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
+.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,auto);gap:var(--s6);margin:0}
+.press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+.press__stats dt .v5-social-metric-icon{width:16px;height:16px}
+.press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1)}
+.press__sources{grid-area:sources;display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:var(--s5) 0 0;list-style:none;border-top:1px solid var(--line-1)}
+.press__src{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
+.press__src:hover,.press__src:focus-visible{color:var(--ink-1);box-shadow:var(--ring-3)}
+/* the quoted posts: four cards, each over its battle photo */
+.press__quotes{grid-area:quotes;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
+.press__quotes .v5-social-card__body blockquote{font-size:var(--fs-24)}
+.press__quotes .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20)}
+.press__quotes .v5-social-metrics{flex-wrap:wrap;gap:var(--s2) var(--s4)}
+.press__avatar{display:inline-block;width:.8em;height:.8em;margin-right:var(--s4);vertical-align:-.06em;border-radius:50%;outline:1px solid var(--line-3)}
+.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
 .v5-social-card::before{content:'';position:absolute;z-index:var(--home-card-z);top:0;left:0;width:78px;height:3px;background:var(--social-accent);pointer-events:none}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
-.v5-social-card:nth-child(1),.v5-social-card:nth-child(2){grid-column:span 6;min-height:392px}
-.v5-social-card--threejs{--social-accent:var(--gold)}
 .v5-social-card--vaibhav{--social-accent:var(--ink-2)}
-.v5-social-card--urban-crossfire{--social-card-image:url('/media/site50-r14/stills/s19-roof-tiles-close.webp');--social-card-position:50% 48%}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
 .v5-social-card--winter-breaker{--social-card-image:url('/media/site50-r14/stills/s24-ice-duel.webp');--social-card-position:52% 50%}
 .v5-social-card--verdant-column{--social-card-image:url('/media/site50-r14/stills/s04-column-under-fire.webp');--social-card-position:50% 52%}
@@ -258,163 +148,101 @@ img{display:block;max-width:100%}
 .v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover}
 .v5-social-card__body{display:flex;flex:1;flex-direction:column;justify-content:center;padding:var(--s6) 0}
 .v5-social-card__body blockquote{margin:0;color:var(--ink-1);font:600 var(--fs-28)/1.2 var(--font-display)}
-.v5-social-card:nth-child(n+3) .v5-social-card__body blockquote{font-size:var(--fs-24)}
 .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.32}
-.v5-social-card--threejs .v5-social-card__body blockquote{color:var(--gold);font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase}
 .v5-social-metrics{display:flex;align-items:center;gap:var(--s5);margin:0;padding:var(--s4) 0 0;border-top:1px solid var(--line-1);color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-data);list-style:none}
 .v5-social-metrics li{display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap}
+.press__date{grid-area:date;margin:0;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
+.v5-social-platform-icon{display:inline-block;width:16px;height:16px;flex:none;background:currentColor;-webkit-mask:var(--social-platform-icon) center/contain no-repeat;mask:var(--social-platform-icon) center/contain no-repeat}
+.v5-social-platform-icon--x{--social-platform-icon:url('/brand/social/x.svg');color:var(--ink-1)}
+.v5-social-platform-icon--reddit{--social-platform-icon:url('/brand/social/reddit.svg');color:var(--home-reddit)}
 .v5-social-metric-icon{display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--social-metric-icon) center/contain no-repeat;mask:var(--social-metric-icon) center/contain no-repeat}
-.v5-social-metric-icon--view{--social-metric-icon:url('/brand/social/view.svg');color:#65c8f2}
-.v5-social-metric-icon--like{--social-metric-icon:url('/brand/social/like.svg');color:#ff6f85}
+.v5-social-metric-icon--view{--social-metric-icon:url('/brand/social/view.svg')}
+.v5-social-metric-icon--like{--social-metric-icon:url('/brand/social/like.svg')}
+.v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg');color:#91a1ac}
+.v5-social-metric-icon--view{color:#65c8f2}
+.v5-social-metric-icon--like{color:#ff6f85}
 .v5-social-metric-icon--comment{--social-metric-icon:url('/brand/social/comment.svg');color:#91a1ac}
 .v5-social-metric-icon--repost{--social-metric-icon:url('/brand/social/repost.svg');color:#91a1ac}
-.v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg');color:#91a1ac}
-.v5-social-proof__reddit{position:relative;margin-top:var(--s7)}
-.v5-social-proof__reddit>header{display:flex;align-items:end;justify-content:space-between;gap:var(--s5);margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--line-1)}
-.v5-social-proof__reddit>header>div{display:flex;align-items:center;gap:var(--s3)}
-.v5-social-proof__reddit>header .v5-social-platform-icon{width:32px;height:32px}
-.v5-social-proof__reddit>header span:last-child{display:flex;flex-direction:column}
-.v5-social-proof__reddit>header small{color:var(--home-reddit);font:500 var(--fs-12)/1.2 var(--font-body)}
-.v5-social-proof__reddit>header strong{margin-top:3px;color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase}
-.v5-social-proof__reddit>header p{margin:0;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
-.v5-reddit-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
-.v5-reddit-grid article{min-width:0;min-height:240px;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
-.v5-reddit-grid a{display:flex;height:100%;flex-direction:column;padding:var(--s5)}
-.v5-reddit-card__meta{display:flex;min-width:0;align-items:center;gap:var(--s3)}
-.v5-reddit-card__meta>img{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--home-reddit);object-fit:contain;object-position:center bottom}
-.v5-reddit-card__meta>span{display:flex;min-width:0;flex-direction:column;line-height:1.15}
-.v5-reddit-card__meta strong{overflow:hidden;color:var(--home-reddit);font:600 var(--fs-12)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.v5-reddit-card__meta small{overflow:hidden;margin-top:var(--s1);color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.v5-reddit-grid h3{flex:1;margin:var(--s5) 0;color:var(--ink-1);font:600 var(--fs-18)/1.2 var(--font-display)}
-.v5-reddit-grid .v5-social-metrics{gap:var(--s4)}
-.v5-reddit-grid .v5-social-metric-icon{width:16px;height:16px}
-.v5-social-proof__snapshot{margin:var(--s4) 0 0;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body);text-align:right}
 
-
-/* the closing call: full-bleed art under its fade */
-/* the headline and its two calls sit on the open snow at the lower left; the duel stays clear above and to the right */
+/* ---- the closing call: full-bleed art under its fade; the headline and its two calls on the open snow ---- */
 .v5-cta{position:relative;display:flex;align-items:flex-end;min-height:640px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
 .v5-cta>img,.v5-cta>div{position:absolute;inset:0;width:100%;height:100%}
-/* bottom-anchored: the snow under the duel takes the words on every width, the far tank stays above them */
 .v5-cta>img{object-fit:cover;object-position:50% 100%}
 .v5-cta>div{background:var(--home-closing-grade)}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
 .v5-cta h2{max-width:clamp(620px,43vw,820px);margin:0 0 var(--s6);font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--s4)}
 
-:is(.motion,.play,.replay,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 1100px}
-.shots{content-visibility:auto;contain-intrinsic-size:auto 420px}
-/* the walls under the hero lay out only as they near the screen: the first frame draws the hero alone */
-.versus{content-visibility:auto;contain-intrinsic-size:auto 1200px}
-.fleet{content-visibility:auto;contain-intrinsic-size:auto 1300px}
-.v5-social-proof{content-visibility:auto;contain-intrinsic-size:auto 900px}
+/* the sections under the hero lay out only as they near the screen: the first frame draws the hero alone */
+.features{content-visibility:auto;contain-intrinsic-size:auto 2600px}
+:is(.play,.press,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 640px}
 
-/* Chinese headlines: solid ink (no outline type on CJK, the shared .t-hollow rule) and roomier lines: CJK glyphs fill the
-   em box, so the Latin display leading would make two lines touch */
-html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.15}
+/* Chinese headlines: roomier lines (CJK glyphs fill the em box, so the Latin display leading would make two lines touch) */
+html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
-@media (width < 1440px){
-  .bf-rail{grid-auto-columns:calc((100% - 40px) / 4.4)}
-}
 @media (width < 1100px){
   .hero__card{max-width:none}
-  .vs-tile--big{grid-column:span 12;grid-row:auto;aspect-ratio:16/9}
-  .vs-tile--mid,.vs-tile--sm{grid-column:span 6}
-  .fleet-wall{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .fleet-feature{grid-column:1 / -1;grid-row:auto;order:-1;grid-template-rows:300px auto auto}
-  .bf-rail{grid-auto-columns:calc((100% - 20px) / 2.6)}
-  .motion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .motion-trailer{grid-column:1 / -1;grid-row:auto;aspect-ratio:16/9}
-  .motion-loop:last-child{display:none}
-  .play-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .play-tile--lead{grid-row:auto;aspect-ratio:16/9}
-  .replay{grid-template-columns:1fr}
-  .shots-rail{grid-auto-columns:calc((100% - 24px) / 2.4)}
-  .v5-social-proof__intro{grid-template-columns:1fr;align-items:start}
-  .v5-social-proof__x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .v5-social-card:nth-child(n){grid-column:span 1;min-height:330px}
-  .v5-social-card:last-child{grid-column:1/-1}
-  .v5-reddit-grid{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
-  .v5-reddit-grid::-webkit-scrollbar{display:none}
-  .v5-reddit-grid article{flex:0 0 min(330px,66vw);scroll-snap-align:start}
+  .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 1.6)}
+  .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
+  .press__stats{grid-template-columns:repeat(2,auto);justify-content:start}
+  .press__inner{grid-template-areas:"title" "stats" "quotes" "sources" "date"}
+  .press__quotes{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-/* 90 the phone landing: the still over the first 640 px, the headline in its sky, the duel at its foot, the counts,
-   and one Play bar held at the bottom of the screen */
+/* the phone landing: the poster and the clips over the first 640 px, the headline in its sky, the counts, and one Play
+   bar held at the bottom of the screen; the features one to a row */
 @media (width < 768px){
   .home{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
   .home .public-nav__tools>.public-nav__cta{display:none}
-  .hero{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(438px,auto) auto auto auto;grid-template-areas:"card" "match" "stats" "scene";
-    min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--s4) var(--s4);background:var(--surface-page)}
-  .hero__still{top:0;bottom:auto;height:640px;object-position:54% 50%}
+  .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--s4) var(--s4);background:var(--surface-page)}
+  .hero__still,.hero__clip{top:0;bottom:auto;height:640px;object-position:54% 50%}
+  .hero__reel{bottom:auto;height:640px}
   .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
   .hero__lockup{width:100%}
-  /* the fixed Play bar lives in the hero's isolated layer: the layer itself rises above the content-visibility sections
-     after it (versus, fleet, ...), which paint as layers of their own, and stays under the site bar (z-shell) */
+  /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
+     it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
   .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
-  .hero__trailer{--h:58px;width:58px;padding:0}
-  .hero__trailer{position:relative}
+  .hero__trailer{position:relative;--h:58px;width:58px;padding:0}
   .hero__trailer>:not(.hero__thumb){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .hero__thumb img{display:none}
   .hero__thumb{width:24px;height:24px;outline:0}
   .hero__thumb .cot-i{width:22px;height:22px}
-  .hero__matchup{position:relative;flex-direction:column;align-items:flex-start;gap:var(--s3);margin:0 0 var(--s5);--vs-name:var(--fs-20);--sil-w:58px;--sil-h:19px}
-  .hero__matchup .vs-duel{flex-direction:column;align-items:flex-start;gap:var(--s3);width:100%}
-  .hero__matchup .vs-side{gap:var(--s3)}
-  .hero__matchup .vs-side--foe{flex-direction:row-reverse}
-  .hero__matchup .vs-mark{position:absolute;right:0;top:12px;padding:0;box-shadow:none;font-size:var(--fs-24);color:transparent;-webkit-text-stroke:1.2px var(--accent)}
-  :lang(zh-CN) .hero__matchup .vs-mark{color:var(--accent);-webkit-text-stroke:0}
-  .hero__matchup .vs-where{margin:0;padding:0;border:0;gap:var(--s2);font-size:var(--fs-13)}
-  .hero__matchup .vs-where .cot-i{width:15px;height:15px}
-  .hero__scene{justify-content:flex-start;margin:var(--s4) 0 0}
+  /* in the picture's lower right, above the counts: the hero's own box ends with them */
+  .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
   .hero__stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2) var(--s2) var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:var(--fs-11)}
+  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:max(var(--fs-floor-11),var(--fs-11))}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
   .hero__stats li:last-child{display:none}
-  .versus{padding-top:var(--s7)}
-  .vs-tile--mid,.vs-tile--sm{grid-column:span 12}
-  .vs-tile--big{--vs-name:var(--fs-18);--sil-w:46px;--sil-h:15px}
-  .vs-tile--big .vs-tile__meta{left:14px;right:14px;bottom:12px;gap:var(--s3)}
-  .vs-row2{flex-direction:column;align-items:flex-start;gap:var(--s3)}
-  .fleet-wall{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .fleet-feature{grid-template-rows:220px auto auto}
-  .bf-rail{grid-auto-columns:72vw}
-  .motion,.play{padding-top:var(--s7)}
-  .motion-grid{gap:var(--s2)}
-  .play-grid{gap:var(--s2)}
-  .play-tile__nm{left:10px;right:10px;bottom:9px;gap:var(--s2)}
-  .play-tile__nm b{font-size:var(--fs-13)}
-  .play-tile__nm .cot-i{width:15px;height:15px}
-  .play-tile--lead .play-tile__nm{left:14px;bottom:13px}
-  .play-tile--lead .play-tile__nm b{font-size:var(--fs-24)}
-  .play-tile--lead .play-tile__nm .cot-i{width:22px;height:22px}
-  .play-more{justify-content:flex-start}
-  .shots-rail{grid-auto-columns:72vw;gap:var(--s2)}
-  .shots-acts>.cot-c-btn--icon{display:none}
-  .replay-card__row{flex-direction:column;align-items:flex-start;padding:var(--s4)}
-  .replay-card h2{font-size:var(--fs-20)}
+  .features{padding-top:var(--s6)}
+  .features-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2)}
+  .feat,.feat--wide{aspect-ratio:16/9}
+  .feat__cap{padding:var(--s4)}
+  .feat__link,.feat--wide .feat__link{font-size:var(--fs-24)}
+  .feat__link .cot-i{width:20px;height:20px}
+  .press__title{font-size:var(--fs-36)}
+  .play{padding:var(--s6) 0}
+  .play-rail{grid-auto-columns:86vw;gap:var(--s2)}
+  .play-acts>.cot-c-btn--icon{display:none}
+  .play-tile__nm{left:var(--s4);right:var(--s4);bottom:var(--s3)}
+  .play-tile__nm b{font-size:var(--fs-20)}
+  .play-tile__nm .cot-i{width:20px;height:20px}
+  .press__stats dd{font-size:var(--fs-28)}
+  .press__quotes{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+  .press__quotes::-webkit-scrollbar{display:none}
+  .v5-social-card{flex:0 0 86vw;scroll-snap-align:start}
+  .v5-social-card>a{padding:var(--s5)}
+  .v5-social-card__identity em{display:none}
+  .v5-social-card__body blockquote{font-size:var(--fs-20)}
   /* the picture, then the words under it: no headline over a tank on a narrow screen */
   .v5-cta{flex-direction:column;align-items:stretch;min-height:0;padding:0 0 var(--s7)}
   .v5-cta>img{position:static;height:auto;aspect-ratio:16/9}
   .v5-cta>div{display:none}
   .v5-cta>.shell{margin-top:var(--s5)}
   .v5-cta h2{max-width:none;font-size:var(--fs-36)}
-  .v5-social-proof h2{font-size:var(--fs-28)}
-  .v5-social-proof__x-grid{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
-  .v5-social-proof__x-grid::-webkit-scrollbar{display:none}
-  .v5-social-card:nth-child(n){flex:0 0 86vw;min-height:368px;scroll-snap-align:start}
-  .v5-social-card>a{padding:var(--s5)}
-  .v5-social-card__identity em{display:none}
-  .v5-social-card__body blockquote,.v5-social-card:nth-child(n+3) .v5-social-card__body blockquote{font-size:var(--fs-20)}
-  .v5-social-card--threejs .v5-social-card__body blockquote{font-size:var(--fs-36)}
-  .v5-social-proof__reddit>header{display:block}
-  .v5-reddit-grid article{flex-basis:82vw}
-  .v5-social-proof__snapshot{text-align:left}
   .cot-media-toggle{top:14px;left:14px}
 }
-@media(hover:hover) and (pointer:fine){.v5-social-card:hover,.v5-reddit-grid article:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
-@media(prefers-reduced-motion:reduce){.fleet-tile__progress{display:none}}
-@media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-reddit-grid article{transition:none}html{scroll-behavior:auto}.v5-social-card::after{transform:none}.vs-tile__film,.fleet-tile>video,.motion-cuts{transition:none}}
+@media(hover:hover) and (pointer:fine){.v5-social-card:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
+@media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after{transition:none}.v5-social-card::after{transform:none}html{scroll-behavior:auto}.feat>img,.feat>video,.feat__link .cot-i{transition:none}.feat:hover>img,.feat:hover>video{transform:none}}
 }
