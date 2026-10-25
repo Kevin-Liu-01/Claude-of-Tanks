@@ -24,14 +24,16 @@ export const BUDGET_PATH = fileURLToPath(new URL('./frontend-budget.json', impor
 export const BUDGETS = Object.freeze({
   public: { lcpMs: { desktop: 1200, phone: 2500 }, cls: 0.01, tbtMs: 100, inpMs: 100 },
   app: { shellMs: 100, contentMs: { desktop: 200, phone: 600 }, inpP98Ms: 100, longTaskMs: 50, droppedFrames: { desktop: 0, phone: 1 } },
-  everywhere: { consoleErrors: 0, consoleWarnings: 0, heapGrowthMb: 5, nodeGrowth: 100 },
+  everywhere: { consoleErrors: 0, consoleWarnings: 0, heapGrowthMb: 5, nodeGrowth: 100, canvasViolations: 0 },
 });
 /** Lower is better for every metric; a regression is past the known value by 25 % and this much. */
 const SLACK = { lcpMs: 150, cls: 0.005, tbtMs: 50, inpMs: 24, shellMs: 24, contentMs: 50, inpP98Ms: 24, longTaskMs: 30,
-  droppedFrames: 2, consoleErrors: 0, consoleWarnings: 0, heapGrowthMb: 2, nodeGrowth: 50 };
+  droppedFrames: 2, consoleErrors: 0, consoleWarnings: 0, heapGrowthMb: 2, nodeGrowth: 50, canvasViolations: 0 };
 
 /** The screen a recorded press or step belongs to. */
 export function surfaceOf(kind) {
+  const canvas = /^canvas:([^:]+)/.exec(String(kind));
+  if (canvas) return canvas[1];
   const id = String(kind).replace(/^(sweep|pick|memory):/, '$1-');
   if (/^(home|cn-home)/.test(id)) return 'home';
   if (/^(docs|manual|home-to-docs|gallery-to-docs)/.test(id)) return 'docs';
@@ -107,6 +109,10 @@ export function collect({ nav = [], click = [] } = {}) {
       const rig = run.profile === 'phone' || rigOf(file) === 'phone' ? 'phone' : 'desktop';
       for (const sample of run.samples) {
         const surface = surfaceOf(sample.kind);
+        // (UI-LOCKDOWN A) the canvas rule: each check's violations, from canvasProbe and from --canvas presses
+        const canvasResult = sample.canvas ?? sample.census?.canvas;
+        if (canvasResult && !canvasResult.error) add('everywhere', surface, rig, 'canvasViolations', canvasResult.violations?.length ?? 0);
+        if (/^canvas:/.test(sample.kind)) continue;
         if (/^memory:/.test(sample.kind)) {
           if (sample.error) continue;
           add('everywhere', surface, rig, 'heapGrowthMb', Number((sample.heapDeltaBytes / 1048576).toFixed(2)));

@@ -15,7 +15,8 @@ for (const [kind, surface] of [['home-load', 'home'], ['cn-home', 'home'], ['doc
   ['gallery-row', 'gallery'], ['studio-open', 'studio'], ['roster-next', 'garage'], ['pick:m60a2', 'garage'],
   ['sweep:3:deploy', 'garage'], ['deploy-mode', 'deploy'], ['deploy-launch', 'battle-load'], ['end-to-garage', 'battle-end'],
   ['watch-hop', 'watch'], ['battle-steady', 'battle-hud'], ['settings-open', 'settings'], ['memory:record', 'record'],
-  ['context-restore', 'recovery'], ['chunk-fail-studio', 'recovery'], ['gate-to-garage', 'boot']]) {
+  ['context-restore', 'recovery'], ['chunk-fail-studio', 'recovery'], ['gate-to-garage', 'boot'],
+  ['canvas:gallery:dpr-2', 'gallery'], ['canvas:garage:act3', 'garage']]) {
   assert.equal(surfaceOf(kind), surface, `${kind} is the ${surface}`);
 }
 assert.equal(ownerOf('home'), 'premiere-site');
@@ -49,6 +50,11 @@ try {
     { kind: 'memory:record', error: 'no control on this layout' },
   ] }));
   writeFileSync(join(click, 'programs.after.desktop.garage-0.json'), JSON.stringify([]));
+  writeFileSync(join(click, 'canvas-gallery.phone.json'), JSON.stringify({ profile: 'phone', samples: [
+    { kind: 'canvas:gallery:start', canvas: { checked: 2, violations: [] } },
+    { kind: 'canvas:gallery:act0', canvas: { checked: 2, violations: [{ canvas: '#stageInset canvas#stageScale', state: 'hidden-held' }] } },
+    { kind: 'canvas:gallery:act1', error: 'nothing visible matches' },
+  ] }));
 
   const rows = evaluate(collect({ nav: [nav], click: [click] }));
   const row = (key) => rows.find((r) => r.key === key);
@@ -72,6 +78,9 @@ try {
   assert.equal(row('everywhere/settings/desktop/heapGrowthMb').pass, false);
   assert.equal(row('everywhere/deploy/desktop/heapGrowthMb').pass, true);
   assert.equal(rows.some((r) => r.surface === 'record'), false);
+  // the canvas rule: a check's violations on its surface (a phone run), never scored as presses
+  assert.deepEqual([row('everywhere/gallery/phone/canvasViolations').value, row('everywhere/gallery/phone/canvasViolations').samples], [1, 2]);
+  assert.equal(rows.some((r) => r.cls === 'app' && r.surface === 'gallery'), false);
   // misses come first, each with its lane
   const misses = rows.filter((r) => !r.pass);
   assert.ok(rows.slice(0, misses.length).every((r) => !r.pass), 'misses lead the table');

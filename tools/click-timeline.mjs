@@ -89,6 +89,14 @@ const PROBE = `(() => {
     new PerformanceObserver((list) => { for (const e of list.getEntries()) rec.longtasks.push({ start: e.startTime, duration: e.duration }); })
       .observe({ type: 'longtask', buffered: true });
   } catch (_) {}
+  // (UI-LOCKDOWN A) each canvas's context type, so the canvas check tells the UI's canvases from the 3D views
+  rec.contextKind = new WeakMap();
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    const context = getContext.call(this, type, ...rest);
+    if (context && !rec.contextKind.has(this)) rec.contextKind.set(this, String(type));
+    return context;
+  };
   // every animation-callback interval past one refresh and a half (25 ms: at least one dropped frame at 60 Hz); the
   // census counts the 33 ms ones (two refreshes) and the dropped frames (UI-LOCKDOWN D/E, 2026-10-25)
   rec.frames = [];
@@ -213,6 +221,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   }
   await settle(page, quietMs);
   const censusData = census ? await censusWindow(page, t0, consoleFrom) : null;
+  if (censusData && flag('canvas')) censusData.canvas = await canvasCheck(page);
   if (heap && censusData) censusData.alloc = await allocationWindow(heap, censusData.windowMs);
   const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
@@ -340,6 +349,60 @@ async function censusWindow(page, t0, consoleFrom) {
     consoleWarnings: logged.filter((m) => m.type === 'warn').length,
     consoleWarningTexts: logged.filter((m) => m.type === 'warn').map((m) => m.text).slice(0, 8) };
 }
+
+/** (UI-LOCKDOWN A) The device-pixel cap a UI canvas's backing store may take (src/ui/uiCanvas.ts). */
+const CANVAS_CAP = 2;
+/** Every on-screen UI canvas (not a WebGL view: the 3D renderers own their resolution) against the canvas rule: shown,
+ *  its backing store is its CSS box times min(devicePixelRatio, CANVAS_CAP) within a pixel (larger wastes memory and
+ *  compounds, smaller blurs); hidden, it holds at most one pixel. */
+const CANVAS_CHECK = `(() => {
+  const rec = window.__click, dpr = devicePixelRatio, scale = Math.min(dpr, ${CANVAS_CAP});
+  const describe = (node) => { const cls = typeof node.className === 'string' ? node.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
+    const owner = node.closest('[id]'); return (owner && owner !== node ? '#' + owner.id + ' ' : '') + 'canvas' + (node.id ? '#' + node.id : '') + (cls ? '.' + cls : ''); };
+  const violations = []; let checked = 0;
+  for (const canvas of document.querySelectorAll('canvas')) {
+    const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
+    if (kind && /webgl/i.test(kind)) continue;
+    checked++;
+    const box = canvas.getBoundingClientRect();
+    const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
+    const wantW = box.width * scale, wantH = box.height * scale;
+    if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
+    else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
+  }
+  return { checked, violations };
+})()`;
+const canvasCheck = (page) => page.evaluate(CANVAS_CHECK).catch((cause) => ({ error: firstLine(cause) }));
+
+/** (UI-LOCKDOWN A) A surface's canvases checked at its start, after each of its interactions, after three resizes and
+ *  their return, and across a device-pixel-ratio flip and back: one recorded sample per check. */
+const CANVAS_RESIZES = { desktop: [[1280, 800], [1024, 768], [1680, 1050]], phone: [[360, 780], [414, 896], [844, 390]] };
+const canvasProbe = async (page, ctx, surface, interactions) => {
+  const record = async (step) => { await settle(page, 300, 4000); ctx.record(`canvas:${surface}:${step}`, { canvas: await canvasCheck(page) }); };
+  await record('start');
+  for (let n = 0; n < interactions.length; n++) {
+    try { await interactions[n](); } catch (cause) { ctx.record(`canvas:${surface}:act${n}`, { error: firstLine(cause) }); continue; }
+    await record(`act${n}`);
+  }
+  const base = page.viewport();
+  for (const [width, height] of CANVAS_RESIZES[base.isMobile ? 'phone' : 'desktop']) {
+    await page.setViewport({ ...base, width, height });
+    await sleep(800);
+    await record(`resize-${width}x${height}`);
+  }
+  await page.setViewport(base);
+  await sleep(800);
+  await record('resize-back');
+  const flipped = base.deviceScaleFactor >= 2 ? 1 : 2;
+  await page.setViewport({ ...base, deviceScaleFactor: flipped });
+  await sleep(800);
+  await record(`dpr-${flipped}`);
+  await page.setViewport(base);
+  await sleep(800);
+  await record(`dpr-${base.deviceScaleFactor}`);
+};
 
 const pressKey = (page, key) => page.keyboard.press(key);
 const tapOrClick = (page, selector, { touch }) => press(page, selector, touch);
@@ -571,6 +634,29 @@ export const PATHS = [
         }
       }
       await cdp.detach().catch(() => {});
+    } },
+  // (UI-LOCKDOWN A) the canvas rule over the Garage and its menus, then the Gallery (canvasProbe)
+  { id: 'canvas-garage', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector) => async () => { await tapOrClick(page, await target(page, selector), ctx); };
+      await canvasProbe(page, ctx, 'garage', [
+        pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'),
+        pressOn('.cot-settings-slot .cot-gear, [data-nav=settings]'), () => closeSettings(page, ctx),
+        () => openDeploy(page, ctx), pressOn('#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice'),
+        () => closeDeploy(page, ctx),
+        pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
+      ]);
+    } },
+  { id: 'canvas-gallery', doc: 'gallery', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector, n = 0) => async () => { await tapOrClick(page, await target(page, selector, n), ctx); await sleep(600); };
+      await canvasProbe(page, ctx, 'gallery', [
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 1), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 4),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 7),
+        pressOn('#dossierTabs [role=tab][data-tab]', 1), pressOn('#dossierTabs [role=tab][data-tab]', 2), pressOn('#dossierTabs [role=tab][data-tab]', 0),
+        pressOn('[data-mode="armor"]'), pressOn('[data-mode="appearance"]'),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 10), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 13),
+      ]);
     } },
   // the Garage at rest: no frame or task may stall while nobody touches it
   { id: 'garage-idle', doc: 'game', reps: 1,
