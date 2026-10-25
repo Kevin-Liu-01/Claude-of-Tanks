@@ -50,8 +50,10 @@
 .cot-tt .tt-rail-flag:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-tt .tt-rail-flag.is-on{opacity:1;background:var(--surface-hover);box-shadow:var(--ring-2)}
 /* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen. */
-.cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2)}
-/* a plate (2 px inset each side, and its 1 px ring outside its box) stands exactly as tall as the rail's flags */
+.cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;margin-inline:1px;border-radius:var(--r2);background:var(--surface-raised);
+  box-shadow:var(--e2)}
+/* a plate (2 px inset each side, and its 1 px ring outside its box, which the margin keeps on the header's grid) stands
+   exactly as tall as the rail's flags */
 .cot-tt .tt-plate .cot-c-btn{--h:calc(40px * var(--tt-ui) - 6px)}
 .cot-tt .tt-plate .cot-c-btn svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
 
@@ -67,6 +69,12 @@
 .cot-tt .tt-stage::before{left:0;right:0;bottom:0;height:48px;background:linear-gradient(180deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage::after{top:0;right:0;bottom:0;width:48px;background:linear-gradient(90deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage.is-more-below::before,.cot-tt .tt-stage.is-more-right::after{opacity:1}
+/* and at the edges it has scrolled past: under the pinned tier row, and on the left */
+.cot-tt .tt-edges{position:absolute;inset:0;z-index:var(--z-lift);pointer-events:none}
+.cot-tt .tt-edges::before,.cot-tt .tt-edges::after{content:'';position:absolute;opacity:0}
+.cot-tt .tt-edges::before{left:0;right:0;top:var(--tt-head);height:32px;background:linear-gradient(180deg,var(--surface-page),transparent)}
+.cot-tt .tt-edges::after{top:0;bottom:0;left:0;width:48px;background:linear-gradient(270deg,transparent,var(--surface-page))}
+.cot-tt .tt-stage.is-more-above .tt-edges::before,.cot-tt .tt-stage.is-more-left .tt-edges::after{opacity:1}
 /* pinned to the page gutter: a tree narrower than the board leaves its spare width on the right */
 .cot-tt .tt-grid{position:relative;margin:0}
 .cot-tt .tt-grid::before{content:'';position:absolute;top:var(--tt-head);bottom:var(--tt-end);left:var(--tt-pad);right:var(--tt-pad);pointer-events:none;
@@ -94,7 +102,8 @@
   text-transform:uppercase;color:var(--ink-3)}
 
 /* Nodes: the hero render on the nation's flag, the name under it: one name and one size for the whole tree. */
-.cot-tt .tt-node{position:absolute;display:flex;flex-direction:column;width:var(--tt-col);height:var(--tt-row);padding:0;
+/* a node is its own layer: its render never paints over the pinned tier row when the board scrolls it under */
+.cot-tt .tt-node{position:absolute;isolation:isolate;display:flex;flex-direction:column;width:var(--tt-col);height:var(--tt-row);padding:0;
   border-radius:var(--r2);cursor:pointer;overflow:hidden;background:var(--surface-raised);border:1px solid var(--line-2);
   text-align:left;color:inherit;font:inherit;transition:border-color var(--dur-fast),transform var(--dur-fast) var(--ease-enter)}
 .cot-tt .tt-node:hover{border-color:var(--line-3);transform:translateY(-1px)}
@@ -159,8 +168,10 @@
 .cot-tt .tt-stats .cot-c-stat svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
 .cot-tt .tt-stats .cot-c-scale i{background:var(--ink-4)}
 .cot-tt .tt-stats .cot-c-scale i.f{background:var(--ink-2)}
-/* Select grows with the screen like everything beside it (its caps are the kit primary's) */
-.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui))}
+/* Select grows with the screen like everything beside it: its plate, and its caps in the label style on the same scale
+   as the stat labels */
+.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui));
+  font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
 
 /* Tablets: the rail takes its own row; the detail folds the stats under the name. */
 @media (max-width:1100px){
@@ -172,9 +183,10 @@
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);grid-template-areas:'art id act' 'art stats stats';
     align-items:start;gap:var(--s3) var(--s5);padding:var(--tt-gutter)}
   .cot-tt .tt-detail-info{display:contents}
-  .cot-tt .tt-detail-art{grid-area:art}
+  /* the render spans the name's row and the stats' row: its top on the name's, its foot on the stats' */
+  .cot-tt .tt-detail-art{grid-area:art;align-self:stretch;height:auto;min-height:calc(var(--tt-detail-art-w) * var(--tt-ui) * .56)}
   .cot-tt .tt-detail-id{grid-area:id}
-  .cot-tt .tt-stats{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5)}
+  .cot-tt .tt-stats{grid-area:stats;align-self:end;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5)}
   .cot-tt .tt-act{grid-area:act}
   .cot-tt .tt-act .tt-select{width:100%}
 }
@@ -190,11 +202,10 @@
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
   .cot-tt .tt-rail{grid-area:rail;gap:var(--s2);--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
-  /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the row */
-  .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
     padding:var(--s3) var(--tt-gutter) var(--s4)}
   .cot-tt .tt-detail-name{font-size:var(--fs-24)}
+  .cot-tt .tt-detail-id{align-self:center}
   /* one stat a row: the labels' tracking needs the width */
   .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr);row-gap:var(--s2)}
   .cot-tt .tt-act .tt-select{width:100%}
@@ -208,6 +219,8 @@
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-28)}
   .cot-tt .tt-rail{order:0;flex:1 1 0;margin-right:0}
+  /* every nation fits the row beside the title (a touch screen keeps its 44 px flags, below) */
+  .cot-tt .tt-rail-flag{width:36px}
   .cot-tt .tt-stage{grid-column:1;grid-row:2}
   /* a column: the render takes the panel's spare height (up to a square), then Select sits at the panel's foot */
   .cot-tt .tt-detail{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:stretch;gap:var(--s3);overflow-y:auto;
@@ -215,7 +228,7 @@
   .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{flex:1 0 calc(var(--tt-detail-art-w) * .52);width:100%;height:auto;
     max-height:calc(280px - 2 * var(--tt-gutter))}
-  .cot-tt .tt-detail-name{font-size:var(--fs-20)}
+  .cot-tt .tt-detail-name{font-size:var(--fs-20);line-height:1.2}
   .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr)}
   /* Select stays at the panel's foot while the panel scrolls, and the stats it hides fade out over it */
   .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);margin:auto calc(var(--tt-gutter) * -1) 0;
@@ -224,24 +237,21 @@
     pointer-events:none;background:linear-gradient(180deg,transparent,var(--surface-raised))}
   .cot-tt .tt-act .tt-select{width:100%}
 }
-/* The shortest of them (a phone on its side): the render beside the name and tags, the builds under them across the
-   panel, so all four numbers fit over Select. */
+/* The shortest of them (a phone on its side): the render beside the name and its tags, so all four numbers fit over
+   Select (a node's builds wrap beside the render; the panel then scrolls under its fade). */
 @media (max-height:420px) and (orientation:landscape){
-  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;
-    grid-template-areas:'art name' 'art meta' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
-  .cot-tt .tt-detail.has-builds{grid-template-rows:auto auto auto auto 1fr;
-    grid-template-areas:'art name' 'art meta' 'builds builds' 'stats stats' 'act act'}
-  .cot-tt .tt-detail-id{display:contents}
-  .cot-tt .tt-detail-name{grid-area:name;align-self:end}
-  .cot-tt .tt-detail-meta{grid-area:meta;align-self:start}
-  .cot-tt .tt-builds{grid-area:builds}
-  .cot-tt .tt-detail-art{grid-area:art;height:calc(var(--tt-detail-art-w) * .32)}
+  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto 1fr;
+    grid-template-areas:'art id' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
+  .cot-tt .tt-detail-id{grid-area:id;align-self:center}
+  .cot-tt .tt-detail-art{grid-area:art;min-height:0;height:calc(var(--tt-detail-art-w) * .32)}
   .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
   .cot-tt .tt-act{grid-area:act}
 }
 /* Touch: every control is at least 44 px. */
 @media (pointer:coarse){
   .cot-tt .tt-plate .cot-c-btn{--h:44px}
+  /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the room */
+  .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
   /* a 44 px button on its 2 px pad, plus the plate's 1 px ring */
   .cot-tt .tt-rail-flag{width:44px;height:50px}
 }

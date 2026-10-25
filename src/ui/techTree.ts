@@ -186,7 +186,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<div class="tt-grid"><div class="tt-tiers" aria-hidden="true"></div>` +
     // the special lane's rule opens with its label
     `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true">` +
-    `<span class="tt-rule-label">${esc(t('techTree.special'))}</span></div></div></div></div>` +
+    `<span class="tt-rule-label">${esc(t('techTree.special'))}</span></div></div></div>` +
+    // the fades at the edges the board has scrolled past (the stage's own overlays fade the edges it scrolls toward)
+    `<div class="tt-edges" aria-hidden="true"></div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
     `<div class="tt-detail-info"><div class="tt-detail-id"><h2 class="tt-detail-name"></h2>` +
@@ -454,7 +456,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     grid.style.setProperty('--tt-pitch', `${g.col + g.gapX}px`);
     grid.style.setProperty('--tt-pad', `${g.pad}px`);
     grid.style.setProperty('--tt-end', `${END_Y}px`);
-    grid.style.setProperty('--tt-head', `${g.head}px`);
+    // the stage's top fade sits under the pinned tier row
+    stage.style.setProperty('--tt-head', `${g.head}px`);
     grid.style.setProperty('--tt-name-fs', `${g.label.toFixed(2)}px`);
     grid.classList.toggle('is-compact', g.compact);
     for (const numeral of tiersEl.children) {
@@ -491,10 +494,12 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     }
   }
 
-  /** A board larger than its space fades at the edges it scrolls toward (the stage's overlays: nothing reads as cut). */
+  /** A board larger than its space fades at every edge it can scroll toward, so nothing reads as cut. */
   function markOverflow(): void {
     stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 2);
     stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 2);
+    stage.classList.toggle('is-more-above', board.scrollTop > 2);
+    stage.classList.toggle('is-more-left', board.scrollLeft > 2);
   }
   board.addEventListener('scroll', markOverflow, { passive: true });
 
@@ -577,7 +582,6 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   function paintBuilds(node: TreeNode): void {
     buildsHost.replaceChildren();
     buildsHost.hidden = !node.builds?.length;
-    detail.classList.toggle('has-builds', !buildsHost.hidden);
     if (!node.builds?.length) return;
     const chosen = buildOf(node);
     for (const id of vehiclesOf(node)) {
