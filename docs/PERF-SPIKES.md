@@ -245,3 +245,46 @@ It is the most frequent hitch cause after the GPU stalls (`hud/dom`).
   hitches).
 - **The real fix:** the sim's numeric kernels batched or in WASM (PERF-LOCKDOWN workstream 3), not a scratch object at
   a time.
+
+## The simulation and the bots in a Worker: weighed
+
+The question (PERF-LOCKDOWN workstream 1): would moving the authoritative simulation and the bots into a Worker, the
+main thread only rendering, remove the hitches?
+
+### What the main thread spends on them
+
+- **Steady state:**
+  - The recorder's fixed-step stages (spotting, bots, aerial, movement, contacts, fire, shells, damage, destruction,
+    mode, pose) take about 6 ms of a 42 ms frame in a loaded 14 v 14 battle, at 2.5 steps a frame. Movement (3.4–4.5
+    ms) and the bots (1.6–1.9 ms) lead.
+  - On thread CPU the authority's step is 1.6–1.8 ms at 14 v 14 and 2.5 ms at 21 v 21 (`tools/sim-alloc-probe.mjs`'s
+    match; the multiplayer bench: 0.9 ms at 14 v 14, 2.2 ms at 32 v 32, less loaded).
+  - At 60 fps that is one step a frame: 10–15 % of a 16.7 ms frame at 21 v 21.
+- **Hitches:** of the census pilots' hitches, the simulation was the excess in two:
+  - the bots' first step at rollout, now halved;
+  - a contacts burst after a building's collapse (15 ms past median).
+  
+  Everything else is GPU first use, the governor's reallocations, the HUD's layout pass, the deferred warm's
+  countdown bursts, and effects listeners — main-thread presentation work a Worker would not take.
+
+### What the move costs
+
+- The solo battle would run through the multiplayer path: the authority in `src/mp/host/matchHostWorker.ts`, the main
+  thread a client of snapshots with prediction and interpolation.
+- Every presentation listener now fed synchronously by the step's bus would be fed by messages a frame later:
+  effects, audio, HUD, killcam recording, the watch seats.
+- The solo-only rules would all need the host's parity: the proving ground, the campaign's frontline, the watch mode's
+  taken seats, practice.
+- `main.ts` records why solo stays in-page: the multiplayer modules "duplicated work without adding any useful
+  authority boundary" for a local battle.
+
+### The call
+
+Not the spike lever. The hitches are presentation and GPU work that stays on the main thread whichever thread steps
+the battle.
+
+It is a frame-rate lever for the largest rooms on weak CPUs: up to 10–15 % of the frame at 21 v 21. The census's 21 v
+21 rows say how much.
+
+If it is taken, it is its own lane: the solo battle as a local host, in the existing multiplayer path, with parity
+receipts per mode.

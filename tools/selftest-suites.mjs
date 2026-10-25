@@ -1623,6 +1623,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.underFire.selftest.mjs',
     // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
     'src/game/ai.colliderStop.selftest.mjs',
+    'src/game/ai.gridOrderShared.selftest.mjs', // battle-spikes-253: the bots' grid-order check one walk a list, not one a bot
     // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
     'src/game/ai.lastRun.selftest.mjs',
     // 2026-10-09 (gameplay lane): a pivot never drives past 4 m/s (botModes Aegis Crossing Turbo Ball, the 896-point fall).
