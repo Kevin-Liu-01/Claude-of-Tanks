@@ -382,7 +382,8 @@ const SETTINGS_CSS = `
    heading's line so every heading keeps one height */
 /* the (i) is its glyph's size on the line (so it ends where the controls end); its hit area reaches the control floor */
 .cot-set-info{--h:16px;order:2;flex:none;margin-block:0;color:var(--ink-3);}
-.cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2);}
+.cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2) calc(-1 * var(--s1));}
+body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2);}
 .cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
