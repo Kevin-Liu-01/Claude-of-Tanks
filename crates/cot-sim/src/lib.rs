@@ -26,6 +26,7 @@ pub mod math;
 pub mod records;
 pub mod rng;
 pub mod structure_support;
+pub mod support_sampling;
 
 /// The fixed simulation step (docs/ARCHITECTURE.md §1: `SIM_DT = 1/60`).
 pub const SIM_DT: f64 = 1.0 / 60.0;

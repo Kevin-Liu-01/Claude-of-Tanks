@@ -14,6 +14,7 @@ import type { CollisionRecord, ObstacleQuery, SimpleCollisionShape } from './col
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { driveGroundTypeAt } from '../sim/terrainMobility.ts';
 import { topEdgeStationsIn, type StructureSupportField, type SupportHeightField } from '../sim/structureSupport.ts';
+import type { SupportLineJob } from '../sim/movement.ts';
 
 /** The compiled module (compile once per process; every world instantiates its own). */
 export type WorldKernelModule = WebAssembly.Module;
@@ -43,7 +44,18 @@ interface CotSimExports {
   support_top(x: number, z: number, ground: number): number;
   support_record_reads(): number;
   support_standing(): number;
+  sampling_frame_ptr(): number;
+  sampling_out_ptr(): number;
+  support_sample_hull(): void;
 }
+
+/** crates/cot-sim-wasm support_sample_hull's frame and output (support_sampling.rs: FIT_MAX, BED_MAX, INNER_MAX). */
+const FRAME_LEN = 36;
+const OUT_SCALARS = 27;
+const FIT_MAX = 2 * 24 + 28;
+const BED_MAX = 4 * 24 + 8;
+const INNER_MAX = 8 * 24;
+const OUT_LEN = OUT_SCALARS + 4 * FIT_MAX + 3 * BED_MAX + 3 * INNER_MAX;
 
 /** The terrain contact surface on the kernel: `getContactHeightAt` and `getContactCellFlippedAt`. */
 interface KernelContactSurface {
@@ -198,7 +210,9 @@ function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation, live: () =
  * grid, their crushed and dead flags are written before it begins (the authority sets them as props fall), and a
  * contact sample — the contact surface, the overlay on it and the tops over it — is one call.
  */
-function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], terrain: SupportHeightField): StructureSupportField {
+function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], terrain: SupportHeightField): StructureSupportField & {
+  sampleSupportLines(job: SupportLineJob): void;
+} {
   const candidates: CollisionRecord[] = [];
   let count = 0;
   let flags = new Uint8Array(0);
@@ -206,6 +220,13 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
   const terrainAt = terrain.getHeightAt.bind(terrain);
   const terrainFast = terrain.getHeightAtFast ? terrain.getHeightAtFast.bind(terrain) : terrainAt;
   const top = w.support_top;
+  let frame = new Float64Array(0), out = new Float64Array(0);
+  const views = () => {
+    if (frame.buffer === w.memory.buffer) return;
+    frame = new Float64Array(w.memory.buffer, w.sampling_frame_ptr(), FRAME_LEN);
+    out = new Float64Array(w.memory.buffer, w.sampling_out_ptr(), OUT_LEN);
+  };
+  const copy = (to: Float64Array, from: number, count: number) => { for (let k = 0; k < count; k++) to[k] = out[from + k]; };
   return {
     getHeightAt: (x, z) => top(x, z, terrainAt(x, z)),
     getHeightAtFast: (x, z) => top(x, z, terrainFast(x, z)),
@@ -235,6 +256,35 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
     get candidateCount() { return count; },
     get standingDeck() { return w.support_standing() === 1; },
     get recordReads() { return w.support_record_reads(); },
-    topEdgeStations(quad, out, max) { return topEdgeStationsIn(candidates, count, quad, out, max, terrainFast); },
+    topEdgeStations(quad, stations, max) { return topEdgeStationsIn(candidates, count, quad, stations, max, terrainFast); },
+    // movement.ts sampleOuterTrackLines and sampleSupportFan for the hull begun: its frame in, one call, the aggregates and
+    // the stations the fit reads out (support_sampling.rs, the same values)
+    sampleSupportLines(job) {
+      views();
+      const s = job.samples, end = job.endRise;
+      frame[0] = s.worldX; frame[1] = s.worldZ; frame[2] = s.cosYaw; frame[3] = s.sinYaw; frame[4] = s.cosNegPitch;
+      frame[5] = s.sinNegPitch; frame[6] = s.cosRoll; frame[7] = s.sinRoll; frame[8] = s.sinPitch; frame[9] = s.cosPitch;
+      frame[10] = s.fitSinPitch; frame[11] = s.fitCosPitch; frame[12] = s.fitSinRoll; frame[13] = s.fitCosRoll;
+      frame[14] = s.halfLength; frame[15] = s.centerZ; frame[16] = s.step; frame[17] = s.lineCount; frame[18] = s.zHalf;
+      frame[19] = s.panY ?? 0; frame[20] = s.panY !== null ? 1 : 0;
+      frame[21] = end ? end.dzM : 0; frame[22] = end ? end.frontM : 0; frame[23] = end ? end.rearM : 0; frame[24] = end ? 1 : 0;
+      frame[25] = job.gearBottomY; frame[26] = job.halfWidth; frame[27] = job.rigidGear ? 1 : 0; frame[28] = job.refY;
+      frame[29] = job.rootX; frame[30] = job.rootZ; frame[31] = job.lineY; frame[32] = job.risePerM; frame[33] = job.trackSinRoll;
+      frame[34] = job.forwardX; frame[35] = job.forwardZ;
+      w.support_sample_hull();
+      views();
+      s.sumHeightZ = out[0]; s.sumZZ = out[1]; s.sumLeft = out[2]; s.sumRight = out[3]; s.sideCount = out[4]; s.outerMax = out[5];
+      s.outerX = out[6]; s.outerZ = out[7]; s.settleDeficitSum = out[8]; s.deficitCount = out[9]; s.deepestZ = out[10];
+      s.settleOuterMax = out[11]; s.frontMax = out[12]; s.frontZ = out[13]; s.rearMax = out[14]; s.rearZ = out[15];
+      s.fanMax = out[16]; s.bellyMax = out[17]; s.fitCount = out[18]; s.bedCount = out[19]; s.wrapMax = out[20];
+      s.fanTouchLeftX = out[21]; s.fanTouchRightX = out[22]; s.innerCount = out[23]; s.bellyTouchMinX = out[24];
+      s.bellyTouchMaxX = out[25]; s.bottomLift = out[26];
+      let at = OUT_SCALARS;
+      copy(job.fitZ, at, s.fitCount); copy(job.fitX, at += FIT_MAX, s.fitCount);
+      copy(job.fitH, at += FIT_MAX, s.fitCount); copy(job.fitD, at += FIT_MAX, s.fitCount);
+      copy(job.bedX, at += FIT_MAX, s.bedCount); copy(job.bedZ, at += BED_MAX, s.bedCount); copy(job.bedD, at += BED_MAX, s.bedCount);
+      copy(job.innerX, at += BED_MAX, s.innerCount); copy(job.innerZ, at += INNER_MAX, s.innerCount);
+      copy(job.innerH, at += INNER_MAX, s.innerCount);
+    },
   };
 }

@@ -22,6 +22,7 @@ use cot_sim::jsmath;
 use cot_sim::math::Vec3;
 use cot_sim::records::{HullFootprint, Part, PartKind, Record, Shape};
 use cot_sim::structure_support::SupportField;
+use cot_sim::support_sampling::{sample_support, SamplingFrame, SamplingOut, BED_MAX, FIT_MAX, INNER_MAX};
 
 #[link(wasm_import_module = "env")]
 unsafe extern "C" {
@@ -540,4 +541,84 @@ pub extern "C" fn support_record_reads() -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn support_standing() -> u32 {
     state().support.standing_deck() as u32
+}
+
+// ------------------------------------------------------------- the support fan ----
+
+/// The doubles of a sampling frame (`support_sample_hull`'s input, in SamplingFrame's order with its options flagged).
+const FRAME_LEN: usize = 36;
+/// The output's scalars, then the fit, bed and inner arrays at their caps.
+const OUT_SCALARS: usize = 27;
+const OUT_LEN: usize = OUT_SCALARS + 4 * FIT_MAX + 3 * BED_MAX + 3 * INNER_MAX;
+
+struct Sampling {
+    input: Vec<f64>,
+    out: SamplingOut,
+    output: Vec<f64>,
+}
+
+// (apart from STATE: the samplers borrow the world while the frame and its output are read and written)
+static mut SAMPLING: Option<Sampling> = None;
+
+fn sampling() -> &'static mut Sampling {
+    // SAFETY: one thread; no export re-enters while this borrow is live, and the samplers touch STATE alone.
+    unsafe { (*core::ptr::addr_of_mut!(SAMPLING)).get_or_insert_with(|| Sampling { input: vec![0.0; FRAME_LEN], out: SamplingOut::default(), output: vec![0.0; OUT_LEN] }) }
+}
+
+/// Where the host writes a hull's sampling frame.
+#[unsafe(no_mangle)]
+pub extern "C" fn sampling_frame_ptr() -> *mut f64 {
+    sampling().input.as_mut_ptr()
+}
+
+/// Where `support_sample_hull` leaves its aggregates and arrays.
+#[unsafe(no_mangle)]
+pub extern "C" fn sampling_out_ptr() -> *const f64 {
+    sampling().output.as_ptr()
+}
+
+/// sampleOuterTrackLines and sampleSupportFan for the hull framed at `sampling_frame_ptr`, every sample read on the
+/// world's own support and terrain samplers (reachableTrackGroundAt's wall rules included).
+#[unsafe(no_mangle)]
+pub extern "C" fn support_sample_hull() {
+    let sm = sampling();
+    let v = &sm.input;
+    let frame = SamplingFrame {
+        world_x: v[0], world_z: v[1], cos_yaw: v[2], sin_yaw: v[3], cos_neg_pitch: v[4], sin_neg_pitch: v[5], cos_roll: v[6],
+        sin_roll: v[7], sin_pitch: v[8], cos_pitch: v[9], fit_sin_pitch: v[10], fit_cos_pitch: v[11], fit_sin_roll: v[12],
+        fit_cos_roll: v[13], half_length: v[14], center_z: v[15], step: v[16], line_count: v[17] as usize, z_half: v[18],
+        pan_y: if v[20] != 0.0 { Some(v[19]) } else { None },
+        end_rise: if v[24] != 0.0 { Some((v[21], v[22], v[23])) } else { None },
+        gear_bottom_y: v[25], half_width: v[26], rigid_gear: v[27] != 0.0, ref_y: v[28], root_x: v[29], root_z: v[30],
+        line_y: v[31], rise_per_m: v[32], track_sin_roll: v[33], forward_x: v[34], forward_z: v[35],
+    };
+    let mut support = |x: f64, z: f64| {
+        let s = state();
+        let ground = deformed_contact(s, x, z);
+        s.support.sample(&s.records, x, z, ground)
+    };
+    let mut terrain = |x: f64, z: f64| deformed_contact(state(), x, z);
+    sample_support(&frame, &mut support, &mut terrain, &mut sm.out);
+    let o = &sm.out;
+    let scalars = [
+        o.sum_height_z, o.sum_zz, o.sum_left, o.sum_right, o.side_count, o.outer_max, o.outer_x, o.outer_z,
+        o.settle_deficit_sum, o.deficit_count, o.deepest_z, o.settle_outer_max, o.front_max, o.front_z, o.rear_max, o.rear_z,
+        o.fan_max, o.belly_max, o.fit_count as f64, o.bed_count as f64, o.wrap_max, o.fan_touch_left_x, o.fan_touch_right_x,
+        o.inner_count as f64, o.belly_touch_min_x, o.belly_touch_max_x, o.bottom_lift,
+    ];
+    let w = &mut sm.output;
+    w[..OUT_SCALARS].copy_from_slice(&scalars);
+    let mut at = OUT_SCALARS;
+    for (array, used) in [(&o.fit_z[..], o.fit_count), (&o.fit_x[..], o.fit_count), (&o.fit_h[..], o.fit_count), (&o.fit_d[..], o.fit_count)] {
+        w[at..at + used].copy_from_slice(&array[..used]);
+        at += FIT_MAX;
+    }
+    for (array, used) in [(&o.bed_x[..], o.bed_count), (&o.bed_z[..], o.bed_count), (&o.bed_d[..], o.bed_count)] {
+        w[at..at + used].copy_from_slice(&array[..used]);
+        at += BED_MAX;
+    }
+    for (array, used) in [(&o.inner_x[..], o.inner_count), (&o.inner_z[..], o.inner_count), (&o.inner_h[..], o.inner_count)] {
+        w[at..at + used].copy_from_slice(&array[..used]);
+        at += INNER_MAX;
+    }
 }
