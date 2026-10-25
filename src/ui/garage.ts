@@ -1122,7 +1122,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // until it fits. Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it
   // belongs to. The fit runs in the frame's callback, before that frame paints, so a press (a station, a tank) reads no
   // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
-  const READOUT_DENSITY = Object.freeze(['0', '1', '1 2', '1 2 3', '1 2 3 4']);
+  // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the four denser steps
+  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4']);
   const readoutDensities = new Map<string, number>();
   function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
@@ -1139,7 +1140,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (statsEl.scrollHeight > statsEl.clientHeight + 1) { statsEl.dataset.density = READOUT_DENSITY[density]; break; }
       density--;
     }
-    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
+    while (density < 5 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
     if (readoutDensities.size > 64) readoutDensities.clear();
     readoutDensities.set(key, density);
   }

@@ -90,6 +90,12 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    2 drops the armament's two lines, the view tabs and the links the band already holds, and lays the modules as chips;
    3 keeps the figures and the tables alone: the technical drawing gives up its room last;
    4 (a short docked window) keeps each station's first plate only, without the rival. */
+/* roomy: a sparse station (six plates, a short table) fills its column: one plate a row, its figure a size up (the
+   gauntlet 10-25: small plates over an empty column at 1920 and 2560) */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-performance-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow{min-height:62px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow .lr b{font-size:var(--fs-18);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-stat-section{margin-bottom:var(--s4);}
 .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
 .cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
 .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
