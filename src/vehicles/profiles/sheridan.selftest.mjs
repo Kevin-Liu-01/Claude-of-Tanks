@@ -75,8 +75,10 @@ assert.deepEqual({
   reloadS: 8.6,
   count: 14,
 }, 'dedicated Shillelagh channel is competitive at Tier IX');
-assert.equal(garageStatGroup(spec), '9/cold-war',
-  'garage compares Sheridan against its actual Tier IX peers');
+// 252 (tech-tree-view-252: the Garage's stat bars compare within the tier the Garage shows, the national tree's column):
+// the M551 shows Tier III; matchmaking keeps tankTier IX.
+assert.equal(garageStatGroup(spec), '3/cold-war',
+  'garage compares Sheridan against its shown Tier III peers');
 const starship = getSpec('m60a2');
 const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
 assert.ok(spec.hp < starship.hp, 'Sheridan remains less durable than the M60A2 Starship');
@@ -161,7 +163,7 @@ for (const slot of [1, 2]) {
   stepShell(projectile, 1 / 60);
   assert.ok(projectile.vel.y < 0, `${round.name} follows normal ballistic gravity`);
 }
-assert.equal(garageStatGroup(ttsSpec), '10/modern');
+assert.equal(garageStatGroup(ttsSpec), '6/modern'); // the TTS shows Tier VI in the US tree (tankTier stays X)
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
   'm551a1_tts_turret_era_R', 'm551a1_tts_turret_era_L', 'm551a1_tts_turret_roof_era',
