@@ -4,7 +4,7 @@
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 .cot-modal-root.cot-service-record{padding:clamp(8px,2vh,24px);place-items:center}
-.cot-modal-root.cot-service-record .cot-modal{width:min(1120px,100%);height:min(1080px,96dvh);max-height:calc(100dvh - 16px);border-top-color:var(--line-2);background:var(--surface-scene)}
+.cot-modal-root.cot-service-record .cot-modal{width:min(var(--cot-modal-max,1120px),100%);height:min(1080px,96dvh);max-height:calc(100dvh - 16px);border-top-color:var(--line-2);background:var(--surface-scene)}
 .cot-modal-root.cot-service-record .cot-modal::before{display:none}
 .cot-modal-root.cot-service-record .cot-modal__body{display:flex;flex:1;flex-direction:column;padding:0;overflow:hidden}
 .cot-modal-root.cot-service-record .cot-modal__footer{display:none}
@@ -17,7 +17,7 @@
    the map (the plate's wrappers step aside so their parts take the header's areas) */
 .cot-modal-root.cot-service-record .cot-modal__header{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;
   grid-template-areas:'title tank close' 'line tank close';align-items:end;gap:var(--s2) var(--s4);
-  min-height:136px;padding:var(--s5) var(--s6) var(--s4);border-bottom-color:var(--line-2);
+  min-height:min(136px,22vh);padding:var(--s5) var(--s6) var(--s4);border-bottom-color:var(--line-2);
   background:linear-gradient(90deg,var(--surface-scene) 16%,color-mix(in srgb,var(--surface-scene) 58%,transparent) 58%,color-mix(in srgb,var(--surface-scene) 24%,transparent)),
     var(--record-map,none) center 42%/cover no-repeat var(--surface-raised)}
 .cot-modal-root.cot-service-record .cot-modal__header>div:first-child{grid-area:title}
