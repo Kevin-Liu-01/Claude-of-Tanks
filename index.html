@@ -369,7 +369,7 @@
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
       background: var(--btn-secondary-fill); box-shadow: var(--btn-secondary-ring); color: var(--ink-1); cursor: pointer;
-      font: 700 max(var(--fs-floor-12), var(--fs-13))/1 var(--font-ui);
+      font: 700 13px/1 var(--font-ui);
       letter-spacing: var(--track-label-s); text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
         color .14s ease, background-color .14s ease, box-shadow .14s ease;
@@ -446,6 +446,7 @@
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
+    #cot-boot.credits-open .cot-boot-inner { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
@@ -460,7 +461,7 @@
     .cot-credits p:lang(zh-CN){line-break:strict}
     .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
     .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:0 18px;
-      font-size:max(var(--fs-floor-12), var(--fs-13));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
+      font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
     .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
@@ -475,7 +476,7 @@
       .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
       .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
       .cot-credits-grid{grid-template-columns:1fr}
-      .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
+      .cot-credits-profile{flex-direction:row;align-items:center;padding:24px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
       .cot-credits-portrait{width:100px;flex:none}
       .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:32px;margin-bottom:20px}
@@ -507,7 +508,7 @@
       height: 44px; margin: 34px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
-      font: 700 max(var(--fs-floor-12), var(--fs-13))/1 var(--font-ui);
+      font: 700 13px/1 var(--font-ui);
       letter-spacing: var(--track-label-s); text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
@@ -523,18 +524,24 @@
     .cot-boot-alert svg { display: inline-block; vertical-align: -5px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
     #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: flex-start; gap: 12px; padding-inline: 14px; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { margin-inline: 14px; }
+    .cot-boot-meta { position: relative; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load::before {
-      content: ''; position: absolute; inset: -12px 0 1px; z-index: -1; border-radius: var(--plate-radius);
+    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+      content: ''; position: absolute; inset: -8px 0; z-index: -1; border-radius: var(--plate-radius);
       background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
     }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 0; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: -12px; }
-    #cot-boot:is([data-stop='slow'], [data-stop='offline']):has(.cot-boot-retry.on) .cot-boot-load::before {
+    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
     }
+    /* each tone has its own glyph: an error the alert, a slow load the clock, an offline one the info mark */
+    .cot-boot-alert svg + svg, .cot-boot-alert svg + svg + svg { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(1), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(1) { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(2), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(3) { display: inline-block; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
@@ -547,9 +554,9 @@
     .cot-boot-notice.on { opacity: 1; }
     @keyframes cot-gate { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
     .cot-boot-foot {
-      position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
+      position: absolute; right: 16px; bottom: 10px; z-index: 2;
       font-family: var(--font-ui);
-      font-size: 12px; font-weight: 500; color: var(--ink-3); text-align: center;
+      font-size: 12px; font-weight: 500; color: var(--ink-3); text-align: right;
     }
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
@@ -561,16 +568,14 @@
       .cot-boot-links { width: 100%; }
     }
     @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot { zoom: 1.3; } }
-    @media (height < 720px) { .cot-boot-foot { left: auto; right: 16px; bottom: 10px; } }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
-      .cot-boot-invite { margin-top: 10px; }
+      .cot-boot-invite { margin-top: 20px; }
       .cot-boot-load { margin-top: 24px; }
       .cot-boot-tip { height: 48px; margin-top: 24px; visibility: hidden; }
       .cot-boot-gate, .cot-boot-retry { margin-top: 24px; }
       .cot-boot-links { margin-top: 24px; }
-      .cot-boot-foot { left: auto; right: 16px; bottom: 10px; }
     }
     }
   </style>
@@ -1110,7 +1115,7 @@
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
-          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg></span>
+          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
           <div class="cot-boot-pct num" id="cot-boot-pct">0%</div>
         </div>
@@ -1197,13 +1202,13 @@
       }
       open.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (!dialog.open) dialog.showModal();
+        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); }
       });
       close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
       });
-      dialog.addEventListener('close', () => open.focus());
+      dialog.addEventListener('close', () => { boot?.classList.remove('credits-open'); open.focus(); });
     })();
   </script>
 
