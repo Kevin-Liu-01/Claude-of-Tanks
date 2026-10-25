@@ -175,8 +175,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     sideSkirtCassettes: 0,
   } : null;
   // Release 240 (the owner, 2026-10-25: the C1 prototype "should also get the tts and challenger 3 and mbt 70 era
-  // reapplications"): the C1's own visual ERA, its skirt run's cassettes and the bolted glacis array.
-  const c1EraReceipt = { sideSkirtCassettes: 0, glacisCassettes: 0 };
+  // reapplications"): the C1's own visual ERA, its skirt run's cassettes and a field on each raked upper cheek (its glacis
+  // carries none: the main gun's front depression lays the gun 8-13 cm over it).
+  const c1EraReceipt = { sideSkirtCassettes: 0, turretCheekCassettes: 0 };
   // The supplied Arrafi reference carries a 1.06 m running-gear envelope
   // and ~0.60 m shoes. Keep that mechanical course rooted at the terrain,
   // then raise the armored body on its suspension before applying the final
@@ -268,38 +269,6 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
     for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.34, 2.30, -0.055, s * 0.42, 0); // V splash rail riding the raked plane (crest ~1.36, the print's furniture line)
     towCable(P, [[-1.06, 1.30, 2.50], [0, 1.355, 2.05], [1.06, 1.30, 2.50]]);     // drape re-seated on the §5.299 slope (was fully buried under the flat plate)
-    // Release 240 (the owner, 2026-10-25: the C1 prototype "should also get the tts and challenger 3 and mbt 70 era
-    // reapplications"): the MBT-70's bolted glacis array on the clean plane B (1.315@2.60 -> 1.205@3.685), ahead of the
-    // drape and the splash rail and behind the nose band: two rows of four cassettes laid in the plane, each a 12 mm base
-    // plate 3 mm into it, the 80 mm cassette on it under a bolted lid, in a bed framed by two side rails and a nose bar.
-    // The C2 keeps its own add-on rows over plane A.
-    if (!c2) {
-      const rise = 0.110 / 1.085, slope = Math.atan(rise);
-      const frame = (x: number, z: number): THREE.Matrix4 => new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0),
-        new THREE.Vector3(0, Math.cos(slope), Math.sin(slope)), new THREE.Vector3(0, -Math.sin(slope), Math.cos(slope)))
-        .setPosition(x, 1.315 - (z - 2.60) * rise, z);
-      const crisp = (w: number, h: number, d: number, ly: number, lz = 0, lx = 0): THREE.BufferGeometry =>
-        new THREE.BoxGeometry(w, h, d).translate(lx, ly, lz);
-      const rows: readonly (readonly [number, number])[] = [[2.66, 3.10], [3.11, 3.55]];
-      for (const [z0, z1] of rows) {
-        const zc = (z0 + z1) / 2, length = (z1 - z0) / Math.cos(slope), body = 0.012 + 0.08 - 0.001;
-        for (const x of [-0.765, -0.255, 0.255, 0.765]) {
-          const f = frame(x, zc);
-          P.visualEraCluster('italy-layered-hull', 'hull', () => {
-            P.add('hullDetail', crisp(0.49, 0.012, length - 0.012, 0.003).applyMatrix4(f));
-            P.add('hull', crisp(0.455, 0.08, length - 0.045, 0.012 + 0.04 - 0.001).applyMatrix4(f));
-            P.add('hullDark', crisp(0.415, 0.009, length - 0.085, body + 0.0035).applyMatrix4(f));
-          });
-          for (const [bx, bz] of [[-0.18, -1], [0.18, -1], [-0.18, 1], [0.18, 1]]) {
-            P.add('hullDetail', cylY(0.015, 0.015, 0.01, 8).translate(bx, body + 0.012, bz * (length / 2 - 0.065)).applyMatrix4(f));
-          }
-          c1EraReceipt.glacisCassettes++;
-        }
-      }
-      const zc = (rows[0][0] + rows[1][1]) / 2, length = (rows[1][1] - rows[0][0]) / Math.cos(slope);
-      for (const side of [-1, 1]) P.add('hullDetail', crisp(0.016, 0.07, length, 0.032).applyMatrix4(frame(side * 1.02, zc)));
-      P.add('hullDetail', crisp(2.056, 0.07, 0.03, 0.032, length / 2 + 0.012).applyMatrix4(frame(0, zc)));
-    }
     // The source groups mix fixed and rotating parts. Shoulder bins, roof
     // furniture and the left cheek fairing belong to the turret on BOTH marks.
     // Their source-space seats are preserved through localY/L; only the roof
@@ -565,9 +534,20 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // plan front extreme byte-held so plan rows and the mantlet band cannot
     // move).
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                      // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-        [s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)],
-        [s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]));
+      const upperCheekBottom: Quad = [[s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)]];
+      const upperCheekTop: Quad = [[s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]];
+      P.add('turret', slab(...upperCheekBottom, ...upperCheekTop));              // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
+      if (!c2) {
+        // Release 240 (C1 ERA, see c1EraReceipt): four columns by two rows of the C2's cheek cassettes seated on the raked
+        // face, clear of the gun slot's side cheeks (x 0.375-0.42) and under the lifting lugs; the C2 lays its field on
+        // its own add-on carrier over this face
+        const face0: Quad = [upperCheekBottom[0], upperCheekBottom[1], upperCheekTop[1], upperCheekTop[0]];
+        for (const u of [0.28, 0.48, 0.68, 0.88]) for (const v of [0.25, 0.66]) {
+          const face = sampleArmorFace(...face0, u, v, [s, 1, 1]);
+          faceSeatedArmorCassette(P, 'turret', face, face.dv, 0.13, 0.055, 0.20, C2_ERA_EMBED_M);
+          c1EraReceipt.turretCheekCassettes++;
+        }
+      }
       P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
         [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
         [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));

@@ -3228,7 +3228,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     // (release 240: 1 cm lower, under the turret's front underside, 1.694 m after the family scale, which grazed its corners)
     P.add('hull', box(2.75, 0.035, 1.00), 0, 1.515, 1.00);
     for (const side of [-1, 1]) P.add('hull', box(0.06, 0.12, 0.12), side * 0.99, 0.435, 0);   // from the 0.96 belly side out
-    P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
+    // (release 240: on the enhanced package's profile carrier (CR2E_SKIRT) the lug stands where it seated on the old
+    // box, its foot 5.5 mm into the carrier's 1.36 top; snapping, it caught only the plate's inner edge, 1.6 cm further
+    // in and higher, and the gun's 25 mm keep at its -6.8 deg stop over the right rear quarter fell to 21 mm)
+    if (variant === 'challenger2e' || variant === 'ua_challenger2') P.add('hull', box(0.04, 0.04, 0.12), 1.739, 1.3745, 0);
+    else P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
 
     // Glacis/deck furniture and the characteristic CR2 engine field. All are
     // seated on the measured profile and remain inside its silhouette except
