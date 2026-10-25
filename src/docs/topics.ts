@@ -1,4 +1,5 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
+import { icon } from '../ui/icons/icon.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
@@ -343,6 +344,9 @@ export interface TopicHeroLadder {
   readonly r960: string | null;
   readonly phone: string | null;
 }
+/** The trail's separator: the sprite's chevron (never a typed ›). */
+const CRUMB = icon('chevronRight', { size: 12 });
+
 export function topicHeroLadder(hero: string): TopicHeroLadder | null {
   const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(hero)?.[1];
   if (site50) {
@@ -484,8 +488,10 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
-  const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
-    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`)).join('')
+  // the reader starts at the first section: it is the current one before the spy (mountTocSpy) sees a scroll
+  const current = (index: number): string => (index === 0 ? ' aria-current="location"' : '');
+  const toc = (rich ? rich.map(({ id, title }, index) => `<a href="#${id}"${current(index)}>${title}</a>`)
+    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"${current(index)}>${title}</a>`)).join('')
     + (reference ? `<a href="#reference">${t('docs.reference.vehicles.title')}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
@@ -500,9 +506,9 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
-    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
-    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap" aria-hidden="true"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">${CRUMB}</i>`
+    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></nav>`
+    + `<h1>${titleMarkup(topic.title)}</h1></div></header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')

@@ -152,7 +152,7 @@ body[data-cot-width='compact'] .cot-set-crew-field,
 body[data-cot-width='phone'] .cot-set-crew-field{width:100%}
 body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
 body[data-cot-width='compact'] .cot-settings,
-body[data-cot-width='phone'] .cot-settings{align-items:stretch;justify-content:stretch;padding:0}
+body[data-cot-width='phone'] .cot-settings{align-items:stretch;justify-content:stretch;padding:0;--cot-edge:var(--s4)}
 body[data-cot-width='compact'] .cot-set-panel,
 body[data-cot-width='phone'] .cot-set-panel{
   width:100vw;max-width:none;height:var(--cot-viewport-height,100dvh);max-height:none;border-inline:0;display:flex;flex-direction:column;
@@ -161,15 +161,15 @@ body[data-cot-width='compact'] .cot-set-hdr,
 body[data-cot-width='phone'] .cot-set-hdr{flex:0 0 auto;padding:12px var(--cot-edge) 9px}
 body[data-cot-width='compact'] .cot-set-tabs,
 body[data-cot-width='phone'] .cot-set-tabs{
-  flex:0 0 auto;padding:0 var(--cot-edge);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+  flex:0 0 auto;padding:0 calc(var(--cot-edge) - 4px);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
 }
 body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
-/* Phone tabs size to their labels and share the spare width; a row too wide for a narrow phone scrolls instead of
-   letting a label run past its plate. */
+/* Phone tabs size to their labels and share the spare width (a short label keeps a short underline); a row too wide
+   for a narrow phone scrolls instead of letting a label run past its plate; the first label starts on the panel's edge. */
 body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
-body[data-cot-width='phone'] .cot-set-tab.sel::after{left:3px;right:3px}
+body[data-cot-width='phone'] .cot-set-tab.sel::after{left:4px;right:4px}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,
@@ -189,17 +189,21 @@ body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] :is(.cot-set-seg button,.cot-set-seg .cot-time-choice){flex:1 1 auto}
+body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 auto}
+body[data-cot-width='phone'] .cot-settings .cot-battle-times{width:100%}
+body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 auto}
+body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
 /* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
-body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
 body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
-body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
+body[data-cot-height='short'] .cot-settings{align-items:stretch;justify-content:stretch;padding:0}
+body[data-cot-height='short'] .cot-set-panel{width:100vw;max-width:none;height:var(--cot-viewport-height,100dvh);max-height:none;border-inline:0}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 /* a short screen keeps the rows: the title steps aside (the dialog keeps its name) and the close sits at the tab row's end */
@@ -207,6 +211,8 @@ body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0
 body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-height='short'] .cot-set-preview{display:none}
+/* a compact screen keeps the preview to a strip, so the rows under it stay in view */
+body[data-cot-height='compact'] .cot-set-preview{max-height:200px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}

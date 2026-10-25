@@ -6,6 +6,7 @@
 .cot-modal-root.cot-service-record{padding:clamp(8px,2vh,24px);place-items:center}
 .cot-modal-root.cot-service-record .cot-modal{width:min(var(--cot-modal-max,1120px),100%);height:min(1080px,96dvh);max-height:calc(100dvh - 16px);border-top-color:var(--line-2);background:var(--surface-scene)}
 .cot-modal-root.cot-service-record .cot-modal::before{display:none}
+.cot-modal-root.cot-service-record .cot-modal:focus{outline:none}
 .cot-modal-root.cot-service-record .cot-modal__body{display:flex;flex:1;flex-direction:column;padding:0;overflow:hidden}
 .cot-modal-root.cot-service-record .cot-modal__footer{display:none}
 .cot-modal-root.cot-service-record .cot-modal__close{grid-area:close;align-self:start;justify-self:end;min-width:44px;min-height:44px;background:var(--surface-plate);box-shadow:var(--ring-2)}
@@ -26,6 +27,7 @@
 .cot-record-plate p{grid-area:line;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px var(--s2);min-width:0;margin:0}
 .cot-record-plate b{font:600 var(--fs-16)/1.2 var(--font-ui);color:var(--ink-1)}
 .cot-record-plate small{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.4;color:var(--ink-2)}
+.cot-record-when{white-space:nowrap}
 .cot-record-result{font:700 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
 .result-victory .cot-record-result{color:var(--text-ok)}
 .result-defeat .cot-record-result{color:var(--text-danger)}
@@ -65,18 +67,23 @@
 /* the figures are the kit's stat tiles (statTile), the overview's and each battle's alike */
 .cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
 .cot-record-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s3)}
-.cot-record-card{min-width:0;padding:var(--s5);background:var(--surface-page);box-shadow:var(--ring-1)}
+.cot-record-card{display:flex;flex-direction:column;min-width:0;padding:var(--s5);background:var(--surface-page);box-shadow:var(--ring-1)}
+/* an empty card or tab says so once, centred in the space it would fill (no second frame inside the card) */
+.cot-record-card>.cot-c-empty{flex:1;justify-content:center;padding:var(--s4) 0;box-shadow:none}
+.cot-record-body>.cot-c-empty:only-child{min-height:100%;justify-content:center;box-shadow:none}
 .cot-record-card-head{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);color:var(--ink-3)}
 .cot-record-card-head strong{font:600 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1)}
 .cot-record-card-head small{margin-left:auto;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3)}
-.cot-record-reason-row,.cot-record-latest-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));gap:var(--s3) var(--s2)}
+.cot-record-reason-row,.cot-record-latest-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));grid-auto-rows:1fr;gap:var(--s3) var(--s2)}
 .cot-service-record :is(.cot-record-reason,.cot-record-latest-medal){display:flex;flex-direction:column;align-items:center;gap:var(--s2);min-width:0;min-height:44px;padding:var(--s2) var(--s1);
   border:0;border-radius:var(--r2);background:none;color:var(--ink-1);font:inherit;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:help}
 .cot-service-record :is(.cot-record-reason,.cot-record-latest-medal):hover{background:var(--surface-hover)}
-.cot-service-record :is(.cot-record-reason,.cot-record-latest-medal)>svg{flex:none;max-width:100%;height:auto}
+.cot-service-record :is(.cot-record-reason,.cot-record-latest-medal)>svg{flex:none;width:56px;max-width:100%;height:auto}
 .cot-service-record :is(.cot-record-reason,.cot-record-latest-medal)>:is(div,span){width:100%;min-width:0}
+/* the names start on one line and the counts end on one line, however the names wrap */
+.cot-record-reason>div{display:flex;flex:1;flex-direction:column}
 .cot-record-reason strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:600;line-height:1.35;text-wrap:balance}
-.cot-record-reason small{display:block;margin-top:4px;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3)}
+.cot-record-reason small{display:block;margin-top:auto;padding-top:4px;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3)}
 .cot-record-latest-medal span{font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:600;line-height:1.35;color:var(--ink-1);text-wrap:balance}
 .cot-record-reason-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-1)}
 .cot-record-reason-stats>div{min-width:0}
@@ -121,11 +128,9 @@
 .cot-record-bar i{display:block;height:100%;background:var(--ink-3)}
 .cot-record-ach-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s2);margin-top:6px;font:500 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-data);color:var(--ink-3)}
 
-/* the battle log: each battle over its map, its tank's render first, a result stripe at the left edge */
+/* the battle log: one plate per battle, its tank's render first (the header plate carries the latest battle's map) */
 .cot-record-history{display:grid;gap:var(--s2);margin:0;padding:0;list-style:none}
-.cot-record-battle{border:1px solid var(--line-2);
-  background:linear-gradient(90deg,var(--surface-scene) 10%,color-mix(in srgb,var(--surface-scene) 62%,transparent) 55%,color-mix(in srgb,var(--surface-scene) 84%,transparent)),
-    var(--battle-map,none) center/cover no-repeat var(--surface-page)}
+.cot-record-battle{border:1px solid var(--line-2);background:var(--surface-page)}
 .cot-record-battle[open]{border-color:var(--line-3)}
 .cot-record-battle summary{position:relative;padding:var(--s3) var(--s7) var(--s3) var(--s4);list-style:none;cursor:pointer}
 .cot-record-battle summary::-webkit-details-marker{display:none}
@@ -153,8 +158,9 @@
 .cot-record-battle-awards button:hover{background:var(--surface-hover)}
 .cot-record-trace-head{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3)}
 .cot-record-trace-head strong{font:600 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1)}
-.cot-record-trace{margin:0;padding:var(--s3) 0 0 18px;list-style:none}
-.cot-record-trace li{position:relative;display:grid;grid-template-columns:64px 44px minmax(80px,1fr) auto auto;align-items:center;gap:var(--s3);padding:var(--s2) 0;
+/* one column grid for every step (subgrid), so the times, vehicles and outcomes share their edges */
+.cot-record-trace{display:grid;grid-template-columns:64px 44px minmax(80px,1fr) auto auto;margin:0;padding:var(--s3) 0 0 18px;list-style:none}
+.cot-record-trace li{position:relative;display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;gap:var(--s3);padding:var(--s2) 0;
   font-size:max(var(--fs-floor-12),var(--fs-12));border-bottom:1px solid var(--line-1)}
 .cot-record-trace li::before{content:'';position:absolute;top:50%;left:-18px;width:7px;height:7px;margin-top:-3px;background:var(--ink-3);rotate:45deg}
 .cot-record-trace li.linked::before{background:var(--ink-2)}
@@ -162,7 +168,7 @@
 .cot-record-step,.cot-record-step-time{color:var(--ink-3)}
 .cot-record-trace-vehicle{display:flex;align-items:center;gap:var(--s2);color:var(--ink-1);overflow-wrap:anywhere}
 .cot-record-trace-icon{flex:none;width:48px;height:34px;object-fit:contain}
-.cot-record-trace small{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.cot-record-trace small{display:flex;align-items:center;gap:6px;font-size:inherit;color:var(--ink-2)}
 .cot-record-step-gap{min-width:48px;text-align:end;color:var(--ink-2)}
 .cot-record-trace-empty{padding-top:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-13));color:var(--ink-3)}
 
@@ -171,7 +177,7 @@
   .cot-record-outcome.win-rate{grid-column:1/-1}
   .cot-record-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
-  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 60px 84px}
+  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 68px 84px}
   .cot-record-vehicle{width:96px;height:64px}
   .cot-record-battle-medals{grid-column:2/-1}
 }
@@ -181,7 +187,10 @@
   .cot-record-plate .cot-record-vehicle{width:120px;height:72px}
   .cot-record-tabs{padding:0 var(--s2)}
   .cot-record-tab{flex:1;flex-direction:column;justify-content:center;gap:4px;min-height:56px;padding:0 var(--s1);font-size:max(var(--fs-floor-12),var(--fs-12))}
+  /* a phone's tabs drop the counts and keep the new dot, beside the glyph */
+  .cot-record-tab{position:relative}
   .cot-record-tab small{display:none}
+  .cot-record-tab.has-new::after{content:'';position:absolute;top:var(--s2);left:calc(50% + 10px);width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
   .cot-record-body{padding:var(--s4)}
   .cot-record-outcome strong{font-size:var(--fs-24)}
   .cot-record-outcome.win-rate strong{font-size:var(--fs-40)}
@@ -203,13 +212,20 @@
   .cot-record-battle-medals{grid-row:2;grid-column:3;justify-content:end}
   .cot-record-battle-body{padding:var(--s3)}
   .cot-record-battle-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .cot-record-trace li{grid-template-columns:52px 36px minmax(0,1fr);gap:var(--s2)}
+  .cot-record-trace{grid-template-columns:52px 36px minmax(0,1fr)}
+  .cot-record-trace li{gap:var(--s2)}
   .cot-record-trace small,.cot-record-step-gap{grid-column:3}
   .cot-record-trace-icon{width:32px;height:26px}
 }
+/* a compact screen keeps the header to a band; a short landscape phone to one line with the X beside the title */
+@media(max-height:720px){
+  .cot-modal-root.cot-service-record .cot-modal__header{min-height:0;padding:var(--s4) var(--s5) var(--s3)}
+  .cot-record-plate .cot-record-vehicle{width:160px;height:92px}
+}
 @media(max-height:500px) and (orientation:landscape){
   .cot-modal-root.cot-service-record .cot-modal{height:calc(100dvh - 16px)}
-  .cot-modal-root.cot-service-record .cot-modal__header{min-height:0;padding:var(--s2) var(--s4)}
+  .cot-modal-root.cot-service-record .cot-modal__header{align-items:center;min-height:0;padding:var(--s2) var(--s4)}
+  .cot-modal-root.cot-service-record .cot-modal__close{align-self:center}
   .cot-modal-root.cot-service-record .cot-modal__title{font-size:var(--fs-20)}
   .cot-record-plate .cot-record-vehicle{width:72px;height:44px}
   .cot-record-plate small{display:none}
