@@ -20,7 +20,7 @@
 import { createHeadlessSession, scriptedControls } from '../../src/mp/session/headlessSession.ts';
 import type { HeadlessSession } from '../../src/mp/session/headlessSession.ts';
 import type { SessionP2pEvent } from '../../src/mp/session/matchSession.ts';
-import { createBrowserHostPort } from '../../src/mp/host/browserHostPort.ts';
+import { SIM_KERNELS_URL, createBrowserHostPort } from '../../src/mp/host/browserHostPort.ts';
 import { COLLISION_MANIFEST_ROUTE, loadCollisionWorld } from '../../src/mp/host/worldCollision.ts';
 import { createPredictionWorld } from '../../src/mp/presentation/predictionWorld.ts';
 import { getSpec } from '../../src/vehicles/specs.ts';
@@ -299,6 +299,8 @@ function boot(): void {
         createPeerConnection,
         ...(canHost ? { createHostPort: createBrowserHostPort } : {}),
         manifestBase: COLLISION_MANIFEST_ROUTE,
+        // ?simKernels=wasm (workstream #3): a host builds its world on the WebAssembly kernels, as the game's flag does
+        ...(param('simKernels', '') === 'wasm' ? { simKernelsUrl: SIM_KERNELS_URL } : {}),
         tier: 'desktop',
         countdownS,
         ...(snapshotHzParam > 0 ? { snapshotHz: snapshotHzParam } : {}),

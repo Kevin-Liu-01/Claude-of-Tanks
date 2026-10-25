@@ -139,8 +139,13 @@ function observe(page, id) {
 }
 const relevantErrors = () => errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
 
+// --sim-kernels=wasm (workstream #3, 2026-10-25): every harness seat that hosts builds its world on the WebAssembly kernels
+// (src/world/wasmWorldKernels.ts): the host tick cost and the migrations measured with the flag on. --sim-kernels=wasm@1,3:
+// those seats alone (a kernel host's keyframe resumed by a TypeScript host, and back).
+const [simKernelsMode, simKernelsSeats] = argValue('sim-kernels', '').split('@');
+const simKernelSeat = (peer) => simKernelsMode === 'wasm' && (!simKernelsSeats || simKernelsSeats.split(',').includes(String(peer.index)));
 function peerUrl(origin, peer) {
-  const params = new URLSearchParams({ rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire, ...(snapshotHz > 0 ? { snapshotHz: String(snapshotHz) } : {}) });
+  const params = new URLSearchParams({ ...(simKernelSeat(peer) ? { simKernels: 'wasm' } : {}), rooms: roomsUrl, id: peer.id, name: peer.name, index: String(peer.index), host: peer.canHost ? '1' : '0', ice: iceMode, predict, countdown: String(countdownS), fire, ...(snapshotHz > 0 ? { snapshotHz: String(snapshotHz) } : {}) });
   return `${origin}/mp-p2p-peer/?${params}`;
 }
 
