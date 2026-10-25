@@ -364,6 +364,7 @@ async function startTrace(page) {
 }
 
 async function recordStep({ page, helper, step, ctx, profile, stem, outDir, group = null }) {
+  const consoleFrom = page.__consoleLog?.length ?? 0;
   const spec = { content: step.content, ready: step.ready || null };
   const specScript = await page.evaluateOnNewDocument((value) => { window.__navSpec = value; }, spec);
   if (step.act.before) await step.act.before(page, ctx).catch(() => {});
@@ -485,6 +486,8 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir, grou
     inp: final.interactions.filter((e) => e.at >= clickAt - 5).reduce((worst, e) => Math.max(worst, Math.round(e.duration)), 0) || null,
     shifts: after.map((s) => ({ t: Math.round(s.at - clickAt), value: Number(s.value.toFixed(4)), recent: s.recent, sources: s.sources })),
     abrupt, frames: shots.length, wallMs: Date.now() - wallStart,
+    consoleErrors: (page.__consoleLog ?? []).slice(consoleFrom).filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
+    consoleWarnings: (page.__consoleLog ?? []).slice(consoleFrom).filter((m) => m.type === 'warn').map((m) => m.text).slice(0, 8),
   };
   const end = Math.max(1000, (settled ?? 3000) + 1000, (result.blocked ?? 0) + 1000);
   // A new document's content counts once it has painted: the strip marks it no earlier than the first paint.
@@ -639,6 +642,16 @@ async function main() {
           try {
             const page = await context.newPage();
             page.setDefaultTimeout(180000);
+            // (UI-LOCKDOWN E) the console census: every error and warning a step's documents log; Chrome's notice that
+            // it ignores COOP on a plain-http origin is the preview's (the deployment is https)
+            page.__consoleLog = [];
+            page.on('console', (message) => {
+              const type = message.type();
+              if ((type === 'error' || type === 'warn') && !/Cross-Origin-Opener-Policy header has been ignored/.test(message.text())) {
+                page.__consoleLog.push({ type, text: message.text().slice(0, 240) });
+              }
+            });
+            page.on('pageerror', (error) => { page.__consoleLog.push({ type: 'error', text: `pageerror: ${String(error?.message || error).split('\n')[0]}`.slice(0, 240) }); });
             await page.evaluateOnNewDocument(PROBE);
             await applyProfile(page, profile);
             for (const cacheName of caches) {

@@ -30,7 +30,8 @@ try {
   mkdirSync(nav, { recursive: true });
   mkdirSync(click, { recursive: true });
   const step = (name, fields) => writeFileSync(join(nav, name), JSON.stringify({ group: 'public', fcp: 300, ...fields }));
-  step('home-load.desktop.cold.json', { step: 'home-load', lcp: 900, cls: 0.004, tbt: 20, inp: null });
+  step('home-load.desktop.cold.json', { step: 'home-load', lcp: 900, cls: 0.004, tbt: 20, inp: null, consoleErrors: [],
+    consoleWarnings: ['The resource was preloaded using link preload but not used within a few seconds'] });
   step('home-load.phone.cold.json', { step: 'home-load', lcp: 2900, cls: 0, tbt: 60, inp: null });
   step('docs-archive.desktop.warm.json', { step: 'docs-archive', lcp: null, cls: 0, tbt: 0, inp: 64 });
   writeFileSync(join(nav, 'gate-to-garage.desktop.cold.json'), JSON.stringify({ step: 'gate-to-garage', group: 'game', content: 150, fcp: 120, cls: 0, inp: 40 }));
@@ -57,6 +58,9 @@ try {
     [2900, BUDGETS.public.lcpMs.phone, false]);
   assert.equal(row('public/home/desktop/lcpMs').samples, 1, 'an errored step is not scored');
   assert.equal(row('public/docs/desktop/inpMs').value, 64);
+  // the console census: a public page's warning is a miss on that page, its errors counted beside it
+  assert.deepEqual([row('everywhere/home/desktop/consoleWarnings').value, row('everywhere/home/desktop/consoleWarnings').pass], [1, false]);
+  assert.equal(row('everywhere/home/desktop/consoleErrors').pass, true);
   assert.equal(row('app/boot/desktop/contentMs').value, 150, 'a game step\'s content counts from its first paint at the latest');
   // app presses: INP at p98 holds past one slow press in fifty; the worst long task and dropped frame miss
   assert.equal(row('app/garage/desktop/inpP98Ms').value, 64, 'one slow press in fifty sits past the 98th percentile');

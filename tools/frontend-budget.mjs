@@ -86,6 +86,8 @@ export function collect({ nav = [], click = [] } = {}) {
       const rig = rigOf(file), surface = surfaceOf(step.step);
       // runs before 2026-10-25 carry no journey group: a public page by its surface
       const group = step.group ?? (['home', 'docs', '404'].includes(surface) || /^(home-to-gallery|gallery-dossier)$/.test(step.step) ? 'public' : 'game');
+      if (Array.isArray(step.consoleErrors)) add('everywhere', surface, rig, 'consoleErrors', step.consoleErrors.length);
+      if (Array.isArray(step.consoleWarnings)) add('everywhere', surface, rig, 'consoleWarnings', step.consoleWarnings.length);
       if (group === 'public') {
         add('public', surface, rig, 'lcpMs', step.lcp);
         add('public', surface, rig, 'cls', step.cls);
