@@ -7074,21 +7074,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              -0.0595,
-              0.0548,
-              -0.8959
+              0.1251,
+              0.0215,
+              -0.8496
             ],
             "max": [
-              0.369,
-              0.4948,
-              -0.0569
+              0.5845,
+              0.5015,
+              -0.0069
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "52826449",
-      "metadataHash": "bac246cf",
+      "metadataHash": "8520c3c0",
       "presentationAnchor": {
         "xM": -0.0066,
         "zM": -0.2983
@@ -7142,28 +7142,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "ajax_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 121917,
-          "sha256": "3c8da2cda33dc086f769403557a01d7ff31c20242705e21669f9dcf52ccf6c6b"
+          "file": "ajax_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 35262,
+          "sha256": "d5c42db77dd59c1b7cb198dda8839254c58da84c1be735700791aaf351f64e72"
         },
         "modulesSide": {
-          "file": "ajax_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 127961,
-          "sha256": "7747fc1735e44bbfa5528cc062f1850ad2184c2628073fa2e1667eeca4215f09"
+          "file": "ajax_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 35740,
+          "sha256": "9ff117acea8bd65066ad75622cbd30b0e64ebf7e6f2512fc40ca0d0b71783475"
         },
         "crewSide": {
-          "file": "ajax_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 114616,
-          "sha256": "9a075070babace326c70c964e3a1daa656c0ca5e0a034f0ce1c0a4f3e71b4285"
+          "file": "ajax_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 30506,
+          "sha256": "f35adb756278c09a5a4ef92f091e578488ffc00f93195d50f16299e72a4b5533"
         },
         "angle": {
           "file": "ajax_angle.webp",
@@ -7220,6 +7220,12 @@
           "mime": "image/png",
           "bytes": 37170,
           "sha256": "39801d43e0afcc7bbd4b2b8534ced1f9d53018b248a3d07a43cb88afd7ef6786"
+        },
+        "technicalLabels": {
+          "file": "ajax_technical.json",
+          "mime": "application/json",
+          "bytes": 3871,
+          "sha256": "10d4c4939a29968a3b4a0c4dff67f5c35f7715e504cf537eb50b8a1685e885c2"
         }
       }
     },
@@ -84336,28 +84342,28 @@
           "sha256": "3a55a60864e04298963a74cda20649d0c97c37f0ee237a002ed0c998711325a4"
         },
         "armorSide": {
-          "file": "centurion3_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 85932,
-          "sha256": "60647606999c67875795820a5b5755ea427830d483d708242b3fa99a7b591cf6"
+          "file": "centurion3_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 20834,
+          "sha256": "7e7b78780f8230959cf0500c13620c3a691ede1bf11340b3320b6302d74595c3"
         },
         "modulesSide": {
-          "file": "centurion3_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 89317,
-          "sha256": "0cbf3822a2353413b003aef76d1e776dbc27784a54c0fb21eeac31eba72cfbf4"
+          "file": "centurion3_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 22814,
+          "sha256": "6c44d482a147b91f61a6b1aa866fe31069bd615fc653b169561a29dfdd034f67"
         },
         "crewSide": {
-          "file": "centurion3_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 77511,
-          "sha256": "21cc9ace5740fb39b5e22578c9a4132709bd672e8168366ef31802c0bbd0f641"
+          "file": "centurion3_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17250,
+          "sha256": "b1c84c80c6ee9b7715a8911a3be6817518f82afe9d278dbf49f8188c0c752b6f"
         },
         "markings": {
           "file": "centurion3_markings.png",
@@ -84366,6 +84372,12 @@
           "mime": "image/png",
           "bytes": 35710,
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+        },
+        "technicalLabels": {
+          "file": "centurion3_technical.json",
+          "mime": "application/json",
+          "bytes": 4695,
+          "sha256": "6c34688814906531878f76622ea5c63f5bd46b30a194bad0e185b8d385f73967"
         }
       }
     },
@@ -86758,28 +86770,28 @@
           "sha256": "4a552979c6a70625fa0b8dba3dfa743ce90269b62d5499377d696c2713a2562a"
         },
         "armorSide": {
-          "file": "challenger1_mk2_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 80227,
-          "sha256": "a60f32e068fabea0a51a36e7006bd26bab6d52be4d78fdcc367e21ac310e309b"
+          "file": "challenger1_mk2_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 20906,
+          "sha256": "a14f481b09101865c2c6d5fd69a332b94a5abe2e2004a4811b4f4c80cf77429c"
         },
         "modulesSide": {
-          "file": "challenger1_mk2_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 84432,
-          "sha256": "05336ce057cd81afe6470813ef54cfa506c124be58250507bfa4bce16fad1bca"
+          "file": "challenger1_mk2_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 21942,
+          "sha256": "dcfda5796c3658f5bca3aa20cfed3c36de020578a0173e412818242983ca0008"
         },
         "crewSide": {
-          "file": "challenger1_mk2_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 71756,
-          "sha256": "de03d708577134988434de9c44e4a77139b0939325b312307e15556bcd86bf02"
+          "file": "challenger1_mk2_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17460,
+          "sha256": "2d3aa9ac918c56e2f5326136d5503ca4c094a59c16c6ec2d0595841781379b56"
         },
         "markings": {
           "file": "challenger1_mk2_markings.png",
@@ -86788,6 +86800,12 @@
           "mime": "image/png",
           "bytes": 35710,
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+        },
+        "technicalLabels": {
+          "file": "challenger1_mk2_technical.json",
+          "mime": "application/json",
+          "bytes": 4251,
+          "sha256": "89215717b56c97b3fb323435030b9560527b302dd4342b18f51a310bffe7960b"
         }
       }
     },
@@ -94273,28 +94291,28 @@
           "sha256": "86c62427ad98023ee684d240d9b835068b79b2569a83b0ce3bb0dd1db2d90029"
         },
         "armorSide": {
-          "file": "challenger2_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 82339,
-          "sha256": "0cbab5e5d53c1478635f2d8643979514fb774338130122ab147873f164e42846"
+          "file": "challenger2_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 22220,
+          "sha256": "212e858aaf528aaeae9f79782be553bbc372b7cf990198c165c3ba184d6ccf93"
         },
         "modulesSide": {
-          "file": "challenger2_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 82945,
-          "sha256": "4f3eae4e25546fe385f0508e068e91f0b36da9ec37f0bef5c4ea180b7f1b9447"
+          "file": "challenger2_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 21124,
+          "sha256": "dd99031df36068be094001eea228bab4128a7dc9dfbe4861ca28a94531d3f40c"
         },
         "crewSide": {
-          "file": "challenger2_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 71429,
-          "sha256": "059c5312f24bb2edf0eaa90a334c27c5eeb27392782afa92f63e303c2710a6d0"
+          "file": "challenger2_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 16932,
+          "sha256": "7d6cd97ec0fc4d6cb50a4fe185b7dbd6088c35302083b7a907d187cb458ac676"
         },
         "markings": {
           "file": "challenger2_markings.png",
@@ -94303,6 +94321,12 @@
           "mime": "image/png",
           "bytes": 35710,
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+        },
+        "technicalLabels": {
+          "file": "challenger2_technical.json",
+          "mime": "application/json",
+          "bytes": 4791,
+          "sha256": "63e6fc6284c033f71a98f4ad4440db8e7ddcc72de21511b90e4ff04c7e9bfe2d"
         }
       }
     },
@@ -103226,24 +103250,24 @@
             "turretLocal": true,
             "verts": [
               [
-                0.7195,
-                0.1508,
-                1.4256
+                0.718,
+                0.1678,
+                1.3762
               ],
               [
-                0.5288,
-                0.1603,
-                1.5447
+                0.4819,
+                0.173,
+                1.525
               ],
               [
-                0.5653,
-                0.0757,
-                1.61
+                0.5493,
+                0.1246,
+                1.6337
               ],
               [
-                0.756,
-                0.0662,
-                1.4909
+                0.7854,
+                0.1194,
+                1.4849
               ]
             ]
           },
@@ -103257,24 +103281,24 @@
             "turretLocal": true,
             "verts": [
               [
-                0.961,
-                0.1388,
-                1.2748
+                0.7179,
+                0.158,
+                1.4229
               ],
               [
-                0.7703,
-                0.1483,
-                1.3939
+                0.525,
+                0.1621,
+                1.5444
               ],
               [
-                0.8069,
-                0.0637,
-                1.4592
+                0.5677,
+                0.1002,
+                1.6141
               ],
               [
-                0.9976,
-                0.0542,
-                1.3401
+                0.7605,
+                0.0961,
+                1.4926
               ]
             ]
           },
@@ -103288,24 +103312,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.2025,
-                0.1268,
-                1.124
+                0.9559,
+                0.1539,
+                1.2196
               ],
               [
-                1.0118,
-                0.1363,
-                1.243
+                0.7196,
+                0.1593,
+                1.3686
               ],
               [
-                1.0484,
-                0.0517,
-                1.3084
+                0.789,
+                0.1271,
+                1.4799
               ],
               [
-                1.2391,
-                0.0422,
-                1.1893
+                1.0253,
+                0.1218,
+                1.3309
               ]
             ]
           },
@@ -103319,29 +103343,153 @@
             "turretLocal": true,
             "verts": [
               [
-                1.444,
-                0.1148,
-                0.9731
+                0.9586,
+                0.1464,
+                1.2707
               ],
               [
-                1.2533,
-                0.1243,
-                1.0922
+                0.7656,
+                0.1506,
+                1.3925
               ],
               [
-                1.2899,
-                0.0396,
-                1.1575
+                0.809,
+                0.1012,
+                1.463
               ],
               [
-                1.4806,
-                0.0302,
-                1.0385
+                1.002,
+                0.0971,
+                1.3413
               ]
             ]
           },
           {
             "hitboxId": "T14",
+            "name": "c3x_turret_cheek_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.1943,
+                0.1399,
+                1.0641
+              ],
+              [
+                0.9577,
+                0.1444,
+                1.2134
+              ],
+              [
+                1.0288,
+                0.1267,
+                1.3265
+              ],
+              [
+                1.2654,
+                0.1223,
+                1.1772
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T15",
+            "name": "c3x_turret_cheek_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.1991,
+                0.1344,
+                1.1184
+              ],
+              [
+                1.006,
+                0.1387,
+                1.2403
+              ],
+              [
+                1.0502,
+                0.1023,
+                1.3115
+              ],
+              [
+                1.2433,
+                0.098,
+                1.1896
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T16",
+            "name": "c3x_turret_cheek_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.434,
+                0.1276,
+                0.9106
+              ],
+              [
+                1.1972,
+                0.1302,
+                1.0601
+              ],
+              [
+                1.269,
+                0.1208,
+                1.1741
+              ],
+              [
+                1.5059,
+                0.1182,
+                1.0246
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T17",
+            "name": "c3x_turret_cheek_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.4396,
+                0.1219,
+                0.9658
+              ],
+              [
+                1.2463,
+                0.1264,
+                1.0879
+              ],
+              [
+                1.2912,
+                0.1033,
+                1.1598
+              ],
+              [
+                1.4844,
+                0.0988,
+                1.0377
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T18",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103372,7 +103520,7 @@
             ]
           },
           {
-            "hitboxId": "T15",
+            "hitboxId": "T19",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103403,7 +103551,7 @@
             ]
           },
           {
-            "hitboxId": "T16",
+            "hitboxId": "T20",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103434,7 +103582,7 @@
             ]
           },
           {
-            "hitboxId": "T17",
+            "hitboxId": "T21",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103465,7 +103613,7 @@
             ]
           },
           {
-            "hitboxId": "T18",
+            "hitboxId": "T22",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103496,7 +103644,7 @@
             ]
           },
           {
-            "hitboxId": "T19",
+            "hitboxId": "T23",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103527,7 +103675,7 @@
             ]
           },
           {
-            "hitboxId": "T20",
+            "hitboxId": "T24",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103558,7 +103706,7 @@
             ]
           },
           {
-            "hitboxId": "T21",
+            "hitboxId": "T25",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103589,7 +103737,7 @@
             ]
           },
           {
-            "hitboxId": "T22",
+            "hitboxId": "T26",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103620,7 +103768,7 @@
             ]
           },
           {
-            "hitboxId": "T23",
+            "hitboxId": "T27",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103651,7 +103799,7 @@
             ]
           },
           {
-            "hitboxId": "T24",
+            "hitboxId": "T28",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103682,7 +103830,7 @@
             ]
           },
           {
-            "hitboxId": "T25",
+            "hitboxId": "T29",
             "name": "c3x_turret_cheek_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -103713,7 +103861,7 @@
             ]
           },
           {
-            "hitboxId": "T26",
+            "hitboxId": "T30",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103744,7 +103892,7 @@
             ]
           },
           {
-            "hitboxId": "T27",
+            "hitboxId": "T31",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103775,7 +103923,7 @@
             ]
           },
           {
-            "hitboxId": "T28",
+            "hitboxId": "T32",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103806,7 +103954,7 @@
             ]
           },
           {
-            "hitboxId": "T29",
+            "hitboxId": "T33",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103837,7 +103985,7 @@
             ]
           },
           {
-            "hitboxId": "T30",
+            "hitboxId": "T34",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103868,7 +104016,7 @@
             ]
           },
           {
-            "hitboxId": "T31",
+            "hitboxId": "T35",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103899,7 +104047,7 @@
             ]
           },
           {
-            "hitboxId": "T32",
+            "hitboxId": "T36",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103930,7 +104078,7 @@
             ]
           },
           {
-            "hitboxId": "T33",
+            "hitboxId": "T37",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103961,7 +104109,7 @@
             ]
           },
           {
-            "hitboxId": "T34",
+            "hitboxId": "T38",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -103992,7 +104140,7 @@
             ]
           },
           {
-            "hitboxId": "T35",
+            "hitboxId": "T39",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -104023,7 +104171,7 @@
             ]
           },
           {
-            "hitboxId": "T36",
+            "hitboxId": "T40",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -104054,7 +104202,7 @@
             ]
           },
           {
-            "hitboxId": "T37",
+            "hitboxId": "T41",
             "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -104085,132 +104233,8 @@
             ]
           },
           {
-            "hitboxId": "T38",
-            "name": "c3x_turret_cheek_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -0.756,
-                0.0662,
-                1.4909
-              ],
-              [
-                -0.5653,
-                0.0757,
-                1.61
-              ],
-              [
-                -0.5288,
-                0.1603,
-                1.5447
-              ],
-              [
-                -0.7195,
-                0.1508,
-                1.4256
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T39",
-            "name": "c3x_turret_cheek_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -0.9976,
-                0.0542,
-                1.3401
-              ],
-              [
-                -0.8069,
-                0.0637,
-                1.4592
-              ],
-              [
-                -0.7703,
-                0.1483,
-                1.3939
-              ],
-              [
-                -0.961,
-                0.1388,
-                1.2748
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T40",
-            "name": "c3x_turret_cheek_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.2391,
-                0.0422,
-                1.1893
-              ],
-              [
-                -1.0484,
-                0.0517,
-                1.3084
-              ],
-              [
-                -1.0118,
-                0.1363,
-                1.243
-              ],
-              [
-                -1.2025,
-                0.1268,
-                1.124
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T41",
-            "name": "c3x_turret_cheek_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.4806,
-                0.0302,
-                1.0385
-              ],
-              [
-                -1.2899,
-                0.0396,
-                1.1575
-              ],
-              [
-                -1.2533,
-                0.1243,
-                1.0922
-              ],
-              [
-                -1.444,
-                0.1148,
-                0.9731
-              ]
-            ]
-          },
-          {
             "hitboxId": "T42",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104218,30 +104242,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2693,
-                -3.0424
+                -0.7854,
+                0.1194,
+                1.4849
               ],
               [
-                1.793,
-                0.2693,
-                -2.7576
+                -0.5493,
+                0.1246,
+                1.6337
               ],
               [
-                1.793,
-                0.1307,
-                -2.7576
+                -0.4819,
+                0.173,
+                1.525
               ],
               [
-                1.793,
-                0.1307,
-                -3.0424
+                -0.718,
+                0.1678,
+                1.3762
               ]
             ]
           },
           {
             "hitboxId": "T43",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104249,30 +104273,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2693,
-                -2.6724
+                -0.7605,
+                0.0961,
+                1.4926
               ],
               [
-                1.793,
-                0.2693,
-                -2.3876
+                -0.5677,
+                0.1002,
+                1.6141
               ],
               [
-                1.793,
-                0.1307,
-                -2.3876
+                -0.525,
+                0.1621,
+                1.5444
               ],
               [
-                1.793,
-                0.1307,
-                -2.6724
+                -0.7179,
+                0.158,
+                1.4229
               ]
             ]
           },
           {
             "hitboxId": "T44",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104280,30 +104304,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2693,
-                -2.3558
+                -1.0253,
+                0.1218,
+                1.3309
               ],
               [
-                1.793,
-                0.2693,
-                -2.071
+                -0.789,
+                0.1271,
+                1.4799
               ],
               [
-                1.793,
-                0.1307,
-                -2.071
+                -0.7196,
+                0.1593,
+                1.3686
               ],
               [
-                1.793,
-                0.1307,
-                -2.3558
+                -0.9559,
+                0.1539,
+                1.2196
               ]
             ]
           },
           {
             "hitboxId": "T45",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104311,30 +104335,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2869,
-                -1.9324
+                -1.002,
+                0.0971,
+                1.3413
               ],
               [
-                1.793,
-                0.2869,
-                -1.6476
+                -0.809,
+                0.1012,
+                1.463
               ],
               [
-                1.793,
-                0.1483,
-                -1.6476
+                -0.7656,
+                0.1506,
+                1.3925
               ],
               [
-                1.793,
-                0.1483,
-                -1.9324
+                -0.9586,
+                0.1464,
+                1.2707
               ]
             ]
           },
           {
             "hitboxId": "T46",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104342,30 +104366,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2858,
-                -1.5954
+                -1.2654,
+                0.1223,
+                1.1772
               ],
               [
-                1.793,
-                0.2858,
-                -1.3107
+                -1.0288,
+                0.1267,
+                1.3265
               ],
               [
-                1.793,
-                0.1472,
-                -1.3107
+                -0.9577,
+                0.1444,
+                1.2134
               ],
               [
-                1.793,
-                0.1472,
-                -1.5954
+                -1.1943,
+                0.1399,
+                1.0641
               ]
             ]
           },
           {
             "hitboxId": "T47",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104373,30 +104397,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2693,
-                -1.1924
+                -1.2433,
+                0.098,
+                1.1896
               ],
               [
-                1.793,
-                0.2693,
-                -0.9076
+                -1.0502,
+                0.1023,
+                1.3115
               ],
               [
-                1.793,
-                0.1307,
-                -0.9076
+                -1.006,
+                0.1387,
+                1.2403
               ],
               [
-                1.793,
-                0.1307,
-                -1.1924
+                -1.1991,
+                0.1344,
+                1.1184
               ]
             ]
           },
           {
             "hitboxId": "T48",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104404,30 +104428,30 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2693,
-                -0.8224
+                -1.5059,
+                0.1182,
+                1.0246
               ],
               [
-                1.793,
-                0.2693,
-                -0.5376
+                -1.269,
+                0.1208,
+                1.1741
               ],
               [
-                1.793,
-                0.1307,
-                -0.5376
+                -1.1972,
+                0.1302,
+                1.0601
               ],
               [
-                1.793,
-                0.1307,
-                -0.8224
+                -1.434,
+                0.1276,
+                0.9106
               ]
             ]
           },
           {
             "hitboxId": "T49",
-            "name": "c3x_turret_side_era_R",
+            "name": "c3x_turret_cheek_era_L",
             "physicalMm": 22,
             "keMm": 220,
             "ceMm": 680,
@@ -104435,24 +104459,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.793,
-                0.2718,
-                -0.4892
+                -1.4844,
+                0.0988,
+                1.0377
               ],
               [
-                1.793,
-                0.2718,
-                -0.2045
+                -1.2912,
+                0.1033,
+                1.1598
               ],
               [
-                1.793,
-                0.1333,
-                -0.2045
+                -1.2463,
+                0.1264,
+                1.0879
               ],
               [
-                1.793,
-                0.1333,
-                -0.4892
+                -1.4396,
+                0.1219,
+                0.9658
               ]
             ]
           },
@@ -104467,22 +104491,22 @@
             "verts": [
               [
                 1.793,
-                0.4743,
+                0.2693,
                 -3.0424
               ],
               [
                 1.793,
-                0.4743,
+                0.2693,
                 -2.7576
               ],
               [
                 1.793,
-                0.3357,
+                0.1307,
                 -2.7576
               ],
               [
                 1.793,
-                0.3357,
+                0.1307,
                 -3.0424
               ]
             ]
@@ -104498,22 +104522,22 @@
             "verts": [
               [
                 1.793,
-                0.4743,
+                0.2693,
                 -2.6724
               ],
               [
                 1.793,
-                0.4743,
+                0.2693,
                 -2.3876
               ],
               [
                 1.793,
-                0.3357,
+                0.1307,
                 -2.3876
               ],
               [
                 1.793,
-                0.3357,
+                0.1307,
                 -2.6724
               ]
             ]
@@ -104528,24 +104552,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8265,
-                0.4939,
-                -2.3024
+                1.793,
+                0.2693,
+                -2.3558
               ],
               [
-                1.8265,
-                0.4939,
-                -2.0176
+                1.793,
+                0.2693,
+                -2.071
               ],
               [
-                1.8265,
-                0.3554,
-                -2.0176
+                1.793,
+                0.1307,
+                -2.071
               ],
               [
-                1.8265,
-                0.3554,
-                -2.3024
+                1.793,
+                0.1307,
+                -2.3558
               ]
             ]
           },
@@ -104560,23 +104584,23 @@
             "verts": [
               [
                 1.793,
-                0.4539,
-                -1.9408
+                0.2869,
+                -1.9324
               ],
               [
                 1.793,
-                0.4539,
-                -1.6561
+                0.2869,
+                -1.6476
               ],
               [
                 1.793,
-                0.3153,
-                -1.6561
+                0.1483,
+                -1.6476
               ],
               [
                 1.793,
-                0.3153,
-                -1.9408
+                0.1483,
+                -1.9324
               ]
             ]
           },
@@ -104590,24 +104614,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8265,
-                0.4939,
-                -1.5624
+                1.793,
+                0.2858,
+                -1.5954
               ],
               [
-                1.8265,
-                0.4939,
-                -1.2776
+                1.793,
+                0.2858,
+                -1.3107
               ],
               [
-                1.8265,
-                0.3554,
-                -1.2776
+                1.793,
+                0.1472,
+                -1.3107
               ],
               [
-                1.8265,
-                0.3554,
-                -1.5624
+                1.793,
+                0.1472,
+                -1.5954
               ]
             ]
           },
@@ -104622,23 +104646,23 @@
             "verts": [
               [
                 1.793,
-                0.4407,
-                -1.1803
+                0.2693,
+                -1.1924
               ],
               [
                 1.793,
-                0.4407,
-                -0.8956
+                0.2693,
+                -0.9076
               ],
               [
                 1.793,
-                0.3021,
-                -0.8956
+                0.1307,
+                -0.9076
               ],
               [
                 1.793,
-                0.3021,
-                -1.1803
+                0.1307,
+                -1.1924
               ]
             ]
           },
@@ -104653,23 +104677,23 @@
             "verts": [
               [
                 1.793,
-                0.4407,
-                -0.8344
+                0.2693,
+                -0.8224
               ],
               [
                 1.793,
-                0.4407,
-                -0.5497
+                0.2693,
+                -0.5376
               ],
               [
                 1.793,
-                0.3021,
-                -0.5497
+                0.1307,
+                -0.5376
               ],
               [
                 1.793,
-                0.3021,
-                -0.8344
+                0.1307,
+                -0.8224
               ]
             ]
           },
@@ -104683,24 +104707,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8265,
-                0.4939,
-                -0.4524
+                1.793,
+                0.2718,
+                -0.4892
               ],
               [
-                1.8265,
-                0.4939,
-                -0.1676
+                1.793,
+                0.2718,
+                -0.2045
               ],
               [
-                1.8265,
-                0.3554,
-                -0.1676
+                1.793,
+                0.1333,
+                -0.2045
               ],
               [
-                1.8265,
-                0.3554,
-                -0.4524
+                1.793,
+                0.1333,
+                -0.4892
               ]
             ]
           },
@@ -104715,22 +104739,22 @@
             "verts": [
               [
                 1.793,
-                0.6793,
+                0.4743,
                 -3.0424
               ],
               [
                 1.793,
-                0.6793,
+                0.4743,
                 -2.7576
               ],
               [
                 1.793,
-                0.5407,
+                0.3357,
                 -2.7576
               ],
               [
                 1.793,
-                0.5407,
+                0.3357,
                 -3.0424
               ]
             ]
@@ -104746,22 +104770,22 @@
             "verts": [
               [
                 1.793,
-                0.6793,
+                0.4743,
                 -2.6724
               ],
               [
                 1.793,
-                0.6793,
+                0.4743,
                 -2.3876
               ],
               [
                 1.793,
-                0.5407,
+                0.3357,
                 -2.3876
               ],
               [
                 1.793,
-                0.5407,
+                0.3357,
                 -2.6724
               ]
             ]
@@ -104776,23 +104800,23 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8108,
-                0.6897,
+                1.8265,
+                0.4939,
                 -2.3024
               ],
               [
-                1.8108,
-                0.6897,
+                1.8265,
+                0.4939,
                 -2.0176
               ],
               [
-                1.8108,
-                0.5512,
+                1.8265,
+                0.3554,
                 -2.0176
               ],
               [
-                1.8108,
-                0.5512,
+                1.8265,
+                0.3554,
                 -2.3024
               ]
             ]
@@ -104807,24 +104831,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8108,
-                0.6897,
-                -1.9324
+                1.793,
+                0.4539,
+                -1.9408
               ],
               [
-                1.8108,
-                0.6897,
-                -1.6476
+                1.793,
+                0.4539,
+                -1.6561
               ],
               [
-                1.8108,
-                0.5512,
-                -1.6476
+                1.793,
+                0.3153,
+                -1.6561
               ],
               [
-                1.8108,
-                0.5512,
-                -1.9324
+                1.793,
+                0.3153,
+                -1.9408
               ]
             ]
           },
@@ -104838,23 +104862,23 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8108,
-                0.6897,
+                1.8265,
+                0.4939,
                 -1.5624
               ],
               [
-                1.8108,
-                0.6897,
+                1.8265,
+                0.4939,
                 -1.2776
               ],
               [
-                1.8108,
-                0.5512,
+                1.8265,
+                0.3554,
                 -1.2776
               ],
               [
-                1.8108,
-                0.5512,
+                1.8265,
+                0.3554,
                 -1.5624
               ]
             ]
@@ -104869,24 +104893,24 @@
             "turretLocal": true,
             "verts": [
               [
-                1.8108,
-                0.6897,
-                -1.1924
+                1.793,
+                0.4407,
+                -1.1803
               ],
               [
-                1.8108,
-                0.6897,
-                -0.9076
+                1.793,
+                0.4407,
+                -0.8956
               ],
               [
-                1.8108,
-                0.5512,
-                -0.9076
+                1.793,
+                0.3021,
+                -0.8956
               ],
               [
-                1.8108,
-                0.5512,
-                -1.1924
+                1.793,
+                0.3021,
+                -1.1803
               ]
             ]
           },
@@ -104900,6 +104924,254 @@
             "turretLocal": true,
             "verts": [
               [
+                1.793,
+                0.4407,
+                -0.8344
+              ],
+              [
+                1.793,
+                0.4407,
+                -0.5497
+              ],
+              [
+                1.793,
+                0.3021,
+                -0.5497
+              ],
+              [
+                1.793,
+                0.3021,
+                -0.8344
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T65",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.8265,
+                0.4939,
+                -0.4524
+              ],
+              [
+                1.8265,
+                0.4939,
+                -0.1676
+              ],
+              [
+                1.8265,
+                0.3554,
+                -0.1676
+              ],
+              [
+                1.8265,
+                0.3554,
+                -0.4524
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T66",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.793,
+                0.6793,
+                -3.0424
+              ],
+              [
+                1.793,
+                0.6793,
+                -2.7576
+              ],
+              [
+                1.793,
+                0.5407,
+                -2.7576
+              ],
+              [
+                1.793,
+                0.5407,
+                -3.0424
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T67",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.793,
+                0.6793,
+                -2.6724
+              ],
+              [
+                1.793,
+                0.6793,
+                -2.3876
+              ],
+              [
+                1.793,
+                0.5407,
+                -2.3876
+              ],
+              [
+                1.793,
+                0.5407,
+                -2.6724
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T68",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.8108,
+                0.6897,
+                -2.3024
+              ],
+              [
+                1.8108,
+                0.6897,
+                -2.0176
+              ],
+              [
+                1.8108,
+                0.5512,
+                -2.0176
+              ],
+              [
+                1.8108,
+                0.5512,
+                -2.3024
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T69",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.8108,
+                0.6897,
+                -1.9324
+              ],
+              [
+                1.8108,
+                0.6897,
+                -1.6476
+              ],
+              [
+                1.8108,
+                0.5512,
+                -1.6476
+              ],
+              [
+                1.8108,
+                0.5512,
+                -1.9324
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T70",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.8108,
+                0.6897,
+                -1.5624
+              ],
+              [
+                1.8108,
+                0.6897,
+                -1.2776
+              ],
+              [
+                1.8108,
+                0.5512,
+                -1.2776
+              ],
+              [
+                1.8108,
+                0.5512,
+                -1.5624
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T71",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.8108,
+                0.6897,
+                -1.1924
+              ],
+              [
+                1.8108,
+                0.6897,
+                -0.9076
+              ],
+              [
+                1.8108,
+                0.5512,
+                -0.9076
+              ],
+              [
+                1.8108,
+                0.5512,
+                -1.1924
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T72",
+            "name": "c3x_turret_side_era_R",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
                 1.8108,
                 0.6897,
                 -0.8224
@@ -104922,7 +105194,7 @@
             ]
           },
           {
-            "hitboxId": "T65",
+            "hitboxId": "T73",
             "name": "c3x_turret_side_era_R",
             "physicalMm": 22,
             "keMm": 220,
@@ -104949,254 +105221,6 @@
                 1.8108,
                 0.5512,
                 -0.4524
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T66",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1307,
-                -3.0424
-              ],
-              [
-                -1.793,
-                0.1307,
-                -2.7576
-              ],
-              [
-                -1.793,
-                0.2693,
-                -2.7576
-              ],
-              [
-                -1.793,
-                0.2693,
-                -3.0424
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T67",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1307,
-                -2.6724
-              ],
-              [
-                -1.793,
-                0.1307,
-                -2.3876
-              ],
-              [
-                -1.793,
-                0.2693,
-                -2.3876
-              ],
-              [
-                -1.793,
-                0.2693,
-                -2.6724
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T68",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1307,
-                -2.3558
-              ],
-              [
-                -1.793,
-                0.1307,
-                -2.071
-              ],
-              [
-                -1.793,
-                0.2693,
-                -2.071
-              ],
-              [
-                -1.793,
-                0.2693,
-                -2.3558
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T69",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1483,
-                -1.9324
-              ],
-              [
-                -1.793,
-                0.1483,
-                -1.6476
-              ],
-              [
-                -1.793,
-                0.2869,
-                -1.6476
-              ],
-              [
-                -1.793,
-                0.2869,
-                -1.9324
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T70",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1472,
-                -1.5954
-              ],
-              [
-                -1.793,
-                0.1472,
-                -1.3107
-              ],
-              [
-                -1.793,
-                0.2858,
-                -1.3107
-              ],
-              [
-                -1.793,
-                0.2858,
-                -1.5954
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T71",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1307,
-                -1.1924
-              ],
-              [
-                -1.793,
-                0.1307,
-                -0.9076
-              ],
-              [
-                -1.793,
-                0.2693,
-                -0.9076
-              ],
-              [
-                -1.793,
-                0.2693,
-                -1.1924
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T72",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1307,
-                -0.8224
-              ],
-              [
-                -1.793,
-                0.1307,
-                -0.5376
-              ],
-              [
-                -1.793,
-                0.2693,
-                -0.5376
-              ],
-              [
-                -1.793,
-                0.2693,
-                -0.8224
-              ]
-            ]
-          },
-          {
-            "hitboxId": "T73",
-            "name": "c3x_turret_side_era_L",
-            "physicalMm": 22,
-            "keMm": 220,
-            "ceMm": 680,
-            "kind": "era",
-            "turretLocal": true,
-            "verts": [
-              [
-                -1.793,
-                0.1333,
-                -0.4892
-              ],
-              [
-                -1.793,
-                0.1333,
-                -0.2045
-              ],
-              [
-                -1.793,
-                0.2718,
-                -0.2045
-              ],
-              [
-                -1.793,
-                0.2718,
-                -0.4892
               ]
             ]
           },
@@ -105211,22 +105235,22 @@
             "verts": [
               [
                 -1.793,
-                0.3357,
+                0.1307,
                 -3.0424
               ],
               [
                 -1.793,
-                0.3357,
+                0.1307,
                 -2.7576
               ],
               [
                 -1.793,
-                0.4743,
+                0.2693,
                 -2.7576
               ],
               [
                 -1.793,
-                0.4743,
+                0.2693,
                 -3.0424
               ]
             ]
@@ -105242,22 +105266,22 @@
             "verts": [
               [
                 -1.793,
-                0.3357,
+                0.1307,
                 -2.6724
               ],
               [
                 -1.793,
-                0.3357,
+                0.1307,
                 -2.3876
               ],
               [
                 -1.793,
-                0.4743,
+                0.2693,
                 -2.3876
               ],
               [
                 -1.793,
-                0.4743,
+                0.2693,
                 -2.6724
               ]
             ]
@@ -105272,24 +105296,24 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8265,
-                0.3554,
-                -2.3024
+                -1.793,
+                0.1307,
+                -2.3558
               ],
               [
-                -1.8265,
-                0.3554,
-                -2.0176
+                -1.793,
+                0.1307,
+                -2.071
               ],
               [
-                -1.8265,
-                0.4939,
-                -2.0176
+                -1.793,
+                0.2693,
+                -2.071
               ],
               [
-                -1.8265,
-                0.4939,
-                -2.3024
+                -1.793,
+                0.2693,
+                -2.3558
               ]
             ]
           },
@@ -105304,23 +105328,23 @@
             "verts": [
               [
                 -1.793,
-                0.3153,
-                -1.9408
+                0.1483,
+                -1.9324
               ],
               [
                 -1.793,
-                0.3153,
-                -1.6561
+                0.1483,
+                -1.6476
               ],
               [
                 -1.793,
-                0.4539,
-                -1.6561
+                0.2869,
+                -1.6476
               ],
               [
                 -1.793,
-                0.4539,
-                -1.9408
+                0.2869,
+                -1.9324
               ]
             ]
           },
@@ -105334,24 +105358,24 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8265,
-                0.3554,
-                -1.5624
+                -1.793,
+                0.1472,
+                -1.5954
               ],
               [
-                -1.8265,
-                0.3554,
-                -1.2776
+                -1.793,
+                0.1472,
+                -1.3107
               ],
               [
-                -1.8265,
-                0.4939,
-                -1.2776
+                -1.793,
+                0.2858,
+                -1.3107
               ],
               [
-                -1.8265,
-                0.4939,
-                -1.5624
+                -1.793,
+                0.2858,
+                -1.5954
               ]
             ]
           },
@@ -105366,23 +105390,23 @@
             "verts": [
               [
                 -1.793,
-                0.3021,
-                -1.1803
+                0.1307,
+                -1.1924
               ],
               [
                 -1.793,
-                0.3021,
-                -0.8956
+                0.1307,
+                -0.9076
               ],
               [
                 -1.793,
-                0.4407,
-                -0.8956
+                0.2693,
+                -0.9076
               ],
               [
                 -1.793,
-                0.4407,
-                -1.1803
+                0.2693,
+                -1.1924
               ]
             ]
           },
@@ -105397,23 +105421,23 @@
             "verts": [
               [
                 -1.793,
-                0.3021,
-                -0.8344
+                0.1307,
+                -0.8224
               ],
               [
                 -1.793,
-                0.3021,
-                -0.5497
+                0.1307,
+                -0.5376
               ],
               [
                 -1.793,
-                0.4407,
-                -0.5497
+                0.2693,
+                -0.5376
               ],
               [
                 -1.793,
-                0.4407,
-                -0.8344
+                0.2693,
+                -0.8224
               ]
             ]
           },
@@ -105427,24 +105451,24 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8265,
-                0.3554,
-                -0.4524
+                -1.793,
+                0.1333,
+                -0.4892
               ],
               [
-                -1.8265,
-                0.3554,
-                -0.1676
+                -1.793,
+                0.1333,
+                -0.2045
               ],
               [
-                -1.8265,
-                0.4939,
-                -0.1676
+                -1.793,
+                0.2718,
+                -0.2045
               ],
               [
-                -1.8265,
-                0.4939,
-                -0.4524
+                -1.793,
+                0.2718,
+                -0.4892
               ]
             ]
           },
@@ -105459,22 +105483,22 @@
             "verts": [
               [
                 -1.793,
-                0.5407,
+                0.3357,
                 -3.0424
               ],
               [
                 -1.793,
-                0.5407,
+                0.3357,
                 -2.7576
               ],
               [
                 -1.793,
-                0.6793,
+                0.4743,
                 -2.7576
               ],
               [
                 -1.793,
-                0.6793,
+                0.4743,
                 -3.0424
               ]
             ]
@@ -105490,22 +105514,22 @@
             "verts": [
               [
                 -1.793,
-                0.5407,
+                0.3357,
                 -2.6724
               ],
               [
                 -1.793,
-                0.5407,
+                0.3357,
                 -2.3876
               ],
               [
                 -1.793,
-                0.6793,
+                0.4743,
                 -2.3876
               ],
               [
                 -1.793,
-                0.6793,
+                0.4743,
                 -2.6724
               ]
             ]
@@ -105520,23 +105544,23 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8108,
-                0.5512,
+                -1.8265,
+                0.3554,
                 -2.3024
               ],
               [
-                -1.8108,
-                0.5512,
+                -1.8265,
+                0.3554,
                 -2.0176
               ],
               [
-                -1.8108,
-                0.6897,
+                -1.8265,
+                0.4939,
                 -2.0176
               ],
               [
-                -1.8108,
-                0.6897,
+                -1.8265,
+                0.4939,
                 -2.3024
               ]
             ]
@@ -105551,24 +105575,24 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8108,
-                0.5512,
-                -1.9324
+                -1.793,
+                0.3153,
+                -1.9408
               ],
               [
-                -1.8108,
-                0.5512,
-                -1.6476
+                -1.793,
+                0.3153,
+                -1.6561
               ],
               [
-                -1.8108,
-                0.6897,
-                -1.6476
+                -1.793,
+                0.4539,
+                -1.6561
               ],
               [
-                -1.8108,
-                0.6897,
-                -1.9324
+                -1.793,
+                0.4539,
+                -1.9408
               ]
             ]
           },
@@ -105582,23 +105606,23 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.8108,
-                0.5512,
+                -1.8265,
+                0.3554,
                 -1.5624
               ],
               [
-                -1.8108,
-                0.5512,
+                -1.8265,
+                0.3554,
                 -1.2776
               ],
               [
-                -1.8108,
-                0.6897,
+                -1.8265,
+                0.4939,
                 -1.2776
               ],
               [
-                -1.8108,
-                0.6897,
+                -1.8265,
+                0.4939,
                 -1.5624
               ]
             ]
@@ -105613,6 +105637,254 @@
             "turretLocal": true,
             "verts": [
               [
+                -1.793,
+                0.3021,
+                -1.1803
+              ],
+              [
+                -1.793,
+                0.3021,
+                -0.8956
+              ],
+              [
+                -1.793,
+                0.4407,
+                -0.8956
+              ],
+              [
+                -1.793,
+                0.4407,
+                -1.1803
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T88",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.793,
+                0.3021,
+                -0.8344
+              ],
+              [
+                -1.793,
+                0.3021,
+                -0.5497
+              ],
+              [
+                -1.793,
+                0.4407,
+                -0.5497
+              ],
+              [
+                -1.793,
+                0.4407,
+                -0.8344
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T89",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.8265,
+                0.3554,
+                -0.4524
+              ],
+              [
+                -1.8265,
+                0.3554,
+                -0.1676
+              ],
+              [
+                -1.8265,
+                0.4939,
+                -0.1676
+              ],
+              [
+                -1.8265,
+                0.4939,
+                -0.4524
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T90",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.793,
+                0.5407,
+                -3.0424
+              ],
+              [
+                -1.793,
+                0.5407,
+                -2.7576
+              ],
+              [
+                -1.793,
+                0.6793,
+                -2.7576
+              ],
+              [
+                -1.793,
+                0.6793,
+                -3.0424
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T91",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.793,
+                0.5407,
+                -2.6724
+              ],
+              [
+                -1.793,
+                0.5407,
+                -2.3876
+              ],
+              [
+                -1.793,
+                0.6793,
+                -2.3876
+              ],
+              [
+                -1.793,
+                0.6793,
+                -2.6724
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T92",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.8108,
+                0.5512,
+                -2.3024
+              ],
+              [
+                -1.8108,
+                0.5512,
+                -2.0176
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -2.0176
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -2.3024
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T93",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.8108,
+                0.5512,
+                -1.9324
+              ],
+              [
+                -1.8108,
+                0.5512,
+                -1.6476
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -1.6476
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -1.9324
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T94",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.8108,
+                0.5512,
+                -1.5624
+              ],
+              [
+                -1.8108,
+                0.5512,
+                -1.2776
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -1.2776
+              ],
+              [
+                -1.8108,
+                0.6897,
+                -1.5624
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T95",
+            "name": "c3x_turret_side_era_L",
+            "physicalMm": 22,
+            "keMm": 220,
+            "ceMm": 680,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
                 -1.8108,
                 0.5512,
                 -1.1924
@@ -105635,7 +105907,7 @@
             ]
           },
           {
-            "hitboxId": "T88",
+            "hitboxId": "T96",
             "name": "c3x_turret_side_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -105666,7 +105938,7 @@
             ]
           },
           {
-            "hitboxId": "T89",
+            "hitboxId": "T97",
             "name": "c3x_turret_side_era_L",
             "physicalMm": 22,
             "keMm": 220,
@@ -106117,13 +106389,13 @@
             "name": "gunner",
             "min": [
               0.5053,
-              -1.1157,
-              -0.3218
+              -1.0688,
+              -0.3967
             ],
             "max": [
               0.9647,
-              -0.068,
-              0.3498
+              0.1973,
+              0.4247
             ],
             "turretLocal": true
           },
@@ -106131,14 +106403,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5387,
-              -1.0468,
-              -1.2677
+              0.5541,
+              -0.466,
+              -0.5909
             ],
             "max": [
-              0.9981,
-              -0.0968,
-              -0.58
+              0.9584,
+              0.9217,
+              -0.2381
             ],
             "turretLocal": true
           },
@@ -106146,21 +106418,21 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.8981,
-              -1.0468,
-              -1.319
+              -0.9826,
+              0.1126,
+              -0.7198
             ],
             "max": [
-              -0.4387,
-              -0.0968,
-              -0.6313
+              -0.5541,
+              0.8026,
+              -0.0532
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "58780056",
-      "metadataHash": "16314a66",
+      "metadataHash": "8daaeba3",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.018
@@ -106265,28 +106537,28 @@
           "sha256": "8b9e54ad3de593aa04d4ef109ce1341ada66d6229fc94cef473a17b9daa9d9ea"
         },
         "armorSide": {
-          "file": "challenger3_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 82367,
-          "sha256": "052e8a9f30efe3448143726d81d67564ad0b45721e39a933e8a46e90f5749ecc"
+          "file": "challenger3_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 23098,
+          "sha256": "00c228e476fb2200dc99258abb597f3726a79845c0412dda7de1773a77a7efdc"
         },
         "modulesSide": {
-          "file": "challenger3_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 84102,
-          "sha256": "d2d6237024510c421f036531d7a67f013c4568d9b1292538e87a990da980d354"
+          "file": "challenger3_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 22046,
+          "sha256": "6a43beea374eee51fd44c9427aa806fbf8ad904e77747bd8894eadee7739e0f3"
         },
         "crewSide": {
-          "file": "challenger3_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 72562,
-          "sha256": "da66f1e4157b804b2f9efca767ae5023060a1058658906e605f87cc6834aac57"
+          "file": "challenger3_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17988,
+          "sha256": "3dee04d7315633ff788d99a12acf2d42d240055441cb15983bb68bffbeaf8b23"
         },
         "markings": {
           "file": "challenger3_markings.png",
@@ -106295,6 +106567,12 @@
           "mime": "image/png",
           "bytes": 36491,
           "sha256": "eb3ebbd42ebd584891c7b07ddeb4dc5e0bc8754b602e1985c05597ce8a1f5e89"
+        },
+        "technicalLabels": {
+          "file": "challenger3_technical.json",
+          "mime": "application/json",
+          "bytes": 5480,
+          "sha256": "4e3ce43a7303388d4fa4b009a796caeaf9866447a5d7241f24e56435b7ee2d3a"
         }
       }
     },
@@ -108565,28 +108843,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "chieftain_mk10_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 87936,
-          "sha256": "fa202657477e9b69f4be7dd1d1b4677d18628c655b5439d4cad2533ca8495910"
+          "file": "chieftain_mk10_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 26310,
+          "sha256": "4318b744cca49fc269e122e73a46a4d0ead52644d1d01349fac508ef3016a8c4"
         },
         "modulesSide": {
-          "file": "chieftain_mk10_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 86461,
-          "sha256": "3464e4ce469b861d0af74122710c5b93b7f1b1b8fe9729330e16f97b0a1f472c"
+          "file": "chieftain_mk10_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 22020,
+          "sha256": "244dea08fbd576db9151778c059f46eadf14df190a5570f324ecb574c76b00ef"
         },
         "crewSide": {
-          "file": "chieftain_mk10_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 73816,
-          "sha256": "7ef0d81a960091d260539f12335b70f2f003a2ebd87cb77eda399d5912a321f5"
+          "file": "chieftain_mk10_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17510,
+          "sha256": "74e79c3d3233307840faf73c9a03b6c57347cf90420b94c04f3c0716f199e99d"
         },
         "angle": {
           "file": "chieftain_mk10_angle.webp",
@@ -108643,6 +108921,12 @@
           "mime": "image/png",
           "bytes": 35710,
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+        },
+        "technicalLabels": {
+          "file": "chieftain_mk10_technical.json",
+          "mime": "application/json",
+          "bytes": 4331,
+          "sha256": "815b52b536fcaecd67cc1e58745864c5395eac95d7ec4c6c6f74d1b90c588f5c"
         }
       }
     },
@@ -110553,7 +110837,7 @@
               -0.7991
             ],
             "max": [
-              0.8682,
+              0.8779,
               0.4857,
               -0.0458
             ],
@@ -110564,13 +110848,13 @@
             "name": "commander",
             "min": [
               0.2557,
-              -1.0004,
-              -1.0602
+              -0.7479,
+              -1.211
             ],
             "max": [
-              0.7151,
-              -0.1604,
-              -0.2657
+              0.6154,
+              0.5031,
+              -0.4148
             ],
             "turretLocal": true
           },
@@ -110592,7 +110876,7 @@
         ]
       },
       "geometryHash": "e3222594",
-      "metadataHash": "3473a513",
+      "metadataHash": "ad6cf08e",
       "presentationAnchor": {
         "xM": -0.0018,
         "zM": -0.0372
@@ -110698,28 +110982,28 @@
           "sha256": "be07a73b223892113d695f15a7084ad435f8b1e67be691e8611a7b568a4b567c"
         },
         "armorSide": {
-          "file": "chieftain3_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 81608,
-          "sha256": "f08f29452d89d5594233ea3842eda9d39116aa4b6c129d55fc58c039d564c165"
+          "file": "chieftain3_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 19808,
+          "sha256": "0a37de7c3aac2b5f6c629c46a5360ff2b846074de02e4eadb1b75240756035fb"
         },
         "modulesSide": {
-          "file": "chieftain3_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 82837,
-          "sha256": "225ff17b9e6db2ae847ebfc3fd684585f742ad316e80999852d4b29e35cb69b7"
+          "file": "chieftain3_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 21228,
+          "sha256": "00f302f1832d019a2fff6ac39212f9bcec39187eb8aa518cce2abd5dc52437ae"
         },
         "crewSide": {
-          "file": "chieftain3_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 72519,
-          "sha256": "b6122e75aececf8d5207be7b2102c8ebf0330fb9f7b27410e82b008a04ae9726"
+          "file": "chieftain3_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 17100,
+          "sha256": "366fd4296470a8ed828da8660a3d6b745dc74eabfefea30c58caa31905e5e0d2"
         },
         "markings": {
           "file": "chieftain3_markings.png",
@@ -110728,6 +111012,12 @@
           "mime": "image/png",
           "bytes": 35710,
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
+        },
+        "technicalLabels": {
+          "file": "chieftain3_technical.json",
+          "mime": "application/json",
+          "bytes": 4177,
+          "sha256": "4ce8e9d385a3b77cc1f1e90852576913a145a4bcc1965cc9247ec8c07343f5bb"
         }
       }
     },
@@ -125459,28 +125749,28 @@
           "sha256": "6de74f488d1a5f1dcf858647a4a18d1ad4e5bf9f18dd05d6bf32ced3f7953eab"
         },
         "armorSide": {
-          "file": "fv4034_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 81880,
-          "sha256": "b0a1fa99f2e3cabf94981749cf60edacbf2aa646eaa487324698f4158671d2d0"
+          "file": "fv4034_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 21798,
+          "sha256": "200d6f6e5d39d885ea4e0227c5b5b9e76ae6bcd4adc758e4a270c57b55edab95"
         },
         "modulesSide": {
-          "file": "fv4034_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 80721,
-          "sha256": "1f1972a053a96d445ef215c0bbedeec945ddeea09c61b636865020dbefa31e85"
+          "file": "fv4034_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 20664,
+          "sha256": "00dacb8d120e8f22730e0cfa45b3c73c5d653e0c951105d57552ebdafe03998f"
         },
         "crewSide": {
-          "file": "fv4034_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 70274,
-          "sha256": "633f8edbdbfb7851c3994170063b6ef9651abb135a00d0ff5fd86260e7f44642"
+          "file": "fv4034_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 16836,
+          "sha256": "cfa1c4312f481ec60115f022e647123601e87a877384de5013d1e93fc72a6d9d"
         },
         "markings": {
           "file": "fv4034_markings.png",
@@ -125489,6 +125779,12 @@
           "mime": "image/png",
           "bytes": 34370,
           "sha256": "095b5fec350cba4afc2d08cec02b25b5127b86900430be7a8f65860ceba63151"
+        },
+        "technicalLabels": {
+          "file": "fv4034_technical.json",
+          "mime": "application/json",
+          "bytes": 5031,
+          "sha256": "c48e2e31190ef30dbc594282838422292cc61280d3e513fab4d089ae490b936a"
         }
       }
     },
@@ -127984,28 +128280,28 @@
           "sha256": "5161b5092202f2c8465dc1b441132609427c8a573044e82b0f25acaa052da4ff"
         },
         "armorSide": {
-          "file": "fv510_milan_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 135150,
-          "sha256": "af74bdd494e76871e736f45fe35602cba679e299e4e8a47185e5fd5ecf91b5e0"
+          "file": "fv510_milan_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 46056,
+          "sha256": "0c6feda51315b430be797c0eca3a667ced08b4de944fb4f3fffdfc77574546a9"
         },
         "modulesSide": {
-          "file": "fv510_milan_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 140752,
-          "sha256": "8c0b5770ae39d95f526e1cdcc53bb614a625cc07f35d904de03c6755251f4271"
+          "file": "fv510_milan_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 40560,
+          "sha256": "1e1c9e6174e5cd04d76aa52803cbf0921cee6f5e21924ab8323a46a2c2ce69b6"
         },
         "crewSide": {
-          "file": "fv510_milan_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 121836,
-          "sha256": "374d950a9c15d5892eb3ccd9278323c00cb4aac7f389053055361907363936a4"
+          "file": "fv510_milan_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 32402,
+          "sha256": "2930c9e3d8869ac117cc13a2772b93ee1ebc02c86c0216546fc8d540b23f45dc"
         },
         "markings": {
           "file": "fv510_milan_markings.png",
@@ -128014,6 +128310,12 @@
           "mime": "image/png",
           "bytes": 35522,
           "sha256": "724befac557efec26df69a487d3ffdd4931ce31803677639ce81e64064e883e3"
+        },
+        "technicalLabels": {
+          "file": "fv510_milan_technical.json",
+          "mime": "application/json",
+          "bytes": 5529,
+          "sha256": "a7aa8f8774f1da42fc5159518d05fe6a5da599fac06d195cfcc107d3c923df73"
         }
       }
     },
@@ -2161976,28 +2162278,28 @@
       },
       "assets": {
         "armorSide": {
-          "file": "warrior_tes_h_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 120021,
-          "sha256": "1a6eb4ed12d196733577cef06637ea161687862a87eabce826d477ca134e2d36"
+          "file": "warrior_tes_h_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 35966,
+          "sha256": "c00a850db2e0557785bd3693d7a3f44e729b4d57ef978ae970c8b63b9e009790"
         },
         "modulesSide": {
-          "file": "warrior_tes_h_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 129436,
-          "sha256": "795e6a20fa836c278d57f1272083242ca923fad330a122af18ae469ed992d4be"
+          "file": "warrior_tes_h_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 36110,
+          "sha256": "8c10e1c611a8fef9648ab17778dbe5c70b62ec5c4b6e820f9b9974b7421e93f5"
         },
         "crewSide": {
-          "file": "warrior_tes_h_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 115192,
-          "sha256": "370eceb3cfbb47bf345614230578d64d7583b667290245aa7922e04560e039e5"
+          "file": "warrior_tes_h_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 33586,
+          "sha256": "1a8d6adb45827528f8bf4329eb9657d8b4d2cb37d00e6732e1c50eb5a9ac38db"
         },
         "angle": {
           "file": "warrior_tes_h_angle.webp",
@@ -2162054,6 +2162356,12 @@
           "mime": "image/png",
           "bytes": 35522,
           "sha256": "724befac557efec26df69a487d3ffdd4931ce31803677639ce81e64064e883e3"
+        },
+        "technicalLabels": {
+          "file": "warrior_tes_h_technical.json",
+          "mime": "application/json",
+          "bytes": 5508,
+          "sha256": "db01fe6ab722ae7f326964aed3924caec6f764b7a381562e8dedd41af6286a13"
         }
       }
     },
