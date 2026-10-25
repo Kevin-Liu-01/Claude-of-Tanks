@@ -210,7 +210,7 @@
   .cot-record-medal-art svg{width:72px}
   .cot-record-card{padding:var(--s4)}
   .cot-record-battle summary{padding:var(--s3) var(--s6) var(--s3) var(--s3)}
-  .cot-record-battle-row{grid-template-columns:84px minmax(0,1fr) auto;gap:var(--s2) var(--s3)}
+  .cot-record-battle-row{grid-template-columns:84px auto minmax(0,1fr);gap:var(--s2) var(--s3)}
   .cot-record-vehicle{width:72px;height:52px}
   .cot-record-battle-what{grid-column:2/-1}
   .cot-record-battle-num.kills{grid-row:2;grid-column:1}
