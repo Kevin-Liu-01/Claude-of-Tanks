@@ -5668,9 +5668,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       setWorldDormant(false);
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
       stillOwned();
-      // the programs the applied light keys, ready before the first Studio frame binds them
-      await prepareWorldPrograms(owns);
-      stillOwned();
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
       // (or previous map's) sun while the requested map is still loading.
@@ -5687,6 +5684,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       sweepPool();
       resetFx();
       timeScale = 0;
+      // the programs the applied light keys, ready before the first Studio frame binds them
+      await prepareWorldPrograms(owns);
+      stillOwned();
       p(0.96, 'Positioning camera');
       // default vantage: over the player spawn, looking across the field
       const w = getWorld();
