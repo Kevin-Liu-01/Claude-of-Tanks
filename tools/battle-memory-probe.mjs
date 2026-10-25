@@ -32,7 +32,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, walk: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -47,6 +47,7 @@ export function parseMemoryArgs(argv) {
       case 'retained': o.retained = value !== '0'; break;
       case 'census': o.census = value !== '0'; break;
       case 'dump': o.dump = value !== '0'; break;
+      case 'walk': o.walk = value !== '0'; break;
       case 'gate': o.gate = value !== '0'; break;
       case 'viewport': o.viewport = value; break;
       case 'preset': o.preset = value; break;
@@ -175,13 +176,64 @@ async function memoryInfraDump(browser) {
     if (!allocators) continue;
     const rows = {};
     for (const [name, dump] of Object.entries(allocators)) {
-      if (name.split('/').length > 2) continue;
+      // two levels everywhere; three under partition_alloc/partitions (array_buffer, buffer, fast_malloc, layout) and v8
+      const depth = name.split('/').length;
+      if (depth > 3 || (depth === 3 && !/^(partition_alloc\/partitions|v8\/(main|workers))\//.test(name))) continue;
       const size = dump?.attrs?.size?.value ? parseInt(dump.attrs.size.value, 16) : 0;
       if (size >= 5e6) rows[name] = Math.round(size / 1e6);
     }
-    out[`${names.get(e.pid) ?? 'process'} ${e.pid}`] = Object.fromEntries(Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 40));
+    out[`${names.get(e.pid) ?? 'process'} ${e.pid}`] = Object.fromEntries(Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 60));
   }
   return out;
+}
+
+/**
+ * (--walk) The ArrayBuffers reachable from the game's roots (the world, the game, the scene, the renderer's info), each
+ * counted once at the property path it was first reached by, summed to three levels (world.props.destructibles ...).
+ * Depth-first (a stack) through plain objects, arrays, Maps and Sets; DOM nodes and functions are not entered (a closure's
+ * captures and module-level caches are out of its sight). Run in the page (no closures).
+ */
+function pageBufferWalk() {
+  const roots = { world: window.__DEBUG?.world, game: window.__DEBUG?.game, scene: window.__DEBUG?.scene };
+  const seen = new Set(), buffers = new Set(), byPath = new Map();
+  const queue = [];
+  for (const [name, value] of Object.entries(roots)) if (value && typeof value === 'object') queue.push([value, name, 0]);
+  let visited = 0;
+  const credit = (path, bytes) => {
+    const key = path.split('.').slice(0, 3).join('.');
+    byPath.set(key, (byPath.get(key) ?? 0) + bytes);
+  };
+  const push = (value, path, depth) => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    if (ArrayBuffer.isView(value)) {
+      const buffer = value.buffer;
+      if (!buffers.has(buffer)) { buffers.add(buffer); credit(path, buffer.byteLength); }
+      seen.add(value);
+      return;
+    }
+    if (value instanceof ArrayBuffer) { if (!buffers.has(value)) { buffers.add(value); credit(path, value.byteLength); } return; }
+    if (typeof Node !== 'undefined' && value instanceof Node) return;
+    if (depth > 24) return;
+    queue.push([value, path, depth]);
+  };
+  while (queue.length && visited < 3e6) {
+    const [object, path, depth] = queue.pop();
+    if (seen.has(object)) continue;
+    seen.add(object);
+    visited++;
+    if (object instanceof Map) { let i = 0; for (const [k, v] of object) { push(k, path, depth + 1); push(v, `${path}.${typeof k === 'string' ? k : '[map]'}`, depth + 1); if (++i > 2e5) break; } continue; }
+    if (object instanceof Set) { let i = 0; for (const v of object) { push(v, `${path}.[set]`, depth + 1); if (++i > 2e5) break; } continue; }
+    if (Array.isArray(object)) { const n = Math.min(object.length, 2e5); for (let i = 0; i < n; i++) push(object[i], `${path}.[]`, depth + 1); continue; }
+    let keys;
+    try { keys = Object.keys(object); } catch { continue; }
+    for (const key of keys) {
+      let value;
+      try { value = object[key]; } catch { continue; }
+      push(value, `${path}.${key}`, depth + 1);
+    }
+  }
+  const rows = [...byPath].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([key, bytes]) => [key, Math.round(bytes / 1e5) / 10]);
+  return { visited, buffers: buffers.size, totalMB: Math.round([...buffers].reduce((a, b) => a + b.byteLength, 0) / 1e5) / 10, rows };
 }
 
 /** What the page holds now (after its collections): the heap, the DOM, the renderer, the game's residency. */
@@ -262,6 +314,10 @@ async function probeScenario(options, scenario) {
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
       const row = { label: `garage after battle ${battle}`, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      if (options.walk) {
+        row.bufferWalk = await page.evaluate(pageBufferWalk);
+        log(`walk ${row.bufferWalk.visited} objects, ${row.bufferWalk.buffers} buffers, ${row.bufferWalk.totalMB} MB: ${JSON.stringify(row.bufferWalk.rows.slice(0, 40))}`);
+      }
       if (options.dump) {
         row.memoryInfra = await memoryInfraDump(browser);
         for (const [proc, rows] of Object.entries(row.memoryInfra)) log(`dump ${proc}: ${JSON.stringify(rows).slice(0, 900)}`);

@@ -78,7 +78,7 @@ export function parseCensusArgs(argv) {
   const o = {
     scenarios: [...DEFAULT_SCENARIOS], sizes: [7, 14, 21], seconds: 45, passes: ['cold', 'warm'], spec: 't90m',
     preset: 'high', viewport: '1920x1080', port: 5396, root: process.cwd(), out: null, trace: true, resume: false,
-    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false, cpuProfile: false,
+    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false, cpuProfile: false, drawAttribution: false,
     roots: null, governor: 'pinned',
   };
   for (const arg of argv) {
@@ -104,6 +104,7 @@ export function parseCensusArgs(argv) {
       case 'heap-profile': o.heapProfile = value !== '0'; break;
       case 'trace-detail': o.traceDetail = value !== '0'; break;
       case 'cpu-profile': o.cpuProfile = value !== '0'; break;
+      case 'draw-attribution': o.drawAttribution = value !== '0'; break;
       case 'roots': o.roots = value.split(',').filter(Boolean).map((pair) => {
         const at = pair.indexOf('=');
         if (at <= 0) throw new Error('--roots: label=<dir>,label=<dir>');
@@ -409,6 +410,74 @@ export function filterTraceEvents(events) {
   return events.filter((e) => (e.ph === 'M') || (main && e.pid === main.pid && e.tid === main.tid) || gpu.has(`${e.pid}:${e.tid}`));
 }
 
+/**
+ * (--draw-attribution; battle-spikes-253, the draw-count lever) Every draw of `frames` frames by pass (the shadow maps:
+ * an orthographic camera; the rest by the camera's kind), and a tank's (its visual root) by its distance band from the
+ * view camera (the far merge's 30 m and the far LOD's 180 m) and its part (two levels under the root); with the distinct
+ * materials and programs drawn, all and on tanks. Run in the page (no closures).
+ */
+async function pageDrawAttribution(frames) {
+  const D = window.__DEBUG, R = D.renderer, scene = D.scene, camera = D.camera;
+  const roots = new Map();
+  for (const tank of D.game.tanks) if (tank.visual?.root) roots.set(tank.visual.root, tank);
+  const ownerOf = (object) => { for (let o = object; o; o = o.parent) if (roots.has(o)) return o; return null; };
+  const partOf = (object, root) => {
+    const path = [];
+    for (let o = object; o && o !== root; o = o.parent) path.push(o.name || o.type);
+    return path.reverse().slice(0, 2).join('/');
+  };
+  const bandOf = (distance) => (distance < 30 ? 'near<30' : distance < 180 ? 'mid30-180' : 'far>180');
+  const passes = {}, bands = {}, parts = {}, materials = new Set(), programs = new Set(), tankMaterials = new Set(), tankPrograms = new Set();
+  const tanksSeen = {};
+  const props = R.properties;
+  const orig = R.renderBufferDirect;
+  const at = { x: 0, y: 0, z: 0 };
+  R.renderBufferDirect = function (cam, sc, geometry, material, object) {
+    const pass = cam?.isOrthographicCamera ? 'shadow' : 'main';
+    passes[pass] = (passes[pass] ?? 0) + 1;
+    materials.add(material);
+    const program = props?.get?.(material)?.currentProgram;
+    if (program) programs.add(program);
+    const root = ownerOf(object);
+    if (root) {
+      tankMaterials.add(material);
+      if (program) tankPrograms.add(program);
+      const p = root.getWorldPosition ? root.matrixWorld.elements : null;
+      if (p) { at.x = p[12]; at.y = p[13]; at.z = p[14]; }
+      const c = camera.matrixWorld.elements;
+      const band = bandOf(Math.hypot(at.x - c[12], at.y - c[13], at.z - c[14]));
+      const key = `${band}|${pass}`;
+      bands[key] = (bands[key] ?? 0) + 1;
+      (tanksSeen[band] ??= new Set()).add(root);
+      if (pass === 'main') { const pk = `${band}|${partOf(object, root)}`; parts[pk] = (parts[pk] ?? 0) + 1; }
+    } else {
+      let top = object;
+      while (top.parent && top.parent !== scene) top = top.parent;
+      const key = `${top.name || top.type}|${pass}`;
+      bands[`other:${key}`] = (bands[`other:${key}`] ?? 0) + 1;
+    }
+    return orig.apply(this, arguments);
+  };
+  await new Promise((resolve) => { let n = 0; const tick = () => { if (++n >= frames) resolve(); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  R.renderBufferDirect = orig;
+  const per = (count) => Math.round(count / frames * 10) / 10;
+  const tanksIn = Object.fromEntries(Object.entries(tanksSeen).map(([band, set]) => [band, set.size]));
+  const bandRows = Object.entries(bands).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]);
+  const perTank = {};
+  for (const [k, v] of Object.entries(bands)) {
+    if (k.startsWith('other:')) continue;
+    const [band, pass] = k.split('|');
+    perTank[`${band}|${pass}`] = Math.round(v / frames / Math.max(1, tanksIn[band] ?? 1) * 10) / 10;
+  }
+  const topParts = Object.entries(parts).map(([k, v]) => {
+    const band = k.split('|')[0];
+    return [k, Math.round(v / frames / Math.max(1, tanksIn[band] ?? 1) * 100) / 100];
+  }).sort((a, b) => b[1] - a[1]).slice(0, 40);
+  return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
+    rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
+    tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size };
+}
+
 const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''}${scenario.replace(':', '-')}-${size}v${size}-${pass}`;
 
 // the browser playing now: a stopped census (SIGTERM, SIGINT) closes it before it exits, leaving no orphan Chrome
@@ -506,6 +575,12 @@ async function playScenario(options, side, scenario, size, done, abort) {
         + `past ${s.intervals.hitchMs} ms (max ${s.intervals.max} ms), ${s.longTasks.length} long tasks; live: ${record.live.links?.links ?? '?'} links, `
         + `${gc?.allocMBPerS ?? '?'} MB/s allocated, ${gc?.scavenges ?? '?'} scavenges — `
         + `${Object.entries(s.summary).slice(0, 5).map(([c, r]) => `${c} ${r.spikes}/${r.longTasks}`).join(', ')}`);
+      const draws = record.live.draws;
+      if (draws) log(`${key}: draws ${draws.draws.median} (p90 ${draws.draws.p90}), programs ${draws.programsUsed.median}, switches `
+        + `${draws.programSwitches.median}, submission ${draws.submitMs.median} ms (p90 ${draws.submitMs.p90}), ${draws.usPerDraw} µs a draw`);
+      const da = record.drawAttribution;
+      if (da && !da.error) log(`${key}: tanks by band ${JSON.stringify(da.tanksIn)}, a tank's draws ${JSON.stringify(da.perTank)}; passes `
+        + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms})`);
       if (aborted) throw new Error(aborted);
     }
   } finally {
@@ -589,6 +664,8 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       return { shots: window.__DEBUG.playerShellLog?.length ?? 0, alive: g.tanks.filter((e) => !e.combat?.destroyed).length,
         destroyed: g.tanks.filter((e) => e.combat?.destroyed).length, simS: +g.timeS.toFixed(1), result: !!g.result };
     });
+    // (--draw-attribution) 30 frames of draws by pass, tank band and part, at the battle's end (after the readout's window)
+    const drawAttribution = options.drawAttribution ? await page.evaluate(pageDrawAttribution, 30).catch((error) => ({ error: String(error?.message ?? error) })) : null;
     const readout = await page.evaluate(() => window.__DEBUG.frameStages.read());
     // the deferred warm's own record (game/deferredCombatWarmRuntime.ts): its stages, each opening route's job, when it ended
     const deferredWarm = await page.evaluate(() => {
@@ -620,7 +697,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm,
+      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm, drawAttribution,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };
