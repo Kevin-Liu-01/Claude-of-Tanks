@@ -74,8 +74,9 @@ const roomKind = argValue('mode', 'lan') === 'private' ? 'private' : 'lan';
 const gameModeOption = argValue('game-mode', '');
 const mapOption = argValue('map', '');
 const phoneSeat = ['b', 'c'].includes(argValue('phone', '')) ? argValue('phone', '') : '';
-// --sim-kernels=<seats> (workstream #3, 2026-10-25): those seats open with ?simKernels=wasm, so a host among them builds its
-// world on the WebAssembly kernels (src/world/wasmWorldKernels.ts); report.simKernels records, for each host, whether its
+// --sim-kernels=<seats> (workstream #3, 2026-10-25): those seats open with ?simKernels=wasm and the others with
+// ?simKernels=ts (the kernels are on by default), so a host among them builds its world on the WebAssembly kernels
+// (src/world/wasmWorldKernels.ts); report.simKernels records, for each host, whether its
 // page asked for them and whether its Worker fetched the module. `a`: a kernel host with TypeScript peers, then (A gone)
 // a TypeScript host resuming its keyframe.
 const simKernelSeats = new Set(argValue('sim-kernels', '').toLowerCase().split('').filter((seat) => 'abc'.includes(seat)));
@@ -756,7 +757,7 @@ const sample = (page, otherId) => page.evaluate((id) => {
 
 /** Whether a hosting page asked for the world kernels, and whether one of its Workers fetched the module. */
 async function hostKernels(page, label) {
-  const asked = await page.evaluate(() => new URLSearchParams(location.search).get('simKernels') === 'wasm');
+  const asked = await page.evaluate(() => new URLSearchParams(location.search).get('simKernels') !== 'ts');
   let fetched = false;
   for (const worker of page.workers()) {
     if (await worker.evaluate(() => performance.getEntriesByType('resource').some((entry) => /cot_sim_wasm/.test(entry.name))).catch(() => false)) fetched = true;
@@ -768,7 +769,7 @@ async function joinAsAlly(page, label, invite) {
   // the phone seat loads the mobile tier (it never hosts); every other seat keeps the host-capable desktop tier
   const url = new URL(invite.href);
   if (label.toLowerCase() === phoneSeat) url.searchParams.set('tier', 'mobile');
-  if (simKernelSeats.has(label.toLowerCase())) url.searchParams.set('simKernels', 'wasm');
+  if (simKernelSeats.size) url.searchParams.set('simKernels', simKernelSeats.has(label.toLowerCase()) ? 'wasm' : 'ts');
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 240_000);
   await waitFor(page, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), `${label} joined the lobby`, 60_000);
@@ -878,7 +879,7 @@ try {
   }
 
   // ---- A: boot, create the LAN room with three seats per side
-  await pages.a.goto(`${origin}/?${BOOT_QUERY}${simKernelSeats.has('a') ? '&simKernels=wasm' : ''}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  await pages.a.goto(`${origin}/?${BOOT_QUERY}${simKernelSeats.size ? `&simKernels=${simKernelSeats.has('a') ? 'wasm' : 'ts'}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.

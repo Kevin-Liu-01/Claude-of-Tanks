@@ -260,8 +260,12 @@ export async function createMatchService({
   }
   const origins = parseAllowedOrigins(allowedOrigins);
   await ensureAuthorityFleet();
-  const worldKernels = kernelOption === undefined ? await serverWorldKernels() : kernelOption;
-  if (worldKernels) log.info('world kernels', { kernels: 'wasm' });
+  // (on by default; a binary the image lacks or that does not compile leaves the TypeScript, said once)
+  const worldKernels = kernelOption !== undefined ? kernelOption : await serverWorldKernels().catch((error: unknown) => {
+    log.warn('world kernels did not load: the TypeScript runs', { error: String(error) });
+    return null;
+  });
+  log.info('world kernels', { kernels: worldKernels ? 'wasm' : 'ts' });
   const actors = new Map<string, MatchActor>();
   const startedAt = wallClock();
   const counters = { connections: 0, rejectedUpgrades: 0, rejectedHellos: 0 };

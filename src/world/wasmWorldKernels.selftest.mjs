@@ -130,8 +130,9 @@ for (const mapId of ['verdant', 'titan_gorge']) {
   ts.release?.(); wasm.release?.();
 }
 
-// the server's switch: unset and `ts` are the TypeScript, `wasm` the module, anything else refused
-assert.equal(await serverWorldKernels(''), null);
+// the server's switch (on by default since 2026-10-25): unset and `wasm` are the module, `ts` the TypeScript, anything
+// else refused
+assert.ok((await serverWorldKernels('')) instanceof WebAssembly.Module);
 assert.equal(await serverWorldKernels('ts'), null);
 assert.ok((await serverWorldKernels('wasm')) instanceof WebAssembly.Module);
 await assert.rejects(serverWorldKernels('rust'), /COT_SIM_KERNELS=rust/);

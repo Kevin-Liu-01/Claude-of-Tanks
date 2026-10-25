@@ -140,7 +140,8 @@ export function createMatchHostCore({
   buildWorld = async (config) => (config.manifestBase
     ? loadCollisionWorld(config.mapId, config.manifestBase, {
       variant: terrainVariantFor(config.mode),
-      kernels: config.simKernelsUrl ? await worldKernelModule(config.simKernelsUrl) : null,
+      // (a module that does not arrive or compile leaves this host's world on the TypeScript, the same match)
+      kernels: config.simKernelsUrl ? await worldKernelModule(config.simKernelsUrl).catch(() => null) : null,
     }) : 'terrain'),
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
