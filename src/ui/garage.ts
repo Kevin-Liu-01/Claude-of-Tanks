@@ -2749,12 +2749,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
-  // A flag less than half inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside
-  // the Filter toggle); a flag cut by the edge but mostly shown stays as the cue that the rail continues.
+  // A flag not wholly inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside the
+  // Filter toggle; the gauntlet 10-25: a flag cut by the edge hid its count under the arrow). The edge arrow is the cue
+  // that the rail continues.
   const chipSliverObserver = typeof IntersectionObserver === 'function'
     ? new IntersectionObserver((entries) => {
-      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.5);
-    }, { root: chipsEl, threshold: [0.5] })
+      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.98);
+    }, { root: chipsEl, threshold: [0.98] })
     : null;
   function initializeCountryChips(): void {
     const all = document.createElement('button');
