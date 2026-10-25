@@ -78,7 +78,7 @@ export function parseCensusArgs(argv) {
   const o = {
     scenarios: [...DEFAULT_SCENARIOS], sizes: [7, 14, 21], seconds: 45, passes: ['cold', 'warm'], spec: 't90m',
     preset: 'high', viewport: '1920x1080', port: 5396, root: process.cwd(), out: null, trace: true, resume: false,
-    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false, cpuProfile: false, drawAttribution: false,
+    budgetMin: 0, reanalyze: null, driver: 'player', heapProfile: false, traceDetail: false, cpuProfile: false, drawAttribution: false, domCensus: false,
     roots: null, governor: 'pinned',
   };
   for (const arg of argv) {
@@ -105,6 +105,7 @@ export function parseCensusArgs(argv) {
       case 'trace-detail': o.traceDetail = value !== '0'; break;
       case 'cpu-profile': o.cpuProfile = value !== '0'; break;
       case 'draw-attribution': o.drawAttribution = value !== '0'; break;
+      case 'dom-census': o.domCensus = value !== '0'; break;
       case 'roots': o.roots = value.split(',').filter(Boolean).map((pair) => {
         const at = pair.indexOf('=');
         if (at <= 0) throw new Error('--roots: label=<dir>,label=<dir>');
@@ -478,6 +479,57 @@ async function pageDrawAttribution(frames) {
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size };
 }
 
+/**
+ * (--dom-census; battle-spikes-253, the battle UI budget: the HUD at 0.5 ms a frame, no forced reflow) Over `frames`
+ * frames, the DOM reads and queries the page makes — querySelector(All), getBoundingClientRect, getClientRects,
+ * getComputedStyle — counted and timed a frame (a read after a write forces the layout inside its call, so its time is
+ * the reflow's), the slowest frame's, and by the stack's first page frame (chunk:line:col, resolved by the census).
+ * Run in the page (no closures).
+ */
+async function pageDomCensus(frames) {
+  const targets = [[Document.prototype, 'querySelectorAll'], [Document.prototype, 'querySelector'], [Element.prototype, 'querySelectorAll'],
+    [Element.prototype, 'querySelector'], [Element.prototype, 'getBoundingClientRect'], [Element.prototype, 'getClientRects'], [window, 'getComputedStyle']];
+  const restore = [];
+  const totals = {}, sites = new Map();
+  let frameMs = 0, frameCalls = 0;
+  const perFrame = [];
+  const siteOf = () => {
+    const stack = new Error().stack?.split('\n') ?? [];
+    for (const line of stack.slice(3)) {
+      const m = /\/assets\/([^/:]+):(\d+):(\d+)/.exec(line);
+      if (m) return `${m[1]}:${m[2]}:${m[3]}`;
+    }
+    return '?';
+  };
+  for (const [owner, name] of targets) {
+    const original = owner[name];
+    if (typeof original !== 'function') continue;
+    const label = `${owner === window ? 'window' : owner === Document.prototype ? 'document' : 'element'}.${name}`;
+    owner[name] = function () {
+      const t0 = performance.now();
+      try { return original.apply(this, arguments); } finally {
+        const ms = performance.now() - t0;
+        const row = totals[label] ??= { calls: 0, ms: 0 };
+        row.calls++; row.ms += ms; frameMs += ms; frameCalls++;
+        if (ms > 0.05 || row.calls % 50 === 1) { const site = `${label} ${siteOf()}`; const r = sites.get(site) ?? { calls: 0, ms: 0 }; r.calls++; r.ms += ms; sites.set(site, r); }
+      }
+    };
+    restore.push(() => { owner[name] = original; });
+  }
+  await new Promise((resolve) => {
+    let n = 0;
+    const tick = () => { perFrame.push([frameCalls, frameMs]); frameCalls = 0; frameMs = 0; if (++n >= frames) resolve(); else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+  for (const undo of restore) undo();
+  const sorted = perFrame.map(([, ms]) => ms).sort((a, b) => a - b);
+  const q = (p) => Math.round(sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] * 1000) / 1000;
+  return { frames, perFrameMs: { median: q(0.5), p90: q(0.9), max: q(1) },
+    callsPerFrame: Math.round(perFrame.reduce((a, [c]) => a + c, 0) / frames * 10) / 10,
+    totals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, { calls: Math.round(v.calls / frames * 10) / 10, ms: Math.round(v.ms / frames * 1000) / 1000 }])),
+    sites: [...sites].sort((a, b) => b[1].ms - a[1].ms).slice(0, 25).map(([k, v]) => [k, v.calls, Math.round(v.ms * 100) / 100]) };
+}
+
 const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''}${scenario.replace(':', '-')}-${size}v${size}-${pass}`;
 
 // the browser playing now: a stopped census (SIGTERM, SIGINT) closes it before it exits, leaving no orphan Chrome
@@ -581,6 +633,9 @@ async function playScenario(options, side, scenario, size, done, abort) {
       const da = record.drawAttribution;
       if (da && !da.error) log(`${key}: tanks by band ${JSON.stringify(da.tanksIn)}, a tank's draws ${JSON.stringify(da.perTank)}; passes `
         + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms})`);
+      const dc = record.domCensus;
+      if (dc && !dc.error) log(`${key}: DOM reads ${dc.callsPerFrame} a frame, ${dc.perFrameMs.median} ms (p90 ${dc.perFrameMs.p90}, max ${dc.perFrameMs.max}); `
+        + `${dc.sites.slice(0, 6).map(([site, calls, ms]) => `${site} ${calls}x ${ms} ms`).join('; ')}`);
       if (aborted) throw new Error(aborted);
     }
   } finally {
@@ -666,6 +721,16 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     });
     // (--draw-attribution) 30 frames of draws by pass, tank band and part, at the battle's end (after the readout's window)
     const drawAttribution = options.drawAttribution ? await page.evaluate(pageDrawAttribution, 30).catch((error) => ({ error: String(error?.message ?? error) })) : null;
+    // (--dom-census) 120 frames of DOM reads and queries, at the battle's end
+    const domCensus = options.domCensus ? await page.evaluate(pageDomCensus, 120).catch((error) => ({ error: String(error?.message ?? error) })) : null;
+    if (domCensus?.sites) {
+      const resolve = await sourceResolver(options.root);
+      if (resolve) domCensus.sites = domCensus.sites.map(([site, calls, ms]) => {
+        const m = /^(\S+) ([^:]+):(\d+):(\d+)$/.exec(site);
+        const at = m ? resolve(m[2], Number(m[3]) - 1, Number(m[4]) - 1) : null;
+        return [at ? `${m[1]} ${at}` : site, calls, ms];
+      });
+    }
     const readout = await page.evaluate(() => window.__DEBUG.frameStages.read());
     // the deferred warm's own record (game/deferredCombatWarmRuntime.ts): its stages, each opening route's job, when it ended
     const deferredWarm = await page.evaluate(() => {
@@ -697,7 +762,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm, drawAttribution,
+      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm, drawAttribution, domCensus,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };
