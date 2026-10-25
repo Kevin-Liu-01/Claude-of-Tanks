@@ -38,9 +38,8 @@ import {
 import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
-import type { IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, statChip, statRow, tag, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -1178,15 +1177,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const theirs = rival ? headlineOf(rival) : null;
     const cells = (key: StatRangeKey, value: number, lowerBetter: boolean) =>
       Math.max(1, Math.round(statFrac(group, key, value, lowerBetter) * 20));
-    const row = (glyph: IconId, label: string, key: keyof typeof mine & StatRangeKey, unit: string, digits: number, lowerBetter = false) => {
+    const row = (glyph: string, label: string, key: keyof typeof mine & StatRangeKey, unit: string, digits: number, lowerBetter = false) => {
       const value = mine[key];
       const other = theirs?.[key];
       const gap = other == null ? null : Number((value - other).toFixed(digits));
-      // the kit's stat row (compact: the overview's tight gap); an even comparison reads neutral
-      return statRow({ icon: glyph, label, value: value.toFixed(digits), unit, compact: true,
-        cells: cells(key, value, lowerBetter), rivalCells: other == null ? undefined : cells(key, other, lowerBetter),
-        delta: gap == null ? undefined : `${gap === 0 ? '±' : gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}`,
-        better: gap == null || gap === 0 ? undefined : lowerBetter ? gap < 0 : gap > 0 });
+      const delta = gap == null ? '' : `<em class="num${gap === 0 ? '' : (lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
+        `${gap === 0 ? '±' : gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
+      return `<div class="cot-hrow">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
+        `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}${delta}</span>` +
+        scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
     const peers = rival ? rivalPeers(spec) : [];
     const picker = rival
