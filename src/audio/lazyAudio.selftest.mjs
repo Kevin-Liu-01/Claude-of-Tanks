@@ -564,6 +564,61 @@ for (const silence of ['mute', 'master', 'bus']) {
   }
 }
 
+// (lockdown-251) the default context opens with no sink where the engine can move it later, so the constructor never
+// waits for a cold audio service; the mixer is built once the default device is attached, and a device that fails to
+// attach is opened directly instead (never left on the silent sink).
+{
+  const saved = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+  const made = [];
+  let attach = null;
+  class DeferredAC {
+    constructor(options) {
+      this.options = options; this.state = 'suspended'; this.closed = false;
+      this.sinkId = options?.sinkId ? { type: options.sinkId.type } : '';
+      made.push(this);
+    }
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    close() { this.closed = true; return Promise.resolve(); }
+    setSinkId(id) { return new Promise((resolve, reject) => { attach = { resolve: () => { this.sinkId = id; resolve(); }, reject }; }); }
+  }
+  Object.defineProperty(globalThis, 'AudioContext', { value: DeferredAC, configurable: true, writable: true });
+  try {
+    for (const outcome of ['attached', 'failed']) {
+      made.length = 0; attach = null;
+      const adopted = [];
+      const deferred = createLazyAudio({ loadMixer: async () => ({ createAudio({ context }) {
+        adopted.push(context);
+        return { bindBus() {}, mute() {}, setMasterVolume() {}, resume() {}, loadingOn() {}, ambientOn() {}, update() {} };
+      } }) });
+      deferred.resume();
+      assert.equal(made.length, 1, `${outcome}: one context`);
+      assert.deepEqual(made[0].options, { latencyHint: 'interactive', sinkId: { type: 'none' } },
+        `${outcome}: opened with no sink, so its constructor does not wait for the device`);
+      assert.ok(attach, `${outcome}: the default device attaches asynchronously`);
+      await flushMicrotasks();
+      assert.equal(adopted.length, 0, `${outcome}: the mixer waits for the device`);
+      const warn = console.warn; console.warn = () => {};
+      try {
+        if (outcome === 'attached') attach.resolve(); else attach.reject(new Error('no device'));
+        for (let i = 0; i < 4; i++) await flushMicrotasks();
+      } finally { console.warn = warn; }
+      assert.equal(adopted.length, 1, `${outcome}: then builds on one context`);
+      if (outcome === 'attached') {
+        assert.equal(adopted[0], made[0], 'attached: the mixer adopts the deferred context');
+        assert.equal(made[0].sinkId, '', 'on the default device');
+      } else {
+        assert.equal(made.length, 2, 'failed: a second context');
+        assert.deepEqual(made[1].options, { latencyHint: 'interactive' }, 'failed: it opens the device directly');
+        assert.equal(adopted[0], made[1], 'failed: the mixer adopts the direct context');
+        assert.equal(made[0].closed, true, 'failed: the silent context is closed');
+      }
+    }
+  } finally {
+    if (saved) Object.defineProperty(globalThis, 'AudioContext', saved);
+    else delete globalThis.AudioContext;
+  }
+}
+
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const intentSource = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
