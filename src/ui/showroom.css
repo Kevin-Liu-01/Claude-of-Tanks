@@ -145,8 +145,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .
 .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* a Chinese label keeps its words whole on one line and its figure steps under it when the two do not fit (the gauntlet
    10-25: 车体转 / 向散布); the label breaks only at its phrase marks when the tile is narrower than the label itself */
-body .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 0 auto;max-width:100%;}
-body .cot-garage .stats[data-density~='2'] .srow .lr b{margin-left:auto;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 0 auto;max-width:100%;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{margin-left:auto;}
 html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{word-break:keep-all;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
@@ -240,6 +240,12 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-g
   flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s8);
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections)>*{flex:none;}
+/* the compact sheet gives its height to the paint: the info and Create pair stands at the flags' row end, and the staging
+   strip is one control high (the gauntlet 10-25: one swatch row, cut, under three header rows) */
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camos{position:relative;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle{position:absolute;top:0;right:0;margin:0;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-camo-collections{margin-right:132px;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{height:38px;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
   grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card{padding:2px;}
@@ -271,7 +277,7 @@ body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(
   margin:calc(-1 * var(--s6)) 0 calc(var(--s2) - var(--s5)) calc(-1 * var(--s4));
   background:var(--stage-scrim);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-36);}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));padding:var(--s1) var(--s2);
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));padding:var(--s1) var(--s3);column-gap:var(--s3);
   margin-left:calc(-1 * var(--s2));border-radius:var(--control-radius);background:var(--glyph-plate);}
 .cot-lt-band{display:flex;align-items:flex-end;gap:var(--s3);max-width:100%;pointer-events:auto;}
 .cot-lt-band>*{display:flex;align-items:stretch;gap:var(--s1);min-width:0;}

@@ -43,6 +43,7 @@ const GAP = 18;
 const ROW = PLATE_H + 8;
 const SLIDE = 36;
 const TRIES = 16;
+const AVOID_PAD = 10;
 /** The ways a plate searches from its anchor, in order: upward, downward, or sideways (away from the hull first). */
 type Side = 'above' | 'below' | 'beside';
 const SIDES: Readonly<Record<HotspotId, readonly Side[]>> = {
@@ -251,7 +252,8 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     for (let at = 0; at < _parts.length; at += 4) {
       if (x1 > _parts[at] && x0 < _parts[at + 2] && y1 > _parts[at + 1] && y0 < _parts[at + 3]) return false;
     }
-    for (const r of avoid) if (x1 > r.x && x0 < r.x + r.w && y1 > r.y && y0 < r.y + r.h) return false;
+    // the name, its meta row and the band keep a gutter round them (a plate 8 px over the name read as crowding it)
+    for (const r of avoid) if (x1 > r.x - AVOID_PAD && x0 < r.x + r.w + AVOID_PAD && y1 > r.y - AVOID_PAD && y0 < r.y + r.h + AVOID_PAD) return false;
     for (let i = 0; i < count; i++) {
       const at = i * 4;
       if (x1 + 8 > _placed[at] && x0 - 8 < _placed[at + 2] && y1 + 4 > _placed[at + 1] && y0 - 4 < _placed[at + 3]) return false;
