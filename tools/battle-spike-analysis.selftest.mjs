@@ -5,13 +5,13 @@
 // through the sync mark; the long tasks split as the spikes do; the summary counts by cause.
 import assert from 'node:assert/strict';
 import { FRAME_STAGE_NAMES } from '../src/game/frameStages.ts';
-import { analyzeBattle, causeOfBucket, framesOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
+import { analyzeBattle, causeOfBucket, framesOf, heapOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
 
 const COLUMNS = ['tMs', 'rafMs', 'workMs', 'simSteps', 'programs', 'textures', 'geometries', 'heapMB', 'simS', 'flags', 'tanks', 'shells',
   'events', 'eventMs', 'topEvent0', 'topEventMs0', 'topEvent1', 'topEventMs1', 'topEvent2', 'topEventMs2',
   'links', 'linkMs', 'texMs', 'bufMs', 'gapLinks', 'gapLinkMs', 'gapTexMs', 'gapBufMs'];
 const FLAGS = { battle: 1, countdown: 2, paused: 4, killcam: 8, result: 16, rendered: 32 };
-const EVENTS = ['(other)', 'destruction:stage', 'tank:fire'];
+const EVENTS = ['(other)', 'structure:stage', 'tank:fire'];
 
 /** A frame row: its start, work, stages and extras. */
 function frame(tMs, { work = 8, stages = { post: 4, bots: 2, movement: 2 }, programs = 40, heapMB = 120, extra = {}, flags = FLAGS.battle | FLAGS.rendered, top = [] } = {}) {
@@ -100,7 +100,7 @@ assert.equal(at(dAt).cause, 'program link', 'D: the first-use program link');
 assert.equal(at(dAt).programs, 2, 'D: the programs the renderer gained');
 assert.equal(at(eAt).cause, 'gpu/present', 'E: the main thread idle while the frame was held');
 assert.equal(at(fAt).cause, 'destruction', 'F: the destruction stage event\'s listeners');
-assert.equal(at(fAt).dominant, 'event:destruction:stage');
+assert.equal(at(fAt).dominant, 'event:structure:stage');
 assert.ok(at(aAt).buckets.dom > 0, 'the rendering pipeline after the callback is DOM work');
 assert.equal(result.intervals.over33, 6, 'the paused and veiled frames are not counted');
 
@@ -116,6 +116,12 @@ const untraced = analyzeBattle({ readout });
 assert.equal(untraced.traced, false);
 assert.equal(untraced.spikes.find((s) => Math.abs(s.atMs - aAt) < 0.6).cause, 'bots');
 assert.equal(untraced.spikes.find((s) => Math.abs(s.atMs - dAt) < 0.6).cause, 'program link');
+
+// the heap: rises are allocation, a drop past 0.25 MB a collection; the first-use links of the shown frames
+assert.deepEqual(heapOf([{ heapMB: 100, tMs: 0 }, { heapMB: 102, tMs: 500 }, { heapMB: 90, tMs: 1000 }, { heapMB: 89.9, tMs: 1500 }]),
+  { allocMBPerS: 1.33, gcDrops: 1, gcDropMB: 12, peakMB: 102 });
+assert.equal(result.links.links, 2, 'the program links the battle made');
+assert.equal(result.links.framesLinking, 1);
 
 // the readout's rows as objects; the cause table
 assert.equal(framesOf(readout)[2].stages.bots, 40);

@@ -29,7 +29,8 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, chunkOfUrl, foreignGpuCpu, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
-import { analyzeBattle, rendererMainThread } from './battle-spike-analysis.mjs';
+import { StringDecoder } from 'node:string_decoder';
+import { analyzeBattle, rendererMainThread, traceEventOfInterest } from './battle-spike-analysis.mjs';
 
 const TOOL = 'battle-spike-census';
 /** The census's battles: the directive's AC-130, drone, destruction-heavy and urban maps among the modes. */
@@ -41,11 +42,11 @@ const SYNC_MARK = 'cot-spike-census-sync';
 /**
  * The trace categories: the tasks (RunTask), GC (MinorGC, MajorGC), scripts (FunctionCall, TimerFire, EventDispatch …),
  * compiles (v8.compile), the rendering pipeline, and the user-timing marks (the sync). `v8` and `v8.execute` would add
- * an event per call into V8: a minute's trace past what one JSON parse holds.
+ * an event per call into V8.
  */
 const TRACE_CATEGORIES = Object.freeze(['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing']);
-/** A trace past this is not parsed (the battle keeps the recorder's attribution alone). */
-const TRACE_PARSE_LIMIT_BYTES = 450 * 1024 * 1024;
+/** Chrome's trace buffer for a battle (KB): it holds the battle; the stream is read event by event, never whole. */
+const TRACE_BUFFER_KB = 600 * 1024;
 const RSS_ABORT_KB = 6 * 1024 * 1024;
 
 const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(11, 19)}] ${message}`);
@@ -173,6 +174,70 @@ function treeRssKb(rootPid) {
   } catch { return 0; }
 }
 
+/**
+ * Split a streamed trace (`{"traceEvents":[{…},{…}],…}`) into its events as the chunks arrive: braces and brackets
+ * counted outside strings, each object at the array's depth parsed alone and handed to `onEvent`. The whole trace is
+ * never one string (a cold battle's passed V8's string limit and took the census down with it).
+ */
+export function createTraceSplitter(onEvent) {
+  let depth = 0, inString = false, escaped = false, start = -1, carry = '';
+  return {
+    push(chunk) {
+      const text = carry + chunk;
+      for (let i = carry.length; i < text.length; i++) {
+        const c = text[i];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (c === '\\') escaped = true;
+          else if (c === '"') inString = false;
+          continue;
+        }
+        if (c === '"') inString = true;
+        else if (c === '{' || c === '[') { if (depth === 2 && c === '{') start = i; depth++; }
+        else if (c === '}' || c === ']') {
+          depth--;
+          if (depth === 2 && c === '}' && start >= 0) { onEvent(JSON.parse(text.slice(start, i + 1))); start = -1; }
+        }
+      }
+      // an event still open carries over; anything before it is spent
+      if (start >= 0) { carry = text.slice(start); start = 0; } else carry = '';
+    },
+  };
+}
+
+/** Start a battle's trace (CDP Tracing, streamed); `stop()` reads it back event by event and keeps what the analysis can use. */
+async function startTrace(page) {
+  const cdp = await page.target().createCDPSession();
+  await cdp.send('Tracing.start', {
+    transferMode: 'ReturnAsStream', streamFormat: 'json',
+    traceConfig: { recordMode: 'recordUntilFull', traceBufferSizeInKb: TRACE_BUFFER_KB, includedCategories: [...TRACE_CATEGORIES] },
+  });
+  let stopped = false;
+  return {
+    async stop() {
+      if (stopped) return null;
+      stopped = true;
+      const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+      await cdp.send('Tracing.end');
+      const { stream, dataLossOccurred } = await complete;
+      const kept = [];
+      let seen = 0, bytes = 0;
+      const splitter = createTraceSplitter((e) => { seen++; if (traceEventOfInterest(e, SYNC_MARK)) kept.push(e); });
+      const decoder = new StringDecoder('utf8');
+      for (;;) {
+        const chunk = await cdp.send('IO.read', { handle: stream, size: 4 << 20 });
+        const data = chunk.base64Encoded ? decoder.write(Buffer.from(chunk.data, 'base64')) : chunk.data;
+        bytes += data.length;
+        splitter.push(data);
+        if (chunk.eof) break;
+      }
+      await cdp.send('IO.close', { handle: stream }).catch(() => {});
+      await cdp.detach().catch(() => {});
+      return { events: filterTraceEvents(kept), seen, bytes, dataLoss: !!dataLossOccurred };
+    },
+  };
+}
+
 /** Keep the renderer main thread's and the GPU main thread's events (the rest of a trace is the analysis's noise). */
 export function filterTraceEvents(events) {
   const main = rendererMainThread(events, SYNC_MARK);
@@ -236,11 +301,9 @@ async function runScenario(options, server, scenario, size, done) {
 async function measureBattle(page, options, { mapId, gameMode, allies, enemies, pass, key }) {
   const load = { before: os.loadavg().map((v) => +v.toFixed(1)), foreignGpu: foreignGpuCpu() };
   await page.evaluate(() => { window.__DEBUG.frameStages.clear(); const c = window.__CENSUS; c.tasks.length = 0; c.loaf.length = 0; c.decodes.length = 0; });
-  let tracing = false;
-  if (options.trace) { await page.tracing.start({ categories: [...TRACE_CATEGORIES] }); tracing = true; }
+  let tracer = null, syncPerfMs = null;
   try {
-    const syncPerfMs = await page.evaluate((name) => performance.mark(name).startTime, SYNC_MARK);
-    const entryStartMs = syncPerfMs;
+    const entryStartMs = await page.evaluate(() => performance.now());
     const entryAt = Date.now();
     const watched = options.driver === 'watch' && gameMode !== 'ac130';
     if (watched) {
@@ -248,6 +311,13 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
         { specId: options.spec, mapId, gameMode });
     } else {
       await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
+    }
+    // the trace covers the battle from its phase on (the countdown and the fight; the loading veil's build is the
+    // recorder's alone): a loading trace is most of the bytes and none of the frames a player sees
+    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 100 });
+    if (options.trace) {
+      tracer = await startTrace(page);
+      syncPerfMs = await page.evaluate((name) => performance.mark(name).startTime, SYNC_MARK);
     }
     await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
     const entryMs = Date.now() - entryAt;
@@ -274,18 +344,14 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     });
     const readout = await page.evaluate(() => window.__DEBUG.frameStages.read());
     const observers = await page.evaluate(() => window.__CENSUS);
-    let trace = null, traceEvents = null;
-    if (tracing) {
-      const buffer = await page.tracing.stop();
-      tracing = false;
-      if (buffer.length > TRACE_PARSE_LIMIT_BYTES) {
-        log(`${key}: trace ${(buffer.length / 1048576).toFixed(0)} MB past the parse limit: the recorder's attribution alone`);
-      } else {
-        const parsed = JSON.parse(buffer.toString('utf8'));
-        traceEvents = filterTraceEvents(parsed.traceEvents ?? parsed);
-        trace = { events: traceEvents, syncName: SYNC_MARK, syncPerfMs, rawBytes: buffer.length };
-        writeFileSync(path.join(options.out, `${key}.trace.json.gz`), gzipSync(JSON.stringify({ syncName: SYNC_MARK, syncPerfMs, events: traceEvents })));
-      }
+    let trace = null, traceInfo = null;
+    if (tracer) {
+      const read = await tracer.stop();
+      tracer = null;
+      traceInfo = { bytes: read.bytes, seen: read.seen, kept: read.events.length, dataLoss: read.dataLoss };
+      if (read.dataLoss) log(`${key}: the trace buffer filled (data lost): its end is untraced`);
+      trace = { events: read.events, syncName: SYNC_MARK, syncPerfMs, fromMs: syncPerfMs };
+      writeFileSync(path.join(options.out, `${key}.trace.json.gz`), gzipSync(JSON.stringify({ syncName: SYNC_MARK, syncPerfMs, fromMs: syncPerfMs, events: read.events })));
     }
     writeFileSync(path.join(options.out, `${key}.frames.json.gz`), gzipSync(JSON.stringify({ readout, observers })));
     const { analysis, live } = analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, endMs });
@@ -293,14 +359,14 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     return {
       tool: TOOL, key, mapId, gameMode, size: `${allies + 1}v${enemies}`, pass, seconds: options.seconds, preset: options.preset,
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
-      traceBytes: trace?.rawBytes ?? 0, traceKept: traceEvents?.length ?? 0,
+      trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live: { intervals: live.intervals, summary: live.summary, spikes: live.spikes.length, longTasks: live.longTasks.length },
+      analysis, live,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };
   } finally {
-    if (tracing) await page.tracing.stop().catch(() => {});
+    if (tracer) await tracer.stop().catch(() => {});
   }
 }
 
@@ -308,7 +374,8 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
 function analyzeWindows({ readout, trace, observers, entryStartMs, liveStartMs, endMs }) {
   const analysis = analyzeBattle({ readout, trace, observers, window: { fromMs: entryStartMs, toMs: endMs }, chunkOfUrl });
   const live = analyzeBattle({ readout, trace, observers, window: { fromMs: liveStartMs, toMs: endMs }, chunkOfUrl });
-  return { analysis, live: { intervals: live.intervals, summary: live.summary, spikes: live.spikes.length, longTasks: live.longTasks.length } };
+  return { analysis, live: { intervals: live.intervals, heap: live.heap, links: live.links, summary: live.summary, spikes: live.spikes.length,
+    longTasks: live.longTasks.length } };
 }
 
 const readGz = (file) => JSON.parse(gunzipSync(readFileSync(file)).toString('utf8'));
@@ -367,7 +434,8 @@ export function summarizeCensus(dir) {
     rows.push({ key: r.key, map: r.mapId, mode: r.gameMode, size: r.size, pass: r.pass, tanks: r.roster?.count, entryMs: r.entryMs,
       frames: r.analysis.intervals.count, over33: r.analysis.intervals.over33, over50: r.analysis.intervals.over50,
       over100: r.analysis.intervals.over100, p99: r.analysis.intervals.p99, max: r.analysis.intervals.max,
-      longTasks: r.analysis.longTasks.length, liveOver33: r.live.intervals.over33, causes: r.analysis.summary, load: r.load });
+      longTasks: r.analysis.longTasks.length, liveOver33: r.live.intervals.over33, liveLinks: r.live.links?.links ?? null,
+      allocMBPerS: r.live.heap?.allocMBPerS ?? null, gcDrops: r.live.heap?.gcDrops ?? null, causes: r.analysis.summary, load: r.load });
   }
   const totals = {};
   for (const row of rows) for (const [cause, c] of Object.entries(row.causes)) {

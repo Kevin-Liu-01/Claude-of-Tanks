@@ -93,7 +93,7 @@ behind an entry veil are excluded. The interval is split into:
 - the main thread **idle**: a frame the GPU or the compositor held.
 
 The largest bucket is the spike's cause. When a stage's time was mostly one bus event's listeners, the event names the
-cause instead (`destruction:*` is destruction, for example).
+cause instead (`structure:stage` is destruction, for example).
 
 A **long task** is a main-thread task over 50 ms, split the same way.
 
@@ -107,7 +107,9 @@ Causes:
 | streaming | the world stage (terrain LOD, vegetation, props); terrain and world chunks' scripts |
 | sim tick | spotting, aerial, movement, contacts, fire, shells, damage, mode |
 | bots | the bot controllers' step |
-| destruction | the destruction step and its listeners; wreck and collapse builds |
+| destruction | the destruction step; the `structure:*`, `terrain:crater`, `munition:blast` and `prop:*` listeners; wreck and collapse builds |
+| kill | the `tank:destroyed` listeners (the wreck, the killfeed, the kill's effects) |
+| combat fx | the fire, shell and impact listeners (effects and sounds of a shot) |
 | audio | the audio stage; audio chunks' scripts |
 | hud/dom | the HUD stages, the countdown, the rendering pipeline's style/layout/paint |
 | render cpu | lighting, post (the render's CPU side), night, sniper fill |

@@ -20,11 +20,15 @@ const STAGE_CAUSE = Object.freeze({
   perfHud: 'hud/dom',
 });
 
-/** A bus event whose listeners took most of a stage names the cause more exactly than the stage. */
+/**
+ * A bus event whose listeners took most of a stage names the cause more exactly than the stage (the game's names:
+ * sim/destructionEvents.ts DESTRUCTION_BUS_EVENTS, the combat and UI events).
+ */
 export function causeOfEvent(name) {
-  if (/^(destruction|prop:|building|wreck|crater)/.test(name)) return 'destruction';
-  if (/^audio|radio|voice/.test(name)) return 'audio';
-  if (/^(hud|ui|toast|killfeed|medal|award)/.test(name)) return 'hud/dom';
+  if (/^(structure:|terrain:crater|munition:blast|prop:)/.test(name)) return 'destruction';
+  if (name === 'tank:destroyed') return 'kill';
+  if (/^(tank:fire|tank:impact|shell:|weapon:|auxiliary:fired|drone:)/.test(name)) return 'combat fx';
+  if (/^(ui:|service:|battle:|player:|spectate:|watch:)/.test(name)) return 'hud/dom';
   return null;
 }
 
@@ -39,6 +43,7 @@ export function causeOfBucket(key) {
   if (key === 'compile') return 'chunk load';
   if (key === 'image') return 'image decode';
   if (key === 'idle') return 'gpu/present';
+  if (key === 'gap') return 'untraced gap';
   if (key.startsWith('script:')) {
     const chunk = key.slice(7);
     if (/audio|sound|voice|radio|ambience|sfx|mixer/i.test(chunk)) return 'audio';
@@ -82,6 +87,18 @@ const COMPILE_EVENT = /^(v8\.compile|v8\.compileModule|V8\.CompileCode|CompileSc
 const IMAGE_EVENT = /^(Decode Image|ImageDecodeTask|Decode LazyPixelRef|Draw LazyPixelRef)$/;
 const SCRIPT_EVENT = /^(FunctionCall|TimerFire|EventDispatch|FireAnimationFrame|FireIdleCallback|RunMicrotasks|v8\.run|V8\.Execute|XHRReadyStateChange|XHRLoad)$/;
 const TASK_EVENT = /^(RunTask|ThreadControllerImpl::RunTask)$/;
+
+/**
+ * Whether a raw trace event can matter to the analysis (the census keeps these while it streams the trace, before it
+ * knows the main thread): metadata, the sync mark, and the kinds the buckets name, past a tenth of a millisecond.
+ */
+export function traceEventOfInterest(e, syncName) {
+  if (e.ph === 'M') return e.name === 'thread_name' || e.name === 'process_name';
+  if (e.name === syncName) return true;
+  if (!(TASK_EVENT.test(e.name) || GC_EVENT.test(e.name) || DOM_EVENT.test(e.name) || COMPILE_EVENT.test(e.name)
+    || IMAGE_EVENT.test(e.name) || SCRIPT_EVENT.test(e.name))) return false;
+  return e.ph !== 'X' || (e.dur ?? 0) >= 100;
+}
 
 /** The page's renderer main thread: the CrRendererMain whose process carries the sync mark (else the busiest). */
 export function rendererMainThread(events, syncName) {
@@ -247,6 +264,8 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
     }
   }
   const traced = tasks.length > 0;
+  // the trace may begin after the entry (the census starts it when the battle phase begins): earlier gaps are untraced
+  const tracedFrom = traced ? (trace.fromMs ?? -Infinity) : Infinity;
   const shown = frames.filter((f) => f.battle && f.rendered && !f.paused);
   const intervals = [];
   const spikes = [];
@@ -258,10 +277,11 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
     intervals.push(interval);
     if (interval <= spikeMs) continue;
     const workEnd = a.tMs + a.workMs;
-    const gcInWork = traced ? sumGc(events, a.tMs, workEnd) : 0;
+    const tracedHere = a.tMs >= tracedFrom;
+    const gcInWork = tracedHere ? sumGc(events, a.tMs, workEnd) : 0;
     const buckets = frameBuckets(a, gcInWork);
     let busy = a.workMs;
-    if (traced) {
+    if (tracedHere) {
       // the rest of the main thread in the interval: the frame task's pipeline after the callback, and other tasks
       const gapTraced = addTraceBuckets(buckets, events, workEnd, b.tMs, chunkOfUrl, (e) => TASK_EVENT.test(e.name));
       busy += busyMs(tasks, workEnd, b.tMs);
@@ -273,8 +293,9 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
     } else {
       moveGapGl(buckets, b);
     }
-    const idle = Math.max(0, interval - busy);
-    if (idle > 0.5) buckets.idle = idle;
+    const rest = Math.max(0, interval - busy);
+    // traced: the main thread idle (the GPU or the compositor held the frame); untraced: a gap no source saw into
+    if (rest > 0.5) buckets[tracedHere ? 'idle' : 'gap'] = rest;
     const key = dominant(buckets);
     spikes.push({
       atMs: round(a.tMs, 1), simS: round(a.simS, 2), intervalMs: round(interval, 1), workMs: round(a.workMs, 1),
@@ -307,7 +328,38 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
     });
   }
 
-  return { frames: shown.length, intervals: summarizeIntervals(intervals), spikes, longTasks, summary: summarize(spikes, longTasks), traced };
+  return { frames: shown.length, intervals: summarizeIntervals(intervals), heap: heapOf(shown), links: linksOf(shown), spikes, longTasks,
+    summary: summarize(spikes, longTasks), traced };
+}
+
+/**
+ * The JS heap across the shown frames (`--enable-precise-memory-info`): the allocation rate (the rises from frame to
+ * frame, a GC's drop excluded), the collections the heap fell by (a drop past 0.25 MB) and the peak.
+ */
+export function heapOf(frames) {
+  let rise = 0, drops = 0, dropMB = 0, peak = 0;
+  for (let i = 1; i < frames.length; i++) {
+    const delta = frames[i].heapMB - frames[i - 1].heapMB;
+    if (delta >= 0) rise += delta;
+    else if (delta < -0.25) { drops++; dropMB -= delta; }
+    peak = Math.max(peak, frames[i].heapMB);
+  }
+  const seconds = frames.length > 1 ? (frames[frames.length - 1].tMs - frames[0].tMs) / 1000 : 0;
+  return { allocMBPerS: seconds > 0 ? round(rise / seconds, 2) : null, gcDrops: drops, gcDropMB: round(dropMB, 1), peakMB: round(peak, 1) };
+}
+
+/** First-use WebGL work over the shown frames: programs linked (in frames and between them) and the frames that linked. */
+export function linksOf(frames) {
+  let links = 0, linkMs = 0, framesLinking = 0, texMs = 0, bufMs = 0;
+  for (const f of frames) {
+    const n = (f.links ?? 0) + (f.gapLinks ?? 0);
+    links += n;
+    if (n > 0) framesLinking++;
+    linkMs += (f.linkMs ?? 0) + (f.gapLinkMs ?? 0);
+    texMs += (f.texMs ?? 0) + (f.gapTexMs ?? 0);
+    bufMs += (f.bufMs ?? 0) + (f.gapBufMs ?? 0);
+  }
+  return { links, framesLinking, linkMs: round(linkMs, 1), texMs: round(texMs, 1), bufMs: round(bufMs, 1) };
 }
 
 function moveGapGl(buckets, b) {
