@@ -3791,6 +3791,7 @@ const studioAccess = createStudioAccess({
       mapAmbience.setEnabled(true);
     },
     getStudioLight: () => studioLightLive,
+    programWarm: forwardProgramWarm,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
