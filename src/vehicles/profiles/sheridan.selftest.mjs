@@ -88,7 +88,8 @@ assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'damageable combat anatomy includes the missile stowage');
 assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
 assert.equal(ttsSpec.variantOf, spec.id);
-assert.equal(ttsSpec.era, 'next-generation');
+// 2026-10-25 (owner: "properly label next gen vs modern"): a 1989 Sheridan upgrade is modern, not next generation.
+assert.equal(ttsSpec.era, 'modern');
 // 2026-10-01: the same scout doctrine layer (0e5fc79e2) applies to the TTS's authored 0.24 accuracy / 1.25 s aim.
 assert.equal(VEHICLE_ROLE_PROFILES.m551a1_tts.doctrine, 'scout', 'TTS keeps its scout doctrine');
 const ttsHandling = tacticalRoleHandling({ hullTraverseDegS: ttsSpec.hullTraverseDegS,
@@ -160,7 +161,7 @@ for (const slot of [1, 2]) {
   stepShell(projectile, 1 / 60);
   assert.ok(projectile.vel.y < 0, `${round.name} follows normal ballistic gravity`);
 }
-assert.equal(garageStatGroup(ttsSpec), '10/next-generation');
+assert.equal(garageStatGroup(ttsSpec), '10/modern');
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
   'm551a1_tts_turret_era_R', 'm551a1_tts_turret_era_L', 'm551a1_tts_turret_roof_era',

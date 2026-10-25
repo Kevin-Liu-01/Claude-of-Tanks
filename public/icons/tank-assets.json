@@ -42389,7 +42389,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -44553,7 +44553,7 @@
         ]
       },
       "geometryHash": "97c3e005",
-      "metadataHash": "73652cee",
+      "metadataHash": "63ca16e5",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.001
@@ -77454,7 +77454,7 @@
       },
       "nation": "Italy",
       "countryCode": "it",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -81721,7 +81721,7 @@
         ]
       },
       "geometryHash": "92d75a9b",
-      "metadataHash": "5ca5be2a",
+      "metadataHash": "61d0f8f5",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0864
@@ -98732,7 +98732,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -106028,7 +106028,7 @@
         ]
       },
       "geometryHash": "58780056",
-      "metadataHash": "16314a66",
+      "metadataHash": "161bbbc9",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.018
@@ -106192,7 +106192,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -107338,7 +107338,7 @@
         ]
       },
       "geometryHash": "8ec56a1b",
-      "metadataHash": "f1cabfa9",
+      "metadataHash": "9e2366b6",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0058
@@ -113048,7 +113048,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -114914,7 +114914,7 @@
         ]
       },
       "geometryHash": "e4d2b2da",
-      "metadataHash": "b92f9067",
+      "metadataHash": "cd965864",
       "presentationAnchor": {
         "xM": -0.0349,
         "zM": 0.0375
@@ -114939,7 +114939,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 11,
-          "gunmetal": 5,
+          "gunmetal": 6,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 15,
@@ -115079,7 +115079,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -116365,7 +116365,7 @@
         ]
       },
       "geometryHash": "01abc82d",
-      "metadataHash": "d19e152d",
+      "metadataHash": "90404442",
       "presentationAnchor": {
         "xM": -0.0004,
         "zM": -0.1596
@@ -140586,7 +140586,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -142146,7 +142146,7 @@
         ]
       },
       "geometryHash": "c270d5f2",
-      "metadataHash": "54673c59",
+      "metadataHash": "562349c6",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": 0.0361
@@ -220248,7 +220248,7 @@
       },
       "nation": "Italy",
       "countryCode": "it",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -221844,7 +221844,7 @@
         ]
       },
       "geometryHash": "5824294b",
-      "metadataHash": "0901cfb1",
+      "metadataHash": "c69ff1d2",
       "presentationAnchor": {
         "xM": 0.0022,
         "zM": 0.0647
@@ -662328,7 +662328,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -667803,7 +667803,7 @@
         ]
       },
       "geometryHash": "3c47e160",
-      "metadataHash": "63672fd6",
+      "metadataHash": "bf16cff7",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.2216
@@ -919838,7 +919838,7 @@
       },
       "nation": "Russia",
       "countryCode": "ru",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -939894,7 +939894,7 @@
         ]
       },
       "geometryHash": "d422dbdc",
-      "metadataHash": "21961396",
+      "metadataHash": "daedcc61",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0563
@@ -1017171,7 +1017171,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1073730,7 +1073730,7 @@
         ]
       },
       "geometryHash": "6314adf2",
-      "metadataHash": "4f80ce1a",
+      "metadataHash": "8085835f",
       "presentationAnchor": {
         "xM": -0.0028,
         "zM": 0.0698
@@ -1073893,7 +1073893,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1254326,7 +1254326,7 @@
         ]
       },
       "geometryHash": "17fdb65c",
-      "metadataHash": "6f8fc5e8",
+      "metadataHash": "1e9fdb87",
       "presentationAnchor": {
         "xM": 0.0013,
         "zM": 0.0678
@@ -1284651,7 +1284651,7 @@
       },
       "nation": "Russia",
       "countryCode": "ru",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1306901,7 +1306901,7 @@
         ]
       },
       "geometryHash": "0a23325c",
-      "metadataHash": "f5158337",
+      "metadataHash": "74125b96",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0441
@@ -1307065,7 +1307065,7 @@
       },
       "nation": "Ukraine",
       "countryCode": "ua",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1366786,7 +1366786,7 @@
         ]
       },
       "geometryHash": "566978e8",
-      "metadataHash": "181acb0d",
+      "metadataHash": "d44d1ccc",
       "presentationAnchor": {
         "xM": -0.002,
         "zM": 0.1188
@@ -1366949,7 +1366949,7 @@
       },
       "nation": "Ukraine",
       "countryCode": "ua",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1423215,7 +1423215,7 @@
         ]
       },
       "geometryHash": "a0b66748",
-      "metadataHash": "a4ed6759",
+      "metadataHash": "69594f4a",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.042
@@ -1423379,7 +1423379,7 @@
       },
       "nation": "China",
       "countryCode": "cn",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1439281,7 +1439281,7 @@
         ]
       },
       "geometryHash": "1e58cc69",
-      "metadataHash": "a4fa468d",
+      "metadataHash": "89f5f832",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0062
@@ -1439444,7 +1439444,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1553442,7 +1553442,7 @@
         ]
       },
       "geometryHash": "43f324eb",
-      "metadataHash": "17a647be",
+      "metadataHash": "598a098d",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.1178
@@ -1580139,7 +1580139,7 @@
       },
       "nation": "Russia",
       "countryCode": "ru",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1600375,7 +1600375,7 @@
         ]
       },
       "geometryHash": "f8347187",
-      "metadataHash": "0c917695",
+      "metadataHash": "971c69f2",
       "presentationAnchor": {
         "xM": -0.0009,
         "zM": -0.0473
@@ -1712167,7 +1712167,7 @@
       },
       "nation": "China",
       "countryCode": "cn",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1735205,7 +1735205,7 @@
         ]
       },
       "geometryHash": "68d8bc95",
-      "metadataHash": "18c92190",
+      "metadataHash": "7d952acf",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": -0.132
@@ -1735367,7 +1735367,7 @@
       },
       "nation": "Ukraine",
       "countryCode": "ua",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -1783999,7 +1783999,7 @@
         ]
       },
       "geometryHash": "6b4a91a3",
-      "metadataHash": "c723d07b",
+      "metadataHash": "3a4748be",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.0541
@@ -2035962,7 +2035962,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "next-generation",
+      "era": "modern",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -2038710,7 +2038710,7 @@
         ]
       },
       "geometryHash": "8a243974",
-      "metadataHash": "5e132e49",
+      "metadataHash": "b327c418",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.0001
@@ -2038735,7 +2038735,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 10,
-          "gunmetal": 7,
+          "gunmetal": 8,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 15,
