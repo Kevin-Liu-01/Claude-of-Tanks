@@ -398,12 +398,9 @@
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
     }
     .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before {
-      width: 7px; height: 7px; box-sizing: border-box; border: 1px solid currentColor;
-      border-right-color: transparent; border-radius: 50%; content: '';
-      animation: cot-github-star-spin .7s linear infinite;
+      width: 100%; height: 6px; border-radius: 3px; background: var(--line-2); content: '';
     }
     .cot-github-stars:has([data-github-stars-state='unavailable']) { visibility: hidden; }
-    @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
       transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
       background: var(--surface-hover); box-shadow: var(--e2);
@@ -429,7 +426,6 @@
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
       .cot-boot-link:hover, .cot-boot-link:hover .cot-boot-link-icon,
       .cot-boot-link:active { transform: none; }
-      .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before { animation: none; }
     }
     /* Baseline for visible game scrollbars (the line ramp on the scene). Component rules still own hidden rails. */
     :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
@@ -523,28 +519,31 @@
     .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
     .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
-    #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
+    #cot-boot[data-stop='offline'] .cot-boot-alert { color: var(--text-warn); }
+    #cot-boot[data-stop='slow'] .cot-boot-alert { color: var(--ink-2); }
     .cot-boot-meta { position: relative; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
     #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
       content: ''; position: absolute; inset: -9px 0; z-index: -1; border-radius: var(--plate-radius);
-      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
+      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate)); box-shadow: var(--ring-2);
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 13px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 12px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 21px; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-bar { margin-inline: 14px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
-    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
     }
-    /* each tone has its own glyph: an error the alert, a slow load the clock, an offline one the info mark */
-    .cot-boot-alert svg + svg, .cot-boot-alert svg + svg + svg { display: none; }
-    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(1), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(1) { display: none; }
-    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(2), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(3) { display: inline-block; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { background: var(--surface-plate); }
+    /* the kit's glyph per severity: an error and an offline warning the alert, a slow load (progress) the clock */
+    .cot-boot-alert svg + svg { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:first-child { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg + svg { display: inline-block; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
@@ -940,6 +939,7 @@
       // splash counts the entry graph's files as they land.
       function paintDownloadProgress() {
         if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
+        if (document.querySelector('.cot-boot-gate.on')) return;
         const stage = document.getElementById('cot-boot-stage');
         if (stage) stage.textContent = `${MESSAGES.downloading} · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
       }
@@ -1120,7 +1120,7 @@
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
-          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></svg></span>
+          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
           <div class="cot-boot-pct num" id="cot-boot-pct">0%</div>
         </div>
