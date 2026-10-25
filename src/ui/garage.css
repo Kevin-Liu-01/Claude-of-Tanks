@@ -283,7 +283,8 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 
 .cot-compact-equipment-trigger{display:none}
 
-.cot-garage-panel-scrim{position:absolute;z-index:9;inset:0;border:0;background:var(--btn-media-fill);
+/* just under an open sheet (45): the bar, the battle card and the tab bar stay behind it, never bright at its sides */
+.cot-garage-panel-scrim{position:absolute;z-index:44;inset:0;border:0;background:var(--btn-media-fill);
   pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
 .cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
 .cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
