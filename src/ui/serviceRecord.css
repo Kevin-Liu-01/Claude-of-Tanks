@@ -56,6 +56,7 @@
 .cot-record-outcome.win-rate{grid-column:span 3}
 .cot-record-outcome{min-width:0;overflow-wrap:anywhere}
 .cot-record-outcome{display:flex;flex-direction:column;justify-content:space-between;padding:var(--s4);background:var(--surface-raised);box-shadow:var(--ring-1)}
+.cot-record-outcome:not(.win-rate){padding-bottom:calc(var(--s4) + var(--s3) + 6px)}
 .cot-record-outcome strong{display:block;margin-top:var(--s2);font:600 var(--fs-28)/1 var(--font-display);color:var(--ink-1)}
 .cot-record-outcome.win strong{color:var(--text-ok)}
 .cot-record-outcome.loss strong{color:var(--text-danger)}
@@ -64,7 +65,7 @@
 .cot-record-split i{min-width:4px}
 .cot-record-split .win{background:var(--ok)}
 .cot-record-split .draw{background:var(--ink-3)}
-.cot-record-split .loss{background:var(--danger)}
+.cot-record-split .loss{background:repeating-linear-gradient(135deg,var(--danger) 0 3px,transparent 3px 5px)}
 /* the figures are the kit's stat tiles (statTile), the overview's and each battle's alike */
 .cot-record-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
 .cot-record-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s3)}
@@ -119,12 +120,13 @@
   background:var(--surface-raised);box-shadow:var(--ring-1)}
 .cot-record-ach-art{display:grid;place-items:center;padding:0;border:0;background:none;cursor:help}
 .cot-record-ach-copy{min-width:0;overflow-wrap:anywhere}
-.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2)}
+.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
 .cot-record-ach-title strong{font-size:max(var(--fs-floor-12),var(--fs-15));color:var(--ink-1)}
 .cot-record-tier{font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);color:var(--ink-2)}
 .cot-record-bar{height:4px;background:var(--line-1)}
 .cot-record-bar i{display:block;height:100%;background:var(--ink-3)}
 .cot-record-ach-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s2);margin-top:6px;font:500 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-data);color:var(--ink-3)}
+.cot-record-ach-meta span+span{font-family:var(--font-body)}
 
 /* the battle log: one plate per battle, its tank's render first (the header plate carries the latest battle's map) */
 .cot-record-history{display:grid;gap:var(--s2);margin:0;padding:0;list-style:none}
@@ -134,7 +136,8 @@
 .cot-record-battle summary::-webkit-details-marker{display:none}
 .cot-record-battle summary:hover{background:var(--fill-faint)}
 .cot-record-battle-row{display:grid;grid-template-columns:140px minmax(0,1fr) 72px 96px auto;align-items:center;gap:var(--s4)}
-.cot-record-vehicle{display:block;width:140px;height:88px;object-fit:contain;filter:var(--sil-shadow)}
+/* a render's hull sits low in its frame: the art rides to its box's top, so the tank centres on the row's text */
+.cot-record-vehicle{display:block;width:140px;height:88px;object-fit:contain;object-position:50% 0;filter:var(--sil-shadow)}
 .cot-record-vehicle.aircraft{display:grid;place-items:center;color:var(--ink-2)}
 .cot-record-vehicle.aircraft svg{width:62%;height:62%}
 .cot-record-battle-what{display:grid;gap:3px;min-width:0}
@@ -165,7 +168,7 @@
 .cot-record-trace li.linked::after{content:'';position:absolute;bottom:50%;left:-15px;width:1px;height:100%;background:var(--ink-3)}
 .cot-record-step,.cot-record-step-time{color:var(--ink-3)}
 .cot-record-trace-vehicle{display:flex;align-items:center;gap:var(--s2);color:var(--ink-1);overflow-wrap:anywhere}
-.cot-record-trace-icon{flex:none;width:48px;height:34px;object-fit:contain}
+.cot-record-trace-icon{flex:none;width:48px;height:34px;object-fit:contain;object-position:50% 0}
 .cot-record-trace small{display:flex;align-items:center;gap:6px;font-size:inherit;color:var(--ink-2)}
 .cot-record-step-gap{min-width:48px;text-align:end;color:var(--ink-2)}
 .cot-record-trace-empty{padding-top:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-13));color:var(--ink-3)}
@@ -177,7 +180,7 @@
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
   .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 68px 84px}
   .cot-record-vehicle{width:96px;height:64px}
-  .cot-record-expand{top:var(--s4);translate:0}
+  .cot-record-expand{top:var(--s3);translate:0}
   .cot-record-battle-medals{grid-column:2/-1}
 }
 @media(max-width:700px){
@@ -232,7 +235,8 @@
   .cot-record-plate .cot-record-vehicle{width:72px;height:44px}
   .cot-record-plate small{display:none}
   .cot-record-tab{min-height:40px}
-  .cot-record-tabs{padding:0}
+  .cot-record-tabs{gap:var(--s4);padding:0 var(--s4)}
+  .cot-record-tab{padding:0}
   .cot-record-body{padding:var(--s3) var(--s4)}
   .cot-record-medal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
