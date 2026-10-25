@@ -333,6 +333,9 @@ body[data-cot-panels='persistent'] .cot-eqtile{padding:var(--s2) 3px var(--s1);}
 body[data-cot-panels='persistent'] .cot-eqtile svg{width:28px;height:28px;margin-bottom:var(--s1);}
 body[data-cot-panels='persistent'] .cot-eqtile .n{display:block;min-height:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 body[data-cot-panels='persistent'] .cot-eqtile .e{display:none;}
+/* a short window's tiles stand lower (a smaller glyph, a slimmer pad), so the 26 items fit three rows without a scroll */
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile{padding:var(--s1) 2px;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile svg{width:22px;height:22px;margin-bottom:2px;}
 
 /* ---- the fleet: the roster tools over the cards, left of the column ---- */
 body[data-cot-panels='persistent'][data-cot-width] .cot-country-rail{left:var(--edge);right:var(--fleet-right);top:auto;
