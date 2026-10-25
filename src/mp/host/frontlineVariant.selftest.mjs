@@ -94,10 +94,11 @@ for (const [x, z] of carvedSectors.filter(Boolean).map((s) => [s.x, s.z])) {
   assert.equal(hosted.heightField.getHeightAt(x, z), trenches.heightField.getHeightAt(x, z), 'over the same carved field');
 }
 const core = readFileSync(new URL('./matchHostCore.ts', import.meta.url), 'utf8');
-assert.match(core, /loadCollisionWorld\(config\.mapId, config\.manifestBase, \{ variant: terrainVariantFor\(config\.mode\) \}\)/,
+// (2026-10-25) the call also names the world kernels (?simKernels=wasm) after the variant
+assert.match(core, /loadCollisionWorld\(config\.mapId, config\.manifestBase, \{\s*variant: terrainVariantFor\(config\.mode\),/,
   'the browser host builds the mode\'s variant');
 const actor = readFileSync(new URL('../../../server/match/matchActor.ts', import.meta.url), 'utf8');
-assert.match(actor, /createDedicatedWorldCollision\(mapId, \{ retain: true, variant: terrainVariantFor\(mode\) \}\)/, 'and the dedicated actor');
+assert.match(actor, /createDedicatedWorldCollision\(mapId, \{ retain: true, variant: terrainVariantFor\(mode\)(, kernels: worldKernels)? \}\)/, 'and the dedicated actor');
 // the clients choose the battlefield from the same table (no mode literal: the solo battle and the network session)
 const main = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
 const session = readFileSync(new URL('../session/browserComposition.ts', import.meta.url), 'utf8');

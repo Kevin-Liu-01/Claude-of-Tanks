@@ -5,6 +5,10 @@
  * message events to the `HostPort` shape the host runtime speaks. Browser-only; the receipts use the in-process pair.
  */
 import type { HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
+import simKernelsWasmUrl from '../../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm?url';
+
+/** The world kernels' module as the build serves it (a hashed asset the host's Worker fetches only under ?simKernels=wasm). */
+export const SIM_KERNELS_URL: string = simKernelsWasmUrl;
 
 interface WorkerLike {
   postMessage(message: unknown, transfer?: ArrayBuffer[]): void;

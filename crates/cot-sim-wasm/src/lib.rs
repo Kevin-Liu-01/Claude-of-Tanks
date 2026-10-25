@@ -5,7 +5,7 @@
 //!
 //! - `js_*`: the pinned ECMAScript math ([`cot_sim::jsmath`]), the same bits on
 //!   every engine — the golden oracle installs them over `Math.*`.
-//! - `lattice_*` / `contact_*`: the terrain contact surface ([`cot_sim::contact`]).
+//! - `lattice_*` / `contact_*`: the terrain contact surface ([`cot_sim::contact`]): heights and fold splits.
 //! - `grid_*`: the obstacle grid ([`cot_sim::grid`]), by handle.
 //! - `shells_step`: the shell step ([`cot_sim::ballistics::step_shell`]) over a packed batch.
 
@@ -128,6 +128,25 @@ pub extern "C" fn contact_sample(x: f64, z: f64) -> f64 {
             s.missing = (ix as u32, iz as u32);
             f64::NAN
         }
+    }
+}
+
+/// `cellFlippedAt` at (x, z): 1 for the a–d split, 0 for b–c (and off the square), or 2 / 3 when a corner / the split
+/// is missing (`contact_missing_*` name the cell; the host supplies it and asks again).
+#[unsafe(no_mangle)]
+pub extern "C" fn contact_cell_flipped(x: f64, z: f64) -> u32 {
+    let s = state();
+    match s.lattice.cell_flipped_at(x, z) {
+        Ok(flipped) => flipped as u32,
+        Err(Sample::MissingVertex(ix, iz)) => {
+            s.missing = (ix as u32, iz as u32);
+            2
+        }
+        Err(Sample::MissingFlip(ix, iz)) => {
+            s.missing = (ix as u32, iz as u32);
+            3
+        }
+        Err(_) => 0,
     }
 }
 
