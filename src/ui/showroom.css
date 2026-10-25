@@ -112,6 +112,9 @@ body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density
 .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
 /* one line a round: the glyph carries the type, the figures take their units inline in columns wide enough for them */
 .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 84px 52px;}
+/* Chinese figures stand at the 13 px floor: the figure columns widen so "806 / 733 mm" never runs into its damage */
+html[lang^='zh'] .cot-garage .stats :is(.shellhead,.shellrow){grid-template-columns:46px minmax(0,1fr) 96px 58px;}
+html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 96px 58px;}
 .cot-garage .stats[data-density~='1'] .shellhead span:first-child{visibility:hidden;}
 .cot-garage .stats[data-density~='1'] .shellkind .ty{display:none;}
 .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
