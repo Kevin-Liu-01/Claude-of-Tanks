@@ -283,15 +283,18 @@ interface StatRowOptions {
   readonly rivalCells?: number;
   /** A worded delta against the rival ("+0.3"), with which direction is better. */
   readonly delta?: string;
+  /** true: the delta is better; false: worse; omitted: an even comparison (neutral). */
   readonly better?: boolean;
+  /** The tight row gap of a dense panel (the Garage overview). */
+  readonly compact?: boolean;
 }
 
 /** Value + unit beside a fixed scale; raw values always shown beside any rating (SPEC §6.2). */
 export function statRow(options: StatRowOptions): string {
-  const delta = options.delta
-    ? `<em class="cot-c-stat__delta ${options.better ? 'is-better' : 'is-worse'}">${esc(options.delta)}</em>` : '';
+  const tone = options.better === undefined ? '' : options.better ? ' is-better' : ' is-worse';
+  const delta = options.delta ? `<em class="cot-c-stat__delta${tone}">${esc(options.delta)}</em>` : '';
   const unit = options.unit ? `<small>${esc(options.unit)}</small>` : '';
-  return `<div class="cot-c-stat">${options.icon ? icon(options.icon, { size: 18 }) : '<span></span>'}`
+  return `<div class="cot-c-stat${options.compact ? ' cot-c-stat--compact' : ''}">${options.icon ? icon(options.icon, { size: 18 }) : '<span></span>'}`
     + `<span class="cot-c-stat__label">${esc(options.label)}</span>`
     + `<span class="cot-c-stat__value"><b class="num">${esc(options.value)}</b>${unit}${delta}</span>`
     + `${scale20(options.cells, options.rivalCells)}</div>`;
