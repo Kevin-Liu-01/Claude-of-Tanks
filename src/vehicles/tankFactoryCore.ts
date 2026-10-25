@@ -40,7 +40,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, thinPartBoxUV,
+  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, reprojectMovedFaceBoxUV, thinPartBoxUV,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -9073,6 +9073,8 @@ function* buildTankCoreSteps(
       // blended, so a per-vertex axis landed one triangle's corners on different projections and the mips smeared the
       // pattern to one flat darker tone on 165 hulls (the T-90AM's "second hull"); camo now stays crisp to every edge.
       faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // a later edit of this surface's vertices re-projects what it moved (the turret seat: reprojectMovedFaceBoxUV)
+      merged.userData.camoFaceProjection = CAMO_UV_REPEATS_PER_M;
       if (CAMO_THIN_PART_PROJECTION_IDS.has(specId)) thinPartBoxUV(list, merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
@@ -9211,7 +9213,10 @@ function* buildTankCoreSteps(
     // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
     // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back),
     // and so do the equipment lids' and the weapon stock's damage ranges.
+    // 253: the seat lifts a camo surface's low corners after faceBoxUV projected them; the camo follows the lifted corner.
     seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
+      const camoScale = built.userData.camoFaceProjection as number | undefined;
+      if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale);
       const was = built.getAttribute('position'), now = seated.getAttribute('position');
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) {
