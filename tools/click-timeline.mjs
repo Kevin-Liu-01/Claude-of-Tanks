@@ -511,13 +511,22 @@ export const PATHS = [
     script: async (page, i, run) => {
       await page.evaluate(() => {
         const lose = window.__DEBUG.renderer.getContext().getExtension('WEBGL_lose_context');
+        window.__ctxLostAt = performance.now();
         lose.loseContext();
         setTimeout(() => lose.restoreContext(), 700);
       });
       await run('context-restore', async () => null, { idleMs: 7000, quietMs: 1 });
-      const state = await page.evaluate(() => ({ lost: window.__DEBUG.renderer.getContext().isContextLost(),
-        cover: !!document.getElementById('cot-ctxlost'), phase: window.__DEBUG.game?.phase ?? null }));
-      console.log(`    context-restore #${i}: context ${state.lost ? 'STILL LOST' : 'live'}, cover ${state.cover ? 'STILL SHOWN' : 'gone'}, phase ${state.phase}`);
+      // how long the cover took to clear (a 4x phone restores slower than the window), up to 30 s after the loss
+      const state = await page.evaluate(async () => {
+        while (document.getElementById('cot-ctxlost') && performance.now() - window.__ctxLostAt < 30000) {
+          await new Promise((done) => setTimeout(done, 100));
+        }
+        return { lost: window.__DEBUG.renderer.getContext().isContextLost(), cover: !!document.getElementById('cot-ctxlost'),
+          clearedMs: Math.round(performance.now() - window.__ctxLostAt), phase: window.__DEBUG.game?.phase ?? null,
+          notice: document.querySelector('#cot-ctxlost-title')?.textContent ?? null };
+      });
+      console.log(`    context-restore #${i}: context ${state.lost ? 'STILL LOST' : 'live'}, cover ${state.cover
+        ? `STILL SHOWN at ${state.clearedMs} ms (${state.notice})` : `gone ${state.clearedMs} ms after the loss`}, phase ${state.phase}`);
     } },
   // (lockdown-251) graceful recovery: the Studio's chunk fails to load (the network refuses it), then the press is retried
   { id: 'recover-chunk', doc: 'game', reps: 1,
@@ -525,6 +534,12 @@ export const PATHS = [
       const refuse = (request) => (/\/assets\/studio-[^/]*\.js(\?|$)/.test(request.url()) ? request.abort('failed') : request.continue());
       await page.setRequestInterception(true);
       page.on('request', refuse);
+      if (!(await page.evaluate(() => [...document.querySelectorAll('[data-nav=studio]')].some((el) => __click.visible(el))))) {
+        page.off('request', refuse);
+        await page.setRequestInterception(false);
+        console.log('    chunk-fail-studio: no Studio control on this layout (desktop probe only)');
+        return;
+      }
       await run('chunk-fail-studio', () => target(page, '[data-nav=studio]'), { quietMs: 4000 });
       page.off('request', refuse);
       await page.setRequestInterception(false);
@@ -532,6 +547,7 @@ export const PATHS = [
         garage: __click.shown('.cot-garage'), retry: !!document.querySelector('[data-boot-retry], .cot-boot-retry, #cot-boot-recovery'),
         toast: document.querySelector('.cot-toast, [role=alert]')?.textContent?.trim()?.slice(0, 80) ?? null }));
       console.log(`    chunk-fail-studio: ${JSON.stringify(after)}`);
+      await waitFor(page, GARAGE, 120000); // the boot recovery may have reloaded the page
       await run('chunk-retry-studio', () => target(page, '[data-nav=studio]'), {
         done: `!!window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000 });
       await leaveStudio(page, ctx);
