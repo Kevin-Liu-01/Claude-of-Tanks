@@ -49,7 +49,7 @@ import {
   resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook,
 } from './materials.ts';
 import { programVariantOrigin } from '../engine/programVariants.ts';
-import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatRace.ts';
+import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatPlane.ts';
 import { coplanarDepthUnits } from './coplanarDepth.ts';
 
 const TURRET_RING_WELL_ASSET_ID = 'urn:claude-of-tanks:vehicle-helper:turret-ring-well';

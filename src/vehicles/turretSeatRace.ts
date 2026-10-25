@@ -33,22 +33,11 @@
  */
 import * as THREE from 'three';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
+import { turretSeatPlane, type TurretSeatLimits, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 
 /** The build's disposables (its geometry is freed with it). */
 interface GeometryDisposables { push(geometry: THREE.BufferGeometry): unknown }
 
-/** The seam between the deck round the ring and the turret's lowest surface outside the race (m). */
-export const TURRET_SEAT_GAP_M = 0.03;
-/** Past the race's rim, where the turret's surfaces are seated over the deck (m). */
-const SEAT_RIM_CLEAR_M = 0.02;
-/** The swept deck's radius band (m), and its value where no hull lies at that radius on any bearing (m under the deck). */
-export const TURRET_SWEEP_BIN_M = 0.05;
-export const TURRET_SWEEP_FLOOR_M = -1;
-/** How far either side of a corner's radius the swept deck under it is read (m): its 2.5 cm grid's cells, and the
- *  reach of the faces round the corner (a face's edge between two seated corners runs straight). */
-const SWEEP_READ_M = 0.10;
-/** The most the seat rises over the deck round the ring's plane (m). */
-const TURRET_SEAT_RISE_M = 0.04;
 
 /** The race's mesh name (tools and the ring census find it by it). */
 export const TURRET_SEAT_RACE_NAME = 'turretSeatRace';
@@ -60,14 +49,6 @@ const RACE_FOOT_M = 0.010;
 /** Inside the receipt's rim, so the kill's ring prism takes all of it (m). */
 const RIM_INSET_M = 0.004;
 const CHAMFER_M = 0.002;
-
-interface TurretSeatRaceReceipt {
-  readonly seat: readonly number[];
-  readonly deckY: number;
-  readonly rimR: number;
-  readonly sweepR0?: number;
-  readonly sweepDy?: readonly number[];
-}
 
 /** The race's width (its bolt flange and machined face) from its outer radius, as the wreck's plate draws it. */
 function raceWidth(rimR: number): number { return Math.min(0.085, Math.max(0.05, 0.075 * rimR)); }
@@ -132,28 +113,46 @@ export interface SeatTurretOverDeckOptions {
   onSeated?: (built: THREE.BufferGeometry, seated: THREE.BufferGeometry) => void;
 }
 
+/**
+ * 252: a fitting the seat lifted whole lay wholly under the plane, buried in the deck as built and never drawn. Laid on the
+ * plane it became a double sheet, its top on its bottom over the seated underside (the Griffin Viper's dark base block and
+ * 70 others on 19 turrets). Such a part (its triangles joined by shared corners, every corner moved) collapses to one
+ * point instead: zero area, drawn nowhere. `_toHull` holds the mesh's frame.
+ */
+function collapseWhollySeated(source: THREE.BufferGeometry, out: THREE.BufferAttribute, moved: Uint8Array): void {
+  const position = source.getAttribute('position'), index = source.index;
+  const count = index ? index.count : position.count;
+  const parent = new Int32Array(position.count);
+  for (let i = 0; i < parent.length; i++) parent[i] = i;
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const join = (a: number, b: number): void => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+  const byPosition = new Map<string, number>();
+  for (let i = 0; i < position.count; i++) {
+    const key = positionKey(_v.fromBufferAttribute(position, i).applyMatrix4(_toHull));
+    const first = byPosition.get(key);
+    if (first === undefined) byPosition.set(key, i); else join(first, i);
+  }
+  for (let k = 0; k + 2 < count; k += 3) {
+    const a = index ? index.getX(k) : k;
+    join(a, index ? index.getX(k + 1) : k + 1);
+    join(a, index ? index.getX(k + 2) : k + 2);
+  }
+  const whole = new Uint8Array(position.count).fill(1);
+  for (let i = 0; i < position.count; i++) if (!moved[i]) whole[find(i)] = 0;
+  const anchor = new Int32Array(position.count).fill(-1);
+  for (let i = 0; i < position.count; i++) {
+    const root = find(i);
+    if (!whole[root]) continue;
+    if (anchor[root] < 0) { anchor[root] = i; continue; }
+    out.setXYZ(i, out.getX(anchor[root]), out.getY(anchor[root]), out.getZ(anchor[root]));
+  }
+}
+
 /** Seat the turret's surfaces over the deck round its ring (see the header); the count of meshes moved. */
 export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated }: SeatTurretOverDeckOptions): number {
-  const receipt = combatAnatomyCalibration(specId)?.turretRing;
-  if (!receipt || !(receipt.rimR > 0.3) || !Number.isFinite(receipt.deckY)) return 0;
-  const own = (key: string, fallback: number): number =>
-    typeof turretG.userData[key] === 'number' ? turretG.userData[key] as number : fallback;
-  const seatY = receipt.deckY + TURRET_SEAT_GAP_M, keepR = own('turretSeatKeepR', receipt.rimR + SEAT_RIM_CLEAR_M);
-  const cx = receipt.seat[0], cz = receipt.seat[2];
-  const sweep = receipt.sweepDy, sweepR0 = receipt.sweepR0 ?? Infinity;
-  const rise = own('turretSeatRiseM', TURRET_SEAT_RISE_M), read = own('turretSeatReadM', SWEEP_READ_M);
-  const floorY = own('turretSeatMinY', -Infinity);
-  // the plane a corner at plan radius r comes up to: its gap over the swept deck's highest band within SWEEP_READ_M of
-  // r (no higher than TURRET_SEAT_RISE_M over the deck round the ring), or the deck's own plane without a swept deck
-  const planeAt = (r: number): number => {
-    if (!sweep?.length || r < sweepR0) return Math.max(seatY, floorY);
-    const b0 = Math.max(0, Math.floor((r - read - sweepR0) / TURRET_SWEEP_BIN_M));
-    const b1 = Math.min(sweep.length - 1, Math.floor((r + read - sweepR0) / TURRET_SWEEP_BIN_M));
-    if (Math.floor((r + SWEEP_READ_M - sweepR0) / TURRET_SWEEP_BIN_M) >= sweep.length) return Math.max(seatY, floorY);
-    let dy = TURRET_SWEEP_FLOOR_M;
-    for (let b = b0; b <= b1; b++) dy = Math.max(dy, sweep[b]);
-    return Math.max(seatY + Math.min(dy, rise), floorY);
-  };
+  const seat = turretSeatPlane(combatAnatomyCalibration(specId)?.turretRing, turretG.userData as TurretSeatLimits);
+  if (!seat) return 0;
+  const { cx, cz, keepR, planeAt } = seat;
   hullG.updateWorldMatrix(true, false);
   turretG.updateMatrixWorld(true);
   _hullInverse.copy(hullG.matrixWorld).invert();
@@ -218,6 +217,7 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, 
       out.setXYZ(i, _v.x, _v.y, _v.z);
       movedVertex[i] = 1;
     }
+    collapseWhollySeated(source, out, movedVertex);
     const normal = seated.getAttribute('normal') as THREE.BufferAttribute | undefined;
     if (normal) {
       // (unmoved vertices keep their authored, possibly smooth, normals)
