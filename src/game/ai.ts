@@ -378,6 +378,26 @@ const TAU = Math.PI * 2;
 const DEFAULT_SEED = 7001;
 /** The widest box (in obstacle-grid cells) the bots' box queries walk on the grid (ai.ts obstaclesInBox). */
 const BOX_GRID_MAX_CELLS = 256;
+/**
+ * Whether an obstacle grid's order is the list's (battle-spikes-253): one answer per list and grid, shared by every bot.
+ * Each bot's controller re-walked the whole list on its first query (a Map read a solid), so the battle's first step
+ * walked it once a bot — at 21 v 21 the largest part of the rollout's 40 ms step. The answer depends on the list, its
+ * length and the grid alone, so it is the same for each bot and is kept with them.
+ */
+const GRID_ORDER_MATCHES = new WeakMap<readonly AiObstacle[], { length: number; order: object; matches: boolean }>();
+function gridOrderMatches(list: readonly AiObstacle[], order: { count: number; slotOf: ReadonlyMap<CollisionRecord, number> }): boolean {
+  const known = GRID_ORDER_MATCHES.get(list);
+  if (known && known.length === list.length && known.order === order) return known.matches;
+  // (a box the grid cannot place, not finite, is one the scan never passes: the list is scanned whole)
+  let matches = order.count === list.length;
+  for (let i = 0; matches && i < list.length; i++) {
+    const o = list[i];
+    if (order.slotOf.get(o as CollisionRecord) !== i || !(Number.isFinite(o.min[0]) && Number.isFinite(o.max[0])
+      && Number.isFinite(o.min[2]) && Number.isFinite(o.max[2]))) matches = false;
+  }
+  GRID_ORDER_MATCHES.set(list, { length: list.length, order, matches });
+  return matches;
+}
 const ascending = (a: number, b: number): number => a - b;
 
 /**
@@ -2817,13 +2837,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (gridList !== obstacles || gridListLength !== obstacles.length) {
       gridList = obstacles;
       gridListLength = obstacles.length;
-      gridMatchesList = order.count === obstacles.length;
-      // (a box the grid cannot place, not finite, is one the scan never passes: the list is scanned whole)
-      for (let i = 0; gridMatchesList && i < obstacles.length; i++) {
-        const o = obstacles[i];
-        if (order.slotOf.get(o as CollisionRecord) !== i || !(Number.isFinite(o.min[0]) && Number.isFinite(o.max[0])
-          && Number.isFinite(o.min[2]) && Number.isFinite(o.max[2]))) gridMatchesList = false;
-      }
+      gridMatchesList = gridOrderMatches(obstacles, order);
     }
     if (!gridMatchesList || !(Number.isFinite(minX) && Number.isFinite(minZ) && Number.isFinite(maxX) && Number.isFinite(maxZ))) return null;
     const cells = (Math.floor(maxX * order.inv) - Math.floor(minX * order.inv) + 1)
