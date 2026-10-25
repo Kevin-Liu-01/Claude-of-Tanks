@@ -3853,7 +3853,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
       const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
       const shown = (['gravity', 'speed', 'boss', 'respawn', 'victory', 'teams', 'clock'] as const).filter((key) => facts[key] != null).slice(0, 2);
-      row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
+      row.innerHTML = rules(shown.map((key) => [DEPLOY_FACT_ICON[key], String(facts[key])] as const));
     }
   }
   function renderDeployRules(): void {

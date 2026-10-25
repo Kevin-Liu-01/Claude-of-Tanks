@@ -101,7 +101,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-deploy-choi
   right:10px;bottom:10px;display:flex;flex-direction:column;gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .choice-name{margin:0;font:700 var(--fs-15)/1.05 var(--font-display);
   text-wrap:balance;}
-body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-deploy-chips{flex-wrap:wrap;row-gap:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-deploy-chips .cot-c-rules{row-gap:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choice[aria-pressed='true']{background:var(--row-plate);
   box-shadow:none;outline:2px solid var(--accent);outline-offset:0;}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choice[aria-pressed='true'] .choice-icon{background:var(--accent);
@@ -114,11 +114,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-battle-choice.cot-deploy-card::after{content:'';display:block;position:absolute;inset:0;width:auto;height:auto;border:0;
   transform:none;opacity:1;background:var(--media-fade);}
 
-/* every choice's rules: the data voice (.rules) */
-.cot-garage .cot-deploy-chips{display:flex;gap:var(--s3);font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
-.cot-garage .cot-deploy-rows .cot-deploy-chips{gap:var(--s3);}
-.cot-garage .cot-deploy-chips span{display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;}
-.cot-garage .cot-deploy-chips svg{width:14px;height:14px;color:var(--ink-3);}
+/* every choice's rules: the kit's data voice (rules(), .cot-c-rules) */
+.cot-garage .cot-deploy-chips{display:flex;}
 
 /* ---- the lower band: the campaign's next operation and the recent battles (.lower, .camp-card, .rec) ---- */
 .cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:var(--s3);flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
