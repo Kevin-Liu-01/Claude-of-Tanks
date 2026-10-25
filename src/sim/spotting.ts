@@ -51,6 +51,7 @@ import {
   type SpottingTankSpec,
 } from './spottingStats.ts';
 
+import * as detMath from './detMath.ts';
 // The view ranges, base camo and equipment effects live in spottingStats.ts (the Garage reads them without this system).
 export { BASE_CAMO, EQUIPMENT, VIEW_RANGE_M, baseCamoOf, equipCamoBonus, equipViewMult, viewRangeOf };
 
@@ -299,7 +300,7 @@ export function signalRangeM(ent: SpottingTank): number {
 export function fireBloomAt(firedAtS: number, timeS: number): number {
   const age = timeS - firedAtS;
   if (age < 0) return 0;
-  const b = Math.exp(-age / FIRE_BLOOM_TAU_S);
+  const b = detMath.exp(-age / FIRE_BLOOM_TAU_S);
   return b < FIRE_BLOOM_EPS ? 0 : b;
 }
 
@@ -397,7 +398,7 @@ function discOnSightline(c: ConcealerDisc, sx: number, sz: number, tx: number, t
   if (ddx * ddx + ddz * ddz > r * r) return false;
   if (targetFired) {
     const fx = c.x - tx, fz = c.z - tz;
-    if (Math.hypot(fx, fz) - r < BUSH_FIRE_TRANSPARENT_M) return false; // lit up
+    if (detMath.hypot(fx, fz) - r < BUSH_FIRE_TRANSPARENT_M) return false; // lit up
   }
   return true;
 }
@@ -594,7 +595,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     timeS: number,
   ): number {
     if (spotter === target || !alive(spotter) || spotter.team === target.team) return Infinity;
-    const distance = Math.hypot(spotter.state.pos.x - target.state.pos.x,
+    const distance = detMath.hypot(spotter.state.pos.x - target.state.pos.x,
       spotter.state.pos.z - target.state.pos.z);
     const current = _seenVia[spotter.team];
     if (current?.shareM === SIGNAL_RANGE_M) return distance;
@@ -711,7 +712,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       const radius = concealer.r + 1.2;
       if (dx * dx + dz * dz > radius * radius) continue;
       const flashExposesBush = bloom > 0
-        && Math.hypot(dx, dz) - concealer.r < BUSH_FIRE_TRANSPARENT_M;
+        && detMath.hypot(dx, dz) - concealer.r < BUSH_FIRE_TRANSPARENT_M;
       if (flashExposesBush) continue;
       bush += concealer.add;
       if (bush >= MAX_BUSH_BONUS) return MAX_BUSH_BONUS;
@@ -941,7 +942,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       const p = receiver.state && receiver.state.pos;
       if (!p) return true;
       const shareM = Math.min(st.spotter.shareM, signalRangeM(receiver));
-      return Math.hypot(p.x - st.spotter.x, p.z - st.spotter.z) <= shareM;
+      return detMath.hypot(p.x - st.spotter.x, p.z - st.spotter.z) <= shareM;
     },
 
     /**

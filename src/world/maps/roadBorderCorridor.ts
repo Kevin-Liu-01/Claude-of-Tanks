@@ -1,6 +1,7 @@
 import { ROAD_ENDPOINT_INTENTS, type RoadPoint } from './roadEndpoints.ts';
 import type { MapId } from './catalog.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 function smooth(a: number, b: number, value: number): number {
   const t = Math.max(0, Math.min(1, (value - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -148,7 +149,7 @@ function stampPortal(corridor: Float32Array, size: number, mapSize: number,
   anchor: RoadPoint, inward: RoadPoint, width: number, border: number, fullWidth: boolean): void {
   const half = mapSize / 2, step = mapSize / (size - 1);
   const dx = anchor[0] - inward[0], dz = anchor[1] - inward[1];
-  const length = Math.hypot(dx, dz), ux = dx / length, uz = dz / length;
+  const length = detMath.hypot(dx, dz), ux = dx / length, uz = dz / length;
   if (!length) throw new Error('Degenerate road border corridor');
   // Skybridge's tall bank needs the full smooth transition, not a redundant
   // constant-CW core. Pavement independently owns its 3.8m flat road surface.

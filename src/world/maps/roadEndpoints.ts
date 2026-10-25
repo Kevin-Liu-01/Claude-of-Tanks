@@ -1,6 +1,7 @@
 import type { MapId } from './catalog.ts';
 import type { TerrainMapConfig } from '../terrain.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 /** Added approach nodes guide the new road cuts. Seeded vegetation admission
  * uses the original interior paths so those additions cannot shift the random
  * sequence across an entire forest. The sampler is construction-only. */
@@ -143,7 +144,7 @@ export function roadIntersection(a: RoadPoint, b: RoadPoint, c: RoadPoint, d: Ro
 }
 
 function sampleExtension(a: RoadPoint, b: RoadPoint): [number, number][] {
-  const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 32));
+  const steps = Math.max(1, Math.ceil(detMath.hypot(b[0] - a[0], b[1] - a[1]) / 32));
   return Array.from({ length: steps }, (_, i) => {
     const t = i / steps;
     return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -232,11 +233,11 @@ function gradePortal(elevations: number[], road: readonly RoadPoint[], anchor: R
   if (at < 0) return; // a trimmed crossbar no longer owns an outward tail
   const inward = start ? at + 1 : at - 1;
   if (inward < 0 || inward >= road.length) return;
-  const p = road[inward], length = Math.hypot(p[0] - anchor[0], p[1] - anchor[1]);
+  const p = road[inward], length = detMath.hypot(p[0] - anchor[0], p[1] - anchor[1]);
   const grade = Math.max(-.12, Math.min(.12, (elevations[at] - elevations[inward]) / length));
   const step = start ? -1 : 1;
   for (let i = at + step; i >= 0 && i < road.length; i += step) {
-    elevations[i] = elevations[at] + grade * Math.hypot(road[i][0] - anchor[0], road[i][1] - anchor[1]);
+    elevations[i] = elevations[at] + grade * detMath.hypot(road[i][0] - anchor[0], road[i][1] - anchor[1]);
   }
 }
 
@@ -325,7 +326,7 @@ function alignApronExit(grid: PortalGrid, road: readonly RoadPoint[], route: num
   const at = road.findIndex(p => p[0] === anchor[0] && p[1] === anchor[1]);
   const outside = start ? at - 1 : at + 1;
   if (at < 0 || outside < 0 || outside >= road.length) return;
-  const point = road[outside], length = Math.hypot(point[0] - anchor[0], point[1] - anchor[1]);
+  const point = road[outside], length = detMath.hypot(point[0] - anchor[0], point[1] - anchor[1]);
   const ux = (point[0] - anchor[0]) / length, uz = (point[1] - anchor[1]) / length;
   const level = grid.sample(anchor[0], anchor[1]);
   const grade = Math.max(-.12, Math.min(.12,

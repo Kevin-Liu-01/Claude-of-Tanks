@@ -1,6 +1,7 @@
 /** The load-bearing surface is the rendered near terrain, including its
  * Float32 vertices and triangle diagonal. Bilinear/analytic heights describe
  * a different surface and can leave a visible gap under an entire track. */
+import * as detMath from '../sim/detMath.ts';
 const SIZE = 1024, HALF = SIZE / 2, CHUNK = 128, SEGMENTS = 96;
 
 /**
@@ -170,7 +171,7 @@ export function createTerrainContactSampler(
       else { sx = (d - c) / dx; sz = (d - b) / dz; }
     } else if (u >= v) { sx = (b - a) / dx; sz = (d - b) / dz; }
     else { sx = (d - c) / dx; sz = (c - a) / dz; }
-    const inverse = 1 / Math.hypot(sx, 1, sz);
+    const inverse = 1 / detMath.hypot(sx, 1, sz);
     out.x = -sx * inverse; out.y = inverse; out.z = -sz * inverse;
     return out;
   };

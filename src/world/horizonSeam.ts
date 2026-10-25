@@ -2,6 +2,7 @@ import { BufferAttribute, type BufferGeometry } from 'three';
 import type { CanyonGround } from './horizonRedrock.ts';
 import { continuedGroundSampler } from './horizonSurface.ts';
 
+import * as detMath from '../sim/detMath.ts';
 const DIVISIONS = 8;
 const REACH = 16;
 type Attributes = Record<string, BufferAttribute>;
@@ -71,12 +72,12 @@ export function refineHorizonGroundSeam(geometry: BufferGeometry, columns: numbe
           const e = 128 / 96;
           const gx = sample(x - e, z) - sample(x + e, z), gy = 2 * e;
           const gz = sample(x, z - e) - sample(x, z + e);
-          const length = Math.hypot(gx, gy, gz);
+          const length = detMath.hypot(gx, gy, gz);
           nx = nx * (1 - weight) + gx / length * weight;
           ny = ny * (1 - weight) + gy / length * weight;
           nz = nz * (1 - weight) + gz / length * weight;
         }
-        const inverse = 1 / Math.hypot(nx, ny, nz);
+        const inverse = 1 / detMath.hypot(nx, ny, nz);
         arrays[name].push(nx * inverse, ny * inverse, nz * inverse);
       } else for (let axis = 0; axis < attribute.itemSize; axis++) arrays[name].push(blend(attribute.array, attribute.itemSize, axis));
     }

@@ -14,6 +14,7 @@
  */
 import { Vector3 } from 'three';
 
+import * as detMath from './detMath.ts';
 /** Stamps are bucketed on a 16 m grid over the 1,024 m map. */
 const BUCKET_M = 16;
 const WORLD_HALF_M = 512;
@@ -221,22 +222,22 @@ export function courseProfile(stamp: CourseStamp, x: number, z: number): number 
   while (k + 2 < last && profile[k + 2] <= u) k += 2;
   const u0 = profile[k], u1 = profile[k + 2];
   const h = profile[k + 1] + (profile[k + 3] - profile[k + 1]) * (u1 > u0 ? (u - u0) / (u1 - u0) : 0);
-  return past > 0 ? h * 0.5 * (1 + Math.cos(Math.PI * past / stamp.skirtM)) : h;
+  return past > 0 ? h * 0.5 * (1 + detMath.cos(Math.PI * past / stamp.skirtM)) : h;
 }
 
 /** A crater's profile at distance r from its centre and angle a (§7): a bowl, a rim broken round it, ragged by the
  * seed's phases. */
 export function craterProfile(stamp: CraterStamp, r: number, angle: number): number {
-  const wobble = 1 + 0.08 * (0.5 * Math.sin(3 * angle + stamp.p1) + 0.3 * Math.sin(5 * angle + stamp.p2)
-    + 0.2 * Math.sin(7 * angle + stamp.p3));
+  const wobble = 1 + 0.08 * (0.5 * detMath.sin(3 * angle + stamp.p1) + 0.3 * detMath.sin(5 * angle + stamp.p2)
+    + 0.2 * detMath.sin(7 * angle + stamp.p3));
   const radius = stamp.radiusM * wobble;
   if (!(radius > 0) || r >= radius * CRATER_REACH) return 0;
   const q = r / radius;
   const bowl = q < 1 ? -stamp.depthM * (1 - q * q) * (1 - q * q) : 0;
   const ring = (q - 1) / (q < 1 ? RIM_INNER : RIM_OUTER);
-  const broken = 1 + RIM_BREAK * (0.5 * Math.sin(2 * angle + stamp.p2) + 0.3 * Math.sin(4 * angle + stamp.p3)
-    + 0.2 * Math.sin(6 * angle + stamp.p1));
-  let rim = stamp.rimM * broken * Math.exp(-ring * ring);
+  const broken = 1 + RIM_BREAK * (0.5 * detMath.sin(2 * angle + stamp.p2) + 0.3 * detMath.sin(4 * angle + stamp.p3)
+    + 0.2 * detMath.sin(6 * angle + stamp.p1));
+  let rim = stamp.rimM * broken * detMath.exp(-ring * ring);
   if (q > CRATER_FADE_START) {
     const t = (CRATER_REACH - q) / (CRATER_REACH - CRATER_FADE_START);
     rim *= t * t * (3 - 2 * t);
@@ -263,7 +264,7 @@ export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): n
   const height = Math.max(0, mound.heightM);
   heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, _moundCrown);
   const h = _moundShape;
-  h.cx = mound.cx; h.cz = mound.cz; h.hw = mound.hw; h.hd = mound.hd; h.c = Math.cos(mound.yaw); h.s = Math.sin(mound.yaw);
+  h.cx = mound.cx; h.cz = mound.cz; h.hw = mound.hw; h.hd = mound.hd; h.c = detMath.cos(mound.yaw); h.s = detMath.sin(mound.yaw);
   h.heightM = height; h.falloffM = rubbleFalloffM(mound.hw, mound.hd, height);
   return heapHeight(h, x, z);
 }
@@ -275,7 +276,7 @@ const _moundShape: HeapShape = { cx: 0, cz: 0, hw: 0, hd: 0, c: 1, s: 0, heightM
 export function rubbleStampOf(mound: RubbleMound): RubbleStamp {
   const height = Math.max(0, mound.heightM);
   return { kind: 'rubble', cx: mound.cx, cz: mound.cz, hw: mound.hw, hd: mound.hd, yaw: mound.yaw, heightM: height,
-    c: Math.cos(mound.yaw), s: Math.sin(mound.yaw), falloffM: rubbleFalloffM(mound.hw, mound.hd, height), t0: -Infinity,
+    c: detMath.cos(mound.yaw), s: detMath.sin(mound.yaw), falloffM: rubbleFalloffM(mound.hw, mound.hd, height), t0: -Infinity,
     growS: RUBBLE_GROW_S, crown: heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, new Float64Array(CROWN_PARAMS)) };
 }
 
@@ -293,7 +294,7 @@ function heapCrown(cx: number, cz: number, hw: number, hd: number, out: Float64A
   h ^= h >>> 15;
   const turn = (shift: number): number => (((h >>> shift) & 0xff) / 256) * Math.PI * 2;
   const lean = turn(0);
-  out[0] = Math.cos(lean); out[1] = Math.sin(lean);
+  out[0] = detMath.cos(lean); out[1] = detMath.sin(lean);
   out[2] = turn(8); out[3] = turn(16); out[4] = turn(24);
   // wave numbers on the plateau normalised to its edges (±1): a swell no shorter than CROWN_WAVE_M on the ground and at
   // most a cycle and a half across the plateau; the second, oblique swell 1.3 times longer
@@ -324,11 +325,11 @@ function heapHeight(shape: HeapShape, x: number, z: number): number {
   const a = ea > 1e-3 ? Math.max(-1, Math.min(1, alongAt / ea)) : 0;
   const b = eb > 1e-3 ? Math.max(-1, Math.min(1, acrossAt / eb)) : 0;
   const lean = (crown[0] * b + crown[1] * a) * Math.SQRT1_2;
-  const swell = 0.6 * Math.sin(crown[5] * a + crown[2]) * Math.sin(crown[6] * b + crown[3])
-    + 0.4 * Math.sin(crown[7] * a - crown[8] * b + crown[4]);
+  const swell = 0.6 * detMath.sin(crown[5] * a + crown[2]) * detMath.sin(crown[6] * b + crown[3])
+    + 0.4 * detMath.sin(crown[7] * a - crown[8] * b + crown[4]);
   const g = CROWN_LEAN * lean + (1 - CROWN_LEAN) * swell;
   const top = height * (1 - CROWN_DROP * 0.5 * (1 - g));
-  return outside > 0 ? top * 0.5 * (1 + Math.cos(Math.PI * outside / falloff)) : top;
+  return outside > 0 ? top * 0.5 * (1 + detMath.cos(Math.PI * outside / falloff)) : top;
 }
 
 /** The seed's three wobble phases (deterministic, no RNG state): a crater's ragged edge, and the presentation's decal
@@ -404,7 +405,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       if (stamp.kind === 'crater') {
         const dx = x - stamp.x, dz = z - stamp.z;
         const r = Math.sqrt(dx * dx + dz * dz);
-        if (r < stamp.radiusM * CRATER_REACH * 1.1) sum += craterProfile(stamp, r, Math.atan2(dz, dx));
+        if (r < stamp.radiusM * CRATER_REACH * 1.1) sum += craterProfile(stamp, r, detMath.atan2(dz, dx));
       } else if (stamp.kind === 'course') {
         course += courseProfile(stamp, x, z);
       } else {
@@ -472,7 +473,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       // (no clock set — a consumer that never steps one — or a settled heap: risen at once, as before)
       const start = t0 !== undefined ? t0 : Number.isFinite(now) ? now : -Infinity;
       const stamp: RubbleStamp = { kind: 'rubble', cx, cz, hw, hd, yaw, heightM: height,
-        c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S,
+        c: detMath.cos(yaw), s: detMath.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S,
         crown: heapCrown(cx, cz, hw, hd, new Float64Array(CROWN_PARAMS)) };
       if (Number.isFinite(start) && growthOf(stamp) < 1) rising.push(stamps.length);
       if (Number.isFinite(start)) timedHeaps++;

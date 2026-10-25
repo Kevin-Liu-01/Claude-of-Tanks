@@ -13,6 +13,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { Vector3 } from 'three';
 
+import * as detMath from './detMath.ts';
 export interface BallisticShellSpec {
   velocityMps: number;
   maxLifetimeS?: number;
@@ -125,7 +126,7 @@ export function solveBallisticGunLay(
   const dx = aimPoint.x - muzzlePos.x;
   const dy = aimPoint.y - muzzlePos.y;
   const dz = aimPoint.z - muzzlePos.z;
-  const horizontal = Math.hypot(dx, dz);
+  const horizontal = detMath.hypot(dx, dz);
   if (horizontal <= 1e-6) return true;
 
   const v2 = velocity * velocity;
@@ -228,7 +229,7 @@ export function guideShellToward(
   _guideDesired.normalize();
   _guideCurrent.copy(shell.vel).multiplyScalar(1 / speed);
   const dot = Math.max(-1, Math.min(1, _guideCurrent.dot(_guideDesired)));
-  const angle = Math.acos(dot);
+  const angle = detMath.acos(dot);
   if (angle <= 1e-7) return true;
   const rate = typeof shell.spec.guidanceTurnRateRadS === 'number' &&
     Number.isFinite(shell.spec.guidanceTurnRateRadS)
@@ -242,7 +243,7 @@ export function guideShellToward(
       Math.abs(_guideCurrent.y) < 0.9 ? 1 : 0, 0).cross(_guideCurrent);
   }
   _guidePerp.normalize();
-  _guideCurrent.multiplyScalar(Math.cos(turn)).addScaledVector(_guidePerp, Math.sin(turn));
+  _guideCurrent.multiplyScalar(detMath.cos(turn)).addScaledVector(_guidePerp, detMath.sin(turn));
   shell.vel.copy(_guideCurrent).multiplyScalar(speed);
   return true;
 }
@@ -280,7 +281,7 @@ export function penAtDistanceMm(shellSpec: PenetrationSpec, distM: number) {
  */
 export function aimElevationRad(distM: number, velocityMps: number) {
   const s = Math.min(1, Math.max(-1, (G_SHELL * distM) / (velocityMps * velocityMps)));
-  return 0.5 * Math.asin(s);
+  return 0.5 * detMath.asin(s);
 }
 
 /**
@@ -322,14 +323,14 @@ export function applyDispersion(dir: Vector3, a: number, b: number | Rng, c?: Rn
   {
     const u1 = Math.max(rng(), 1e-12);
     const u2 = rng();
-    const r = Math.sqrt(-2 * Math.log(u1));
-    x = r * Math.cos(2 * Math.PI * u2);
-    y = r * Math.sin(2 * Math.PI * u2);
+    const r = Math.sqrt(-2 * detMath.log(u1));
+    x = r * detMath.cos(2 * Math.PI * u2);
+    y = r * detMath.sin(2 * Math.PI * u2);
     if (x * x + y * y > 4) {
       const rr = 2 * Math.sqrt(rng());
       const th = 2 * Math.PI * rng();
-      x = rr * Math.cos(th);
-      y = rr * Math.sin(th);
+      x = rr * detMath.cos(th);
+      y = rr * detMath.sin(th);
     }
   }
 
@@ -338,7 +339,7 @@ export function applyDispersion(dir: Vector3, a: number, b: number | Rng, c?: Rn
   _right.crossVectors(dir, _basisRef).normalize();
   _up.crossVectors(_right, dir).normalize();
   dir
-    .addScaledVector(_right, Math.tan(x * sigmaRad))
-    .addScaledVector(_up, Math.tan(y * sigmaRad))
+    .addScaledVector(_right, detMath.tan(x * sigmaRad))
+    .addScaledVector(_up, detMath.tan(y * sigmaRad))
     .normalize();
 }

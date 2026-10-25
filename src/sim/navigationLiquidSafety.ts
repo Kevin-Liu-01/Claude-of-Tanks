@@ -2,6 +2,7 @@ import { bridgeDeckOver, type NavigationBridgeDeck } from './bridgeDeckNavigatio
 import { tankContactRect } from './tankContactShape.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 
+import * as detMath from './detMath.ts';
 interface NavigationLiquidField {
   readonly navigationWaterPolicy?: 'avoid-liquid';
   /** Round 61: a hull over a bridge deck is on the deck, not in the water the mask reports under it. */
@@ -57,7 +58,7 @@ export function createNavigationLiquidSafety(
     return wet;
   }
   return function liquidCorridorClear(x: number, z: number, yaw: number, travel = 0): boolean {
-    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const fx = detMath.sin(yaw), fz = detMath.cos(yaw);
     const lo = cz - hl + Math.min(0, travel);
     const hi = cz + hl + Math.max(0, travel);
     const alongSteps = Math.max(1, Math.ceil((hi - lo) / 2));

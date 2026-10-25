@@ -24,10 +24,11 @@
 
 import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // The inland road is grid road 0 (x = -90, the village's west lane): its vertex at z, by the grid's own jitter law
 // (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
-const inlandRoadAt = (z: number): [number, number] => [-90 + Math.sin(z * 0.011 + 0 * 2.3) * 2.2, z];
+const inlandRoadAt = (z: number): [number, number] => [-90 + detMath.sin(z * 0.011 + 0 * 2.3) * 2.2, z];
 
 // 2026-10-06 (the map-revival lane; the coordinator approved the plan: Kerlouan, Brignogan-Plages and Meneham on the
 // Pays de Léon coast, late summer 1944): the bourg is rebuilt as the Léon's granite fishing bourgs stand. The roadside

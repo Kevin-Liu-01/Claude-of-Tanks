@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import * as detMath from '../sim/detMath.ts';
 // Shared, allocation-free world collision primitives.
 //
 // World props keep min/max AABBs for cheap broad-phase consumers, but may
@@ -457,9 +458,9 @@ export function createHullFootprint(): HullFootprint {
 export function hullFootprint(
   rect: HullFootprintRect, x: number, z: number, yaw: number, pitch: number, roll: number, out: HullFootprint,
 ): HullFootprint {
-  const forwardX = Math.sin(yaw), forwardZ = Math.cos(yaw);
-  const sinPitch = Math.sin(pitch), cosPitch = Math.cos(pitch);
-  const sinRoll = Math.sin(roll), cosRoll = Math.cos(roll);
+  const forwardX = detMath.sin(yaw), forwardZ = detMath.cos(yaw);
+  const sinPitch = detMath.sin(pitch), cosPitch = detMath.cos(pitch);
+  const sinRoll = detMath.sin(roll), cosRoll = detMath.cos(roll);
   const along = cosPitch >= 0 ? Math.max(cosPitch, FOOTPRINT_MIN_COS) : Math.min(cosPitch, -FOOTPRINT_MIN_COS);
   const across = cosRoll >= 0 ? Math.max(cosRoll, FOOTPRINT_MIN_COS) : Math.min(cosRoll, -FOOTPRINT_MIN_COS);
   const centerAlong = rect.centerZ * along, centerAcross = rect.centerX * across;
@@ -656,8 +657,8 @@ export function setObbShape(
 ) {
   const hw = Math.max(0, halfWidth);
   const hl = Math.max(0, halfLength);
-  const cs = Math.abs(Math.cos(yaw));
-  const sn = Math.abs(Math.sin(yaw));
+  const cs = Math.abs(detMath.cos(yaw));
+  const sn = Math.abs(detMath.sin(yaw));
   const ex = hw * cs + hl * sn;
   const ez = hw * sn + hl * cs;
   rec.min[0] = cx - ex; rec.max[0] = cx + ex;
@@ -737,7 +738,7 @@ export function convexOutlineInPlace(points: number[]): number[] {
       const turn = (out[2 * i] - out[2 * a]) * (out[2 * b + 1] - out[2 * i + 1])
         - (out[2 * i + 1] - out[2 * a + 1]) * (out[2 * b] - out[2 * i]);
       // (turn is the corner's distance off its chord times the chord's length)
-      if (turn * winding > CONVEX_CORNER_M * Math.hypot(out[2 * b] - out[2 * a], out[2 * b + 1] - out[2 * a + 1])) continue;
+      if (turn * winding > CONVEX_CORNER_M * detMath.hypot(out[2 * b] - out[2 * a], out[2 * b + 1] - out[2 * a + 1])) continue;
       for (let k = i; k < m - 1; k++) { out[2 * k] = out[2 * k + 2]; out[2 * k + 1] = out[2 * k + 3]; }
       m--; i--; dropped = true;
     }
@@ -770,8 +771,8 @@ function simpleShapeBounds(shape: SimpleCollisionShape) {
     return [shape.cx - shape.r, shape.cz - shape.r, shape.cx + shape.r, shape.cz + shape.r];
   }
   if (shape.kind === 'obb') {
-    const cs = Math.abs(Math.cos(shape.yaw));
-    const sn = Math.abs(Math.sin(shape.yaw));
+    const cs = Math.abs(detMath.cos(shape.yaw));
+    const sn = Math.abs(detMath.sin(shape.yaw));
     const ex = shape.hw * cs + shape.hl * sn;
     const ez = shape.hw * sn + shape.hl * cs;
     return [shape.cx - ex, shape.cz - ez, shape.cx + ex, shape.cz + ez];
@@ -848,19 +849,19 @@ function clearanceBevelAt(points: readonly number[], index: number, winding: num
   const vx = points[index], vz = points[index + 1];
   const ax = vx - points[previous], az = vz - points[previous + 1];
   const bx = points[next] - vx, bz = points[next + 1] - vz;
-  const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz);
+  const la = detMath.hypot(ax, az), lb = detMath.hypot(bx, bz);
   if (la < EPS || lb < EPS) return false;
   // outward unit normals of the edge into the corner and the edge out of it (the inside lies on the left of a
   // counter-clockwise edge: winding * (-dz, dx) points in)
   const sx = winding * (az / la + bz / lb), sz = -winding * (ax / la + bx / lb);
-  const sum = Math.hypot(sx, sz);
+  const sum = detMath.hypot(sx, sz);
   if (sum >= CLEARANCE_BEVEL_SUM) return false;
   if (sum > 1e-9) { _bevel.x = sx / sum; _bevel.z = sz / sum; return true; }
   // a corner folded back on itself: out from the footprint's middle
   let cx = 0, cz = 0;
   for (let k = 0; k < count; k += 2) { cx += points[k]; cz += points[k + 1]; }
   cx = vx - cx * 2 / count; cz = vz - cz * 2 / count;
-  const length = Math.hypot(cx, cz);
+  const length = detMath.hypot(cx, cz);
   if (length < EPS) return false;
   _bevel.x = cx / length; _bevel.z = cz / length;
   return true;
@@ -889,7 +890,7 @@ function simpleFootprintContainsPoint(
   }
   if (shape.kind === 'obb') {
     const dx = x - shape.cx, dz = z - shape.cz;
-    const forwardX = Math.sin(shape.yaw), forwardZ = Math.cos(shape.yaw);
+    const forwardX = detMath.sin(shape.yaw), forwardZ = detMath.cos(shape.yaw);
     const rightX = forwardZ, rightZ = -forwardX;
     return Math.abs(dx * rightX + dz * rightZ) <= shape.hw + margin
       && Math.abs(dx * forwardX + dz * forwardZ) <= shape.hl + margin;
@@ -901,7 +902,7 @@ function simpleFootprintContainsPoint(
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
     const cross = winding * (edgeX * (z - shape.points[index + 1])
       - edgeZ * (x - shape.points[index]));
-    if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
+    if (cross < -margin * detMath.hypot(edgeX, edgeZ)) return false;
   }
   return !(bevel && margin > 0 && beyondClearanceBevel(shape.points, winding, x, z, margin));
 }
@@ -984,7 +985,7 @@ function rayObbEntry2(
   maxDistance: number,
   margin: number,
 ) {
-  const forwardX = Math.sin(shape.yaw), forwardZ = Math.cos(shape.yaw);
+  const forwardX = detMath.sin(shape.yaw), forwardZ = detMath.cos(shape.yaw);
   const rightX = forwardZ, rightZ = -forwardX;
   const dx = sourceX - shape.cx, dz = sourceZ - shape.cz;
   const localX = dx * rightX + dz * rightZ;
@@ -1023,7 +1024,7 @@ function rayConvexEntry2(
     const edgeZ = points[next + 1] - points[index + 1];
     const offset = winding * (edgeX * (sourceZ - points[index + 1])
       - edgeZ * (sourceX - points[index]))
-      + margin * Math.hypot(edgeX, edgeZ);
+      + margin * detMath.hypot(edgeX, edgeZ);
     const velocity = winding * (edgeX * directionZ - edgeZ * directionX);
     if (Math.abs(velocity) < EPS) {
       if (offset < 0) return null;
@@ -1117,7 +1118,7 @@ function rayFootprintEntry2(
   margin: number,
   bevel: boolean,
 ) {
-  const length = Math.hypot(directionX, directionZ);
+  const length = detMath.hypot(directionX, directionZ);
   if (length < EPS || maxDistance <= 0) return null;
   directionX /= length; directionZ /= length;
   const shape = record.shape2;
@@ -1171,7 +1172,7 @@ function testAxis(
   halfL: number, halfW: number, minB: number, maxB: number,
   centerBX: number, centerBZ: number, best: AxisOverlap,
 ) {
-  const ll = Math.hypot(nx, nz);
+  const ll = detMath.hypot(nx, nz);
   if (ll < EPS) return true;
   nx /= ll; nz /= ll;
   const centerA = pos.x * nx + pos.z * nz;
@@ -1197,7 +1198,7 @@ function testConvexAxis(
   pos: Position2, fx: number, fz: number, rx: number, rz: number,
   halfL: number, halfW: number, best: AxisOverlap,
 ) {
-  const ll = Math.hypot(ax, az);
+  const ll = detMath.hypot(ax, az);
   if (ll < EPS) return true;
   const nx = ax / ll, nz = az / ll;
   let minB = Infinity, maxB = -Infinity;
@@ -1417,7 +1418,7 @@ export function pointInsideCollisionRecord(
   }
   if (part.kind === 'obb') {
     const dx = x - part.cx, dz = z - part.cz;
-    const c = Math.cos(part.yaw), s = Math.sin(part.yaw);
+    const c = detMath.cos(part.yaw), s = detMath.sin(part.yaw);
     // the box's forward axis is (sin yaw, cos yaw) like a hull's; right is (cos yaw, -sin yaw)
     const along = dx * s + dz * c;
     const across = dx * c - dz * s;
@@ -1530,8 +1531,8 @@ function overlapsBoxObstacle(
   halfL: number, halfW: number, best: AxisOverlap,
 ): boolean {
   const box = obstacleBox(obstacle, shape);
-  const obstacleForwardX = Math.sin(box.yaw);
-  const obstacleForwardZ = Math.cos(box.yaw);
+  const obstacleForwardX = detMath.sin(box.yaw);
+  const obstacleForwardZ = detMath.cos(box.yaw);
   const obstacleRightX = obstacleForwardZ;
   const obstacleRightZ = -obstacleForwardX;
   return testObbAxis(fx, fz, box, obstacleForwardX, obstacleForwardZ,
@@ -1582,7 +1583,7 @@ function testHullAxis(
   brx: number, brz: number, bHalfL: number, bHalfW: number,
   best: AxisOverlap,
 ) {
-  const length = Math.hypot(nx, nz);
+  const length = detMath.hypot(nx, nz);
   if (length < EPS) return true;
   nx /= length; nz /= length;
   const radiusA = aHalfL * Math.abs(afx * nx + afz * nz) +
@@ -1714,8 +1715,8 @@ function rayObb(
   maxDist: number,
   outNormal: MutableVector3Like,
 ): number {
-  const sine = Math.sin(shape.yaw);
-  const cosine = Math.cos(shape.yaw);
+  const sine = detMath.sin(shape.yaw);
+  const cosine = detMath.cos(shape.yaw);
   const deltaX = origin.x - shape.cx;
   const deltaZ = origin.z - shape.cz;
   _localO.x = deltaX * cosine - deltaZ * sine;
@@ -1761,7 +1762,7 @@ function clipCircleSides(
     interval.t0 = entry;
     const hitX = originX + dir.x * entry;
     const hitZ = originZ + dir.z * entry;
-    const inverseLength = 1 / Math.max(Math.hypot(hitX, hitZ), EPS);
+    const inverseLength = 1 / Math.max(detMath.hypot(hitX, hitZ), EPS);
     interval.nx = hitX * inverseLength;
     interval.ny = 0;
     interval.nz = hitZ * inverseLength;
@@ -1797,7 +1798,7 @@ function clipConvexEdge(
   const edgeX = points[next] - points[index];
   const edgeZ = points[next + 1] - points[index + 1];
   // the inward normal is the edge's left for a counter-clockwise footprint, its right for a clockwise one
-  const inverseLength = winding / (Math.hypot(edgeX, edgeZ) || 1);
+  const inverseLength = winding / (detMath.hypot(edgeX, edgeZ) || 1);
   const inwardX = -edgeZ * inverseLength;
   const inwardZ = edgeX * inverseLength;
   const originSide = (origin.x - points[index]) * inwardX

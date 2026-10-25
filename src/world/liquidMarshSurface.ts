@@ -1,5 +1,6 @@
 import { minimumShorelineRadius, shorelineRadiusAt, type ShorelineDisc } from './shoreline.ts';
 
+import * as detMath from '../sim/detMath.ts';
 interface LiquidMarsh extends ShorelineDisc { dip?: number; level?: number }
 interface LiquidLake extends ShorelineDisc { level: number; bankBand?: number }
 type HeightSampler = (x: number, z: number) => number;
@@ -11,9 +12,9 @@ const BANK_DESIGN_SLOPE = 0.45;
 
 function connected(a: ShorelineDisc, b: ShorelineDisc, band = LIQUID_MARSH_CORE): boolean {
   const dx = b.x - a.x, dz = b.z - a.z;
-  const distance = Math.hypot(dx, dz);
+  const distance = detMath.hypot(dx, dz);
   if (distance > (a.r + b.r) * band) return false;
-  const angle = Math.atan2(dz, dx);
+  const angle = detMath.atan2(dz, dx);
   return distance <= (shorelineRadiusAt(a, angle)
     + shorelineRadiusAt(b, angle + Math.PI)) * band;
 }
@@ -94,8 +95,8 @@ function fitComponent(
     const x = marshes[index].x - cx, z = marshes[index].z - cz;
     xx += x * x; xz += x * z; zz += z * z;
   }
-  const angle = 0.5 * Math.atan2(2 * xz, xx - zz);
-  const axisX = Math.cos(angle), axisZ = Math.sin(angle);
+  const angle = 0.5 * detMath.atan2(2 * xz, xx - zz);
+  const axisX = detMath.cos(angle), axisZ = detMath.sin(angle);
   let minT = Infinity, maxT = -Infinity, th = 0, tt = 0;
   const level = median(heights.slice());
   for (let at = 0; at < group.length; at++) {
@@ -116,7 +117,7 @@ function fitComponent(
   for (let at = 0; at < 12; at++) {
     const a = at * Math.PI / 6;
     const radius = shorelineRadiusAt(marsh, a) * LIQUID_MARSH_CORE;
-    low = Math.min(low, sample(marsh.x + Math.cos(a) * radius, marsh.z + Math.sin(a) * radius));
+    low = Math.min(low, sample(marsh.x + detMath.cos(a) * radius, marsh.z + detMath.sin(a) * radius));
   }
   return [low - Math.min(0.25, Math.max(0.08, (marsh.dip ?? 2.6) * 0.1)), 0, 0];
 }
@@ -127,8 +128,8 @@ function outerBankBand(disc: ShorelineDisc, level: number, gx: number, gz: numbe
     const angle = at * Math.PI / 6;
     const radius = shorelineRadiusAt(disc, angle);
     for (const band of [LIQUID_MARSH_CORE, 1.32, 1.8]) {
-      const x = disc.x + Math.cos(angle) * radius * band;
-      const z = disc.z + Math.sin(angle) * radius * band;
+      const x = disc.x + detMath.cos(angle) * radius * band;
+      const z = disc.z + detMath.sin(angle) * radius * band;
       bankGap = Math.max(bankGap, Math.abs(sample(x, z) - (level + gx * x + gz * z)));
     }
   }

@@ -8,6 +8,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { magazineIndicator } from './magazineIndicator.ts';
 import type { MagazineIndicator, MagazineIndicatorSpec } from './magazineIndicator.ts';
+import * as detMath from './detMath.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
@@ -240,9 +241,9 @@ export function captureEntitySnapshot(
     x: quantize(vectorAxis(state.pos, 0), POSITION_SCALE),
     y: quantize(vectorAxis(state.pos, 1), POSITION_SCALE),
     z: quantize(vectorAxis(state.pos, 2), POSITION_SCALE),
-    vx: quantize(Math.sin(yaw) * speed, VELOCITY_SCALE),
+    vx: quantize(detMath.sin(yaw) * speed, VELOCITY_SCALE),
     vy: quantize(finite(state.verticalSpeed, finite(state._ride?.v)), VELOCITY_SCALE),
-    vz: quantize(Math.cos(yaw) * speed, VELOCITY_SCALE),
+    vz: quantize(detMath.cos(yaw) * speed, VELOCITY_SCALE),
     yaw: quantizeAngle(yaw),
     pitch: quantizeAngle(state.visualPitch),
     roll: quantizeAngle(state.visualRoll),
