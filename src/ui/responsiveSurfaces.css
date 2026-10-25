@@ -724,7 +724,7 @@ body[data-cot-width='phone'] .cot-resume .rz-actions>.cot-c-btn{width:100%}
 body[data-cot-height='short'] .cot-resume .rz-plate{padding:var(--s4) var(--s5);gap:var(--s3)}
 
 body[data-cot-width] .cot-hints{
-  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));justify-content:center;
+  box-sizing:border-box;max-width:min(var(--hud-hints-width,100vw),calc(100vw - (var(--cot-edge) * 2)));justify-content:center;
   flex-wrap:wrap;white-space:normal;
 }
 body[data-cot-width] .cot-hints .hg{white-space:nowrap}

@@ -132,8 +132,12 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone][data-view=infrared]{--flight-accent:var(--ink-1)}
 .cot-flight-hud[data-kind=drone][data-view=thermal]{--flight-accent:var(--accent-hi)}
 .cot-flight-hud[data-kind=drone][data-view=night]{--flight-accent:var(--battle-nv)}
+/* (it keeps clear of a map in the lower right as the gunship's rack does: 900x700 set the two 16 px over each other,
+   gauntlet r1) */
 .cot-flight-hud[data-kind=drone] .flight-console{
- display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;width:min(460px,calc(100% - 48px));
+ --drone-width:min(460px,calc(100% - 48px),calc(100% - var(--hud-flight-right-clearance,248px) - 24px));
+ left:min(50%,calc(100% - var(--hud-flight-right-clearance,248px) - var(--drone-width)/2));
+ display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;width:var(--drone-width);
  padding:0;border:0;background:none;box-shadow:none;pointer-events:none;
 }
 .cot-flight-hud[data-kind=drone] :is(.flight-heading,.flight-actions){display:contents}
