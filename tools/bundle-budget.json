@@ -9,7 +9,7 @@
       "brotli": 1052602,
       "inlineCss": 4318,
       "entryRaw": 857080,
-      "entryBrotli": 235325
+      "entryBrotli": 235501
     },
     "home": {
       "requests": 8,
@@ -46,7 +46,7 @@
       "brotli": 1096017,
       "inlineCss": 4742,
       "entryRaw": 857080,
-      "entryBrotli": 235325
+      "entryBrotli": 235501
     }
   }
 }
