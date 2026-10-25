@@ -242,8 +242,9 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-cap{font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-2);text-shadow:var(--stage-halo);}
 .cot-lt-acts{height:var(--slot,56px);}
-.cot-lt-band .cot-lt-act{flex-direction:column;justify-content:center;gap:var(--s1);width:60px;padding:0 2px;}
-.cot-lt-act>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+/* an act is as wide as its name needs (never cut, never edge to edge), at least a slot */
+.cot-lt-band .cot-lt-act{flex-direction:column;justify-content:center;gap:var(--s1);width:auto;min-width:60px;padding:0 var(--s2);}
+.cot-lt-act>span{white-space:nowrap;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
 .cot-lt-act[aria-pressed='true']>span{color:var(--accent);}
 /* the slots: the fitted item's glyph and short name, an empty slot dashed with its plus */
@@ -279,15 +280,18 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 @container lt (width < 760px){
   body[data-cot-panels='persistent'] .cot-lt-swatch:not(.is-on){display:none;}
   body[data-cot-panels='persistent'] .cot-lt-band .cot-c-btn{--h:44px;}
-  body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{width:54px;}
+  body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{min-width:54px;padding:0 var(--s1);}
   body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:54px;}
   body[data-cot-panels='persistent'] .cot-lt-band{gap:var(--s2);}
   body[data-cot-panels='persistent'] .cot-lt-band>*+*{padding-left:var(--s2);}
 }
-/* the narrowest docked band (a window about 900-960 px wide): the acts keep their glyphs, their names in the hover tips */
+/* the narrowest docked band (a window about 900-960 px wide): the acts keep their names (the owner: labelled at every
+   width); the worn paint and the slots close up to make the room */
 @container lt (width < 560px){
-  body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{width:44px;}
-  body[data-cot-panels='persistent'] .cot-lt-act>span{display:none;}
+  body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{min-width:44px;padding:0 var(--s1);}
+  body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:46px;}
+  body[data-cot-panels='persistent'] .cot-lt-swatch.is-on{width:64px;}
+  body[data-cot-panels='persistent'] .cot-lt-swatch.is-on .nm{display:none;}
 }
 /* the equipment picker opens over the stage above the band, every item in view */
 body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + var(--s1));
