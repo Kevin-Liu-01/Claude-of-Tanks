@@ -1453,7 +1453,8 @@ function* compileHiddenVariantsSteps(
  * effect root's programs are compiled in place instead (forwardProgramWarm.initializeSteps: no spawn, no visibility).
  */
 function warmsBetweenLiveFrames(context: CombatWarmRuntimeContext, execution?: CombatWarmExecution): boolean {
-  return execution?.cooperative === true && (context.game as { phase?: string }).phase === 'battle';
+  // (battle-spikes-253) a cooperative job behind the entry veil (a session's first battle) warms as a covered load
+  return execution?.cooperative === true && execution.covered !== true && (context.game as { phase?: string }).phase === 'battle';
 }
 
 function noteRareWarmStep(step: string | null): void {

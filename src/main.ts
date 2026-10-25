@@ -2498,6 +2498,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     openBattle: (seconds: number) => openBattleRound(seconds),
     ensureWatch: () => watchOwner.preload(),
     scheduleDeferredWarm: scheduleDeferredCombatWarm,
+    // (battle-spikes-253) a session's first battle warms its GPU-heavy stages behind the veil; later battles skip it
+    warmFirstBattleCovered: (yieldForBudget, onProgress) => combatWarmComposition.warmFirstBattleCovered(yieldForBudget, onProgress),
     nextFrame,
     createLoadingYielder: createOpaqueLoadingYielder,
   }),

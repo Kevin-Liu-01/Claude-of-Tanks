@@ -353,7 +353,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
   auxiliarySmokeScreens?: SmokeScreen[];
-  openingRouteJobs: Array<() => void>;
+  /** Each bot's opening route, a leg a step (planOpeningRouteSteps; prepareNextOpeningRoute advances the oldest). */
+  openingRouteJobs: Array<Iterator<void, void, void>>;
   mapId: string;
   killcam?: KillcamRecorder | null;
   /** The next mode route push per side (retargetObjectiveBots; the doctrine's routeRefreshS). */
@@ -1108,7 +1109,12 @@ function buildOpeningWaypoints(
   ));
 }
 
-function planOpeningRoute(
+/**
+ * A bot's opening route, one leg a step (battle-spikes-253): the deferred warm advances it a leg at a time, where a bot's
+ * whole route was one job (the countdown's 30-290 ms bursts). The legs run in the same order on the same seeded stream,
+ * so every route is the one it was; the waypoints are set once the route is whole, as before.
+ */
+function* planOpeningRouteSteps(
   context: BattleSpawnContext,
   entity: SoloEntity,
   spawn: SpawnPoint,
@@ -1116,7 +1122,7 @@ function planOpeningRoute(
   role: OpeningRole,
   doctrineWaypoints: Waypoint[],
   routeRng: RandomSource,
-): void {
+): Generator<void, void, void> {
   const terrainWaypoints: Waypoint[] = [];
   let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
   for (const [x, z] of doctrineWaypoints) {
@@ -1136,6 +1142,7 @@ function planOpeningRoute(
     const end = leg[leg.length - 1];
     routeStart = context.botNavigation.navigationWaterPolicy === 'avoid-liquid'
       ? { x: end[0], z: end[1] } : { x, z };
+    yield;
   }
   controller.setWaypoints(terrainWaypoints, { loop: false });
   entity._openingRoute = terrainWaypoints;
@@ -1200,11 +1207,11 @@ function createBattleBot(
   const lane = selectOpeningLane(context, entity);
   const doctrineWaypoints = buildOpeningWaypoints(context, entity, spawn, lane);
   const routeRng = mulberry32(17000 + entityIndex);
-  const prepare = (): void => planOpeningRoute(
+  const prepare = planOpeningRouteSteps(
     context, entity, spawn, controller, lane.role, doctrineWaypoints, routeRng,
   );
   if (context.options.deferOpeningRoutes) context.game.openingRouteJobs.push(prepare);
-  else prepare();
+  else for (const _leg of prepare) { /* eager: every leg now */ }
 }
 
 /** A proving-ground target hull: no AI (it never fires); it holds its mark, or shuttles about it with moving targets on. */
@@ -1583,15 +1590,16 @@ export function setupBattle(
 }
 
 /**
- * Prepare one deterministic solo-bot opening route. Player battle entry calls
+ * Prepare one leg of the oldest deterministic solo-bot opening route. Player battle entry calls
  * this behind the frozen deployment countdown; synchronous tests/captures keep
  * setupBattle's original eager behavior by omitting deferOpeningRoutes.
- * @returns {boolean} true when a job was consumed
+ * @returns {boolean} true when a job step was consumed
  */
 export function prepareNextOpeningRoute(game: SoloGameState): boolean {
-  const job = game.openingRouteJobs.shift();
+  // one leg of the oldest route (battle-spikes-253): a bot's route is finished before the next bot's is begun
+  const job = game.openingRouteJobs[0];
   if (!job) return false;
-  job();
+  if (job.next().done) game.openingRouteJobs.shift();
   return true;
 }
 

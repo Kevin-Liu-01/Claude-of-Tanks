@@ -594,6 +594,14 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     const deferredWarm = await page.evaluate(() => {
       try { return JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM ?? null)); } catch { return null; }
     });
+    // a session's first battle's covered warm (combatWarmComposition warmFirstBattleCovered) and the entry's own trace
+    const entryWarm = await page.evaluate(() => {
+      try {
+        const load = window.__BATTLE_LOAD ?? null;
+        return JSON.parse(JSON.stringify({ firstBattleWarm: window.__BATTLE_FIRST_WARM ?? null, loadTotalMs: load?.totalMs ?? null,
+          loadingElapsedMs: load?.loadingElapsedMs ?? null, stages: load?.stages ?? null }));
+      } catch { return null; }
+    });
     const observers = await page.evaluate(() => window.__CENSUS);
     let trace = null, traceInfo = null;
     if (tracer) {
@@ -612,7 +620,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
       viewport: options.viewport, spec: options.spec, driver: watched ? 'watch' : 'player', rodeSeat, roster, entryMs, play: { ...play, shots: play.shots - shotsBefore }, load,
       trace: traceInfo,
       window: { entryStartMs: +entryStartMs.toFixed(1), liveStartMs: +liveStartMs.toFixed(1), endMs: +endMs.toFixed(1) },
-      analysis, live, heapProfile, cpuProfile, deferredWarm,
+      analysis, live, heapProfile, cpuProfile, deferredWarm, entryWarm,
       observers: { longTasks: observers.tasks.length, loaf: observers.loaf.slice(0, 200), decodes: observers.decodes },
       frames: readout?.frames?.length ?? 0, dropped: readout?.dropped ?? 0,
     };

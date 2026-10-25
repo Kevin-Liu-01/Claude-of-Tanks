@@ -78,7 +78,10 @@ function drive(steps, atYield) {
 
 {
   // covered or Garage (not a live battle): the volleys run as before, under a hidden root restored at the end
-  for (const [phase, execution] of [['garage', { cooperative: true }], ['battle', { cooperative: false }], ['battle', undefined]]) {
+  // (battle-spikes-253) and a cooperative job behind the entry veil (covered: a session's first battle), its phase
+  // already 'battle': it yields to the loading screen yet renders the volleys, so the GPU builds their pipelines there
+  for (const [phase, execution] of [['garage', { cooperative: true }], ['battle', { cooperative: false }], ['battle', undefined],
+    ['battle', { cooperative: true, covered: true }]]) {
     const { context, record, group } = stubContext({ phase });
     drive(createCombatOpeningWarmSteps(context, execution), () => {});
     assert.ok(record.spawns > 0, `${phase}/${execution?.cooperative}: the opening volley spawns`);
