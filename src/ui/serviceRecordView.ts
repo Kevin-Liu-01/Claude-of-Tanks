@@ -226,7 +226,6 @@ function achievementCard(entry: AchievementProgress, fresh: boolean): string {
     `<button type="button" class="cot-record-ach-art" data-achievement-tip="${def.id}" data-award-tier="${tier || 1}" aria-label="${safe(t(`service.achievement.${def.id}.name`))}">${achievementSVG(def, tier, 64)}</button>` +
     `<div class="cot-record-ach-copy"><div class="cot-record-ach-title"><strong>${t(`service.achievement.${def.id}.name`)}</strong>` +
     `${fresh ? tag(t('garage.record.new'), 'ok', 'cot-record-new') : ''}${tier ? `<span class="cot-record-tier">${ROMAN[tier]}</span>` : ''}</div>` +
-    `<p>${t(`service.achievement.${def.id}.desc`, { target: num(target) })}</p>` +
     `<div class="cot-record-bar" role="progressbar" aria-label="${safe(t(`service.achievement.${def.id}.name`))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><i style="width:${pct.toFixed(1)}%"></i></div>` +
     `<div class="cot-record-ach-meta"><span>${num(Math.min(value, target))}/${num(target)}</span>` +
     `<span>${next == null ? t('garage.record.complete') : t('garage.record.nextTier', { tier: ROMAN[tier + 1] })}</span></div></div></article>`;

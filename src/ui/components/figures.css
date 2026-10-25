@@ -21,7 +21,7 @@
 .cot-c-tile__value{display:flex;align-items:center;min-height:24px;color:var(--ink-1);font:600 var(--fs-20)/1.2 var(--font-display)}
 .cot-c-tile__note{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-c-empty{display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:var(--s6) var(--s4);border-radius:var(--control-radius);
-  box-shadow:var(--ring-1);text-align:center;color:var(--ink-3);font:400 var(--fs-14)/1.5 var(--font-body)}
+  box-shadow:var(--ring-1);text-align:center;color:var(--ink-3);font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body)}
 .cot-c-empty[hidden]{display:none}
 .cot-c-empty p{margin:0;max-width:44ch}
 .cot-c-empty svg{width:24px;height:24px;color:var(--ink-4)}
