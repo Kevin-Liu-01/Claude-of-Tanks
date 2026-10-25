@@ -24,7 +24,7 @@ import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSn
 
 const STYLE_ID = 'cot-mp-status-style';
 /** The body class a battle's strip holds while it is up: the one link readout (hud.ts drops its corner chip under it). */
-const MP_LINK_CLASS = 'cot-mp-link';
+const MP_LINK_CLASS = 'cot-mp-battle';
 /** The battle strips up now (the class leaves with the last of them). */
 let linkHolders = 0;
 export const MP_STATUS_PANEL_STORAGE_KEY = 'cot.mp.netpanel';
@@ -282,6 +282,8 @@ export function createMultiplayerStatusSurface({
   const glyph = createElement('span', 'glyph', strip);
   glyph.innerHTML = uiIconSVG('signal', 16);
   const pingUnitNode = createElement('span', 'unit ping', strip);
+  // (the battle's one link readout: the datum receipts find a second one, UI-LOCKDOWN part C)
+  pingUnitNode.setAttribute('data-datum', 'link');
   const pingValue = createElement('b', 'num', pingUnitNode);
   pingValue.textContent = '—';
   const pingUnit = createElement('i', '', pingUnitNode);
@@ -289,9 +291,11 @@ export function createMultiplayerStatusSurface({
   hostUnit.hidden = true;
   const hostValue = createElement('b', '', hostUnit);
   const seatUnit = createElement('span', 'unit seat', strip);
+  seatUnit.setAttribute('data-datum', 'seat');
   seatUnit.hidden = true;
   const seatValue = createElement('b', '', seatUnit);
   const rosterUnit = createElement('span', 'unit roster', strip);
+  rosterUnit.setAttribute('data-datum', 'roster');
   const rosterValue = createElement('b', '', rosterUnit);
   rosterValue.textContent = '0/28';
   const touchNotice = createElement('span', 'notice', strip);
@@ -426,7 +430,7 @@ export function createMultiplayerStatusSurface({
     if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
     window.dispatchEvent(new CustomEvent('cot-hud-relayout'));
   };
-  // (the strip owns the battle's link readout while it is up: the HUD's corner drops its own, hud.ts body.cot-mp-link;
+  // (the strip owns the battle's link readout while it is up: the HUD's corner drops its own, hud.ts body.cot-mp-battle;
   // owner 2026-10-25, "the ping or wifi is duplicated in the top right")
   if (host === 'battle') {
     if (linkHolders++ === 0) document.body?.classList?.add(MP_LINK_CLASS);

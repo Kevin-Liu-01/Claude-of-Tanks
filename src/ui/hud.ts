@@ -1580,11 +1580,11 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-hud-gear .cot-c-kbd{display:none;font-size:var(--battle-fs-11);}
 .cot-net:is(.metered,:has(.cot-net-link:not([hidden]))) .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
 /* One link readout (owner 2026-10-25: "the ping or wifi is duplicated in the top right"; Main's ruling): in a networked
-   battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-link while it is up: its health, seat and
+   battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-battle while it is up: its health, seat and
    roster, and its details panel), so the corner drops its link chip and the meter reads its fps alone. A body class, never
    a body:has() (a whole-page restyle on every write). Solo battles keep the corner as it was. */
-body.cot-mp-link :is(.cot-net-link,.cot-net-unit.ping){display:none;}
-body.cot-mp-link .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
+body.cot-mp-battle :is(.cot-net-link,.cot-net-unit.ping){display:none;}
+body.cot-mp-battle .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
 /* touch: the readout keeps its own place (battleHudLayout.css), the gear is the toolbar's (touchControls.ts) */
 body.cot-touch-layout .cot-net:not(.metered){display:none;}
 body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
@@ -2293,7 +2293,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const topPlate = el('div', 'cot-top', root);
   topPlate.innerHTML = `<div class="sc ally"><span class="team-label" data-default>${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b><i class="bar" aria-hidden="true"><i></i></i></div>` +
-    `<div class="tm-block"><span class="tm-label"></span><span class="tm num">15:00</span></div>` +
+    `<div class="tm-block"><span class="tm-label"></span><span class="tm num" data-datum="clock">15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label" data-default>${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b><i class="bar" aria-hidden="true"><i></i></i></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
@@ -2315,7 +2315,7 @@ export function initHud(bus: EventBus): HudRuntime {
   modeStatusEl.setAttribute('role', 'status');
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
   // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"></b><span class="mv"></span></span>`
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn" data-datum="mode-name"></b><span class="mv" data-datum="objective"></span></span>`
     + `<kbd class="cot-c-kbd" aria-hidden="true">TAB</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
@@ -2338,9 +2338,11 @@ export function initHud(bus: EventBus): HudRuntime {
   const netUnits = el('span', 'cot-net-units', netEl);
   netUnits.setAttribute('role', 'status');
   netUnits.setAttribute('aria-label', t('hud.net.perfAria'));
-  netUnits.innerHTML = `<span class="cot-net-unit fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
-    `<span class="cot-net-unit ping"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
+  // (each readout names its datum, UI-LOCKDOWN part B: one visible element a datum, the overlap receipt's duplicate check)
+  netUnits.innerHTML = `<span class="cot-net-unit fps" data-datum="fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+    `<span class="cot-net-unit ping" data-datum="link"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
   const netLink = el('span', 'cot-net-link', netEl);
+  netLink.dataset.datum = 'link';
   netLink.hidden = true;
   netLink.innerHTML = `${uiIconSVG('signal', 14)}<b class="num"></b>`;
   const netLinkValue = requireElement<HTMLElement>(netLink, 'b');
@@ -2423,7 +2425,7 @@ export function initHud(bus: EventBus): HudRuntime {
     `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
     `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
-    `<strong class="speed num" data-drive-speed>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
+    `<strong class="speed num" data-drive-speed data-datum="speed">0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
   const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
