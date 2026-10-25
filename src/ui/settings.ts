@@ -414,13 +414,10 @@ body.cot-hud-aerial .cot-hints{display:none;}
 .cot-a11y-preview .sample{margin-left:auto;font-size:var(--fs-16);font-weight:600;}
 .cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px 8px;background:var(--hud-plate);
   border:1px solid var(--line-3);}
-.cot-set-seg.wrap{flex-wrap:wrap;justify-content:flex-end;}
-.cot-set-seg .sw{display:inline-flex;gap:2px;margin-right:6px;}
+.cot-set-seg.glyphs button{min-width:40px;padding:0 var(--s2);}
+.cot-set-seg .sw{display:inline-flex;gap:2px;}
 .cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
-.cot-a11y-custom{display:flex;align-items:center;gap:10px;}
-.cot-a11y-custom input[type=color]{width:44px;height:32px;padding:0;border:1px solid var(--line-control);background:none;cursor:pointer;}
-.cot-a11y-custom input[type=color]:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
-.cot-a11y-custom input[aria-invalid=true]{border-color:var(--danger);}
+.cot-a11y-custom{display:flex;align-items:center;gap:var(--s2);}
 .cot-set-note.refused{color:var(--text-danger);}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
@@ -1299,18 +1296,19 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   /** One segmented choice bound to a preference (aria-pressed on each option). */
   function a11ySeg<T extends string>(
     parent: HTMLElement, label: string, icon: SettingsIconSpec,
-    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, wrap = false,
+    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, glyphs = false,
   ): HTMLButtonElement[] {
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, icon);
-    const seg = el('div', `cot-set-seg${wrap ? ' wrap' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
+    const seg = el('div', `cot-set-seg${glyphs ? ' glyphs' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', label);
     const buttons = options.map(([value, text]) => {
       const b = el('button', '', seg);
       b.type = 'button';
       b.dataset.value = value;
-      b.textContent = text;
+      // glyph options (the team-colour presets) show their art; the name is the accessible name and the hover tip
+      if (glyphs) { b.setAttribute('aria-label', text); b.dataset.tip = text; } else b.textContent = text;
       b.addEventListener('click', () => {
         if (current() === value) return;
         choose(value);
@@ -1377,7 +1375,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       + '<span class="shape squad">&#9679;</span><span class="sample">' + t('settings.a11y.sample') + '</span><span class="hudnum num">88</span>';
     a11ySlider(vision, t('settings.a11y.textScale'), A11Y_ICONS.textScale, 'textScale', RANGES.textScale);
     a11ySlider(vision, t('settings.a11y.hudScale'), A11Y_ICONS.hudScale, 'hudScale', RANGES.hudScale);
-    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read.
+    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read; its
+    // name is the option's tip (six worded options did not fit beside the label and wrapped over it).
     const presetButtons = a11ySeg(vision, t('settings.a11y.colors'), A11Y_ICONS.colors,
       COLOR_PRESETS.map((preset) => [preset, t(`settings.a11y.preset.${preset}`)] as const),
       () => prefs().colorPreset, (preset: ColorPreset) => { saveAccessibility({ colorPreset: preset }); syncCustom(); }, true);
@@ -1402,10 +1401,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const customRow = el('div', 'cot-set-row', vision);
     settingLabel(customRow, t('settings.a11y.preset.custom'), A11Y_ICONS.colors);
     const custom = el('div', 'cot-a11y-custom', customRow);
-    const ownPick = el('input', '', custom);
+    const ownPick = el('input', 'cot-c-swatch', custom);
     ownPick.type = 'color';
     ownPick.setAttribute('aria-label', t('hud.team.ally'));
-    const enemyPick = el('input', '', custom);
+    const enemyPick = el('input', 'cot-c-swatch', custom);
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
     const refused = el('div', 'cot-set-note refused', vision);

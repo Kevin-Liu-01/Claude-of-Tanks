@@ -1,5 +1,5 @@
-/* The kit's figures (components.ts statChip, statTile, emptyState): the data surfaces' stat chips, stat tiles and empty
-   states. Copyright © 2026 Kevin B. Liu.
+/* The kit's figures (components.ts statChip, statTile, emptyState) and colour swatches: the data surfaces' stat chips,
+   stat tiles, empty states and colour inputs. Copyright © 2026 Kevin B. Liu.
    A sheet of its own beside components.css, so the public pages that draw none of them (the landing, the Field Manual,
    the 404) never load their rules: the game (src/main.ts) and the Gallery (gallery.css) import it. Tokens only, in the
    components layer like the kit. */
@@ -24,4 +24,12 @@
   box-shadow:var(--ring-1);text-align:center;color:var(--ink-3);font:400 var(--fs-14)/1.5 var(--font-body)}
 .cot-c-empty p{margin:0;max-width:44ch}
 .cot-c-empty svg{width:24px;height:24px;color:var(--ink-4)}
+/* ---- colour swatches: a colour input as one ringed square, its colour without the browser's inner frame ---- */
+.cot-c-swatch{box-sizing:border-box;width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:none;
+  box-shadow:var(--ring-2);cursor:pointer;overflow:hidden}
+.cot-c-swatch::-webkit-color-swatch-wrapper{padding:0}
+.cot-c-swatch::-webkit-color-swatch{border:0;border-radius:var(--control-radius)}
+.cot-c-swatch::-moz-color-swatch{border:0;border-radius:var(--control-radius)}
+.cot-c-swatch:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-c-swatch[aria-invalid=true]{box-shadow:var(--ring-danger)}
 }
