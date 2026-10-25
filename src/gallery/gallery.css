@@ -319,7 +319,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .markup-selection strong{display:block;color:var(--ink-1);font-weight:600}
 .markup-selection small{display:block;color:var(--ink-3)}
 .markup-action-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
-.markup-action-row .cot-c-btn{min-width:0;padding:0 var(--s2)}
+.markup-action-row .cot-c-chip{justify-content:center;min-width:0;padding:0 var(--s2)}
+/* the review packet (its JSON and exports) is tooling: it waits closed under the selections */
+.markup-packet{display:flex;flex-direction:column;gap:var(--s3)}
+.markup-packet[open]>summary{margin-bottom:var(--s3)}
 
 /* the page's one notice (the UI gauntlet's notification line: no coloured edge or outline): a raised plate over the
    dossier's actions, where its trigger (copy link, copy data, the markup tools) sits */

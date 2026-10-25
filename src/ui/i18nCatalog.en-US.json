@@ -1978,6 +1978,7 @@
   "gallery.markup.primitive.rail": "rail",
   "gallery.markup.primitive.armor": "armor",
   "gallery.markup.selections": "Selections",
+  "gallery.markup.packet": "Review packet",
   "gallery.markup.json": "Review packet JSON",
   "gallery.markup.copyJson": "Copy JSON",
   "gallery.markup.download": "Download",

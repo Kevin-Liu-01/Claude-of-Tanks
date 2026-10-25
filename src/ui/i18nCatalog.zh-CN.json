@@ -1965,6 +1965,7 @@
   "gallery.markup.primitive.rail": "导轨",
   "gallery.markup.primitive.armor": "装甲",
   "gallery.markup.selections": "选择项",
+  "gallery.markup.packet": "审阅包",
   "gallery.markup.json": "审阅包 JSON",
   "gallery.markup.copyJson": "复制 JSON",
   "gallery.markup.download": "下载",
