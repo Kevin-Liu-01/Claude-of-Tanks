@@ -231,6 +231,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // Relayouts caused only by kill rows, toasts, chat, the shot log and report, the medal card or the notices themselves
   // leave the mouse notice plan's inputs as they were: those reuse the plan without measuring its inputs again.
   let planInputs = true;
+  /** Look for new parts to observe on the next pass (a child added to the body or the root, a relayout asked for). */
+  let scanParts = true;
   /** Some systems button sits beside the touch chrome (the top slot's overflow: data-slot-beside). */
   let besideMarked = false;
   /** The systems row's tiles stand over the rack's slots (their widths and gaps written on each tile). */
@@ -255,7 +257,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const changes = new MutationObserver(records => {
     let changed = false;
     for (const record of records) {
-      if (record.type === 'childList') { changed = true; planInput(record.target as Element); continue; }
+      if (record.type === 'childList') { changed = true; scanParts = true; planInput(record.target as Element); continue; }
       const name = record.attributeName;
       if (name === null) continue;
       const target = record.target as Element;
@@ -263,7 +265,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (target === document.documentElement) { if (medalScopeSensitive) changed = true; continue; }
       const previous = attributes.get(target);
       const value = target.getAttribute(name);
-      if (previous?.get(name) !== value) { changed = true; planInput(target); }
+      // (the body's classes switch the layout, the touch one among them, which changes what is observed)
+      if (previous?.get(name) !== value) { changed = true; planInput(target); if (target === document.body) scanParts = true; }
       previous?.set(name, value);
     }
     // Process every record, even after finding a real change, so another
@@ -443,6 +446,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
   function yieldKillRibbon(): void {
     const ribbon = root.querySelector<HTMLElement>('.cot-ribbon');
     if (!ribbon) return;
+    // (a ribbon that is not showing has nothing to yield: no measure, the pass's late layout read among them; the nav-perf
+    // census found this read forcing the layout of every pass between a battle's end and the garage)
+    if (!ribbon.classList.contains('on')) {
+      if (ribbon.classList.contains('yield')) ribbon.classList.remove('yield');
+      return;
+    }
     const place = ribbon.getClientRects().length ? ribbon.getBoundingClientRect() : null;
     let meets = false;
     if (place) {
@@ -685,6 +694,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   function refresh() {
     frame = 0;
+    // The end report owns the frame from its first frame until the garage (endScreen.ts body.cot-si-report): the HUD under it
+    // is hidden or covered, and its teardown's mutations asked for full passes measuring a HUD nobody sees (Main, from the
+    // nav-perf census: 400 + 251 ms over 11 tasks from the end to the garage, worst on a 4x phone). The report's exit
+    // relayouts again (the class's own mutation).
+    if (document.body.classList.contains('cot-si-report')) return;
     const visible = !!root.getClientRects().length;
     if (document.body.hasAttribute('data-cot-battle-layout') !== visible) {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
@@ -695,17 +709,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
       settleSightFurniture();
       return;
     }
-    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-pips,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
-    // the revive count is placed (mouse) as it shows
-    if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
-    observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
-    // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
-    // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
-    observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
-    // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
-    observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
-    // Watch's bar (its seat: refresh)
-    observe('.cot-watch');
+    // (the observed parts are looked for only when the body's or the root's children changed, or a relayout was asked
+    // for, since the last look: a pass walked some 25 selectors over the document each time, the nav-perf census's
+    // "observe" share)
+    if (scanParts) {
+      scanParts = false;
+      observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-pips,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+      // the revive count is placed (mouse) as it shows
+      if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
+      observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
+      // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
+      // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
+      observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
+      // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
+      observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
+      // Watch's bar (its seat: refresh)
+      observe('.cot-watch');
+    }
     // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
     const { width, height } = layoutViewportSize(window);
@@ -1426,7 +1446,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('resize', schedule, { passive: true });
   // (a relayout request may come from anything, the network strip mounting outside the HUD root among them: it is a new
   // plan input too)
-  window.addEventListener('cot-hud-relayout', () => { planInputs = true; });
+  window.addEventListener('cot-hud-relayout', () => { planInputs = true; scanParts = true; });
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
