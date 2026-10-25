@@ -428,6 +428,7 @@ async function pageDrawAttribution(frames) {
     return path.reverse().slice(0, 2).join('/');
   };
   const bandOf = (distance) => (distance < 30 ? 'near<30' : distance < 180 ? 'mid30-180' : 'far>180');
+  const fxKinds = {};
   const passes = {}, bands = {}, parts = {}, materials = new Set(), programs = new Set(), tankMaterials = new Set(), tankPrograms = new Set();
   const tanksSeen = {};
   const props = R.properties;
@@ -456,6 +457,11 @@ async function pageDrawAttribution(frames) {
       while (top.parent && top.parent !== scene) top = top.parent;
       const key = `${top.name || top.type}|${pass}`;
       bands[`other:${key}`] = (bands[`other:${key}`] ?? 0) + 1;
+      // the effects by what drew (a collapse's baked heap, a fracture's face, a body in flight), their indices dropped
+      if (top !== object && (top.name === 'fx' || top.userData?.fxRoot)) {
+        const kind = `${(object.name || object.type).replace(/[-_]?\d+$/, '')}|${pass}`;
+        fxKinds[kind] = (fxKinds[kind] ?? 0) + 1;
+      }
     }
     return orig.apply(this, arguments);
   };
@@ -488,6 +494,7 @@ async function pageDrawAttribution(frames) {
   }).sort((a, b) => b[1] - a[1]).slice(0, 60);
   return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
+    fxKinds: Object.entries(fxKinds).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30),
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
 }
 
