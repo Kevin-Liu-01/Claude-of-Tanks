@@ -79,9 +79,13 @@ for (const mode of ['solo', 'private', 'lan']) {
   `${mode}: actual callback warms only its selected path`);
 }
 
+// the strip carries one delegated set of card listeners (perf 249): a pointer crossing into a card starts the dwell warm,
+// a press, touch or focus warms at once
 assert.match(garage,
-  /pointerenter[\s\S]{0,120}signalTankIntent\(spec\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(spec\.id, true\)/,
+  /cardsEl\.addEventListener\('pointerover', \(event\) => \{\s*const card = crossesCard\(event\);\s*if \(card\) signalTankIntent\(card\.dataset\.specId \|\| ''\);[\s\S]{0,700}for \(const type of \['touchstart', 'pointerdown'\] as const\) \{\s*cardsEl\.addEventListener\(type, \(event\) => \{\s*const card = cardFrom\(event\.target\);\s*if \(card\) signalTankIntent\(card\.dataset\.specId \|\| '', true\);/,
   'vehicle cards must expose deliberate hover and immediate press intent');
+assert.match(garage, /const signalTankIntent = \(specId: string, immediate = false\): void => \{[\s\S]{0,500}tankIntentTimer = setTimeout\(/,
+  'hover intent waits for a dwell; a press does not');
 assert.match(garage, /garage\.roomReminder\.readyCount/,
   'active-room visible readiness copy must use the locale catalog');
 assert.match(garage, /garage\.roomReminder\.aria/,
