@@ -42,7 +42,7 @@ import { normalizeRoomCode } from '../mp/room/protocol.ts';
 import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
 import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
-import { tierNumeral } from '../vehicles/tier.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
