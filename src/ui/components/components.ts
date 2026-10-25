@@ -45,7 +45,7 @@ interface ButtonOptions {
   readonly icon?: IconId;
   /** A key cap after the label (hidden on touch). */
   readonly key?: string;
-  /** Icon-only: the label becomes the accessible name and the visible text goes. */
+  /** Icon-only: the label becomes the accessible name (the kit's hover tip shows it) and the visible text goes. */
   readonly iconOnly?: boolean;
   readonly sound?: SoundRole;
   readonly className?: string;
@@ -60,7 +60,7 @@ export function button(options: ButtonOptions): string {
   const cls = ['cot-c-btn', `cot-c-btn--${variant}`, `cot-c-btn--${size}`, options.iconOnly ? 'cot-c-btn--icon' : '',
     options.className ?? ''].filter(Boolean).join(' ');
   const sound = options.sound ?? (variant === 'primary' ? 'confirm' : 'press');
-  const name = options.iconOnly ? ` aria-label="${esc(options.label)}" title="${esc(options.label)}"` : '';
+  const name = options.iconOnly ? ` aria-label="${esc(options.label)}"` : '';
   const text = options.iconOnly ? '' : `<span class="cot-c-btn__label">${esc(options.label)}</span>`;
   return `<button type="button" class="${cls}" data-ui-sound="${sound}"${name}${attrs(options.attrs)}>${glyph}${text}`
     + `${options.key && !options.iconOnly ? keycap(options.key) : ''}</button>`;
@@ -80,7 +80,7 @@ interface ChipOptions {
   readonly nation?: string;
   /** A toggle chip (filters): aria-pressed carries the state. Omit for a static chip. */
   readonly pressed?: boolean;
-  /** Show only the glyph or flag; the label becomes the accessible name. */
+  /** Show only the glyph or flag; the label becomes the accessible name, which the hover tip shows. */
   readonly compact?: boolean;
   readonly count?: number | string;
   readonly className?: string;
@@ -92,7 +92,7 @@ export function chip(options: ChipOptions): string {
   const cls = `cot-c-chip${options.compact ? ' cot-c-chip--compact' : ''}${options.className ? ` ${options.className}` : ''}`;
   const count = options.count === undefined ? '' : `<span class="cot-c-chip__count num">${esc(options.count)}</span>`;
   const text = options.compact ? '' : `<span class="cot-c-chip__label">${esc(options.label)}</span>`;
-  const name = options.compact ? ` aria-label="${esc(options.label)}" title="${esc(options.label)}"` : '';
+  const name = options.compact ? ` aria-label="${esc(options.label)}"` : '';
   if (options.pressed === undefined) return `<span class="${cls}"${name}${attrs(options.attrs)}>${lead}${text}${count}</span>`;
   return `<button type="button" class="${cls}" aria-pressed="${options.pressed}" data-ui-sound="toggle"${name}`
     + `${attrs(options.attrs)}>${lead}${text}${count}</button>`;
@@ -134,7 +134,7 @@ interface ChoiceOption {
   readonly value: string;
   readonly label: string;
   readonly icon?: IconId;
-  /** Show the glyph only; the label is the accessible name. */
+  /** Show the glyph only; the label is the accessible name, which the hover tip shows. */
   readonly iconOnly?: boolean;
   readonly disabled?: boolean;
 }
@@ -153,7 +153,7 @@ export function segmented(options: SegmentedOptions): string {
     const on = option.value === options.value;
     const glyph = option.icon ? icon(option.icon, { size: 16 }) : '';
     const text = option.iconOnly ? '' : `<span>${esc(option.label)}</span>`;
-    const name = option.iconOnly ? ` aria-label="${esc(option.label)}" title="${esc(option.label)}"` : '';
+    const name = option.iconOnly ? ` aria-label="${esc(option.label)}"` : '';
     return `<button type="button" role="radio" class="cot-c-seg__opt" data-value="${esc(option.value)}" aria-checked="${on}"`
       + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}>${glyph}${text}</button>`;
   }).join('');
