@@ -3194,12 +3194,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         : `${shell.pen100Mm} / ${shell.pen1000Mm}`;
       const hasOwnReload = !!shell.reloadS && Math.abs(shell.reloadS - baseReloadS) > 0.01;
       const reload = hasOwnReload
-        ? `${shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0)} s reload`
+        ? t('garage.hotspot.reload', { value: shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0) ?? '' })
         : '';
       const inventory = t('garage.dossier.shell.carried', { n: shellAmmunitionCapacity(shell) });
       const detail = [inventory, reload].filter(Boolean).join(' &middot; ');
       return `<div class="shellrow" style="--shell-color:${color}">` +
-        `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shell.type}</span></span>` +
+        `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shellTypeLabel(shell.type)}</span></span>` +
         `<span class="nm">${shell.name}<small>${detail}</small></span>` +
         `<span class="shellmetric"><b class="num">${penetration}</b>mm</span>` +
         `<span class="shellmetric"><b class="num">${shell.dmg}</b>hp</span></div>`;
@@ -3385,7 +3385,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
     const head = headlineOf(spec, eqM.reload, eqM.turret);
     setHotspotFacts({
-      gun: { lead: `${spec.gun.caliberMm} mm`, more: t('garage.hotspot.reload', { value: head.reload.toFixed(1) }) },
+      // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor)
+      gun: { lead: `${spec.gun.caliberMm} mm`, more: `${head.reload.toFixed(1)} s` },
       turret: { lead: `${head.turret.toFixed(0)} °/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
       engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
       tracks: { lead: `${Math.round(spec.topSpeedKmh)} km/h`, more: `${spec.weightTons.toFixed(0)} t` },

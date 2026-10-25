@@ -131,6 +131,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{flex:none;margin:0;white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex-basis:100%;}
 .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
+/* a Chinese label keeps its words whole on one line and its figure steps under it when the two do not fit (the gauntlet
+   10-25: 车体转 / 向散布); the label breaks only at its phrase marks when the tile is narrower than the label itself */
+html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{flex:1 0 auto;max-width:100%;word-break:keep-all;}
+html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr b{margin-left:auto;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{

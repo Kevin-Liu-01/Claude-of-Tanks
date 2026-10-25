@@ -39,6 +39,7 @@ import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { noticeRegion, notify, type NoticeSeverity } from '../ui/components/notice.ts';
+import { shellTypeLabel } from '../ui/shellLabels.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
@@ -1064,7 +1065,7 @@ function renderAmmo(record: GalleryRecord): void {
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shell.type)}</small></span>`
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeLabel(type))}</small></span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`

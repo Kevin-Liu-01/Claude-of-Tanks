@@ -944,7 +944,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqtile .e{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;letter-spacing:0;color:var(--ink-3);
   line-height:1.35;margin-top:3px;min-height:29px;display:block;}
 /* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
-html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;}
+html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere;}
 .cot-eqtile.sel .n{color:var(--accent-hi);}
 .cot-eqtile .tag{position:absolute;top:3px;right:3px;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
   letter-spacing:0;color:var(--text-accent);background:var(--accent-wash);
