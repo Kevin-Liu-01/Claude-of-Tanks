@@ -114,8 +114,6 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   readonly lastRelease: ReleaseReceipt | null;
   loadModule(): Promise<WorldMapModule<World>>;
   enforceCacheBudget(): void;
-  /** A cached world released now (never the current one or one still building); false when there was none to release. */
-  releaseCached(id: string): boolean;
   beginBuild(
     mapId: string,
     onProgress?: ProgressListener | null,
@@ -211,14 +209,6 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       cache.delete(id);
       releaseWorld(id, cached);
     }
-  };
-
-  const releaseCached = (id: string): boolean => {
-    const cached = cache.get(id);
-    if (!cached || cached === dependencies.getCurrentWorld() || builds.has(id)) return false;
-    cache.delete(id);
-    releaseWorld(id, cached);
-    return true;
   };
 
   const beginBuild = (
@@ -462,7 +452,6 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     get lastRelease() { return lastRelease; },
     loadModule,
     enforceCacheBudget,
-    releaseCached,
     beginBuild,
     prefetch,
     cancelBackgroundExcept,

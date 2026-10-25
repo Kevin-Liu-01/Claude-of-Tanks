@@ -91,7 +91,7 @@ interface WorldActivationRuntimeOptions<
   coordinator?: WorldBuildCoordinator<World>;
   coordinatorDependencies?: CoordinatorDependencies<World>;
   swapSceneWorld(previous: THREE.Object3D | null, next: THREE.Object3D): void;
-  setSceneWorldActive(root: THREE.Object3D | null, active: boolean): void;
+  setSceneWorldActive(root: THREE.Object3D, active: boolean): void;
   ensureCloudTextures(): void;
   ensureCloudTexturesChunked?(yieldFrame: () => Promise<void>): Promise<void>;
   awaitInitialCloudWarm(): Promise<void>;
@@ -153,8 +153,6 @@ export interface WorldActivationRuntime<
     options?: WorldActivationOptions | null,
   ): Promise<World>;
   setDormant(dormant: boolean): void;
-  /** The dormant battlefield released when another one is asked for (its id; the same one keeps it); true when released. */
-  releaseDormantExcept(id: string | null): boolean;
   invalidateSkyPresentation(): void;
   /** A selected/reset battle preset has completed its synchronous IBL bake. */
   markEnvironmentPrepared(world: World | null): void;
@@ -439,32 +437,6 @@ export function createWorldActivationRuntime<
     mark('shadowWarm');
   };
 
-  /**
-   * (battle-spikes-253, the memory lockdown; the coordinator, 2026-10-25: "memory returns to baseline after each battle
-   * and heavy maps stay well under 4 GB") A battlefield left dormant under the Garage is released once a different one is
-   * asked for: a battle entry or the Garage's planned battle on another map. The memory probe (tools/battle-memory-probe.mjs)
-   * found a page on the random rotation keeping the last battle's world beside the next one's (desktop keeps two). A
-   * rematch on the same battlefield keeps it (its entry is instant); a speculative background prefetch never releases.
-   */
-  const releaseDormantExcept = (id: string | null): boolean => {
-    if (!current || !dormant || !id) return false;
-    let key: string | null = null;
-    for (const [cachedId, cachedWorld] of cache) if (cachedWorld === current) { key = cachedId; break; }
-    if (key === null || key === id) return false;
-    const released = current;
-    current = null;
-    collider = null;
-    servicesMapId = null;
-    dormant = false;
-    // the scene's residency forgets its root (it holds the active world's group across dormancy)
-    options.setSceneWorldActive(null, false);
-    if (coordinator.releaseCached(key)) return true;
-    current = released;
-    dormant = true;
-    options.setSceneWorldActive(released.group, false);
-    return false;
-  };
-
   const ensure = async (
     mapId: string | null = null,
     onProgress: ProgressListener | null = null,
@@ -477,8 +449,6 @@ export function createWorldActivationRuntime<
     const baseId = mapId || pendingMapId;
     const id = activationOptions?.terrainVariant ? `${baseId}#${activationOptions.terrainVariant}` : baseId;
     coordinator.cancelBackgroundExcept(id);
-    // another battlefield: the dormant one goes before this one builds (its memory is not held through the build's peak)
-    releaseDormantExcept(id);
     const cached = cache.get(id) ?? null;
     const startedAt = now();
     const trace: WorldActivationTrace = {
@@ -538,11 +508,7 @@ export function createWorldActivationRuntime<
     get lastRelease() { return coordinator.lastRelease; },
     loadModule: () => coordinator.loadModule(),
     enforceCacheBudget: () => coordinator.enforceCacheBudget(),
-    prefetch: (mapId, prefetchOptions) => {
-      // the Garage's planned battle on another battlefield: the dormant one goes first (a speculative prefetch keeps it)
-      if (prefetchOptions?.intent) releaseDormantExcept(mapId);
-      return coordinator.prefetch(mapId, prefetchOptions) as Promise<World | null> | null;
-    },
+    prefetch: (mapId, prefetchOptions) => coordinator.prefetch(mapId, prefetchOptions) as Promise<World | null> | null,
     cancelBackgroundExcept: (mapId) => coordinator.cancelBackgroundExcept(mapId),
     setPendingMapId(mapId) {
       if (mapId) pendingMapId = mapId;
@@ -568,7 +534,6 @@ export function createWorldActivationRuntime<
     markEnvironmentPrepared(world) {
       if (world && world === current) skyEnvironmentDeferred = false;
     },
-    releaseDormantExcept,
     setDormant(nextDormant) {
       if (!current) return;
       if (!nextDormant && skyPresentationDirty) restoreAtmosphere(current);
