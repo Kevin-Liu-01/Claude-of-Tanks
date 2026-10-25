@@ -90,6 +90,9 @@ function mountPlay(section: HTMLElement): void {
     frame = 0;
     previous.disabled = shown.scrollLeft <= 2;
     next.disabled = shown.scrollLeft >= shown.scrollWidth - shown.clientWidth - 2;
+    // the rail's edge fades follow its ends (home.css .play-rail)
+    shown.toggleAttribute('data-scrolled', !previous.disabled);
+    shown.toggleAttribute('data-end', next.disabled);
   };
   const step = (direction: number): void => shown.scrollBy({ left: direction * shown.clientWidth * 0.8,
     behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });

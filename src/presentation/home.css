@@ -95,7 +95,9 @@ img{display:block;max-width:100%}
 .play-acts>.cot-c-seg::-webkit-scrollbar{display:none}
 .play-acts>.cot-c-seg>.cot-c-seg__opt{flex:none}
 .play-acts .cot-c-btn--icon:disabled{opacity:.4;cursor:default}
-.play-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--s3) * 2) / 2.4);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+.play-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--s3) * 2) / 3);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;
+  /* whole cards per view, the arrows the way on; on a phone the next card peeks under a fade (below) */
+  --fade-l:0px;--fade-r:0px;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%)}
 .play-rail::-webkit-scrollbar{display:none}
 .play-rail[hidden]{display:none}
 .play-rail:focus-visible{outline-offset:2px}
@@ -180,7 +182,7 @@ img{display:block;max-width:100%}
 html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
 @media (width < 1100px){
-  .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 1.6)}
+  .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 2)}
   .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
   .press__stats{grid-template-columns:repeat(2,auto);justify-content:start}
   .press__inner{grid-template-areas:"title" "stats" "quotes" "sources" "date"}
@@ -220,7 +222,9 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__link .cot-i{width:20px;height:20px}
   .press__title{font-size:var(--fs-36)}
   .play{padding:var(--s6) 0}
-  .play-rail{grid-auto-columns:86vw;gap:var(--s2)}
+  .play-rail{grid-auto-columns:86vw;gap:var(--s2);--fade-r:var(--s7)}
+  .play-rail[data-scrolled]{--fade-l:var(--s6)}
+  .play-rail[data-end]{--fade-r:0px}
   .play-acts>.cot-c-btn--icon{display:none}
   .play-tile__nm{left:var(--s4);right:var(--s4);bottom:var(--s3)}
   .play-tile__nm b{font-size:var(--fs-20)}
