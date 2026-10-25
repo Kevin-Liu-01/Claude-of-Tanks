@@ -27,7 +27,7 @@
   "href": "/docs/start#fire",
   "title": "Fire",
   "chapter": "Your first battle",
-  "text": "04 LMB fires; hold it to fire at each reload. 1 2 3 pick the shell. 4 5 6 use the Repair Kit (35 s), the First Aid Kit (45 s) and the Fire Extinguisher (25 s); a kit's cooldown starts only once it has done something."
+  "text": "04 LMB fires; hold it to fire at each reload pick the shell use the Repair Kit (35 s), the First Aid Kit (45 s) and the Fire Extinguisher (25 s); a kit's cooldown starts only once it has done something."
  },
  {
   "href": "/docs/start#win",
@@ -99,7 +99,7 @@
   "href": "/docs/modes#survive",
   "title": "Survive and escort",
   "chapter": "Game modes",
-  "text": "Endless Horde Survive ever-larger waves of fragile hostiles and hunt floating repair caches. Clock — Sides 5 v 20 Respawn — +100 % / -85 % hull unlimited rounds horde first wave 6, more every wave 16 on the field · 8 s between waves 30 % repair between waves 1 1 2 2 3 3 Verdant Fields Frontline Assault Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one. Clock 12 min Sides 4 v 12 Respawn — +80 % / 0 % hull unlimited rounds frontline Hold the final sector for 20 s 3 defenders per sector, 0 % hull E E Verdant Fields AC-130 Protect vulnerable allied vehicles driving to extraction. Save at least half before they are destroyed or time runs out. All human players provide air support. Clock 8 min Sides 5 v 12 Respawn — All tanks visible unlimited rounds no consumables ac130 Juggernaut Become the armored boss or join the hunters. Hunters respawn; destroy the juggernaut before the clock runs out. Clock 10 min Sides 1 v 12 Respawn 6 s Juggernaut: ×8 hull · ×0.5 reload time unlimited rounds juggernaut Infected Survivors have 130% health against a swarm of infected at 20%; fallen survivors join the swarm. Hold out for 3 minutes. Clock 3 min Sides 10 v 5 Respawn 5 s Destroyed survivors become infected +30 % / -80 % hull unlimited rounds infected"
+  "text": "Endless Horde Survive ever-larger waves of fragile hostiles and hunt floating repair caches. Clock — Sides 5 v 20 Respawn — +100 % / -85 % hull unlimited rounds horde first wave 6, more every wave 16 on the field · 8 s between waves 30 % repair between waves Verdant Fields Frontline Assault Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one. Clock 12 min Sides 4 v 12 Respawn — +80 % / 0 % hull unlimited rounds frontline Hold the final sector for 20 s 3 defenders per sector, 0 % hull E E Verdant Fields AC-130 Protect vulnerable allied vehicles driving to extraction. Save at least half before they are destroyed or time runs out. All human players provide air support. Clock 8 min Sides 5 v 12 Respawn — All tanks visible unlimited rounds no consumables ac130 Juggernaut Become the armored boss or join the hunters. Hunters respawn; destroy the juggernaut before the clock runs out. Clock 10 min Sides 1 v 12 Respawn 6 s Juggernaut: ×8 hull · ×0.5 reload time unlimited rounds juggernaut Infected Survivors have 130% health against a swarm of infected at 20%; fallen survivors join the swarm. Hold out for 3 minutes. Clock 3 min Sides 10 v 5 Respawn 5 s Destroyed survivors become infected +30 % / -80 % hull unlimited rounds infected"
  },
  {
   "href": "/docs/modes#arcade",
@@ -159,13 +159,13 @@
   "href": "/docs/combat#penetration",
   "title": "Penetration",
   "chapter": "Armor, angling and spotting",
-  "text": "A shell goes through when its penetration, rolled 75–125 %, beats the armour it meets. 200 400 600 800 1000 100 500 1000 1500 2000 Range (m) mm OFL 120 F2 APFSDS OECC 120 F1 HEAT Penetration falls linearly from its 100 m figure to its 1,000 m figure, then on to 2,000 m where the shell has one. Penetration and damage each roll 75–125 % of their figure. HEAT keeps its penetration at any range. The armour overlay In the sight, H paints the enemy for the shell you have loaded: green goes through, amber may, red will not. It counts the angle, spaced armour, ERA and range."
+  "text": "A shell goes through when its penetration, rolled 75–125 %, beats the armour it meets Range (m) mm OFL 120 F2 APFSDS OECC 120 F1 HEAT Penetration falls linearly from its 100 m figure to its 1,000 m figure, then on to 2,000 m where the shell has one. Penetration and damage each roll 75–125 % of their figure. HEAT keeps its penetration at any range. The armour overlay In the sight, H paints the enemy for the shell you have loaded: green goes through, amber may, red will not. It counts the angle, spaced armour, ERA and range."
  },
  {
   "href": "/docs/combat#angling",
   "title": "Angling",
   "chapter": "Armor, angling and spotting",
-  "text": "Angle the plate and it gets thicker along the shell's path, until the shell bounces off. 100 200 300 400 500 0 15 30 45 60 75 Impact angle (°) mm AP, 75 mm bounces past 70° APCR, 75 mm bounces past 70° APFSDS, 120 mm bounces past 78° HEAT, 120 mm Effective armour is the plate divided by the cosine of the angle less the shell's normalization. APFSDS turns 2° toward the plate and bounces past 78°. AP turns 5° toward the plate and bounces past 70°. A shell 3× wider than the plate never bounces. A shell bounces at most 2 times; a HEAT jet dies on its first. Leclerc XLR: armour by thickness"
+  "text": "Angle the plate and it gets thicker along the shell's path, until the shell bounces off Impact angle (°) mm AP, 75 mm bounces past 70° APCR, 75 mm bounces past 70° APFSDS, 120 mm bounces past 78° HEAT, 120 mm Effective armour is the plate divided by the cosine of the angle less the shell's normalization. APFSDS turns 2° toward the plate and bounces past 78°. AP turns 5° toward the plate and bounces past 70°. A shell 3× wider than the plate never bounces. A shell bounces at most 2 times; a HEAT jet dies on its first. Leclerc XLR: armour by thickness"
  },
  {
   "href": "/docs/combat#special",
@@ -183,7 +183,7 @@
   "href": "/docs/combat#spotting",
   "title": "Spotting",
   "chapter": "Armor, angling and spotting",
-  "text": "You see a tank when it is inside your view range less its camo, between 50 m and 445 m. 100 200 300 400 500 0 10 20 30 40 50 60 Target camo (%) m 445 m view range 380 m view range 300 m view range Inside 50 m a tank is always seen, even through cover. A tank stays seen 5 s after the last sighting. The sixth-sense lamp lights 3 s after you are spotted and stays 8 s. Firing strips most of your camo for a moment; bushes near you turn see-through after you fire. Bushes and trees add up to 50 % camo; a camo paint that matches the map adds 3.5 %."
+  "text": "You see a tank when it is inside your view range less its camo, between 50 m and 445 m Target camo (%) m 445 m view range 380 m view range 300 m view range Inside 50 m a tank is always seen, even through cover. A tank stays seen 5 s after the last sighting. The sixth-sense lamp lights 3 s after you are spotted and stays 8 s. Firing strips most of your camo for a moment; bushes near you turn see-through after you fire. Bushes and trees add up to 50 % camo; a camo paint that matches the map adds 3.5 %."
  },
  {
   "href": "/docs/battlefields",

@@ -362,4 +362,5 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
    meet 44 px */
 @media (height < 520px){.dm-banner__cap{display:none}}
 :lang(zh) .docs-evidence :is(dt,dd){word-break:keep-all}
+.dm-keys .cot-c-kbd{vertical-align:middle}
 @media (pointer:coarse){.public-nav__cta{--h:var(--btn-h-m)}}
