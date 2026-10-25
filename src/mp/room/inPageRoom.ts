@@ -8,7 +8,7 @@
  */
 import type { SocketEvent, SocketFactory, SocketLike } from '../transport/webSocketTransport.ts';
 import type { RoomEnvelope } from './protocol.ts';
-import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, parseRoomRoute } from './protocol.ts';
+import { ROOM_KEEPALIVE_REQUEST, ROOM_KEEPALIVE_RESPONSE, ROOM_SOLO_MAX_TEAM_SIZE, parseRoomRoute } from './protocol.ts';
 import { RoomActor } from './roomActor.ts';
 import type { RoomActorPorts } from './roomActor.ts';
 import { createP2pMatchHost } from './p2pMatchHost.ts';
@@ -75,6 +75,8 @@ export function createInPageRoomService({ now = () => Date.now(), random = crypt
       persist() { /* in memory: the room ends with the page */ },
       keepaliveAt: (socketId) => keepalives.get(socketId) ?? null,
       defer: (callback, delayMs) => { if (!closed) setTimeout(callback, delayMs); },
+      // a solo battle seats up to 21 a side (the player and the wire's other 41 bots)
+      guards: { maxTeamSize: ROOM_SOLO_MAX_TEAM_SIZE },
       ...(log ? { log } : {}),
     };
   }

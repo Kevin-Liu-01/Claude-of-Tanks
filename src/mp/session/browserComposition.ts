@@ -388,6 +388,8 @@ export interface SessionOwner {
   observeFrame?(frameMs: number): void;
   /** The hosting tab is going away: tell the room now (plan step 11). Optional for doubles. */
   handOffHosting?(reason: string): boolean;
+  /** Pause or resume this page's own solo match (MatchSession.setPaused). Optional for doubles. */
+  setPaused?(paused: boolean): boolean;
   leaveMatch(reason?: string): Promise<void>;
   dispose(): void;
   stats(): MatchSessionStats;
@@ -471,6 +473,11 @@ export interface BrowserComposition {
   pumpBackground(nowMs: number): void;
   /** The page is going away (pagehide): a hosting seat hands its match on at once (plan step 11). True when it did. */
   handOffHosting(reason: string): boolean;
+  /**
+   * The battle's pause (the settings open) for a solo battle's room in the page (soloHostEntry.ts): its host's actor and
+   * the session's clock stand still. False outside a solo room.
+   */
+  setPaused(paused: boolean): boolean;
   queueConsumable(slot: number): void;
   queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   /** The Garage return's network port: keep the room across the return? */
@@ -868,6 +875,8 @@ export function createBrowserComposition({
     const current = roomSession;
     const lobby = latestLobby;
     if (!current || !lobby) return;
+    // a solo battle's room in the page (soloHostEntry.ts) has no lobby to show
+    if (current.roomInfo.solo) return;
     if (roomPorts.getPhase() === 'battle' && !roomPorts.hasResult()) return;
     const menuPromise = roomPorts.getMenu();
     if (!menuPromise) return;
@@ -890,6 +899,9 @@ export function createBrowserComposition({
   const handleLobby = (lobby: SerializedLobby, snapshot: RoomSnapshot): void => {
     latestLobby = lobby;
     latestRoom = snapshot;
+    // a solo battle's room in the page (soloHostEntry.ts) is no social session: no Garage status, and the end screen
+    // keeps its solo actions (Battle Again)
+    if (roomSession?.roomInfo.solo) return;
     roomPorts.setGarageStatus(roomStatus(snapshot));
     roomPorts.emitRoomState({ state: lobby, playerId: playerId(), role: roleOf() });
     syncMenu();
@@ -1664,9 +1676,11 @@ export function createBrowserComposition({
     pump,
     pumpBackground,
     handOffHosting,
+    setPaused: (paused) => (roomSession?.roomInfo.solo ? session?.setPaused?.(paused) ?? false : false),
     queueConsumable: (slot) => { round?.controls.queueConsumable(slot); },
     queueAction: (action) => { round?.controls.queueAction(action); },
-    shouldPreserveRoom: () => !!roomSession && roomSession.client.phase !== 'closed',
+    // a solo battle's room in the page ends with its battle: the Garage return closes it
+    shouldPreserveRoom: () => !!roomSession && !roomSession.roomInfo.solo && roomSession.client.phase !== 'closed',
     disposePresentation,
     closeMatch: (reason = 'network_match_closed') => { closeRoom(reason); },
     leaveRoom,

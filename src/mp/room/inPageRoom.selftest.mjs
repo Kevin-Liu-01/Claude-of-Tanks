@@ -3,10 +3,11 @@
 // only seat host of a p2p match with the room's bots filling 7 a side, signs its seat token with the page's synchronous
 // HMAC; the real MatchSession boots the host (the in-process core standing in for the Worker), whose check of that token
 // passes; the seat is welcomed through the loopback and the presentation receives the match's frames. A route the room
-// does not serve fails the socket; the solo pause holds the actor's tick and the client's clock; closing the service
-// drains it.
+// does not serve fails the socket; the solo pause holds the actor's tick and the client's clock; a solo room seats 21 a
+// side where any other stops at 14; closing the service drains it.
 import assert from 'node:assert/strict';
 import { RoomClient } from './roomClient.ts';
+import { createRoom } from './roomPolicy.ts';
 import { IN_PAGE_ROOM_ENDPOINT, createInPageRoomService } from './inPageRoom.ts';
 import { MatchSession } from '../session/matchSession.ts';
 import { RecordingPresentation } from '../presentation/adapter.ts';
@@ -93,6 +94,35 @@ try {
   clearInterval(pump);
   session.dispose();
   client.dispose();
-  service.close();
 }
+
+// a solo room seats 21 a side (the guard the page's service sets); any other room stops at 14
+assert.throws(() => createRoom({ roomCode: 'ABCDEF', mode: 'lan', creator: { id: 'p1', name: 'P' }, settings: { teamSize: 15 }, now: 0 }), /invalid_team_size/);
+assert.equal(createRoom({ roomCode: 'ABCDEF', mode: 'lan', creator: { id: 'p1', name: 'P' }, settings: { teamSize: 21 }, maxTeamSize: 21, now: 0 }).settings.teamSize, 21);
+{
+  const big = new RoomClient({ endpoint: IN_PAGE_ROOM_ENDPOINT, player: { id: 'solo21', name: 'Solo' }, pingIntervalMs: 0, requestTimeoutMs: 5000,
+    transport: { createSocket: service.createSocket } });
+  const bigCores = [];
+  const bigSession = new MatchSession({
+    room: big, clock: () => performance.now(),
+    createPresentation: () => { const presentation = new RecordingPresentation(8); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
+    p2p: { createPeerConnection: world.createPeerConnection, createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => bigCores.push(core), reportIntervalMs: 500 }),
+      manifestBase: null, tier: 'desktop', countdownS: 1 },
+  });
+  bigSession.start();
+  await big.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc', equipment: [], camo: '' }, settings: { gameMode: 'standard', mapId: 'verdant', teamSize: 21 } });
+  await big.setReady(true);
+  await big.start();
+  const bigPump = setInterval(() => bigSession.update(performance.now(), 1 / 60), 16);
+  try {
+    await until(() => bigCores[0]?.actor, 'the 21-a-side host booted');
+    assert.equal(bigCores[0].actor.authority.entities.length, 42, '21 a side: the player and 41 of the room\'s bots');
+  } finally {
+    clearInterval(bigPump);
+    bigSession.dispose();
+    big.dispose();
+  }
+}
+service.close();
 assert.equal(service.rooms.size, 0, 'the closed service holds no room');
+console.log('inPageRoom.selftest: a solo room seats 21 a side (42 hulls on its host); any other room stops at 14; the closed service holds no room');

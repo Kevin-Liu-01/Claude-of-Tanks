@@ -40,6 +40,8 @@ export interface RoomPolicyGuards {
   isVehicleAllowed(specId: string, player: RoomPlayer, room: RoomSnapshot): boolean;
   isCamoAllowed(camo: string, player: RoomPlayer, room: RoomSnapshot): boolean;
   isMapAllowed(mapId: string, room: RoomSnapshot): boolean;
+  /** The largest side the room seats: ROOM_MAX_TEAM_SIZE unless its host allows more (a solo room in the page: 21). */
+  maxTeamSize?: number;
 }
 
 const OPEN_GUARDS: RoomPolicyGuards = {
@@ -56,6 +58,8 @@ export interface CreateRoomOptions {
   settings?: RoomCreateSettings | null;
   /** Where this room's matches run (the host's `MatchHost.transport`); peer-to-peer by default. */
   hostTransport?: RoomHostInfo['transport'];
+  /** The guards' `maxTeamSize` (a solo room in the page seats more than ROOM_MAX_TEAM_SIZE). */
+  maxTeamSize?: number;
   now: number;
 }
 
@@ -114,9 +118,9 @@ function cleanMap(value: unknown): string {
   return id;
 }
 
-function cleanTeamSize(value: unknown): number {
+function cleanTeamSize(value: unknown, max = ROOM_MAX_TEAM_SIZE): number {
   const size = Number(value);
-  if (!Number.isInteger(size) || size < ROOM_MIN_TEAM_SIZE || size > ROOM_MAX_TEAM_SIZE) throw new RoomError('invalid_team_size');
+  if (!Number.isInteger(size) || size < ROOM_MIN_TEAM_SIZE || size > max) throw new RoomError('invalid_team_size');
   return size;
 }
 
@@ -237,9 +241,9 @@ function createPlayer(room: RoomSnapshot, {
   };
 }
 
-export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined): RoomSettings {
+export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined, maxTeamSize = ROOM_MAX_TEAM_SIZE): RoomSettings {
   const gameMode = roomGameMode(settings?.gameMode);
-  const teamSize = settings?.teamSize == null ? 7 : cleanTeamSize(settings.teamSize);
+  const teamSize = settings?.teamSize == null ? 7 : cleanTeamSize(settings.teamSize, maxTeamSize);
   const maxSpectators = settings?.maxSpectators == null ? ROOM_MAX_SPECTATORS : Number(settings.maxSpectators);
   if (!Number.isInteger(maxSpectators) || maxSpectators < 0 || maxSpectators > ROOM_MAX_SPECTATORS) throw new RoomError('invalid_payload', 'maxSpectators');
   return {
@@ -257,7 +261,7 @@ export function defaultRoomSettings(settings: RoomCreateSettings | null | undefi
 }
 
 /** A new room: the creator is the admin and the first (Alpha) seat; no host is elected before the first start. */
-export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', now }: CreateRoomOptions): RoomSnapshot {
+export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', maxTeamSize, now }: CreateRoomOptions): RoomSnapshot {
   if (!ROOM_CODE_RE.test(roomCode)) throw new RoomError('invalid_room_code');
   if (mode !== 'private' && mode !== 'lan') throw new RoomError('invalid_payload', 'mode');
   const id = cleanSeatId(creator.id);
@@ -269,7 +273,7 @@ export function createRoom({ roomCode, mode, creator, selection, settings, hostT
     adminId: id,
     revision: 0,
     round: 0,
-    settings: defaultRoomSettings(settings),
+    settings: defaultRoomSettings(settings, maxTeamSize),
     players: [],
     match: null,
     lastResult: null,
@@ -382,7 +386,7 @@ export function applyRoomCommand(
   now: number,
   guards: Partial<RoomPolicyGuards> = {},
 ): RoomSnapshot {
-  const { isVehicleAllowed, isCamoAllowed, isMapAllowed } = { ...OPEN_GUARDS, ...guards };
+  const { isVehicleAllowed, isCamoAllowed, isMapAllowed, maxTeamSize = ROOM_MAX_TEAM_SIZE } = { ...OPEN_GUARDS, ...guards };
   if (!isRecord(raw)) throw new RoomError('invalid_command');
   const command: RoomCommand = raw;
   const id = cleanId(playerId);
@@ -463,7 +467,7 @@ export function applyRoomCommand(
     }
     case 'set_team_size': {
       assertAdmin(room, id);
-      const size = cleanTeamSize(command.teamSize);
+      const size = cleanTeamSize(command.teamSize, maxTeamSize);
       if (countTeam(room, 'alpha') > size || countTeam(room, 'bravo') > size) throw new RoomError('team_size_too_small');
       room.settings.teamSize = isCoopGameMode(room.settings.gameMode) ? Math.min(size, ROOM_MAX_COOP_PLAYERS) : size;
       resetReadiness(room);
