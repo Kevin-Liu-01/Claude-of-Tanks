@@ -184,6 +184,8 @@ const TOUCH_TARGET = 44;
 const SYSTEMS_GAP = 3;
 /** The kill ribbon's width (hudKillRibbon.ts), where its place holds it. */
 const RIBBON_W = 520;
+/** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
+const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 /** What the shot report docked under the right roster leaves the global feed between them: one kill row and its gaps
  *  (at 32 px the row did not fit, and the feed vanished while a report showed, gauntlet r3 at 1280x720 down to 900x700). */
 const REPORT_FEED_ROOM = 8 + 26 + 8;
@@ -1256,8 +1258,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const lowerCorners = [read('.cot-dp'), read('.cot-drive'), map];
     const rackCentre = fillRack ? systemsLeft + systemsWidth / 2 : width / 2;
     const hints = hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8);
-    // (the kill ribbon in the same gap, at most its 520 px: on a 900 px window it would cross the speedometer)
+    // (the kill ribbon in the same gap, at most its 520 px: on a 900 px window it would cross the speedometer; under
+    // RIBBON_TIGHT it drops its cause chip and the streak's word, under RIBBON_LEAST it does not show)
     const ribbon = hintsPlace(width, height, lowerCorners, rackCentre, 0);
+    const ribbonNode = root.querySelector<HTMLElement>('.cot-ribbon');
+    if (ribbonNode?.classList) {
+      const ribbonWidth = Math.min(RIBBON_W, ribbon.width);
+      if (ribbonNode.classList.contains('tight') !== ribbonWidth < RIBBON_TIGHT) ribbonNode.classList.toggle('tight', ribbonWidth < RIBBON_TIGHT);
+      if (ribbonNode.classList.contains('cramped') !== ribbonWidth < RIBBON_LEAST) ribbonNode.classList.toggle('cramped', ribbonWidth < RIBBON_LEAST);
+    }
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,

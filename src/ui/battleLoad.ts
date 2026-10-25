@@ -256,7 +256,8 @@ ${WIDE} .cot-bl .lb.t{top:0}${WIDE} .cot-bl .lb.b{bottom:0}
 ${WIDE} .cot-bl .briefing{width:100%;height:100%;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,360px);
   grid-template-rows:auto minmax(0,1fr) auto auto;column-gap:48px;padding:14vh 64px calc(5.5vh + 22px);}
 ${WIDE} .cot-bl .cap{grid-column:1;grid-row:1;align-items:flex-start;text-align:left;gap:16px;padding:0;}
-${WIDE} .cot-bl .mapname{font-size:clamp(64px,7vw,128px);line-height:.84;}
+/* (its 128 px at 1920, a third larger at 2560 with the rest of the composition, gauntlet r4) */
+${WIDE} .cot-bl .mapname{font-size:clamp(64px,7vw,max(128px,6.67vw));line-height:.84;}
 ${WIDE} .cot-bl .rules{justify-content:flex-start;}
 ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;}
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}

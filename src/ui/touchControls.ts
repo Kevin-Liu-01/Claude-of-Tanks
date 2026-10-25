@@ -235,7 +235,9 @@ body.cot-touch-layout[data-cot-width='compact'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:var(--battle-fs-11);white-space:normal;}
-body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
+/* (one 180 px column on touch, the gun-travel chip's and the alert's: at 214 the stack missed its room over the left FIRE
+   by 4 px at 390x844 and fell to its cramped form, three widths deep, gauntlet r4) */
+body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(180px,calc(100vw - 24px));
   min-height:32px;grid-template-columns:21px minmax(0,max-content);gap:var(--s2);}
 /* (its glyph and word centred on the plate as the alert's and the chip's are: a filling column set DETECTED left, gauntlet r3) */
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}

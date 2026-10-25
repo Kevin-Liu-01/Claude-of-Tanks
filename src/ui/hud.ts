@@ -819,8 +819,8 @@ type SniperRowMode = 'stack' | 'zoomBeside' | 'chipBeside' | 'rowBeside' | 'rowA
 /** The touch warning chip the reticle seats under the sight (placeAimWarning): its width (a portrait under 375 px wide
  *  narrows it, clear of the speedometer beside the sight at 360x640), its height the canvas chip's
  *  (AIM_WARNING_CHIP_ABOVE + _BELOW, 24 px; battleHudLayout.css data-seat). */
-// (the detection's width, so the chip and the notices stacked under the sight are one column: gauntlet r3)
-const TOUCH_WARNING_W = 214;
+// (the touch detection's width, so the chip and the notices stacked under the sight are one column: gauntlet r3 and r4)
+const TOUCH_WARNING_W = 180;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
  *  the column or beside the line), the zoom plate left out; the last flag marks a place only a chip makes different.

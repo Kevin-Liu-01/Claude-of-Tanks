@@ -58,6 +58,11 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
   justify-content:center;align-items:center;gap:2px;background:var(--accent);color:var(--ink-on-accent);font:700 var(--battle-fs-20)/1 var(--hud-font)}
 .cot-ribbon .x small{font:600 var(--battle-fs-11)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-ribbon .x[hidden]{display:none}
+/* (a ribbon in a narrow gap keeps the callsign: the cause chip and the streak's word give way, battleHudLayout.ts
+   RIBBON_TIGHT; at 1024x600 the callsign read "Command…" beside them, gauntlet r4) */
+.cot-ribbon.tight .cause,.cot-ribbon.tight .x small{display:none}
+.cot-ribbon.tight .x{min-width:44px;padding:0 10px}
+.cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}
 .cot-ribbon .stream>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .cot-ribbon .stream>span[hidden],.cot-ribbon .stream[hidden]{display:none}

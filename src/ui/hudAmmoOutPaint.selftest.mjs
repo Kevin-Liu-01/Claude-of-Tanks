@@ -1249,8 +1249,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         }
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
-        // (180 px until gauntlet r3: the detection's 214 now, the stacked notices one column)
-        assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 214, `${at}: the seated chip's width`);
+        // (the touch detection's 180 px: the stacked notices are one column, gauntlet r4)
+        assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
         if (chip.box.y1 < ring.y - ring.r) over++;
         assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);
       }
