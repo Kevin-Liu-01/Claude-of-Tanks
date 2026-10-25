@@ -30,6 +30,10 @@ const GAP_Y = 14;
 const SPECIAL_GAP = 24;
 const HEAD_H = 40;
 const MIN_COL = 112;
+/** A column also holds the tree's longest card name on one line at the floor (its shortest form), up to this. */
+const NAME_COL_MAX = 136;
+/** A card's two 1 px edges, which a name's column has to clear (the selected card's wider edge grows outward). */
+const CARD_EDGES = 2;
 /** Wide screens fill with wider columns (the grid shares the title's and the detail's left edge) up to this. */
 const MAX_COL = 280;
 const MIN_ROW = 64;
@@ -83,6 +87,8 @@ interface Geometry {
 
 const displayName = (spec: TechTreeVehicle | undefined, id: string): string => spec?.label?.displayName || spec?.name || id;
 const shortName = (spec: TechTreeVehicle | undefined, id: string): string => spec?.label?.shortName || displayName(spec, id);
+/** A name without its trailing qualifier: "Type 96-72 Lóng (Concept)" reads "Type 96-72 Lóng". */
+const bareName = (name: string): string => name.replace(/ \([^()]*\)$/, '');
 const bestPen = (spec: TechTreeVehicle): number => Math.max(0, ...spec.gun.shells.map((shell) => shell.pen100Mm || 0));
 /**
  * The kit's buttons (components.css), written from its classes rather than its factory: the factory would join the
@@ -99,11 +105,14 @@ function kitButton(label: string, options: { readonly glyph?: IconId; readonly v
   return `<button type="button" class="${cls}" data-ui-sound="${options.sound}"${name}${zoom}>${body}</button>`;
 }
 
-/** A node's name follows its column on the type scale's steps; the label steps keep the kit's floor (zh lifts them to 13). */
-const nameSize = (col: number): string => {
-  const step = col < 132 ? 11 : col < 148 ? 12 : col < 164 ? 13 : col < 200 ? 14 : col < 240 ? 16 : 18;
-  return step <= 12 ? `max(var(--fs-floor-${step}),var(--fs-${step}))` : `var(--fs-${step})`;
-};
+/**
+ * A node's name follows its column: a share of the 13 px step, never under .85 of it (11 px). The 13 step is the same in
+ * every locale (zh lifts only the 11 and 12 steps), so the Latin vehicle names keep one size in en and zh.
+ */
+const nameShare = (col: number): number => Math.min(1.4, Math.max(0.85, col / 145));
+const nameSize = (share: number): string => `calc(var(--fs-13) * ${share.toFixed(3)})`;
+/** A name's short last word (a year, a suffix) stays with the word before it, so a wrap never orphans it. */
+const keepTail = (name: string): string => name.replace(/ (\S{1,5})$/, '\u00a0$1');
 /** The screen's type scale beside the grid (title, detail, stats, rail): 1 to 1440 px, growing to 1.5 at 2400 px. */
 const uiScale = (): number => Math.min(1.5, Math.max(1, (window.innerWidth || 1440) / 1600));
 /** The tiers a tree spans, first to last. */
@@ -153,17 +162,20 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"></h1></div>` +
     `<nav class="tt-rail" aria-label="${t('techTree.nations')}"></nav>` +
     // zoom sits on its own opaque plate in the header, clear of every card
-    `<div class="tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
+    `<div class="tt-plate tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
     kitButton(t('techTree.zoomOut'), { glyph: 'zoomOut', variant: 'ghost', size: 36, sound: 'press', zoom: 'out' }) +
     kitButton(t('techTree.zoomFit'), { glyph: 'zoomFit', variant: 'ghost', size: 36, sound: 'press', zoom: 'fit' }) +
     kitButton(t('techTree.zoomIn'), { glyph: 'zoomIn', variant: 'ghost', size: 36, sound: 'press', zoom: 'in' }) +
     `</div>` +
-    kitButton(t('techTree.close'), { glyph: 'close', variant: 'secondary', size: 48, sound: 'back', className: 'tt-close' }) +
-    `</header>` +
+    `<div class="tt-plate tt-close-plate">` +
+    kitButton(t('techTree.close'), { glyph: 'close', variant: 'ghost', size: 36, sound: 'back', className: 'tt-close' }) +
+    `</div></header>` +
     `<div class="tt-stage">` +
     `<div class="tt-board">` +
     `<div class="tt-grid"><div class="tt-tiers" aria-hidden="true"></div>` +
-    `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true"></div></div></div></div>` +
+    `<svg class="tt-wires" aria-hidden="true"></svg><div class="tt-rule" aria-hidden="true"></div>` +
+    // the special lane's label, on its rule
+    `<span class="tt-rule-label" aria-hidden="true">${esc(t('techTree.special'))}</span></div></div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
     `<div class="tt-detail-id"><h2 class="tt-detail-name"></h2>` +
@@ -180,6 +192,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   const tiersEl = root.querySelector<HTMLElement>('.tt-tiers')!;
   const wires = root.querySelector<SVGSVGElement>('.tt-wires')!;
   const rule = root.querySelector<HTMLElement>('.tt-rule')!;
+  const ruleLabel = root.querySelector<HTMLElement>('.tt-rule-label')!;
+  const stage = root.querySelector<HTMLElement>('.tt-stage')!;
+  const stats = root.querySelector<HTMLElement>('.tt-stats')!;
   const rail = root.querySelector<HTMLElement>('.tt-rail')!;
   const detail = root.querySelector<HTMLElement>('.tt-detail')!;
   const closeButton = root.querySelector<HTMLButtonElement>('.tt-close')!;
@@ -276,11 +291,47 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     }
   }
 
+  /**
+   * Each card's names, longest first: the full name, the short name, then the short name without its qualifier when no
+   * other card of the tree reads the same, so two vehicles never read alike.
+   */
+  function nameForms(): Map<string, string[]> {
+    const forms = new Map(tree.nodes.map((node) => {
+      const spec = vehicles.get(node.id);
+      return [node.id, [...new Set([displayName(spec, node.id), shortName(spec, node.id)])]];
+    }));
+    const taken = new Set([...forms.values()].flat());
+    for (const list of forms.values()) {
+      const bare = bareName(list[list.length - 1]);
+      if (taken.has(bare)) continue;
+      list.push(bare);
+      taken.add(bare);
+    }
+    return forms;
+  }
+
+  /** The column each card's shortest name fits on one line at the floor, per tree; a face that lands late resets it. */
+  let nameCol: { readonly tree: string; readonly col: number } | null = null;
+  function nameColumn(): number {
+    if (nameCol?.tree === tree.id) return nameCol.col;
+    const probes = [...nameForms().values()].map((list) => list.map((name) => {
+      const probe = document.createElement('span');
+      probe.className = 'tt-name is-tight is-probe';
+      probe.textContent = keepTail(name);
+      return probe;
+    }));
+    grid.append(...probes.flat());
+    const widest = Math.max(0, ...probes.map((list) => Math.min(...list.map((probe) => probe.getBoundingClientRect().width))));
+    for (const probe of probes.flat()) probe.remove();
+    nameCol = { tree: tree.id, col: Math.min(NAME_COL_MAX, Math.max(MIN_COL, Math.ceil(widest) + CARD_EDGES)) };
+    return nameCol.col;
+  }
+
   function measure(): Geometry {
     const { first, count } = tierSpan(tree);
     const head = Math.round(HEAD_H * uiScale());
     const available = board.clientWidth - PAD_X * 2 - GAP_X * (count - 1);
-    const fitCol = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor(available / count)));
+    const fitCol = Math.max(nameColumn(), Math.min(MAX_COL, Math.floor(available / count)));
     const rows = layout.lineLanes + layout.specialLanes;
     const boardHeight = board.clientHeight - head - (layout.specialLanes ? SPECIAL_GAP : 0) - GAP_Y * (rows - 1) - 12;
     const fitRow = Math.max(MIN_ROW, Math.min(Math.round(fitCol * 0.72), Math.floor(boardHeight / Math.max(1, rows))));
@@ -334,6 +385,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   }
 
   function layoutBoard(): void {
+    // the type scale first: the header and the detail take their final size before the board measures what is left
+    root.style.setProperty('--tt-ui', uiScale().toFixed(3));
     const g = measure();
     geometry = g;
     grid.style.width = `${g.width}px`;
@@ -343,8 +396,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     grid.style.setProperty('--tt-pitch', `${g.col + GAP_X}px`);
     grid.style.setProperty('--tt-pad', `${PAD_X}px`);
     grid.style.setProperty('--tt-head', `${g.head}px`);
-    grid.style.setProperty('--tt-name-fs', nameSize(g.col));
-    root.style.setProperty('--tt-ui', uiScale().toFixed(3));
+    const share = nameShare(g.col);
+    grid.style.setProperty('--tt-name-fs', nameSize(share));
+    grid.style.setProperty('--tt-name-tight', nameSize(Math.max(0.85, share * 0.88)));
     grid.classList.toggle('is-compact', g.col < COMPACT_COL);
     for (const numeral of tiersEl.children) {
       const tier = Number((numeral as HTMLElement).dataset.tier);
@@ -357,29 +411,58 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       item.style.top = `${y}px`;
     }
     rule.hidden = !g.specialLanes;
-    rule.style.top = `${px(g, { x: 0, y: 2 * g.lanes })[1] - SPECIAL_GAP / 2}px`;
+    ruleLabel.hidden = !g.specialLanes;
+    const ruleTop = px(g, { x: 0, y: 2 * g.lanes })[1] - SPECIAL_GAP / 2;
+    rule.style.top = `${ruleTop}px`;
+    ruleLabel.style.top = `${ruleTop}px`;
     fitNames();
     paintWires();
     markOverflow();
     markRail();
+    fitStats();
   }
 
-  /** A board larger than its space fades at the edges it scrolls toward. */
+  /** The stats fill the detail's spare width: four in a row when they fit, else two, else one. */
+  function fitStats(): void {
+    const ui = uiScale();
+    const min = 240 * ui, gap = 32 * ui, width = stats.clientWidth;
+    stats.style.setProperty('--tt-stat-cols', String(width >= 4 * min + 3 * gap ? 4 : width >= 2 * min + gap ? 2 : 1));
+  }
+
+  /** A board larger than its space fades at the edges it scrolls toward (the stage's overlays: nothing reads as cut). */
   function markOverflow(): void {
-    board.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 2);
-    board.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 2);
+    stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 2);
+    stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 2);
   }
   board.addEventListener('scroll', markOverflow, { passive: true });
 
   /**
-   * A name takes two lines when it needs them; one that still does not fit falls back to the vehicle's short name, so a
-   * name is never cut to a string another node shares (every write, then every read: one layout).
+   * A name keeps to one line, so every card keeps the same art: a name too long for its column first steps one size down
+   * (never under the floor) on a narrower inset, then takes its shorter forms (nameForms), and only then wraps to two
+   * balanced lines. The column is sized for the shortest forms (nameColumn), so a wrap is left to zooming out. A name is
+   * never cut, so two vehicles never read the same. Each step writes every name, then reads them all: one layout a step.
    */
   function fitNames(): void {
-    const names = tree.nodes.map((node) => buttons.get(node.id)!.querySelector<HTMLElement>('.tt-name')!);
-    tree.nodes.forEach((node, i) => { names[i].textContent = displayName(vehicles.get(node.id), node.id); });
-    const over = names.map((name) => name.scrollHeight > name.clientHeight + 1);
-    tree.nodes.forEach((node, i) => { if (over[i]) names[i].textContent = shortName(vehicles.get(node.id), node.id); });
+    const forms = nameForms();
+    const rows = tree.nodes.map((node) => ({
+      forms: forms.get(node.id)!, el: buttons.get(node.id)!.querySelector<HTMLElement>('.tt-name')!,
+    }));
+    const overflows = (row: (typeof rows)[number]) => row.el.scrollWidth > row.el.clientWidth + 1;
+    for (const row of rows) {
+      row.el.className = 'tt-name';
+      row.el.textContent = keepTail(row.forms[0]);
+    }
+    let over = rows.filter(overflows);
+    for (const row of over) row.el.classList.add('is-tight');
+    over = over.filter(overflows);
+    for (let form = 1; form < 3 && over.length; form++) {
+      for (const row of over) row.el.textContent = keepTail(row.forms[Math.min(form, row.forms.length - 1)]);
+      over = over.filter(overflows);
+    }
+    for (const row of over) {
+      row.el.classList.add('is-two-line');
+      row.el.textContent = keepTail(row.forms[0]);
+    }
   }
 
   function paintWires(): void {
@@ -503,11 +586,14 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     }
   }
 
+  /** The detail paints first, so the board measures the space the filled panel leaves it. */
   function paint(): void {
+    root.style.setProperty('--tt-ui', uiScale().toFixed(3));
     paintHeader();
+    paintDetail();
+    layoutBoard();
     paintNodes();
     paintWires();
-    paintDetail();
     paintZoom();
   }
 
@@ -522,7 +608,6 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     buildTiers();
     buildNodes();
     board.scrollTo({ left: 0, top: 0 });
-    layoutBoard();
     paint();
     buttons.get(selectedId)?.focus({ preventScroll: true });
   }
@@ -706,13 +791,26 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   };
   root.addEventListener('keydown', onKeyDown);
   closeButton.addEventListener('click', () => close());
-  const onResize = () => { if (open) { layoutBoard(); paintZoom(); } };
+  // Any change to the board's size (the window, the detail growing a builds row) lays the board out again, in the next
+  // task, so the tree always fits what the panel leaves it (a timeout, not a frame: a page in the background still lays
+  // out). So does a face that lands after the names were fitted: it changes their widths without resizing the board.
+  let relayout = 0;
+  const scheduleLayout = (): void => {
+    if (!open || relayout) return;
+    relayout = window.setTimeout(() => { relayout = 0; if (open) { layoutBoard(); paintZoom(); } }, 0);
+  };
+  const resizer = new ResizeObserver(scheduleLayout);
+  resizer.observe(board);
+  const onFonts = (): void => {
+    nameCol = null;
+    scheduleLayout();
+  };
+  document.fonts.addEventListener('loadingdone', onFonts);
 
   function close({ restoreFocus = true } = {}): void {
     if (!open) return;
     open = false;
     root.hidden = true;
-    window.removeEventListener('resize', onResize);
     options.onClose();
     if (restoreFocus) trigger?.focus({ preventScroll: true });
   }
@@ -726,8 +824,6 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       if (!root.isConnected) document.body.append(root);
       root.hidden = false;
       open = true;
-      window.addEventListener('resize', onResize);
-      layoutBoard();
       paint();
       reveal(selectedId);
       buttons.get(selectedId)?.focus({ preventScroll: true });
@@ -736,6 +832,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     isOpen: () => open,
     dispose() {
       close({ restoreFocus: false });
+      resizer.disconnect();
+      document.fonts.removeEventListener('loadingdone', onFonts);
       root.removeEventListener('keydown', onKeyDown);
       root.remove();
     },
