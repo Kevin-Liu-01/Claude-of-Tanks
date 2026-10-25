@@ -231,7 +231,7 @@
   "href": "/docs/multiplayer#rooms",
   "title": "Start a room",
   "chapter": "Multiplayer",
-  "text": "Open Multiplayer and pick one of three ways in. Private room Create a room and send its six-character code or invite link to your friends. Enter a room code Type the code from your host, or open their invite link. Local network One computer runs npm run server:mp (port 8792); everyone on the same network picks Local network and plays through it."
+  "text": "Open Multiplayer and pick one of three ways in. Private room Create a room and send its six-character code or invite link to your friends. Join a room Type the code from your host, or open their invite link. Local network One computer runs npm run server:mp (port 8792); everyone on the same network picks Local network and plays through it."
  },
  {
   "href": "/docs/multiplayer#seats",
