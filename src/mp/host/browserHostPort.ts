@@ -7,8 +7,10 @@
 import type { HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import simKernelsWasmUrl from '../../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm?url';
 
-/** The world kernels' module as the build serves it (a hashed asset the host's Worker fetches only under ?simKernels=wasm). */
-export const SIM_KERNELS_URL: string = simKernelsWasmUrl;
+/** The world kernels' module as the build serves it, when the page asks for them (?simKernels=wasm; null otherwise): the
+ * host's Worker fetches it and builds its world on them. Read here, in the lazy multiplayer chunk, not at boot. */
+export const SIM_KERNELS_URL: string | null = typeof location === 'object'
+  && new URLSearchParams(location.search).get('simKernels') === 'wasm' ? simKernelsWasmUrl : null;
 
 interface WorkerLike {
   postMessage(message: unknown, transfer?: ArrayBuffer[]): void;
