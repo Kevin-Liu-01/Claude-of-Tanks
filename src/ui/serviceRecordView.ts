@@ -140,7 +140,7 @@ function overview(view: ServiceRecordView): string {
   const pct = record.matches ? Math.round((record.wins / record.matches) * 100) : 0;
   const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
   const career = `<div class="cot-record-overview"><div class="cot-record-outcomes">` +
-    `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}<strong>${record.matches ? `${pct}%` : '—'}</strong>` +
+    `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}<strong>${record.matches ? `${pct}%` : '–'}</strong>` +
     `${splitBar(record.wins, record.draws, record.losses)}</div>` +
     `<div class="cot-record-outcome win">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +
     `<div class="cot-record-outcome loss">${statLabel(t('garage.record.defeats'), 'statDefeat')}<strong>${num(record.losses)}</strong></div>` +
@@ -151,7 +151,7 @@ function overview(view: ServiceRecordView): string {
     metric(t('garage.record.totalDamage'), num(record.damage), 'damage') +
     metric(t('garage.record.avgDamage'), num(avgDamage), 'statAverage') +
     metric(t('garage.record.bestDamage'), num(record.bestDamage), 'statBest') +
-    metric(t('garage.record.longestKill'), view.stats.longestKillM ? `${num(view.stats.longestKillM)} m` : '—', 'statRange') +
+    metric(t('garage.record.longestKill'), view.stats.longestKillM ? `${num(view.stats.longestKillM)} m` : '–', 'statRange') +
     `</div></div>`;
 
   // The reasoning set leads the record: the commander's own Chain of Thought.
@@ -272,7 +272,7 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       ? `<div class="cot-record-battle-awards">${awarded.map((medal) =>
         `<button type="button" data-medal-tip="${medal.id}" aria-label="${safe(medalName(medal.id))}">${medalSVG(medal, 40)}</button>`).join('')}</div>`
       : '';
-    const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '—';
+    const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '–';
     return `<li><details class="cot-record-battle result-${battle.result}"${mapStyle(battle.mapId)}>` +
       `<summary><span class="cot-record-battle-row">${battleVehicleArt(battle)}` +
       `<span class="cot-record-battle-what"><span class="cot-record-result">${resultLabel(battle.result)}</span><b>${safe(battleVehicleName(battle, names))}</b>` +
