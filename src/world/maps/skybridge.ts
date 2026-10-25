@@ -45,6 +45,7 @@ import type { ReservoirDamSite } from './reservoirDam.ts';
 import { SKYBRIDGE_ARM } from './skybridgeArm.generated.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** The five roads (their junction nodes below, in the terrain's `roads`). */
@@ -64,7 +65,7 @@ function clearOfRoads(rock: { x: number; z: number; radius: number }): boolean {
   for (const path of ROAD_PATHS) for (let i = 0; i + 1 < path.length; i++) {
     const [ax, az] = path[i], [bx, bz] = path[i + 1], dx = bx - ax, dz = bz - az;
     const t = Math.max(0, Math.min(1, ((rock.x - ax) * dx + (rock.z - az) * dz) / (dx * dx + dz * dz)));
-    if (Math.hypot(rock.x - ax - dx * t, rock.z - az - dz * t) < ROCK_ROAD_CLEAR_M + rock.radius) return false;
+    if (detMath.hypot(rock.x - ax - dx * t, rock.z - az - dz * t) < ROCK_ROAD_CLEAR_M + rock.radius) return false;
   }
   return true;
 }

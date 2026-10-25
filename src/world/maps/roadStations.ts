@@ -1,6 +1,7 @@
 // Construction-time dressing stations retain the pre-completion sample ordinal.
 // The surviving authored samples are one contiguous run; inserted junction or
 // exit points have no inherited station. No duplicate polylines are retained.
+import * as detMath from '../../sim/detMath.ts';
 type RoadPoint = readonly [number, number];
 type RoadLine = readonly RoadPoint[];
 
@@ -88,7 +89,7 @@ function physicalStationVertices(line: RoadLine): number[] {
   const stations = [0];
   let distance = 0;
   for (let i = 1; i < line.length - 1; i++) {
-    distance += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]);
+    distance += detMath.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]);
     if (distance + 1e-8 < MIN_DRESSING_STATION_M) continue;
     stations.push(i);
     distance = 0;

@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import * as detMath from './detMath.ts';
 const DEFAULT_AIM_DISTANCE_M = 1000;
 
 export const MIN_AIM_DISTANCE_M = 0.01;
@@ -35,11 +36,11 @@ export function encodeAimIntent(origin: Vector3Like, target: Vector3Like): AimIn
   const dx = target.x - origin.x;
   const dy = target.y - origin.y;
   const dz = target.z - origin.z;
-  const horizontal = Math.hypot(dx, dz);
+  const horizontal = detMath.hypot(dx, dz);
   return {
-    aimYaw: Math.atan2(dx, dz),
-    aimPitch: Math.atan2(dy, Math.max(1e-6, horizontal)),
-    aimDistance: clampDistance(Math.hypot(horizontal, dy)),
+    aimYaw: detMath.atan2(dx, dz),
+    aimPitch: detMath.atan2(dy, Math.max(1e-6, horizontal)),
+    aimDistance: clampDistance(detMath.hypot(horizontal, dy)),
   };
 }
 
@@ -51,10 +52,10 @@ export function decodeAimIntent<T extends MutableVector3Like>(
   const pitch = Number(input?.aimPitch) || 0;
   const yaw = Number(input?.aimYaw) || 0;
   const distance = clampDistance(Number(input?.aimDistance));
-  const cosPitch = Math.cos(pitch);
+  const cosPitch = detMath.cos(pitch);
   return out.set(
-    origin.x + Math.sin(yaw) * cosPitch * distance,
-    origin.y + Math.sin(pitch) * distance,
-    origin.z + Math.cos(yaw) * cosPitch * distance,
+    origin.x + detMath.sin(yaw) * cosPitch * distance,
+    origin.y + detMath.sin(pitch) * distance,
+    origin.z + detMath.cos(yaw) * cosPitch * distance,
   );
 }

@@ -6,6 +6,7 @@ import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { createMarshChannel } from './marshChannel.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS, TOWN_ROW_PLANS } from './townPlans.generated.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // The map-revival lane (2026-10-05): Suzhou Creek (Wusong River) runs west to east through the district, the
@@ -36,13 +37,13 @@ const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...sta
   for (const bridge of BRIDGES) {
     const index = CREEK_STATIONS.indexOf(bridge);
     const previous = CREEK_STATIONS[index - 1], next = CREEK_STATIONS[index + 1];
-    const length = Math.hypot(next.x - previous.x, next.z - previous.z);
+    const length = detMath.hypot(next.x - previous.x, next.z - previous.z);
     const tx = (next.x - previous.x) / length, tz = (next.z - previous.z) / length;
     const dx = station.x - bridge.x, dz = station.z - bridge.z;
     const along = Math.abs(dx * tx + dz * tz);
     if (along >= r) continue;
     const across = Math.max(0, bridge.r - Math.abs(-dx * tz + dz * tx));
-    r = Math.min(r, Math.hypot(along, across));
+    r = Math.min(r, detMath.hypot(along, across));
   }
   return r === station.r ? station : { ...station, r };
 });
@@ -64,7 +65,7 @@ const LILONG_BLOCKS: ReadonlyArray<{ x: number; z: number; yawDeg: number; n: nu
 ];
 const LILONG_ROWS = LILONG_BLOCKS.flatMap((block, b) => [-1, 0, 1].map((k) => {
   const rot = block.yawDeg * Math.PI / 180, off = k * (12 + 4);
-  const x = +(block.x + Math.sin(rot) * off).toFixed(3), z = +(block.z + Math.cos(rot) * off).toFixed(3);
+  const x = +(block.x + detMath.sin(rot) * off).toFixed(3), z = +(block.z + detMath.cos(rot) * off).toFixed(3);
   const rng = (Math.imul(b * 3 + k + 2, 0x9e3779b1) ^ Math.imul(Math.round(x * 10), 0x85ebca6b) ^ Math.imul(Math.round(z * 10), 0xc2b2ae35)) | 0;
   const zhabei = z > 100 && ((rng >>> 8) % 5 === 0);
   return { x, z, rot, w: block.n * 4.9, d: 12, ruined: zhabei, wall: 'stone', rng };

@@ -144,6 +144,10 @@ const deltas = [
     "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    _layout: layout,\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),\n  };\n"
   ]
 ];
+// terrain.ts routes its transcendentals through detMath (the 2026-10-25 pinned-math ruling); both sides of every slice
+// follow, so a delta still isolates the road change and never the math
+const DET_MATH = /\bMath\.(sin|cos|tan|asin|acos|atan2|atan|expm1|exp|log|pow|cbrt|tanh|cosh|hypot)\(/g;
+for (const pair of deltas) for (let i = 0; i < pair.length; i++) pair[i] = pair[i].replace(DET_MATH, 'detMath.$1(');
 export function beforeRoadCompletionConstructor(text) {
   for (const [current, previous] of deltas) {
     assert.equal(text.split(current).length, 2, `exact declared road/admission constructor delta: ${current.slice(0, 100)}`);

@@ -1,5 +1,6 @@
 // One analytic contour drives the bank mesh, wet material and gameplay
 // queries. No renderer, retained contour buffers, global cache or GPU resources.
+import * as detMath from '../sim/detMath.ts';
 export const SHORELINE_SEGMENTS = 64;
 const TAU = Math.PI * 2;
 
@@ -67,9 +68,9 @@ export function shorelineRadiusAt(disc: ShorelineDisc, angle: number): number {
   // Keep three trig evaluations, 64 shared samples and the same 0.8–1.0
   // envelope: channel overlap and adaptive bank support depend on that floor.
   // Concentric beach aprons retain identical phases, independent of radius.
-  const broad = Math.sin(angle * 3 + phaseA) * 0.025;
-  const cove = Math.max(0, Math.sin(angle * 5 - phaseB));
-  const bank = Math.abs(Math.sin(angle * 11 + phaseA + phaseB)) * 0.04;
+  const broad = detMath.sin(angle * 3 + phaseA) * 0.025;
+  const cove = Math.max(0, detMath.sin(angle * 5 - phaseB));
+  const bank = Math.abs(detMath.sin(angle * 11 + phaseA + phaseB)) * 0.04;
   return disc.r * Math.min(1, Math.max(0.80, 0.99 + broad - cove * cove * 0.12 - bank));
 }
 
@@ -89,7 +90,7 @@ export function shorelineDistance(
   const squared = dx * dx + dz * dz;
   if (squared >= bound * bound) return Infinity;
   if (squared < 1e-12) return 0;
-  const radius = shorelineRadiusAt(disc, Math.atan2(dz, dx));
+  const radius = shorelineRadiusAt(disc, detMath.atan2(dz, dx));
   return Math.sqrt(squared) / Math.max(0.001, radius);
 }
 
@@ -104,7 +105,7 @@ export function shorelineWetness(
   if (lake && disc.shelfM !== undefined && Number.isFinite(distance)) {
     // an authored shelf width: the waterline is `shelfM` inside the local shoreline radius, the dry beach still ends
     // at 0.96 of it (the plain-disc law is the 0.80 → 0.96 ramp below)
-    const radius = shorelineRadiusAt(disc, Math.atan2(z - disc.z, x - disc.x));
+    const radius = shorelineRadiusAt(disc, detMath.atan2(z - disc.z, x - disc.x));
     return shorelineWetnessFromDistance(distance, lake, Math.min(0.94, 1 - disc.shelfM / Math.max(1, radius)));
   }
   return shorelineWetnessFromDistance(distance, lake);

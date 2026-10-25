@@ -6,9 +6,11 @@ import {
 } from './shoreline.ts';
 import { createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import * as detMath from '../sim/detMath.ts';
 
 // Frozen pre-authored-contour formula: every other map remains bit-identical,
 // including negative positions, varying radii and angular wrap boundaries.
+// Its sines are detMath's since the 2026-10-25 pinned-math ruling (the shoreline feeds the authority's terrain).
 function legacyRadiusAt(disc, angle) {
   const hash = value => {
     value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
@@ -19,9 +21,9 @@ function legacyRadiusAt(disc, angle) {
   const seed = hash(Math.imul(Math.round(disc.x * 16), 73856093)
     ^ Math.imul(Math.round(disc.z * 16), 19349663));
   const phaseA = (seed & 0xffff) / 65536 * tau, phaseB = (seed >>> 16) / 65536 * tau;
-  const broad = Math.sin(angle * 3 + phaseA) * 0.025;
-  const cove = Math.max(0, Math.sin(angle * 5 - phaseB));
-  const bank = Math.abs(Math.sin(angle * 11 + phaseA + phaseB)) * 0.04;
+  const broad = detMath.sin(angle * 3 + phaseA) * 0.025;
+  const cove = Math.max(0, detMath.sin(angle * 5 - phaseB));
+  const bank = Math.abs(detMath.sin(angle * 11 + phaseA + phaseB)) * 0.04;
   return disc.r * Math.min(1, Math.max(0.80, 0.99 + broad - cove * cove * 0.12 - bank));
 }
 let legacyChecks = 0;

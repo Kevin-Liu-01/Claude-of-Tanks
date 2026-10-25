@@ -20,6 +20,7 @@
 // Pathways: none (the char's lanes are earth or brick soling without kerbs).
 import type { CivicFurniture, CivicPlan, CivicPoint } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 const CX = -4, CZ = 14;
 /** A point's, a piece's and a segment's rotation twin about the haat's middle (the char's symmetry). */
 const rot = (x: number, z: number): [number, number] => [+(2 * CX - x).toFixed(2), +(2 * CZ - z).toFixed(2)];
@@ -28,7 +29,7 @@ const twins = (list: readonly CivicFurniture[]): CivicFurniture[] => list.flatMa
   return [f, { ...f, x, z, yawDeg: (f.yawDeg + 180) % 360 }];
 });
 const corridor = (from: CivicPoint, to: CivicPoint, half: number) => [{ from, to, half }, { from: rot(from[0], from[1]), to: rot(to[0], to[1]), half }];
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 // the haat's diamond inset 3 m: its brick walk's corners (west, north, east, south)
 const IN = 25 * Math.SQRT2 - 3 * Math.SQRT2;
@@ -38,9 +39,9 @@ const RING: CivicPoint[] = [[CX - IN, CZ], [CX, CZ + IN], [CX + IN, CZ], [CX, CZ
 // of each (its half width and a joint), and a run under 2 m is left out
 const SHEDS: ReadonlyArray<readonly [number, number, number, number]> = [[-26.1, 30.9, -15.2, 42.2], [-15.5, -27.7, -2.9, -14.5]];
 function walkRuns(a: CivicPoint, b: CivicPoint, clearM = 1.3): Array<[CivicPoint, CivicPoint]> {
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.ceil(len / 0.25), runs: Array<[CivicPoint, CivicPoint]> = [];
+  const len = detMath.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.ceil(len / 0.25), runs: Array<[CivicPoint, CivicPoint]> = [];
   const at = (t: number): CivicPoint => [+(a[0] + (b[0] - a[0]) * t).toFixed(2), +(a[1] + (b[1] - a[1]) * t).toFixed(2)];
-  const clear = (t: number) => { const [x, z] = at(t); return SHEDS.every(([x0, z0, x1, z1]) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)) > clearM); };
+  const clear = (t: number) => { const [x, z] = at(t); return SHEDS.every(([x0, z0, x1, z1]) => detMath.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)) > clearM); };
   let start = -1;
   for (let k = 0; k <= steps; k++) {
     const t = k / steps, ok = clear(t);

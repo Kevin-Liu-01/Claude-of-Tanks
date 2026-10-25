@@ -12,6 +12,7 @@
 //
 // The slopes: a seif's back about 9° and its slip face about 19° at the crest (a hull crosses one, slowly, and sits
 // hull-down behind its brink); a star dune's flanks near the angle of rest (34°) round its peak, its arms' backs gentler.
+import * as detMath from '../sim/detMath.ts';
 
 /** A sand landform's form (a ridge's or a knoll's `dune`). */
 export interface DuneForm {
@@ -54,7 +55,7 @@ const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math
  */
 function salt(form: DuneLandform, k: number): number {
   const g = twinSign(form);
-  const s = Math.sin(g * form.x * 12.9898 + g * form.z * 78.233 + k * 37.719) * 43758.5453;
+  const s = detMath.sin(g * form.x * 12.9898 + g * form.z * 78.233 + k * 37.719) * 43758.5453;
   return (s - Math.floor(s)) * TAU;
 }
 /** -1 for the turned one of a pair of twins (x < 0, or x = 0 and z < 0), whose local frame reads turned; else 1. */
@@ -76,7 +77,7 @@ export function seifHeight(form: DuneLandform, lx: number, lz: number, along: nu
   const lam = Math.max(20, d.wavelengthM ?? 110), sin = d.sinuosity ?? 0.16, slip = Math.max(0.12, d.slip ?? 0.3);
   const s0 = salt(form, 0), s1 = salt(form, 1), s2 = salt(form, 2);
   // the crest's wander across the line, -1..1, and its offset
-  const wob = 0.62 * Math.sin(TAU * lx / lam + s0) + 0.38 * Math.sin(TAU * lx / (lam * 0.41) + s1);
+  const wob = 0.62 * detMath.sin(TAU * lx / lam + s0) + 0.38 * detMath.sin(TAU * lx / (lam * 0.41) + s1);
   const crest = wob * sin * width;
   const dz = lz - crest;
   // the slip face is on the side the crest bows to: leeness 1 there, 0 on the back, a blend where the crest runs straight
@@ -90,8 +91,8 @@ export function seifHeight(form: DuneLandform, lx: number, lz: number, along: nu
   // the back is concave (wind-packed, rising to the brink), the slip face nearly planar at rest with a concave foot
   const p = 1.7 + (1.15 - 1.7) * lee;
   // the crest's height swells to peaks and dips to saddles along it
-  const crestH = height * (0.8 + 0.2 * Math.sin(TAU * lx / (lam * 1.7) + s2));
-  return crestH * Math.pow(1 - t, p) * along;
+  const crestH = height * (0.8 + 0.2 * detMath.sin(TAU * lx / (lam * 1.7) + s2));
+  return crestH * detMath.pow(1 - t, p) * along;
 }
 
 /**
@@ -104,16 +105,16 @@ export function starDuneHeight(form: DuneLandform, lx: number, lz: number): numb
   lx *= g; lz *= g;
   const d = form.dune ?? { kind: 'star' };
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx), height = form.height || 0;
-  const u = lx / rx, v = lz / rz, r = Math.hypot(u, v);
+  const u = lx / rx, v = lz / rz, r = detMath.hypot(u, v);
   if (r >= 1) return 0;
   const n = Math.max(3, Math.min(5, Math.round(d.arms ?? 4))), waist = Math.max(0.3, Math.min(0.95, d.waist ?? 0.6));
-  const theta = Math.atan2(v, u), s0 = salt(form, 3);
+  const theta = detMath.atan2(v, u), s0 = salt(form, 3);
   // the arms' reach on this bearing: a narrow lobe round each arm (cos^18: an arm a tenth of a turn across at its root)
   let arm = 0;
   for (let k = 0; k < n; k++) {
-    const bearing = s0 + (k / n) * TAU + 0.35 * Math.sin(k * 1.7 + s0);
-    const c = Math.max(0, Math.cos(theta - bearing));
-    arm = Math.max(arm, Math.pow(c, 18));
+    const bearing = s0 + (k / n) * TAU + 0.35 * detMath.sin(k * 1.7 + s0);
+    const c = Math.max(0, detMath.cos(theta - bearing));
+    arm = Math.max(arm, detMath.pow(c, 18));
   }
   const reach = waist + (1 - waist) * arm;
   // the base: the smooth knoll's own section (terrain.ts), a share of the height
@@ -124,8 +125,8 @@ export function starDuneHeight(form: DuneLandform, lx: number, lz: number): numb
   if (t >= 1) return height * baseH;
   // near the peak the flanks stand at rest; out along an arm the crest falls more gently, its own swells on it
   const p = 1.15;
-  const swell = 1 + 0.08 * arm * Math.sin(r * 9 + s0);
-  return height * (baseH + (1 - b) * Math.pow(1 - t, p) * swell);
+  const swell = 1 + 0.08 * arm * detMath.sin(r * 9 + s0);
+  return height * (baseH + (1 - b) * detMath.pow(1 - t, p) * swell);
 }
 
 /** The dune form's height for a ridge (`along` its end fade) or a knoll; null when the landform carries none. */

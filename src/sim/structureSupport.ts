@@ -18,6 +18,7 @@ import {
   createHullFootprint, hullFootprint, hullUndersideOver, pointInsideCollisionRecord, type HullFootprint,
 } from '../world/collision.ts';
 
+import * as detMath from './detMath.ts';
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
  * ground OBB solver treats as "on top of", collision.ts hullPassesObstacleTop). */
 export const SUPPORT_STEP_UP_M = HULL_STEP_UP_M;
@@ -26,7 +27,7 @@ export const SUPPORT_MIN_HEIGHT_M = HULL_STANDABLE_HEIGHT_M;
 /** Query margin around the hull for candidate primitives. */
 const SUPPORT_QUERY_MARGIN_M = 6;
 /** The steepest underside (rise per metre, 60 degrees) the pose's floor rule reads; past it the root's belly decides. */
-const POSED_RISE_MAX = Math.tan(Math.PI / 3);
+const POSED_RISE_MAX = detMath.tan(Math.PI / 3);
 
 interface SupportHeightField {
   getHeightAt(x: number, z: number): number;
@@ -142,7 +143,7 @@ export function structureTopAt(
           const own = part === standing;
           if (!own && !(collisionPartIsDeck(record, part)
             && top <= collisionPartTopAt(record, standing, x, z) + SUPPORT_STEP_UP_M)) continue;
-          const reach = stand!.tops[i] + SUPPORT_STEP_UP_M + CLIFF_GRADE * Math.hypot(x - stand!.x, z - stand!.z);
+          const reach = stand!.tops[i] + SUPPORT_STEP_UP_M + CLIFF_GRADE * detMath.hypot(x - stand!.x, z - stand!.z);
           if (top > reach) {
             if (!own) continue;
             top = reach;
@@ -193,7 +194,7 @@ function partOutline(record: CollisionRecord, part: SimpleCollisionShape | null)
     return 4;
   }
   if (part.kind === 'obb') {
-    const s = Math.sin(part.yaw), c = Math.cos(part.yaw);
+    const s = detMath.sin(part.yaw), c = detMath.cos(part.yaw);
     // forward (sin yaw, cos yaw) by hl, right (cos yaw, -sin yaw) by hw
     for (let k = 0; k < 4; k++) {
       const a = k === 0 || k === 3 ? -part.hl : part.hl, b = k < 2 ? -part.hw : part.hw;
@@ -286,7 +287,7 @@ function pushStation(
   count: number, groundAt: (x: number, z: number) => number,
 ): number {
   if (2 * n + 1 >= out.length) return n;
-  const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz);
+  const dx = cx - x, dz = cz - z, d = detMath.hypot(dx, dz);
   if (!(d > EDGE_STATION_INSET_M)) return n;
   const sx = x + dx / d * EDGE_STATION_INSET_M, sz = z + dz / d * EDGE_STATION_INSET_M;
   const ox = x - dx / d * EDGE_STATION_OUTSET_M, oz = z - dz / d * EDGE_STATION_OUTSET_M;

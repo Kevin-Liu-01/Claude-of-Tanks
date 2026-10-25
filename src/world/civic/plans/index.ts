@@ -12,6 +12,7 @@ import { AUTUMN_CIVIC_PLAN } from './autumn.ts';
 import { DELTA_CIVIC_PLAN } from './delta.ts';
 import { BADLANDS_CIVIC_PLAN } from './badlands.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
   ruinspires: RUINSPIRES_CIVIC_PLAN,
@@ -63,7 +64,7 @@ export function civicUndressedPads(mapId: string | null | undefined): ReadonlySe
 export function inCivicRoom(area: Pick<CivicAreaPlan, 'room' | 'roomYawDeg'>, x: number, z: number, margin = 0): boolean {
   const r = area.room, yaw = ((area.roomYawDeg ?? 0) * Math.PI) / 180;
   if (yaw === 0) return inCivicRect(r, x, z, margin);
-  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, c = Math.cos(yaw), s = Math.sin(yaw), dx = x - cx, dz = z - cz;
+  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, c = detMath.cos(yaw), s = detMath.sin(yaw), dx = x - cx, dz = z - cz;
   // the point in the room's own axes (local +x at (cos, -sin), +z at (sin, cos): the props' heading convention)
   const u = dx * c - dz * s, v = dx * s + dz * c;
   return Math.abs(u) <= (r.x1 - r.x0) / 2 + margin && Math.abs(v) <= (r.z1 - r.z0) / 2 + margin;
@@ -89,12 +90,12 @@ export function civicLawnTest(mapId: string | null | undefined, inset = 0.65): (
       for (const p of bed.paths) {
         const dx = p.to[0] - p.from[0], dz = p.to[1] - p.from[1], l2 = dx * dx + dz * dz || 1;
         const t = Math.max(0, Math.min(1, ((x - p.from[0]) * dx + (z - p.from[1]) * dz) / l2));
-        if (Math.hypot(x - p.from[0] - dx * t, z - p.from[1] - dz * t) < p.width / 2 + 0.25) return false;
+        if (detMath.hypot(x - p.from[0] - dx * t, z - p.from[1] - dz * t) < p.width / 2 + 0.25) return false;
       }
       const f = bed.feature;
-      if ((f?.kind === 'flowerRondell' || f?.kind === 'fountain') && Math.hypot(x - f.x, z - f.z) < f.ring + 0.2) return false;
-      if (f?.kind === 'hedgeArc' && Math.abs(Math.hypot(x - f.x, z - f.z) - f.r) < 0.45) return false;
-      return !monuments.some((mo) => Math.hypot(x - mo.x, z - mo.z) < 3.1);
+      if ((f?.kind === 'flowerRondell' || f?.kind === 'fountain') && detMath.hypot(x - f.x, z - f.z) < f.ring + 0.2) return false;
+      if (f?.kind === 'hedgeArc' && Math.abs(detMath.hypot(x - f.x, z - f.z) - f.r) < 0.45) return false;
+      return !monuments.some((mo) => detMath.hypot(x - mo.x, z - mo.z) < 3.1);
     }
     return false;
   };
@@ -139,7 +140,7 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
     const j0 = Math.max(0, Math.floor((Math.min(az, bz) - b.hi - z0) / C)), j1 = Math.min(nz - 1, Math.ceil((Math.max(az, bz) + b.hi - z0) / C));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       const x = x0 + i * C, z = z0 + j * C, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
-      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      const d = detMath.hypot(x - ax - dx * t, z - az - dz * t);
       const k = j * nx + i;
       if (d < b.lo) grid[k] = 2; // a carriageway (another street's band never paves it)
       else if (d <= b.hi && grid[k] !== 2) grid[k] = 1;
@@ -151,7 +152,7 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
     const i = Math.round((x - x0) / C), j = Math.round((z - z0) / C);
     // (229 b2 r2) an area's paving strips and its laid roundel: no tuft through them either (their walks cross a green
     // outside the paved room)
-    if (laid.some((r) => inCivicRect(r, x, z, 0.3)) || discs.some((d) => Math.hypot(x - d.x, z - d.z) < d.r)) return true;
+    if (laid.some((r) => inCivicRect(r, x, z, 0.3)) || discs.some((d) => detMath.hypot(x - d.x, z - d.z) < d.r)) return true;
     if (i < 0 || j < 0 || i >= nx || j >= nz || grid[j * nx + i] !== 1) return false;
     return polys.some((poly) => inPoly(poly, x, z)) && !pw.exclude.some((r) => inCivicRect(r, x, z));
   };

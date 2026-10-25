@@ -27,6 +27,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The main line's centre: a straight chord through the station square, rising 6.6 m per 100 m of easting.
@@ -59,7 +60,7 @@ function sidingDistanceAt(path: readonly (readonly [number, number])[], x: numbe
   let walked = 0;
   for (let i = 1; i < path.length; i++) {
     const [ax, az] = path[i - 1], [bx, bz] = path[i];
-    const run = Math.hypot(bx - ax, bz - az);
+    const run = detMath.hypot(bx - ax, bz - az);
     if (x <= bx) return walked + run * ((x - ax) / (bx - ax));
     walked += run;
   }
@@ -165,13 +166,13 @@ const colonySideStreet = (x: number): [number, number][] =>
  */
 function terraceRow(streetZ: (x: number) => number, xa: number, xb: number, side: 1 | -1) {
   const ax = xa, az = streetZ(xa), bx = xb, bz = streetZ(xb);
-  const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+  const len = detMath.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
   const nx = -uz, nz = ux; // the street's left: north
   const off = side * (ROW_FRONT_M + ROW_DEPTH_M / 2);
   const fx = -side * nx, fz = -side * nz; // the doors face the street
   return {
     structure: ROW_STRUCTURE, x: +((ax + bx) / 2 + nx * off).toFixed(2), z: +((az + bz) / 2 + nz * off).toFixed(2),
-    yawDeg: +(Math.atan2(fx, fz) * 180 / Math.PI).toFixed(2), plot: { w: +len.toFixed(2), d: ROW_DEPTH_M }, terrace: true,
+    yawDeg: +(detMath.atan2(fx, fz) * 180 / Math.PI).toFixed(2), plot: { w: +len.toFixed(2), d: ROW_DEPTH_M }, terrace: true,
   };
 }
 const backZ = (x: number): number => serviceZ(x) - COLONY_BACK_M;
@@ -193,7 +194,7 @@ const COLONY_ROWS = [...COLONY_ROWS_SOUTH, ...COLONY_ROWS_SOUTH.map(twinSite)];
 // gardens meet. The kit's unit rule (clamp(round(w / 5.5), 2, 8) units of w / units) sets the party walls.
 const GARDEN_M = (COLONY_BACK_M - 2 * (ROW_FRONT_M + ROW_DEPTH_M)) / 2;
 function rowGardenLines(row: (typeof COLONY_ROWS_SOUTH)[number]): [number, number, number, number][] {
-  const yaw = row.yawDeg * Math.PI / 180, c = Math.cos(yaw), sn = Math.sin(yaw);
+  const yaw = row.yawDeg * Math.PI / 180, c = detMath.cos(yaw), sn = detMath.sin(yaw);
   const units = Math.min(8, Math.max(2, Math.round(row.plot.w / 5.5)));
   const at = (lx: number, lz: number): [number, number] =>
     [+(row.x + lx * c + lz * sn).toFixed(2), +(row.z - lx * sn + lz * c).toFixed(2)];

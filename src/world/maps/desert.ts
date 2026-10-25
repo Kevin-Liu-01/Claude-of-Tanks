@@ -27,6 +27,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The scenery's sandstone in the Dahar's own colour: the dusty buff-red of the boulders (props rockTone), not the
@@ -54,10 +55,10 @@ function takyrCrusts(): { x: number; z: number; r: number; dip: number }[] {
   const out: { x: number; z: number; r: number; dip: number }[] = [];
   for (let i = 1; i < WADI.length; i++) {
     const [ax, az] = WADI[i - 1], [bx, bz] = WADI[i];
-    const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 45));
+    const steps = Math.max(1, Math.round(detMath.hypot(bx - ax, bz - az) / 45));
     for (let s = 0; s < steps; s++) {
       const t = s / steps, x = Math.round(ax + (bx - ax) * t), z = Math.round(az + (bz - az) * t);
-      if (Math.abs(x) > 456 || Math.hypot(x, z) < 70) continue;
+      if (Math.abs(x) > 456 || detMath.hypot(x, z) < 70) continue;
       out.push({ x, z, r: 22, dip: 0.7 });
     }
   }
@@ -78,10 +79,10 @@ function wadiGorges(): { kind: string; x: number; z: number; length: number; wid
   for (let i = 1; i < WADI.length; i++) {
     const width = WADI_WIDTH[i - 1];
     const [ax, az] = WADI[i - 1], [bx, bz] = WADI[i];
-    const leg = Math.hypot(bx - ax, bz - az);
+    const leg = detMath.hypot(bx - ax, bz - az);
     out.push({
       kind: 'gorge', x: (ax + bx) / 2, z: (az + bz) / 2, length: Math.round(leg / 0.86), width,
-      height: -WADI_DEPTH, yawDeg: Math.round(Math.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10,
+      height: -WADI_DEPTH, yawDeg: Math.round(detMath.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10,
       wetScale: 1, // the takyr crusts lie IN the bed: the marsh weight must not lift it back up
     });
   }

@@ -34,6 +34,7 @@
 // lane).
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 // The airfield's buildings: authored sites in rotation pairs about the runway's centre, so each half holds the same
 // cover (the roadside builder handed its plan out in road order: ten buildings along the south taxiway, six along the
 // north). The cargo side is authored; the terminal side is its rotation.
@@ -122,7 +123,7 @@ function cargoStand(xs: number, label: string) {
   const arc: Array<[number, number]> = [];
   for (let k = 0; k <= 8; k++) {
     const a = Math.PI / 2 + (k / 8) * (Math.PI / 2);
-    arc.push([xs + R + R * Math.cos(a), zTaxi - R + R * Math.sin(a)]);
+    arc.push([xs + R + R * detMath.cos(a), zTaxi - R + R * detMath.sin(a)]);
   }
   return {
     lines: [

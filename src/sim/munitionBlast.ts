@@ -10,6 +10,7 @@
  */
 import { MUNITION_PROFILES, type MunitionBlastEvent, type MunitionClass } from './destructionEvents.ts';
 
+import * as detMath from './detMath.ts';
 /** The fields of a shell spec the classifier reads (sim/shellSpec.ts ShellSpec and every authored round satisfy it). */
 export interface MunitionShellLike {
   readonly type: string;
@@ -136,14 +137,14 @@ const BLAST_FALLOFF_EXPONENT = 2.2;
 
 /** How far a charge can still damage a structure (m): `6 · W^⅓`, 0 for no charge. */
 export function blastReachM(chargeKg: number): number {
-  return chargeKg > 0 ? BLAST_LIMIT_Z * Math.cbrt(chargeKg) : 0;
+  return chargeKg > 0 ? BLAST_LIMIT_Z * detMath.cbrt(chargeKg) : 0;
 }
 
 /** The blast law's falloff at scaled distance Z (m/kg^⅓): 1 at contact, (0.6 / Z)^2.2 beyond, 0 past Z = 6. */
 export function blastFalloff(scaledDistance: number): number {
   if (!(scaledDistance > BLAST_CONTACT_Z)) return 1;
   if (scaledDistance > BLAST_LIMIT_Z) return 0;
-  return Math.pow(BLAST_CONTACT_Z / scaledDistance, BLAST_FALLOFF_EXPONENT);
+  return detMath.pow(BLAST_CONTACT_Z / scaledDistance, BLAST_FALLOFF_EXPONENT);
 }
 
 /**
@@ -155,7 +156,7 @@ export function structureBlastPoints(chargeKg: number, munition: MunitionClass, 
   const factor = MUNITION_PROFILES[munition].structureFactor;
   if (!(factor > 0)) return 0;
   const distance = Math.max(0, Number.isFinite(distanceM) ? distanceM : Infinity);
-  return BLAST_POINTS_PER_KG * chargeKg * factor * blastFalloff(distance / Math.cbrt(chargeKg));
+  return BLAST_POINTS_PER_KG * chargeKg * factor * blastFalloff(distance / detMath.cbrt(chargeKg));
 }
 
 /** Light props a blast fells (§6): trees, fences, crates and huts within 1.2 · W^⅓ of a burst of 2 kg or more. */
@@ -165,7 +166,7 @@ export const PROP_FELL_MIN_CHARGE_KG = 2;
 export const PROP_FELL_PER_BLAST = 6;
 export const PROP_FELL_PER_TICK = 12;
 export function propFellRadiusM(chargeKg: number): number {
-  return chargeKg >= PROP_FELL_MIN_CHARGE_KG ? 1.2 * Math.cbrt(chargeKg) : 0;
+  return chargeKg >= PROP_FELL_MIN_CHARGE_KG ? 1.2 * detMath.cbrt(chargeKg) : 0;
 }
 
 // ---- Penetrators (§4.3) ----------------------------------------------------------------------------------------
@@ -223,7 +224,7 @@ export function craterFor(chargeKg: number, munition: MunitionClass, craterScale
   const factor = MUNITION_PROFILES[munition].craterFactor;
   const scale = Number.isFinite(craterScale) && craterScale > 0 ? craterScale : 0;
   const radius = chargeKg > 0 && factor > 0 && scale > 0
-    ? Math.min(CRATER_MAX_RADIUS_M, CRATER_RADIUS_PER_CBRT_KG * Math.cbrt(chargeKg) * factor * scale) : 0;
+    ? Math.min(CRATER_MAX_RADIUS_M, CRATER_RADIUS_PER_CBRT_KG * detMath.cbrt(chargeKg) * factor * scale) : 0;
   const form = CRATER_FORM[munition];
   out.radiusM = radius;
   out.depthM = radius * (form ? form[0] : CRATER_DEPTH_PER_RADIUS);

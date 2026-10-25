@@ -24,6 +24,7 @@
 
 import { TRODDEN_GREEN_PAINT, WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 // 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant";
 // gauntlet wave 116: half-timbered houses "standing alone in meadows, with no courtyards and no river", the crossroads a
 // hard square of bare dirt): the village is rebuilt as the Hünfeld basin's villages stand, a Haufendorf of Hofreiten —
@@ -48,9 +49,9 @@ function valleyTrough(): { kind: string; x: number; z: number; length: number; w
   const out = [];
   for (let i = 1; i < RIVER.length; i++) {
     const [ax, az] = RIVER[i - 1], [bx, bz] = RIVER[i];
-    const leg = Math.hypot(bx - ax, bz - az);
+    const leg = detMath.hypot(bx - ax, bz - az);
     out.push({ kind: 'gorge', x: (ax + bx) / 2, z: (az + bz) / 2, length: Math.round(leg / 0.86), width: 150,
-      height: -3.2, yawDeg: Math.round(Math.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10 });
+      height: -3.2, yawDeg: Math.round(detMath.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10 });
   }
   return out;
 }
@@ -65,7 +66,7 @@ function along(arm: readonly (readonly [number, number])[], s: number): [number,
   let acc = 0;
   for (let i = 1; i < arm.length; i++) {
     const [ax, az] = arm[i - 1], [bx, bz] = arm[i];
-    const len = Math.hypot(bx - ax, bz - az);
+    const len = detMath.hypot(bx - ax, bz - az);
     if (acc + len >= s || i === arm.length - 1) {
       const t = (s - acc) / len;
       return [ax + (bx - ax) * t, az + (bz - az) * t, (bx - ax) / len, (bz - az) / len];
@@ -89,7 +90,7 @@ function hofreite(arm: readonly (readonly [number, number])[], s: number, side: 
   // (round 4, gauntlet waves 178 and 183: "spaced like a suburb", "houses detached") the gable 5.5 m off the lane's line
   // (was 8.3): the Haufendorf's houses stand at the lane, their courts closed behind the wall
   const nx = -tz * side, nz = tx * side, w = -side, depth = 10, n0 = 5.5 + 5.35;
-  const yawDeg = round1(Math.atan2(-nx, -nz) * 180 / Math.PI);
+  const yawDeg = round1(detMath.atan2(-nx, -nz) * 180 / Math.PI);
   const at = (a: number, n: number) => ({ x: round1(x + tx * a + nx * n), z: round1(z + tz * a + nz * n) });
   const sites: Site[] = [
     { structure: 'farmhouse', ...at(0, n0), yawDeg },
@@ -102,7 +103,7 @@ function hofreite(arm: readonly (readonly [number, number])[], s: number, side: 
 function lane(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, structure: string, d: number, setback = 5.5): Site {
   const [x, z, tx, tz] = along(arm, s);
   const nx = -tz * side, nz = tx * side, n = setback + d / 2;
-  return { structure, x: round1(x + nx * n), z: round1(z + nz * n), yawDeg: round1(Math.atan2(-nx, -nz) * 180 / Math.PI) };
+  return { structure, x: round1(x + nx * n), z: round1(z + nz * n), yawDeg: round1(detMath.atan2(-nx, -nz) * 180 / Math.PI) };
 }
 // One half of the village (the other is its rotation): on the main road south, two courts in a row on its west side
 // opening south and one past the church on its east side opening toward the square; on the valley road west, two courts
@@ -123,7 +124,7 @@ const VILLAGE_HALF: Site[] = [
 // the village and the north bank east of it (the valley road keeps the other bank).
 const LYNCHETS = [[-250, -168, 160, -3], [110, -176, 150, 4], [-110, -122, 130, 2], [-70, -100, 80, -2]] as const;
 const LYNCHET_HEDGES = LYNCHETS.flatMap(([x, z, length, yaw]) => {
-  const c = Math.cos(yaw * Math.PI / 180), s = Math.sin(yaw * Math.PI / 180), h = length * 0.4;
+  const c = detMath.cos(yaw * Math.PI / 180), s = detMath.sin(yaw * Math.PI / 180), h = length * 0.4;
   return [[x, z], [-x, -z]].map(([cx, cz]) => ({ x0: cx - c * h, z0: cz - s * h, x1: cx + c * h, z1: cz + s * h,
     gap: 6.5, jitter: 1.4, skip: 0.15, species: 'oak' as const }));
 });

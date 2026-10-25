@@ -145,6 +145,7 @@ import { structureRubbleHeightM } from './structureDamage.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
 
+import * as detMath from './detMath.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
 type MatchPhase = 'loading' | 'countdown' | 'playing';
@@ -598,7 +599,7 @@ function botOpeningGoal(
   enemyZ /= Math.max(1, opponents.length);
   let dx = enemyX - ownX;
   let dz = enemyZ - ownZ;
-  const distance = Math.max(1, Math.hypot(dx, dz));
+  const distance = Math.max(1, detMath.hypot(dx, dz));
   dx /= distance;
   dz /= distance;
 
@@ -642,8 +643,8 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   _localMatrix.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
   _turretMatrix.multiplyMatrices(_hullMatrix, _localMatrix);
 
-  const sinPitch = Math.sin(state.gunPitch);
-  const cosPitch = Math.cos(state.gunPitch);
+  const sinPitch = detMath.sin(state.gunPitch);
+  const cosPitch = detMath.cos(state.gunPitch);
   _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
   _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
     .applyMatrix4(_turretMatrix)
@@ -654,8 +655,8 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
     const tip = launchers[index]!;
     _muzzle.set(tip.x, tip.y, tip.z);
     const mouthPitch = tip.pitch ?? 0, mouthYaw = tip.yaw ?? 0;
-    _gunDir.set(Math.sin(mouthYaw) * Math.cos(mouthPitch), Math.sin(mouthPitch),
-      Math.cos(mouthYaw) * Math.cos(mouthPitch));
+    _gunDir.set(detMath.sin(mouthYaw) * detMath.cos(mouthPitch), detMath.sin(mouthPitch),
+      detMath.cos(mouthYaw) * detMath.cos(mouthPitch));
     if (tip.frame !== 'turret') {
       _muzzle.set(gunPivot[0] + tip.x, gunPivot[1] + tip.y * cosPitch + tip.z * sinPitch,
         gunPivot[2] - tip.y * sinPitch + tip.z * cosPitch);
@@ -730,7 +731,7 @@ function firstTankTrace(
     const centerDistance = target.state.pos.distanceTo(shell.prevPos);
     // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
     const body = target.combat.destroyed ? target._wreckTurret : null;
-    if (centerDistance > segmentLength + radius + 2 && !(body && Math.hypot(body[0] - shell.prevPos.x, body[1] - shell.prevPos.y,
+    if (centerDistance > segmentLength + radius + 2 && !(body && detMath.hypot(body[0] - shell.prevPos.x, body[1] - shell.prevPos.y,
       body[2] - shell.prevPos.z) <= segmentLength + WRECK_TURRET_REACH_M)) continue;
     const pose = tankPoseFromState(target.state);
     if (body) pose.turretWorld = wreckTurretMatrix(body, target.state.modeScale ?? 1);
@@ -923,8 +924,8 @@ export function createAuthoritativeMatch({
     // the bots' grid re-reads the ground round the heap (botRoutePlanner refreshArea), as the solo step's does
     onCollapse: (structure) => {
       const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
-      const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
-      const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
+      const ex = Math.abs(detMath.sin(structure.yaw)) * structure.hd + Math.abs(detMath.cos(structure.yaw)) * structure.hw + reach;
+      const ez = Math.abs(detMath.cos(structure.yaw)) * structure.hd + Math.abs(detMath.sin(structure.yaw)) * structure.hw + reach;
       botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
     },
     onBlast: (x, y, z, chargeKg, sourceId) => { pendingBlasts.push(x, y, z, chargeKg); pendingBlastSources.push(sourceId ?? null); },
@@ -1311,9 +1312,9 @@ export function createAuthoritativeMatch({
     // a pillbox yields to no press and no overrun: only a ram heavy enough, on what it has taken (sim/fortifiedCover.ts);
     // it is judged before the load from above (integ/224: a hull that comes down on a pillbox does not crush it)
     if (isFortifiedCoverRecord(obstacle)) {
-      const length = Math.hypot(pushX, pushZ);
+      const length = detMath.hypot(pushX, pushZ);
       if (length <= 1e-9) return false;
-      const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+      const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
       return fortified.ram(obstacle, entity.spec.weightTons, closing, timeS);
     }
     // a hull on it from above crushes it by its weight (world/collision.ts crushableLoadedFromAbove)
@@ -1344,10 +1345,10 @@ export function createAuthoritativeMatch({
 
   /** Destruction: the speed share a hull keeps through a structure that yields to its ram, or null (it holds). */
   function structureYield(entity: AuthoritativeEntity, obstacle: AuthoritativeObstacle, pushX: number, pushZ: number): number | null {
-    const length = Math.hypot(pushX, pushZ);
+    const length = detMath.hypot(pushX, pushZ);
     if (length <= 1e-9) return null;
     const state = entity.state;
-    const closing = Math.max(0, -state.speed * (Math.sin(state.yaw) * pushX + Math.cos(state.yaw) * pushZ) / length);
+    const closing = Math.max(0, -state.speed * (detMath.sin(state.yaw) * pushX + detMath.cos(state.yaw) * pushZ) / length);
     return destruction.ramThrough(obstacle, entity.spec.weightTons, closing, Math.abs(state.speed),
       state.pos.x, state.pos.y, state.pos.z, -pushX / length, -pushZ / length, entity.id);
   }
@@ -1363,7 +1364,7 @@ export function createAuthoritativeMatch({
     const foot = hullFootprint(tankContactRect(entity.spec), pos.x, pos.z, state.yaw, state.visualPitch || 0,
       state.visualRoll || 0, _obstacleFoot);
     const centerX = foot.centerX, centerZ = foot.centerZ;
-    const broadRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
+    const broadRadius = detMath.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
     let hard = false;
     // Each record meets the hull where the records before it have pushed it (physics lane, 2026-10-03; Foundry field
@@ -1438,7 +1439,7 @@ export function createAuthoritativeMatch({
     pushX: number,
     pushZ: number,
   ): void {
-    const pushLength = Math.hypot(pushX, pushZ);
+    const pushLength = detMath.hypot(pushX, pushZ);
     if (pushLength <= 1e-6) return;
     const nx = pushX / pushLength;
     const nz = pushZ / pushLength;
@@ -1454,7 +1455,7 @@ export function createAuthoritativeMatch({
   let pairReachMaxM = Infinity;
   function pairReachOf(entity: AuthoritativeEntity): number {
     const rect = tankContactRect(entity.spec);
-    return Math.hypot(rect.halfLength, rect.halfWidth) + Math.abs(rect.centerX) + Math.abs(rect.centerZ);
+    return detMath.hypot(rect.halfLength, rect.halfWidth) + Math.abs(rect.centerX) + Math.abs(rect.centerZ);
   }
 
   function collideWithEntities(
@@ -1475,7 +1476,7 @@ export function createAuthoritativeMatch({
     // whose root lies further than the two rects' half-diagonals and the other's rect offset can meet none of them: the
     // movement step's bound over every hull (pairReachMaxM) rejects it before its rect, trig and hypot are read, exactly
     // where the full test below would reject it too
-    const ownReach = Math.hypot(halfL, halfW) + pairReachMaxM;
+    const ownReach = detMath.hypot(halfL, halfW) + pairReachMaxM;
     const ownReach2 = ownReach * ownReach;
     for (const other of entities) {
       if (other === entity || other.modeActive === false || !other.state) continue;
@@ -1484,15 +1485,15 @@ export function createAuthoritativeMatch({
       const otherRect = tankContactRect(other.spec);
       const otherHalfW = otherRect.halfWidth;
       const otherHalfL = otherRect.halfLength;
-      const ofx = Math.sin(other.state.yaw);
-      const ofz = Math.cos(other.state.yaw);
+      const ofx = detMath.sin(other.state.yaw);
+      const ofz = detMath.cos(other.state.yaw);
       const orx = ofz;
       const orz = -ofx;
       const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
       const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
       const dx = centerX - otherCenterX;
       const dz = centerZ - otherCenterZ;
-      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
+      const outer = detMath.hypot(halfL, halfW) + detMath.hypot(otherHalfL, otherHalfW);
       if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)
         || tanksVerticallyClear(entity, other)) {
         continue;
@@ -1523,8 +1524,8 @@ export function createAuthoritativeMatch({
     const halfL = contactRect.halfLength;
     const halfW = contactRect.halfWidth;
     const yaw = entity.state.yaw;
-    const fx = Math.sin(yaw);
-    const fz = Math.cos(yaw);
+    const fx = detMath.sin(yaw);
+    const fz = detMath.cos(yaw);
     const rx = fz;
     const rz = -fx;
     const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
@@ -1554,10 +1555,10 @@ export function createAuthoritativeMatch({
     if (!obstacle || obstacle.crushed) return false;
     const directionSign = entity?.state ? Math.sign(entity.state.speed || 1) : 1;
     const directionX = impactDirectionX ?? (
-      entity?.state ? Math.sin(entity.state.yaw) * directionSign : 0
+      entity?.state ? detMath.sin(entity.state.yaw) * directionSign : 0
     );
     const directionZ = impactDirectionZ ?? (
-      entity?.state ? Math.cos(entity.state.yaw) * directionSign : 1
+      entity?.state ? detMath.cos(entity.state.yaw) * directionSign : 1
     );
     const speedMps = impactSpeedMps ?? (entity?.state ? Math.abs(entity.state.speed) : 0);
     const destroyed = worldCollision && typeof worldCollision.crushObstacle === 'function'
@@ -1605,19 +1606,19 @@ export function createAuthoritativeMatch({
       // a pillbox takes a burst on its face as a hit (destroyShellObstacle), never a fall to a burst beside it
       if (!obstacle.crushable || obstacle.crushed || obstacle.min[1] > y + radius || isFortifiedCoverRecord(obstacle)) continue;
       const cx = (obstacle.min[0] + obstacle.max[0]) * 0.5, cz = (obstacle.min[2] + obstacle.max[2]) * 0.5;
-      if (Math.hypot(cx - x, cz - z) <= radius) blastFelled.push(obstacle);
+      if (detMath.hypot(cx - x, cz - z) <= radius) blastFelled.push(obstacle);
     }
     // nearest first, then authority order: the same props fall on every run
     blastFelled.sort((a, b) => {
-      const da = Math.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
-      const db = Math.hypot((b.min[0] + b.max[0]) * 0.5 - x, (b.min[2] + b.max[2]) * 0.5 - z);
+      const da = detMath.hypot((a.min[0] + a.max[0]) * 0.5 - x, (a.min[2] + a.max[2]) * 0.5 - z);
+      const db = detMath.hypot((b.min[0] + b.max[0]) * 0.5 - x, (b.min[2] + b.max[2]) * 0.5 - z);
       return da - db || (obstacleIndex.get(a) ?? 0) - (obstacleIndex.get(b) ?? 0);
     });
     const fell = Math.min(blastFelled.length, PROP_FELL_PER_BLAST, budget);
     for (let i = 0; i < fell; i++) {
       const obstacle = blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
-      const length = Math.hypot(dx, dz) || 1;
+      const length = detMath.hypot(dx, dz) || 1;
       destroyObstacle(obstacle, null, 'blast', dx / length, dz / length, 6, sourceId);
     }
     blastCandidates.length = 0;
@@ -1697,8 +1698,8 @@ export function createAuthoritativeMatch({
     if (!ramPairCanDamage(key, contact)) return;
     const { a, b } = contact;
     // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-    const afx = Math.sin(a.state.yaw), afz = Math.cos(a.state.yaw);
-    const bfx = Math.sin(b.state.yaw), bfz = Math.cos(b.state.yaw);
+    const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
+    const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
     const damage = ramShares(
       ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
       ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
@@ -2104,7 +2105,7 @@ export function createAuthoritativeMatch({
     if (shellSparesStoppedRecord(obstacle, shell.spec.caliberMm)) return;
     const shotX = shell.pos.x - shell.prevPos.x;
     const shotZ = shell.pos.z - shell.prevPos.z;
-    const shotLength = Math.hypot(shotX, shotZ) || 1;
+    const shotLength = detMath.hypot(shotX, shotZ) || 1;
     destroyObstacle(
       obstacle,
       null,
@@ -2190,7 +2191,7 @@ export function createAuthoritativeMatch({
   }
 
   function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
-    const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
+    const speed = detMath.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
     const knock = shellKnockMps(shell.spec.caliberMm, speed, target.spec.weightTons, target.modeShellKnockScale ?? 1);
     if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, target.modeGravityScale ?? 1);
   }
@@ -2359,7 +2360,7 @@ export function createAuthoritativeMatch({
       if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
       const target = modeController.botTarget(entity);
       if (!target) continue;
-      const moved = Math.hypot(
+      const moved = detMath.hypot(
         target.x - (entity._modeTargetX ?? Infinity),
         target.z - (entity._modeTargetZ ?? Infinity),
       );
@@ -2467,7 +2468,7 @@ export function createAuthoritativeMatch({
       const closing = prior + impact;
       entity._impactAccumMps = closing;
       if (fresh) entity._impactAccumT = timeS;
-      const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+      const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
       const faceForward = -(state.impactNx * fx + state.impactNz * fz);
       const sideSign = Math.sign(-(state.impactNx * fz - state.impactNz * fx));
       const result = resolveHullImpact({
@@ -2486,7 +2487,7 @@ export function createAuthoritativeMatch({
     if (landing > 0) {
       // the landing's attitude is the tracks' (the attitude spring's): the posture a hull holds over them on a grade
       // (movement.ts state._hold) is no part of how it meets the ground
-      const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+      const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
       const attitudeFactor = fallAttitudeFactor(state._spring.pitch - state._terr.pitch, state._spring.roll - state._terr.roll, upY);
       const result = resolveHullImpact({
         combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
@@ -2752,8 +2753,8 @@ export function createAuthoritativeMatch({
       for (const field of WITHHELD_SHOT_FIELDS) delete record[field];
       const dir = Array.isArray(event.localDir) ? event.localDir as number[] : null;
       if (dir && Number.isFinite(dir[0]) && Number.isFinite(dir[2]) && (dir[0] !== 0 || dir[2] !== 0)) {
-        const bearing = Math.round(Math.atan2(dir[0]!, dir[2]!) / HIT_BEARING_SECTOR) * HIT_BEARING_SECTOR;
-        record.localDir = [Math.sin(bearing), 0, Math.cos(bearing)];
+        const bearing = Math.round(detMath.atan2(dir[0]!, dir[2]!) / HIT_BEARING_SECTOR) * HIT_BEARING_SECTOR;
+        record.localDir = [detMath.sin(bearing), 0, detMath.cos(bearing)];
       } else {
         delete record.localDir;
       }
