@@ -597,13 +597,13 @@
   "href": "/docs/filming#topic-section-1",
   "title": "Shots written as code",
   "chapter": "Filming the media",
-  "text": "Every take on the site is a scene document, not a recording: the map, the time of day and the weather, the cast and its paint, each tank's route and speed, where each gun points, the camera's rail and the moment for its still. tools/media-r5/site50.mjs writes all fifty from one table, so a change to the plan reaches every take that shares it. The shot library keeps each take's scene exactly as the Studio saves it, so a take opens in the Studio from a link: the viewer below opens every featured take that way. The owner directs each round with notes: the lens on a three-dimensional track that swings close and far, tanks fast in every direction, fronts and quarters rather than rears, and a list of tanks that each lead a take of their own. Every round renders into folders of its own, so earlier versions stay beside the code that made them."
+  "text": "Every take on the site is a scene document, not a recording: the map, the time of day and the weather, the cast and its paint, each tank's route and speed, where each gun points, the camera's rail and the moment for its still. tools/media-r5/site50.mjs writes all fifty from one table, so a change to the plan reaches every take that shares it. The shot library keeps each take's scene exactly as the Studio saves it, so a take opens in the Studio from a link: the viewer below opens every featured take that way. Each round is directed with notes: the lens on a three-dimensional track that swings close and far, tanks fast in every direction, fronts and quarters rather than rears, and a list of tanks that each lead a take of their own. Every round renders into folders of its own, so earlier versions stay beside the code that made them."
  },
  {
   "href": "/docs/filming#topic-section-2",
   "title": "One take, every stage",
   "chapter": "Filming the media",
-  "text": "Pick a take, then a stage. Round four is the loop delivered on 4 October, before the motion note. Engine review 1 is the first motion plan rendered small in the engine, with everything it caught. Previz is round six's plan as a schematic camera, and engine review 2 is that plan in the engine after the fixes. Engine review 3 is round seven: the plan re-staged on the 2.0 maps, the scenes the 4K finals render from."
+  "text": "Pick a take, then a stage. Round four is the first loop, before the motion note. Engine review 1 is the first motion plan rendered small in the engine, with everything it caught. Previz is round six's plan as a schematic camera, and engine review 2 is that plan in the engine after the fixes. Engine review 3 is round seven: the plan re-staged on the 2.0 maps, the scenes the 4K finals render from."
  },
  {
   "href": "/docs/filming#topic-section-3",

@@ -9,10 +9,11 @@
 /* data-built chapters (src/docs/chapters): a table to pick from, cards with the game's stills, objective maps and rules */
 .dm-table{margin:var(--s4) 0;overflow-x:auto;border-radius:var(--r1);box-shadow:var(--ring-1)}
 /* a phone's table fades at its end where it scrolls on, and keeps room to scroll clear of the fade */
-@media (width < 520px){.dm-table{padding-right:var(--s5);mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s5)),transparent)}}
+/* a table wider than its column fades at its end (topics.ts marks it); one that fits keeps its whole frame */
+.dm-table.is-scrollable{mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s5)),transparent)}
 .dm-table:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .dm-table table{width:100%;border-collapse:collapse;font:400 max(var(--fs-floor-12),var(--fs-14))/1.35 var(--font-body);color:var(--ink-2)}
-.dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--line-1);white-space:nowrap}
+.dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:baseline;border-bottom:1px solid var(--line-1);white-space:nowrap}
 .dm-table thead th{font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);background:var(--surface-plate)}
 .dm-table tbody tr:last-child>*{border-bottom:0}
 .dm-table tbody th a{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);text-decoration:none}
@@ -78,13 +79,13 @@
 .dm-chips+p{margin-top:var(--s3)}
 /* the tanks, combat and battlefields chapters: hero cards, bars drawn to one scale, line charts, map cards */
 .dm-section>h3,.dm-pair h3,.dm-equip>h3{margin:var(--s5) 0 var(--s3);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
-.dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--accent-hi);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
+.dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
 .dm-link:hover span{text-decoration:underline;text-underline-offset:3px}
 .dm-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);margin-top:var(--s4)}
 .dm-class{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-hc{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-scene);--hc-band:10px;--hc-share:0.74;--hc-hshare:0.72;--hc-cxr:0.5;--hc-flag-mask:var(--docs-hc-flag-mask)}
 .dm-class__body{display:grid;gap:4px;padding:10px 12px 12px}
-.dm-class__body h3{display:flex;align-items:center;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
+.dm-class__body h3{display:flex;align-items:flex-start;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
 .dm-class__body h3 .cot-i{flex:none;color:var(--ink-3)}
 .dm-class__body h3 b{margin-left:auto;font:600 var(--fs-15)/1 var(--font-data);color:var(--ink-2)}
 .dm-class__body p{display:flex;align-items:center;gap:6px;margin:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
@@ -115,6 +116,8 @@
 .dm-equip small{justify-self:start;margin-top:2px;padding:2px 7px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
 .dm-chart{margin:var(--s4) 0;max-width:760px}
 .dm-chart svg{display:block;width:100%;height:auto;overflow:visible;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
+/* a phone draws the 640-unit chart at about half size: its ticks and units double in chart units to hold the floor */
+@media (width < 520px){.dm-chart svg{font-size:var(--fs-24)}}
 .dm-chart .g{stroke:var(--line-1)}
 .dm-chart .k,.dm-chart .a{stroke:var(--line-3)}
 .dm-chart .t{fill:var(--ink-3)}

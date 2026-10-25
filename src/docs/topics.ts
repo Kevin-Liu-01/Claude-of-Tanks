@@ -419,13 +419,6 @@ function titleMarkup(title: string): string {
   return `<span>${words.slice(0, cut).join(' ')}</span> <span class="t-hollow">${words.slice(cut).join(' ')}</span>`;
 }
 
-/** Minutes to read a topic: 200 Latin words, or 400 Chinese characters, a minute. */
-function readMinutes(topic: TopicDefinition, rich: readonly RichSection[] | null): number {
-  const text = [topic.lede, ...(rich ? rich.map((section) => section.text) : topic.sections.flat())].join(' ');
-  const cjk = (text.match(/[㐀-鿿]/g) ?? []).length;
-  const words = text.replace(/[㐀-鿿]/g, ' ').split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200 + cjk / 400));
-}
 
 function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
   const [title, ...paragraphs] = section;
@@ -446,6 +439,15 @@ function mountSearchEntry(root: HTMLElement): void {
   });
   const kbd = root.querySelector('.dm-search kbd');
   if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
+}
+
+/** A table wider than its column scrolls under a fade at its end (chapters.css .dm-table.is-scrollable). */
+function markScrollableTables(root: HTMLElement): void {
+  if (typeof ResizeObserver !== 'function') return;
+  const observer = new ResizeObserver((entries) => {
+    for (const { target } of entries) target.classList.toggle('is-scrollable', target.scrollWidth > target.clientWidth + 1);
+  });
+  for (const box of root.querySelectorAll<HTMLElement>('.dm-table')) observer.observe(box);
 }
 
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
@@ -510,7 +512,6 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div></header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
-    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
@@ -545,6 +546,7 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
+  markScrollableTables(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
