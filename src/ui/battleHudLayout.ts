@@ -981,8 +981,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     const killLeft = root.querySelector('.cot-kill-lane.l');
     const killRight = root.querySelector('.cot-kill-lane.r');
+    // (the gunship lens's zoom and range row under the sight is a floor for a lane it reaches into: 844x390's left lane
+    // ran 21 px over it, gauntlet r5's overlap receipt)
+    const lensRow = read('.cot-flight-hud:not([hidden]) .gunship-solution');
     const leftBottom = Math.min(leftFloor(height, touch),
-      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height);
+      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
+      lensRow && lensRow.left < sideWidth && lensRow.top > leftAnchor ? lensRow.top - 8 : height);
     const earRight = read('.cot-ear.r');
     const networkRight = networkCornerRight(width, touch, telemetry, score);
     const strip = read('.cot-mp-status.battle');
@@ -1002,7 +1006,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height,
       // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane
       // ran 2 px onto it, gauntlet r4's overlap receipt)
-      scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height);
+      scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height,
+      lensRow && lensRow.right > width - sideWidth && lensRow.top > rightAnchor ? lensRow.top - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     // (a row is never squeezed under 16 px: at 12 px the enemy roster's lines touched, gauntlet r1 at 1280x720)
