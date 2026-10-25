@@ -129,7 +129,7 @@ import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
 import { coursedWallType, dryStoneWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
-import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { settleLightWreckSteps } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
 import { streetLampFormOf } from './maps/streetKit.ts';
@@ -12081,7 +12081,16 @@ ${snowCap ? `
       const fracture = own ? undefined : PROP_FRACTURE[kind];
       // (a job's body is the kit's builder's own, which a settled or fractured kind would discard: not built at all then)
       const pendingJob = brokenJob && !settled && !fracture ? vehiclePool!.post(brokenJob) : null;
-      const geoB = settled ? settleLightWreck(geoI, anatomy!, fractureSeed(seed, kind))
+      // (battle-spikes-253) a settled heap a body a slice (settleLightWreckSteps)
+      let settledHeap: THREE.BufferGeometry | null = null;
+      if (settled) {
+        const settling = settleLightWreckSteps(geoI, anatomy!, fractureSeed(seed, kind));
+        for (let step = settling.next(); ; step = settling.next()) {
+          if (step.done) { settledHeap = step.value; break; }
+          yield { fine: true, progress: false, stage: 'pool-settle-' + kind };
+        }
+      }
+      const geoB = settled ? settledHeap!
         : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind))
           : pendingJob !== null ? new THREE.BufferGeometry() : legacyB!; // (the job's body replaces this at the join)
       if (legacyB && geoB !== legacyB) legacyB.dispose();
