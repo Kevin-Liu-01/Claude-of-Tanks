@@ -197,7 +197,7 @@ const CSS = `
 /* the panel hangs under the Garage's bar (y 16 to 60 at every size), never across it, and grows downward; the game
    document declares the weight-voiced 'Cot UI' family, so the reading voice is that family too */
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:flex-start;justify-content:center;
-  padding:max(72px,8vh) var(--s5) var(--s5);background:var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
+  padding:max(72px,8vh) var(--s5) var(--s5);background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
 .cot-play.show{display:flex;animation:cotPlayVeil var(--dur-base) var(--ease-enter)}
 .cot-play.show .panel{animation:cotPlayPanel var(--dur-screen) var(--ease-enter) backwards}
 @keyframes cotPlayVeil{from{opacity:0}}
@@ -238,7 +238,7 @@ const CSS = `
 .cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
 .cot-play .mode-icon svg{display:block}
 .cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
+  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body)}
 .cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
 
 /* labels: 12 px at the label tracking */
@@ -251,7 +251,7 @@ const CSS = `
 
 /* the game modes behind Room rules */
 .cot-play .rule-heading{display:flex;align-items:end;justify-content:space-between;gap:var(--s3);margin:var(--s4) 0 var(--s2)}
-.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s2)}
+.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s3)}
 .cot-play .rule{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:var(--s2);min-height:54px;
   padding:var(--s2) var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);
   color:var(--ink-2);text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),
@@ -276,10 +276,11 @@ const CSS = `
 .cot-play .brain[hidden]{display:none}
 .cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
 .cot-play .arrange-head b{color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-body);letter-spacing:normal;text-transform:none}
-.cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s2);align-items:end}
+.cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s3);align-items:end}
 .cot-play .arrange-fields label[hidden],.cot-play .arrange-cap[hidden],.cot-play .brain-note[hidden],.cot-play .arrange-sides[hidden],
 .cot-play .operation-picker[hidden]{display:none}
-body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .cot-play .arrange-sides{margin-bottom:var(--s2)}
 .cot-play .arrange-sides-label{margin-right:var(--s1)}
@@ -400,11 +401,12 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 
 /* the lobby */
 .cot-play .lobby{display:none;margin-top:var(--s4)}.cot-play .lobby.show{display:block}
-.cot-play .roomhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s3) var(--s4);
+.cot-play .roomhead{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3) var(--s5);padding:var(--s3) var(--s4);
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .roommeta{margin-bottom:var(--s2)}
 .cot-play .roomhead .seats{margin-left:auto;text-align:right}
-.cot-play .seats-count{color:var(--ink-1);font:700 max(var(--fs-floor-12),var(--fs-20))/1 var(--font-ui)}
+.cot-play .roomhead>.action{align-self:center}
+.cot-play .seats-count{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
 .cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -445,7 +447,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
 .cot-play .lobby.show .controls{position:sticky;bottom:calc(-1 * var(--s5));z-index:4;margin:var(--s3) calc(-1 * var(--s5)) calc(-1 * var(--s5));
   padding:var(--s4) var(--s5) var(--s5);background:var(--play-plate);border-top:1px solid var(--line-2)}
-.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:var(--s2);align-items:end}
+.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:var(--s3);align-items:end}
 .cot-play .control-options .field{width:auto;min-width:0}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
@@ -474,10 +476,10 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .room-rules>summary{display:flex;align-items:center;gap:var(--s3);min-height:44px;color:var(--ink-2);
   font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);list-style:none;cursor:pointer}
 .cot-play .room-rules>summary::-webkit-details-marker{display:none}
-.cot-play .room-rules>summary::before{content:'';width:8px;height:8px;margin:0 var(--s1);border-right:1.5px solid var(--ink-3);
+.cot-play .room-rules>summary::before{order:1;content:'';width:8px;height:8px;margin:0 var(--s1);border-right:1.5px solid var(--ink-3);
   border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform var(--dur-fast) var(--ease-move)}
 .cot-play .room-rules[open]>summary::before{transform:rotate(45deg)}
-.cot-play [data-selected-rule]{margin-left:auto;color:var(--ink-2)}
+.cot-play [data-selected-rule]{order:2;margin-left:auto;color:var(--ink-2)}
 .cot-play.multiplayer-entry :is(.brain,.campaign){display:none}
 .cot-play.multiplayer-entry .arrange>.arrange-head,.cot-play .room-rules .rule-heading{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* open, the rules show their own selection: the summary's echo of it steps aside */
@@ -1431,6 +1433,7 @@ export function createPlayMenu({
     status.dataset.severity = kind;
     status.classList.toggle('err', !!error);
     status.classList.toggle('is-empty', !statusText.textContent);
+    if (kind !== 'info' && statusText.textContent && root.classList.contains('show')) status.scrollIntoView({ block: 'nearest' });
   }
 
   function clearFailure(): void {
