@@ -4572,7 +4572,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 10,
+      "smoke": 8,
       "lights": true,
       "roofGun": true,
       "missile": false,

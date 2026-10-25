@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { box, cylX, mergeAll, torus, xform } from './factoryGeometry.ts';
 import { lathedWheelSection, type AxialWheelStation } from './profiles/lathedWheelStock.ts';
 import { measuredTireBands, type MeasuredTireBand } from './measuredWheelGeometry.ts';
+import { K2_TIRE_BANDS, k2RoadWheelBolts, k2RoadWheelCore, k2RoadWheelFace } from './profiles/k2RoadWheels.ts';
 import { buildHollowPairedRoadWheel, hollowPairedRoadWheelWidth } from './hollowRoadWheelStock.ts';
 import { pairedRunningGearStock } from './pairedRunningGearStock.ts';
 import { type100RoadWheelStock } from './profiles/type100RunningGear.ts';
@@ -463,7 +464,15 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
         { geometry: solids.right, paint: 'dish', role: 'wheelDish', side: 1, name: 'strv122SuppliedWheelFacesRight' }] }, q);
   },
   'cv90-armoured-hub': (q) => standardConstruction('armored-hub-six', .90, 'rubber', q),
-  'k2-flanged': (q) => standardConstruction('flanged-twelve', .90, 'rubber', q),
+  'k2-dished-hub': (q) => {
+    // the K2 X source twin wheel (profiles/k2RoadWheels.ts): XK2, K2B and K2 draw it natively
+    const segments = latheSegments(q, 32);
+    return fitNative({ tire: measuredTireBands(K2_TIRE_BANDS, .3219, .386, q.segments), disc: k2RoadWheelCore(segments), dark: null,
+      layers: ([-1, 1] as const).flatMap(side => [
+        { geometry: k2RoadWheelFace(side, segments), paint: 'dish' as const, role: 'wheelDish' as const, side, name: `k2SourceWheelFace${side}` },
+        ...(q.high ? [{ geometry: k2RoadWheelBolts(side), paint: 'dish' as const, role: 'wheelDish' as const, side, name: `k2SourceWheelBolts${side}` }] : []),
+      ]) }, q);
+  },
   'k1a1-deep-bowl': (q) => {
     const solids = k1a1XWheelSolids(latheSegments(q, 28)), d = K1A1_ROAD_WHEEL;
     return fitNative({ tire: openAnnulusTire(d.tireInnerRadiusM, d.radiusM, d.widthM, q.segments), disc: solids.core, dark: null,

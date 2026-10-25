@@ -20,7 +20,9 @@ const attribute=a=>sha(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byt
 function payload(root,hullOnly=false){
   root.updateMatrixWorld(true);const rows=[];
   root.traverse(m=>{
-    if(!m.isMesh||m.userData.shadowOnly||m.userData.authoredShadowProxy||m.userData.vehicleMarking||m.name.includes('InteriorFill'))return;
+    // 252: the race under a seated turret (turretSeatRace.ts) is drawn on each turret's own ring receipt (the launcher's
+    // ring seat stands 2 mm aft of the T-90MS's): it belongs to the turret's ring, not to the chassis compared here
+    if(!m.isMesh||m.userData.shadowOnly||m.userData.authoredShadowProxy||m.userData.vehicleMarking||m.name.includes('InteriorFill')||m.userData.turretSeatRace)return;
     let owner='';for(let p=m;p;p=p.parent){if(p.name==='rig_turret'){owner='turret';break;}if(p.name==='rig_hull'){owner='hull';break;}}
     if(hullOnly&&owner!=='hull')return;
     const g=m.geometry,materials=Array.isArray(m.material)?m.material:[m.material];
@@ -86,8 +88,10 @@ function fixedStock(tank){
     const upper=new T.Raycaster(new T.Vector3(x,1.8,z+.118),new T.Vector3(0,-1,0),0,.4).intersectObject(nativeHull,false)[0];
     const lower=new T.Raycaster(turret.localToWorld(new T.Vector3(x,-.08,z)),new T.Vector3(0,1,0),0,.2).intersectObject(base,false)[0];
     assert(upper&&lower,'both actual bearing interface surfaces exist');
-    assert(Math.abs(upper.point.y-1.5455)<.001&&Math.abs(lower.point.y-1.5305)<.001,'measured donor bearing and new lower seat');
-    assert(upper.point.y-lower.point.y>.014,'finite15mm bearing overlap across9 receiving rays');
+    // 252: the turret seat (turretSeatRace.ts, the ring receipt since the 248 refresh) lays the launcher base's lower seat
+    // on the deck's plane + 3 cm over the bearing (it stood 1.5 cm into it), the race in the seam between them
+    assert(Math.abs(upper.point.y-1.5455)<.001&&Math.abs(lower.point.y-(1.5455+.03))<.001,'measured donor bearing and new lower seat');
+    assert(lower.point.y-upper.point.y>.029&&hull.getObjectByName('turretSeatRace'),'the seat\'s 3 cm seam over the bearing, its race in it, across 9 receiving rays');
   }
   for(const [x,y,z] of [[.35,.41,.674],[-.71,.352,.794],[.71,.352,.794]]){
     const hit=coordinate(tank,turret,[x,y,z+.12],[0,0,-1],'z',z,.14);
@@ -263,7 +267,8 @@ for(const quality of ['high','low']){
     let triangles=0,turretTriangles=0,batches=0;for(const m of meshes(tank.root)){const count=Math.min(m.geometry.index?.count??m.geometry.attributes.position.count,m.geometry.drawRange.count)/3*(m.isInstancedMesh?m.count:1);triangles+=count;batches++;for(let p=m;p;p=p.parent)if(p.name==='rig_turret')turretTriangles+=count;}
     // 2026-09-22 nation wheel standard: the T-90MS chassis draws the T-90M X pressed road-wheel face (twelve stations,
     // +19.8k triangles at HIGH, +10.2k at LOW), so the retained-chassis budget carries that owner-ruled wheel.
-    assert(triangles<=(quality==='high'?69900+30000:64652+16000),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
+    // 252: and the turret race under the launcher (turretSeatRace.ts, the owner's 2026-10-22 ring directive): 640 at HIGH, 480 at LOW.
+    assert(triangles<=(quality==='high'?69900+30000+640:64652+16000+480),`retained chassis plus launcher owner budget ${quality}=${triangles}, launcher=${turretTriangles}`);
     const b=new T.Box3().setFromObject(tank.root);assert(Math.abs(b.max.y-D.stowedHeight)<.001);assert(b.max.x-b.min.x<=3.781&&b.max.z-b.min.z<=7.479);
     results.push({quality,triangles,turretTriangles,batches,paintUVChanges:payload(tank.root,true).filter((row,i)=>row.attrs.uv?.hash!==hull[i].attrs.uv?.hash).map(row=>row.name),bounds:{min:b.min.toArray(),max:b.max.toArray()},...articulation});
     const decorated=createTank('tos1a_tagil',null,{...options(quality),proceduralOnly:false,decor:true});

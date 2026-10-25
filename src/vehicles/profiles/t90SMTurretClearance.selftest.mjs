@@ -129,7 +129,10 @@ try {
     yM: 0.02,
     zM: -0.06,
   }, 'T-90SM turret ring receipt remains dimensionally stable');
-  assert.ok(vertices.some((vertex) => near(vertex.y, (ring.yM - ring.heightM / 2) * f)
+  // 252: the turret seat (turretSeatRace.ts) brings the collar's buried lower edge up onto its plane over the deck (the
+  // ring receipt since the 248 refresh): the edge stands at its radius between its authored height and the collar's top
+  assert.ok(vertices.some((vertex) => vertex.y > (ring.yM - ring.heightM / 2) * f - 1e-4
+    && vertex.y < (ring.yM + ring.heightM / 2) * f
     && near(Math.hypot(vertex.x, vertex.z - ring.zM * f), ring.bottomRadiusM * f)),
   'T-90SM turret ring lower edge is present in structural turret geometry');
 

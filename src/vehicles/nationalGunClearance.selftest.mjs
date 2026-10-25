@@ -86,6 +86,8 @@ const CURVES = {
   t62mv1: [],
   leo2a2: [],
   leo2a3: [],
+  // 252: the K2B on the K2 gun front, its mantlet's lower corner trimmed to 0.24 m under the bore (profiles/korea.ts)
+  k2b: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

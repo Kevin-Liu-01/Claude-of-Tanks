@@ -384,7 +384,9 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   receiptBuild.dispose();
   assert.ok(receipt, 'the T-72B3 has its ring');
   close(receipt.deckY, 1.458, 0.003, 'the race lies on the deck, over the doubled roof sheet under it');
-  const calibration = combatAnatomyCalibration(id);
+  // (the committed row carries the 248 refresh's ring receipt: the bare case drops it)
+  const committed = combatAnatomyCalibration(id);
+  const { turretRing: _committedRing, ...calibration } = committed;
   const runs = [];
   const materials = [];
   for (const withReceipt of [true, false]) {
@@ -458,7 +460,7 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   assert.notEqual(materials[0], materials[1], 'each wreck its own ring material');
   close(runs[0].deckY, runs[1].deckY, 0.003, 'the build\'s own measure agrees with the receipt (deck)');
   close(runs[0].rimR, runs[1].rimR, 0.01, 'the build\'s own measure agrees with the receipt (race)');
-  registerCombatAnatomyCalibrations({ [id]: calibration });
+  registerCombatAnatomyCalibrations({ [id]: committed });
 }
 
 // ---- a hulk: the ring merged into the one mesh, the placement exactly the ring-less bake's --------------------------

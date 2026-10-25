@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { isVehicleMesh } from './vehicleMesh.ts';
+import { bakeWeaponEdgeWear, WEAPON_EDGE_BARY } from './weaponFinish.ts';
 
 type Vertex = { p: THREE.Vector3; data: number[] };
 type Plane = readonly [number, number, number, number];
@@ -245,6 +246,11 @@ export function installCarvedMuzzleBore(
     if (!bounds || outsideBore(bounds, radius, depth)) continue;
     const cut = carveMuzzleGeometry(mesh.geometry, matrix, radius, depth, segments);
     if (!cut) continue;
+    // 252 (the owner: "weird squares/triangles at tips of guns around the holes", the Type 10B, Type 10 TK-X and Centurion
+    // Mk 5/2): weapon steel's crease wear is per triangle (each corner's barycentric weight, the inverse heights of its
+    // edges, weaponFinish.ts). The cut faces copied or interpolated their parents' values, so whole ring triangles round
+    // the bore read as crease and drew dark: a square or a triangle on the muzzle face. They are baked again for the cut.
+    if (cut.geometry.getAttribute(WEAPON_EDGE_BARY)) bakeWeaponEdgeWear(cut.geometry);
     mesh.geometry = cut.geometry; disposables.push(cut.geometry);
     removedTriangles += cut.removed; addedTriangles += cut.added;
     cutSurfaces.push({name:mesh.name,removed:cut.removed,added:cut.added});

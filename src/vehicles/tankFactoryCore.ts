@@ -8750,9 +8750,41 @@ function* buildTankCoreSteps(
   };
   for (const visualEraPart of visualEraParts) bindVisualEraPart(visualEraPart);
 
+  // Each ERA-bound part's span in the mesh its bucket merged into (mergeBucket): the turret seat lifts that mesh's own
+  // copy of the merged vertices, not the parts, so the receipt below reads each part back from the mesh it is drawn in.
+  const eraPartSpans = new Map<THREE.BufferGeometry, { mesh: THREE.Mesh; start: number; built: THREE.BufferAttribute | THREE.InterleavedBufferAttribute }>();
+  const eraBoundParts = new Set<THREE.BufferGeometry>(eraVisualBindingReceipt ? [...eraBoundPartsByPlate.values()].flat() : []);
+  const drawnEraPartLists = new Map<THREE.BufferGeometry[], THREE.BufferGeometry[]>();
+  const drawnEraPart = (part: THREE.BufferGeometry): THREE.BufferGeometry => {
+    const span = eraPartSpans.get(part);
+    const drawn = span?.mesh.geometry.getAttribute('position');
+    if (!span || !drawn || drawn === span.built) return part;
+    const position = part.getAttribute('position'), index = part.index;
+    const count = index ? index.count : position.count;
+    let copy: THREE.BufferGeometry | null = null;
+    for (let k = 0; k < count; k++) {
+      const v = index ? index.getX(k) : k, d = span.start + k;
+      if (drawn.getX(d) === position.getX(v) && drawn.getY(d) === position.getY(v) && drawn.getZ(d) === position.getZ(v)) continue;
+      copy ??= part.clone();
+      copy.getAttribute('position').setXYZ(v, drawn.getX(d), drawn.getY(d), drawn.getZ(d));
+    }
+    if (!copy) return part;
+    disposables.push(copy);
+    return copy;
+  };
+  const drawnEraParts = (parts: THREE.BufferGeometry[]): THREE.BufferGeometry[] => {
+    let drawn = drawnEraPartLists.get(parts);
+    if (!drawn) {
+      const copies = parts.map(drawnEraPart);
+      drawn = copies.every((copy, i) => copy === parts[i]) ? parts : copies;
+      drawnEraPartLists.set(parts, drawn);
+    }
+    return drawn;
+  };
+
   const wholeEraFitReuse = createInvocationEraWholeReuse();
   const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
-    const parts = eraBoundPartsByPlate.get(plate.name) || [];
+    const parts = drawnEraParts(eraBoundPartsByPlate.get(plate.name) || []);
     if (!parts.length || plate.verts.length < 3) return [];
     const frame = createEraSurfaceFrame(plate);
     if (!frame) return [];
@@ -9101,6 +9133,11 @@ function* buildTankCoreSteps(
     }
     registerVehicleNightLensMesh(mesh, list);
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
+    let spanStart = 0;
+    for (const part of list) {
+      if (eraBoundParts.has(part)) eraPartSpans.set(part, { mesh, start: spanStart, built: merged.getAttribute('position') });
+      spanStart += part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+    }
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
@@ -9165,9 +9202,32 @@ function* buildTankCoreSteps(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
+    if (typeof P.postAssemble === 'function') {
+      P.postAssemble({ root, hullG, turretG, gunG, recoilG });
+    }
+    // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
+    // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
+    // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret. A seated mesh
+    // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
+    // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back),
+    // and so do the equipment lids' and the weapon stock's damage ranges.
+    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
+      const was = built.getAttribute('position'), now = seated.getAttribute('position');
+      for (const cluster of destructibleClusters.values()) {
+        for (const range of cluster.ranges) {
+          if (range.position !== was) continue;
+          range.position = now;
+          range.original = now.array.slice(range.start * now.itemSize, (range.start + range.count) * now.itemSize);
+        }
+      }
+      equipmentDamage.follow(built, seated);
+      weaponDamage.follow(built, seated);
+    } });
     // Battles consume checked anatomy and the live clusters above; static
     // wrecks retain baked geometry. Both can omit this authoring-only audit.
     // Preserve the default for workshop, Gallery and anatomy/release callers.
+    // 251: fitted after the seat, against the skin each part is drawn with (drawnEraParts), so the generated anatomy's ERA
+    // faces stand on a seated cassette's lifted edge, not 94 mm under it (the T-90M's turret_era_L/R).
     if (eraVisualBindingReceipt) {
       const receiptPlates = (owner: VehicleOwner) => {
         const exactZones = new Map<string, boolean>();
@@ -9257,24 +9317,6 @@ function* buildTankCoreSteps(
     });
   }
 
-  if (typeof P.postAssemble === 'function') {
-    P.postAssemble({ root, hullG, turretG, gunG, recoilG });
-  }
-  // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
-  // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
-  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret. A seated mesh
-  // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
-  // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back).
-  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
-    const was = built.getAttribute('position'), now = seated.getAttribute('position');
-    for (const cluster of destructibleClusters.values()) {
-      for (const range of cluster.ranges) {
-        if (range.position !== was) continue;
-        range.position = now;
-        range.original = now.array.slice(range.start * now.itemSize, (range.start + range.count) * now.itemSize);
-      }
-    }
-  } });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
