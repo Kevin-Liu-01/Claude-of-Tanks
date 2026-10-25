@@ -3908,7 +3908,7 @@
   "hud.modeStatus.realistic": "消灭乘员或引爆弹药",
   "hud.modeStatus.gun_game": "武器 {stage}/{total} · 击毁 {kills}/{required}",
   "hud.modeStatus.drone": "确认击毁 · {own} / {target}",
-  "hud.modeStatus.ac130": "存活 {alive} · 已撤离 {rescued}/{required} · {progress}%",
+  "hud.modeStatus.ac130": "存活 {alive} · 已撤离 {rescued}/{required} · 路线 {progress}%",
   "hud.aerial.drone": "第一人称 · 热成像 · 电量 {seconds}秒",
   "hud.aerial.gunship": "AC-130 · 热成像 · 1 / 2 / 3 切换武器",
   "playMenu.arrange.juggernautRole": "你的角色",

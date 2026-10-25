@@ -1993,7 +1993,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    drew it a fallback face wider, past its tile, gauntlet r2) */
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-fig-11);font-weight:700;
   font-family:var(--font-display);color:var(--ink-2);
-  letter-spacing:-.02em;white-space:nowrap;z-index:4;}
+  letter-spacing:0;white-space:nowrap;z-index:4;}
+/* (the codes at the face's own tracking, as every label: tightened, APFSDS's letters touched, gauntlet r7) */
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
 .cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;

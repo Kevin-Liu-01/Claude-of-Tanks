@@ -109,7 +109,8 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
 }
 /* (the seat's word stays on one line: zh's 驾驶 broke a character a line at 1440, gauntlet r3) */
-.cot-watch .wb.seat .label{white-space:nowrap}
+/* (the seat's action in the bar's capitals, as GARAGE and the rest: "Drive" in title case, gauntlet r7) */
+.cot-watch .wb.seat .label{white-space:nowrap;text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (riding, the ridden tank's controls row shows its state without its key caps: the watcher's own Q and E sat in the bar
    above it beside the row's Q, gauntlet r4) */
 html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}

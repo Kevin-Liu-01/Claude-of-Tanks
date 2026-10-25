@@ -291,8 +291,11 @@ ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:
    would take the name's room) */
 ${PORTRAIT} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;}
 /* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */
-${PORTRAIT} .cot-bl .rules{display:grid;grid-auto-flow:column;grid-template-rows:auto auto;justify-content:center;}
-${PORTRAIT} .cot-bl .rules .mode{grid-row:1;grid-column:1 / span 3;justify-self:center;}
+/* (three chips or more: the mode's on a row of its own, the rules' centred under it; two share one row, gauntlet r7) */
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden])))::before{content:'';order:1;flex-basis:100%;height:0;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))){row-gap:0;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip{margin-block:4px;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip:not(.mode){order:2;}
 ${PORTRAIT} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
   column-gap:6px;row-gap:2px;align-content:center;}
 ${PORTRAIT} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}
@@ -311,16 +314,16 @@ ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
    to 560 px they ended 83-830 px short of the right gutter, gauntlet r4; at the far end the two sat 650-1000 px apart,
    r2) */
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);}
-${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:var(--s4);}
-/* (the vehicle's name in a column of its own width, so the drivers beside it start on one line: each began where its
-   vehicle's name ended, gauntlet r5) */
-${WIDE} .cot-bl .team:not(.cards) .row .nm{flex:0 1 clamp(132px,7.6vw,200px);}
+/* (the driver on the row's inner edge, as the narrower layouts set it, the sheet capped to its reading width (below): a
+   mid-row column left the inner 40 % of every row empty at 1280 to 2560, gauntlet r7; at the far end of an uncapped
+   840 px sheet the two sat 650-1000 px apart, r2) */
+${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:auto;}
 /* (a side's sheet as wide as its rows' reading line, on its outer gutter, the map between the two: stretched to the VS, a
    row carried 500-700 px of empty plate at 1920 and 2560, gauntlet r6) */
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team{width:100%;max-width:clamp(520px,30vw,760px);}
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.ally{justify-self:start;}
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.foe{justify-self:end;}
-${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:var(--s4);}
+${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:auto;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}

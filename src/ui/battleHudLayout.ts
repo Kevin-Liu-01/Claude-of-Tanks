@@ -186,8 +186,8 @@ const SYSTEMS_GAP = 3;
 const RIBBON_W = 520;
 /** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
 const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
-/** How near the rack's width a centred strip or ribbon snaps to the rack's edges. */
-const RACK_SNAP = 40, RACK_SNAP_INSET = 4;
+/** How far past its gap's edge a rack may stand and still lend a strip or a ribbon its edges. */
+const RACK_SNAP_INSET = 4;
 /** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 12px))). */
 const RIBBON_LIFT = 12;
 /** A portrait phone's personal feed under the global one: at most this wide. */
@@ -356,7 +356,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     pips: DOMRect | null): string {
     const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
     objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: pips ? pips.bottom + PIPS_GAP : score?.bottom || 64,
-      width: objectiveWidth(score?.width || 344) - (touch && read('.cot-mp-status.battle') && width > height ? 52 : 0) };
+      // (the network strip's touch tile stands beside the map, clear of the tab: the 52 px it once took from the tab cut its
+      // copy to "CONTROL 2" at 844x390, gauntlet r7)
+      width: objectiveWidth(score?.width || 344) };
     let seat = '';
     if (node && score && wideTop(touch)) {
       writeObjective('corner', objectivePlace);
@@ -1334,12 +1336,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     markRosterMore('.cot-ear.r', rosterRight[1]);
     const lowerCorners = [read('.cot-dp'), read('.cot-drive'), map];
     const rackCentre = fillRack ? systemsLeft + systemsWidth / 2 : width / 2;
-    // (a strip or a ribbon within RACK_SNAP of the rack's width takes the rack's edges, where the rack lies inside its
-    // gap: at 1024x600 both stood 2-3 px inside the row under them, gauntlet r5)
+    // (the controls strip and the kill ribbon over a mouse layout's rack take the rack's edges, where the rack lies inside
+    // their gap: 2-3 px inside it at 1024x600, gauntlet r5; at 1280 and up three centred widths, the strip 594 px, the
+    // ribbon 520, the rack 434, r7. The ribbon at the rack's width is its tight form, the callsign kept.)
     const onRack = (place: { width: number; x: number; bottom: number }, cap: number) => {
       const w = Math.min(cap, place.width);
       const inside = systemsLeft >= place.x - place.width / 2 - RACK_SNAP_INSET && systemsLeft + systemsWidth <= place.x + place.width / 2 + RACK_SNAP_INSET;
-      return fillRack && inside && Math.abs(w - systemsWidth) <= RACK_SNAP
+      return fillRack && inside && systemsWidth >= RIBBON_LEAST
         ? { ...place, width: systemsWidth, x: rackCentre } : { ...place, width: w };
     };
     const hints = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8), Infinity);
@@ -1358,8 +1361,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (ribbonNode.classList.contains('tight') !== ribbonWidth < RIBBON_TIGHT) ribbonNode.classList.toggle('tight', ribbonWidth < RIBBON_TIGHT);
       if (ribbonNode.classList.contains('cramped') !== ribbonWidth < RIBBON_LEAST) ribbonNode.classList.toggle('cramped', ribbonWidth < RIBBON_LEAST);
     }
+    // (the map's own width, a large map's too: capped at 300, the log stood 50-60 px off a large map's edge, gauntlet r7)
     const reportWidth = !touch && map && map.left > width / 2 && map.bottom > height / 2 && map.width >= REPORT_MIN_W
-      ? Math.floor(Math.min(map.width, 300, width / 2 - 24)) : 0;
+      ? Math.floor(Math.min(map.width, width / 2 - 24)) : 0;
     // (the report and the log over a mouse layout's map take its width, their left edges on its edge, the card's plan
     // sized within it: 50 px wider, they stood 50 px left of the map under them, gauntlet r5)
     setBodyVar('--hud-report-width', reportWidth ? `${reportWidth}px` : '');

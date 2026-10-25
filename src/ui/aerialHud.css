@@ -51,8 +51,11 @@
    times, so a touch pilot (whose hint line is hidden) sees it open, not just un-dim. Reduced motion keeps a steady glow. */
 /* (the console's lead control on the accent edge the selected weapon wears: a white glow edge was a state of its own,
    gauntlet r4) */
-.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--accent)}
-.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){animation:drone-recall-open .6s ease-out 3}
+/* (the recall is the console's primary action, the kit's primary fill, the Watch bar's seat button's: an accent edge with a
+   glow was a third button style, gauntlet r7, and its glow animated a filter, UI-LOCKDOWN part D) */
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--btn-primary-fill)}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::after{background:var(--btn-primary-fill)}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){color:var(--btn-primary-ink);text-shadow:none}
 @keyframes drone-recall-open{0%{filter:drop-shadow(0 0 0 transparent) brightness(1)}30%{filter:drop-shadow(0 0 10px var(--flight-accent)) brightness(1.35)}100%{filter:drop-shadow(0 0 0 transparent) brightness(1)}}
 /* The tank row while a recalled drone flies home and lands (data-phase=returning, ui/droneControlState.ts): busy rather
    than refused, so it keeps full strength in the amber of a drone in use, and its drone keeps settling down onto the pad
@@ -261,7 +264,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-weapon-icon{display:flex;color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:26px;height:30px}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:5px}
-.cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.2}
+/* (the weapon's name in the kit's label capitals, as the tank's slots and plates: sentence case beside them, gauntlet r7) */
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.2;letter-spacing:var(--track-label-s);text-transform:uppercase}
 .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0em;color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-copy::after{content:'';position:absolute;left:var(--s3);right:var(--s3);bottom:5px;height:2px;background:oklch(from var(--ink-3) l c h / .533);transform:scaleX(var(--weapon-ready,1));transform-origin:left}
 /* (the selected weapon in the kit's selected look, the tank's slot's: the accent's edge on its wash; a brown gradient was a
