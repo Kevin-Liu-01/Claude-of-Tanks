@@ -504,6 +504,37 @@ export const PATHS = [
   // the Garage at rest: no frame or task may stall while nobody touches it
   { id: 'garage-idle', doc: 'game', reps: 1,
     script: async (page, i, run) => { await run('garage-idle', async () => null, { idleMs: 8000, quietMs: 1 }); } },
+  // (lockdown-251) graceful recovery: the WebGL context lost in the Garage and restored 0.7 s later; the window records
+  // the restoration's frames, tasks and console, and the log says whether the Garage came back (context live, cover gone)
+  { id: 'recover-context', doc: 'game', reps: 2,
+    script: async (page, i, run) => {
+      await page.evaluate(() => {
+        const lose = window.__DEBUG.renderer.getContext().getExtension('WEBGL_lose_context');
+        lose.loseContext();
+        setTimeout(() => lose.restoreContext(), 700);
+      });
+      await run('context-restore', async () => null, { idleMs: 7000, quietMs: 1 });
+      const state = await page.evaluate(() => ({ lost: window.__DEBUG.renderer.getContext().isContextLost(),
+        cover: !!document.getElementById('cot-ctxlost'), phase: window.__DEBUG.game?.phase ?? null }));
+      console.log(`    context-restore #${i}: context ${state.lost ? 'STILL LOST' : 'live'}, cover ${state.cover ? 'STILL SHOWN' : 'gone'}, phase ${state.phase}`);
+    } },
+  // (lockdown-251) graceful recovery: the Studio's chunk fails to load (the network refuses it), then the press is retried
+  { id: 'recover-chunk', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const refuse = (request) => (/\/assets\/studio-[^/]*\.js(\?|$)/.test(request.url()) ? request.abort('failed') : request.continue());
+      await page.setRequestInterception(true);
+      page.on('request', refuse);
+      await run('chunk-fail-studio', () => target(page, '[data-nav=studio]'), { quietMs: 4000 });
+      page.off('request', refuse);
+      await page.setRequestInterception(false);
+      const after = await page.evaluate(() => ({ studio: !!window.__STUDIO && __click.shown('.cot-studio'),
+        garage: __click.shown('.cot-garage'), retry: !!document.querySelector('[data-boot-retry], .cot-boot-retry, #cot-boot-recovery'),
+        toast: document.querySelector('.cot-toast, [role=alert]')?.textContent?.trim()?.slice(0, 80) ?? null }));
+      console.log(`    chunk-fail-studio: ${JSON.stringify(after)}`);
+      await run('chunk-retry-studio', () => target(page, '[data-nav=studio]'), {
+        done: `!!window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000 });
+      await leaveStudio(page, ctx);
+    } },
   // every visible control on the Garage's screen, pressed once, the Garage restored between presses
   { id: 'garage-sweep', doc: 'game', reps: 1,
     script: async (page, i, run, ctx) => {
