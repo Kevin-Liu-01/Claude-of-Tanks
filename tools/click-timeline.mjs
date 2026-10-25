@@ -537,6 +537,8 @@ export const PATHS = [
       await run('deploy-launch', () => target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), {
         shown: `shown('.cot-bl.on')`, done: `!!window.__BATTLE_REVEAL`, doneTimeoutMs: 240000 });
       await ctx.programs(`battle-${i}`);
+      // (lockdown-251) eight seconds of the live battle, untouched: its frames, tasks and (--alloc) allocation per second
+      await run('battle-steady', async () => null, { idleMs: 8000, quietMs: 1 });
       await page.evaluate(() => window.__DEBUG.slayEnemies());
       await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
       await settle(page, 800, 8000);
