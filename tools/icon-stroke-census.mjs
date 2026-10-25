@@ -31,8 +31,9 @@ const MARK_DIRS = ['public/brand/nav', 'public/brand/features'];
 /** CSS that strokes an icon family drawn inline (the Gallery camera-view glyphs). */
 const ICON_CSS = [['src/gallery/gallery.css', /\.camera-view-glyph[^{]*\{[^}]*\}/g]];
 
-/** Full sprite and boot-slice budgets (SPEC 7 and 16.1). */
-const SPRITE_GZIP_MAX = 10 * 1024;
+/** Full sprite and boot-slice budgets (SPEC 7 and 16.1). The lazy sprite was 10 KB until equipment-249 (2026-10-24)
+ *  drew the eleven glyphs of the 25-item equipment catalog: 10169 to 10696 B, re-pinned at 11 KB. The boot slice holds. */
+const SPRITE_GZIP_MAX = 11 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;

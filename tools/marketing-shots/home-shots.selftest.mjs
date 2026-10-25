@@ -78,8 +78,9 @@ for (const [, id, body] of cards) {
   assert.doesNotMatch(body, /<p\b/, `${id} carries its name only`);
 }
 assert.equal((panel('modes').match(/play-tile--lead/g) || []).length, 0, 'every mode card is a large card: no lead');
-assert.match(playSection, /data-play-tab="modes" aria-checked="true">[^]*?<span class="cot-c-tabs__count num" lang="en">\{\{COT_BATTLE_MODES\}\}<\/span>/,
-  'the modes switch counts the registry (productStats.ts, BATTLE_MODE_IDS) and opens first');
+assert.match(playSection, /data-play-tab="modes" aria-checked="true">/, 'the modes open first');
+// (2026-10-25 gauntlet) the hero's counts carry the numbers; the switch names its sets only
+assert.doesNotMatch(playSection, /cot-c-tabs__count/, 'the switch repeats no count');
 
 // --- the mechanics: three sets of nine behind the switch, each tile named in both languages ----------------------------
 const sets = ['gunnery', 'battlefield', 'beyond'];
@@ -103,7 +104,7 @@ assert.match(playSection, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the r
   const served = renderProductStats(replaceAppVersionTokens(home, 'v0.0.0+selftest'));
   const left = [...new Set(served.match(/\{\{[^{}]*\}\}/g) ?? [])];
   assert.deepEqual(left, [], `site/home.html as served carries no unresolved token (${left.join(', ')})`);
-  const modesCount = served.match(/data-play-tab="modes"[^]*?<span class="cot-c-tabs__count num" lang="en">([^<]*)</)?.[1] ?? '';
-  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the modes switch as served counts the modes (${modesCount})`);
+  const modesCount = served.match(/<li>[^]*?<b>([^<]*)<\/b><span data-i18n="home\.stats\.modes">/)?.[1] ?? '';
+  assert.equal(modesCount, String(BATTLE_MODE_IDS.length), `the hero's mode count as served counts the modes (${modesCount})`);
 }
 console.log(`home-shots.selftest: ${picked.length} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);

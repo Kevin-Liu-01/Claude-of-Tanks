@@ -137,10 +137,68 @@ if (reelHero) {
   else addEventListener('load', idle, { once: true });
 }
 
-// The trailer plays in the hero's dialog with its sound, on the viewer's press: its files are named only then.
+// The trailer plays in the hero's dialog with its sound, on the viewer's press: its files are named only then. Its controls
+// are the page's own (play, the scrubber, the time, mute, full screen); Space, K, M, F and the arrows work inside the dialog.
+const clockOf = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+function mountFilm(dialog: HTMLDialogElement, video: HTMLVideoElement): void {
+  const play = dialog.querySelector<HTMLButtonElement>('[data-film-play]');
+  const mute = dialog.querySelector<HTMLButtonElement>('[data-film-mute]');
+  const full = dialog.querySelector<HTMLButtonElement>('[data-film-full]');
+  const scrub = dialog.querySelector<HTMLInputElement>('[data-film-scrub]');
+  const time = dialog.querySelector<HTMLElement>('[data-film-time]');
+  if (!play || !mute || !full || !scrub || !time) return;
+  const set = (button: HTMLButtonElement, icon: string, key: string): void => {
+    button.querySelector('use')?.setAttribute('href', `#i-${icon}`);
+    button.setAttribute('aria-label', t(key));
+  };
+  let scrubbing = false;
+  const progress = (): void => {
+    const length = video.duration || 0;
+    const share = length ? video.currentTime / length : 0;
+    if (!scrubbing) scrub.value = String(Math.round(share * 1000));
+    scrub.style.setProperty('--fill', `${(share * 100).toFixed(2)}%`);
+    const now = `${clockOf(video.currentTime)} / ${clockOf(length)}`;
+    time.textContent = now;
+    scrub.setAttribute('aria-valuetext', now);
+  };
+  const toggle = (): void => { if (video.paused) void video.play().catch(() => {}); else video.pause(); };
+  const fullscreen = (): void => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else if (dialog.requestFullscreen) void dialog.requestFullscreen().catch(() => {});
+    else (video as HTMLVideoElement & { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen?.();
+  };
+  video.addEventListener('play', () => set(play, 'pause', 'publicPages.film.pause'));
+  video.addEventListener('pause', () => set(play, 'play', 'publicPages.film.play'));
+  video.addEventListener('volumechange', () => set(mute, video.muted ? 'soundOff' : 'sound', video.muted ? 'publicPages.film.unmute' : 'publicPages.film.mute'));
+  video.addEventListener('timeupdate', progress);
+  video.addEventListener('loadedmetadata', progress);
+  document.addEventListener('fullscreenchange', () => set(full, 'fullscreen',
+    document.fullscreenElement ? 'publicPages.film.exitFullscreen' : 'publicPages.film.fullscreen'));
+  play.addEventListener('click', toggle);
+  video.addEventListener('click', toggle);
+  mute.addEventListener('click', () => { video.muted = !video.muted; });
+  full.addEventListener('click', fullscreen);
+  scrub.addEventListener('input', () => {
+    scrubbing = true;
+    if (video.duration) video.currentTime = (Number(scrub.value) / 1000) * video.duration;
+  });
+  scrub.addEventListener('change', () => { scrubbing = false; });
+  dialog.addEventListener('keydown', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('button') && (event.key === ' ' || event.key === 'Enter')) return;
+    const step = event.key === 'ArrowRight' ? 5 : event.key === 'ArrowLeft' ? -5 : 0;
+    if (step && target !== scrub) { video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + step)); event.preventDefault(); return; }
+    const key = event.key.toLowerCase();
+    if (key === ' ' || key === 'k') { toggle(); event.preventDefault(); }
+    else if (key === 'm') { video.muted = !video.muted; event.preventDefault(); }
+    else if (key === 'f') { fullscreen(); event.preventDefault(); }
+  });
+}
+
 const trailerDialog = document.querySelector<HTMLDialogElement>('[data-trailer-dialog]');
 const trailerVideo = trailerDialog?.querySelector<HTMLVideoElement>('video[data-trailer]') ?? null;
 if (trailerDialog && trailerVideo) {
+  mountFilm(trailerDialog, trailerVideo);
   document.querySelectorAll<HTMLButtonElement>('[data-trailer-open]').forEach((button) => button.addEventListener('click', () => {
     const named = [...trailerVideo.querySelectorAll<HTMLSourceElement>('source[data-src]')];
     for (const source of named) {
@@ -155,7 +213,10 @@ if (trailerDialog && trailerVideo) {
   trailerDialog.querySelector('[data-trailer-close]')?.addEventListener('click', () => trailerDialog.close());
   // a press on the backdrop closes it too
   trailerDialog.addEventListener('click', (event) => { if (event.target === trailerDialog) trailerDialog.close(); });
-  trailerDialog.addEventListener('close', () => trailerVideo.pause());
+  trailerDialog.addEventListener('close', () => {
+    trailerVideo.pause();
+    if (document.fullscreenElement) void document.exitFullscreen();
+  });
 }
 
 function mountDeferredImage(image: HTMLImageElement): void {

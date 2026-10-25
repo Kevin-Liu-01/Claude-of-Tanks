@@ -12,8 +12,8 @@ const styles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 assert.match(home, /<!--home:hero-->[\s\S]*?<!--\/home:hero-->\s*<!--home:features-->[\s\S]*?<!--\/home:features-->\s*<!--home:play-->[\s\S]*?<!--\/home:play-->\s*<section class="press" aria-labelledby="press-title">/,
   'the generated hero reel, features and modes rail open the page; the press band follows');
 const press = home.match(/<section class="press"[\s\S]*?<\/section>/)?.[0] ?? '';
-assert.match(press, /data-i18n="home\.social\.snapshot">Engagement as of September 8, 2026\./,
-  'static platform counts must disclose their capture date');
+assert.match(press, /<p class="press__date"><time datetime="2026-09-08" data-i18n="home\.social\.snapshot">As of September 8, 2026<\/time><\/p>/,
+  'static platform counts disclose their capture date, as a dated label');
 assert.match(press,
   /<h2 class="home-h2 press__title" id="press-title"><a href="https:\/\/x\.com\/threejs\/status\/2090638002003575214" target="_blank" rel="noopener noreferrer"><img class="press__avatar" src="\/media\/social-proof\/threejs\.jpg" alt=""[^>]*><span class="t-hollow" data-i18n-html="home\.social\.kicker"[^>]*>Featured by <em>Three\.js<\/em><\/span><\/a><\/h2>/,
   'the band leads with the Three.js feature, its name the link to the post');
@@ -50,7 +50,9 @@ for (const quote of [
   'Proves how agentic coding tools can scaffold interactive 3D multiplayer games from scratch in hours.',
 ]) assert.ok(press.includes(quote), `missing requested social-proof quote: ${quote}`);
 for (const value of ['445K', '79.4K', '1,598', '272', '38K', '13.4K', '6,094', '1,282']) assert.ok(press.includes(value), `missing verified engagement value ${value}`);
-for (const label of ['views', 'likes', 'replies', 'reposts and quotes', 'bookmarks']) {
+// (2026-10-25 gauntlet) each post card keeps its views, likes and replies; the badge and the minor counts left
+assert.doesNotMatch(press, /home\.social\.card\w+Badge|home\.social\.count(?:Reposts|RepostsQuotes|Bookmarks)/, 'no badge or minor count on the cards');
+for (const label of ['views', 'likes', 'replies']) {
   assert.match(press, new RegExp(`aria-label="[^"]+ ${label}"`), `missing accessible ${label} metric`);
 }
 
@@ -85,7 +87,9 @@ assert.match(styles, /@media\(hover:hover\) and \(pointer:fine\)\{[^\n]*\.v5-soc
 assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-card::after[^}]*transition:none/, 'card motion honors reduced motion');
 assert.match(styles, /\.press__quotes\{[^}]*grid-template-columns:repeat\(4,/, 'desktop shows the four posts in a row');
 assert.match(styles, /\.press__title em\{[^}]*color:var\(--gold\)/, 'only the Three.js name in the title takes the gold accent');
-for (const icon of ['view', 'like']) assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#`), `${icon} metric icon keeps its high-visibility color`);
+// (2026-10-25 gauntlet, one accent and no other colour) the metric icons and the platform marks paint in ink
+assert.match(styles, /\.v5-social-metric-icon--view,\.v5-social-metric-icon--like\{color:var\(--ink-2\)\}/, 'the view and like icons paint in ink');
+assert.match(styles, /\.v5-social-platform-icon--reddit\{[^}]*color:var\(--ink-1\)/, 'the Reddit mark paints in ink');
 for (const icon of ['comment', 'repost', 'bookmark']) assert.match(styles, new RegExp(`\\.v5-social-metric-icon--${icon}\\{[^}]*color:#91a1ac`), `${icon} metric icon uses the shared neutral gray`);
 assert.match(styles, /\.v5-social-metric-icon\{[^}]*width:18px;height:18px/, 'metric icons use the enlarged presentation size');
 

@@ -92,11 +92,14 @@ assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
 // curated clips (public/media/home-r2), and the trailer plays in the hero's dialog with its score on a press only: its
 // files are named only then (data-src), and nowhere else on the page
 const homeTrailerDialog = homeSource.match(/<dialog class="hero__film" data-trailer-dialog[\s\S]*?<\/dialog>/)?.[0] ?? '';
-assert.match(homeTrailerDialog, /<video controls playsinline preload="none" data-trailer [^>]*><source data-src="\/media\/site50-r14\/films\/trailer\.webm"/,
+assert.match(homeTrailerDialog, /<video playsinline preload="none" data-trailer [^>]*><source data-src="\/media\/site50-r14\/films\/trailer\.webm"/,
   'the hero dialog plays the trailer on a press');
 assert.doesNotMatch(homeSource.replace(homeTrailerDialog, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
   'no trailer plays on the home page outside its dialog');
 assert.ok((homeSource.match(/<video class="hero__clip" [^>]*data-reel-clip/g) || []).length >= 3, 'the hero reel holds several clips');
+// (2026-10-25 gauntlet) the trailer plays under the page's own controls, never the browser's
+assert.doesNotMatch(homeTrailerDialog, /<video [^>]*\bcontrols\b/, 'the trailer video draws no native controls');
+for (const role of ['play', 'scrub', 'time', 'mute', 'full']) assert.match(homeTrailerDialog, new RegExp(`data-film-${role}`), `the trailer has its ${role} control`);
 // (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's motion stage)
 assert.match(docsSource, /<img src="\/media\/docs-r1\/banner-2560\.webp" srcset="\/media\/docs-r1\/banner-1280\.webp 1280w/, 'the manual leads with its banner');
 assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trailer plays on the landing, not in the manual');
@@ -118,7 +121,7 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // and fact glyphs; 246: the facts strip's renderer glyph left with the strip, the modes and mechanics switch carries the
 // modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
 // (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
-const landingIcons = ['play', 'map', 'team', 'gallery', 'globe', 'media', 'modeStandard', 'chevronRight', 'pause', 'close'];
+const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'pause', 'close', 'fullscreen', 'sound'];
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }
