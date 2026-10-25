@@ -32,7 +32,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, walk: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, walk: false, leakCheck: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -48,6 +48,7 @@ export function parseMemoryArgs(argv) {
       case 'census': o.census = value !== '0'; break;
       case 'dump': o.dump = value !== '0'; break;
       case 'walk': o.walk = value !== '0'; break;
+      case 'leak-check': o.leakCheck = value !== '0'; break;
       // a battle per entry, in order, in the one page (a player on the random rotation): the scenario names the first
       case 'sequence': o.sequence = value.split(',').filter(Boolean); break;
       case 'gate': o.gate = value !== '0'; break;
@@ -312,11 +313,29 @@ async function probeScenario(options, scenario) {
       const inBattle = rssByKind(pid);
       await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
+      // (--leak-check) this battle's world, held weakly and marked (a class of its own, named in a heap snapshot)
+      if (options.leakCheck) await page.evaluate((label) => {
+        const world = window.__DEBUG?.world;
+        if (!world) return;
+        window.__WORLD_REFS ??= [];
+        const Marker = { [`LeakMarker_${label}`]: class {} }[`LeakMarker_${label}`];
+        world.__leakMarker = new Marker();
+        window.__WORLD_REFS.push({ label, mapId: world.mapId, ref: new WeakRef(world) });
+      }, `${battle}_${battleMap}`);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
       const row = { label: `garage after battle ${battle} (${battleMap})`, map: battleMap, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      if (options.leakCheck) {
+        // after measure's collections: which battles' worlds are still alive, and whether each is still cached
+        row.worldsAlive = await page.evaluate(() => (window.__WORLD_REFS ?? []).map(({ label, mapId, ref }) => {
+          const world = ref.deref();
+          return { label, mapId, alive: !!world, cached: (window.__DEBUG?.worldCacheIds ?? []).includes(mapId),
+            current: world ? window.__DEBUG?.world === world : false };
+        }));
+        log(`worlds alive: ${row.worldsAlive.map((w) => `${w.label}${w.alive ? (w.current ? ' (current)' : w.cached ? ' (cached)' : ' (LEAKED)') : ' (collected)'}`).join(', ')}`);
+      }
       if (options.walk) {
         row.bufferWalk = await page.evaluate(pageBufferWalk);
         log(`walk ${row.bufferWalk.visited} objects, ${row.bufferWalk.buffers} buffers, ${row.bufferWalk.totalMB} MB: ${JSON.stringify(row.bufferWalk.rows.slice(0, 40))}`);
