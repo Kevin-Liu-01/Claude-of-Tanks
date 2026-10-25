@@ -1225,7 +1225,7 @@ body[data-cot-panels='overlay'] .cot-eqpick.open{
   max-height:none;display:flex;flex-direction:column;
   padding:10px;
 }
-body[data-cot-panels='overlay'] .cot-eqpick .pgrid{min-height:0;max-height:none;flex:1 1 auto}
+body[data-cot-panels='overlay'] .cot-eqpick .pgrid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
 body[data-cot-panels='overlay'] .cot-garage .cot-technical-section{
   min-height:0;margin:0;padding:0;background:none;border:0;box-shadow:none;
 }

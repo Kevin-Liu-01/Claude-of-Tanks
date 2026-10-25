@@ -32,10 +32,10 @@ import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
 // stat card folds into its view/camo rows so the garage can never disagree
 // with the battle sim.
 import {
-  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
-  loadEquipment, saveEquipment, equipEligible, equipIneligibility, computeEquipMults,
+  EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
+  loadEquipment, saveEquipment, equipmentPicker, computeEquipMults,
 } from '../game/equipment.ts';
-import type { EquipmentItem } from '../game/equipment.ts';
+import type { EquipmentItem, EquipmentLock, EquipmentPickerItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -293,18 +293,14 @@ function escapeHtmlAttribute(value: string): string {
   })[character] || character);
 }
 
-function equipmentAvailabilityCopy(
-  itemId: string,
-  locked: boolean,
-  spec: GarageTankSpec | undefined,
-  openSlot: number,
-): string {
-  if (!locked) return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
-  switch (equipIneligibility(itemId, spec)) {
+/** Why a tile is shut, from equipmentPicker's lock (the gates spawn and the multiplayer authority run too). */
+function equipmentLockCopy(itemId: string, lock: EquipmentLock | null): string {
+  switch (lock) {
     case 'manualLoader':
       return t(itemId === 'rammer' ? 'garage.equipment.unavailable.autoloader' : 'garage.equipment.unavailable.manualLoader');
     case 'autoloader': return t('garage.equipment.unavailable.needsAutoloader');
     case 'turret': return t('garage.equipment.unavailable.turret');
+    case 'mode': return t('garage.equipment.unavailable.mode');
     default: return t('garage.equipment.unavailable.modernOnly');
   }
 }
@@ -366,8 +362,8 @@ function equipmentTileClass(locked: boolean, fittedAt: number, openSlot: number)
   return classes;
 }
 
-function equipmentTileTag(item: EquipmentItem, locked: boolean, fittedAt: number, openSlot: number): string {
-  if (locked) return equipmentEraTag(item);
+function equipmentTileTag(item: EquipmentItem, lock: EquipmentLock | null, fittedAt: number, openSlot: number): string {
+  if (lock) return lock === 'era' ? equipmentEraTag(item) : '';
   if (fittedAt === openSlot) return `<span class="tag">${t('garage.equipment.tag.fitted')}</span>`;
   if (fittedAt >= 0) return `<span class="tag">${t('garage.equipment.tag.slot', { slot: fittedAt + 1 })}</span>`;
   return '';
@@ -375,35 +371,29 @@ function equipmentTileTag(item: EquipmentItem, locked: boolean, fittedAt: number
 
 function equipmentTileActionCopy(
   item: EquipmentItem,
-  locked: boolean,
+  lock: EquipmentLock | null,
   fittedAt: number,
   openSlot: number,
-  spec: GarageTankSpec | undefined,
 ): string {
-  if (locked) return equipmentAvailabilityCopy(item.id, true, spec, openSlot);
+  if (lock) return equipmentLockCopy(item.id, lock);
   if (fittedAt === openSlot) return t('garage.equipment.action.fitted');
   if (fittedAt >= 0) return t('garage.equipment.action.fittedIn', { from: fittedAt + 1, to: openSlot + 1 });
   return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
 }
 
-function equipmentTileMarkup(
-  item: EquipmentItem,
-  spec: GarageTankSpec | undefined,
-  currentLoadout: readonly string[],
-  openSlot: number,
-): string {
-  const locked = !equipEligible(item, spec);
-  const fittedAt = currentLoadout.indexOf(item.id);
+function equipmentTileMarkup({ item, lock, fittedSlot: fittedAt }: EquipmentPickerItem, openSlot: number): string {
+  const locked = lock !== null;
   const cls = equipmentTileClass(locked, fittedAt, openSlot);
-  const tag = equipmentTileTag(item, locked, fittedAt, openSlot);
-  const availability = equipmentTileActionCopy(item, locked, fittedAt, openSlot, spec);
+  const tag = equipmentTileTag(item, lock, fittedAt, openSlot);
+  const availability = equipmentTileActionCopy(item, lock, fittedAt, openSlot);
   const name = equipmentLabel(item.id);
   const desc = equipmentDesc(item.id);
   const ariaLabel = escapeHtmlAttribute(`${name}. ${desc}. ${availability}`);
+  // the tile carries the short name (10 characters at most, the slot caption's); the full name reads in its label and tip
   return `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : item.id}" ` +
-    `data-eq-id="${item.id}" data-eq-cat="${item.cat}" aria-label="${ariaLabel}" ` +
+    `data-eq-id="${item.id}" data-eq-cat="${item.cat}"${lock ? ` data-eq-lock="${lock}"` : ''} aria-label="${ariaLabel}" ` +
     `aria-pressed="${fittedAt === openSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
-    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${name}</span>` +
+    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${t(`equipment.${item.id}.short`)}</span>` +
     `<span class="e">${desc}</span></button>`;
 }
 
@@ -422,9 +412,10 @@ function equipmentPickerTiles(
     `${uiIconSVG('close', 34)}` +
     `<span class="n">${t('garage.equipment.empty.name')}</span>` +
     `<span class="e">${t('garage.equipment.empty.desc')}</span></button>`;
-  const itemTiles = EQUIPMENT_CATALOG
-    .filter((item) => activeCategory === 'all' || item.cat === activeCategory)
-    .map((item) => equipmentTileMarkup(item, spec, currentLoadout, openSlot))
+  // the lead's equipmentPicker (equipment 249): one group per category in catalog order, each tile's lock and fitted slot
+  const itemTiles = equipmentPicker(spec, currentLoadout)
+    .filter((group) => activeCategory === 'all' || group.category.id === activeCategory)
+    .flatMap((group) => group.items.map((entry) => equipmentTileMarkup(entry, openSlot)))
     .join('');
   return emptyTile + itemTiles;
 }
@@ -2185,13 +2176,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const gap = 12;
     const viewportPad = 10;
     const fitsLeft = pickerRect.left - tipRect.width - gap >= viewportPad;
-    let left = fitsLeft
-      ? pickerRect.left - tipRect.width - gap
-      : pickerRect.right + gap;
+    const fitsRight = pickerRect.right + gap + tipRect.width <= window.innerWidth - viewportPad;
+    // beside the picker where there is room; a picker as wide as the window keeps the tip beside its tile, never over it
+    const toLeft = fitsLeft || (!fitsRight && anchorRect.left + anchorRect.width / 2 > window.innerWidth / 2);
+    let left = fitsLeft ? pickerRect.left - tipRect.width - gap
+      : fitsRight ? pickerRect.right + gap
+        : toLeft ? anchorRect.left - tipRect.width - gap : anchorRect.right + gap;
     let top = anchorRect.top + anchorRect.height / 2 - tipRect.height / 2;
     left = Math.max(viewportPad, Math.min(left, window.innerWidth - tipRect.width - viewportPad));
     top = Math.max(viewportPad, Math.min(top, window.innerHeight - tipRect.height - viewportPad));
-    eqTooltipEl.dataset.side = fitsLeft ? 'left' : 'right';
+    eqTooltipEl.dataset.side = toLeft ? 'left' : 'right';
     eqTooltipEl.style.left = `${Math.round(left)}px`;
     eqTooltipEl.style.top = `${Math.round(top)}px`;
   }
@@ -2227,41 +2221,37 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function equipmentTooltipCategory(item: EquipmentItem | null | undefined): string {
     if (!item) return t('garage.equipment.slotAction');
-    return EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || t('garage.equipment.label');
+    return t(`garage.equipment.cat.${item.cat}`);
   }
 
-  function equipmentTooltipState(
-    item: EquipmentItem | null | undefined,
-    locked: boolean,
-    fittedAt: number,
-    spec: GarageTankSpec | undefined,
-  ): string {
+  function equipmentTooltipState(item: EquipmentItem | null | undefined, lock: EquipmentLock | null, fittedAt: number): string {
     if (!item) return t('garage.equipment.clearSlot', { slot: eqOpenSlot + 1 });
-    if (locked) return equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot);
+    if (lock) return equipmentLockCopy(item.id, lock);
     if (fittedAt === eqOpenSlot) return t('garage.equipment.fittedClickRemove');
     if (fittedAt >= 0) return t('garage.equipment.fittedInClickMove', { slot: fittedAt + 1 });
-    return equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
+    return t('garage.equipment.action.equipIn', { slot: eqOpenSlot + 1 });
   }
 
   function showEqTooltip(anchor: HTMLElement): void {
     if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return;
     const itemId = anchor.dataset.eqId || '';
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
-    const locked = anchor.classList.contains('locked');
+    const lock = (anchor.dataset.eqLock || null) as EquipmentLock | null;
+    const locked = lock !== null;
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
     const category = equipmentTooltipCategory(item);
-    const state = equipmentTooltipState(item, locked, fittedAt, spec);
+    const state = equipmentTooltipState(item, lock, fittedAt);
 
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
     eyebrow.textContent = category;
     const name = document.createElement('strong');
-    name.textContent = item?.name || t('garage.equipment.emptySlot');
+    name.textContent = item ? equipmentLabel(item.id) : t('garage.equipment.emptySlot');
     const detail = document.createElement('span');
     detail.className = 'detail';
-    detail.textContent = item?.desc || t('garage.equipment.removeFitted');
+    detail.textContent = item ? equipmentDesc(item.id) : t('garage.equipment.removeFitted');
     const preview = spec
       ? equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
       : null;
