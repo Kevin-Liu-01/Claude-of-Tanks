@@ -793,6 +793,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
   object-fit:cover;object-position:center;}
 .cot-camo-card .sw.auto{background:var(--surface-raised);}
+/* a swatch waiting for its paint is the kit's skeleton, never a stand-in pattern */
+:is(.cot-camo-card .sw,.cot-lt-swatch) canvas[data-loading]{background:var(--fill-quiet);}
 /* equipment tiles: distinct procedural icons on a dark plate (r3: identical
    stripe bars read as placeholders) */
 .cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;

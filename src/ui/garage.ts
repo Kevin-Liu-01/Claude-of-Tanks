@@ -1,5 +1,4 @@
 import type { CustomSelectController } from './customSelect.ts';
-import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { vehicleActionsFor } from './vehicleActionList.ts';
 import type { VehicleActionBinding } from '../game/vehicleActions.ts';
@@ -517,36 +516,14 @@ function scheduleCamoSwatchLoad(immediate = false) {
   return camoSwatchAccess.preload({ immediate });
 }
 
-function paintCamoSwatchPlaceholder(
-  canvas: HTMLCanvasElement,
-  spec: GarageTankSpec,
-  pid: string,
-): void {
-  const W = 128;
-  const H = 44;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  let hash = 2166136261;
-  for (const ch of `${spec?.id ? tankSeedId(spec.id) : 'tank'}:${pid || 'factory'}`) { // schema-1 spelling (SSOT 2.19)
-    hash ^= ch.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  const hue = ((hash >>> 0) % 46) + 72;
-  ctx.fillStyle = `hsl(${hue} 22% 25%)`;
-  ctx.fillRect(0, 0, W, H);
-  ctx.save();
-  ctx.translate((hash >>> 8) % 19, 0);
-  ctx.rotate(-0.34);
-  ctx.fillStyle = 'rgba(18,23,20,.36)';
-  for (let x = -H; x < W + H; x += 30) ctx.fillRect(x, -H, 13, H * 3);
-  ctx.restore();
-  const light = ctx.createLinearGradient(0, 0, 0, H);
-  light.addColorStop(0, 'rgba(255,255,255,.10)');
-  light.addColorStop(1, 'rgba(0,0,0,.18)');
-  ctx.fillStyle = light;
-  ctx.fillRect(0, 0, W, H);
+/**
+ * A swatch still waiting for its real paint shows the kit's skeleton (a flat quiet fill, garage.css), never a stand-in
+ * pattern: the old hued stripes read as a grid of broken thumbnails (the gauntlet 10-25). The painter clears the mark.
+ */
+function paintCamoSwatchPlaceholder(canvas: HTMLCanvasElement): void {
+  canvas.width = 128;
+  canvas.height = 44;
+  canvas.dataset.loading = '';
 }
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
@@ -564,7 +541,7 @@ function queueExactCamoSwatch(
 ): void {
   const version = (camoSwatchPaintVersion.get(canvas) || 0) + 1;
   camoSwatchPaintVersion.set(canvas, version);
-  paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
+  paintCamoSwatchPlaceholder(canvas);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
     if (!swatchGateInstalled) {
