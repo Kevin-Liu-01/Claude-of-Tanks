@@ -14,20 +14,22 @@ export const SOUTH_KOREA_TREE: NationTree = Object.freeze({
   flagNation: 'South Korea',
   name: 'South Korea',
   lines: Object.freeze([
-    { id: 'k1', name: 'K1 to K2B' },
+    { id: 'k1', name: 'K1 to K2' },
+    { id: 'k2', name: 'K2 prototypes' },
     { id: 'k21', name: 'BMP-3 and K21' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
-    // K1 to K2B
-    node({ id: 'k1a1', tier: 6, line: 'k1', lane: 1, parents: [], slot: 'line' }),
-    node({ id: 'k1e1', tier: 7, line: 'k1', lane: 0, parents: ['k1a1'], slot: 'line' }),
-    node({ id: 'xk2_black_panther', tier: 7, line: 'k1', lane: 1, parents: ['k1a1'], slot: 'line' }),
+    // K1 to K2
+    node({ id: 'k1e1', tier: 6, line: 'k1', lane: 0, parents: [], slot: 'line' }),
+    node({ id: 'k1a1', tier: 8, line: 'k1', lane: 0, parents: ['k1e1'], slot: 'line' }),
     node({
-      id: 'k2_black_panther', tier: 9, line: 'k1', lane: 1, parents: ['xk2_black_panther', 'k1e1'], slot: 'line',
+      id: 'k2_black_panther', tier: 10, line: 'k1', lane: 0, parents: ['k1a1', 'xk2_black_panther'], slot: 'line',
     }),
-    node({ id: 'k2b', tier: 10, line: 'k1', lane: 1, parents: ['k2_black_panther'], slot: 'line' }),
+    // K2 prototypes
+    node({ id: 'k2b', tier: 7, line: 'k2', lane: 1, parents: ['k1e1'], slot: 'line' }),
+    node({ id: 'xk2_black_panther', tier: 9, line: 'k2', lane: 1, parents: ['k2b'], slot: 'line' }),
     // BMP-3 and K21
-    node({ id: 'bmp3_rok', tier: 6, line: 'k21', lane: 2, parents: ['k1a1'], slot: 'line' }),
+    node({ id: 'bmp3_rok', tier: 6, line: 'k21', lane: 2, parents: ['k1e1'], slot: 'line' }),
     node({ id: 'k21', tier: 8, line: 'k21', lane: 2, parents: ['bmp3_rok'], slot: 'line' }),
   ]),
 });
