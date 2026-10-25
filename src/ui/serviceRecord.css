@@ -187,10 +187,10 @@
   .cot-record-plate .cot-record-vehicle{width:120px;height:72px}
   .cot-record-tabs{padding:0 var(--s2)}
   .cot-record-tab{flex:1;flex-direction:column;justify-content:center;gap:4px;min-height:56px;padding:0 var(--s1);font-size:max(var(--fs-floor-12),var(--fs-12))}
-  .cot-record-tab{position:relative}
   /* a phone's tabs drop the counts and keep the new dot, beside the glyph */
-  .cot-record-tab small{position:absolute;top:var(--s2);left:calc(50% + 10px);width:6px;height:6px;overflow:hidden;color:transparent}
-  .cot-record-tab.has-new small::after{position:absolute;inset:0;margin:0}
+  .cot-record-tab{position:relative}
+  .cot-record-tab small{display:none}
+  .cot-record-tab.has-new::after{content:'';position:absolute;top:var(--s2);left:calc(50% + 10px);width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
   .cot-record-body{padding:var(--s4)}
   .cot-record-outcome strong{font-size:var(--fs-24)}
   .cot-record-outcome.win-rate strong{font-size:var(--fs-40)}
