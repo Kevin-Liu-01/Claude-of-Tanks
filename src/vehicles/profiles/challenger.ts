@@ -39,6 +39,7 @@ import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -338,7 +339,7 @@ const CH1_TRUNNION_Z = 1.90;
  * depression it stays under the roof over the cradle (0.33 m over the bore there). */
 const CH1_BREECH_Z = 0.80;
 
-function challenger1Build(P: ChallengerBuilderPort): void {
+function* challenger1BuildSteps(P: ChallengerBuilderPort): TankProfileBuild {
   const g = CR1_HULL;
   const { sph } = KIT;
   const challenger1BuildAssemblyStage1 = (): void => {
@@ -347,6 +348,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // construction (Challenger 2E hollow paired wheel, nationWheelSets.ts); the Hydrogas dish/hub dressing left with it.
   };
   challenger1BuildAssemblyStage1();
+  yield 'challenger1BuildAssemblyStage1';
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).
   // The old bow stacked THREE terraces per side (fender plane 1.5575 ending
   // 3.30 -> transition plate 1.43->1.32 -> wing 1.44->1.185): two ~0.10 m
@@ -466,6 +468,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     for (const s of [-1, 1]) P.add('hull', box(1.075, 0.10, 0.20), s * 0.8375, 1.712, -2.97);
   };
   challenger1BuildHullStage1();
+  yield 'challenger1BuildHullStage1';
   // TAIL: shelf sides to the print's -4.09 corners, recessed center notch,
   // rear fender strips at the 1.73 deck line, low tail lip to -4.16.
   const challenger1BuildMarkingsStage1 = (): void => {
@@ -582,6 +585,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     for (const s of [-1, 1]) P.add('hull', box(0.54, 0.0305, 0.02), s * 0.65, 1.73525, -3.995);
   };
   challenger1BuildMarkingsStage1();
+  yield 'challenger1BuildMarkingsStage1';
   // r10 O5b (shaded-parity r8 — lower rear plate exhaust/cable clutter, the
   // ordered rear tell): exhaust outlet boxes + pipe stubs at the tail
   // corners, a draped cable across the upper plate, cleats and a convoy
@@ -718,6 +722,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     P.add('turret', box(0.26, 0.30, 0.26), 0.93, 0.42, -1.13);
   };
   challenger1BuildTurretStage1();
+  yield 'challenger1BuildTurretStage1';
   // Long turret side bins (plan: front 2.30 right / 2.00 left per the
   // print's own plan columns, segmented for station caps). NO-STAIRCASES:
   // each course front ends in a RAKED nose wedge following the ref's own
@@ -837,6 +842,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     P.add('turret', box(1.48, 0.40, 0.32), -0.01, 0.42, -1.275);
   };
   challenger1BuildTurretStage2();
+  yield 'challenger1BuildTurretStage2';
   const challenger1BuildTurretStage3 = (): void => {
     P.add('turretDark', box(1.48, 0.02, 0.18), 0, 0.775, -1.59);
     P.add('turret', box(0.13, 0.36, 0.26), -1.485, 0.405, -1.28);
@@ -966,6 +972,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     liftEye(P, 'turretDetail', 0.95, 0.62, 0.55, -0.4);
   };
   challenger1BuildTurretStage3();
+  yield 'challenger1BuildTurretStage3';
   // 2x5 smoke discharger banks on both cheeks.  The former x=±1.23/1.26
   // centers lived *inside* the long side-bin volumes, leaving only a few
   // pale tube tips visible.  Each bank now sits on a canted, broad pad that
@@ -1169,6 +1176,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       [-0.015, 0.105, 4.68], [0.095, 0.092, 4.68], [0.095, 0.092, 4.20], [-0.015, 0.105, 4.20]), 0, 0, 0);
   };
   challenger1BuildTurretStage4();
+  yield 'challenger1BuildTurretStage4';
   // Thermal-sleeve junction ring (the ref's 2.08-2.11 gun-top band at the
   // 2.43..2.67 columns — push-2 raised 0.04 to the live cols).
   const challenger1BuildMarkingsStage2 = (): void => {
@@ -1424,6 +1432,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     ], 0x13170d);
   };
   challenger1BuildMarkingsStage2();
+  yield 'challenger1BuildMarkingsStage2';
 
   // Owner recovery pass: retain the measured casting, bins and complete
   // hull, but restore the Challenger 1's broad cast shoulder read around
@@ -1566,6 +1575,10 @@ function challenger1Build(P: ChallengerBuilderPort): void {
   };
   challenger1BuildTurretStage5();
 }
+function challenger1Build(...args: Parameters<typeof challenger1BuildSteps>): void {
+  drainTankBuild(challenger1BuildSteps(...args));
+}
+withBuildSteps(challenger1Build, challenger1BuildSteps);
 
 // Profiles-class family map (merged by profiledProcedurals.ts — the same
 // interface every ./profiles family module exports).
@@ -2158,12 +2171,12 @@ function cr2SurfaceFrame(normalValues: Vec3Tuple, horizontalHint: Vec3Tuple): Cr
 
 /** Variant-only roof and protection packages. The sovereign CR2 hull/turret
  * remains shared, while every fitting below has an explicit seat or carrier. */
-function buildChallenger2VariantPackage(
+function* buildChallenger2VariantPackageSteps(
   P: ChallengerBuilderPort,
   variant: string,
   roofSeats: RoofSeatReceipt[],
   smokeMouths: SmokeMouthReceipt[],
-): void {
+): TankProfileBuild {
   const { cylY, cylZ, cupola } = KIT;
   const pivotY = P.spec.armor.turretPivot[1];
   const pivotZ = P.spec.armor.turretPivot[2];
@@ -2256,6 +2269,7 @@ function buildChallenger2VariantPackage(
     }
   };
   buildChallenger2VariantPackageTurretStage1();
+  yield 'buildChallenger2VariantPackageTurretStage1';
 
   const buildChallenger2VariantPackageTurretStage2 = (): void => {
     if (enhanced) {
@@ -2535,6 +2549,7 @@ function buildChallenger2VariantPackage(
     }
   };
   buildChallenger2VariantPackageTurretStage2();
+  yield 'buildChallenger2VariantPackageTurretStage2';
 
   const buildChallenger2VariantPackageTurretStage3 = (): void => {
     if (ukrainian) {
@@ -2603,6 +2618,7 @@ function buildChallenger2VariantPackage(
     }
   };
   buildChallenger2VariantPackageTurretStage3();
+  yield 'buildChallenger2VariantPackageTurretStage3';
 
   const buildChallenger2VariantPackageReceiptStage1 = (): void => {
     P.turretG.userData.challenger2VariantReceipt = receipt;
@@ -2887,7 +2903,7 @@ function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   P.turretG.userData.challenger3XReceipt = frozen;
 }
 
-function buildChallenger2(P: ChallengerBuilderPort): void {
+function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const { cylX, tarpRoll, ammoCan } = KIT;
@@ -2918,6 +2934,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     });
   };
   buildChallenger2RunningGearStage1();
+  yield 'buildChallenger2RunningGearStage1';
   const addChallengerEndFace = (
     side: number,
     z: number,
@@ -2991,6 +3008,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger2HullStage1();
+  yield 'buildChallenger2HullStage1';
 
   // Structural hull side curves. The repaired source still leaves one
   // material-fused turret/casemate course in its hull mask: copying that
@@ -3024,6 +3042,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     cr2ProfileStrip(P, 0, 0.25, centerHullTop, centerHullBottom);
   };
   buildChallenger2AssemblyStage2();
+  yield 'buildChallenger2AssemblyStage2';
   // The armored shoulder terminates inboard of the 1.12 m track inner face;
   // the earlier 1.20 m course was visually hidden but physically intersected
   // both front wrap envelopes.
@@ -3075,6 +3094,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       [...centerHullBottom.filter(([z]) => z < -2.90), [-2.90, cr2At(centerHullBottom, -2.90)]]);
   };
   buildChallenger2AssemblyStage3();
+  yield 'buildChallenger2AssemblyStage3';
 
   // Return-run carrier behind the proud Hydrogas discs.  Its lower edge must
   // stay above the moving wheel/track envelope: the former full-height side
@@ -3195,6 +3215,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.add('hullDark', box(1.95, 0.022, 1.20), 0, 1.550, -3.05);
   };
   buildChallenger2HullStage2();
+  yield 'buildChallenger2HullStage2';
   const buildChallenger2HullStage3 = (): void => {
     for (const k of KIT.grilleIndices(P.q, 7, 3)) {
       P.add('hullDetail', box(1.82, 0.022, 0.055), 0, 1.567, -3.50 + k * 0.15);
@@ -3275,6 +3296,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       [-0.98, 1.10, 3.807], [0.98, 1.10, 3.807], [0.98, 1.10, 3.814], [-0.98, 1.10, 3.814]));
   };
   buildChallenger2HullStage3();
+  yield 'buildChallenger2HullStage3';
   const buildChallenger2HullStage4 = (): void => {
     for (const side of [-1, 1]) {
       P.add('hullDetail', box(0.82, 0.014, 0.010), side * 0.78, 0.84, 3.819,
@@ -3321,6 +3343,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.add('hullDetail', box(0.23, 0.024, 0.016), 0, 0.82, 3.819);
   };
   buildChallenger2HullStage4();
+  yield 'buildChallenger2HullStage4';
   // Recessed stern service face.  Its z=-3.655 skin follows the certified
   // centre-tail plane; the layered panels and rack lattice therefore alter
   // shading and occlusion, never the plan silhouette.
@@ -3381,6 +3404,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger2HullStage5();
+  yield 'buildChallenger2HullStage5';
   const buildChallenger2HullStage6 = (): void => {
     P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.49, -3.665);
     P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.21, -3.665);
@@ -3410,6 +3434,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.add('hullDetail', box(1.12, 0.028, 0.018), 0, 1.095, -3.670);
   };
   buildChallenger2HullStage6();
+  yield 'buildChallenger2HullStage6';
   // Lower stern service architecture: two recessed access/grille bays,
   // exhaust/service ports and the low towing beam occupy the broad blank
   // plate visible in the previous rear board.  All sit on the certified
@@ -3439,6 +3464,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       0, y, -3.716);
   };
   buildChallenger2HullStage7();
+  yield 'buildChallenger2HullStage7';
   const buildChallenger2HullStage8 = (): void => {
     for (const x of [-0.62, 0, 0.62]) P.add('hullDetail', box(0.020, 0.44, 0.014),
       x, 1.265, -3.716);
@@ -3487,6 +3513,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     ], 0.018);
   };
   buildChallenger2HullStage8();
+  yield 'buildChallenger2HullStage8';
   const recoveryHighlightCurve = new THREE.CatmullRomCurve3([
     [-0.72, 1.20, -3.714], [-0.42, 1.10, -3.714], [0, 1.06, -3.714],
     [0.42, 1.10, -3.714], [0.72, 1.20, -3.714],
@@ -3558,6 +3585,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger2TurretStage1();
+  yield 'buildChallenger2TurretStage1';
   const buildChallenger2TurretStage2 = (): void => {
     for (const side of [-1, 1]) for (const [z, y, h] of [
       [-1.24, 0.25, 0.32], [-2.02, 0.22, 0.26], [-2.48, 0.20, 0.22],
@@ -3590,6 +3618,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       0, -0.06, 0);
   };
   buildChallenger2TurretStage2();
+  yield 'buildChallenger2TurretStage2';
   const bustleRoofStations = [
     [-2.40, 0.408], [-2.22, 0.426], [-2.03, 0.445], [-1.83, 0.464], [-1.65, 0.481],
   ];
@@ -3615,6 +3644,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.add('turretDark', box(0.50, 0.20, 0.05), 0, 0.17, 1.98);
   };
   buildChallenger2TurretStage3();                  // recessed L30 slot
+  yield 'buildChallenger2TurretStage3';
   // Layered front cheek plates: dark gasket, inset armor face and diagonal
   // weld courses.  Their frame is derived from the sovereign cheek vertices
   // above instead of combining an approximate pitch and yaw.  That two-angle
@@ -3702,6 +3732,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       P.add('turretDetail', cylZ(0.014, 0.014, 8), x, y, 1.958);
   };
   buildChallenger2TurretStage4();
+  yield 'buildChallenger2TurretStage4';
   // The sovereign loft owns the silhouette; these shallow, inset courses
   // carry the layered Dorchester face grammar visible in the source.
   const buildChallenger2TurretStage5 = (): void => {
@@ -3869,6 +3900,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger2TurretStage5();
+  yield 'buildChallenger2TurretStage5';
   const buildChallenger2TurretStage6 = (): void => {
     P.turretG.userData.challenger2SideCassetteReceipt = {
       maxVisibleInnerGapM: 0,
@@ -3916,6 +3948,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       box(0.030, 0.36, 0.018), x, 0.25, -3.000, 0, 0, a);
   };
   buildChallenger2TurretStage6();
+  yield 'buildChallenger2TurretStage6';
   const bustleStrap = new THREE.CatmullRomCurve3([
     [-1.12, 0.36, -3.000], [-0.62, 0.23, -3.002], [0, 0.16, -3.003],
     [0.55, 0.24, -3.002], [1.10, 0.35, -3.000],
@@ -3947,6 +3980,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger2TurretStage7();
+  yield 'buildChallenger2TurretStage7';
   const buildChallenger2TurretStage8 = (): void => {
     for (const side of [-1, 1]) {
       P.add('turretDetail', box(0.24, 0.045, 0.045), side * 0.98, 0.37, -3.31);
@@ -3962,11 +3996,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     ammoCan(P, 'turretDark', 1.05, 0.32, -3.04, 0.22);
   };
   buildChallenger2TurretStage8();
+  yield 'buildChallenger2TurretStage8';
 
   const roofEmbed = 0.010;
   const roofSeats: RoofSeatReceipt[] = [];
   const smokeMouths: SmokeMouthReceipt[] = [];
-  const buildChallenger2TurretStage9 = (): void => {
+  const buildChallenger2TurretStage9 = function* (): TankProfileBuild {
     if (isBaseChallenger2) {
     // Roof hierarchy from connected components, following the Leclerc
     // method.  The source has ONE flattened loader lid at
@@ -4433,13 +4468,14 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     };
     buildChallenger2TurretCourse2();
     } else {
-      const buildChallenger2AssemblyCourse1 = (): void => {
-        buildChallenger2VariantPackage(P, variant, roofSeats, smokeMouths);
+      const buildChallenger2AssemblyCourse1 = function* (): TankProfileBuild {
+        yield* buildChallenger2VariantPackageSteps(P, variant, roofSeats, smokeMouths);
       };
-      buildChallenger2AssemblyCourse1();
+      yield* buildChallenger2AssemblyCourse1();
     }
   };
-  buildChallenger2TurretStage9();
+  yield* buildChallenger2TurretStage9();
+  yield 'buildChallenger2TurretStage9';
 
   const buildChallenger2GunStage1 = (): void => {
     P.turretG.userData.challenger2RoofSeatingReceipt = {
@@ -4473,6 +4509,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.addGunExtra(box(0.25, 0.38, 0.15), 0, 0.11, 1.375);
   };
   buildChallenger2GunStage1();
+  yield 'buildChallenger2GunStage1';
   // L30 thermal jacket: keep the sleeve visibly proud of the 68 mm tube,
   // without turning the entire barrel into the former 380 mm-wide cylinder.
   const cr2Sleeve = cylZ(0.11, 3.80, P.q ? 24 : 14, 0.10);
@@ -4499,6 +4536,10 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
   };
   buildChallenger2MarkingsStage1();
 }
+function buildChallenger2(...args: Parameters<typeof buildChallenger2Steps>): void {
+  drainTankBuild(buildChallenger2Steps(...args));
+}
+withBuildSteps(buildChallenger2, buildChallenger2Steps);
 // ---------------------------------------------------------------------------
 // Challenger 3 — NEW VEHICLE (owner greenlight 2026-08-06). §B8 PROPORTIONS
 // FIRST: authored against the NC-quarantined 42manako print's measured
@@ -4512,7 +4553,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
 // 120 mm L55A1 SMOOTHBORE (evacuator + thermal sleeve + MRS collar +
 // §B3.1 muzzle bore) replacing the rifled L30.
 // ---------------------------------------------------------------------------
-function buildChallenger3(P: ChallengerBuilderPort): void {
+function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
   const { box, cylY, cylZ, slab, frustum, headlight, liftEye,
     periscope, smokeCluster, buildGun, buildRunningGear, openRackGrid, torus } = KIT;
 
@@ -4728,6 +4769,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     for (const s of [-1, 1]) P.add('hullDark', box(0.43, 0.22, 0.05), s * 0.50, 1.18, -3.905);
   };
   buildChallenger3RunningGearStage1();
+  yield 'buildChallenger3RunningGearStage1';
   const buildChallenger3HullStage1 = (): void => {
     P.add('hullDark', box(0.42, 0.22, 0.05), 0, 1.18, -3.765);
     // Source stern identity: recessed service bays with proud grille blades,
@@ -4777,6 +4819,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     headlight(P, 1.45, 1.11, 3.96, -0.25, 0.05);
   };
   buildChallenger3HullStage1();
+  yield 'buildChallenger3HullStage1';
   // ---- skirts ±1.755 EXACT (§D width anchor): 6 flat bays, bottom at the
   // 0.62 hub line (wheels ~60% exposed — §B8), raised stepped front panel
   // exposing the idler, recessed dark handles, no fringe below.
@@ -4836,6 +4879,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     }
   };
   buildChallenger3HullStage2();
+  yield 'buildChallenger3HullStage2';
 
   // ---- turret: the NEW Rheinmetall wedge (§B8 print form: face ~2.45w,
   // huge squared bustle to -2.13w, ±1.41 walls). Pivot [0,1.55,1.20];
@@ -5074,6 +5118,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     P.add('turretGlass', box(0.24, 0.10, 0.018), -0.38, C3H + 0.43, -2.04);
   };
   buildChallenger3TurretStage1();
+  yield 'buildChallenger3TurretStage1';
   // Low asymmetric periscope field.  Short prisms and angled seats preserve
   // the source's roof rhythm without creating another fake superstructure.
   const buildChallenger3TurretStage2 = (): void => {
@@ -5191,6 +5236,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     smokeCluster(P, 1.10, 0.30, 0.55, 5, 0.85, 0.7);
   };
   buildChallenger3TurretStage2();
+  yield 'buildChallenger3TurretStage2';
   const buildChallenger3MarkingsStage1 = (): void => {
     smokeCluster(P, -1.10, 0.30, 0.55, 5, -0.85, 0.7);
     smokeTubeTips(P, [[1.10, 0.30, 0.55, 0.85, 0.7], [-1.10, 0.30, 0.55, -0.85, 0.7]]);
@@ -5299,6 +5345,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   };
   buildChallenger3MarkingsStage1();
 }
+function buildChallenger3(...args: Parameters<typeof buildChallenger3Steps>): void {
+  drainTankBuild(buildChallenger3Steps(...args));
+}
+withBuildSteps(buildChallenger3, buildChallenger3Steps);
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const CHALLENGER_BUILDERS = {
   fv4034: buildChallenger2,

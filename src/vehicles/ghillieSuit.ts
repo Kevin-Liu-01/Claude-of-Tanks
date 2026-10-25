@@ -2826,7 +2826,11 @@ function stemGrid(stems: ReadonlyArray<readonly number[]>): Map<number | string,
   return cells;
 }
 
-function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: FieldTuftContext, seedBase: number): void {
+/** A field suit's garnish pauses between seats once this much work has run (UI-LOCKDOWN E: a roof's cards were one
+ *  task, some 200 ms on the Hetman II's turret). */
+const GARNISH_SLICE_MS = 4;
+
+function* addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: FieldTuftContext, seedBase: number): Generator<void, void, void> {
   const { cfg, pal, theatre } = ctx;
   const rng = garnishStream(seedBase ^ 0x2f1e1d);
   const [u0, u1, v0, v1] = surface.domain;
@@ -3153,7 +3157,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     const t2 = norm3([nn[1] * t1[2] - nn[2] * t1[1], nn[2] * t1[0] - nn[0] * t1[2], nn[0] * t1[1] - nn[1] * t1[0]]);
     return { t1, t2, slope };
   };
+  let sliceAt = performance.now();
   for (const [seatIndex, seatAt] of seats.entries()) {
+    if (performance.now() - sliceAt >= GARNISH_SLICE_MS) { yield; sliceAt = performance.now(); }
     const seat = surface.sample(seatAt.u, seatAt.v);
     if (!seat || clothAt(seat.p) > 0.006) continue;
     // a drape's garnish hangs no lower than 4 cm under its hem there (391a: "lime leaf clusters dangling over the road
@@ -4851,6 +4857,16 @@ function rangeMax(values: Float64Array): (a: number, b: number) => number {
 }
 
 function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGun = false, clothClearsStops = false): FieldClearance {
+  const steps = fieldClearanceSteps(P, clearance, conservativeGun, clothClearsStops);
+  for (;;) {
+    const result = steps.next();
+    if (result.done) return result.value;
+  }
+}
+
+/** fieldClearance a triangle pass a slice (the suit's build steps it; the tables are the call's own). */
+function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conservativeGun = false,
+  clothClearsStops = false): Generator<void, FieldClearance, void> {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
@@ -4893,6 +4909,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   // 3 cm samples (the fix round's audit on the T-90M: at 6 cm the turret's front lower face read 5 cm higher than it
   // reaches, and a bough under its edge stood inside its sweep)
   forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.03, (x, y, z) => mark(turretOcc, x, y, z));
+  yield;
   // and the span the turret reaches at each radius through the traverse, lowest cell to highest: a hull point between
   // them lies inside its swept body, its hollow included (a deck plate running on under the turret's floor), not only
   // beside its skin
@@ -4916,6 +4933,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   });
   // the running gear: no hull suit point within GEAR_KEEP_M of its triangles (a drape outside a skirt hangs a skirt's
   // thickness off the track behind it, and stays)
+  yield;
   const GEAR_CELL = 0.1;
   const gearTri = ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && keptOffGear(mesh));
   const gearCells = new Map<number, number[]>();
@@ -5002,6 +5020,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   // launcher on one side of the cradle widening only that side)
   const radius = new Map<number, number>(), extent = new Map<number, [number, number, number, number]>();
   const gunPoint = new THREE.Vector3();
+  yield;
   forTrianglePoints(ownerTriangles(gun, [], hull, notSuit), 0.04, (hx, hy, hz) => {
     gunPoint.set(hx - gunHull.x, hy - gunHull.y, hz - gunHull.z).applyQuaternion(toGunAxes);
     const x = gunPoint.x, y = gunPoint.y, z = gunPoint.z;
@@ -5555,6 +5574,7 @@ function* addGhillieOwner(
   // wings carries a net of its own
   const cage = owner === 'turret' ? cageWingsOf(parent) : [];
   const probe = ownerProbe(parent, others, cage);
+  yield;
   const uvk = 1 / (leafy ? NET_TILE_M : COVER_TILE_M);
   const hull = owner === 'hull';
   // the roofs first: every drape starts on the net already laid over the edge above it
@@ -5621,6 +5641,7 @@ function* addGhillieOwner(
           [cx + fx * L + fz * w1, cz + fz * L - fx * w1], [cx + fx * L - fz * w1, cz + fz * L + fx * w1]]);
       }
     }
+    yield;
   }
   for (const panel of panels.top ?? []) {
     const opened = gunFloor ? weaponOpenings(panel, probe, gunFloor) : [];
@@ -5672,7 +5693,12 @@ function* addGhillieOwner(
   }
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
   yield;
-  if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock)));
+  if (leafy && cage.length && gunFloor) {
+    for (const [i, wing] of cage.entries()) {
+      surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock));
+      yield;
+    }
+  }
   if (gunFloor || dock) {
     const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
       && p[0] > dock.min.x - 0.12 && p[0] < dock.max.x + 0.12 && p[2] > dock.min.z - 0.12 && p[2] < dock.max.z + 0.12;
@@ -5750,7 +5776,9 @@ function* addGhillieOwner(
         : undefined,
     };
     for (let k = 0; k < surfaces.length; k++) {
-      (field ? addFieldTufts : addTufts)(foliage, surfaces[k], ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
+      const seed = cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0);
+      if (field) yield* addFieldTufts(foliage, surfaces[k], ctx, seed);
+      else addTufts(foliage, surfaces[k], ctx, seed);
       if (k < tops.length) topCards = foliage.cardCount;
       yield;
     }
@@ -5913,8 +5941,12 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
     ['gun', P.gunG, []],
   ];
   // the netting lane: the working vehicle's clearances, read once off the assembled build (the hull's top re-read
-  // before the turret's suit, so that suit also clears the hull's)
-  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true, cfg.clothClearsGunStops === true) : null;
+  // before the turret's suit, so that suit also clears the hull's), a triangle pass a slice (UI-LOCKDOWN E)
+  let clearance: FieldClearance | null = null;
+  if (cfg.fieldClearanceM !== undefined) {
+    yield;
+    clearance = yield* fieldClearanceSteps(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true, cfg.clothClearsGunStops === true);
+  }
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
   yield;
   for (const [owner, parent, others] of owners) {

@@ -4537,7 +4537,7 @@ function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFold
 export const DECORATION_INDEX_BATCH_LIMIT = 256;
 const DECORATION_WORK_BUDGET_MS = 2;
 interface DecorationWorkSlice {
-  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'material-bucket' | 'publish';
+  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'cargo-route' | 'material-bucket' | 'publish';
   completed: number;
   total: number;
 }
@@ -5628,8 +5628,9 @@ export function* attachTankDecorationsSteps(
       };
     }
 
-    const SLOTS: Record<string, SlotPlacer> = {
-      fleetCargo(args, parts, name) {
+    /** SLOTS.fleetCargo a station a slice: each station it tries is seated (or turned away) whole, the next one after a
+     *  pause (UI-LOCKDOWN E: a load trying four stations was one 60-80 ms task). */
+    function* fleetCargoSteps(args: DecorSlotArgs, parts: DecorPartList, name: string): Generator<DecorationWorkSlice, boolean, void> {
         // Fleet-wide cargo gets an authored preference followed by a few
         // semantically compatible seats. Different turret/hull layouts can
         // make one preferred station unreachable; silently losing the model
@@ -5648,9 +5649,12 @@ export function* attachTankDecorationsSteps(
           if (m.x !== undefined) m.x = -m.x;
           return [[slotName, m]];
         });
+        let tried = false;
         for (const [slotName, slotArgs] of [...routes, ...(isLoadPiece(name) ? mirrored : [])]) {
           const slot = SLOTS[slotName];
           if (!slot || slot === SLOTS.fleetCargo) continue;
+          if (tried) yield { stage: 'cargo-route', completed: 0, total: 0 };
+          tried = true;
           const candidate = clonePartList(parts);
           if (slot(slotArgs, candidate, name)) {
             disposePartList(parts);
@@ -5658,9 +5662,21 @@ export function* attachTankDecorationsSteps(
           }
         }
         // round 4 follow-up: a soft load or a case with no free deck rides a crate or case already seated (stackLoad)
-        if ((sagsOnSupport(name) || STACKABLE_CASES.has(name)) && stackLoad(parts, name)) return true;
+        if (sagsOnSupport(name) || STACKABLE_CASES.has(name)) {
+          if (tried) yield { stage: 'cargo-route', completed: 0, total: 0 };
+          if (stackLoad(parts, name)) return true;
+        }
         disposePartList(parts);
         return false;
+    }
+
+    const SLOTS: Record<string, SlotPlacer> = {
+      fleetCargo(args, parts, name) {
+        const steps = fleetCargoSteps(args, parts, name);
+        for (;;) {
+          const result = steps.next();
+          if (result.done) return result.value;
+        }
       },
       rearDeck(args, parts, name) {
         const bb = partsBBox(parts);
@@ -6645,18 +6661,20 @@ export function* attachTankDecorationsSteps(
       }
     }
 
-    function placeManifestParts(
+    function* placeManifestParts(
       row: DecorManifestRow,
       slotFn: SlotPlacer,
       parts: DecorPartList,
       jitterSeed: number,
-    ): boolean {
+    ): Generator<DecorationWorkSlice, boolean, void> {
       slotRng = mulberry32((jitterSeed ^ 0x51a7e) >>> 0);
       try {
         const before = summary.skipped.length;
         const pieceName = row.kit === 'cargo'
           ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit;
-        const ok = slotFn(row.slot[1] || {}, parts, pieceName);
+        const ok = slotFn === SLOTS.fleetCargo
+          ? yield* fleetCargoSteps(row.slot[1] || {}, parts, pieceName)
+          : slotFn(row.slot[1] || {}, parts, pieceName);
         // Slots log guard failures themselves; a silent false is a probe miss
         // where no anchor surface answered.
         if (!ok && summary.skipped.length === before) {
@@ -6687,8 +6705,10 @@ export function* attachTankDecorationsSteps(
         const jitterSeed = (smokeRng() * 0x7fffffff) | 0;
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
+        // each early row seated whole in a slice of its own (UI-LOCKDOWN E: together they were one task)
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+        if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
       }
       // Radio whips stand at their mounts before loose cargo fills the rear roof
       // (2026-10-05: the molded cargo's larger footprints otherwise crowded every
@@ -6700,34 +6720,39 @@ export function* attachTankDecorationsSteps(
         if (roll > (row.p ?? 1)) continue;
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
         const before = summary.skipped.length;
-        if (!parts || placeManifestParts(row, slotFn, parts, jitterSeed)) continue;
+        if (!parts || (yield* placeManifestParts(row, slotFn, parts, jitterSeed))) continue;
         // (2026-10-12, item 2d) a whip the drone dock turned away (2c: its rod enters the dock's certified volumes) stands
         // on the roof's other side instead of leaving the tank without it — the Stb-1 lost its only whip, the M2A2, the
         // Leopard 2A5 and the BMP-3 one each. Same seed, no further draw: every other stream is unchanged.
         const side = (row.slot[1] as { side?: number } | undefined)?.side;
         if ((side !== 1 && side !== -1)
           || !summary.skipped.slice(before).some(([kit, why]) => kit === 'antenna' && why === 'drone-dock')) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const mirrored: DecorManifestRow = { ...row, slot: [row.slot[0], { ...row.slot[1], side: -side }] };
         const again = createManifestParts(mirrored, DECOR_KITS.antenna!, jitterSeed);
-        if (again) placeManifestParts(mirrored, slotFn, again, jitterSeed);
+        if (again) yield* placeManifestParts(mirrored, slotFn, again, jitterSeed);
       }
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
       const skipRow = (row: DecorManifestRow): boolean => DECOR_RETIRED_KITS.has(row.kit);
-      const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
+      function* seatRow(row: DecorManifestRow, jitterSeed: number): Generator<DecorationWorkSlice, void, void> {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
         if (!kitFn || !slotFn) return;
         const parts = createManifestParts(row, kitFn, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
-      };
-      manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !skipRow(row)
-          && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
-      });
+        if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
+      }
+      for (let index = 0; index < manifest.length; index++) {
+        const row = manifest[index];
+        if (!row.early || row.kit === 'smoke' || row.kit === 'antenna' || skipRow(row) || draws[index].roll > (row.p ?? 1)) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
+        yield* seatRow(row, draws[index].jitterSeed);
+      }
+      yield { stage: 'manifest-row', completed: 0, total: manifest.length };
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
@@ -6739,7 +6764,7 @@ export function* attachTankDecorationsSteps(
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
             const parts = createManifestParts(row, kitFn, jitterSeed);
-            if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+            if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
           }
         }
         yield { stage: 'manifest-row', completed: index + 1, total: manifest.length };

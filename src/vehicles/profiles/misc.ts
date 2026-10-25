@@ -34,6 +34,7 @@ import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -392,7 +393,7 @@ function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
 // swell, muzzle +5.88 (published; the print's tube ends 5.73 — certified
 // short-tube class, ~1 col).
 // ---------------------------------------------------------------------------
-export function buildAriete(P: MiscBuilderPort): void {
+function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, openRackGrid, periscope, towCable } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -407,6 +408,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.add('hull', frustum(1.56, 3.07, 2.34, 1.56, 2.38, 2.34, 1.24, 1.358));
   };
   buildArieteHullStage1();    // glacis (2.36,1.358)->(3.05,1.248) — r3 1024 re-read at the settled 0.775 registration: the ref glacis line rendered is (2.37,1.368)->(3.09,1.268), slope -0.14; the old (2.42,1.418)->(3.38,1.21) authored at the stale 0.86 map read +0.05..+0.08 across eight side cols
+  yield 'buildArieteHullStage1';
   const glacisCarrierZ = 3.00;
   const glacisRearZ = 2.98;
   const buildArieteHullStage2 = (): void => {
@@ -504,6 +506,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     for (const s of [-1, 1]) P.add('hullDetail', box(0.80, 0.04, 0.05), s * 0.40, 1.315, 2.62, -0.06, s * 0.42, 0);
   };
   buildArieteHullStage2(); // V splash rail HUGGING the glacis (r3: the -0.16 tilt topped 1.42 over the ref's bare 1.26-1.35 line)
+  yield 'buildArieteHullStage2';
   const buildArieteMarkingsStage1 = (): void => {
     headlight(P, -1.40, 1.20, 3.30, -0.25, 0.048);                              // (r3-1024: sunk — the 1.35 guard crowns printed the 3.21 side col over the ref's 1.279 line)                               // tucked at the crest shoulders (the 1.42-high pods printed 1.47 over the ref's bare 1.28 glacis line)
     headlight(P, 1.40, 1.20, 3.30, -0.25, 0.048);
@@ -558,6 +561,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     }
   };
   buildArieteMarkingsStage1();
+  yield 'buildArieteMarkingsStage1';
   // running gear: SEVEN wheels on the [-2.15, 2.45] contact patch, HIGH
   // small idler (far 3.68 = plan 3.71 lane) + sprocket (far -3.48 = plan
   // -3.46); lanes x 1.04..1.64 like the print's front columns
@@ -601,6 +605,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.turretG.position.set(0, 1.48, -0.29);
   };
   buildArieteRunningGearStage1();                                      // (the hull anchors pin side dAlong ~0.84-0.87 / plan dy ~0.91 — the turret sits at the compromise 0.87 map)
+  yield 'buildArieteRunningGearStage1';
   // PUSH-ROUND TURRET RE-LAY (worldtrace probe, gate-registered frame):
   // the ref turret UNDERSIDE RISES going aft (1.405 front -> 1.555@-1.27 ->
   // 1.645@-1.5..-2.0 -> 1.675 basket zone) — the old full-length poly floor
@@ -675,11 +680,13 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.add('turret', box(0.26, 0.26, 0.16), -0.86, 0.817, 0.59);
   };
   buildArieteTurretStage1();
+  yield 'buildArieteTurretStage1';
   const buildArieteTurretStage2 = (): void => {
     P.addEquipment('turret', box(0.075, 0.22, 0.16), -0.70, 0.769, 0.59);                // hood inboard step (top 2.359 -> 2.39 rendered: the fresh -0.67/-0.71 front cols want 2.39 where the roof plate reads 2.347)                  // loader sight hood (push-2: top 2.427 -> 2.458 rendered = the fresh L front want; the 2.46 seat read +0.03)
     P.addEquipment('turret', box(0.14, 0.13, 0.30), 0.08, 0.855, 0.64);
   };
   buildArieteTurretStage2();                   // center periscope vane (push-2 re-window: the ref vane cols are x 0.005..0.16 top 2.438-2.448 rendered — the old -0.06..0.16/2.44 box printed the -0.056/-0.015 cols where the ref valley is 2.306)
+  yield 'buildArieteTurretStage2';
   // loader MAG — SS B3 KIT fitting on the bustle roof front (foot sunk to
   // 0.55: the r4 0.63 seat printed the receiver 2.52 vs the ref 2.31 at
   // z_w -1.4 — the gate's own worst column)
@@ -712,6 +719,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     }
   };
   buildArieteTurretStage3();
+  yield 'buildArieteTurretStage3';
   // (turret-fix note: stowage stacked ON the shelves was tried and revoked
   // — the +-1.4 front-row line IS the 1.91 shelf top; 2.15 duffels there
   // cost whole -4.9. The wall break stays with the seams + shelf shadow.)
@@ -770,6 +778,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.decal('turret', 'number', P.spec.visual.number || '118', 0.26, [1.24, 0.30, -0.75], Math.PI / 2, 0, 0.05);
   };
   buildArieteMarkingsStage2();
+  yield 'buildArieteMarkingsStage2';
   const buildArieteMarkingsStage3 = (): void => {
     P.decal('turret', 'number', P.spec.visual.number || '118', 0.26, [-1.24, 0.30, -0.75], -Math.PI / 2, 0, -0.05);
     // 120 mm OTO Breda L/44 at the MEASURED axis 1.686 (the r3 1.84 axis rode
@@ -849,6 +858,10 @@ export function buildAriete(P: MiscBuilderPort): void {
   };
   buildArieteMarkingsStage3();
 }
+export function buildAriete(...args: Parameters<typeof buildArieteSteps>): void {
+  drainTankBuild(buildArieteSteps(...args));
+}
+withBuildSteps(buildAriete, buildArieteSteps);
 
 
 // ---------------------------------------------------------------------------
@@ -859,7 +872,7 @@ export function buildAriete(P: MiscBuilderPort): void {
 // GALIX corners, rear hull rack.
 // ---------------------------------------------------------------------------
 
-function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' = 's2'): void {
+function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' = 's2'): TankProfileBuild {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     shovelTool } = KIT;
@@ -1009,6 +1022,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     periscope(P, 'hullDetail', -0.38, 1.515, 1.10, 0.3);
   };
   buildLeclercHullStage1();
+  yield 'buildLeclercHullStage1';
   // skirts: front-third armored blocks + rubber sheet, dark inset lip.
   // STATION LAW: courses SEGMENTED ~0.43-0.45 m. R2 workorder: sheet outer
   // face 1.70, band 0.48..1.49 (bottom deepened to the ref's 0.476 line);
@@ -1065,6 +1079,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     }
   };
   buildLeclercHullStage2();
+  yield 'buildLeclercHullStage2';
   // 90-ladder r1: LEFT skirt lower rubber extension — the print's front
   // ±1.64 columns are ONE-SIDED (left runs to ground 0.006, right stops at
   // its 0.476 skirt line); our symmetric track pads coin-flipped on the
@@ -1207,12 +1222,14 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.add('hullDark', box(0.07, 0.05, 0.026), 0.60, 1.30, -3.368);
   };
   buildLeclercHullStage3();
+  yield 'buildLeclercHullStage3';
   const buildLeclercMarkingsStage1 = (): void => {
     P.add('hullDetail', box(0.09, 0.012, 0.032), 0.60, 1.333, -3.372);
     P.decal('hull', 'number', hullTacticalNumber, 0.28, [1.80, 0.95, 2.5], Math.PI / 2);
     P.decal('hull', 'number', hullTacticalNumber, 0.28, [-1.80, 0.95, 2.5], -Math.PI / 2);
   };
   buildLeclercMarkingsStage1();
+  yield 'buildLeclercMarkingsStage1';
   // 6 wheels, FRONT idler / REAR sprocket, 5 rollers. R2 workorder: HIGH
   // short idler matching the ref (wrap top 1.41 = the z 3.15..3.26 bump,
   // far edge 3.52 covers the ref's 3.43..3.54 body columns), sprocket
@@ -1294,6 +1311,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.gunG.position.set(0, 0.27, 0.50);
   };
   buildLeclercRunningGearStage1();
+  yield 'buildLeclercRunningGearStage1';
   const gunHousing = (
     bucket: string,
     geo: THREE.BufferGeometry,
@@ -1449,6 +1467,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.add('turretDark', torus(0.155, 0.010, 12), -0.60, 0.538, 0.59);
   };
   buildLeclercTurretStage1();            // lid rim ring
+  yield 'buildLeclercTurretStage1';
   const buildLeclercTurretStage2 = (): void => {
     for (const [wx, wz, ww, wd] of [[-0.60, 0.415, 0.50, 0.016], [-0.60, 0.765, 0.50, 0.016], [-0.345, 0.59, 0.016, 0.36], [-0.855, 0.59, 0.016, 0.36]]) {
       P.add('turret', box(ww, 0.135, wd), wx, 0.5425, wz);                       // well side walls up to the mid-roof rim
@@ -1469,6 +1488,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     }
   };
   buildLeclercTurretStage2();
+  yield 'buildLeclercTurretStage2';
   // ---- TURRET FRONT (re-authored 2026-08-06, owner close-up: "the leclerc_s2
   // turret front is more sloped, and slopes down to a small strip of
   // flatness i believe"). Print decode (tools/tmp-leclercfront-probe.mjs
@@ -1646,6 +1666,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     for (const s of [-1, 1]) P.add('turret', box(0.34, 0.38, 0.60), s * 0.45, 0.21, 1.06);
   };
   buildLeclercTurretStage3(); // cheek fills beside sleeve (tops 0.40 — under the field line)
+  yield 'buildLeclercTurretStage3';
   // side ARMOR BOXES (tops chamfered 2.13 -> 1.92w outboard), LOW outer
   // applique band, midships baskets (outer face 1.57 — plan sees it at
   // x 1.62 columns, the front mask must NOT at 1.605)
@@ -1677,6 +1698,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     }
   };
   buildLeclercTurretStage4();
+  yield 'buildLeclercTurretStage4';
   // print's LEFT flank cloth bulge (front col -1.64 reads 1.65..1.92 there)
   const buildLeclercTurretStage5 = (): void => {
     P.add('turretCloth', box(0.09, 0.27, 0.80), -1.605, 0.185, -0.90);              // 2026-10-19 (owner float sweep): grown 4 cm inboard onto the rise it stood 35 mm off (outer face kept)
@@ -1726,6 +1748,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     }
   };
   buildLeclercTurretStage5();
+  yield 'buildLeclercTurretStage5';
   // commander (left) + gunner (right) hatches. Photo round: commander ring
   // SHAVED to the ref line — the old 0.045 ring + 0.048 lid bar read 2.4 on
   // seven front cols (x -0.34..-0.62) where the ref roof is 2.359/2.369;
@@ -1858,6 +1881,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.add('turretDetail', box(0.10, 0.022, 0.028), 1.24, 0.38, -0.288);
   };
   buildLeclercTurretStage6();          // cap handle bar
+  yield 'buildLeclercTurretStage6';
   const buildLeclercMarkingsStage2 = (): void => {
     for (const dz of [-0.42, -0.90]) {
       P.add('turretDark', box(0.30, 0.035, 0.06), 1.18, 0.17, dz);               // cradle saddles onto the box flank
@@ -1946,6 +1970,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.addGunExtraDark(cylZ(0.105, 0.035, 12), 0, -0.005, 1.60);
   };
   buildLeclercMarkingsStage2();
+  yield 'buildLeclercMarkingsStage2';
   const buildLeclercGunStage1 = (): void => {
     P.addGunExtraDark(cylZ(0.105, 0.035, 12), 0, -0.014, 3.15);
     // muzzle drum + evac HELD UNDER the 12% side body filter (0.296 band on
@@ -1999,6 +2024,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
   };
   buildLeclercGunStage1();
 }
+function buildLeclerc(...args: Parameters<typeof buildLeclercSteps>): void {
+  drainTankBuild(buildLeclercSteps(...args));
+}
+withBuildSteps(buildLeclerc, buildLeclercSteps);
 
 // Leclerc XLR — first-party procedural family delta.  The owner-supplied
 // `leclerc_tank.glb` remains an external dimensional/visual oracle: the
@@ -3317,7 +3346,7 @@ function buildType74(P: MiscBuilderPort): void {
 // topology, material or vertex payload is imported; the parked ahab prints
 // remain measurement oracles only (their gate rows now measure an
 // owner-decreed divergence — the §5.304 type59 class).
-function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
+function* buildAMX30Steps(P: MiscBuilderPort, b2: boolean): TankProfileBuild {
   const {
     box, cylX, cylY, cylZ, frustum, torus, polyMultiLoft,
     buildGun, buildRunningGear, liftEye, periscope,
@@ -3501,6 +3530,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30HullStage1();
   };
   buildAMX30AssemblyStage2();
+  yield 'buildAMX30AssemblyStage2';
   const buildAMX30HullStage2 = (): void => {
     P.add('hullDark', box(0.14, 0.09, 0.028), 0.10, 0.70, -3.292);               // convoy-light recess
     P.add('hullDark', box(0.20, 0.155, 0.014), 0.45, 0.73, -3.295);              // convoy plate frame (§5.328 order 3)
@@ -3610,6 +3640,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30HullStage2();
   };
   buildAMX30AssemblyStage3();
+  yield 'buildAMX30AssemblyStage3';
   const buildAMX30MarkingsStage1 = (): void => {
     P.decal('hull', 'number', b2 ? '68' : '53', 0.20, [1.51, 1.42, 0.55], Math.PI / 2);
     P.decal('hull', 'number', b2 ? '68' : '53', 0.20, [-1.51, 1.42, 0.55], -Math.PI / 2);
@@ -3618,6 +3649,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30MarkingsStage1();
   };
   buildAMX30MarkingsStage4();
+  yield 'buildAMX30MarkingsStage4';
   // ---- running gear: 5 BIG exposed roadwheels + 5 rollers, RAISED front
   // idler + RAISED rear sprocket (§B6 trapezoid; §B9 fully readable).
   // Track outer faces ±1.5495 = published 3.10 width anchor (§D). ---------
@@ -3645,6 +3677,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30RunningGearStage1();
   };
   buildAMX30AssemblyStage4();
+  yield 'buildAMX30AssemblyStage4';
   const AMX30_PLAN_BASE: readonly Vec2Tuple[] = [
     [-0.75, 1.54], [-0.17, 1.62], [0.33, 1.62], [0.70, 1.54], [0.96, 1.26],
     [1.17, 0.87], [1.21, 0.39], [1.21, -0.41], [1.17, -0.99], [1.09, -1.50],
@@ -3664,6 +3697,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30AssemblyStage1();
   };
   buildAMX30AssemblyStage5();
+  yield 'buildAMX30AssemblyStage5';
   const aftF = ([, z]: Vec2Tuple): number => Math.max(0, Math.min(1, (0.20 - z) / 2.10)); // 0 at the nose -> 1 at the bustle tail
   const castBottom = (point: Vec2Tuple): number => 0.045 + aftF(point) * 0.105; // underside rises aft (bustle clears the deck)
   const castWaist = (point: Vec2Tuple): number => castBottom(point) + 0.15;
@@ -3689,6 +3723,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30TurretStage1();
   };
   buildAMX30AssemblyStage6(); // ring shadow seam
+  yield 'buildAMX30AssemblyStage6';
   // plan centroid of the loft (polyMultiLoft inset origin) — shared by the
   // crown plate and the b2 cheek-ERA seat math below
   const planCx = PLAN.reduce((s2, q) => s2 + q[0], 0) / PLAN.length;
@@ -3704,6 +3739,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30TurretStage2();
   };
   buildAMX30AssemblyStage7();
+  yield 'buildAMX30AssemblyStage7';
   const buildAMX30TurretStage4 = (): void => {
     if (b2) {
       // ---- Brénus TURRET FRONT fields (§5.328 order 4): G2 bricks on the
@@ -3768,6 +3804,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     }
   };
   buildAMX30TurretStage4();
+  yield 'buildAMX30TurretStage4';
   // cast cheek bulges at the sight line (the M282 housings — subtle, not armor)
   const buildAMX30TurretStage3 = (): void => {
     for (const s of [-1, 1]) {
@@ -3813,6 +3850,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30TurretStage3();
   };
   buildAMX30AssemblyStage8();
+  yield 'buildAMX30AssemblyStage8';
   // ---- TOP-7 commander cupola RIGHT (§5.328 order: "the iconic cupolas" —
   // the roof's dominant landmark, print-parity read: raised cast collar with
   // a gusset skirt, tall episcope drum with the TEN-episcope belt, crown
@@ -3986,6 +4024,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30MarkingsStage2();
   };
   buildAMX30MarkingsStage5();
+  yield 'buildAMX30MarkingsStage5';
   const buildAMX30MarkingsStage3 = (): void => {
     P.decal('turret', 'number', b2 ? '68' : '53', 0.24, [-1.16, 0.30, -0.60], -Math.PI / 2, 0, -0.05);
     // ---- 105 F1 + 20 mm M693 coax + PH-8-B searchlight (one gun plant) ----
@@ -4045,6 +4084,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     buildAMX30MarkingsStage3();
   };
   buildAMX30MarkingsStage6();
+  yield 'buildAMX30MarkingsStage6';
   const gunLen = 4.95;                                                         // muzzle world 6.20 -> overall 9.49 (pub 9.48)
   const gunRadius = b2 ? 0.106 : 0.103;                                        // clean F1 tube: no evac, no sleeve
   const buildAMX30GunStage1 = (): void => {
@@ -4066,8 +4106,8 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   };
   buildAMX30GunStage2();
 }
-function buildAMX30B(P: MiscBuilderPort): void { buildAMX30(P, false); }
-function buildAMX30B2(P: MiscBuilderPort): void { buildAMX30(P, true); }
+const buildAMX30B = steppedBuilder((P: MiscBuilderPort) => buildAMX30Steps(P, false));
+const buildAMX30B2 = steppedBuilder((P: MiscBuilderPort) => buildAMX30Steps(P, true));
 
 // Profiles. Ariete, Leclerc, T-80U, and Type 74 use their authoritative
 // first-party builders (family-map entries win per id); Type 90 keeps the

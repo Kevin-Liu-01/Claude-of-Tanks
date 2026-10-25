@@ -175,6 +175,16 @@ function moveGroup(request: SnapGroupRequest, move: THREE.Vector3, objectBox: TH
   return true;
 }
 
+/** The snap pass pauses at its grid's parts and between requests once this much work has run (UI-LOCKDOWN E). */
+const SNAP_SLICE_MS = 4;
+
+function drainSnap<Result>(steps: Generator<void, Result, void>): Result {
+  for (;;) {
+    const result = steps.next();
+    if (result.done) return result.value;
+  }
+}
+
 /**
  * Seats every requested group on `stock` (its rig group's other parts, in that group's frame). `gearTouches` says
  * whether a box in that frame meets the running gear (hull groups only).
@@ -185,18 +195,32 @@ export function snapFittings(
   gearTouches: (box: THREE.Box3) => boolean = () => false,
   rig: THREE.Object3D | null = null,
 ): SnapReceipt[] {
+  return drainSnap(snapFittingsSteps(requests, stock, gearTouches, rig));
+}
+
+/** snapFittings a slice at a time: the grid and the stock box are the pass's own, the requests are measured against
+ *  the stock alone (a moved group is not stock), so a pause between them changes nothing. */
+function* snapFittingsSteps(
+  requests: readonly SnapGroupRequest[],
+  stock: readonly THREE.BufferGeometry[],
+  gearTouches: (box: THREE.Box3) => boolean,
+  rig: THREE.Object3D | null,
+): Generator<void, SnapReceipt[], void> {
   if (!requests.length) return [];
   const grid = new TriangleGrid(), stockBox = new THREE.Box3();
+  let sliceAt = performance.now();
   for (const part of stock) {
     const soup = soupOf(part);
     if (!soup.length) continue;
     grid.add(soup);
     if (!part.boundingBox) part.computeBoundingBox();
     if (part.boundingBox) stockBox.union(part.boundingBox);
+    if (performance.now() - sliceAt >= SNAP_SLICE_MS) { yield; sliceAt = performance.now(); }
   }
   const farX = stockBox.isEmpty() ? 0 : stockBox.max.x + 1;
   const receipts: SnapReceipt[] = [], p = new THREE.Vector3();
   for (const request of requests) {
+    if (performance.now() - sliceAt >= SNAP_SLICE_MS) { yield; sliceAt = performance.now(); }
     const vertices: number[] = [], keys = new Set<string>(), objectBox = new THREE.Box3();
     const take = (x: number, y: number, z: number): void => {
       const key = `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`;
@@ -293,11 +317,21 @@ export function snapFittingsSeated(
   gearTouches: (box: THREE.Box3) => boolean = () => false,
   rig: THREE.Object3D | null = null,
 ): SnapReceipt[] {
-  const receipts = snapFittings(requests, stock, gearTouches, rig);
+  return drainSnap(snapFittingsSeatedSteps(requests, stock, gearTouches, rig));
+}
+
+/** snapFittingsSeated a slice at a time (the factory's frame-budgeted builds step it). */
+export function* snapFittingsSeatedSteps(
+  requests: readonly SnapGroupRequest[],
+  stock: readonly THREE.BufferGeometry[],
+  gearTouches: (box: THREE.Box3) => boolean = () => false,
+  rig: THREE.Object3D | null = null,
+): Generator<void, SnapReceipt[], void> {
+  const receipts = yield* snapFittingsSteps(requests, stock, gearTouches, rig);
   const seated = requests.flatMap((request, i) => receipts[i].moved || receipts[i].reason === 'touching' ? request.parts : []);
   const retry = requests.flatMap((_, i) => receipts[i].reason === 'beyond-reach' ? [i] : []);
   if (retry.length && seated.length) {
-    const second = snapFittings(retry.map((i) => requests[i]), [...stock, ...seated], gearTouches, rig);
+    const second = yield* snapFittingsSteps(retry.map((i) => requests[i]), [...stock, ...seated], gearTouches, rig);
     retry.forEach((i, k) => { receipts[i] = second[k]; });
   }
   return receipts;

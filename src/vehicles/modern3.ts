@@ -18,6 +18,7 @@ import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts
 import { declareLaunchBore, launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
+import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from './tankBuildCooperation.ts';
 
 type Vec3Tuple = [number, number, number];
 type GeometryScale = number | readonly [number, number, number];
@@ -1597,12 +1598,15 @@ function finishK1A1Turret(P: Modern3BuilderPort) {
   P.topY = 1.05;
 }
 
-function buildK1A1(P: Modern3BuilderPort) {
+const buildK1A1 = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileBuild {
   buildK1A1Hull(P);
+  yield 'buildK1A1Hull';
   finishK1A1Hull(P);
+  yield 'finishK1A1Hull';
   buildK1A1Turret(P);
+  yield 'buildK1A1Turret';
   finishK1A1Turret(P);
-}
+});
 
 // =================================== Type 10 ================================
 // §5.336 OWNER ORDER (verbatim, 2026-08-17): "make the type 10s larger make
@@ -1640,10 +1644,10 @@ function buildK1A1(P: Modern3BuilderPort) {
 // real radial relief, §5.262 gear tones (gearFloor + tireHex + wheelHex so
 // the exposed train never reads ambient-black), §B9 skirt hem at ~49%
 // wheel exposure, rotation-invariant end-drum face anatomy.
-function buildType10Native2026(
+function* buildType10Native2026Steps(
   P: Modern3BuilderPort,
   { compactRightGunnerSight = true }: Type10BuildOptions = {},
-) {
+): TankProfileBuild {
   const { box, cylX, cylY, cylZ, polyMultiLoft, buildGun, buildRunningGear,
     fenders, liftEye, periscope, openRackGrid, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
@@ -1813,6 +1817,7 @@ function buildType10Native2026(
     });
   };
   buildType10Native2026RunningGearStage1();
+  yield 'buildType10Native2026RunningGearStage1';
   // end-drum face anatomy (§5.324/leo1a5 grammar): ROTATION-INVARIANT dished
   // rings + hub caps only — bodies of revolution stay visually identical
   // while the drums spin. Radially inside the shoe guide-horn sweep
@@ -1920,6 +1925,7 @@ function buildType10Native2026(
     P.add('hullDark', box(1.76, 0.0176, 0.605), 0, 1.6995, -1.562);
   };
   buildType10Native2026HullStage1();               // intake mesh ahead of the step
+  yield 'buildType10Native2026HullStage1';
   const buildType10Native2026MarkingsStage1 = (): void => {
     for (const s of [-1, 1]) P.add('hullDetail', cylY(0.088, 0.088, 0.0176, 12), s * 1.298, 1.7028, -1.43);
     P.add('hullDetail', box(0.90, 0.0165, 0.033), 0.55, 1.799, -2.47);            // access panel seams (release 240: on the raised roof's fore edge)
@@ -1967,6 +1973,7 @@ function buildType10Native2026(
     P.add('turret', cylY(1.122, 1.166, 0.11, P.q ? 24 : 14), 0, -0.033, -0.2354);
   };
   buildType10Native2026MarkingsStage1(); // ring riser seals the deck gap (§B2; seated on the 1.6885 mid deck)
+  yield 'buildType10Native2026MarkingsStage1';
   const shellLift = 0;
   const bustleRackSeatShift = 0.2354;                                           // closes the former shell-to-rack air gap (owner 2026-10-19 float sweep: 0.1364 left the floor 84-121 mm aft of the bustle; the floor's front bar now laps its rear face)
   // Eighteen-station welded shell lofted to the print plan ×1.10: tight
@@ -2023,6 +2030,7 @@ function buildType10Native2026(
     }
   };
   buildType10Native2026TurretStage1();
+  yield 'buildType10Native2026TurretStage1';
   // ---- mantlet + gun (§B3.1 — the moving mask fits inside the compact
   // +-0.308 m turret throat instead of covering the cheek V; recessed canvas
   // boot, clamp-ringed, in a real cradle; bore 1.991) -------------------------
@@ -2117,6 +2125,7 @@ function buildType10Native2026(
     P.add('turretDetail', box(0.154, 0.022, 0.033), -0.506, 0.792, -0.396);
   };
   buildType10Native2026TurretStage2();       // lid grab bar
+  yield 'buildType10Native2026TurretStage2';
   const buildType10Native2026TurretStage3 = (): void => {
     for (let k = 0; k < 6; k++) {                                                 // episcope ring
       const a = (k / 6) * Math.PI * 2 - 0.5;
@@ -2199,6 +2208,7 @@ function buildType10Native2026(
     }
   };
   buildType10Native2026TurretStage3();
+  yield 'buildType10Native2026TurretStage3';
   // ---- SLAT-SIDED BUSTLE RACK (the Type 10 identity cue): print band
   // ×1.10 — horizontal rails + vertical slats + mesh floor + corner
   // gussets + cross-brace, LOADED (JGSDF field config) ----------------------
@@ -2252,6 +2262,10 @@ function buildType10Native2026(
   };
   buildType10Native2026MarkingsStage2();
 }
+function buildType10Native2026(...args: Parameters<typeof buildType10Native2026Steps>): void {
+  drainTankBuild(buildType10Native2026Steps(...args));
+}
+withBuildSteps(buildType10Native2026, buildType10Native2026Steps);
 
 // ============================ Type 10B shared base ==========================
 // §5.336 (owner order 2026-08-17): the §5.299/§5.308 verbatim byte-pin
@@ -2405,7 +2419,7 @@ function bradleyEngineRaiseDrop(id: string): number {
   return id === 'm6_linebacker' || id === 'marder1a3' ? 0.025 : 0;
 }
 
-export function buildBradley(P: Modern3BuilderPort) {
+function* buildBradleySteps(P: Modern3BuilderPort): TankProfileBuild {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
   // report's gate-world numbers; batch-38 normalized print, 0%/0%/0% with
@@ -2424,6 +2438,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.add('hull', box(1.72, 0.60, 5.35), 0, 0.75, -0.30);
   };
   buildBradleyHullStage1();                         // tub y 0.45..1.05, clear of the shoe inner faces
+  yield 'buildBradleyHullStage1';
   const buildBradleyHullStage2 = (): void => {
     // Owner review 2026-09-13 (gallery surface markup on the right flank):
     // the sponson used to be one long angled "flare" slab from the tub side
@@ -2444,6 +2459,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     }
   };
   buildBradleyHullStage2();
+  yield 'buildBradleyHullStage2';
   const buildBradleyHullStage3 = (): void => {
     P.add('hull', box(2.10, 0.32, 4.82), 0, 1.75, -0.79);                         // upper spine y 1.59..1.91 (90-ladder:
                                                                                   //   front 1.80 -> 1.62 with the roof —
@@ -2677,6 +2693,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.add('hullDetail', box(0.045, 0.38, 0.045), -0.85, 1.26, 3.02, -1.15, 0, 0);
   };
   buildBradleyHullStage3(); // (r2: leaned -0.95 -> -1.15 — the
+  yield 'buildBradleyHullStage3';
   const buildBradleyHullStage4 = (): void => {
     P.add('hullDark', box(0.03, 0.20, 0.07), -0.85, 1.30, 2.96, -1.15, 0, 0);     //   z 3.051 col reads ref 1.367 vs
                                                                                   //   the old 1.459 tip)
@@ -2759,6 +2776,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.add('hullDark', box(0.15, 0.08, 0.05), -1.24, 1.31, -3.13);
   };
   buildBradleyHullStage4();
+  yield 'buildBradleyHullStage4';
   // ---- A2 appliqué + skirts. The print is ASYMMETRIC (its right flank
   // runs full-length wide with tall gear; its left is narrower with a rear
   // bracket): right skirt to +1.635, left to +-1.545, LEFT REAR RACK BOX at
@@ -3033,6 +3051,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     }
   };
   buildBradleyHullStage5();
+  yield 'buildBradleyHullStage5';
   // r3b: the r1/r2 "left rear bracket at x -1.62, z -2.0..-2.5" was a
   // PHANTOM — the ref's plan shows its x -1.59..-1.66 content ONLY at the
   // bow (z 2.0..2.5 = the bag box, whose own outer face carries the thin
@@ -3190,6 +3209,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.add('turret', frustum(0.74, 0.66, -1.00, 0.73, 0.61, -0.95, 0.02, 0.565));
   };
   buildBradleyRunningGearStage1();  // core, roof 2.46 (r4g: base 0.82
+  yield 'buildBradleyRunningGearStage1';
                                                                                 //   -> 0.80 — the rectangular base
                                                                                 //   corner crossed the plan 0.85 col
                                                                                 //   with its full -1.45..0.21 world
@@ -3217,6 +3237,7 @@ export function buildBradley(P: Modern3BuilderPort) {
       0.3575, bradleyRiserCenterY, 0.125);
   };
   buildBradleyTurretStage1();                                        // right roof riser, top 2.72 (r3:
+  yield 'buildBradleyTurretStage1';
                                                                                 //   r2: east 0.695 -> 0.685 — the
                                                                                 //   face sat 8 mm off the front 0.722
                                                                                 //   col window and AA-flickered it
@@ -3630,6 +3651,7 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.muzzleZ = 2.23;
   };
   buildBradleyTurretStage2();                                                             // true muzzle anchor
+  yield 'buildBradleyTurretStage2';
   const buildBradleyMarkingsStage1 = (): void => {
     // VH.04 (2026-10-15): the suppressor mouth is the muzzle anchor (2.23); it ended 14.5 mm short
     P.add('gunDark', cylZ(0.044, 0.13, 8), 0, 0, 2.165);                         // flash suppressor, tip 2.385 world
@@ -3663,6 +3685,9 @@ export function buildBradley(P: Modern3BuilderPort) {
     P.topY = 1.05;
   };
   buildBradleyMarkingsStage1();
+}
+export function buildBradley(...args: Parameters<typeof buildBradleySteps>): void {
+  drainTankBuild(buildBradleySteps(...args));
 }
 
 // OWNER ORDER (2026-08-17): "the bradleys are still not filled internally
@@ -3856,10 +3881,10 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
   addBradleySkirtMountCourse(P);
 }
 
-function buildM2A2Bradley(P: Modern3BuilderPort) {
-  buildBradley(P);
+const buildM2A2Bradley = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileBuild {
+  yield* buildBradleySteps(P);
   bradleyFlankDressing(P);
-}
+});
 
 function addBMP2Fenders(P: Modern3BuilderPort): void {
   const { box, slab } = KIT;
