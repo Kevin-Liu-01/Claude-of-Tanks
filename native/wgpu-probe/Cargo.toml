@@ -1,0 +1,26 @@
+# cot-wgpu-probe-native — the renderer probe on native Metal (RUST-ENGINE-DECISION §9.4: a bounded measurement): the scene
+# the web probe draws (tools/wgpu-probe-scenes.mjs exports it), drawn by wgpu on Metal into an offscreen target, timed as
+# the web probe times it. A standalone crate (not in any workspace); its target dir is its own and is trashed after a run.
+[package]
+name = "cot-wgpu-probe-native"
+version = "0.1.0"
+edition = "2024"
+authors = ["Kevin B. Liu"]
+license = "MIT"
+publish = false
+rust-version = "1.90"
+
+[dependencies]
+wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "metal", "wgsl"] }
+bytemuck = { version = "1", features = ["derive"] }
+# the encoding thread's own CPU time (clock_gettime CLOCK_THREAD_CPUTIME_ID): the wall clock counts the waits of a loaded machine
+libc = "0.2"
+
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false

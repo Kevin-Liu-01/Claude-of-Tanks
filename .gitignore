@@ -41,5 +41,6 @@ docs/critique/*
 .quality-reports/
 coverage/
 
-# Rust build output of the standalone WebAssembly crates (the committed binaries live in wasm/*/pkg/)
+# Rust build output of the standalone crates (the committed WebAssembly binaries live in wasm/*/pkg/)
 wasm/*/target/
+native/*/target/
