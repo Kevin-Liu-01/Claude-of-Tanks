@@ -27,6 +27,7 @@
  * Pure and deterministic: no RNG, no clock, Node-runnable.
  */
 
+import * as detMath from './detMath.ts';
 export type DeploymentTeam = 'alpha' | 'bravo';
 export interface DeploymentPoint { readonly x: number; readonly z: number }
 export interface DeploymentSlot extends DeploymentPoint { readonly yaw: number }
@@ -83,20 +84,20 @@ export function deploymentFrame(spawns: DeploymentSpawns): DeploymentFrame {
   for (const pad of pads) { bx += pad.x; bz += pad.z; }
   const bravo = { x: bx / pads.length, z: bz / pads.length };
   const pivot = { x: (alpha.x + bravo.x) * 0.5, z: (alpha.z + bravo.z) * 0.5 };
-  const length = Math.hypot(alpha.x - bravo.x, alpha.z - bravo.z);
+  const length = detMath.hypot(alpha.x - bravo.x, alpha.z - bravo.z);
   if (!(length > 0)) throw new TypeError('the deployment anchors must not coincide');
   const forward = { x: (alpha.x - bravo.x) / length, z: (alpha.z - bravo.z) / length };
   let spread = 0;
-  for (const a of pads) for (const b of pads) spread = Math.max(spread, Math.hypot(a.x - b.x, a.z - b.z));
+  for (const a of pads) for (const b of pads) spread = Math.max(spread, detMath.hypot(a.x - b.x, a.z - b.z));
   const kind = spread > ARC_SPREAD_M ? 'arc' : 'block';
-  const facingAlpha = (point: DeploymentPoint) => Math.atan2(alpha.x - point.x, alpha.z - point.z);
+  const facingAlpha = (point: DeploymentPoint) => detMath.atan2(alpha.x - point.x, alpha.z - point.z);
   let base: DeploymentSlot[];
   if (kind === 'arc') {
     base = pads.map((pad) => ({ x: pad.x, z: pad.z, yaw: pad.yaw ?? facingAlpha(pad) }));
   } else {
     // the 4 + 3 block, built at alpha's pad facing bravo's anchor (vehicle right = (cos yaw, -sin yaw)), then rotated
-    const yaw = Math.atan2(-forward.x, -forward.z);
-    const sin = Math.sin(yaw), cos = Math.cos(yaw), s = DEPLOYMENT_SLOT_SPACING_M;
+    const yaw = detMath.atan2(-forward.x, -forward.z);
+    const sin = detMath.sin(yaw), cos = detMath.cos(yaw), s = DEPLOYMENT_SLOT_SPACING_M;
     const rows: (readonly [number, number])[] = [
       [-1.5 * s, 0], [-0.5 * s, 0], [0.5 * s, 0], [1.5 * s, 0],
       [-s, 0.9 * s], [0, 0.9 * s], [s, 0.9 * s],
@@ -155,12 +156,12 @@ function ringSearch(from: DeploymentPoint, check: (dx: number, dz: number) => bo
     const steps = Math.max(16, Math.ceil(radius * Math.PI * 2 / RING_STEP_M));
     for (let k = 0; k < steps; k++) {
       const angle = k / steps * Math.PI * 2;
-      const gx = Math.round((from.x + Math.sin(angle) * radius) / step), gz = Math.round((from.z + Math.cos(angle) * radius) / step);
+      const gx = Math.round((from.x + detMath.sin(angle) * radius) / step), gz = Math.round((from.z + detMath.cos(angle) * radius) / step);
       const key = gx * 65536 + gz;
       if (tried.has(key)) continue;
       tried.add(key);
       const dx = gx * step - from.x, dz = gz * step - from.z;
-      if (check(dx, dz)) return { dx, dz, radius: Math.hypot(dx, dz) };
+      if (check(dx, dz)) return { dx, dz, radius: detMath.hypot(dx, dz) };
     }
   }
   return null;

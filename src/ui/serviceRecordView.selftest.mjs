@@ -73,7 +73,8 @@ for (const id of ['chain_of_thought', 'step_by_step', 'zero_shot', 'few_shot']) 
 const career = overview.slice(0, overview.indexOf('<div class="cot-record-cards">'));
 assert.doesNotMatch(career, /cot-record-ring|--record-pct/, 'win rate is a regular stat, never a clipped badge');
 assert.match(career, /cot-record-outcome win-rate.*?<strong>100%<\/strong>/);
-const statIcons = [...career.matchAll(/data-stat-icon="([^"]+)"/g)].map(match => match[1]);
+// every stat glyph is a sprite icon (data-icon), the outcome labels' and the kit stat tiles' alike
+const statIcons = [...career.matchAll(/data-icon="([^"]+)"/g)].map(match => match[1]);
 assert.equal((career.match(/<svg /g) || []).length, 10, 'every stat resolves to real vector artwork');
 assert.equal(statIcons.length, 10, 'each career stat has its own adjacent vector icon');
 assert.equal(new Set(statIcons).size, 10, 'career icons distinguish all ten stats');

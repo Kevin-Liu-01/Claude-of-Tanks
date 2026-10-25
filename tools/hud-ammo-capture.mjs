@@ -220,7 +220,7 @@ export function readHud(rules) {
   const readouts = texts.filter((op) => Math.abs((op.box.x0 + op.box.x1) / 2 - cx) < 240 && Math.abs(op.box.y0 - cy) < innerHeight / 2
     && !chipText(op));
   // the zoom plate's rules either side of its text (hud.ts paintSniperZoom)
-  const zoomRules = paint.filter((op) => op.op === 'stroke' && ink(op) === 'rgba(170,240,178,0.5)');
+  const zoomRules = paint.filter((op) => op.op === 'stroke' && ink(op) === 'rgba(126,232,126,0.5)');
   const overlaps = [];
   for (const mark of dry) for (const text of texts) if (hit(mark.box, text.box)) overlaps.push(`empty mark over "${text.text}"`);
   // the strike (the 1.5 px danger diagonal over its dark contour) keeps its distance from every text

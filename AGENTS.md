@@ -28,6 +28,7 @@ worktree and never stage generated tank work wholesale.
   [`docs/audio-generation/SKILL.md`](docs/audio-generation/SKILL.md) before
   generating or repairing any sound or crew line.
 - `docs/MULTIPLAYER-V2.md` — the peer-to-peer multiplayer: rooms Worker, wire, host, client, the cutover (§13.10).
+- `docs/RUST-KERNELS.md` — the authority's WebAssembly kernels (`crates/cot-sim`): what they answer, the flags, the receipts.
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
   new source-backed tanks, family rebuilds or exact-surface geometry repairs.
@@ -89,6 +90,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 | `src/game/` | [`src/game/SKILL.md`](src/game/SKILL.md) | Work on battle integration, bots, input, garage dressing, progression, replays, and studio state. |
 | `src/presentation/` | [`src/presentation/SKILL.md`](src/presentation/SKILL.md) | Maintain lightweight public navigation, media loading, archive presentation, and public-site contracts. |
 | `src/sim/` | [`src/sim/SKILL.md`](src/sim/SKILL.md) | Work on deterministic movement, armor, ballistics, damage, and spotting simulation. |
+| `src/techTree/` | [`src/techTree/SKILL.md`](src/techTree/SKILL.md) | Maintain the read-only national tech trees the Garage draws - tree data, lineage, tiers as columns and the connector layout. |
 | `src/ui/` | [`src/ui/SKILL.md`](src/ui/SKILL.md) | Work on garage, HUD, settings, mobile controls, transitions, and battle presentation UI. |
 | `src/vehicles/` | [`src/vehicles/SKILL.md`](src/vehicles/SKILL.md) | Work on first-party procedural tank specs, builders, materials, profiles, ordering, and asset provenance. |
 | `src/world/` | [`src/world/SKILL.md`](src/world/SKILL.md) | Work on terrain, maps, collision, vegetation, props, destructibles, and world streaming. |

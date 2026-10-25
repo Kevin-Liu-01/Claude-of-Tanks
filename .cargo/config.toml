@@ -1,0 +1,8 @@
+# Workspace-local cargo settings for the Bevy / WebAssembly port (docs/PORT-BEVY.md).
+[alias]
+# The port receipt: the deterministic core against the TypeScript golden vectors.
+port-check = "test -p cot-sim --locked"
+
+[target.wasm32-unknown-unknown]
+# getrandom needs to be told it may use the browser's crypto API on wasm32.
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

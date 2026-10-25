@@ -6086,8 +6086,10 @@ function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileB
     // 1.861 plate — side pairs the ref's 1.881 read)
     for (const side of [-1, 1]) {
       // 2026-10-19 (owner float sweep): the 21 mm pod hovered 56 mm over the plate; it now rises from it to the same top
-      // (release 240: 6 mm lower, top 1.876, under the turret's 1.882 detail line as it turns over them)
-      P.add('hullDetail', box(0.30, 0.080, 0.24), side * 0.51, 1.836, 1.86);
+      // (release 240: 6 mm lower, top 1.876, under the turret's 1.882 detail line as it turns over them; and the M48A5's
+      // refit (the owner, 2026-10-24: "redesign and refit the m48a5 turret"), its 55 mm rig lift gone, the turret's seated
+      // underside 1.880 over them: top 1.866)
+      P.add('hullDetail', box(0.30, 0.070, 0.24), side * 0.51, 1.831, 1.86);
     }
     // Low source A5 fender service boxes.  The previous RISE-height pack was
     // an unrelated tall envelope and inflated the hull profile above the
@@ -6193,15 +6195,16 @@ function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileB
   // camouflaged cast skirts follow the measured roof perimeter and overlap
   // each fitting underside by 2 mm, preserving one structural draw bucket.
   const roofSeats = [
+    // (2026-10-25: on the reference-sized dome, its roof 8 mm under each perimeter sample)
     {
-      id: 'loader-hatch', x: -0.541, z: 0.045, r: 0.470, topY: 2.5345,
-      roofYs: [2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492,
-        2.4895, 2.4433, 2.3591, 2.3029, 2.2787, 2.2917, 2.3415, 2.4417],
+      id: 'loader-hatch', x: -0.642, z: 0.112, r: 0.470, topY: 2.6615,
+      roofYs: [2.619, 2.619, 2.619, 2.619, 2.619, 2.619, 2.619, 2.616,
+        2.6149, 2.5801, 2.5141, 2.4754, 2.4691, 2.4916, 2.5373, 2.6124],
     },
     {
-      id: 'commander-cupola', x: 0.570, z: -0.310, r: 0.3468, topY: 2.672,
-      roofYs: [2.4914, 2.4141, 2.3492, 2.3065, 2.2874, 2.2937, 2.322, 2.3763,
-        2.4499, 2.472, 2.4765, 2.4877, 2.492, 2.492, 2.492, 2.492],
+      id: 'commander-cupola', x: 0.670, z: -0.190, r: 0.3468, topY: 2.672,
+      roofYs: [2.619, 2.5861, 2.5267, 2.4794, 2.4518, 2.438, 2.4535, 2.5014,
+        2.5793, 2.6072, 2.6125, 2.616, 2.619, 2.619, 2.619, 2.619],
     },
   ];
   const buildM48TurretStage1 = (): void => {
@@ -6215,11 +6218,12 @@ function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileB
   // The forward gunner hood sits on a doubly-sloped patch. A four-corner
   // plinth follows that local cast surface instead of projecting a generic
   // vertical box through the dome.
+  // (2026-10-25: on the reference-sized dome, under the hood's tilted floor, 8 mm into the roof at each corner)
   const sightSeat = orientedSlab(
-    [0.419, yl(2.336), zl(1.312)], [0.621, yl(2.226), zl(1.312)],
-    [0.621, yl(2.366), zl(1.062)], [0.419, yl(2.433), zl(1.062)],
-    [0.419, yl(2.547), zl(1.312)], [0.621, yl(2.547), zl(1.312)],
-    [0.621, yl(2.522), zl(1.062)], [0.419, yl(2.522), zl(1.062)]);
+    [0.463, yl(2.601), zl(1.33)], [0.713, yl(2.479), zl(1.33)],
+    [0.713, yl(2.572), zl(1.03)], [0.463, yl(2.619), zl(1.03)],
+    [0.463, yl(2.652), zl(1.33)], [0.713, yl(2.652), zl(1.33)],
+    [0.713, yl(2.622), zl(1.03)], [0.463, yl(2.622), zl(1.03)]);
   const buildM48TurretStage2 = (): void => {
     P.add('turret', sightSeat);
     if (P.geometryReceipt) {
@@ -6445,8 +6449,9 @@ function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileB
     }
     // gunner's primary sight hood, right cheek forward (M48A5 tell; interior
     // to the crown roll — top 2.62 under the 2.66 loader-dome band line)
-    P.add('turret', box(0.25, 0.14, 0.30), 0.52, yl(2.60), zl(1.18), -0.10, 0, 0);
-    P.add('turretGlass', box(0.16, 0.055, 0.02), 0.52, yl(2.61), zl(1.335), -0.10, 0, 0);
+    // (2026-10-25: on the reference-sized dome's plateau, its floor's rear 1 cm into it)
+    P.add('turret', box(0.25, 0.14, 0.30), 0.588, yl(2.702), zl(1.18), -0.10, 0, 0);
+    P.add('turretGlass', box(0.16, 0.055, 0.02), 0.588, yl(2.712), zl(1.335), -0.10, 0, 0);
 
     // M68 105 mm — the m60a1 recipe verbatim (level axis at the measured
     // trunnion; the print's pitched tube is the certified §E defect)
@@ -7382,36 +7387,41 @@ export const PATTON_PROFILES = {
     // packet's configuration-datum cert, ASK-OWNER row flag banked).
     build: steppedBuilder((P: PattonBuilderPort) => buildM48Steps(P, {
       hull: M48_HULL, fit: M48_FIT,
-      ring: [1.595, 0.563], turretSeatLiftM: 0.055, topWorld: 3.62,
+      ring: [1.595, 0.563], turretSeatLiftM: 0, topWorld: 3.62,
       turret: {
         // Preserve the source ring as the casting datum. A measured 55 mm
         // rig-level reseat clears the central deck without repeating the prior
         // 0.18 m mask-score lift that clipped away the M48's low pear shoulder.
-        loft: { wall: 0.35, mid: 0.73, midW: 0.82, crownW: 0.50, shiftX: -0.04, smooth: true },
+        // 2026-10-25 (the owner: "redesign and refit the m48a5 turret"): the dome at its reference packet's size
+        // (docs/references/tanks/m48.md, TURRET; z = z' - 0.116, y + 0.017): the 1.481 wall at z 0.27 (it stood at the
+        // 1.207 shoulder's width, 1.22), shoulder 0.815 and crown 0.53 of it, the 2.627 roof plateau (2.50), the
+        // underside 1.80-1.84 and the bustle floor 1.72, the tail at -1.21 (-1.49); the nose blends to the old tip, so the
+        // gun shield stays proud of it. Every roof and wall fitting moves with the dome at its own size (the cupola ring
+        // and both guns keep their heights); the rear-left drum is gone (the A5's searchlight rides the mantlet).
+        loft: { wall: 0.54, mid: 0.73, midW: 0.815, crownW: 0.53, shiftX: -0.04, smooth: true },
         sections: [
-          { z: 1.836, hw: 0.415, top: 2.03, bot: 1.593 },
-          { z: 1.60, hw: 0.607, top: 2.18, bot: 1.593 },
-          { z: 1.40, hw: 0.929, top: 2.30, bot: 1.593 },
-          { z: 1.20, hw: 1.051, top: 2.40, bot: 1.593 },
-          { z: 1.00, hw: 1.140, top: 2.46, bot: 1.593 },
-          { z: 0.80, hw: 1.195, top: 2.48, bot: 1.593 },
-          { z: 0.60, hw: 1.213, top: 2.50, bot: 1.593 },
-          { z: 0.40, hw: 1.195, top: 2.50, bot: 1.593 },
-          { z: 0.20, hw: 1.209, top: 2.50, bot: 1.643 },
-          { z: 0.00, hw: 1.220, top: 2.50, bot: 1.653 },
-          { z: -0.20, hw: 1.220, top: 2.50, bot: 1.663 },
-          { z: -0.40, hw: 1.191, top: 2.50, bot: 1.688 },
-          { z: -0.60, hw: 1.158, top: 2.48, bot: 1.702 },
-          { z: -0.80, hw: 1.108, top: 2.48, bot: 1.718 },
-          { z: -1.00, hw: 1.034, top: 2.46, bot: 1.734 },
-          { z: -1.20, hw: 0.878, top: 2.42, bot: 1.763 },
-          { z: -1.40, hw: 0.643, top: 1.98, bot: 1.783 },
-          { z: -1.486, hw: 0.44, top: 1.92, bot: 1.80 },
+          { z: 1.836, hw: 0.415, top: 2.03, bot: 1.80 },
+          { z: 1.75, hw: 0.52, top: 2.20, bot: 1.80 },
+          { z: 1.62, hw: 0.80, top: 2.42, bot: 1.80 },
+          { z: 1.522, hw: 0.952, top: 2.55, bot: 1.80 },
+          { z: 1.272, hw: 1.134, top: 2.627, bot: 1.80 },
+          { z: 1.022, hw: 1.282, top: 2.627, bot: 1.80 },
+          { z: 0.772, hw: 1.391, top: 2.627, bot: 1.80 },
+          { z: 0.522, hw: 1.458, top: 2.627, bot: 1.82 },
+          { z: 0.272, hw: 1.481, top: 2.627, bot: 1.84 },
+          { z: 0.022, hw: 1.458, top: 2.627, bot: 1.84 },
+          { z: -0.228, hw: 1.391, top: 2.627, bot: 1.84 },
+          { z: -0.45, hw: 1.31, top: 2.62, bot: 1.76 },
+          { z: -0.70, hw: 1.18, top: 2.60, bot: 1.72 },
+          { z: -0.95, hw: 0.95, top: 2.55, bot: 1.72 },
+          { z: -1.12, hw: 0.62, top: 2.45, bot: 1.72 },
+          { z: -1.206, hw: 0.30, top: 2.30, bot: 1.74 },
         ],
-        rack: { z0: -0.38, z1: -1.74, zC: -1.28, halfW: 1.30, floorY: 1.72, railY: 2.05, railW: 0.035, loadTop: 2.08, loadBucket: 'turretCloth' },
-        cupola: { x: 0.57, z: -0.31, r: 0.22, base: 2.55, h: 0.12,
+        // (the reference's wrap rack: side rails over z -0.41..-1.45, floor 1.72, rail 2.10, wide of the dome)
+        rack: { z0: -0.41, z1: -1.45, zC: -1.30, halfW: 1.55, floorY: 1.72, railY: 2.10, railW: 0.035, loadTop: 2.08, loadBucket: 'turretCloth' },
+        cupola: { x: 0.67, z: -0.19, r: 0.22, base: 2.65, h: 0.12,
           ring: { r: 0.34, h: 0.15, top: 2.82, lidHalfW: 0.17, lidH: 0.05, lidD: 0.31 } },
-        loader: { x: -0.54, y: 2.68, z: 0.04 },
+        loader: { x: -0.642, y: 2.807, z: 0.112 },
         mg: null,
         // Two complete first-party M2 fittings reproduce the supplied
         // A5's unequal commander/loader stations.  Each fitting owns a
@@ -7421,54 +7431,55 @@ export const PATTON_PROFILES = {
         fittingMgs: [
           // 2026-10-19 (owner float sweep): the commander M2's foot stood 48 mm ahead of the cupola ring wall (and its
           // can web with it); both move 50 mm aft onto the ring
-          { x: 0.58, z: 0.07, baseY: 2.73, scale: 0.90, elev: 0.035 },
+          { x: 0.68, z: 0.19, baseY: 2.73, scale: 0.90, elev: 0.035 },
           // VH.14 (calibre-true): the loader's gun is the 7.62 mm M60D, not a second M2
-          { x: -0.98, z: 0.135, baseY: 2.84, scale: 0.95, elev: 0.055, cls: 'mag' },
+          { x: -1.082, z: 0.207, baseY: 2.84, scale: 0.95, elev: 0.055, cls: 'mag' },
         ],
         radioStations: [
-          { x: 0.691, y: 2.461, z: -0.467, h: 1.016 },
-          { x: -0.304, y: 2.461, z: -1.005, h: 1.016 },
+          { x: 0.80, y: 2.603, z: -0.326, h: 1.016 },
+          { x: -0.321, y: 2.584, z: -0.79, h: 1.016 },
         ],
-        searchlight: { x: -1.16, y: 2.286, z: -1.15, r: 0.36, len: 0.68, rx: 0.08, ry: -3.06 },
         rearPacks: [
-          { x: -0.03, y: 2.30, z: -1.258, s: [0.97, 0.38, 0.39], rz: -0.04 },
-          { x: 0.277, y: 2.16, z: -1.562, s: [0.49, 0.38, 0.30], rz: 0.08 },
-          { x: -0.155, y: 2.21, z: -1.58, s: [0.443, 0.388, 0.284], rz: -0.10 },
-          { x: 0.66, y: 2.48, z: -0.979, s: [0.534, 0.306, 0.534], rz: -0.18 },
+          { x: -0.03, y: 2.30, z: -1.33, s: [0.97, 0.38, 0.39], rz: -0.04 },
+          { x: 0.277, y: 2.16, z: -1.40, s: [0.49, 0.38, 0.30], rz: 0.08 },
+          { x: -0.155, y: 2.21, z: -1.40, s: [0.443, 0.388, 0.284], rz: -0.10 },
+          { x: 0.711, y: 2.594, z: -0.768, s: [0.534, 0.306, 0.534], rz: -0.18 },
         ],
         rearRack: {
-          x: -0.25, z: -1.205, w: 1.56, y0: 2.02, y1: 2.37,
+          x: -0.25, z: -1.30, w: 1.56, y0: 2.02, y1: 2.37,
           railsY: [2.024, 2.055, 2.198, 2.365],
           postsX: [0.52, 0.05, -0.43, -0.91],
           strapsX: [0.28, -0.17, -0.67],
         },
         sideCans: [
-          { x: 1.259, y: 2.042, z: 0.250, w: 0.356, h: 0.329, d: 0.447, rz: -0.08 },
-          { x: -1.349, y: 2.004, z: 0.359, w: 0.311, h: 0.370, d: 0.452, rz: 0.08 },
-          { x: 1.129, y: 1.943, z: -0.728, w: 0.347, h: 0.184, d: 0.422, rz: -0.12 },
+          { x: 1.554, y: 2.042, z: 0.293, w: 0.356, h: 0.329, d: 0.447, rz: -0.08 },
+          { x: -1.647, y: 2.004, z: 0.387, w: 0.311, h: 0.370, d: 0.452, rz: 0.08 },
+          { x: 1.265, y: 1.943, z: -0.551, w: 0.347, h: 0.184, d: 0.422, rz: -0.12 },
         ],
         serviceFixtures: [
-          { x: 1.293, y: 1.998, z: -0.175, w: 0.214, h: 0.222, d: 0.217 },
-          { x: 1.092, y: 2.120, z: -0.387, w: 0.215, h: 0.203, d: 0.223, rz: -0.10 },
-          { x: 0.998, y: 2.283, z: -0.673, w: 0.191, h: 0.111, d: 0.267 },
-          { x: -0.917, y: 2.187, z: -0.904, w: 0.150, h: 0.267, d: 0.208 },
-          { x: -0.669, y: 2.493, z: -1.385, w: 0.265, h: 0.094, d: 0.234 },
-          { x: 0.925, y: 1.971, z: -1.064, w: 0.203, h: 0.120, d: 0.292 },
-          { x: -1.148, y: 1.901, z: -0.506, w: 0.104, h: 0.117, d: 0.328 },
-          { x: -1.115, y: 2.003, z: -0.533, w: 0.096, h: 0.108, d: 0.328 },
-          { x: 0.618, y: 2.127, z: -1.403, w: 0.114, h: 0.371, d: 0.117 },
-          { x: 0.927, y: 2.364, z: 0.384, w: 0.204, h: 0.198, d: 0.198, face: 'front' },
-          { x: 0.617, y: 2.284, z: -1.337, w: 0.134, h: 0.191, d: 0.190 },
-          { x: 0.003, y: 2.474, z: 1.171, w: 0.112, h: 0.245, d: 0.303, face: 'front' },
+          { x: 1.525, y: 1.998, z: -0.074, w: 0.214, h: 0.222, d: 0.217 },
+          { x: 1.27, y: 2.363, z: -0.257, w: 0.215, h: 0.203, d: 0.223, rz: -0.10 },
+          { x: 1.128, y: 2.457, z: -0.504, w: 0.191, h: 0.111, d: 0.267 },
+          { x: -1.161, y: 2.187, z: -0.703, w: 0.150, h: 0.267, d: 0.208 },
+          { x: -0.60, y: 2.538, z: -0.95, w: 0.265, h: 0.094, d: 0.234 },
+          { x: 0.991, y: 1.971, z: -0.841, w: 0.203, h: 0.120, d: 0.292 },
+          { x: -1.317, y: 1.901, z: -0.36, w: 0.104, h: 0.117, d: 0.328 },
+          { x: -1.301, y: 2.003, z: -0.383, w: 0.096, h: 0.108, d: 0.328 },
+          { x: 0.618, y: 2.127, z: -1.42, w: 0.114, h: 0.371, d: 0.117 },
+          { x: 1.147, y: 2.516, z: 0.409, w: 0.204, h: 0.198, d: 0.198, face: 'front' },
+          { x: 0.617, y: 2.284, z: -1.36, w: 0.134, h: 0.191, d: 0.190 },
+          { x: 0.008, y: 2.692, z: 1.171, w: 0.112, h: 0.245, d: 0.303, face: 'front' },
         ],
         sideRails: [
-          { x: -1.062, y: 2.102, z: 0.501, w: 0.440, h: 0.060, d: 1.573 },
-          { x: 0.963, y: 2.104, z: 0.599, w: 0.341, h: 0.055, d: 1.635 },
+          { x: -1.438, y: 2.102, z: 0.509, w: 0.440, h: 0.060, d: 1.573 },
+          { x: 1.31, y: 2.104, z: 0.599, w: 0.341, h: 0.055, d: 1.635 },
         ],
-        antenna: { x: -0.93, y: 2.58, z: -0.76 },
+        antenna: { x: -1.03, y: 2.681, z: -0.579 },
         decalSec: 6,
       },
-      gun: { rootZ: 1.514, axisY: 1.875, len: 4.19 },
+      // (2026-10-25: the gun keeps its 1.93 world axis, toward the packet's 2.017, now in the turret, which sits 55 mm
+      // lower on its ring: at 1.875 the seated dome's side underside, 1.88, left the axis behind the trunnion in sight)
+      gun: { rootZ: 1.514, axisY: 1.93, len: 4.19 },
     })),
   },
   m60a2: {

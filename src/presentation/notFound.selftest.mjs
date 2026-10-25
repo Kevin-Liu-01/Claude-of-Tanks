@@ -21,8 +21,14 @@ assert.match(html, /<h1 class="not-found__title" id="not-found-title"><span clas
 assert.doesNotMatch(html, /t-hollow/, 'no outline type on the missing page');
 assert.match(html, /<form class="not-found__search" role="search" data-nf-search>[\s\S]*?<input type="search" name="q" placeholder="[^"]+" data-i18n-placeholder="notFound\.searchPlaceholder" aria-label="[^"]+" data-i18n-aria-label="notFound\.searchAria"/,
   'a search over the fleet and the manual, its field named in both locales');
-assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), index, import\('\.\/fleetWall\.json'\)/, 'the search indexes load with the field, never at first paint');
-assert.match(runtime, /import\('\.\.\/docs\/searchIndex\.zh-CN\.json'/, 'the manual\'s prebuilt index in the reader\'s locale');
+assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), import\('\.\/notFoundIndexes\.ts'\)/, 'the search indexes load with the field, never at first paint');
+// (2026-10-25) one lazily imported module holds the indexes, static attributed imports inside it, so dev and the build both load them
+const indexes = readFileSync(join(ROOT, 'src/presentation/notFoundIndexes.ts'), 'utf8');
+for (const file of ['./fleetWall.json', '../docs/searchIndex.en-US.json', '../docs/searchIndex.zh-CN.json']) {
+  assert.ok(indexes.includes(`from '${file}' with { type: 'json' }`), `${file} is imported statically in the index module`);
+}
+assert.doesNotMatch(runtime, /import\('[^']+\.json'/, 'no attributed dynamic JSON import in the page module (the dev server refuses it)');
+assert.match(runtime, /getLocale\(\) === 'zh-CN' \? indexes\.manualZh : indexes\.manualEn/, 'the manual\'s prebuilt index in the reader\'s locale');
 assert.doesNotMatch(runtime, /^import (?!type )[^;]*(?:docsSearch|fleetWall|searchIndex)/m, 'no index in the page\'s first bytes');
 assert.match(html, /<nav class="not-found__go" aria-label="[^"]+" data-i18n-aria-label="notFound\.goAria">/,
   'the recovery navigation has its own localized name (247 audit: the footer is "Site pages")');

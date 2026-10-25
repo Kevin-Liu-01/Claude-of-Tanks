@@ -180,6 +180,20 @@ function roleFootprint(fleet: Fleet, role: CivilianVehicleKind): VehicleFootprin
   return footprint;
 }
 
+/**
+ * (battle-spikes-253; nav-perf's entry census) a map's role footprints a role at a time, each a coarse build and its
+ * contact band, before the props build's types table asks civilianVehicleOverrides for all eight in one task (1.7-3.1 s
+ * on a first battle): the props build yields between them. The same footprints (the session's cache, by fleet and role).
+ */
+export function* prepareCivilianVehicleFootprints(mapId: string): Generator<void, void, void> {
+  const { fleet } = buildContext(mapId, false);
+  for (const role of Object.keys(ROLE_BOXES) as CivilianVehicleKind[]) {
+    if (FOOTPRINTS.has(`${fleet.id}/${role}`) || !fleet.roles[role]) continue;
+    roleFootprint(fleet, role);
+    yield;
+  }
+}
+
 /** The seed a builder takes from exactly `draws` values of the destructible stream (the legacy builder's count). */
 function spendDraws(draws: number, rng: Rng): number {
   let seed = 0x5eed;

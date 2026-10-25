@@ -4,6 +4,11 @@
 // evaluates (roadSurfaceShader.selftest.mjs proves the evaluated program is the same string).
 import { readFileSync } from 'node:fs';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
+// The extracted terrain source calls the authority's deterministic math through terrain.ts's module-level import
+// (src/sim/detMath.ts, the 2026-10-25 pinned-math ruling); a receipt that evaluates that text outside the module lends
+// the same import to its scope.
+import * as detMath from '../sim/detMath.ts';
+globalThis.detMath ??= detMath;
 
 export const ROAD_SHADER_CHUNKS = Object.freeze([
   ['${ROAD_CARRIAGEWAY_GLSL}', ROAD_CARRIAGEWAY_GLSL],

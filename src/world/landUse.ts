@@ -19,6 +19,7 @@
 // reads the slot's shares and the slot→kind table as uniforms), and a region's fields are bounded its own way — a
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
+import * as detMath from '../sim/detMath.ts';
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'podhale' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
@@ -636,10 +637,10 @@ export function createLandFieldSample(): LandFieldSample {
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
 function warpX(x: number, z: number): number {
-  return Math.sin(x * 0.00523 + z * 0.00311 + 1.3) + 0.5 * Math.sin(x * -0.00197 + z * 0.00877 + 4.1);
+  return detMath.sin(x * 0.00523 + z * 0.00311 + 1.3) + 0.5 * detMath.sin(x * -0.00197 + z * 0.00877 + 4.1);
 }
 function warpZ(x: number, z: number): number {
-  return Math.sin(x * 0.00409 - z * 0.00587 + 2.7) + 0.5 * Math.sin(x * 0.00913 + z * 0.00241 + 0.6);
+  return detMath.sin(x * 0.00409 - z * 0.00587 + 2.7) + 0.5 * detMath.sin(x * 0.00913 + z * 0.00241 + 0.6);
 }
 
 /** The slot a field's roll picks — the GLSL lu_crop on the same cumulative shares (the uniforms' float32 values). */
@@ -672,7 +673,7 @@ export function inLandZone(zone: LandZone, x: number, z: number): boolean {
     if (zone.rect) return px >= zone.rect.x0 && px < zone.rect.x1 && pz >= zone.rect.z0 && pz < zone.rect.z1;
     if (zone.disc) return (px - zone.disc.x) ** 2 + (pz - zone.disc.z) ** 2 < zone.disc.r * zone.disc.r;
     if (zone.box) {
-      const a = zone.box.yawDeg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), dx = px - zone.box.x, dz = pz - zone.box.z;
+      const a = zone.box.yawDeg * Math.PI / 180, c = detMath.cos(a), sn = detMath.sin(a), dx = px - zone.box.x, dz = pz - zone.box.z;
       // (the hardstand's own frame: local x = (cos, −sin), local z = (sin, cos) — terrain.ts stampHardstand)
       return Math.abs(dx * c - dz * sn) < zone.box.w * 0.5 && Math.abs(dx * sn + dz * c) < zone.box.l * 0.5;
     }
@@ -698,7 +699,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   const kinds = new Uint8Array(7);
   for (let i = 0; i < 7; i++) kinds[i] = ((i < 4 ? v.landE[0] : v.landE[1]) >> ((i < 4 ? i : i - 4) * 5)) & 31;
   c = {
-    ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
+    ch: detMath.cos(v.landA[1]), sh: detMath.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
     warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0, works: v.landE[3] > 1.5 ? 1 : 0,
     zones: profile.zones?.length ? profile.zones.map((zone) => ({ zone, ...compileRotation(zone.region),
@@ -781,7 +782,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     const cx = ch * uc - sh * vc, cz = sh * uc + ch * vc;
     const ex = meadow.bx - meadow.ax, ez = meadow.bz - meadow.az, len2 = ex * ex + ez * ez;
     const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - meadow.ax) * ex + (cz - meadow.az) * ez) / len2)) : 0;
-    if (Math.hypot(cx - meadow.ax - ex * t, cz - meadow.az - ez * t) < meadow.halfWidthM) {
+    if (detMath.hypot(cx - meadow.ax - ex * t, cz - meadow.az - ez * t) < meadow.halfWidthM) {
       crop = (luRand(fieldA, fieldB, salt + 53) < 0.6 ? LAND_CROP.hay : LAND_CROP.pasture) as LandCropId;
     }
   }
@@ -810,7 +811,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   // each field's own row direction: the long side's axis turned up to ±20° by the field's hash (wave 14: one direction
   // per parcel, varied between parcels — never the block grid's two axes alternating as a woven crosshatch)
   const r0x = rowAlongU ? ch : -sh, r0z = rowAlongU ? sh : ch;
-  const ra = (luRand(fieldA, fieldB, salt + 41) - 0.5) * 0.7, rc = Math.cos(ra), rs = Math.sin(ra);
+  const ra = (luRand(fieldA, fieldB, salt + 41) - 0.5) * 0.7, rc = detMath.cos(ra), rs = detMath.sin(ra);
   out.rowX = r0x * rc - r0z * rs; out.rowZ = r0x * rs + r0z * rc;
   out.jitter = luRand(fieldA, fieldB, salt + 29);
   // the margin the material draws: a grass margin's own width; a bund's and a wall's fixed footing (LAND_USE_GLSL's
@@ -836,14 +837,14 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
 /** The wheel lanes' common drift across the track (m): both lanes and the crown between them meander ±0.48 m about the
  * track's line over 60–150 m — no farm track is ruled (LAND_USE_GLSL lu_laneM). */
 export function trackLaneMeander(u: number): number {
-  return 0.30 * Math.sin(u * 0.105 + 0.7) + 0.18 * Math.sin(u * 0.043 + 2.3);
+  return 0.30 * detMath.sin(u * 0.105 + 0.7) + 0.18 * detMath.sin(u * 0.043 + 2.3);
 }
 export function trackLaneCentre(u: number, side: number): number {
-  return 0.85 + 0.11 * (0.50 * Math.sin(u * 0.53 + side * 1.9) + 0.32 * Math.sin(u * 1.37 + side * 0.7 + 1.1)
-    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4)) + 0.025 * Math.sin(u * 7.9 + side * 3.1);
+  return 0.85 + 0.11 * (0.50 * detMath.sin(u * 0.53 + side * 1.9) + 0.32 * detMath.sin(u * 1.37 + side * 0.7 + 1.1)
+    + 0.18 * detMath.sin(u * 3.11 + side * 2.3 + 0.4)) + 0.025 * detMath.sin(u * 7.9 + side * 3.1);
 }
 export function trackLaneHalfWidth(u: number, side: number): number {
-  return 0.24 * (1 + 0.32 * Math.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * Math.sin(u * 1.13 + side * 1.3 + 2.0));
+  return 0.24 * (1 + 0.32 * detMath.sin(u * 0.37 + side * 2.6 + 0.4) + 0.16 * detMath.sin(u * 1.13 + side * 1.3 + 2.0));
 }
 
 function smooth(a: number, b: number, x: number): number {
@@ -877,8 +878,8 @@ const warpCode = (k: number): number => Math.min(255, Math.max(0, Math.round((k 
  * the warp twice a pixel.
  */
 function warpJacobian(x: number, z: number, warpM: number, out: Float64Array): void {
-  const c1 = Math.cos(x * 0.00523 + z * 0.00311 + 1.3), c2 = Math.cos(x * -0.00197 + z * 0.00877 + 4.1);
-  const c3 = Math.cos(x * 0.00409 - z * 0.00587 + 2.7), c4 = Math.cos(x * 0.00913 + z * 0.00241 + 0.6);
+  const c1 = detMath.cos(x * 0.00523 + z * 0.00311 + 1.3), c2 = detMath.cos(x * -0.00197 + z * 0.00877 + 4.1);
+  const c3 = detMath.cos(x * 0.00409 - z * 0.00587 + 2.7), c4 = detMath.cos(x * 0.00913 + z * 0.00241 + 0.6);
   out[0] = warpM * (0.00523 * c1 - 0.5 * 0.00197 * c2);
   out[1] = warpM * (0.00311 * c1 + 0.5 * 0.00877 * c2);
   out[2] = warpM * (0.00409 * c3 + 0.5 * 0.00913 * c4);
@@ -915,7 +916,7 @@ export function* bakeLandUseSteps(
       out[k] = (sample.active ? sample.crop & 31 : LAND_CROP_NONE) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0)
         | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0) | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
       out[k + 1] = (Math.min(63, Math.round(sample.jitter * 63)) << 2) | ((sample.split - 1) & 3);
-      const turn = Math.atan2(sample.rowZ, sample.rowX) / (2 * Math.PI);
+      const turn = detMath.atan2(sample.rowZ, sample.rowX) / (2 * Math.PI);
       const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
       out[k + 2] = code >> 8; out[k + 3] = code & 255;
       const u = offsetCode(sample.sU), v = offsetCode(sample.sV);

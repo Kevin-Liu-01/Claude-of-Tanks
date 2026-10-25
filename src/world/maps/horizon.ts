@@ -51,7 +51,7 @@ import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentFiel
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt, continuedGroundSampler } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
-import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
+import { buildBorderFarmsteadsSteps, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { installHorizonRing } from '../horizonRingHook.ts';
@@ -4068,7 +4068,7 @@ export function* buildHorizonRingSteps(
   }
   // (a ruined city or a country without farmland raises no farm building: its sites stay the copses round them)
   if (farmOptions && farmSites.length && farmSpec?.buildings !== false) {
-    const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
+    const farms = yield* buildBorderFarmsteadsSteps({ ...farmOptions, sites: farmSites });
     if (farms) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
       if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);

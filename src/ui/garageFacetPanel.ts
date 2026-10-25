@@ -10,6 +10,7 @@
 // (no Garage shortcut sees it); Escape clears a non-empty search, then closes and returns focus to the toggle.
 
 import { t } from './i18n.ts';
+import { emptyState } from './components/components.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from './vehicleFacetIcons.ts';
 import {
@@ -199,12 +200,10 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     return wrap;
   });
 
-  const empty = document.createElement('p');
-  empty.className = 'cot-facet-empty';
-  empty.innerHTML = vehicleClassGlyphSVG(CONCEPT_PROTOTYPE_CLASS_FILTER, 40);
-  const emptyText = document.createElement('span');
-  emptyText.textContent = t('fleet.filter.noMatch');
-  empty.append(emptyText);
+  // no vehicle matches: the kit's empty state (one line), shown and hidden with the filters
+  const emptyHost = document.createElement('div');
+  emptyHost.innerHTML = emptyState({ text: t('fleet.filter.noMatch'), icon: 'search', className: 'cot-facet-empty' });
+  const empty = emptyHost.firstElementChild as HTMLElement;
   empty.hidden = true;
 
   panel.append(head, ...rows, empty);

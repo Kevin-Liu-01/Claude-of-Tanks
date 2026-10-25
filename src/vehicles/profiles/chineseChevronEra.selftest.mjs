@@ -3,9 +3,9 @@ import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {chineseArrowCassette} from './chineseChevron.ts';
 // Owner 2026-10-15 (VEH-19, VEH-20): the Kunlun's chevron cassettes now lie on the Type 96B wedge (chinaDonorTurretKit.ts,
-// twelve again); the Qilin carries the production ZTZ-99A2 turret, whose chevrons are the 99A2's own (china.ts receipts).
-// Release 227: the Yun's twelve lie on its wrap housing's front facets round its Type 96B (two a facet), and the Qilin's
-// own eight on its flank sleeves' brows (two on each of a brow's two facets) beside the 99A2's chevrons.
+// twelve again). Release 227: the Yun's twelve lie on its wrap housing's front facets round its Type 96B (two a facet).
+// 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin's eight lie on its sleeves'
+// brows round its Type 96B (two on each of a brow's two front facets).
 const IDS=['t80u_yun','t72b3m_kunlun','t72b3_qilin'];
 const COUNT={t80u_yun:12,t72b3m_kunlun:12,t72b3_qilin:8};
 const v=p=>new T.Vector3(...p),mat=new T.MeshBasicMaterial({side:T.DoubleSide});

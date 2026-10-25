@@ -6,6 +6,7 @@
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
 import { readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
+import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
   CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
   MAX_CONTROLS_PER_INPUT, MAX_DETAIL_BYTES, MAX_ENTITIES, MAX_EVENTS_PER_MESSAGE,
@@ -22,7 +23,7 @@ import type {
   WireEvent, WireMessage,
 } from './messages.ts';
 import {
-  applyEntityRowPatch, diffEntityRow, readEntityRowPatch, writeEntityRowPatch,
+  applyEntityRowPatch, diffEntityRow, readEntityRowPatch, writeEntityRowDelta, writeEntityRowPatch,
 } from './rows.ts';
 
 export type DecodeResult =
@@ -275,9 +276,11 @@ function writeEvents(writer: ByteWriter, message: EventMessage): void {
       writer.u8(EVENT_KIND_OTHER);
       writer.string(event.kind, MAX_ID_BYTES);
     } else writer.u8(known);
-    const json = JSON.stringify(event.payload);
-    if (typeof json !== 'string' || json[0] !== '{') throw new WireError('bad_json', 'event payload must be a JSON object');
-    writer.string(json, MAX_EVENT_JSON_BYTES);
+    // wire 8: the payload in binary (eventPayload.ts), length-prefixed
+    const payload = event.encoded ?? encodeEventPayload(event.payload);
+    if (payload.byteLength > MAX_EVENT_JSON_BYTES) throw new WireError('bad_length', `event payload exceeds ${MAX_EVENT_JSON_BYTES} bytes`);
+    writer.varint(payload.byteLength);
+    writer.raw(payload);
   }
 }
 
@@ -492,15 +495,40 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0);
   const destroyed = readDestroyedSet(reader);
   const baseline = keyframe ? null : resolveBaseline(baseTick);
-  const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
+  // the baseline's row for an entity: a cursor while the patches come in entity order (every host writes them so, over a
+  // sorted baseline), a map built once if they ever do not (mp-scale-251: no map a snapshot)
+  const baseEntities = baseline ? baseline.entities : null;
+  const baseSorted = baseEntities ? rowsSorted(baseEntities) : false;
+  let baseCursor = 0;
+  let lastResolved = 0;
+  let baseRows: Map<number, EntityRow> | null = null;
+  const resolveBase = (entityId: number): EntityRow | null => {
+    if (!baseEntities) return null;
+    if (baseSorted && !baseRows && entityId > lastResolved) {
+      lastResolved = entityId;
+      while (baseCursor < baseEntities.length && baseEntities[baseCursor]!.entityId < entityId) baseCursor++;
+      const row = baseEntities[baseCursor];
+      return row && row.entityId === entityId ? row : null;
+    }
+    baseRows ??= new Map(baseEntities.map((row) => [row.entityId, row]));
+    return baseRows.get(entityId) ?? null;
+  };
+  let lastEntityId = 0;
   const entityCount = reader.u8();
   if (entityCount > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   const entities: EntityRowPatch[] = [];
-  const seen = new Set<number>();
+  let ordered = true;
+  let seen: Set<number> | null = null;
   for (let index = 0; index < entityCount; index++) {
-    const patch = readEntityRowPatch(reader, (entityId) => baseRows?.get(entityId) ?? null, tick);
-    if (seen.has(patch.entityId)) throw new WireError('invalid_message', `duplicate entity row ${patch.entityId}`);
-    seen.add(patch.entityId);
+    const patch = readEntityRowPatch(reader, resolveBase, tick);
+    if (ordered && patch.entityId > lastEntityId) {
+      lastEntityId = patch.entityId;
+    } else {
+      // out of order: duplicates are caught by a set from here on (an in-order list cannot repeat an id)
+      if (ordered) { ordered = false; seen = new Set(entities.map((entry) => entry.entityId)); }
+      if (seen!.has(patch.entityId)) throw new WireError('invalid_message', `duplicate entity row ${patch.entityId}`);
+    }
+    seen?.add(patch.entityId);
     entities.push(patch);
   }
   const removedCount = reader.u8();
@@ -541,13 +569,8 @@ function readEvents(reader: ByteReader): EventMessage {
     if (kindIndex === EVENT_KIND_OTHER) kind = reader.string(MAX_ID_BYTES);
     else if (kindIndex < EVENT_KIND_NAMES.length) kind = EVENT_KIND_NAMES[kindIndex]!;
     else throw new WireError('range', `event kind out of range: ${kindIndex}`);
-    const json = reader.string(MAX_EVENT_JSON_BYTES);
-    let payload: unknown;
-    try { payload = JSON.parse(json); } catch { throw new WireError('bad_json', 'event payload is not JSON'); }
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-      throw new WireError('bad_json', 'event payload must be a JSON object');
-    }
-    events.push({ kind, payload: payload as Record<string, unknown> });
+    const length = reader.count(MAX_EVENT_JSON_BYTES);
+    events.push({ kind, payload: readEventPayload(reader.take(length)) });
   }
   return { type: MESSAGE_TYPE.EVENT, tick, events };
 }
@@ -628,6 +651,127 @@ function destroyedAdditions(base: readonly number[], next: readonly number[]): n
   return next.filter((index) => !known.has(index));
 }
 
+function rowsSorted(rows: readonly EntityRow[]): boolean {
+  for (let index = 1; index < rows.length; index++) if (rows[index]!.entityId <= rows[index - 1]!.entityId) return false;
+  return true;
+}
+
+function indicesSorted(indices: readonly number[]): boolean {
+  for (let index = 1; index < indices.length; index++) if (indices[index]! <= indices[index - 1]!) return false;
+  return true;
+}
+
+function patchesSorted(patches: readonly EntityRowPatch[]): boolean {
+  for (let index = 1; index < patches.length; index++) if (patches[index]!.entityId <= patches[index - 1]!.entityId) return false;
+  return true;
+}
+
+/** The union of two strictly increasing lists, strictly increasing. */
+function sortedUnion(a: readonly number[], b: readonly number[]): number[] {
+  const out: number[] = [];
+  let i = 0, j = 0;
+  while (i < a.length || j < b.length) {
+    const next = j >= b.length || (i < a.length && a[i]! <= b[j]!) ? a[i]! : b[j]!;
+    if (i < a.length && a[i] === next) i++;
+    if (j < b.length && b[j] === next) j++;
+    out.push(next);
+  }
+  return out;
+}
+
+const NO_INDICES: readonly number[] = Object.freeze([]);
+const additionScratch: number[] = [];
+
+/** The destroyed indices in `next` that `base` lacks, both strictly increasing: a merge walk, into a reused list. */
+function sortedAdditions(base: readonly number[], next: readonly number[]): readonly number[] {
+  if (next === base || next.length === base.length && next.length === 0) return NO_INDICES;
+  additionScratch.length = 0;
+  let cursor = 0;
+  for (const index of next) {
+    while (cursor < base.length && base[cursor]! < index) cursor++;
+    if (cursor < base.length && base[cursor] === index) { cursor++; continue; }
+    additionScratch.push(index);
+  }
+  return additionScratch;
+}
+
+/**
+ * The SNAPSHOT bytes of `frame` against the viewer's acknowledged baseline (null: a keyframe): the same bytes as
+ * encodeMessage(buildSnapshotPacket(frame, baseline), baseline), written straight from the frames (mp-scale-251, the
+ * host encodes every viewer's frame on every snapshot). Rows sorted by entity id are walked against the baseline's
+ * without a map or a patch (writeEntityRowDelta), the counts set once their rows are written, an unchanged destroyed
+ * list costs nothing to compare. Frames whose rows or destroyed lists are not sorted take the packet path.
+ */
+export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFrame | null): Uint8Array {
+  if (!rowsSorted(frame.entities) || (baseline && (!rowsSorted(baseline.entities)
+    || !indicesSorted(frame.destroyed) || !indicesSorted(baseline.destroyed)))) {
+    return encodeMessage(buildSnapshotPacket(frame, baseline), baseline);
+  }
+  const writer = sharedWriter;
+  writer.reset();
+  header(writer, MESSAGE_TYPE.SNAPSHOT);
+  const keyframe = !baseline;
+  const frameDestruction = frame.destruction ?? [];
+  const destructionBase = baseline ? (baseline.destruction ?? []).length : 0;
+  const destructionCount = Math.max(0, frameDestruction.length - destructionBase);
+  const hasVerdict = frame.meta.verdict !== 0;
+  writer.u32(tickOrNone(frame.tick));
+  writer.u32(frame.serverTimeMs);
+  writer.u8((keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
+    (frame.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
+    (frame.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
+    (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
+    (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0));
+  writer.u32(keyframe ? NO_TICK : tickOrNone(baseline.tick));
+  writer.u32(tickOrNone(frame.ackedInputTick));
+  writer.u16(frame.ackedFireSeq);
+  writer.u16(frame.ackedActionSeq);
+  writer.i8(frame.inputMarginTicks);
+  writeMeta(writer, frame.meta, hasVerdict);
+  writeDestroyedSet(writer, baseline ? sortedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed);
+  // the rows: every row on a keyframe, a changed one on a delta (both lists sorted by entity id)
+  if (frame.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
+  const rowCountAt = writer.length;
+  writer.u8(0);
+  let rows = 0;
+  const baseRows = baseline ? baseline.entities : null;
+  let cursor = 0;
+  for (const row of frame.entities) {
+    let base: EntityRow | null = null;
+    if (baseRows) {
+      while (cursor < baseRows.length && baseRows[cursor]!.entityId < row.entityId) cursor++;
+      if (cursor < baseRows.length && baseRows[cursor]!.entityId === row.entityId) base = baseRows[cursor]!;
+    }
+    if (writeEntityRowDelta(writer, row, base, frame.tick) > 0) rows++;
+  }
+  writer.setU8(rowCountAt, rows);
+  // the rows a delta's baseline held and the frame does not: removed
+  const removedCountAt = writer.length;
+  writer.u8(0);
+  let removed = 0;
+  if (baseRows) {
+    let at = 0;
+    for (const base of baseRows) {
+      while (at < frame.entities.length && frame.entities[at]!.entityId < base.entityId) at++;
+      if (at < frame.entities.length && frame.entities[at]!.entityId === base.entityId) continue;
+      if (++removed > MAX_ENTITIES) throw new WireError('too_many', 'snapshot removals');
+      writer.u8(base.entityId);
+    }
+  }
+  writer.setU8(removedCountAt, removed);
+  if (frame.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
+  writer.u16(frame.shells.length);
+  for (const shell of frame.shells) writeShell(writer, shell);
+  if (frame.viewer) writeViewer(writer, frame.viewer, keyframe ? null : baseline.viewer ?? null);
+  if (frame.modeStateJson != null) writer.string(frame.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
+  if (destructionCount) {
+    writer.u32(keyframe ? 0 : destructionBase);
+    writeDestructionEntries(writer, frameDestruction.slice(destructionBase));
+  }
+  if (writer.length > MAX_MESSAGE_BYTES) throw new WireError('bad_length', `message exceeds ${MAX_MESSAGE_BYTES} bytes`);
+  return writer.toBytes();
+}
+
 /**
  * Build the wire packet for `frame` against the viewer's acknowledged
  * baseline (null = keyframe). Every row that differs, every hidden entity and
@@ -673,29 +817,52 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     throw new WireError('missing_baseline', `delta snapshot ${packet.tick} needs baseline ${packet.baseTick}`);
   }
   const base = packet.keyframe ? null : baseline;
-  const rows = frameRowMap(base);
-  const removed = new Set(packet.removed);
   const entities: EntityRow[] = [];
-  const patched = new Set<number>();
-  for (const patch of packet.entities) {
-    patched.add(patch.entityId);
-    entities.push(applyEntityRowPatch(patch, rows.get(patch.entityId) ?? null));
-  }
-  if (base) {
-    for (const row of base.entities) {
-      if (!patched.has(row.entityId) && !removed.has(row.entityId)) entities.push(row);
+  if (patchesSorted(packet.entities) && indicesSorted(packet.removed) && (!base || rowsSorted(base.entities))) {
+    // (mp-scale-251) every host's order: the patches, the removals and the baseline's rows by entity id, merged in one
+    // walk without a map or a set; the same frame as the general path below
+    const baseRows = base ? base.entities : [];
+    let at = 0, removedAt = 0;
+    for (const patch of packet.entities) {
+      while (at < baseRows.length && baseRows[at]!.entityId < patch.entityId) {
+        const row = baseRows[at++]!;
+        while (removedAt < packet.removed.length && packet.removed[removedAt]! < row.entityId) removedAt++;
+        if (packet.removed[removedAt] !== row.entityId) entities.push(row);
+      }
+      const base = at < baseRows.length && baseRows[at]!.entityId === patch.entityId ? baseRows[at++]! : null;
+      entities.push(applyEntityRowPatch(patch, base));
     }
+    for (; at < baseRows.length; at++) {
+      const row = baseRows[at]!;
+      while (removedAt < packet.removed.length && packet.removed[removedAt]! < row.entityId) removedAt++;
+      if (packet.removed[removedAt] !== row.entityId) entities.push(row);
+    }
+  } else {
+    const rows = frameRowMap(base);
+    const removed = new Set(packet.removed);
+    const patched = new Set<number>();
+    for (const patch of packet.entities) {
+      patched.add(patch.entityId);
+      entities.push(applyEntityRowPatch(patch, rows.get(patch.entityId) ?? null));
+    }
+    if (base) {
+      for (const row of base.entities) {
+        if (!patched.has(row.entityId) && !removed.has(row.entityId)) entities.push(row);
+      }
+    }
+    entities.sort((a, b) => a.entityId - b.entityId);
   }
-  entities.sort((a, b) => a.entityId - b.entityId);
-  const destroyed = base
-    ? [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b)
-    : packet.destroyed.slice();
+  // the persistent lists: the baseline's own arrays when the packet adds nothing (frames never change them)
+  const destroyed = !base ? packet.destroyed.slice()
+    : !packet.destroyed.length ? base.destroyed
+      : indicesSorted(base.destroyed) && indicesSorted(packet.destroyed) ? sortedUnion(base.destroyed, packet.destroyed)
+        : [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b);
   const baseLog = base ? base.destruction ?? [] : [];
   const additions = packet.destruction ?? [];
   if (base && additions.length && packet.destructionBase !== baseLog.length) {
     throw new WireError('invalid_message', `destruction log delta follows ${packet.destructionBase}, the baseline holds ${baseLog.length}`);
   }
-  const destruction = additions.length ? [...baseLog, ...additions] : baseLog.slice();
+  const destruction = additions.length ? [...baseLog, ...additions] : base ? baseLog : [];
   return {
     tick: packet.tick,
     serverTimeMs: packet.serverTimeMs,

@@ -22,9 +22,18 @@ tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
   `localRoomService.ts` (the in-process match the LAN helper and the receipts
   use), `server/match/README.md`. The same actor runs in the host commander's
   browser (`src/mp/host`).
+- Scaling with the player count (`docs/MULTIPLAYER-V2.md` §13.30): a viewer
+  frame reads the authority's view (`observeForViewer`, `snapshotMeta`), never a
+  full viewer snapshot; the publisher encodes straight from the frames
+  (`encodeSnapshotFrame`) on each viewer's keyframe slot, every 6 s; the
+  snapshot budget (`interestTiers.ts`) shares the host's uplink target among the
+  viewers; events go as binary payloads encoded once (wire 8). Measure with
+  `tools/mp-scale-bench.mjs` before and after any change to that path.
 - `rooms/` is the LAN / offline helper (`npm run server:mp`, port 8792): the
   shared room actor (`src/mp/room/roomActor.ts`) over real sockets, the match
   in-process or in the admin's browser (`COT_ROOMS_MATCH_TRANSPORT`).
+  `COT_ROOM_DEV_MAX_TEAM_SIZE` (up to 32) lets a versus room seat a larger,
+  bot-filled test team; the rooms Worker never sets it.
 - `dedicatedWorldCollision.ts` inflates match-local state from generated
   per-map collision shards (`collisionManifestCodec.ts`, `collisionManifestLoader.ts`,
   `mapResourceCache.ts`); do not hand-edit their records or checksum index. Keep

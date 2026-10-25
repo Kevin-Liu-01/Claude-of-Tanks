@@ -49,7 +49,8 @@ const INTEG_STACK_GAP = 8;
 const RING_CEILING = 0.15;
 /** The compact notice and alert (battleHudLayout.css data-touch-notices). */
 export const TOUCH_COMPACT_NOTICE: TouchSize = { w: 136, h: 32 };
-export const TOUCH_COMPACT_ALERT: TouchSize = { w: 150, h: 40 };
+// (the compact alert as wide as the compact notice: stacked, the notices are one column, gauntlet r3)
+export const TOUCH_COMPACT_ALERT: TouchSize = { w: 136, h: 40 };
 
 /**
  * The reticle's footprint at full bloom on a touch layout (see the module's note), as boxes. `seated`: the warning chip

@@ -102,11 +102,11 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   const moved=new Set(turretModules.map(m=>m.module));
   s.armor.modules=structuredClone([...hull.armor.modules.filter(m=>!m.turretLocal&&!moved.has(m.module)),...turretModules]);
   s.armor.crew=structuredClone([...hull.armor.crew.filter(m=>!m.turretLocal),...turret.armor.crew.filter(m=>m.turretLocal)]);
-  // Release 227: a donor turret built with its bustle cut (the Qilin's ZTZ-99A2, donorBustleCut.ts) carries the same cut in
-  // its turret plates, modules and crew, so the hit model is the turret that is drawn.
+  // Release 227: a donor turret built with its bustle cut (donorBustleCut.ts; release 227's Qilin on its ZTZ-99A2, until
+  // 252) carries the same cut in its turret plates, modules and crew, so the hit model is the turret that is drawn.
   const cut=Number(d.builderOptions?.bustleCutM??0);
   if(cut>0)cutDonorTurretArmor(s.armor,cut);
-  // A donor turret built without its open side bins (the Yun's Type 96B: its armour housings fill that volume) carries
+  // A donor turret built without its open side bins (the Yun's and the Qilin's Type 96B: their armour housings fill that volume) carries
   // no stowage screens in its hit model either: nothing is drawn where they stood.
   if(d.builderOptions?.bins===false)s.armor.turretPlates=s.armor.turretPlates.filter(p=>!/^turret_stowage_screen_[LR]$/.test(p.name));
   s.armor.turretPivot=[...d.pivot];

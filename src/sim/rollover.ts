@@ -7,6 +7,7 @@
  * mates can physically right the vehicle before assisted recovery begins.
  */
 
+import * as detMath from './detMath.ts';
 /**
  * Bots right themselves after this long on their side or roof (owner 2026-09-20: "bots should automatically right
  * themselves after like 5 seconds being upside down"; 15 s until then). Only bots run the lifecycle — a player
@@ -106,7 +107,7 @@ export function stepRolloverLifecycle(state: RolloverState, dt: number): boolean
     (state._rollover = { elapsedS: 0, expired: false });
   if (!(dt > 0) || !Number.isFinite(dt)) return false;
 
-  const upY = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0);
+  const upY = detMath.cos(state.visualPitch || 0) * detMath.cos(state.visualRoll || 0);
   const trapped = state.overturned === true ||
     (state._body?.tumbling === true && upY < SIDE_UP_Y);
   if (!trapped) {

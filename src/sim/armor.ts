@@ -24,6 +24,7 @@ import type { AuxiliaryInventory } from '../vehicles/auxiliaryInventory.ts';
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import type { ModuleId } from './moduleCatalog.ts';
 
+import * as detMath from './detMath.ts';
 type FrameIndex = 0 | 1 | 2 | 3 | 4;
 type Vec3Tuple = readonly [number, number, number];
 type TrackModuleId = 'trackL' | 'trackR';
@@ -545,7 +546,7 @@ function traceCollisionShell(
       kind: 'plate',
       plate: face.plate,
       collisionFace: face,
-      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+      impactAngleDeg: detMath.acos(cosI) * DEG_PER_RAD,
     }, frame, first.t, n[0], n[1], n[2]));
   }
 }
@@ -1023,7 +1024,7 @@ function clipTrackPrismEdge(
 ): boolean {
     const ez = b[0] - a[0];
     const ey = b[1] - a[1];
-    const len = Math.hypot(ez, ey);
+    const len = detMath.hypot(ez, ey);
     if (len < 1e-9) return true;
     const onz = ey / len;  // outward normal of a CCW edge in (z,y)
     const ony = -ez / len;
@@ -1138,7 +1139,7 @@ function tracePlates(
       t,
       kind: 'plate',
       plate,
-      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+      impactAngleDeg: detMath.acos(cosI) * DEG_PER_RAD,
     }, frameForPlate, t, _n.x, _n.y, _n.z));
   }
 }
@@ -1177,7 +1178,7 @@ function traceTrackShapes(
         t,
         kind: 'plate',
         plate: shape.plate,
-        impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+        impactAngleDeg: detMath.acos(cosI) * DEG_PER_RAD,
       }, FR_HULL, t, _pnx, _pny, _pnz));
     }
     if (shape.module === 'trackL') {
@@ -1305,7 +1306,7 @@ function traceExternalWeapons(parts: ArmorModel['externalWeapons'], out: ArmorIn
     const cosI = Math.min(1, Math.max(0, -(
       _dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));
     out.push(finishFrameHit({ t: nearest, kind: 'plate', plate,
-      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD }, frame, nearest, nx, ny, nz));
+      impactAngleDeg: detMath.acos(cosI) * DEG_PER_RAD }, frame, nearest, nx, ny, nz));
   }
 }
 const EMPTY_WEAPONS: readonly ExternalWeaponStock[] = Object.freeze([]);

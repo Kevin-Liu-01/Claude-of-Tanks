@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { HAY_PRINT_SEED, paintHayBuffers } from './hayPrint.ts';
 import { FIELD_STONE_PRINT_SEED, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { FIELD_MUD_PRINT_SEED, paintFieldMudBuffers } from './fieldMudSurface.ts';
 import { registerPaintNoise, settledPaint, startSurfacePaints, surfacePaintKey } from './surfacePaintPrefetch.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { paintRockDetailBuffers } from './rockDressing.ts';
@@ -35,6 +36,8 @@ const jobs = [
   { kind: 'hay', size: 256, seed: HAY_PRINT_SEED },
   { kind: 'fieldStone', size: 256, seed: FIELD_STONE_PRINT_SEED, lithology: 'fieldstone' },
   { kind: 'fieldStone', size: 256, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' },
+  // (battle-spikes-253) a mud-walled map's render
+  { kind: 'fieldMud', size: 256, seed: FIELD_MUD_PRINT_SEED },
   ...LITHOLOGIES.map((lithology) => ({ kind: 'rockDetail', lithology, noiseSeed: 2009 })),
   ...['wood', 'canvas', 'steel'].map((detail) => ({ kind: 'structureDetail', detail, noiseSeed: 2009 })),
 ].map((job, i) => ({ ...job, id: i + 1 }));
@@ -44,6 +47,7 @@ const inline = (job) => {
   switch (job.kind) {
     case 'hay': return drain(paintHayBuffers(job.size, job.seed));
     case 'fieldStone': return drain(paintFieldStoneBuffers(job.size, job.seed, job.lithology));
+    case 'fieldMud': return drain(paintFieldMudBuffers(job.size, job.seed));
     case 'rockDetail': return drain(paintRockDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.lithology));
     default: return paintStructureDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.detail);
   }
@@ -56,6 +60,7 @@ replies.forEach(({ reply, transfer }, i) => {
 });
 // the default seeds are the named ones (a painter called without one paints the same print)
 assert.deepEqual(digest(drain(paintHayBuffers(256))), digest(drain(paintHayBuffers(256, HAY_PRINT_SEED))));
+assert.deepEqual(digest(drain(paintFieldMudBuffers(256))), digest(drain(paintFieldMudBuffers(256, FIELD_MUD_PRINT_SEED))));
 
 // the prefetch: one job per distinct print, handed over once, by its exact arguments; a failure surfaces where taken
 {
@@ -116,6 +121,9 @@ assert.ok(plan('verdant').includes(`hay|512|${HAY_PRINT_SEED}`));
 assert.ok(plan('verdant').some((k) => k.startsWith('fieldStone|512|')), 'a dry-stone map paints its walls\' print');
 assert.ok(!plan('urban').some((k) => k.startsWith('fieldStone')), 'a brick map paints no dry-stone print');
 assert.ok(!plan('desert', { wallStyle: 'adobe' }).some((k) => k.startsWith('fieldStone')), 'nor an adobe-walled one');
+// (battle-spikes-253) the mud render only where the walls are mud
+assert.ok(plan('desert', { wallStyle: 'adobe' }).includes(`fieldMud|512|${FIELD_MUD_PRINT_SEED}`), 'an adobe-walled map paints its mud render ahead');
+assert.ok(!plan('verdant').some((k) => k.startsWith('fieldMud')), 'a dry-stone map paints none');
 for (const id of ['verdant', 'urban', 'desert', 'fjord']) {
   const keys = plan(id);
   for (const detail of ['wood', 'canvas', 'steel']) assert.ok(keys.includes(`structureDetail|${detail}|2009`), `${id}: the ${detail} tile from the build's noise`);
@@ -123,4 +131,4 @@ for (const id of ['verdant', 'urban', 'desert', 'fjord']) {
 }
 assert.deepEqual(plannedSurfacePaints({ id: 'verdant', props: {} }, 1337).filter((r) => r.noiseSeed !== undefined).map((r) => r.noiseSeed),
   [1344, 1344, 1344, 1344], 'another props seed, another noise');
-console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');
+console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');

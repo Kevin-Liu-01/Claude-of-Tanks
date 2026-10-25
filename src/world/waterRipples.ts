@@ -3,6 +3,7 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { getDeviceTier, presetLightWorld } from '../engine/quality.ts';
 import type { WaterDisturbance } from './shallowWater.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /**
  * Water pass 8 (2026-09-23, owner: "when the tank is in and rolling it looks so jank and not reactive — literally a
  * static PNG following you"): a world-anchored shallow-water simulation on the GPU.
@@ -308,7 +309,7 @@ export function createWaterRippleField(
       for (let i = 0; i < n; i++) {
         const s = sources[i];
         let fx = s.dirX ?? 0, fz = s.dirZ ?? 1;
-        const len = Math.hypot(fx, fz);
+        const len = detMath.hypot(fx, fz);
         if (Number.isFinite(len) && len > 1e-6) { fx /= len; fz /= len; } else { fx = 0; fz = 1; }
         const strength = Number.isFinite(s.strength) ? Math.min(1, Math.max(0, s.strength)) : 0;
         const speed = Math.abs(s.speed ?? 0);

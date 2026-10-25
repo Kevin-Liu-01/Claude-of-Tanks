@@ -7,7 +7,8 @@ import {
   SAVED_TANK_IDS,
   TANK_SPECS,
 } from '../src/vehicles/specs.ts';
-import { tankTier, tierNumeral } from '../src/vehicles/tier.ts';
+import { tankTier } from '../src/vehicles/tier.ts';
+import { tierNumeral } from '../src/techTree/tiers.ts';
 import { vehicleEraLabel } from '../src/vehicles/taxonomy.ts';
 
 const REPORT_URL = new URL('../docs/VEHICLE-ROSTER.md', import.meta.url);

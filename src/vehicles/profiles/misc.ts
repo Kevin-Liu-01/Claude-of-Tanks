@@ -31,6 +31,8 @@ import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
+import { refineCastLoft } from '../factoryGeometry.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -2410,13 +2412,22 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
   // fully under the 1.39-1.45 deck line so no side column cost)
   const cable = FITTINGS.towCable({ mats: P.mats, pts: [[1.50, 1.20, 1.90], [1.55, 1.20, 0.40], [1.52, 1.20, -1.20]], r: 0.018, seed: 4 });
   P.hullG.add(cable);
-  P.decal('hull', 'number', '90-2274', 0.22, [-0.85, 0.95, 3.32], 0, -0.15);
+  // owner 2026-10-25: this build is the TK-X first-series prototypes STC-1 / STC-2 (tankLabels.ts), so the glacis carries
+  // the prototype's serial where a production hull carried its registration
+  P.decal('hull', 'number', type90PrototypeSerial(P), 0.19, [-0.85, 0.95, 3.32], 0, -0.15);
   P.decal('hull', 'soot', null, 0.5, [-0.9, 1.1, -3.7], Math.PI);
 }
+
+/** The TK-X prototype this Type 90 build is (spec.visual.number: STC-1 or STC-2, japan.ts). */
+const type90Prototype = (P: MiscBuilderPort): string => P.spec.visual?.number === 'STC-2' ? 'STC-2' : 'STC-1';
+const type90PrototypeSerial = (P: MiscBuilderPort): string => type90Prototype(P) === 'STC-2' ? 'TK-X-0002' : 'TK-X-0001';
 
 function buildType90SkirtsAndRunningGear(P: MiscBuilderPort): void {
   const { box, buildRunningGear, fenders } = KIT;
   const slab = orientedSlab;
+  // owner 2026-10-25: the first prototype (STC-1) ran a rubber skirt sheet over the mid run; the armoured front panels
+  // and the rear course stay steel. The second (STC-2) carries the steel sheet the series kept.
+  const sheet = type90Prototype(P) === 'STC-1' ? 'hullRubber' : 'hull';
   // skirts: the ref's 3-zone width profile. FRONT armored panels outer
   // 1.703 + the widthM strip at exactly +-1.715 (WIDTH GUARD, z 1.6..3.2);
   // MID rubber sheet inset to 1.585 (1.545 amidships); REAR course back out
@@ -2454,13 +2465,13 @@ function buildType90SkirtsAndRunningGear(P: MiscBuilderPort): void {
     // The shoe outer face 1.5515 keeps the ±1.56 front col's ground read
     // (10 mm in-window); only the ±1.60 pair is CEDED to the skirt band
     // (hem 0.608, err ~0.31 x2) — measured trade vs +24 stations.
-    P.add('hull', box(0.040, 0.565, 0.34), s * 1.581, 0.8905, -1.93);          // MID sheet aft course (outer 1.601, z -2.10..-1.76 — end-caps INSIDE station i3 [-2.284..-1.747]: the print's slab cadence ALTERNATES 3.187/3.093 and i4 wants the inset plane)
+    P.add(sheet, box(0.040, 0.565, 0.34), s * 1.581, 0.8905, -1.93);           // MID sheet aft course (outer 1.601, z -2.10..-1.76 — end-caps INSIDE station i3 [-2.284..-1.747]: the print's slab cadence ALTERNATES 3.187/3.093 and i4 wants the inset plane)
     for (const zc of [-1.57, -1.19, -0.81, -0.43, -0.05, 0.33, 0.71]) {        // amidships inset course (outer 1.5645, inner 1.5445 = 1.6 cm off the band, z -1.76..0.90)
-      P.add('hull', box(0.020, 0.565, 0.38), s * 1.5545, 0.8905, zc);
+      P.add(sheet, box(0.020, 0.565, 0.38), s * 1.5545, 0.8905, zc);
     }
-    P.add('hull', box(0.020, 0.565, 0.18), s * 1.5545, 0.8905, 0.99);          // inset filler to 1.08 (fore-course caps stay out of station i8)
+    P.add(sheet, box(0.020, 0.565, 0.18), s * 1.5545, 0.8905, 0.99);           // inset filler to 1.08 (fore-course caps stay out of station i8)
     for (const [zc, d] of [[1.26, 0.36], [1.62, 0.36], [1.98, 0.36], [2.34, 0.36], [2.475, 0.15]]) { // MID sheet fore run (outer 1.601, z 1.08..2.55)
-      P.add('hull', box(0.040, 0.565, d), s * 1.581, 0.8905, zc);
+      P.add(sheet, box(0.040, 0.565, d), s * 1.581, 0.8905, zc);
     }
     for (let k = 0; k < 2; k++) {                                              // REAR course (outer 1.693, z -3.40..-2.41). (The r4 "1.64-col lerp-junk"
       P.add('hull', box(0.04, 0.565, 0.485), s * 1.673, 0.8905, -3.155 + k * 0.505); // residual dissolved with the ad39179 trim-boundary amendment —
@@ -2589,8 +2600,11 @@ function buildType90Turret(P: MiscBuilderPort): void {
     [-1.18, -1.155], [-1.30, -1.127], [-1.30, 1.19], [-1.20, 1.19], [-1.08, 1.70], [-0.93, 1.84], [-0.80, 1.92],
   ];
   // TANK-OPT companions (227): the band's open bottom shows the inside from below a thrown turret; polyTurret's
-  // closeBottom closes it. Held for the gun-hull lane's Type 90 batch (240): that lane passes `true` and regenerates.
-  P.add('turret', KIT.polyTurret(PLAN_LO, 0.70, 1.0, 1.0), 0, 0.03, 0);        // wall band 1.43..2.13 — the REAL near-vertical welded slab sides (the r6 1.423-1.446 underside base holds; §B7: the print's 1.77 wall top is the squashed read)
+  // closeBottom closes it. 253 (the STC-1 / STC-2 batch, which regenerates both consumers): closed. The seated band's
+  // right wall stands 8 mm higher at its front corner than its left (world 1.464 against 1.456), so from the right a
+  // level sightline under that edge met the left wall's inside — a slit along the ring line that STC-2's cheek
+  // carriers used to cover (tank-sealed-check: 5 open views once they went); the bottom fan meets every such ray.
+  P.add('turret', KIT.polyTurret(PLAN_LO, 0.70, 1.0, 1.0, true), 0, 0.03, 0);        // wall band 1.43..2.13 — the REAL near-vertical welded slab sides (the r6 1.423-1.446 underside base holds; §B7: the print's 1.77 wall top is the squashed read)
   P.add('turret', KIT.polyTurret(PLAN_HI, 0.08, 1.0, 1.0), 0, 0.73, 0);        // wall extension band 2.13..2.21 (plan unchanged — footprint is registration-neutral)
   P.add('turret', box(1.96, 0.36, 1.855), 0, 0.76, 0.5475);                    // roof plate x +-0.98, TOP 2.34 (the published datum), z_w -0.578..1.278 (r7: rear cap moved OFF station slab i5 [-1.224..-0.684] into i6 — a z-cap face paints the whole 1.98..2.34 band into its slab under the front-clip END-CAP law; the print's own sheet roof vanishes mid-slab and its i4/i5 tops read the 2.24 shelf line)
   for (const s of [-1, 1]) {
@@ -2626,6 +2640,12 @@ function buildType90Turret(P: MiscBuilderPort): void {
   P.add('turretDark', torus(0.22, 0.011, 14), 0.56, 0.988, -0.17);
   P.add('turret', cylY(0.195, 0.21, 0.020, 14), 0.56, 1.005, -0.17);           // lid (crown 2.415)
   P.add('turretDark', box(0.36, 0.010, 0.03), 0.56, 1.017, -0.17);
+  if (type90Prototype(P) === 'STC-1') {
+    // owner 2026-10-25: the first prototype's commander's IR lamp, seated 5 mm into the outboard ring segment's top (1.00)
+    P.add('turretDetail', box(0.12, 0.10, 0.16), 0.855, 1.045, -0.13);
+    P.add('turretDark', box(0.105, 0.085, 0.012), 0.855, 1.045, -0.048);
+    P.add('turretGlass', box(0.085, 0.065, 0.008), 0.855, 1.045, -0.042);
+  }
   P.add('turret', box(0.13, 0.06, 0.22), 0.855, 0.97, -0.17);                  // cupola outboard ring segment (grab rail/wiper stowage, top 2.40): the v2 cupola band runs to x ~0.91 (front cols 0.83..0.91 want 2.40-2.41, run-2 worst block) — low box seated on the roof plane, side-invisible under the 2.462 blocks
   for (let vb = 0; vb < 4; vb++) {                                             // cupola VISION-BLOCK RING, inboard-forward arc (crowns 2.462): the v2
     const va = (130 + vb * 30) * Math.PI / 180;                                // front dome band [x 0.251..0.445, want ~2.48] + the side crown-band cols
@@ -2848,8 +2868,8 @@ function buildType90Turret(P: MiscBuilderPort): void {
   // regroup, so their seats are authored in the UNSCALED turret frame —
   // 0.272/−0.41 = the old 0.40/−0.5 through the (0.68, 0.82) shell scale,
   // same world flank seats as d4a9410.)
-  P.decal('turret', 'number', '2274', 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', '2274', 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
+  P.decal('turret', 'number', type90Prototype(P), 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', type90Prototype(P), 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
 }
 
 function buildType90Gun(P: MiscBuilderPort): void {
@@ -3017,7 +3037,7 @@ export function buildType90(P: MiscBuilderPort): void {
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
 function buildType74(P: MiscBuilderPort): void {
-  const { box, cylY, cylZ, frustum, openRackGrid, polyMultiLoft, torus, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, openRackGrid, polyMultiLoft, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -3084,13 +3104,55 @@ function buildType74(P: MiscBuilderPort): void {
   P.add('hull', box(2.00, 0.055, 0.60), 0, 1.4195, -2.99);                     // rear rack shelf 1.447 top (ref 1.447 flat, z -2.69..-3.29; bottom 1.392 = sprocket shoe crown 1.355 + §B4 margin)
   P.add('hull', box(1.90, 0.10, 0.08), 0, 1.246, -3.30);                       // tail corner step (ref 1.296 @ -3.23 -> lip 1.27)
   fenders(P, 1.05, 1.57, 1.375, -3.42, 3.05, 0.028);                         // full length: the rear flaps hang from the fender end over the sprocket
+  // owner 2026-10-25 (the modernisation): the fender's support gussets along its outer edge and a weld seam along the
+  // sponson band (the long plain side read as a slab). Gussets hang 0.075 under the 1.375 fender line, 0.2 m clear of
+  // the dead track's top run.
+  for (const s of [-1, 1]) {
+    // the rear fender's inner return over the sprocket: the fitted shoes' rear wrap ends near z -3.29, which left the
+    // strip between the tail's notch panels (x 0.97) and the fender (x 1.05) open in plan (standard-check B2: two
+    // phase-only 6 cm holes at x ±1.01, z -3.35); the return overlaps the fender's inner edge by 1 cm
+    P.add('hull', box(0.10, 0.028, 0.32), s * 1.01, 1.361, -3.26);
+    for (const z of [2.30, 1.40, 0.50, -0.40, -1.30, -2.20]) {
+      P.add('hullDetail', box(0.026, 0.075, 0.07), s * 1.52, 1.3375, z);
+      P.add('hullDetail', box(0.40, 0.022, 0.026), s * 1.31, 1.352, z);
+    }
+    P.add('hullDark', box(0.012, 0.016, 4.55), s * 1.5065, 1.08, -0.03);
+    for (let k = 0; k < 14; k++) P.add('hullDetail', cylX(0.014, 0.012, 8), s * 1.5075, 1.27, 2.05 - k * 0.32);
+  }
   // driver LEFT: flush hatch + periscopes on the fore deck
   P.add('hull', cylY(0.23, 0.23, 0.035, 14), -0.52, 1.398, 2.00);
   P.add('hullDark', cylY(0.236, 0.236, 0.012, 14), -0.52, 1.393, 2.00);
   periscope(P, 'hullDetail', -0.52, 1.425, 2.27);
   periscope(P, 'hullDetail', -0.26, 1.425, 2.27);
-  // rear deck louvres
-  for (let k = 0; k < 4; k++) P.add('hullDark', box(2.20, 0.016, 0.34), 0, 1.372, -2.10 - k * 0.42);
+  // ENGINE DECK (owner 2026-10-25, the modernisation: the four flat dark louvre slabs read as a bare plate). On the flat
+  // 1.395 deck behind the ring, two radiator grilles in raised frames over dark wells, a hinged access plate between
+  // them and two filler caps; on the 1.395 -> 1.372 rear deck, the cooling-air louvre banks. Everything stands at most
+  // 2.5 cm proud: the bustle's floor (world 1.47) swings over all of it.
+  for (const s of [-1, 1]) {
+    const gx = s * 0.56, gz = -1.48, gw = 0.82, gd = 0.66;
+    P.add('hullDark', box(gw - 0.04, 0.006, gd - 0.04), gx, 1.396, gz);                 // the well under the mesh
+    for (const dz of [-1, 1]) P.add('hull', box(gw, 0.024, 0.035), gx, 1.405, gz + dz * (gd / 2 - 0.0175));
+    for (const dx of [-1, 1]) P.add('hull', box(0.035, 0.024, gd - 0.07), gx + dx * (gw / 2 - 0.0175), 1.405, gz);
+    P.add('hullDetail', openRackGrid(gw - 0.07, gd - 0.07, 0.010, 9, 12), gx, 1.404, gz); // the mesh, inside the frame
+    for (const dz of [-0.2, 0.2]) P.add('hullDetail', box(0.10, 0.018, 0.025), gx + s * (gw / 2 - 0.09), 1.42, gz + dz); // lift handles
+    // cooling-air louvre bank on the sloped rear deck: six slats on their own frame, the deck falling 3 cm over it
+    const lz0 = -2.06, lz1 = -2.66;
+    P.add('hullDark', box(0.86, 0.006, lz0 - lz1), gx, 1.382, (lz0 + lz1) / 2, -0.031, 0, 0);
+    for (let k = 0; k < 6; k++) {
+      const z = lz0 - 0.05 - k * ((lz0 - lz1 - 0.10) / 5);
+      const y = 1.395 + (z + 2.00) * 0.0311 + 0.010;
+      P.add('hullDetail', box(0.80, 0.012, 0.075), gx, y, z, -0.42, 0, 0);
+    }
+    for (const dx of [-1, 1]) P.add('hull', box(0.03, 0.022, lz0 - lz1), gx + dx * 0.43, 1.392, (lz0 + lz1) / 2, -0.031, 0, 0);
+    // filler cap with its hinge lug, inboard of the fender stowage
+    P.add('hull', cylY(0.075, 0.08, 0.026, 14), s * 1.02, 1.408, -1.02);
+    P.add('hullDark', torus(0.068, 0.008, 14), s * 1.02, 1.421, -1.02, Math.PI / 2, 0, 0);
+    P.add('hullDetail', box(0.04, 0.03, 0.05), s * 1.02, 1.41, -0.92);
+  }
+  // the hinged access plate between the grilles, with its hinge bar and handle
+  P.add('hull', box(0.26, 0.022, 0.64), 0, 1.405, -1.48);
+  P.add('hullDark', box(0.26, 0.016, 0.03), 0, 1.402, -1.165);
+  P.add('hullDetail', box(0.12, 0.016, 0.02), 0, 1.42, -1.70);
   for (const s of [-1, 1]) {
     // §B4: flaps hang ABOVE the exposed wrap arcs (idler shoe top 1.075 at
     // z 3.12; sprocket shoe top 1.071 at z -3.40)
@@ -3149,6 +3211,9 @@ function buildType74(P: MiscBuilderPort): void {
   // touching row. The Type 74 carries five ~740 mm wheels (2R/pitch 0.86, a 12 cm gap); the dead
   // track still rides on their tops, as on the real vehicle.
   buildRunningGear(P, {
+    // owner 2026-10-25 (the Type 74 modernisation): the fleet's fitted shoe (abramsSourceXTrackShoe.ts) in the Japanese
+    // staggered-rib pattern replaces the native flat recipe, and the loaded run fits the live wheel rims
+    trackShoeBuilder: buildFleetTrackShoe, fitLoadedRun: true, dedupeLoopPoints: true,
     style: 'rubber', wheelR: 0.37, wheelW: 0.26, wheelY: 0.425, xc: XC,
     wheelZs,
     sprocket: { z: -3.00, y: 0.90, r: 0.26 }, idler: { z: 2.93, y: 0.64, r: 0.28 },
@@ -3181,7 +3246,10 @@ function buildType74(P: MiscBuilderPort): void {
     [-0.63, -1.78], [-0.91, -1.34], [-1.08, -0.78], [-1.14, -0.18],
     [-1.11, 0.34], [-0.96, 0.76], [-0.70, 1.08], [-0.36, 1.29],
   ];
-  P.add('turret', toCreasedNormals(polyMultiLoft(type74CastPlan, [
+  // owner 2026-10-25 ("update the type 74 … no longer look really outdated"): the measured stations and rings below are
+  // refined into a continuous casting (refineCastLoft: 36 plan stations through the 18 authored, nine rings rounding the
+  // shoulder and crown inside the authored envelope); the 40° crease keeps the deliberate armour breaks only.
+  const type74Cast = refineCastLoft(type74CastPlan, [
     { height: -0.015, inset: 0.72 },
     {
       height: [0.075, 0.075, 0.07, 0.065, 0.06, 0.06, 0.07, 0.085, 0.10,
@@ -3206,11 +3274,13 @@ function buildType74(P: MiscBuilderPort): void {
         0.53, 0.55, 0.58, 0.60, 0.60, 0.58, 0.54, 0.50, 0.46],
       centerHeight: 0.465,
     },
-  ]), Math.PI / 4.5));
+  ]);
+  P.add('turret', toCreasedNormals(polyMultiLoft(type74Cast.plan, type74Cast.rings), Math.PI / 4.5));
   P.turretG.userData.japaneseCastTurretReceipt = {
     family: 'type74-leopard-generation-cast',
-    planStations: type74CastPlan.length,
-    verticalRings: 5,
+    authoredStations: type74CastPlan.length,
+    planStations: type74Cast.plan.length,
+    verticalRings: type74Cast.rings.length,
     cheekBreaksPerSide: 4,
     flatCrown: true,
     circularLathe: false,
@@ -3265,6 +3335,12 @@ function buildType74(P: MiscBuilderPort): void {
   P.add('turretDark', box(0.014, 0.34, 0.36), -0.62, 0.29, 1.19, 0, 0.06, 0);
   P.add('turretDetail', box(0.06, 0.20, 0.06), -0.58, 0.10, 1.02);
   P.add('turretDetail', box(0.028, 0.028, 0.62), -0.88, 0.29, 0.62, 0, -0.35, 0);
+  // owner 2026-10-25 (the modernisation): the searchlight's guard bars over the glass, the cooling fins on its back
+  // half and the door hinge pins (the bare box read as a crate)
+  for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.014, 0.25, 0.018), -0.745 + k * 0.05, 0.30, 1.433, 0, 0.06, 0);
+  for (const dy of [-0.13, 0.13]) P.add('turretDetail', box(0.30, 0.016, 0.018), -0.615, 0.30 + dy, 1.433, 0, 0.06, 0);
+  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.40, 0.035, 0.014), -0.625, 0.487, 1.03 + k * 0.055, 0, 0.06, 0);
+  for (const dy of [-0.10, 0.10]) P.add('turretDetail', cylY(0.016, 0.016, 0.07, 8), -0.395, 0.29 + dy, 1.40);
   // stowage BASKETS hugging the bustle flanks (identity: turret rear sides;
   // pipe rails + mesh + cloth load; outer face ±1.30 inside the §D ±1.59
   // width guard; front-view 1.92-2.0 band at x 1.04-1.31 = the ref's own)
@@ -3305,7 +3381,11 @@ function buildType74(P: MiscBuilderPort): void {
   trunnionRoll(P, 0.22, 0.62, { ballR: 0.19, ballZ: 0.18 });
   P.addGunExtra(cylZ(0.16, 0.28, 12, 0.135), 0, 0, 0.30);                      // cast collar taper
   P.addGunExtraDark(cylZ(0.024, 0.09, 8), 0.25, 0.05, 0.20);                   // coax port RIGHT of the saddle
+  // owner 2026-10-25 (the modernisation): the canvas mantlet boot the Type 74 fights in (it rides the gun), from the
+  // cast face round the saddle to the collar, its folds held by three straps; the cast brow keeps its seat above it
   P.add('turret', box(0.64, 0.18, 0.34), 0, 0.32, 1.30, -0.52, 0, 0);          // cast brow over the saddle
+  P.add('gunMountCanvasSkin', cylZ(0.205, 0.30, 18, 0.255), 0, 0, 0.17);
+  for (const [z, r] of [[0.08, 0.250], [0.17, 0.233], [0.26, 0.214]]) P.add('gunMountDark', torus(r, 0.011, 18), 0, 0, z);
   buildGun(P, { len: 3.91, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.15 });
   P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 3.85);                             // muzzle reference step at the measured overall-length station
   muzzleBore(P, 0.062, 3.895);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)

@@ -15,6 +15,7 @@
 // east lane. Dune ridges and sand ramps give hull-down ground in the open. The floor's layout turns through 180 degrees
 // about the outpost (8, 0): alpha deploys in the south mouth, bravo in the north mouth, and every inselberg, ridge,
 // strongpoint, floor track and objective has its counterpart. The canyon walls and their ravines keep their own shapes.
+import * as detMath from '../../sim/detMath.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -41,7 +42,7 @@ const rumSite = (structure: string, u: number, v: number, front: 'track' | 'nort
   // a house's front (its local +z) toward the track, or along the lanes
   const dir = front === 'track' ? (v > 0 ? [-RUM_V[0], -RUM_V[1]] : [RUM_V[0], RUM_V[1]])
     : front === 'north' ? RUM_U : front === 'south' ? [-RUM_U[0], -RUM_U[1]] : front === 'east' ? RUM_V : [-RUM_V[0], -RUM_V[1]];
-  const yawDeg = Math.atan2(dir[0], dir[1]) * 180 / Math.PI;
+  const yawDeg = detMath.atan2(dir[0], dir[1]) * 180 / Math.PI;
   return { structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1), terrace: true };
 };
 /** One half of the village, [structure, u, v, front]; the other half is its rotation about the square. */
@@ -162,7 +163,7 @@ export default {
               rough: 0.02, boulders: 12,
               gullies: { count: 5, depthM: 4, width: 0.2 }, fans: { reach: 0.12, heightM: 0.5 } } }),
           // the sand ramp: wind-blown sand banked against the wall, falling away from it
-          ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + Math.cos(ramp) * reach, z: z + Math.sin(ramp) * reach,
+          ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + detMath.cos(ramp) * reach, z: z + detMath.sin(ramp) * reach,
             length: 72, width: 26, height: 7, yawDeg: rampDeg, geology: { outline: 0.22, taper: 0.92, rough: 0.25 } })),
         ];
       }),

@@ -51,7 +51,12 @@ interface BattleLoadTrace {
   loadingElapsedMs?: number;
   visiblePreBattleS?: number;
   expectedClickToControlMs?: number;
+  /** (battle-spikes-253) a session's first battle's covered warm (combatWarmComposition warmFirstBattleCovered). */
+  firstBattleWarm?: object;
 }
+
+/** The covered first-battle warm's record, as the load trace keeps it. */
+type FirstBattleWarmRecord = object | null;
 
 interface VisualLoadTiming {
   specId: string;
@@ -146,6 +151,11 @@ export interface SoloBattleLoadingRuntimeOptions {
   minimumVisiblePreBattleSeconds: number;
   openBattle(seconds: number): void;
   scheduleDeferredWarm(generation: number): void;
+  /**
+   * (battle-spikes-253) A session's first battle finishes the GPU-heavy warm stages behind the veil; later battles skip
+   * it (app/combatWarmComposition.ts warmFirstBattleCovered). Optional: without it the deferred warm does all of it.
+   */
+  warmFirstBattleCovered?(yieldForBudget: WorkYielder, onProgress: (fraction: number) => void): Promise<FirstBattleWarmRecord>;
   nextFrame(): Promise<void>;
   createLoadingYielder(budgetMs: number, maxDelayMs: number): WorkYielder;
   now?: () => number;
@@ -245,6 +255,7 @@ function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
         resolveVisiblePreBattleSeconds: options.resolveVisiblePreBattleSeconds,
         openBattle: options.openBattle,
         scheduleDeferredWarm: options.scheduleDeferredWarm,
+        warmFirstBattleCovered: options.warmFirstBattleCovered ?? (async () => null),
         nextFrame: options.nextFrame,
         createLoadingYielder: options.createLoadingYielder,
         now: options.now ?? (() => performance.now()),
@@ -335,6 +346,7 @@ export function createSoloBattleLoadingRuntime(
   minimumVisiblePreBattleSeconds,
   openBattle,
   scheduleDeferredWarm,
+  warmFirstBattleCovered = async () => null,
   nextFrame,
   createLoadingYielder,
   now = () => performance.now(),
@@ -545,6 +557,15 @@ export function createSoloBattleLoadingRuntime(
       }
       assertRevealReady();
       mark('warm');
+      // (battle-spikes-253) a session's first battle: the GPU-heavy warm stages (the hidden enemies' visuals, the opening
+      // and rare effects, the sights) finish here behind the veil instead of in the live battle's first seconds; later
+      // battles skip it and go straight on
+      const firstBattleWarm = await warmFirstBattleCovered(loadYield, (fraction) => {
+        battleLoad.progress(0.9 + fraction * 0.09, 'Preparing effects');
+      });
+      if (firstBattleWarm) trace.firstBattleWarm = firstBattleWarm;
+      assertRevealReady();
+      mark('firstBattleWarm');
       audio.loadingOn(false);
       audio.ambientOn(true);
       battleLoad.progress(1, 'Ready');

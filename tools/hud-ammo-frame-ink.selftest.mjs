@@ -628,7 +628,7 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   assert.deepEqual(read({ paintLog: chip(200, 100), extra: { '.cot-vehicle-controls': [row(180)] } }), [], 'a chip above the ring passes');
   // the zoom plate's rule 2 px from the speedometer, its text on it, and a readout row set right of the column (its plate
   // centred 200 px from the marker) on the minimap (critic r8 round: a 480 px window's plate touched the speedometer)
-  const rule = (x0, y) => ({ op: 'stroke', style: 'rgba(170,240,178,0.5)', lineWidth: 1.2, n: 4, ring: false, circle: null,
+  const rule = (x0, y) => ({ op: 'stroke', style: 'rgba(126,232,126,0.5)', lineWidth: 1.2, n: 4, ring: false, circle: null,
     box: { x0, y0: y - 6.1, x1: x0 + 20, y1: y - 4.9 } });
   const drive = { '.cot-drive': [el({ x0: 100, y0: 200, x1: 181, y1: 281 })] };
   const ruleNear = read({ paintLog: [rule(183, 220)], extra: drive });

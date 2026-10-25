@@ -19,6 +19,7 @@
 // Prokhorovka line, laid without moving one tree or prop of the map's placement streams.
 import type { StructureClearance } from './vegetationClearance.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export interface RailSpurConfig {
   /**
    * Centreline in metres, two or more points. The kit lays straight spans of at most RAIL_SPUR_SPAN_M between
@@ -254,7 +255,7 @@ export const RAIL_CUTTING_SEED_NORMAL_Y = 0.5;
 
 /** Horizontal run of a span. Exact for an axis-aligned span (the rail yards' fixed lines stay byte-identical). */
 export function railRunLength(dx: number, dz: number): number {
-  return dx === 0 ? Math.abs(dz) : dz === 0 ? Math.abs(dx) : Math.hypot(dx, dz);
+  return dx === 0 ? Math.abs(dz) : dz === 0 ? Math.abs(dx) : detMath.hypot(dx, dz);
 }
 
 /**
@@ -341,7 +342,7 @@ export function railBerthReaches(onBerth: (x: number, z: number) => boolean, x: 
   if (onBerth(x, z)) return true;
   for (let q = 0; q < 16; q++) {
     const a = (q * Math.PI) / 8;
-    if (onBerth(x + Math.cos(a) * reach, z + Math.sin(a) * reach)) return true;
+    if (onBerth(x + detMath.cos(a) * reach, z + detMath.sin(a) * reach)) return true;
   }
   return false;
 }
@@ -356,7 +357,7 @@ export function railSpurBerthClearances(spurs: readonly RailSpurConfig[] | undef
     if (spur.berth !== 'clearance') continue;
     for (let i = 1; i < spur.path.length; i++) {
       const [ax, az] = spur.path[i - 1], [bx, bz] = spur.path[i];
-      const run = Math.hypot(bx - ax, bz - az);
+      const run = detMath.hypot(bx - ax, bz - az);
       if (!(run > 0)) continue;
       // the clearance's local z runs along the edge: (sin, cos) is its unit direction
       out.push({ x: (ax + bx) / 2, z: (az + bz) / 2, halfWidth: RAIL_SPUR_BERTH_M, halfLength: run / 2 + RAIL_SPUR_BERTH_M,

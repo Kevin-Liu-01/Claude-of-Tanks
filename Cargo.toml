@@ -1,0 +1,31 @@
+# Claude of Tanks — Rust workspace (the Bevy / WebAssembly port).
+# See docs/PORT-BEVY.md. The TypeScript product in src/ stays the shipped game
+# until the port passes the same receipts; nothing here is bundled by Vite.
+[workspace]
+resolver = "2"
+members = ["crates/cot-sim", "crates/cot-sim-wasm"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Kevin B. Liu"]
+license = "SEE LICENSE IN LICENSE-POLICY.md"
+publish = false
+rust-version = "1.90"
+
+# Native release: the dedicated server and desktop harnesses.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Browser bundle: size first, then wasm-opt (docs/PORT-BEVY.md "Bundle budget").
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+
+# Dependencies stay optimised in dev builds so iteration on our own crates is quick.
+[profile.dev.package."*"]
+opt-level = 3

@@ -16,6 +16,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 // Rainwater follows the lower saddle into the eastern floodplain; the
 // original western/eastern bowls remain anchors along one continuous run.
 // (the ground lane, 2026-10-17; MASTER #15, the critics: "a decal pasted on the valley" — at the default 1.15 spacing its
@@ -52,7 +53,7 @@ const kohSite = (structure: string, u0: number, v0: number, front: KohFront, jit
   const [x, z] = kohAt(u, v);
   const dir = front === 'road' ? (v > 0 ? [-KOH_V[0], -KOH_V[1]] : [KOH_V[0], KOH_V[1]])
     : front === 'north' ? KOH_U : front === 'south' ? [-KOH_U[0], -KOH_U[1]] : front === 'east' ? KOH_V : [-KOH_V[0], -KOH_V[1]];
-  const yawDeg = Math.atan2(dir[0], dir[1]) * 180 / Math.PI + (kohHash(u0, v0, 4) - 0.5) * 8 * jitter;
+  const yawDeg = detMath.atan2(dir[0], dir[1]) * 180 / Math.PI + (kohHash(u0, v0, 4) - 0.5) * 8 * jitter;
   return { structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1), terrace: true };
 };
 /** A shop, a bungalow or a house; one in five of the town's shelled to a ruin, one in sixteen an empty lot. */
@@ -87,7 +88,7 @@ const KOHIMA_TOWN = [
   ...[[118, -160], [142, -168], [166, -158], [96, -172]].flatMap(([u, v]) => kohLot('farmhouse', u, v, 'east')),
 // the square's zone disc (matchObjectiveLayouts: the middle zone at (-60, 24), its 30 m footprint clear of every solid)
 // keeps a 46 m ring free of the town's buildings and their yards
-].filter((site) => Math.hypot(site.x + 60, site.z - 24) >= 46);
+].filter((site) => detMath.hypot(site.x + 60, site.z - 24) >= 46);
 
 export default {
   id: 'monsoon',

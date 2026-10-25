@@ -16,7 +16,8 @@ import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { declareLaunchBore, launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
-import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
+import { K2_ROAD_WHEELS, k2WheelGear } from './profiles/k2RoadWheels.ts';
+import { efficientReturnRoller } from './efficientReturnRoller.ts';
 import './modern3Specs.ts';
 import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from './tankBuildCooperation.ts';
 
@@ -31,7 +32,7 @@ export interface Modern3BuilderPort {
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
   readonly recoilG: THREE.Group;
-  readonly mats: { readonly rubber: THREE.Material };
+  readonly mats: { readonly rubber: THREE.Material; readonly wheels?: THREE.Material };
   readonly disposables: TankBuilderPort['disposables'];
   readonly spec: {
     readonly id: string;
@@ -146,12 +147,24 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // return rollers and rear track contact follow the same forward seat; the
   // idler and sprocket retain their certified locations and contact arcs.
   const k2RoadWheelZs = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
+  const wheelPaint = P.mats.wheels;
+  if (!wheelPaint) throw new Error('K2 running gear requires the wheel paint');
   const k2ReturnRollerZs = [1.61, 0.20, -1.21];
+  const k2ReturnRotor = efficientReturnRoller({ quality: P.q ? 'high' : 'low',
+    radiusM: 0.095175, axialWidthM: 0.0826, spindleRadiusM: 0.025, spindleLengthM: 0.1282 });
+  k2ReturnRotor.spindle.dispose();
   const gearConfig: RunningGearConfig = {
     style: 'rubber', ...K2_ROAD_WHEELS, xc: 1.375,
+    // 2026-10-25 (the owner: "redo the k2b and xk2's tracks and wheels"): the K2 X source twin wheel, not the generic disc
+    ...k2WheelGear(!!P.q, wheelPaint),
     wheelZs: k2RoadWheelZs,
-    sprocket: { z: -3.08, y: 1.10, r: 0.25 }, idler: { z: 3.10, y: 0.72, r: 0.24 },
-    rollers: k2ReturnRollerZs.map((z) => ({ z, y: 0.93, r: 0.08 })),
+    // 2026-10-25 (the owner: "redo the k2b and xk2's tracks"): the K2's own end wheels and return rotors (k2X.ts measured
+    // r .351/.300 and .095). The old 0.25 m sprocket sat at 1.10 behind the skirt, so the rear course climbed into
+    // nothing, and the 0.24 m idler needed a static 0.34 m disc nested in it to read at all.
+    sprocket: { z: -3.08, y: 0.86, r: 0.33 }, idler: { z: 3.10, y: 0.76, r: 0.29 },
+    rollers: k2ReturnRollerZs.map((z) => ({ z, y: 0.915, r: 0.095175 })),
+    rollerR: 0.095175, returnRollerWidthM: 0.0826, returnRollerInsetM: 0.1905,
+    returnRollerHullHalfWidthM: 1.05, returnRollerGeometry: k2ReturnRotor.rotor,
     trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.395,
     containRearRoadWheel: true,
     paintedEnds: true, coveredTop: true,
@@ -161,12 +174,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // smaller tire radius. Fixed inboard ISU knuckles must follow that axle.
   const roadWheelY = gear.roadWheelLayout?.wheelY;
   if (roadWheelY === undefined) throw new Error('K2 running gear requires solved road-wheel axles');
-  // The track solver's small end hubs preserve the measured contact arc;
-  // nested visual discs restore the full idler/sprocket mass visible through
-  // the band without moving that certified outer track envelope.
   for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08);
-    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
     // The canonical animated sprocket owns the complete rear carrier, teeth
     // and hub. Do not layer a static pressed face here: the old 0.34 m disc
     // escaped behind the links and read as a seventh road wheel.

@@ -37,7 +37,7 @@ function standaloneIconSvg(body, { tile = false } = {}) {
 /** The glyphs the first frame can show before the lazy sprite lands: the game bar and its controls (SPEC 16.1). */
 const BOOT_ICON_IDS = Object.freeze([
   'home', 'record', 'garage', 'deploy', 'gallery', 'manual', 'studio', 'settings', 'github', 'chevronDown', 'close',
-  'sound',
+  'sound', 'techTree',
 ]);
 
 function generateSpriteIndex(spriteText) {

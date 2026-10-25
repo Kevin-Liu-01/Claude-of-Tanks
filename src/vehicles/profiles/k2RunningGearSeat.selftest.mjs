@@ -41,14 +41,19 @@ for (const quality of ['high', 'low', 'ai']) for (const id of ['xk2_black_panthe
     const hull = tank.root.getObjectByName('rig_hull');
     const receipt = hull?.userData.runningGearReceipts?.[0];
     const roadWheels = hull?.getObjectByName('gearRoadWheelTires');
-    const returnRollers = hull?.getObjectByName('gearReturnRollerTires');
+    // 252 (the owner: "redo the k2b and xk2's tracks"): the K2's own fitted return rotors (k2X.ts), as on production K2
+    const returnRollers = hull?.getObjectByName('gearReturnRollerRotors');
     const trackPads = hull?.getObjectByName('gearTrackPads');
 
     assert.ok(receipt && roadWheels?.isInstancedMesh
       && returnRollers?.isInstancedMesh && trackPads?.isInstancedMesh,
     `${id}: exposes the canonical running-gear receipt and animated layers`);
     near(receipt.wheelR, .3225, `${id}/${quality}: production K2 road-wheel radius`);
-    for (const name of ['gearRoadWheelTires', 'gearRoadWheelDiscs', 'gearRoadWheelInsets']) {
+    // 252: the K2 X source twin wheel (k2RoadWheels.ts): its bands, hub drum, both faces and (HIGH) their bolt heads
+    const wheelStock = [];
+    production.root.traverse((o) => { if (o.isInstancedMesh && /^(gearRoadWheel|k2SourceWheel)/.test(o.name)) wheelStock.push(o.name); });
+    assert.ok(wheelStock.includes('k2SourceWheelFace1') && wheelStock.includes('k2SourceWheelFace-1'), `${quality}: K2 draws the source wheel faces`);
+    for (const name of wheelStock) {
       const actual = hull.getObjectByName(name);
       const target = production.root.getObjectByName(name);
       assert.ok(actual?.isInstancedMesh && target?.isInstancedMesh, `${name}: real moving wheel stock`);
@@ -80,10 +85,12 @@ for (const quality of ['high', 'low', 'ai']) for (const id of ['xk2_black_panthe
     near(receipt.wheelZs[0], 2.48, `${id}: front road-wheel station stays fixed`);
     near(receipt.wheelZs.at(-1), -2.17,
       `${id}: rear road-wheel station moves 0.30 m forward`);
-    assert.deepEqual(receipt.sprocket, { z: -3.08, y: 1.10, r: 0.25 },
-      `${id}: rear sprocket stays in its certified position`);
-    assert.deepEqual(receipt.idler, { z: 3.10, y: 0.72, r: 0.24 },
-      `${id}: front idler stays in its certified position`);
+    // 252 owner ("redo the k2b and xk2's tracks and wheels"): the end wheels grow toward K2 X's measured sprocket
+    // (r .351) and idler (r .300) inside buildK2's hull stations, replacing the small 1.10/.25 sprocket and .72/.24 idler.
+    assert.deepEqual(receipt.sprocket, { z: -3.08, y: 0.86, r: 0.33 },
+      `${id}: rear sprocket stands in its 252 position`);
+    assert.deepEqual(receipt.idler, { z: 3.10, y: 0.76, r: 0.29 },
+      `${id}: front idler stands in its 252 position`);
 
     const groundRun = receipt.loopPoints.filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON);
     assert.ok(groundRun.some(([z]) => Math.abs(z - 2.48) <= EPSILON),

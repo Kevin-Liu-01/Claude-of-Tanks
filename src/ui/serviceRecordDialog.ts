@@ -13,7 +13,7 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   const modal = createModal({ title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
-  modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog');
+  modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog'); modal.panel.tabIndex = -1;
   // The header carries the last battle as a plate (its map behind, its tank beside the result); the X closes, so
   // the dialog keeps no footer.
   const plate = document.createElement('div'); plate.className = 'cot-record-plate-host';
@@ -46,7 +46,9 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   modal.panel.addEventListener('keydown',event=>event.stopPropagation());
   return {
     isOpen:modal.isOpen,
-    open(trigger:HTMLElement){unseen=getServiceRecord().unseen;markServiceRecordSeen();render();modal.open({trigger});},
+    // the dialog itself takes focus on open (no ring lands on the X); Tab moves on to the X and the tabs
+    open(trigger:HTMLElement){unseen=getServiceRecord().unseen;markServiceRecordSeen();render();modal.open({trigger});
+      requestAnimationFrame(()=>{if(modal.isOpen())modal.panel.focus({preventScroll:true});});},
     close:modal.close,
     refresh(){if(modal.isOpen())render();},
     dispose(){tooltip.dispose();modal.dispose();},
