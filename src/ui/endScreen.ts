@@ -1529,7 +1529,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (!visible || (document.activeElement && document.activeElement !== document.body)) return;
     (host.querySelector<HTMLButtonElement>('.es-actions .cot-c-btn--primary:not(:disabled)') ?? garageBtn)?.focus({ preventScroll: true });
   };
+  // (the focus taken on open rings nothing until a key moves the keyboard: a resting ring on Again read as a third state
+  // beside the pause veil's RESUME, gauntlet r11; Enter still confirms it)
+  const ringOnKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Enter' || event.key === 'Escape') return;
+    host.classList.remove('es-quiet-focus');
+    window.removeEventListener('keydown', ringOnKey, true);
+  };
   const takeFocus = (): void => {
+    host.classList.add('es-quiet-focus');
+    window.addEventListener('keydown', ringOnKey, true);
     focusPrimary();
     setTimeout(focusPrimary, 0);
     if (host.classList.contains('es-sheet-wait')) setTimeout(focusPrimary, 1600);

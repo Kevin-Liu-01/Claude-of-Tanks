@@ -369,6 +369,8 @@ ${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;is
 ${WIDE} .cot-bl .team.ally.cards .row.card{border:0;border-bottom:2px solid var(--team-own);}
 ${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(--team-enemy);}
 ${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
+/* (the player's card's foot in the ring's accent: the side's blue foot sat inside its gold frame at 1920 and 2560, gauntlet r11) */
+${WIDE} .cot-bl .team.ally.cards .row.card.me{border-bottom-color:var(--accent);}
 ${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;
   background-image:var(--sil-img);background-size:contain;background-position:center;filter:none;}
 /* a card's flag is its hero layer's (the sheet row's seat stays empty there) */

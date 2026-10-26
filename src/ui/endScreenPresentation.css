@@ -184,12 +184,11 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6) */
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
-/* (a watched battle's two rosters at a reading width on the widest windows, each table 1,000 px at most: 1,230 px rows set
-   the callsigns 750 px from their figures at 2560, gauntlet r6; the sides on the plate's two edges, the title's and the
-   far one, r10: the pair capped as one stopped 560 px short of the far edge) */
+/* (a watched battle's two rosters share the plate's width at every wide window, as at 1920: capped to a reading width
+   they stopped short of the plate's edge or left a 470 px channel between them at 2560, gauntlet r8 to r11) */
 body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{width:100%;box-sizing:border-box}
-body[data-cot-width] .cot-es.cot-es--record.watched .es-roster{width:100%;max-width:1000px;box-sizing:border-box}
-body[data-cot-width] .cot-es.cot-es--record.watched .es-roster.foe{justify-self:end}
+/* (the open report's focus, taken on open, rings nothing until a key moves it: endScreen.ts es-quiet-focus) */
+body[data-cot-width] .cot-es.cot-es--record.es-quiet-focus .es-action:focus-visible{outline:none;box-shadow:var(--btn-primary-bevel)}
 /* (the widest windows: the two teams side by side once the teams' column holds two whole rosters, 1,100 px, the record
    column narrower: stacked, the enemy's ran under the panel's foot beside 570 px of record plate at 2560, gauntlet r7;
    at 1600 and a narrower column the vehicles' names were cut, r5) */
@@ -308,9 +307,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 }
 @media(min-width:1000px) and (max-height:800px){
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
-  /* (on the medals' row's top line, not its centre: centred, its foot reached past the column's fold, which cut its border
-     at 844x390, gauntlet r10) */
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:start}
+  /* (as tall as the medal tiles beside it and on their centre line, its lines centred in it: shorter and on the row's top it
+     stood off the tiles, gauntlet r11; its height the tiles', so its foot keeps inside the 844x390 fold, r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center;min-height:var(--es-medal-h,64px);align-content:center;box-sizing:border-box}
   /* (the wide windows' record column is a block: its grid here, so the medals and the best shot share a row, gauntlet
      r4 at 1280x720 lost the details row under them) */
   body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-content:start}
@@ -325,9 +324,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
   body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-stat-grid,.es-combat-details,.es-blow){grid-column:1/-1}
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
-  /* (on the medals' row's top line, not its centre: centred, its foot reached past the column's fold, which cut its border
-     at 844x390, gauntlet r10) */
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:start}
+  /* (as tall as the medal tiles beside it and on their centre line, its lines centred in it: shorter and on the row's top it
+     stood off the tiles, gauntlet r11; its height the tiles', so its foot keeps inside the 844x390 fold, r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center;min-height:var(--es-medal-h,64px);align-content:center;box-sizing:border-box}
   /* (its left edge on the tiles' column line: its own margin set it 16 px in, gauntlet r4 at 1024x600 and 900x700) */
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-left:0}
 }
@@ -340,8 +339,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
   /* (the medals' strip 4 px nearer its tiles: one px over the column, they stood under the cue at 844x390, r9) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:var(--s1) var(--s3)}
-  /* (and the best shot beside them on the strip's own 4 px: at 18 px its foot crossed the fold, r10) */
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-block:var(--s1)}
+  /* (and the best shot beside them on the strip's own 4 px, as tall as its 48 px tiles: at 18 px its foot crossed the fold,
+     r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-block:var(--s1);--es-medal-h:48px}
   /* (smaller medals, so a short landscape holds them whole under its tiles, gauntlet r4) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{width:48px;height:48px;padding:4px}
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw svg{width:40px;height:40px}
@@ -401,6 +401,12 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 /* (and up to 360 px a row gives its render's room to the callsign and the vehicle: "Commander_L…" and "M1A1 A…" at
    320x568, gauntlet r8) */
 @media(max-width:360px){body[data-cot-width] .cot-es.cot-es--record .es-tr .si{display:none}}
+/* (the head's chips on one row up to 360 px wide, on 6 px insets and 5 px gaps: at 11 px the clock's chip fell alone onto
+   a line of its own at 320x568, gauntlet r11) */
+@media(max-width:360px){
+  body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:5px}
+  body[data-cot-width] .cot-es.cot-es--record .es-meta>span{padding-inline:6px;gap:5px}
+}
 /* (under 300 px tall the tiles a size down and the grid on the plate's 4 px, so their row stands whole over the cue: the
    report at 568x256 is 85 px, gauntlet r9) */
 @media(max-height:299px) and (orientation:landscape){
