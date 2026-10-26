@@ -3,8 +3,10 @@
    its <style> rules (.browse .search .flags .toggles .fam .gh .it, .stage .layers .subs .views .tools .inset .legend .co,
    .dossier .take .nm .dz .facts .vsc .acts) on the live kit (src/ui/components/DIRECTION.md) and tokens. The rules the
    page does not draw (sort, the card grid, the stats, ammunition, anatomy, damage and markup tabs, loading and empty
-   states) are written in its grammar. Below 1100 px the page scrolls: the stage spans the top, browse and dossier share
-   a row; below 768 px everything stacks and the fleet becomes a strip of hero cards. Tokens only (src/ui/tokens): every
+   states) are written in its grammar. From 768 to 1100 px the three panes keep their row, the list a narrower column, so
+   the dossier stays in view while a tank is chosen (the lead's 10-26 ruling, from the g15 critic); a short window under
+   1100 px scrolls, the stage spanning the top and browse and dossier sharing a row; below 768 px everything stacks and
+   the fleet becomes a strip of hero cards. Tokens only (src/ui/tokens): every
    colour, size, track, duration, shadow and layer reads a custom property. */
 /* the tokens only the Gallery reads (tokens.json surface-gallery) */
 @import url('../ui/tokens/surface-gallery.css');
@@ -149,11 +151,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .layers button{height:34px;padding:0 var(--s3);color:var(--ink-3);font:500 var(--fs-13)/1 var(--font-body)}
 .layers button .cot-i,.tools button .cot-i{width:17px;height:17px}
 .layers .cot-c-kbd{min-width:0;height:auto;padding:0;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
-.layers button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--gallery-layer-on)}
+/* the kit's one selected state (the lead's 10-26 ruling): the open layer, the camera and a pressed tool wear the accent's
+   wash and edge, as a chip and a segment do */
+.layers button[aria-pressed=true]{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 .layers button:disabled{color:var(--ink-4);cursor:not-allowed}
 .views{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px}
 .views button{height:30px;padding:0 var(--s3);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
-.views button.active{background:var(--surface-hover);color:var(--ink-1)}
+.views button.active{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 .views .view-button-icon{display:grid;place-items:center;width:18px;height:18px}
 .views .view-button-icon svg{width:18px;height:18px}
 .camera-view-glyph__tank{fill:currentColor;opacity:.9}
@@ -164,7 +168,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .camera-view-glyph__height{color:var(--accent)}
 .tools{left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:2px;padding:3px}
 .tools button{height:34px;padding:0 var(--s3);color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body)}
-.tools button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1)}
+.tools button[aria-pressed=true]{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 @media (hover:hover){
   .layers button:not(:disabled):hover,.views button:hover,.tools button:hover{color:var(--ink-1)}
   .flags button:hover{box-shadow:var(--ring-3)}
@@ -405,6 +409,14 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* the site bar spans the page's own columns (a boxed bar floated over the stage on wide windows) */
 .public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}
 /* ---------------------------------------------------------------------------------------------------- responsive */
+/* a tall, wide window gives its room to the dossier's own content, not to blank plate (the lead, 10-26, from the g15
+   critic: 450 px of empty dossier at 2560): a wider column, and the film growing from 16:9 toward 4:3 into the height its
+   tabs leave; one height for every tab, read from the column, so no tab moves the name */
+@media (width >= 1440px) and (height >= 900px){
+  :root{--g-dossier:clamp(360px,30vw,820px)}
+  .dossier{container:dossier/size}
+  .take{aspect-ratio:auto;height:clamp(calc(100cqw * 9 / 16),calc(100cqh - 640px),calc(100cqw * 3 / 4))}
+}
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
   .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
@@ -414,7 +426,17 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .stage{--inset-w:120px}
   .inset{width:120px}
 }
+/* the tablet row: the list and the dossier narrower, the stage between them; the scale inset gives the narrow stage's
+   foot to the turntable bar; the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it */
 @media (width < 1100px){
+  :root{--g-browse:clamp(216px,22vw,248px);--g-dossier:clamp(296px,32vw,360px)}
+  .inset{display:none}
+  .views button{width:30px;padding:0;justify-content:center}
+  .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  #viewport .legend:not(:empty){right:calc(16px + 36px + var(--s2))}
+}
+/* a phone, or a short window under 1100 px: the page scrolls, the stage spanning the top */
+@media (width < 768px), ((height < 520px) and (width < 1100px)){
   body{overflow-x:hidden;overflow-y:auto}
   /* a part brought into view clears the sticky site bar (its own height: 64 px, 56 px under 768 px), and the browse
      column and the dossier's tabs stick under it */
@@ -426,10 +448,6 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .dossier{border-top:1px solid var(--line-1)}
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
-  /* the short stage: the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it, never over it */
-  .views button{width:30px;padding:0;justify-content:center}
-  .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  #viewport .legend:not(:empty){right:calc(16px + 36px + var(--s2))}
 }
 @media (width < 768px){
   :root{--g-pad:12px}

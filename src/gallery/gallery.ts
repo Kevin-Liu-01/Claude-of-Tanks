@@ -465,7 +465,8 @@ function loadNotices(): Promise<NoticeKit> {
   });
   return noticeKit;
 }
-const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
+// (gallery.css: the page scrolls, stage over the panes, on a phone or a short window under 1100 px)
+const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 768px), ((height < 520px) and (width < 1100px))') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
  * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
