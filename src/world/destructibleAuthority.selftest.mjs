@@ -30,7 +30,10 @@ assert.ok(start > 0 && end > start, 'production post-build runtime boundaries ex
 // null below), so the yield becomes a no-op statement and the plain function compiles
 const BROKEN_JOIN = "yield { stage: 'broken-vehicles', brokenVehicles: vehiclePool.settled(BROKEN_VEHICLE_WAIT_MS), stealBrokenVehicle };";
 assert.ok(source.slice(start, end).includes(BROKEN_JOIN), 'the runtime tail joins the broken-vehicle pool (perf-248)');
-const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end).replace(BROKEN_JOIN, 'void 0;')}
+// (battle-spikes-253) and its structure shells' join is a generator a structure a step; the fixture's stub is plain
+const SHELL_JOIN = 'yield* joinStructureShells(); // (Plan W)';
+assert.ok(source.slice(start, end).includes(SHELL_JOIN), 'the runtime tail joins the structure shell pool (Plan W)');
+const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end).replace(BROKEN_JOIN, 'void 0;').replace(SHELL_JOIN, 'joinStructureShells(); // (Plan W)')}
 return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
 }`);
 const runtimeBody = runtimeSource.slice(runtimeSource.indexOf('{') + 1, runtimeSource.lastIndexOf('}'));

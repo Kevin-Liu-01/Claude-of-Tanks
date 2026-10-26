@@ -7,7 +7,7 @@
 //   - the idle measurer measures what is left, a slice at a time, and holds one map's parts at most.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { describeStructure, measureDeferredStructures } from './structureDamageSeam.ts';
+import { describeStructure, measureDeferredStructures, measureOtherMapStructures } from './structureDamageSeam.ts';
 
 /** A box's triangles (non-indexed). */
 function box(x0, y0, z0, x1, y1, z1) {
@@ -74,4 +74,15 @@ const e = describe(houseParts(), 'deferred-e');
 assert.equal(measureDeferredStructures(0), 0, "another map's described structures measured before the next map's join the queue");
 assert.ok(e.enclosure && e.intact, 'the last one measured too');
 
-console.log('structureDeferredMeasure selftest: measures made when first asked for, the same read back through the placement after the build placed the parts, the idle measurer leaves none');
+// ---- (battle-spikes-253) a props build drains another map's queue in its own slices before it describes a building
+const f = [describe(houseParts(), 'deferred-f'), describe(houseParts(), 'deferred-f'), describe(houseParts(), 'deferred-f')];
+assert.equal(measureOtherMapStructures('deferred-f', Infinity), 0, "a build's own map's queue is not another map's");
+assert.equal(measureOtherMapStructures('deferred-g', 0), 2, 'a zero-budget slice measures one, the rest left');
+assert.equal(measureOtherMapStructures('deferred-g', Infinity), 0, 'then none of the other map is left');
+assert.equal(measureDeferredStructures(0), 0, 'the queue is empty');
+assert.ok(f.every((anatomy) => anatomy.enclosure && anatomy.intact), 'each measured, there when asked');
+const g = describe(houseParts(), 'deferred-g');
+assert.deepEqual(digest(g), digest(c), 'the next map describes as before');
+assert.equal(measureDeferredStructures(Infinity), 0);
+
+console.log('structureDeferredMeasure selftest: measures made when first asked for, the same read back through the placement after the build placed the parts, the idle measurer leaves none, the other map queue drained in slices');

@@ -230,6 +230,31 @@ assert.equal(UI_CANVAS_DPR_CAP, 2, 'the probe\'s cap (tools/click-timeline.mjs C
   assert.ok(paints >= 1);
 }
 
+// 7c. visibility:hidden (a laid-out box no observer reports as hidden): a retained drawing holds no store under it, and the
+// half-second sweep releases a drawn one that gets hidden and draws one that shows again
+{
+  globalThis.devicePixelRatio = 2;
+  let draws = 0;
+  const swatch = createUiCanvas(null, '', { draw: () => { draws++; } });
+  let visible = false;
+  swatch.canvas.checkVisibility = () => visible;
+  report(swatch.canvas, 44, 52);
+  assert.equal(draws, 0, 'nothing draws under visibility:hidden');
+  assert.equal(`${swatch.canvas.width}x${swatch.canvas.height}`, '1x1', 'and no store is held');
+  visible = true;
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.equal(draws, 1, 'shown, the sweep draws it');
+  assert.equal(`${swatch.canvas.width}x${swatch.canvas.height}`, '88x104');
+  visible = false;
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.equal(`${swatch.canvas.width}x${swatch.canvas.height}`, '1x1', 'hidden again, the sweep releases it');
+  visible = true;
+  swatch.redraw();
+  assert.equal(draws, 2, 'a data change on a shown canvas draws at once');
+  assert.equal(`${swatch.canvas.width}x${swatch.canvas.height}`, '88x104');
+  swatch.dispose();
+}
+
 // 8. a lost context: nothing draws until it is restored, then the drawing returns
 {
   window.devicePixelRatio = 1;

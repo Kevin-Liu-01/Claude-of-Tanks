@@ -26,6 +26,19 @@ assert.equal(verdicts.rssGrowthPerBattleMB.verdict, 'PASS');
 assert.equal(verdicts.peakRssMB.verdict, 'PASS');
 assert.equal(verdicts.listenersGrowthPerBattle.value, 0);
 assert.equal(judgeMemory({ growth }, budget).find((v) => v.name === 'peakRssMB').verdict, 'FAIL', 'a peak the probe did not take fails');
+// (--leak-check) a released world still alive after a return fails; a cached or current one does not
+const leakBudget = { limits: { leakedWorlds: 0 } };
+const alive = (label, extra) => ({ label, mapId: label, alive: true, cached: false, current: false, ...extra });
+const leakedRecord = { growth, returns: [
+  { worldsAlive: [alive('1_urban', { current: true })] },
+  { worldsAlive: [alive('1_urban', { cached: true }), alive('2_verdant', { current: true })] },
+  { worldsAlive: [alive('1_urban'), alive('2_verdant', { cached: true }), alive('3_desert', { current: true })] },
+] };
+assert.equal(judgeMemory(leakedRecord, leakBudget)[0].value, 1);
+assert.equal(judgeMemory(leakedRecord, leakBudget)[0].verdict, 'FAIL', 'a released world still alive fails');
+leakedRecord.returns[2].worldsAlive[0].alive = false;
+assert.equal(judgeMemory(leakedRecord, leakBudget)[0].verdict, 'PASS', 'collected, it passes');
+assert.equal(judgeMemory({ growth, returns: [{}] }, leakBudget)[0].verdict, 'FAIL', 'unchecked (no --leak-check) fails');
 
 const options = parseMemoryArgs(['--scenarios=urban:zone_control,verdant:standard', '--size=21', '--battles=4', '--gate', '--out=/tmp/x']);
 assert.deepEqual(options.scenarios, ['urban:zone_control', 'verdant:standard']);
@@ -35,4 +48,4 @@ assert.equal(options.gate, true);
 assert.throws(() => parseMemoryArgs(['--battles=1']), /at least 2/);
 assert.throws(() => parseMemoryArgs(['--scenarios=urban']), /<map>:<mode>/);
 assert.throws(() => parseMemoryArgs(['--nope']), /unknown flag/);
-console.log('battle-memory-probe.selftest: growth from the first return a battle at a time, every limit judged, flags PASS');
+console.log('battle-memory-probe.selftest: growth from the first return a battle at a time, every limit judged, a released world alive fails, flags PASS');

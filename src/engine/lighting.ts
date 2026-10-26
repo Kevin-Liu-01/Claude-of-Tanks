@@ -85,6 +85,8 @@ interface ShadowDebugOptions {
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
+  /** (battle-spikes-253) Every content change re-renders every cascade (the scoped re-renders' A/B). */
+  noScopedRebuild?: boolean;
 }
 
 declare global {

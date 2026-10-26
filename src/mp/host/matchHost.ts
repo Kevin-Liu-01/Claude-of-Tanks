@@ -18,6 +18,7 @@ import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../ma
 import { CLOSE_REASON } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
 type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
@@ -82,6 +83,12 @@ export interface MatchHost {
   /** One display frame: deliver the loopback frames, sample the uplink, report pressure. */
   pump(nowMs?: number): void;
   requestStats(): void;
+  /**
+   * Pause or resume this host's own solo match (MatchActor.pause: refused for a match with more than one human seat);
+   * `paused` follows the actor's answer.
+   */
+  setPaused(paused: boolean): void;
+  readonly paused: boolean;
   stats(): MatchHostStats;
   /** The room removed `playerId` mid-match (kick or leave): drop its peer link and refuse its seat token. */
   revokeSeat(playerId: string): void;
@@ -120,6 +127,7 @@ export function createMatchHost({
   let ready = false;
   let lastReport: HostMatchReport | null = null;
   let coreStats: HostCoreStats | null = null;
+  let paused = false;
   let reports = 0;
   let peerSeq = HOST_LOOPBACK_PEER;
   const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number }>();
@@ -182,6 +190,8 @@ export function createMatchHost({
         for (const bytes of queuedLoopback.splice(0)) post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: bytes.buffer }, [bytes.buffer]);
         setState('live', message.resumed ? 'resumed' : 'started');
         onLog('info', 'host live', { tick: message.tick, entities: message.entities, resumed: message.resumed });
+        // what the host's authority steps on; a failed load of the kernels is reported, never silent
+        if (message.kernels) reportSimKernels('host', message.kernels);
         return;
       case 'boot_failed':
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
@@ -217,6 +227,9 @@ export function createMatchHost({
         return;
       case 'stats':
         coreStats = message.stats;
+        return;
+      case 'paused':
+        paused = message.paused;
         return;
       case 'log':
         onLog(message.level, message.message, message.fields);
@@ -327,6 +340,8 @@ export function createMatchHost({
     start,
     pump,
     requestStats: () => post({ type: 'stats' }),
+    setPaused: (next) => post({ type: 'pause', paused: next }),
+    get paused() { return paused; },
     revokeSeat(playerId) {
       post({ type: 'seat_revoke', playerId });
       acceptor?.drop(playerId, CLOSE_REASON.ROOM_CLOSED, 'removed from the room');

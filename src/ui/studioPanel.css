@@ -60,11 +60,15 @@ body[data-studio-settling] #app{visibility:hidden}
 .st-head .cot-c-seg__opt{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12))}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
-/* under 1680 px the header's secondary chips (commands, the scene link, the Gallery) keep their glyphs and give up their
-   words to the screen (the words stay their names), so Export film, Exit and Hide controls stay on screen at 1440 */
+/* the header's secondary chips give their words to the screen as it narrows (the words stay their names): under 1680 px
+   the two whose glyphs say it (commands' search, the scene link), under 1440 px the queue and the Gallery as well (at 1440
+   all four went to glyphs over 230 px of empty header) */
 @media (width < 1680px){
-  .st-head .r :is(.cmd,[data-scene-link-copy],.gal,.que) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .st-head .r :is(.cmd,[data-scene-link-copy]) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .st-head .r .cmd .cot-c-kbd{display:none}
+}
+@media (width < 1440px){
+  .st-head .r :is(.gal,.que) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 .st-head .cmd .cot-c-kbd{margin-left:2px}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
@@ -144,23 +148,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
     transparent calc(66.667% - .5px),var(--line-3) 0,var(--line-3) calc(66.667% + .5px),transparent 0)}
 .studio-frame-guide::after{content:'';position:absolute;inset:5%;border:1px dashed var(--line-3)}
 .studio-frame-guide small{display:none}
-/* busy and scene-link notices: one plate over the top of the picture */
+/* the busy plate over the top of the picture */
 .cot-studio .busy{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;max-width:calc(100% - 32px);padding:var(--s2) var(--s4);
   transform:translateX(-50%);border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent);color:var(--ink-1);
   font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body);text-align:center}
-.cot-studio .notice{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;width:max-content;max-width:min(540px,calc(100% - 32px));
-  grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:var(--s3);padding:var(--s3) var(--s3) var(--s3) var(--s4);transform:translateX(-50%);
-  border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent)}
-.cot-studio .notice[data-open]{display:grid}
-.cot-studio .notice .ng svg{display:block;margin-top:1px;color:var(--accent-hi)}
-.cot-studio .notice .nt{display:grid;gap:var(--s2);min-width:0}
-.cot-studio .notice .nt b{font:500 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-body)}
-.cot-studio .notice .nd summary{width:max-content;cursor:pointer;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body)}
-.cot-studio .notice .nd code{display:block;margin-top:var(--s1);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.4 var(--font-data);overflow-wrap:anywhere}
-.cot-studio .notice .nx{display:grid;place-items:center;width:28px;height:28px;margin:-4px 0;padding:0;border:0;border-radius:var(--r1);
-  background:transparent;color:var(--ink-3);font:500 var(--fs-16)/1 var(--font-body)}
-.cot-studio .notice[data-tone=error]{box-shadow:var(--ring-danger)}
-.cot-studio .notice[data-tone=error] .ng svg{color:var(--text-danger)}
+/* the kit's toast region (components/notices.css), placed by its host: over the picture's top, one at a time */
+.cot-studio .cot-c-notices.st-notices{position:absolute;top:52px;left:50%;z-index:var(--z-lift);width:min(540px,calc(100% - 32px));transform:translateX(-50%)}
 
 /* ------------------------------------------------------------------------------- the inspector (09-studio .insp) */
 .st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:var(--s3) var(--s3) var(--s6);overflow-y:auto;
@@ -192,9 +185,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   --hc-band:6px;--hc-share:0.7;--hc-hshare:0.78;--hc-cxr:0.5}
 .st-hero>.cot-c-sil{position:absolute;left:12%;right:12%;top:18%;width:auto;height:52%;color:var(--ink-4)}
 .st-hero.cot-hc>.cot-c-sil,.st-hero:has(.hc-host)>.cot-c-sil{visibility:hidden}
-.st-hero-name{display:flex;align-items:center;gap:var(--s2);min-width:0;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-13))/1.05 var(--font-display);
-  text-transform:uppercase;white-space:nowrap}
-.st-hero-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-insp .fld{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .st-insp .fld label{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);height:30px;padding:0 var(--s2);border-radius:var(--r1);
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
@@ -239,8 +229,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* the seven times of day stand in three even columns (every name with room round it, the columns aligned row to row) */
 .st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .st-insp .cot-c-seg.times .cot-c-seg__opt{min-width:0;padding:0 var(--s2);white-space:nowrap}
-/* the five sun presets likewise fill their two rows */
-.cot-studio .sunPresets .cot-c-chip:last-child:nth-child(3n+2){grid-column:span 2}
 /* the map and tank pickers */
 .cot-studio .mapPick,.cot-studio .pick{position:relative;width:100%}
 .cot-studio .mapBtn{position:relative;display:block;width:100%;height:132px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);
@@ -301,8 +289,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunSide{display:grid;gap:var(--s2);min-width:0}
 .cot-studio .sunRead{display:flex;justify-content:space-between;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 .cot-studio .sunRead b{color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
-.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
-.cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);font-size:max(var(--fs-floor-11),var(--fs-11))}
+/* the sun presets are one choice, so they read as the time of day's segment above them: one frame, equal cells, the
+   chosen one filled (they wore the toggles' accent ring, and the last one spanned two cells) */
+.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:3px;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);background:transparent;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-studio .sunPresets .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
 /* the effects: the stack, the board, the selected layer's parameters */
 .cot-studio .fxstack{display:grid;gap:2px;max-height:188px;overflow-y:auto;scrollbar-width:thin}
 .cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:var(--s2);min-height:34px;padding:0 var(--s1) 0 var(--s2);
@@ -318,8 +310,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* each effect group stands apart from the one above it, so its heading reads with its own buttons */
 .cot-studio .fxg+.fxg{margin-top:var(--s3)}
 .cot-studio .sec>.fxg:first-of-type{margin-top:var(--s2)}
-/* the library's cards end their section: the next heading stands clear of the last caption */
-.cot-studio .director .production-library{margin-bottom:var(--s3)}
 .cot-studio .fxg .gh{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display)}
 /* the shots: one card per camera key */
 .cot-studio .shotboard{display:grid;gap:var(--s1);max-height:210px;overflow-y:auto;scrollbar-width:thin}
@@ -336,14 +326,16 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .planView canvas{border-radius:var(--r1);box-shadow:var(--ring-1)}
 .cot-studio .recStatus{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.4 var(--font-data)}
 .cot-studio .recStatus.on{color:var(--text-danger)}
-/* Chinese never sets in the figures' monospace (its glyphs spread unevenly there) */
-html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:var(--font-ui)}
+/* Chinese readouts: the figures keep the data monospace and the characters fall through to the UI face's Chinese (in the
+   monospace's own fallback they spread unevenly; in the UI face alone the figures lost their number style) */
+html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:var(--font-mono),var(--font-ui)}
 .cot-studio input::placeholder{color:var(--ink-3)}
 /* the film's summary wraps by whole facts (a dot or a lone word never dangles at a line's end) */
 .cot-studio .filmSummary{display:flex;flex-wrap:wrap;column-gap:var(--s3)}
 .cot-studio .filmSummary>span{white-space:nowrap}
 /* the Director (studioProductionPanel.ts): curated sequences, a featured tank, the shot list, rigs and exports */
-.cot-studio .director{display:flex;flex-direction:column;gap:var(--s5)}
+/* one step between the Director's sections, whatever ends them (a library's cards took an extra margin: 27 to 52 px) */
+.cot-studio .director{display:flex;flex-direction:column;gap:var(--s6)}
 .cot-studio .director-head{display:none}
 .cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
 /* a card is its still and, on a line under it, its name and length: no text sits on a tank (the owner's rule) */
@@ -359,7 +351,9 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio .production-card[aria-pressed=true] img{box-shadow:var(--ring-accent)}
 .cot-studio .production-card:disabled{cursor:default;opacity:.5}
 .cot-studio .production-description,.cot-studio .production-note{display:none}
-.cot-studio .production-fields{display:grid;gap:var(--s2)}
+/* the staging fields (format, featured tank) stand a section's step under the scenes, not under the last caption (the
+   s13 critic read "Featured tank" as part of the library) */
+.cot-studio .production-fields{display:grid;gap:var(--s2);margin-top:var(--s4)}
 .cot-studio .production-fields label,.cot-studio .production-lens{display:grid;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 .cot-studio .production-status{min-height:0;color:var(--ink-3);font:400 max(var(--fs-floor-11),var(--fs-12))/1.45 var(--font-body)}
 .cot-studio .production-status:empty{display:none}
@@ -367,8 +361,9 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);text-align:center}
 /* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
 /* the sequence's scrub carries its clock, so the slider reads as the shot list's time */
-.cot-studio .production-scrubrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s3)}
-.cot-studio .production-scrubrow output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
+.cot-studio .production-scrubrow{display:grid;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
+/* the header names the map from 1440 px up; the Battlefield card shows its picture there (UI-LOCKDOWN G11) */
+body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
@@ -388,10 +383,12 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .st-shelf>.h b .t-accent{margin-right:var(--s2);color:var(--accent)}
 .st-shelf>.h .cot-c-chip{height:30px}
 .st-shelf .production-takes{display:flex;flex:1;flex-direction:column;min-height:0}
-.st-shelf .production-takes .production-library{display:grid;flex:1;grid-auto-flow:column;grid-template-columns:none;
-  grid-auto-columns:calc((100% - 4 * var(--s4)) / 5);gap:var(--s4);min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
-/* on the shelf the still fills the row above its caption */
-.st-shelf .production-card{grid-template-rows:minmax(0,1fr) auto;min-height:0}
+.st-shelf .production-takes .production-library{display:grid;flex:1;grid-auto-flow:column;grid-template-columns:none;grid-template-rows:minmax(0,1fr) auto;
+  grid-auto-columns:calc((100% - 4 * var(--s4)) / 5);gap:var(--s2) var(--s4);min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+/* on the shelf the still fills the row above its caption, and every take shares the shelf's two rows: a caption that
+   wraps (zh 1920: "M1A2 Abrams TUSK，工厂公路") deepens the caption row for all, so the stills keep one height and the
+   durations one line */
+.st-shelf .production-card{grid-row:1/span 2;grid-template-rows:subgrid;min-height:0}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
 
@@ -401,8 +398,6 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .st-tl .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
 .st-tl .ib .cot-i{width:16px;height:16px}
 .st-tl .ib[aria-pressed=true]{color:var(--accent)}
-.st-tl .tc{font:500 var(--fs-15)/1 var(--font-data);white-space:nowrap}
-.st-tl .tc small{color:var(--ink-3);font:inherit}
 .st-tl .rate{padding:3px var(--s2);border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
 /* each slider holds its value at its own end and stands a gutter from the next control ("12 Speed" read as one) */
 .st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:var(--s2);margin-right:var(--s4);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
@@ -410,7 +405,7 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:left}
 .st-tl .tp .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .st-tl .tp .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12))}
-.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:20px;grid-auto-rows:minmax(24px,1fr);min-height:0;
+.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:24px;grid-auto-rows:minmax(24px,1fr);min-height:0;
   overflow-y:auto;scrollbar-width:thin}
 .st-tl .lb{display:flex;align-items:center;gap:var(--s2);min-width:0;padding:0 var(--s3);overflow:hidden;border-bottom:1px solid var(--line-1);
   color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
@@ -420,6 +415,17 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .st-tl .lb .nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-tl .tk{position:relative;min-width:0;overflow:hidden;border-bottom:1px solid var(--line-1);border-left:1px solid var(--line-1);cursor:crosshair}
 .st-tl .tk--ruler{display:flex;align-items:center;padding:0 2px}
+/* the ruler: ticks and m:ss labels on the scrub thumb's travel (the playhead's), the scrub's own track hidden under them */
+.st-tl .tk--ruler .tm{position:absolute;top:0;bottom:0;left:7.5px;right:7.5px;pointer-events:none}
+.st-tl .tk--ruler .tm i{position:absolute;bottom:0;width:1px;height:4px;background:var(--line-2)}
+.st-tl .tk--ruler .tm i.mj{height:7px;background:var(--line-3)}
+.st-tl .tk--ruler .tm b{position:absolute;top:3px;padding-left:4px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
+.st-tl .tk--ruler .tm b.end{padding:0 4px 0 0;translate:-100% 0}
+.st-tl .tk--ruler .scrub{position:relative}
+.st-tl .tk--ruler .scrub::-webkit-slider-runnable-track{background:transparent}
+.st-tl .tk--ruler .scrub::-moz-range-track,.st-tl .tk--ruler .scrub::-moz-range-progress{background:transparent}
+/* a lane with nothing on it yet keeps one quiet rule across its track, as the sound lane's silence does */
+.st-tl .tk:not(.tk--ruler):empty::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--line-2)}
 .st-tl .scrub{width:100%}
 .st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:var(--s2);min-width:6px;padding:0 var(--s2);overflow:hidden;border:0;
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
@@ -442,17 +448,18 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
 .st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
-  max-height:min(70vh,560px,calc(100dvh - 64px));padding:var(--s3) var(--s3) var(--s6);overflow-y:auto;border-radius:var(--r2);
+  max-height:min(70vh,560px,calc(100dvh - 64px));padding:var(--s4) var(--s3) var(--s6);overflow-y:auto;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 /* its foot fades where the list continues: a sticky shade in the menu's own colour (a mask let the frame show through) */
 .st-queue::after{content:'';position:sticky;bottom:calc(-1 * var(--s6));flex:none;height:var(--s6);margin:calc(-1 * var(--s6)) calc(-1 * var(--s3)) calc(-1 * var(--s6));
   background:linear-gradient(180deg,transparent,var(--surface-menu));pointer-events:none}
 /* the queue names itself; its foot (start, clear) stands over the fade when there are jobs */
-.st-queue .qh{margin:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
+/* the title starts where the rows' names and the empty line do (the s13 critic: it stood 9 px left of them) */
+.st-queue .qh{margin:0;padding-left:var(--s2);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
 .st-queue:has(.qf:not([hidden])){padding-bottom:var(--s3)}
 .st-queue:has(.qf:not([hidden]))::after{display:none}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
-.st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
+.st-queue .ql:not(:empty),.st-queue .qe:not([hidden]){padding-bottom:var(--s3);border-bottom:1px solid var(--line-1)}
 /* a delivery's name over its cost, the add or remove control beside both: the whole preset name always reads */
 .st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px var(--s3);min-height:34px;padding:var(--s1) var(--s1) var(--s1) var(--s2);
   border-radius:var(--r1);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-body)}
@@ -474,15 +481,19 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 /* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
 .st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:var(--s8) var(--s4) var(--s4);
   pointer-events:auto;background:var(--scrim)}
-.st-cmd-box{display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
+.st-cmd-box{--st-cmd-row:34px;display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 .cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 var(--s4);border-bottom:1px solid var(--line-1);border-radius:0;
   background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
 .cot-studio input.st-cmd-input:focus-visible{outline:none}
-/* the list fades at its foot where it continues, and its last row scrolls clear of the fade */
-.st-cmd-list{min-height:0;padding:var(--s2) var(--s2) var(--s6);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
-  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent);mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),transparent)}
-.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:34px;padding:0 var(--s3);border-radius:var(--r1);
+/* the list stops halfway down a row, so a list that goes on always shows the next row's top (on a phone it ended on a
+   row's edge, and the commands under it read as missing); the foot dims that row rather than hiding it, and the last
+   row scrolls clear of the fade */
+.st-cmd-list{min-height:0;max-height:calc(round(down,min(60vh,520px) - 48px - var(--s2) - var(--st-cmd-row) / 2,var(--st-cmd-row)) + var(--s2) + var(--st-cmd-row) / 2);
+  padding:var(--s2) var(--s2) var(--s6);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent));
+  mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent))}
+.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--st-cmd-row);padding:0 var(--s3);border-radius:var(--r1);
   color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-body);cursor:pointer}
 .st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
@@ -500,6 +511,12 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio .filmVeil .fvText{color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-data);text-align:center}
 .cot-studio .cot-info-trigger{display:inline-grid;place-items:center;width:20px;height:20px;min-width:20px;min-height:20px;padding:0;border:0;
   border-radius:50%;background:transparent;box-shadow:var(--ring-2);color:var(--ink-3)}
+/* a finger's targets: the info marks (the field frames' tiles among them) and the outliner's add controls grow, and an
+   add control shows its plate (a bare 11 px plus was the whole target on a landscape phone) */
+@media (pointer:coarse){
+  :is(.cot-studio,.cot-studio-archive) .cot-info-trigger{width:28px;height:28px;min-width:28px;min-height:28px}
+  .st-out .add{width:36px;height:36px;box-shadow:var(--ring-1)}
+}
 .cot-studio-archive{--font-display:var(--font-ui);width:min(94vw,1560px);max-width:none;padding:0;border:0;border-radius:var(--r2);background:var(--surface-page);
   box-shadow:var(--e4);color:var(--ink-1);font-family:var(--font-ui)}
 .cot-studio-archive::backdrop{background:var(--scrim)}
@@ -530,6 +547,15 @@ body[data-cot-width='tablet'] .st-head .r :is(.cot-c-btn--ghost,.cot-c-btn--prim
 body[data-cot-width='tablet'] :is(.st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,
   .st-tl .tp .r .cot-c-chip__label){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-width='tablet'] .st-vpt{max-width:calc(100% - 156px);flex-wrap:wrap}
+/* a tablet's outliner is a rail of the six workspaces, each glyph over its name; their rows wait in each workspace's
+   inspector, as on a phone, and the viewport takes the width (the gauntlet 10-25: 420 px wide at 900, mostly empty rows) */
+body[data-cot-width='tablet'] .st-app{grid-template-columns:84px minmax(0,1fr) 272px}
+body[data-cot-width='tablet'] .st-out{padding:var(--s2) var(--s1)}
+body[data-cot-width='tablet'] .st-out :is(.og>:not(.gh),.add){display:none}
+body[data-cot-width='tablet'] .st-out .gh{padding:0}
+body[data-cot-width='tablet'] .st-out .gh>button:first-child{flex-direction:column;justify-content:center;gap:var(--s1);min-height:52px;padding:var(--s2) 2px;
+  text-align:center}
+body[data-cot-width='tablet'] .st-out .gh>button:first-child .nm{max-width:100%;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
   grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 128px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}

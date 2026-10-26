@@ -137,7 +137,18 @@ async function target(page, selector, index = 0) {
 /** Press a control the way the profile does: a mouse click, or a tap on a touch screen. */
 async function press(page, selector, touch) {
   const handle = await page.waitForSelector(selector, { timeout: 15000 });
-  await handle.evaluate((el) => el.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  // the press lands on the target, never on a bar or sheet over it: a phone tap on the Gallery's second dossier tab
+  // went to whatever covered the tab's centre and left the Gallery (canvas-ui's phone run, 2026-10-25). Covered at
+  // `nearest`, the target is centred and checked again; still covered, the press throws instead of pressing that.
+  const cover = (block) => handle.evaluate((el, b) => {
+    el.scrollIntoView({ block: b, inline: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!hit || hit === el || el.contains(hit) || hit.contains(el)) return null;
+    return `${hit.tagName.toLowerCase()}${hit.id ? `#${hit.id}` : ''}${typeof hit.className === 'string' && hit.className ? `.${hit.className.trim().split(/\s+/).join('.')}` : ''}`;
+  }, block);
+  const covered = await cover('nearest') && await cover('center');
+  if (covered) throw new Error(`${selector} is covered by ${covered}`);
   if (touch) await handle.tap();
   else await handle.click();
 }
@@ -403,10 +414,21 @@ const canvasCheck = (page) => page.evaluate(CANVAS_CHECK).catch((cause) => ({ er
  *  their return, and across a device-pixel-ratio flip and back: one recorded sample per check. */
 const CANVAS_RESIZES = { desktop: [[1280, 800], [1024, 768], [1680, 1050]], phone: [[360, 780], [414, 896], [844, 390]] };
 const canvasProbe = async (page, ctx, surface, interactions) => {
-  const record = async (step) => { await settle(page, 300, 4000); ctx.record(`canvas:${surface}:${step}`, { canvas: await canvasCheck(page) }); };
+  // a retained canvas releases or redraws within its 0.5 s backstop sweep after it hides or shows (canvas-ui, 253)
+  const record = async (step) => { await sleep(700); await settle(page, 300, 4000);
+    ctx.record(`canvas:${surface}:${step}`, { canvas: await canvasCheck(page) }); };
+  const home = new URL(page.url()).pathname;
   await record('start');
   for (let n = 0; n < interactions.length; n++) {
     try { await interactions[n](); } catch (cause) { ctx.record(`canvas:${surface}:act${n}`, { error: firstLine(cause) }); continue; }
+    // a press that left the surface is recorded and undone: the steps after it check this surface, not another page
+    const now = new URL(page.url()).pathname;
+    if (now !== home) {
+      ctx.record(`canvas:${surface}:act${n}`, { error: `left ${home} for ${now}` });
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+      await sleep(1500);
+      continue;
+    }
     await record(`act${n}`);
   }
   const base = page.viewport();
@@ -962,7 +984,11 @@ async function main() {
     page.on('console', (message) => {
       const type = message.type();
       if (type === 'error' || type === 'warn' || type === 'warning') {
-        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: message.text().slice(0, 240) });
+        // the script position that logged it (a browser intervention such as Canvas2D's readback notice names its caller
+        // here, not in its text)
+        const frame = message.stackTrace?.()?.[0] ?? message.location?.();
+        const at = frame?.url ? ` @ ${frame.url.replace(/^.*\/assets\//, '')}:${(frame.lineNumber ?? 0) + 1}:${(frame.columnNumber ?? 0) + 1}` : '';
+        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: `${message.text().slice(0, 240)}${at}` });
       }
     });
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');

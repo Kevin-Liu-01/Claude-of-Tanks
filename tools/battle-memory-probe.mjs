@@ -10,11 +10,14 @@
 //     process's).
 // --retained samples, from the first return to the last, the allocations still alive at the end (V8's sampling heap
 // profiler without the collected objects): what battles 2..N left behind, by site (through the dist's source maps).
+// --leak-check holds each battle's world weakly under a marker class of its own and reports, after each return, which
+// worlds are alive (current, cached, or LEAKED); --retainers (implies it) prints a leaked world's shortest strong
+// retainer paths from a heap snapshot parsed as it streams (tools/heap-retainers.mjs).
 // --gate judges the returns against tools/battle-memory-budget.json: the growth from the first return to the last, a
-// battle, and the peak.
+// battle, the peak, and (with --leak-check) the released worlds still alive.
 //
 //   node tools/battle-memory-probe.mjs [--scenarios=urban:zone_control] [--size=14] [--battles=3] [--seconds=30]
-//        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--gate] [--viewport=1920x1080] [--preset=high]
+//        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--leak-check] [--retainers] [--gate] [--viewport=1920x1080] [--preset=high]
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -25,6 +28,7 @@ import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
+import { heapObjectIdOf, snapshotRetainerPaths } from './heap-retainers.mjs';
 
 const TOOL = 'battle-memory-probe';
 const BUDGET_FILE = fileURLToPath(new URL('./battle-memory-budget.json', import.meta.url));
@@ -32,7 +36,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
+    retained: false, census: false, dump: false, walk: false, leakCheck: false, retainers: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -47,6 +51,11 @@ export function parseMemoryArgs(argv) {
       case 'retained': o.retained = value !== '0'; break;
       case 'census': o.census = value !== '0'; break;
       case 'dump': o.dump = value !== '0'; break;
+      case 'walk': o.walk = value !== '0'; break;
+      case 'leak-check': o.leakCheck = value !== '0'; break;
+      case 'retainers': o.retainers = value !== '0'; o.leakCheck ||= o.retainers; break;
+      // a battle per entry, in order, in the one page (a player on the random rotation): the scenario names the first
+      case 'sequence': o.sequence = value.split(',').filter(Boolean); break;
       case 'gate': o.gate = value !== '0'; break;
       case 'viewport': o.viewport = value; break;
       case 'preset': o.preset = value; break;
@@ -55,7 +64,7 @@ export function parseMemoryArgs(argv) {
     }
   }
   if (!(o.battles >= 2)) throw new Error('--battles: at least 2 (the growth is from the first return to the last)');
-  for (const s of o.scenarios) if (!/^[a-z_]+:[a-z_0-9]+$/.test(s)) throw new Error(`--scenarios: <map>:<mode>, not ${s}`);
+  for (const s of [...o.scenarios, ...(o.sequence ?? [])]) if (!/^[a-z_]+:[a-z_0-9]+$/.test(s)) throw new Error(`--scenarios/--sequence: <map>:<mode>, not ${s}`);
   o.out ??= path.join(os.homedir(), 'cot-lanes', 'battle-memory', new Date().toISOString().slice(0, 16).replace(/[:T]/g, ''));
   return o;
 }
@@ -175,13 +184,64 @@ async function memoryInfraDump(browser) {
     if (!allocators) continue;
     const rows = {};
     for (const [name, dump] of Object.entries(allocators)) {
-      if (name.split('/').length > 2) continue;
+      // two levels everywhere; three under partition_alloc/partitions (array_buffer, buffer, fast_malloc, layout) and v8
+      const depth = name.split('/').length;
+      if (depth > 3 || (depth === 3 && !/^(partition_alloc\/partitions|v8\/(main|workers))\//.test(name))) continue;
       const size = dump?.attrs?.size?.value ? parseInt(dump.attrs.size.value, 16) : 0;
       if (size >= 5e6) rows[name] = Math.round(size / 1e6);
     }
-    out[`${names.get(e.pid) ?? 'process'} ${e.pid}`] = Object.fromEntries(Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 40));
+    out[`${names.get(e.pid) ?? 'process'} ${e.pid}`] = Object.fromEntries(Object.entries(rows).sort((a, b) => b[1] - a[1]).slice(0, 60));
   }
   return out;
+}
+
+/**
+ * (--walk) The ArrayBuffers reachable from the game's roots (the world, the game, the scene, the renderer's info), each
+ * counted once at the property path it was first reached by, summed to three levels (world.props.destructibles ...).
+ * Depth-first (a stack) through plain objects, arrays, Maps and Sets; DOM nodes and functions are not entered (a closure's
+ * captures and module-level caches are out of its sight). Run in the page (no closures).
+ */
+function pageBufferWalk() {
+  const roots = { world: window.__DEBUG?.world, game: window.__DEBUG?.game, scene: window.__DEBUG?.scene };
+  const seen = new Set(), buffers = new Set(), byPath = new Map();
+  const queue = [];
+  for (const [name, value] of Object.entries(roots)) if (value && typeof value === 'object') queue.push([value, name, 0]);
+  let visited = 0;
+  const credit = (path, bytes) => {
+    const key = path.split('.').slice(0, 3).join('.');
+    byPath.set(key, (byPath.get(key) ?? 0) + bytes);
+  };
+  const push = (value, path, depth) => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    if (ArrayBuffer.isView(value)) {
+      const buffer = value.buffer;
+      if (!buffers.has(buffer)) { buffers.add(buffer); credit(path, buffer.byteLength); }
+      seen.add(value);
+      return;
+    }
+    if (value instanceof ArrayBuffer) { if (!buffers.has(value)) { buffers.add(value); credit(path, value.byteLength); } return; }
+    if (typeof Node !== 'undefined' && value instanceof Node) return;
+    if (depth > 24) return;
+    queue.push([value, path, depth]);
+  };
+  while (queue.length && visited < 3e6) {
+    const [object, path, depth] = queue.pop();
+    if (seen.has(object)) continue;
+    seen.add(object);
+    visited++;
+    if (object instanceof Map) { let i = 0; for (const [k, v] of object) { push(k, path, depth + 1); push(v, `${path}.${typeof k === 'string' ? k : '[map]'}`, depth + 1); if (++i > 2e5) break; } continue; }
+    if (object instanceof Set) { let i = 0; for (const v of object) { push(v, `${path}.[set]`, depth + 1); if (++i > 2e5) break; } continue; }
+    if (Array.isArray(object)) { const n = Math.min(object.length, 2e5); for (let i = 0; i < n; i++) push(object[i], `${path}.[]`, depth + 1); continue; }
+    let keys;
+    try { keys = Object.keys(object); } catch { continue; }
+    for (const key of keys) {
+      let value;
+      try { value = object[key]; } catch { continue; }
+      push(value, `${path}.${key}`, depth + 1);
+    }
+  }
+  const rows = [...byPath].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([key, bytes]) => [key, Math.round(bytes / 1e5) / 10]);
+  return { visited, buffers: buffers.size, totalMB: Math.round([...buffers].reduce((a, b) => a + b.byteLength, 0) / 1e5) / 10, rows };
 }
 
 /** What the page holds now (after its collections): the heap, the DOM, the renderer, the game's residency. */
@@ -247,7 +307,8 @@ async function probeScenario(options, scenario) {
         sampling = true;
       }
       const entryStarted = Date.now();
-      await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
+      const [battleMap, battleMode] = options.sequence ? options.sequence[(battle - 1) % options.sequence.length].split(':') : [mapId, gameMode];
+      await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId: battleMap, gameMode: battleMode });
       await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 250 });
       const entryMs = Date.now() - entryStarted;
       // the entry's covered first-battle warm (once a session; window.__BATTLE_FIRST_WARM) and its load stages
@@ -255,13 +316,54 @@ async function probeScenario(options, scenario) {
         loadStages: window.__BATTLE_LOAD?.stages ?? null }));
       await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
       const inBattle = rssByKind(pid);
-      await driveBattle(page, { seconds: options.seconds, mode: gameMode });
+      await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
+      // (--leak-check) this battle's world, held weakly and marked (a class of its own, named in a heap snapshot)
+      if (options.leakCheck) await page.evaluate((label, battleIndex) => {
+        const world = window.__DEBUG?.world;
+        if (!world) return;
+        window.__WORLD_REFS ??= [];
+        // a class named in its own source: a heap snapshot names an instance by its class's declared (or inferred) name,
+        // not by a computed .name (a `{ [key]: class {} }` marker read as its variable's name)
+        const markers = [class LeakMarker_1 {}, class LeakMarker_2 {}, class LeakMarker_3 {}, class LeakMarker_4 {},
+          class LeakMarker_5 {}, class LeakMarker_6 {}, class LeakMarker_7 {}, class LeakMarker_8 {}, class LeakMarker_9 {},
+          class LeakMarker_10 {}, class LeakMarker_11 {}, class LeakMarker_12 {}];
+        world.__leakMarker = new markers[(battleIndex - 1) % markers.length]();
+        window.__WORLD_REFS.push({ label, mapId: world.mapId, ref: new WeakRef(world) });
+      }, `${battle}_${battleMap}`, battle);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
       await sleep(5000);
-      const row = { label: `garage after battle ${battle}`, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      const row = { label: `garage after battle ${battle} (${battleMap})`, map: battleMap, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
+      if (options.leakCheck) {
+        // after measure's collections: which battles' worlds are still alive, and whether each is still cached
+        row.worldsAlive = await page.evaluate(() => (window.__WORLD_REFS ?? []).map(({ label, mapId, ref }) => {
+          const world = ref.deref();
+          return { label, mapId, alive: !!world, cached: (window.__DEBUG?.worldCacheIds ?? []).includes(mapId),
+            current: world ? window.__DEBUG?.world === world : false };
+        }));
+        log(`worlds alive: ${row.worldsAlive.map((w) => `${w.label}${w.alive ? (w.current ? ' (current)' : w.cached ? ' (cached)' : ' (LEAKED)') : ' (collected)'}`).join(', ')}`);
+        // (--retainers) a leaked world's shortest strong retainer paths, from a heap snapshot parsed as it streams
+        const leakedRows = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached);
+        const leaked = leakedRows.map((w) => `LeakMarker_${((Number.parseInt(w.label, 10) - 1) % 12) + 1}`);
+        if (options.retainers && leaked.length) {
+          // each marker's heap id (its handle released first): found by id when the string table lost a stretch
+          const ids = {};
+          for (const [k, w] of leakedRows.entries()) {
+            ids[leaked[k]] = await heapObjectIdOf(cdp,
+              `(window.__WORLD_REFS ?? []).find((w) => w.label === ${JSON.stringify(w.label)})?.ref.deref()?.__leakMarker`).catch(() => null);
+          }
+          row.retainers = await snapshotRetainerPaths(cdp, leaked, 3, ids);
+          for (const [name, perMarker] of Object.entries(row.retainers)) {
+            for (const paths of perMarker) for (const steps of paths) log(`retainer of ${name}: ${steps.join(' > ')}`);
+          }
+        }
+      }
+      if (options.walk) {
+        row.bufferWalk = await page.evaluate(pageBufferWalk);
+        log(`walk ${row.bufferWalk.visited} objects, ${row.bufferWalk.buffers} buffers, ${row.bufferWalk.totalMB} MB: ${JSON.stringify(row.bufferWalk.rows.slice(0, 40))}`);
+      }
       if (options.dump) {
         row.memoryInfra = await memoryInfraDump(browser);
         for (const [proc, rows] of Object.entries(row.memoryInfra)) log(`dump ${proc}: ${JSON.stringify(rows).slice(0, 900)}`);
@@ -313,6 +415,10 @@ export function judgeMemory(record, budget) {
     jsHeapGrowthPerBattleMB: g.jsHeapMB?.perBattle, nodesGrowthPerBattle: g.nodes?.perBattle, listenersGrowthPerBattle: g.listeners?.perBattle,
     texturesGrowthPerBattle: g.textures?.perBattle, geometriesGrowthPerBattle: g.geometries?.perBattle, rssGrowthPerBattleMB: g.rssMB?.perBattle,
     peakRssMB: record.peakRss?.total,
+    // (--leak-check) the most worlds alive after a return that are neither the current nor a cached one (released, held)
+    leakedWorlds: (record.returns ?? []).some((row) => row.worldsAlive)
+      ? Math.max(0, ...(record.returns ?? []).map((row) => (row.worldsAlive ?? []).filter((w) => w.alive && !w.current && !w.cached).length))
+      : undefined,
   };
   return Object.entries(budget.limits ?? {}).map(([name, limit]) => {
     const value = readings[name];

@@ -47,12 +47,31 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - home +714 / docs +1,361 / 404 +545 brotli over the lane's pins: the Premiere lead's /home and 404 rounds 17 and 18
   //   and the mode hues (brand-ui-home-252 024b0c5ff6, c6ebdd8eec), primitives' Field Manual r13/r14 with its mode glyphs
   //   (brand-ui-primitives-250 2c6c740125), the registry's data-datum markers (surface-registry-253 6837baa487).
-  game: { brotliBytes: 1072654, requests: 129, entryBrotliBytes: 236546 },
-  cn: { brotliBytes: 1115783, requests: 130, entryBrotliBytes: 236546 },
-  gallery: { brotliBytes: 665390, requests: 75 },
-  home: { brotliBytes: 24863, requests: 8 },
-  docs: { brotliBytes: 32949, requests: 12 },
-  notFound: { brotliBytes: 16362, requests: 7 },
+  // 2026-10-25 (integrator 254, re-pinned at the release build of 254 after its npm ci; each share is the local build of
+  // its merge commit against the one before, and main 253 built that way reads its release pin within 4 B):
+  // - battle-spikes-253 100114d1e4 (the entry and Garage world-build slices, the footprint point index, the shadow
+  //   cache's scoped re-renders, the minimap chrome cache): +1,410 B game, +94 B entry, +367 B Gallery;
+  // - Main: "stage 2b pass 1, the decor worker's plan/attach split and planner" with 253's riding-parts trigger relabelled
+  //   in fleetFactory (decor-worker-254 22213d3b33, which carries frontend-budgets-252 b7f7e781b8): +546 B game,
+  //   +166 B entry, +442 B Gallery (the lane's known-list rows, folded in here);
+  // - rust-support-solve-253 65f8688d36 (the kernels' fallback report; the solo-host entry stays lazy): +105 B game, +40 B entry;
+  // - brand-ui-battle-242 4074630480 (gauntlet round 8, the Frontline hostiles datum, the touch contract): +801 B game
+  //   (+747 B cn), +104 B entry; home +6 B and 404 +4 B; docs -4 B. tech-tree-view-252 -2 B; media-home-r2-252 none.
+  // Requests unchanged.
+  // 2026-10-26 (integrator 254, the forwards, re-pinned at the release build of d0186c3164):
+  // - Main: "owner /home sections and hero text (2026-10-25)" (brand-ui-home-252 235ce8ba78 then 4d0b30d296: the hero's
+  //   headline, line and per-clip caption on a measured scrim; Head to head, In battle and The fleet as lazy sections):
+  //   home +1,093 B (the lead measured 25,923 at 235ce8ba78), docs +17 B, game +33 B;
+  // - canvas-ui-253 b4aa00359b (the phone livery swatches' retained surface): +173 B game, +163 B Gallery;
+  // - Main: the owner's Garage asks, accepted and re-pinned at the release build (brand-ui-garage-redesign-245
+  //   64ca0557d5: the hero on the measured free stage, the roster as one kit row; with integ's equipment-tip fix):
+  //   +1,376 B game, +1,077 B entry, +473 B Gallery, home -25 B. Requests unchanged.
+  game: { brotliBytes: 1076898, requests: 129, entryBrotliBytes: 237860 },
+  cn: { brotliBytes: 1119906, requests: 130, entryBrotliBytes: 237860 },
+  gallery: { brotliBytes: 666853, requests: 75 },
+  home: { brotliBytes: 25962, requests: 8 },
+  docs: { brotliBytes: 32951, requests: 12 },
+  notFound: { brotliBytes: 16339, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

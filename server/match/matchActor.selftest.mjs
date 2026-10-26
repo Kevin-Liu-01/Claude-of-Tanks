@@ -7,7 +7,7 @@ import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/
 import { quantizeAimDistance, quantizeAngle } from '../../src/mp/wire/quantize.ts';
 import { createLoopbackLink } from './link.ts';
 import { KEYFRAME_INTERVAL_TICKS, keyframeSlotFor } from './publisher.ts';
-import { ENTRY_BACKPRESSURE_GRACE_MS, ENTRY_BACKPRESSURE_SUSTAINED_MS, SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
+import { ENTRY_BACKPRESSURE_GRACE_MS, ENTRY_BACKPRESSURE_HARD_BYTES, ENTRY_BACKPRESSURE_SUSTAINED_MS, SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 
 // The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
@@ -286,7 +286,8 @@ assert.ok(actor.clientStats().find((entry) => entry.playerId === 'p4').droppedSn
 assert.ok(p3.frames.length > p4b.frames.length, 'other clients are unaffected');
 await advanceTicks(actor, 150, driveP1);
 assert.ok(p4b.closed && p4b.closed.reason === CLOSE_REASON.BACKPRESSURE, `sustained pressure closes with a typed reason (${p4b.closed?.reason})`);
-p3.link.client.pressure = 600 * 1024;
+// (still in its entry grace: its hard bound is ENTRY_BACKPRESSURE_HARD_BYTES; the steady 512 KB one is tested past the grace below)
+p3.link.client.pressure = ENTRY_BACKPRESSURE_HARD_BYTES + 1024;
 await advanceTicks(actor, 4, driveP1);
 assert.ok(p3.closed && p3.closed.reason === CLOSE_REASON.BACKPRESSURE, 'the hard bound closes immediately');
 assert.equal(actor.stats().backpressureCloses, 2);
@@ -354,9 +355,14 @@ assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop clos
   busy.link.client.pressure = 0;
   await advanceTicks(graceActor, 2);
   busy.link.client.pressure = 100 * 1024;
+  // (battle-spikes-253) a burst past the steady hard bound in the grace — the host page's own blocked entry forwarding its
+  // backlog at once — is dropped, not closed; the entry hard bound still closes at once
   hard.link.client.pressure = 600 * 1024;
   await advanceTicks(graceActor, 2);
-  assert.ok(hard.closed && hard.closed.reason === CLOSE_REASON.BACKPRESSURE, 'the hard bound closes at once, grace or not');
+  assert.ok(!hard.closed, 'a 600 KB burst in the entry grace is not a dead link');
+  hard.link.client.pressure = ENTRY_BACKPRESSURE_HARD_BYTES + 1024;
+  await advanceTicks(graceActor, 2);
+  assert.ok(hard.closed && hard.closed.reason === CLOSE_REASON.BACKPRESSURE, 'the entry hard bound closes at once');
   await advanceTicks(graceActor, 90);
   assert.ok(dead.closed && dead.closed.reason === CLOSE_REASON.BACKPRESSURE, `a link that never drains still closes in the grace (${dead.closed?.detail})`);
   assert.equal(dead.closed.detail, 'sustained');
@@ -370,10 +376,14 @@ assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop clos
   await advanceTicks(graceActor, 150);
   assert.ok(late.closed && late.closed.reason === CLOSE_REASON.BACKPRESSURE && late.closed.detail === 'sustained', 'after the grace, 2.5 s of pressure closes as before');
   assert.ok(!busy.closed, 'the drained client stays');
-  assert.equal(graceActor.stats().backpressureCloses, 3);
+  busy.link.client.pressure = 600 * 1024;
+  await advanceTicks(graceActor, 2);
+  assert.ok(busy.closed && busy.closed.reason === CLOSE_REASON.BACKPRESSURE && /bytes buffered/.test(busy.closed.detail),
+    'after the grace the steady hard bound closes at once');
+  assert.equal(graceActor.stats().backpressureCloses, 4);
   graceActor.stop();
   await flush();
-  console.log('matchActor.selftest: in the entry grace soft pressure is a loading client (stale snapshots dropped, 4 s busy runs kept, a never-draining link closed at the long limit, the hard bound at once); after it the steady 2 s rule');
+  console.log('matchActor.selftest: in the entry grace soft pressure is a loading client (stale snapshots dropped, 4 s busy runs kept, a never-draining link closed at the long limit, a burst dropped and the entry hard bound at once); after it the steady 2 s rule and hard bound');
 }
 
 // ---------------------------------------------------------------- verdict: the clock ends the match, the callback fires, the actor lingers then stops

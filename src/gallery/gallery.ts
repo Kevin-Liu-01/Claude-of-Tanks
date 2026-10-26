@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
-import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -209,7 +209,7 @@ let activeMode: GalleryMode = 'appearance';
 let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
 let dossierShownId = '';
 
 const damageHost = document.createElement('div');
@@ -337,7 +337,7 @@ function anatomyVehicle(): AnatomyVehicle | null {
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   // the loading notice covers a slow build only, and leaves the moment the layer shows (it outlived the render before)
-  let loading: ReturnType<typeof showToast> = null;
+  let loading: GalleryNotice | null = null;
   const slow = setTimeout(() => { loading = showToast(t('gallery.anatomy.loading'), { severity: 'progress' }); }, 250);
   const settle = (): void => { clearTimeout(slow); loading?.dismiss(); loading = null; };
   anatomyReady = loadAnatomy().then(async (module) => {
@@ -357,7 +357,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
-    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
+    if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
     settle();
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
@@ -474,15 +474,14 @@ const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2
 
 /** A notice's handle from the moment it is asked for: a dismissal before the kit has loaded cancels it. */
 interface GalleryNotice { dismiss(): void }
-function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): GalleryNotice | null {
-  if (!visual) {
-    // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
-    const toast = $('#toast');
-    toast.textContent = message;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toast.textContent = ''; }, 1800);
-    return null;
-  }
+/** A layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet). */
+function announceLine(message: string): void {
+  const line = $('#announce');
+  line.textContent = message;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { line.textContent = ''; }, 1800);
+}
+function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}): GalleryNotice {
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
   let dismissed = false;
@@ -838,7 +837,9 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+    // a typed query that matches nothing is named, so the line never blames filters the reader did not set
+    const query = $<HTMLInputElement>('#gallerySearch').value.trim();
+    vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
@@ -1066,6 +1067,10 @@ function renderOverview(record: GalleryRecord): void {
 function renderStats(record: GalleryRecord): void {
   const ranges = peerRanges(record);
   const rival = rivalId ? recordById.get(rivalId) : null;
+  // the deltas and the outlined cell are the overview's rival, named here (the switch above sets only the bars' scale)
+  const ref = $('#statRef');
+  ref.hidden = !rival;
+  if (rival) ref.innerHTML = `<i aria-hidden="true"></i>${esc(t('gallery.stats.versus', { name: rival.shortName || rival.displayName }))}`;
   $('#statGroups').innerHTML = STAT_GROUPS.map(([group, label, glyph]) => {
     const rows = STATS.filter((stat) => stat.group === group).map((stat) => {
       const value = stat.value(record);
@@ -1095,7 +1100,10 @@ function renderAmmo(record: GalleryRecord): void {
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeName(type))}</small></span>`
+    const name = keepDesignation(shell.name || shell.type), typeName = shellTypeName(type);
+    // the round's type once: a designation that already names it ("3BK31 HEAT", "3OF82 HE-Frag") takes no subtitle
+    const named = name.split(/[^A-Za-z]+/).includes(typeName);
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(name)}</b>${named ? '' : `<small>${esc(typeName)}</small>`}</span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
@@ -1128,24 +1136,24 @@ function populateRivals(): void {
     return group;
   }));
 }
-/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip); the rival's
- * silhouette faces the selection. */
-function versusSide(record: GalleryRecord, mirrored: boolean): string {
-  const name = record.shortName || record.displayName;
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}`
-    + `<b${name === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`}>${esc(keepDesignation(name))}</b>`;
+/** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
+ * picker above names it (the g10 critic read the name under the picker as the same name twice). */
+function versusSide(record: GalleryRecord): string {
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
-  $('#versusOwn').innerHTML = versusSide(record, false);
+  // the selection's side is its silhouette alone: its name and flag are the dossier's head (UI-LOCKDOWN G7, G8)
+  $('#versusOwn').innerHTML = silhouette(record.id, 'left');
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
   rivalSelect.value = rival.id;
-  $('#versusRival').innerHTML = versusSide(rival, true);
-  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, hit points
+  $('#versusRival').innerHTML = versusSide(rival);
+  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, top speed in km/h (hit points are
+  // the dossier's facts, UI-LOCKDOWN G9)
   const rows: Array<[IconId, string, string, number, number, number]> = [
     ['penetration', 'gallery.stat.penetration', 'gallery.unit.mm', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
     ['reload', 'gallery.stat.reload', 'gallery.unit.s', record.metrics.reloadS, rival.metrics.reloadS, -1],
-    ['shield', 'gallery.dossier.spec.hp', 'gallery.unit.hitPoints', record.metrics.hp, rival.metrics.hp, 1],
+    ['speed', 'gallery.stat.speed', 'gallery.unit.kmh', record.metrics.topSpeedKmh, rival.metrics.topSpeedKmh, 1],
   ];
   $('#versusMid').innerHTML = rows.map(([glyph, label, unitKey, own, other, better]) => {
     const ownBetter = (own - other) * better > 0;
@@ -1207,7 +1215,17 @@ function renderDossier(record: GalleryRecord): void {
   favourite.setAttribute('aria-pressed', String(favourites.has(record.id)));
 }
 
+/** A pose slider's fill runs from its zero to its value (from its left edge it read as half the range at 0°). */
+function paintPoseFill(input: HTMLInputElement): void {
+  const min = Number(input.min), max = Number(input.max);
+  const at = (value: number): string => `${(((value - min) / Math.max(1e-6, max - min)) * 100).toFixed(2)}%`;
+  const zero = Math.min(max, Math.max(min, 0)), value = Number(input.value);
+  input.style.setProperty('--lo', at(Math.min(zero, value)));
+  input.style.setProperty('--hi', at(Math.max(zero, value)));
+}
+
 function updateArticulation(): void {
+  for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) paintPoseFill($<HTMLInputElement>(`#${id}`));
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
@@ -1219,6 +1237,7 @@ function updateArticulation(): void {
     gunInput.value = String(Math.max(Number(gunInput.min), Number(gunInput.value)));
   }
   const gunPitch = Number(gunInput.value);
+  paintPoseFill(gunInput);
   visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
@@ -1274,7 +1293,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   }
   renderLegend();
   updateUrl();
-  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }), { visual: false });
+  if (announce && activeMode === 'markup') announceLine(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
 }
 
 function disposeTank(): void {
@@ -1307,7 +1326,9 @@ const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high
  *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
 async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
   let sliceStartedAt = performance.now();
-  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
+  // the decoration plans in the decor worker (stage 2b): a step that yields its wait is awaited, never polled
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx,
+    { ...GALLERY_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
   try {
     for (;;) {
       const result = steps.next();
@@ -1317,7 +1338,8 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
         result.value.dispose();
         return null;
       }
-      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
       if (!current()) return null;
     }
   } catch (error) {
