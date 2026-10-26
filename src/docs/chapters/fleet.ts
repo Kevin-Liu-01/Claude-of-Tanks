@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { docsFleetRows, type DocsFleetRow } from '../../../tools/docsFleetTable.ts';
 import type { HeroFacing } from '../../ui/heroCardPolicy.ts';
+import { heroTierChipHTML } from '../../ui/heroCardChips.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -26,7 +27,8 @@ let hero: HeroCards | null = null;
 const heroCards = (): HeroCards => (hero ??= JSON.parse(readFileSync(join(ROOT, 'public/icons/hero/hero-cards.json'), 'utf8')) as HeroCards);
 const v = (sha: string | undefined): string => (sha ? `?v=${sha.slice(0, 8)}` : '');
 
-/** One tank's hero card: its flag and its render, as two lazy pictures in a .cot-hc host the manual sizes. */
+/** One tank's hero card: its flag and its render, as two lazy pictures in a .cot-hc host the manual sizes, and its tier
+ * chip from the tier table (Main 10-26: the chip is markup on every hero card, never baked into a render). */
 export function heroCardMarkup(id: string, sizes: string): string {
   const cards = heroCards();
   const row = cards.tanks[id];
@@ -39,5 +41,6 @@ export function heroCardMarkup(id: string, sizes: string): string {
     + `<picture><source type="image/avif" srcset="/icons/hero/flag-${row.flag}-480.avif${v(flag.sha[0])} 480w, /icons/hero/flag-${row.flag}-960.avif${v(flag.sha[1])} 960w" sizes="${sizes}">`
     + `<img class="hc-flag" src="/icons/hero/flag-${row.flag}-480.webp${v(flag.sha[2])}" width="480" height="300" alt="" loading="lazy" decoding="async"></picture>`
     + `<picture><source type="image/avif" srcset="/icons/hero/${id}-480.avif${v(row.sha[0])} 480w, /icons/hero/${id}-960.avif${v(row.sha[1])} 960w" sizes="${sizes}">`
-    + `<img class="hc-tank" src="/icons/hero/${id}-480.webp${v(row.sha[2])}" width="480" height="300" alt="" loading="lazy" decoding="async" style="${place}"></picture></div>`;
+    + `<img class="hc-tank" src="/icons/hero/${id}-480.webp${v(row.sha[2])}" width="480" height="300" alt="" loading="lazy" decoding="async" style="${place}"></picture>`
+    + `${heroTierChipHTML(id)}</div>`;
 }

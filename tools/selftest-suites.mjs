@@ -874,6 +874,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
@@ -2359,6 +2360,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
+    'src/ui/garageBattleQuick.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',

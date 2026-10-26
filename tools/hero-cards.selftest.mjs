@@ -19,7 +19,12 @@ const right = HERO_CAMERA.facing === 'right';
 assert.equal(HERO_CAMERA.facing, 'left', 'hero card hulls face left (bow toward screen-left)');
 assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) <= 10, `hero azimuth ${HERO_CAMERA.azimuthDeg} within 10 deg of the Garage camera`);
 assert.ok(HERO_CAMERA.azimuthDeg > 0 && HERO_CAMERA.azimuthDeg < 90, 'front three-quarter: the glacis and the flank both show');
-assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) <= 2, `hero elevation ${HERO_CAMERA.elevationDeg} within 2 deg of the Garage pitch`);
+// 2026-10-26 (owner via Main, 258: "make the camera look down on the tanks more"): the Garage's presentation pose looks down
+// 14 deg while the cards keep their ratified elevation until a re-render matches them (raised with Main), so a card never
+// looks down more than the Garage and stands within 10 deg of it
+const garagePitch = deg(GARAGE_CAMERA_PITCH_RAD);
+assert.ok(HERO_CAMERA.elevationDeg <= garagePitch + 2 && garagePitch - HERO_CAMERA.elevationDeg <= 10,
+  `hero elevation ${HERO_CAMERA.elevationDeg} at or under the Garage pitch ${garagePitch.toFixed(1)}, within 10 deg`);
 
 // 2. One mask, two renderers: the CSS string carries the compositor's stops and mirrors with the facing.
 const stops = flagMaskStops();

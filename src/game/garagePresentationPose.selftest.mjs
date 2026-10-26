@@ -19,10 +19,13 @@ assert.ok(Object.isFrozen(GARAGE_PRESENTATION_POSE.cameraOffsetM));
 assert.ok(Object.isFrozen(GARAGE_PLATFORM_GEOMETRY));
 assert.equal(GARAGE_HERO_HEADING_RAD, 0);
 assert.equal(GARAGE_CAMERA_LOOK_HEIGHT_M, 1.6);
-assert.deepEqual([...GARAGE_PRESENTATION_POSE.cameraOffsetM], [7.4, 2.75, 8]);
+assert.deepEqual([...GARAGE_PRESENTATION_POSE.cameraOffsetM], [7.4, 4.32, 8]);
 assert.equal(GARAGE_PRESENTATION_POSE.cameraFovDeg, 42);
 assert.equal(GARAGE_CAMERA_AZIMUTH_RAD, Math.PI / 4);
-assert.equal(GARAGE_CAMERA_PITCH_RAD, Math.atan2(1.2, Math.hypot(7.4, 8)));
+assert.equal(GARAGE_CAMERA_PITCH_RAD, Math.atan2(4.32 - 1.6, Math.hypot(7.4, 8)));
+// it looks down on the hero (owner 10-26), about 14 degrees: at 18 or more the hero camera stood 7-8.5 m up, among the
+// Verdant hall's crane chains and bridges
+assert.ok(GARAGE_CAMERA_PITCH_RAD > 12 * Math.PI / 180 && GARAGE_CAMERA_PITCH_RAD < 16 * Math.PI / 180, 'the camera looks down on the hero');
 const cameraPlanar = [
   GARAGE_PRESENTATION_POSE.cameraOffsetM[0],
   GARAGE_PRESENTATION_POSE.cameraOffsetM[2],
