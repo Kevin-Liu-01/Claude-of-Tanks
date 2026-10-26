@@ -338,6 +338,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
+/* the enemy nation's picker menu stands as tall as the fields beside it, so its label shares their line (Rooms r36) */
+.cot-play .arrange-fields .cot-c-menu__trigger{min-height:44px}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
