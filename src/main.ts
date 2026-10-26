@@ -4023,6 +4023,8 @@ const studioAccess = createStudioAccess({
       const budget = createFrameBudgetYielder(8);
       return deploymentShadowWarm.prime(() => budget(false));
     },
+    // (2026-10-26) the renderer's queued program links, waited for between frames
+    awaitProgramLinks: () => awaitRendererProgramLinks(() => nextFrame()),
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
