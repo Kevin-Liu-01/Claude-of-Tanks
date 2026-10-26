@@ -75,8 +75,16 @@
 .cot-header-nav .record-new{position:absolute;top:var(--s1);right:var(--s1);width:8px;height:8px;border-radius:50%;
   background:var(--accent-hi);}
 .cot-header-nav .record-new[hidden]{display:none;}
-.cot-garage-variant-control{position:relative;min-width:0;display:flex;}
+/* the staging area's plate (owner 10-26: "its own ui surface"): the stage's top-left corner, level with the readout
+   column's top, the kit's menu trigger on a plate that reads over the scene; a phone reaches it from its menu */
+.cot-garage-variant-control{position:absolute;z-index:6;left:var(--edge,22px);top:var(--column-top,84px);display:flex;min-width:0;
+  max-width:min(360px,calc(100% - var(--fleet-right,340px) - 2 * var(--edge,22px)));pointer-events:auto;}
 .cot-garage-variant-control[hidden]{display:none;}
+.cot-garage-variant-control .cot-c-menu__trigger{width:auto;max-width:100%;min-height:var(--btn-h-s);padding-block:2px;
+  background:var(--surface-plate);box-shadow:var(--ring-2),var(--e1);}
+body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
+/* the equipment picker opens over the stage's top at a short window: the plate steps aside while it is open */
+.cot-garage.picker-open .cot-garage-variant-control{visibility:hidden;}
 .cot-nav .cot-github{position:relative;padding-inline:var(--s2);}
 .cot-nav .github-stars{padding-left:6px;border-left:1px solid var(--line-3);
   flex:0 0 auto;color:var(--text-accent);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;}
@@ -1024,7 +1032,6 @@ body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{border-left
   background:linear-gradient(var(--btn-primary-press),var(--btn-primary-press)) left center/1px 56% no-repeat;}
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 
-body[data-cot-panels='overlay'] .cot-leftcol>.cot-garage-variant-control{display:none}
 body[data-cot-panels='overlay'] .cot-leftcol{display:none}
 body[data-cot-panels='overlay'] .cot-garage .stats{
   display:block;z-index:8;right:max(var(--cot-overlay-edge),env(safe-area-inset-right));left:auto;

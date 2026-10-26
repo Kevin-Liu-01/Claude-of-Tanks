@@ -16,8 +16,12 @@ assert.doesNotMatch(garageTs.slice(headerStart, headerEnd), /cot-garage-variant-
   'staging selection does not consume space in the primary header');
 
 assert.match(garageTs,
-  /<div class="cot-leftcol">` \+\s*`<div class="cot-drawer-heading">[^\n]+\n\s*`<div class="cot-garage-variant-control"><\/div>` \+\s*`<div class="cot-camos"/,
-  'the staging choice sits in the paint sheet, immediately above its catalog');
+  /<div class="cot-camos" id="cot-garage-camos"><\/div><\/div>` \+[\s\S]{0,400}?`<div class="cot-garage-variant-control"><\/div>` \+/,
+  'the staging choice is its own surface, outside the paint sheet (owner 10-26: not combined with camo)');
+assert.match(garageCss, /\.cot-garage-variant-control\{position:absolute;[^}]*left:var\(--edge,22px\);top:var\(--column-top,84px\);/,
+  "its plate stands in the stage's top-left corner, level with the readout column's top");
+assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-garage-variant-control\{display:none;\}/,
+  'a phone reaches it from its menu');
 assert.match(garageTs,
   /createPickerMenu\(garageVariantHost, \{\s*id: 'garage-staging',[\s\S]*?layout: 'cards',/,
   'the staging choice is the kit picker menu, registered as garage-staging, over picture cards');
@@ -32,8 +36,6 @@ assert.doesNotMatch(garageTs, /cot-garage-variant-(?:menu|card|trigger)|role="li
   'no hand-rolled staging listbox, trigger or card remains');
 assert.doesNotMatch(garageCss, /\.cot-garage-variant-(?:menu|card|trigger)/,
   "the bespoke staging styles left with the bespoke control");
-assert.match(showroomCss, /@container sheet \(width < 640px\)\{\s*\.cot-garage-variant-control \.cot-c-menu__fact\{display:none;\}/,
-  "a narrow sheet drops the area's place and keeps its name");
 assert.doesNotMatch(garageCss, /\.cot-wordmark \.wm\[lang=en\]/,
   'the Claude of Tanks wordmark is the outlined master (brandWordmark.ts): it tracks the same in every locale');
 

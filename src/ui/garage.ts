@@ -794,8 +794,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</div>` +
     `<div class="cot-leftcol">` +
     `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>` +
-    `<div class="cot-garage-variant-control"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
+    // the staging area is its own surface (owner 10-26: "should not be combined with camo, it should have its own ui
+    // surface"): a plate in the stage's top-left corner, the kit's picker menu over the scenes; a phone opens it from
+    // its menu
+    `<div class="cot-garage-variant-control"></div>` +
     // The showroom's lower third (brand-ui S2): the selected tank's name, once and large, over its identity as a flag and
     // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
     // The band under the name (the 245 redesign): the three equipment slots, the paint (what the tank wears, three more to
@@ -1210,7 +1213,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
     // the rival is the kit's picker menu (mountRivalMenu, after the readout is drawn): a raw select in the census
-    const picker = `<div class="cot-compare">` + (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
+    // the station's title stands on the Compare row, left of it (owner 10-26: "to the left of compare it should have a title")
+    const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.station.overview'), '', 'Performance', true)}` +
+      (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
       `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="${compareOn}">` +
       `<span class="cot-c-chip__label">${t('garage.compare')}</span></button></div>`;
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
@@ -2876,8 +2881,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     disposeInfo?: () => void;
   }
 
-  function statSectionTitle(icon: string, label: string, meta: string, infoId: GarageInfoLabel): string {
-    return `<div class="cot-stat-title cot-sidebar-section-title" data-stat-info="${infoId}">${uiIconSVG(icon, 13)}` +
+  /** A section's title row (the kit's section-title style); `lead` is its station's first, which every density keeps (owner
+   *  10-26: every station's stat sections have their title rows, as Mobility's had). */
+  function statSectionTitle(icon: string, label: string, meta: string, infoId: GarageInfoLabel, lead = false): string {
+    return `<div class="cot-stat-title cot-sidebar-section-title${lead ? ' is-lead' : ''}" data-stat-info="${infoId}">${uiIconSVG(icon, 13)}` +
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
@@ -3082,7 +3089,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const y0 = Math.max(rr.top + 66, bar && bar.height ? bar.bottom + 8 : rr.top + 78);
     const floor = band && band.height ? band.top - 10 : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190;
     stageFree = stageRect(x0, y0, x1, Math.min(rr.bottom, floor));
-    stageCallouts = stageRect(x0, y0 + 8, x1, head && head.height ? head.top - 12 : Math.min(rr.bottom, floor));
+    // the callouts start under the staging plate in the stage's top-left corner, where it shows
+    const plate = garageVariantHost.getBoundingClientRect();
+    const calloutTop = plate.height ? Math.max(y0 + 8, plate.bottom + 8) : y0 + 8;
+    stageCallouts = stageRect(x0, calloutTop, x1, head && head.height ? head.top - 12 : Math.min(rr.bottom, floor));
     // the hero stands above the name (the full width) or beside it (down to the band), whichever shows it larger: the
     // name never covers the hull
     const above = head && head.height ? stageRect(x0, y0, x1, head.top - 12) : null;
@@ -3326,7 +3336,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     statsEl.innerHTML =
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       overviewSection(spec, eqM, shells) +
-      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), '', 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), '', 'Performance', true)}` +
       magazineFigures(spec.gun, eqM.reload) +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
@@ -3350,7 +3360,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="armor-grid">` +
       figurePlate('gun', t('garage.dossier.armament.gun'), `${spec.gun.caliberMm} mm`) +
       figurePlate('scope', t('garage.dossier.armament.arc'), `&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;`) + `</div></section>` +
-      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance', true)}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
       statBar(t('garage.dossier.stat.hpt'), `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
@@ -3368,11 +3378,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           stock: `${Math.round(baseCamoOf(spec, false) * 100)} / ${Math.round(baseCamoOf(spec, true) * 100)}`, title: t('garage.dossier.stat.moving') +
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
-      `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
+      `<section class="cot-stat-section cot-performance-section" data-stations="protection">` +
+      `${statSectionTitle('shield', t('garage.equipment.cat.survival'), '', 'Protection', true)}<div class="cot-performance-grid">` +
       // hp as the overview column writes it (its unit is the game's own, in both languages)
       statBar(t('garage.dossier.stat.hp'), `${spec.hp} hp`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       `</div></section>` +
-      `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
+      `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.tab.armor'), '', 'Protection')}` +
       `<div class="armor-grid">` +
       figurePlate('shield', t('garage.dossier.protection.hull'), hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;') +
       figurePlate('turretRing', t('garage.dossier.protection.turret'), turMm != null ? `${Math.round(turMm)} mm` : '&mdash;') + `</div>` +
@@ -3380,7 +3391,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), t('garage.dossier.modulesCount', { count: moduleRows.length }), 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-gallery-link cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 16)}<span>${t('garage.dossier.modules.open')}</span><span class="go">&#8250;</span></button></section>` +
-      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew')}` +
+      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew', true)}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');

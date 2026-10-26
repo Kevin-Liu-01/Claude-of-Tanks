@@ -104,7 +104,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-actions{margin-top:clamp(var(--s4),3vh,var(--s6));}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-ammo-tile{min-height:88px;align-content:space-between;}
 .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
-.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
+.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title:not(.is-lead),.shellrow .nm small){display:none;}
 .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
 .cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
 .cot-garage .stats[data-density~='1'] .srow{padding:3px 6px var(--s1);}
@@ -115,7 +115,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
   .cot-technical-gallery){display:none;}
 /* the section headings go a step later than the drawing: a station that dropped its drawing for room keeps its labels
    (the gauntlet 10-25: unlabeled module and crew clusters over a half-empty column) */
-.cot-garage .stats[data-density~='3'] .cot-stat-title{display:none;}
+/* a station's lead title stays at every density: each station opens on its own title row (owner 10-26) */
+.cot-garage .stats[data-density~='3'] .cot-stat-title:not(.is-lead){display:none;}
 .cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
 .cot-garage .stats[data-density~='2'] :is(.cot-module-grid,.cot-crew-grid){display:flex;flex-wrap:wrap;gap:var(--s1);}
 /* the dense crew chips are the module chips' kind: one height, glyph beside the role */
@@ -171,6 +172,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 
 /* Overview: the rival picker, six headline rows on the 20-cell scale with the rival's tick, the rounds */
 .cot-garage .cot-compare{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);margin-bottom:var(--s3);}
+/* the Overview's title row is the Compare row: the title at its start, the rival and Compare at its end */
+.cot-garage .cot-compare>.cot-stat-title{flex:1 1 auto;min-width:0;margin:0;}
 .cot-garage .cot-compare-toggle{flex:none;padding:0 var(--s3);}
 /* the readout's chips keep the label floor (13 px in Chinese): the kit chip's scaled 13 fell to about 10.5 px at 1280 */
 .cot-garage :is(.cot-action,.cot-compare-toggle){font-size:max(var(--fs-floor-11),var(--fs-13));}
@@ -241,31 +244,10 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
   grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);padding:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:contents;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading>strong{display:none;}
-/* the staging choice (the kit's picker menu) is as wide as its picture, name, place and chevron, one control height (stretched
-   over the head, its chevron stood 1000 px from its label at 2560: the r18 critic) */
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1;flex:none;width:auto;justify-self:start;max-width:100%;}
-body[data-cot-panels='persistent'] .cot-garage-variant-control .cot-c-menu__trigger{width:auto;max-width:100%;min-height:var(--btn-h-s);padding-block:2px;}
-/* a sheet too narrow for its place beside the nation's paint keeps the area's name and drops its place (r19q: the name cut
-   to "VERDANT ..."; r20q: a bare chevron box read unfinished) */
-body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{container:sheet / inline-size;}
-@container sheet (width < 640px){
-  .cot-garage-variant-control .cot-c-menu__fact{display:none;}
-}
-/* and its picture, so its name shows whole beside the nation's paint (r21 at 1024: "Sirocco Deploym...") */
-@container sheet (520px <= width < 640px){
-  .cot-garage-variant-control .cot-c-menu__media{display:none;}
-}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:1/2;margin:0;}
+/* the paint sheet's head is its paint's actions and its close (the staging area left it for its own plate: owner 10-26) */
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:1/1/2/3;justify-self:start;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{grid-area:1/3;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:2/1/3/4;}
-/* a window under 960 px stands the staging choice on its own row over the nation's paint, so its name shows whole (r21 at
-   900: one row left the name 27 px) */
-@media (max-width:959px){
-  body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{grid-template-rows:auto auto minmax(0,1fr);}
-  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1/2/3;}
-  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:2/1/3/4;justify-self:start;}
-  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:3/1/4/4;}
-}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker{gap:var(--s2)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{flex:0 1 240px;height:var(--btn-h-s)}
