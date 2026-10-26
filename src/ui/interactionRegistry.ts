@@ -162,7 +162,7 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], lane: 'premiere-gallery-studio' },
   'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
   'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:group'], lane: 'premiere-gallery-studio' },
-  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:transition'], lane: 'premiere-gallery-studio' },
+  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:transition', 'bespoke:id===shot.transition'], lane: 'premiere-gallery-studio' },
   'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], lane: 'premiere-gallery-studio' },
   'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
   'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },

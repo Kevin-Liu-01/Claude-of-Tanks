@@ -2615,18 +2615,22 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       );
       copy.addEventListener('click', () => S.selectCameraShot(shot.id));
       card.appendChild(copy);
-      const transition = document.createElement('select');
+      // how the shot begins: five blends, every one in view on the kit's segmented control under the shot's name (a raw
+      // select in the census)
+      const transition = el('div', 'cot-c-seg shot-blend');
+      transition.setAttribute('role', 'radiogroup');
       transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: name }));
+      wireRovingKeys(transition);
       for (const id of SHOT_TRANSITIONS) {
-        const option = document.createElement('option');
-        option.value = id;
-        option.textContent = t(`studio.ws.transition.${id}`);
+        const option = el('button', 'cot-c-seg__opt', t(`studio.ws.transition.${id}`));
+        option.type = 'button';
+        option.setAttribute('role', 'radio');
+        option.dataset.value = id;
+        option.setAttribute('aria-checked', String(id === shot.transition));
+        option.tabIndex = id === shot.transition ? 0 : -1;
+        option.addEventListener('click', () => { if (id !== shot.transition) S.updateCameraShot(shot.id, { transition: id }); });
         transition.appendChild(option);
       }
-      transition.value = shot.transition;
-      transition.addEventListener('change', () => S.updateCameraShot(shot.id, {
-        transition: transition.value,
-      }));
       card.appendChild(transition);
       card.appendChild(createInfoButton({
         label: t('studioPanel.shot.showJsonLabel', { label: name }),

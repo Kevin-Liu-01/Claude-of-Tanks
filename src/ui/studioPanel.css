@@ -308,13 +308,15 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .fxg .gh{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display)}
 /* the shots: one card per camera key */
 .cot-studio .shotboard{display:grid;gap:var(--s1);max-height:210px;overflow-y:auto;scrollbar-width:thin}
-.cot-studio .shotcard{display:grid;grid-template-columns:24px minmax(0,1fr) 80px auto 22px;align-items:center;gap:var(--s2);min-height:36px;padding:0 var(--s1);
+.cot-studio .shotcard{display:grid;grid-template-columns:24px minmax(0,1fr) auto 22px;align-items:center;gap:var(--s2);min-height:36px;padding:0 var(--s1);
   border-radius:var(--r1)}
 .cot-studio .shotcard .num{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);text-align:center}
 .cot-studio .shotcard .copy{display:grid;gap:3px;min-width:0;cursor:pointer}
 .cot-studio .shotcard .name{overflow:hidden;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .cot-studio .shotcard .time{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
-.cot-studio .shotcard select{height:26px}
+/* the blend is a row of its own under the shot's name: five segments every one in view */
+.cot-studio .shotcard .shot-blend{grid-column:2/-1;grid-row:2;margin-bottom:var(--s1)}
+.cot-studio .shotcard .shot-blend .cot-c-seg__opt{flex:1 1 0;min-width:0;padding:0 var(--s1)}
 .cot-studio .shotcard .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:none;color:var(--ink-3)}
 .cot-studio .shotcard.sel{background:var(--accent-wash);box-shadow:var(--studio-row-on)}
 .cot-studio .planView{display:grid;gap:var(--s2)}
