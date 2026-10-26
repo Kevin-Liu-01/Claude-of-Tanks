@@ -166,9 +166,9 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], lane: 'premiere-gallery-studio' },
   'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
   'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
-  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:frame'], lane: 'premiere-gallery-studio' },
+  // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
+  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
   'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:tanks'], lane: 'premiere-gallery-studio' },
-  'studio-lens': { chooses: 'setting', options: 3, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:lens'], lane: 'premiere-gallery-studio' },
   'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
   'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
 
