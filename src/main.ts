@@ -3822,6 +3822,12 @@ const studioAccess = createStudioAccess({
     },
     getStudioLight: () => studioLightLive,
     programWarm: forwardProgramWarm,
+    // (2026-10-26) the first view's casters drawn into the cascades a batch at a time behind the Studio's cover, so their
+    // depth programs link between frames; a batch whose programs are linked goes on in the same frame (warm entries)
+    prepareFirstViewShadows: () => {
+      const budget = createFrameBudgetYielder(8);
+      return deploymentShadowWarm.prime(() => budget(false));
+    },
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

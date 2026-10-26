@@ -358,6 +358,22 @@ export function applyDiagRescue(
  * poisoned texture mid-session.
  */
 let _envCompLight: THREE.AmbientLight | null = null;
+// (2026-10-26, UI-LOCKDOWN E) The probe's sphere, scene, camera and target live for the session. A sphere made per call
+// released its lit program with its material, so every validation linked that program again inside its task: the sky
+// validates after every bake and every cached re-install, and a second Studio entry's waited 2.9 s on the one link.
+let _envProbe: { scene: THREE.Scene; camera: THREE.PerspectiveCamera; target: THREE.WebGLRenderTarget; buf: Uint8Array } | null = null;
+function envProbe(): NonNullable<typeof _envProbe> {
+  if (_envProbe) return _envProbe;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  camera.position.set(0, 0, 2.4);
+  scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(1, 24, 16),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.15 }),
+  ));
+  _envProbe = { scene, camera, target: new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true }), buf: new Uint8Array(4) };
+  return _envProbe;
+}
 export function enforceEnvValidity(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -368,32 +384,23 @@ export function enforceEnvValidity(
   // environment must not be mistaken for the poisoned/black mobile texture.
   const scale = Number.isFinite(radianceScale) ? Math.max(.001, Math.min(1, radianceScale)) : 1;
   let lum = -1;
-  let probe = null;
   const prevTarget = renderer.getRenderTarget();
-  const rt = new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true });
+  const probe = envProbe();
   try {
-    probe = new THREE.Scene();
-    probe.environment = scene.environment;
-    probe.environmentIntensity = 1 / scale;
-    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
-    cam.position.set(0, 0, 2.4);
-    const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 24, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.15 }),
-    );
-    probe.add(ball);
-    renderer.setRenderTarget(rt);
+    probe.scene.environment = scene.environment;
+    probe.scene.environmentIntensity = 1 / scale;
+    renderer.setRenderTarget(probe.target);
     renderer.clear();
-    renderer.render(probe, cam);
-    const buf = new Uint8Array(4);
-    renderer.readRenderTargetPixels(rt, 8, 8, 1, 1, buf);
-    lum = buf[0] + buf[1] + buf[2];
+    renderer.render(probe.scene, probe.camera);
+    probe.buf.fill(0);
+    renderer.readRenderTargetPixels(probe.target, 8, 8, 1, 1, probe.buf);
+    lum = probe.buf[0] + probe.buf[1] + probe.buf[2];
   } catch (_) {
     lum = -1; // treat an unreadable probe as invalid — never risk a black scene
   } finally {
-    if (probe) disposeSceneResources(probe);
+    // the probe never holds the scene's environment between validations
+    probe.scene.environment = null;
     renderer.setRenderTarget(prevTarget);
-    rt.dispose();
   }
   const ok = lum > 12 && FORCE !== 'badenv';
   const bag = window.__GL_DIAG;
