@@ -1327,6 +1327,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     onPreview: (item) => {
       if (item) try { opts.onGarageVariantIntent?.(item.id); } catch (_) { /* optional warm path */ }
     },
+    // the menu keeps under the top bar (the r21q critic: opened upward, it covered the brand and the destinations)
+    bounds: () => {
+      const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
+      return bar && bar.height ? { top: bar.bottom + 8, bottom: window.innerHeight } : null;
+    },
     onChoose: (item) => { emit('ui:click', {}); selectGarageVariant(item.id); },
   }) : null;
   const openGarageVariantMenu = (from?: HTMLElement) => {
@@ -2156,20 +2161,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eqLocks.clear();
     for (const group of groups) for (const entry of group.items) if (entry.lock) eqLocks.set(entry.item.id, entry.lock);
     eqTitleEl.textContent = t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 });
-    // the docked head shares the search's row: the row starts after the slot's name (showroom.css)
-    eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
+    // the docked head shares the search's row: the row starts after the slot's name (showroom.css), measured again once
+    // the fonts are in (r21q zh: measured in the fallback face, "槽位 1" ran into the search)
+    measureEqTitle();
+    void document.fonts?.ready.then(measureEqTitle);
     eqPicker.show(groups, eqOpenSlot, cur[eqOpenSlot] || null);
     eqPreviewId = null;
     eqShutId = null;
     renderEqReadout();
     // a picker that scrolls ends on a whole row of cards, never a sliced one
-    requestAnimationFrame(() => { const grid = eqPicker.grid(); if (grid) holdGridHeight(grid, fitPickerGrid); });
+    requestAnimationFrame(() => { measureEqTitle(); const grid = eqPicker.grid(); if (grid) holdGridHeight(grid, fitPickerGrid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
     }
   }
 
+  function measureEqTitle(): void {
+    eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
+  }
   function openEqPicker(slot: number): void {
     // a tank the room has locked says so (it blocked silently: the census's bar line 5)
     if (vehicleLocked) { notifyLater({ id: 'cot-equipment-locked', severity: 'info', text: t('garage.vehicleLocked') }); return; }

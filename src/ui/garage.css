@@ -622,7 +622,9 @@ body[data-cot-width='phone'] .cot-garage[data-garage-panel='appearance'] .cot-dr
 /* the nation's paint takes the row's room and ends its label before the about tip, which keeps its place in the sheet (the
    r20q critic: the long label pushed the tip past the sheet's edge); a touch screen gives both one height */
 body[data-cot-width='phone'] .cot-garage .cot-drawer-actions .cot-camo-nation{flex:1 1 auto;min-width:0;padding-inline:var(--s3)}
-body[data-cot-width='phone'] .cot-garage .cot-drawer-actions .cot-camo-nation>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* its label wraps to a second line rather than ending in an ellipsis (the r21q critic: "WEAR ON EVERY UNITED STATES T…") */
+body[data-cot-width='phone'] .cot-garage .cot-drawer-actions .cot-camo-nation{height:auto;min-height:var(--h);padding-block:var(--s1)}
+body[data-cot-width='phone'] .cot-garage .cot-drawer-actions .cot-camo-nation>span{min-width:0;white-space:normal;text-align:left;line-height:1.2}
 body[data-cot-width='phone'] .cot-garage .cot-drawer-actions .cot-info-trigger{flex:none}
 body[data-cot-input='coarse'] .cot-garage .cot-drawer-actions .cot-camo-nation{--h:44px}
 .cot-garage:not([data-garage-panel='appearance']) .cot-drawer-actions{display:none}
@@ -740,7 +742,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .cot-c-picker__name{font:700 max(var(--fs-floor-11),var(--fs-11))/1.25 var(--font-ui);text-transform:uppercase}
 .cot-eqpick .cot-c-picker__facts{justify-content:center;flex-wrap:wrap;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.35}
 /* an effect line wraps inside its card (a flex item keeps its text's width: on a phone it ran into the next card) */
-.cot-eqpick .cot-c-picker__facts>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.cot-eqpick .cot-c-picker__facts>span{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:normal;overflow:visible}
 /* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
 html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere}
 /* a shut item reads as unavailable by its quiet glyph and words, still legible (the kit's half opacity took them to 2.9:1) */
@@ -753,7 +755,7 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 :is(.cot-eqpick,.cot-camos) .cot-c-picker__grid{padding-bottom:var(--peek,16px);}
 /* the equipment grid ends on a whole row (garage.ts fitWholeRows) and shows its scrollbar while rows wait below: a drawn
    track and thumb, never an overlay bar that hides at rest (the r20q critic read the peeked row as cut through its icons) */
-.cot-eqpick .cot-c-picker__grid{scrollbar-width:auto;scrollbar-color:auto}
+.cot-eqpick .cot-c-picker__grid{scrollbar-width:auto;scrollbar-color:auto;overflow-x:hidden}
 .cot-eqpick .cot-c-picker__grid::-webkit-scrollbar{width:6px}
 .cot-eqpick .cot-c-picker__grid::-webkit-scrollbar-track{background:var(--fill-quiet);border-radius:3px}
 .cot-eqpick .cot-c-picker__grid::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:3px}

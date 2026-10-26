@@ -30,6 +30,9 @@ interface PickerMenuOptions {
   readonly filters?: readonly PickerFilter[];
   readonly memory?: string;
   readonly randomId?: string;
+  /** The room the menu stays in (CSS px, top to bottom), where the trigger's scrolling panel is not it: the Garage's
+   *  staging area keeps under the top bar. */
+  readonly bounds?: () => { readonly top: number; readonly bottom: number } | null;
 }
 
 export interface PickerMenu {
@@ -139,7 +142,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   const pickerHost = doc.createElement('div');
   pickerHost.className = 'cot-c-menu__picker';
   pop.append(head, pickerHost);
-  doc.body.append(pop);
+  // in the top layer either way; inside a modal dialog it must be the dialog's (the rest of the page is inert under one)
+  (host.closest('dialog') ?? doc.body).append(pop);
 
   const itemOf = (id: string | null): PickerItem | null => (id === null ? null : items.find((item) => item.id === id) ?? null);
   /** The trigger shows `item` (a preview) or the chosen one: its picture or glyph, its name, its first fact. */
@@ -176,7 +180,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.classList.remove('is-sheet');
     const natural = pop.scrollHeight;
     const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards',
-      boundsOf(anchorEl));
+      options.bounds?.() ?? boundsOf(anchorEl));
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
     pop.style.left = `${spot.left}px`;
@@ -185,6 +189,26 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.style.bottom = spot.sheet ? '0' : '';
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
+    if (!spot.sheet) trimToWholeRows(spot);
+  };
+  /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:
+   *  the staging cards' names and a rival row sliced). An upward menu keeps its foot on its trigger. */
+  const trimToWholeRows = (spot: MenuPlace): void => {
+    const grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return;
+    const style = win.getComputedStyle(grid);
+    const top = grid.getBoundingClientRect().top + grid.clientTop;
+    const bottom = top + grid.clientHeight - (parseFloat(style.paddingBottom) || 0);
+    let foot = -Infinity;
+    for (const cell of grid.children) {
+      const box = cell.getBoundingClientRect();
+      if (box.height > 0 && box.top >= top - 0.5 && box.bottom <= bottom + 0.5) foot = Math.max(foot, box.bottom);
+    }
+    const cut = Math.floor(bottom - foot);
+    if (!Number.isFinite(cut) || cut < 2) return;
+    const height = pop.getBoundingClientRect().height - cut;
+    pop.style.maxHeight = `${height}px`;
+    if (spot.above) pop.style.top = `${spot.top + cut}px`;
   };
   let placeFrame = 0;
   const placeSoon = (): void => {

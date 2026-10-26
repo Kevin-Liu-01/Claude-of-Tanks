@@ -341,7 +341,9 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 /* one step between the Director's sections, whatever ends them (a library's cards took an extra margin: 27 to 52 px) */
 .cot-studio .director{display:flex;flex-direction:column;gap:var(--s6)}
 .cot-studio .director-head{display:none}
-.cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+/* the library's columns stand a wider gutter than its rows, so a card's duration never reads into the next card's title
+   (the s15 critic: "8 秒" against "沙漠交火") */
+.cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3) var(--s4)}
 /* a card is its still and, on a line under it, its name and length: no text sits on a tank (the owner's rule) */
 .cot-studio .production-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:start;gap:var(--s2) var(--s2);
   min-width:0;padding:0;border:0;background:none;color:var(--ink-1);text-align:left}
