@@ -124,9 +124,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // Type 89, LRMV Lynx, Borsuk; fleetBalancePass applyModernEraFold).
 // 2026-10-26: 57 -> 62 as matchmaking reads the shown tier (258): five vehicles lifted over a shown-tier floor
 // (applyShownTierFloors; the Centurion 5/2's entry already existed).
-// 62 -> 72 (259): ten vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
+// 62 -> 71 (259): nine vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
 // their entries).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 72,
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 71,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

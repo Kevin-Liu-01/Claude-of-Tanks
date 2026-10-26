@@ -408,10 +408,11 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  * tank on its glacis, so the Soviet line bounced while every Western round went through.
  * - Tier IV: the T-64BV, T-72M1, PT-91M and T-80B take a thicker mantlet, the pen to bite a Western glacis, a quicker
  *   autoloader and hull. The FV4034's turret compensation and the Chieftain Mk 9's armour bonus, both set against the
- *   251 tier-8 rounds, are trimmed. The C1 pre-series takes the Chieftain's round.
+ *   251 tier-8 rounds, are trimmed; the Mk 10, its second-wave rebuild, keeps its cycle and hull. The C1 pre-series
+ *   takes the Chieftain's round.
  * - Tier VII: the C2 Ariete pair and the Leopard 2A5M brought Tier X armour (the 251 table) down to VII and are trimmed
  *   to it. The C2 keeps its cadence over the C1 (arieteModernSpecs); the prototype cycles slower. The T-72B3 Sich's
- *   weaker donor hull, the Husarz, the Wilk and the T-90 take hull.
+ *   weaker donor hull, the Husarz and the Wilk take hull.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
@@ -433,12 +434,14 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   spec(registry, 'fv4034').hp = 2000;
   // the Mk 9's 1.5 armour (applyFleetBalancePass) made it a protected Tier VIII MBT; at IV it keeps 1.32
   armor(registry, 'chieftain_mk9', 0.88);
-  cannonReload(registry, 'chieftain_mk9', 7.0);
-  spec(registry, 'chieftain_mk9').hp = 2000;
+  // the Mk 10 is the Mk 9's second-wave rebuild and keeps its weapon and hull (sourceXSecondWave)
+  for (const id of ['chieftain_mk9', 'chieftain_mk10']) {
+    cannonReload(registry, id, 7.0);
+    spec(registry, id).hp = 2000;
+  }
   cannonReload(registry, 't80bv', 7.4);
   spec(registry, 't80bv').hp = 2100;
   cannonReload(registry, 'leo2a3', 6.4);
-  cannonReload(registry, 'k1e1', 6.3);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
@@ -453,6 +456,5 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   armor(registry, 'leo2a5m', 0.7);
   spec(registry, 't72b3_sich').hp = 2850;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
-  spec(registry, 't90').hp = 2700;
 }
 
