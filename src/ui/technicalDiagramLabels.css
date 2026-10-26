@@ -1,0 +1,29 @@
+/* The technical diagrams' DOM labels (src/ui/technicalDiagramLabels.ts mountTechnicalDiagramLabels builds the markup):
+   the callout chips on their rails, the leader lines, the header and the legend over a 2:1 diagram image. Every value
+   reads a token; the inline values are custom properties only: each callout's and swatch's tone (--tdl-tone), each
+   chip's place (--tdl-x, --tdl-y) and the image's content box (--tdl-box-*). The sheet
+   declares into the components layer, so a surface restyles it without !important (src/ui/styleLayers.ts).
+   First-party: Kevin B. Liu (NOTICE.md). */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer components{
+.cot-tdl{position:absolute;left:var(--tdl-box-x,0);top:var(--tdl-box-y,0);width:var(--tdl-box-w,100%);height:var(--tdl-box-h,100%);
+  pointer-events:none;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data)}
+.cot-tdl-leaders{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.cot-tdl-leader{color:var(--tdl-tone);fill:none;stroke:currentColor;stroke-width:1}
+.cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}
+/* a static overlay's anchor dot (technicalLabelsMarkup: its leaders scale with a fluid box, a circle would not stay round) */
+.cot-tdl-pin{position:absolute;left:var(--tdl-x);top:var(--tdl-y);width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--tdl-tone)}
+.cot-tdl-chip{position:absolute;left:var(--tdl-x);top:var(--tdl-y);transform:translateY(-50%);padding:1px 6px;white-space:nowrap;pointer-events:none;
+  background:var(--hud-plate);box-shadow:var(--ring-2);border-radius:var(--r1);border-inline-start:2px solid var(--tdl-tone)}
+.cot-tdl-chip--end{transform:translate(-100%,-50%);border-inline-start:0;border-inline-end:2px solid var(--tdl-tone)}
+.cot-tdl-head{position:absolute;inset:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+  padding:6px 10px;background:var(--hud-plate)}
+.cot-tdl-name{font:700 max(var(--fs-floor-11),var(--fs-14))/1.1 var(--font-display)}
+.cot-tdl-sub{color:var(--accent);font:600 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-ui);text-transform:uppercase;
+  letter-spacing:var(--track-label-s)}
+.cot-tdl-designation{color:var(--ink-3)}
+.cot-tdl-legend{position:absolute;inset:auto 0 0;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 12px;
+  padding:4px 8px;background:var(--hud-plate);color:var(--ink-2);font-family:var(--font-ui)}
+.cot-tdl-swatch{display:inline-block;width:10px;height:6px;margin-inline-end:4px;vertical-align:middle;
+  border-radius:var(--r1);background:var(--tdl-tone)}
+}

@@ -1,6 +1,7 @@
 import { createGuidePhoto } from './infoGuidePhoto.ts';
 import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
 import { iconUrl } from './icons.ts';
+import type { TechnicalLabelData } from './technicalDiagramLabels.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
@@ -10,6 +11,7 @@ const CSS = `
 .cot-guide{display:grid;gap:16px;min-width:0}.cot-guide__overview{margin:0;color:#d1dce2;font-size:16px;line-height:1.65;max-width:76ch}
 .cot-guide__figure{margin:0;border:1px solid #34434a;background:radial-gradient(ellipse at 60% 20%,#20303955,transparent 75%),#0a1115;overflow:hidden}
 .cot-guide__figure svg{display:block;width:100%;height:auto;max-height:300px;color:#8ca6b2}
+.cot-guide__diagram{position:relative}
 .cot-guide__legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 12px 16px;color:#b7cbd5;font-size:12px;line-height:1.4;text-align:center}
 .cot-guide__figure figcaption{padding:9px 14px;border-top:1px solid #28363d;color:#8ea3ae;font-size:11px;letter-spacing:.04em}
 .cot-guide__figure [data-part]{opacity:.36;transition:opacity .15s}.cot-guide__figure [data-part].active{opacity:1}
@@ -125,20 +127,46 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
     vehicleCaption.textContent = vehicle.name + ' · ' + t('garage.dossier.dossier.techViews');
     const diagramControls = document.createElement('div'); diagramControls.className = 'cot-guide__steps';
     const labels: Record<string, string> = { armor_side: 'armorSide', modules_side: 'modulesSide', crew_side: 'crewSide' };
-    for (const view of views) {
+    // 253: the diagrams carry no text; their labels are DOM text from the tank's sidecar, mounted while the panel is open
+    // (the caption names the vehicle, so the overlay draws no header)
+    const diagramBox = document.createElement('div'); diagramBox.className = 'cot-guide__diagram';
+    diagramBox.append(vehicleImage);
+    let view = views[0]!, labelData: Promise<TechnicalLabelData | null> | null = null;
+    let mounted: { dispose(): void } | null = null;
+    // (the labels' module loads with the panel, not with the guide)
+    const labelsModule = (): Promise<typeof import('./technicalDiagramLabels.ts')> => import('./technicalDiagramLabels.ts');
+    const mountLabels = (): void => {
+      mounted?.dispose(); mounted = null;
+      if (!technicalDetails!.open) return;
+      const shown = view;
+      void labelsModule().then(async (labels) => {
+        const kind = labels.technicalKindOfView(shown);
+        if (!kind) return;
+        labelData ??= fetch(labels.technicalLabelsUrl(vehicle.id)).then((response) => (response.ok ? response.json() : null))
+          .then((json) => (json ? labels.parseTechnicalLabels(json, vehicle.id) : null)).catch(() => null);
+        const data = await labelData;
+        if (!data || shown !== view || !technicalDetails!.open) return;
+        mounted?.dispose();
+        mounted = labels.mountTechnicalDiagramLabels(diagramBox, data, kind, null, { header: false, image: vehicleImage });
+      });
+    };
+    technicalDetails.addEventListener('toggle', mountLabels);
+    for (const option of views) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'cot-guide__step';
-      button.textContent = t(`garage.dossier.image.${labels[view]}`);
-      button.setAttribute('aria-pressed', String(view === views[0]));
+      button.textContent = t(`garage.dossier.image.${labels[option]}`);
+      button.setAttribute('aria-pressed', String(option === views[0]));
       button.addEventListener('click', () => {
-        vehicleImage!.src = iconUrl(vehicle.id, view);
+        view = option;
+        vehicleImage!.src = iconUrl(vehicle.id, option);
         vehicleImage!.alt = `${vehicle.name} · ${button.textContent}`;
         for (const other of diagramControls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
+        mountLabels();
       });
       diagramControls.append(button);
     }
     vehicleImage.src = iconUrl(vehicle.id, views[0]);
     vehicleImage.alt = `${vehicle.name} · ${t(`garage.dossier.image.${labels[views[0]]}`)}`;
-    technicalFigure.append(vehicleImage, vehicleCaption, diagramControls);
+    technicalFigure.append(diagramBox, vehicleCaption, diagramControls);
   }
   const steps = document.createElement('div'); steps.className = 'cot-guide__steps'; steps.setAttribute('role','group'); steps.setAttribute('aria-label',t('fieldGuide.steps'));
   const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');
