@@ -435,9 +435,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:215px;bottom:auto!important}
+  /* (the column 10 px lower than the systems slot's two rows under an objective's chrome: at 215 the second row ran 2 px
+     onto it, and the slot fell to three rows of two over the band the notices take, the layout receipt at 320x568) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:225px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%);--shell-k:.6}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 98px)}
 }
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
@@ -482,12 +485,14 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
 }
-/* r10g (the coordinator): a portrait phone 340 px wide or less parks the chip under the map, as a short landscape does,
-   where no seat by the sight kept clear of the left FIRE button, the map and the speedometer; the map's width, so it keeps
-   8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
+/* r10g (the coordinator): a portrait phone 340 px wide or less parks the chip off the sight, where no seat by it kept clear
+   of the left FIRE button, the map and the speedometer: in the notices' row over the sight, on one line, as wide as that
+   row, giving way while a notice shows (battleHudLayout.ts slotChip; under the map it met the systems slot, the layout
+   receipt at 320x568) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:max-content;max-width:150px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s2);white-space:normal}
-  .cot-hud .cot-aim-warning{padding:4px var(--s2)}
+  .cot-aim-warning{left:50%;top:var(--hud-aim-warning-top,204px);transform:translateX(-50%);width:max-content;max-width:var(--hud-touch-alert-w,176px);min-width:32px;height:24px;font-size:var(--battle-fs-11);line-height:12px;padding:0 var(--s2);white-space:nowrap;display:flex;align-items:center}
+  .cot-hud .cot-aim-warning{padding:0 var(--s2)}
+  .cot-aim-warning[data-under-notice]{visibility:hidden}
 }
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
