@@ -134,7 +134,14 @@ export class GarageRestoreAbandonedError extends Error {
 }
 
 const GARAGE_CRITICAL_SHADOW_CASCADES = 2;
-const GARAGE_LINKER_BREATHING_SLICES = 8;
+/**
+ * (2026-10-26, the room-stalls lane: leaving a room for the Garage, four frames bound programs whose links were not done,
+ * 670-923 ms each) the restore polls the links under the cover until every one reports done: the breathing slices end
+ * the moment the last link completes (programWarm.ts linkerBreathingSlices), so this many frames (about 4 s) bounds only
+ * a link that never reports, where the covered exact frame links it as before. Was 8, which let a deep queue's links
+ * reach the Garage's frames.
+ */
+const GARAGE_LINKER_BREATHING_SLICES = 240;
 
 /**
  * Garage return is already covered by a fully painted transition. Yielding

@@ -102,7 +102,7 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
         yield;
       },
       *linkerBreathingSlices(maxSlices) {
-        assert.equal(maxSlices, 8);
+        assert.equal(maxSlices, 240, 'the restore polls the links until done (bounded at about 4 s of covered frames)');
         restoreCalls.push(['linkerSteps']);
         yield;
       },
