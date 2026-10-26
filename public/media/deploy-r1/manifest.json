@@ -10,7 +10,7 @@
   "width": 640,
   "height": 360
  },
- "count": 20,
+ "count": 29,
  "items": [
   {
    "id": "standard",
@@ -51,6 +51,21 @@
    "height": 270
   },
   {
+   "id": "turbo_ball-panel",
+   "file": "turbo_ball-1600.webp",
+   "mode": "turbo_ball",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a K2 Black Panther leaps after the ball on Kestrel Airfield, the ball looming beside it (airfield, day, player k2_black_panther; battle-257b/modes/turbo_ball #10, 3840x2160)",
+   "capture": {
+    "run": "battle-257b",
+    "slot": "modes/turbo_ball",
+    "candidate": 10,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 108996
+  },
+  {
    "id": "gun_game-tile",
    "file": "gun_game-480.webp",
    "mode": "gun_game",
@@ -70,6 +85,21 @@
    "height": 270
   },
   {
+   "id": "gun_game-panel",
+   "file": "gun_game-1600.webp",
+   "mode": "gun_game",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the player fires its howitzer stage beside the green weapon-stage beacon (oasis, sunset, player k2_black_panther; battle-257/modes/gun_game #13, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/gun_game",
+    "candidate": 13,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 240556
+  },
+  {
    "id": "mars-tile",
    "file": "mars-480.webp",
    "mode": "mars",
@@ -82,6 +112,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "mars-panel",
+   "file": "mars-1600.webp",
+   "mode": "mars",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a tank mid-hop in low gravity against the sun's glow (mars, day, player t14_armata; battle-257/modes/mars #5, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/mars",
+    "candidate": 5,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 165038
   },
   {
    "id": "juggernaut-tile",
@@ -103,6 +148,21 @@
    "height": 270
   },
   {
+   "id": "juggernaut-panel",
+   "file": "juggernaut-1600.webp",
+   "mode": "juggernaut",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the glowing boss tank fires inside its ring under its beacon (foundry, night, player merkava4_barak; battle-257/modes/juggernaut #1, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/juggernaut",
+    "candidate": 1,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 156260
+  },
+  {
    "id": "infected-tile",
    "file": "infected-480.webp",
    "mode": "infected",
@@ -115,6 +175,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "infected-panel",
+   "file": "infected-1600.webp",
+   "mode": "infected",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a survivor with its headlights on the road as a glowing infected tank closes and fires (urban, night, player leo2a6; battle-257/modes/infected #11, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/infected",
+    "candidate": 11,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 95890
   },
   {
    "id": "endless_horde-tile",
@@ -136,6 +211,21 @@
    "height": 270
   },
   {
+   "id": "endless_horde-panel",
+   "file": "endless_horde-1600.webp",
+   "mode": "endless_horde",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the player's tank holds the road as a column of hostiles streams across the field behind it (railyard, sunset, player challenger3; battle-257/modes/endless_horde #5, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/endless_horde",
+    "candidate": 5,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 229206
+  },
+  {
    "id": "realistic-tile",
    "file": "realistic-480.webp",
    "mode": "realistic",
@@ -155,6 +245,21 @@
    "height": 270
   },
   {
+   "id": "realistic-panel",
+   "file": "realistic-1600.webp",
+   "mode": "realistic",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a knocked-out tank burns by a hut in the snowy forest under a black smoke column, no markers anywhere (winter, day, player strv122; battle-257b/modes/realistic #13, 3840x2160)",
+   "capture": {
+    "run": "battle-257b",
+    "slot": "modes/realistic",
+    "candidate": 13,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 236730
+  },
+  {
    "id": "drone-tile",
    "file": "drone-480.webp",
    "mode": "drone",
@@ -169,6 +274,21 @@
    "height": 270
   },
   {
+   "id": "drone-panel",
+   "file": "drone-1600.webp",
+   "mode": "drone",
+   "source": "in-engine Scene Studio still on release 251, HUD-free: an FPV drone dives on a burning T-80U by the kolkhoz gate on Verdant Fields, a Challenger 3 below (site50/drone-251b-out/drone-ve, 3840x2160, 2 ms)",
+   "capture": {
+    "run": "drone-251b",
+    "slot": "deploy/drone",
+    "candidate": "ve",
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 186992
+  },
+  {
    "id": "ac130-tile",
    "file": "ac130-480.webp",
    "mode": "ac130",
@@ -181,6 +301,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "ac130-panel",
+   "file": "ac130-1600.webp",
+   "mode": "ac130",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the gunship's thermal view down on the convoy at a crossroads, a tracer and a burst (airfield, night, player leo2a7v; battle-257/modes/ac130 #11, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/ac130",
+    "candidate": 11,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 34004
   },
   {
    "id": "proving_ground-tile",
