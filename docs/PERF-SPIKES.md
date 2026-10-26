@@ -283,6 +283,16 @@ their cull), `lateFxColorHandoff.selftest` (no copy without the switch, both cop
 counts untouched), `worldMaterialsBeforeCompile.selftest` (the MP compile bakes the impostors before its strict
 compile). Each case fails against the previous source.
 
+**The room's leave** (root-p, Garage return): one 661 ms task, all `getBufferSubData`, under `beginRgba8Readback`.
+The stack named the `tankThumbs` chunk only because `rgba8Readback.ts` is bundled there. Its one synchronous starter
+was the clouds' `updateSunMean`, a 32² readback every 30 frames in every battle and Garage with clouds. Chromium serves
+`getBufferSubData` as `GetBufferSubDataCHROMIUM` + `WaitForCmd`: a synchronous round trip behind every command queued
+before it, even after the fence signals. perf-245's readback-shadow reading was wrong: Blink's getBufferSubData never
+takes the client's shadow path. Behind the Garage's first frames that queue was 661 ms deep. Nothing has read the
+sun mean since Clouds 2.0, so it now refreshes only while a reader asks (`watchSunMean()`), and `rgba8Readback.ts`
+states the copy's cost. A lane-local micro-probe (`tools/tmp-readback-shadow-probe.mjs`) could not load the M5 Max's
+queue (its heavy draws drained in under 2 ms), so the evidence is the Chromium source and the field profile.
+
 ## Memory across battles
 
 `tools/battle-memory-probe.mjs` plays N battles in one page (the census's battle driver) and measures the garage after
