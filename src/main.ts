@@ -154,7 +154,7 @@ import { installCampaignProgress } from './game/campaignProgress.ts';
 import { installServiceRecord } from './game/serviceRecord.ts';
 import { installMedalToasts } from './ui/medalToast.ts';
 import {
-  createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
+  createGarageStage, createGarageStageSteps, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
@@ -865,12 +865,21 @@ bus.on('module:state', (payload) => {
 GARAGE_POS.y = 0;
 let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(
+  // (2026-10-26, the boot census) the stage a section at a time under the boot screen (one task of 120 ms on a cold
+  // desktop, 604 ms on the 4x phone), at the vehicle stage's cadence
+  const stageSteps = createGarageStageSteps(
     engineCtx,
     GARAGE_POS,
     selectedGarageVariantId,
     () => invalidateGaragePresentation(),
   );
+  const stageYield = createOpaqueLoadingYielder(12, 80);
+  let gs: ReturnType<typeof createGarageStage>;
+  for (;;) {
+    const step = stageSteps.next();
+    if (step.done) { gs = step.value; break; }
+    await stageYield();
+  }
   scene.add(gs.group);
   const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
