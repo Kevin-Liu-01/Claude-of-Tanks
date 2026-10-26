@@ -94,7 +94,7 @@ assert.match(garageSource, /requestAnimationFrame\(\(\) => \{\s*if \(selectedId 
   'the selected card is revealed in the frame, after the dossier rebuild, not before it');
 assert.match(garageSource, /if \(swatchesFor === selectedId\) return;[\s\S]{0,240}if \(openGaragePanel\(\) !== 'appearance'\) return;\s*repaintTankCamoSwatches\(spec\);/,
   'the paint catalog repaints only while every paint is open');
-assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) refreshCamoSel\(\);/, 'opening every paint repaints the catalog it left');
+assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) \{\s*refreshCamoSel\(\);[^}]*requestAnimationFrame\(\(\) => fitCamoRows\(\)\);\s*\}/, 'opening every paint repaints the catalog it left');
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');

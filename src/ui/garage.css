@@ -414,11 +414,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellmetric b{display:inline;margin:0 2px 0 0;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-data);
   letter-spacing:0;text-transform:none;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-.cot-layer-link{width:100%;height:36px;margin-top:var(--s2);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
-  color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);cursor:pointer;
-  font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
-.cot-layer-link svg{width:13px;height:13px;color:var(--accent-lo);}
-.cot-layer-link:hover,.cot-layer-link:focus-visible{color:var(--accent-hi);border-color:var(--accent-lo);outline:none;}
+/* a layer link (armour, modules) is the dossier's link row (.cot-gallery-link): glyph, label, chevron (the r16 critic read
+   the outlined button beside the chevron rows as a second style) */
 .cot-technical-section{padding:0 var(--s3) var(--s3);overflow:hidden;}
 .cot-technical-section .cot-dossier-head{margin:0 -12px var(--s2);padding:14px 15px 13px;
   border:0;border-bottom:1px solid var(--line-2);box-shadow:none;}
@@ -776,8 +773,8 @@ body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;flex:1 1 auto;
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
 .cot-camos .cgrid.camo.can-scroll{
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
-  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);}
 .cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
 .cot-camo-card{cursor:pointer;text-align:center;padding:5px var(--s1) var(--s1);min-width:0;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
@@ -912,11 +909,12 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
   padding-right:3px;scrollbar-width:thin;
   scrollbar-color:var(--line-3) var(--scrim);}
-/* a scrolling grid keeps a foot pad: the fade covers the next row's peek in it, never the last whole row */
-:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:16px;}
+/* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
+   the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
+:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:var(--peek,16px);}
 .cot-eqpick .pgrid.can-scroll{
-  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);
-  mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);}
+  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);
+  mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);}
 .cot-eqpick .pgrid::-webkit-scrollbar{width:5px;}
 .cot-eqpick .pgrid::-webkit-scrollbar-track{background:var(--scrim);}
 .cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:var(--line-control);}

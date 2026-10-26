@@ -253,22 +253,32 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
  *  The paint left the stations for the band under the name, where it is always in view. */
 /** The paints the band offers beside the one the tank wears, in this order (those the catalog carries). */
 /**
- * A scrolling grid stands a whole number of its rows tall, so a sheet or picker never ends on a sliced row (the gauntlet
- * 10-25); its `can-scroll` fade on the last row says more waits below. Read on a resize or a redraw, never in a scroll.
+ * A scrolling grid stands a whole number of its rows tall plus two fifths of the next, so a sheet or picker never ends
+ * on a row cut at random (the gauntlet 10-25) and the peek, dimmed under its `can-scroll` fade (--peek), says more waits
+ * below (a 16 px sliver read as a hard cut to the r16 critic). Read on a resize or a redraw, never in a scroll.
  */
 function fitWholeRows(grid: HTMLElement): void {
   grid.style.maxHeight = '';
+  grid.style.removeProperty('--peek');
   const style = getComputedStyle(grid);
   if (grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
-    // the lowest row foot that shows whole (rows may differ in height: a phone's tiles carry one to four lines)
+    // the lowest row foot that shows whole, and the next row (rows may differ in height: a phone's tiles carry one to
+    // four lines)
     const top = grid.getBoundingClientRect().top + grid.clientTop - grid.scrollTop;
-    const room = grid.clientHeight - (parseFloat(style.paddingBottom) || 0);
-    let foot = 0;
+    const pad = parseFloat(style.paddingBottom) || 0;
+    const room = grid.clientHeight - pad;
+    let foot = 0, nextTop = Infinity, nextHeight = 0;
     for (const child of grid.children) {
       const box = child.getBoundingClientRect();
-      if (box.height > 0 && box.bottom - top <= room + 0.5) foot = Math.max(foot, box.bottom - top);
+      if (!(box.height > 0)) continue;
+      if (box.bottom - top <= room + 0.5) foot = Math.max(foot, box.bottom - top);
+      else if (box.top - top < nextTop) { nextTop = box.top - top; nextHeight = box.height; }
     }
-    if (foot > 0) grid.style.maxHeight = `${Math.ceil(foot + (parseFloat(style.paddingBottom) || 0))}px`;
+    if (foot > 0) {
+      const height = Math.min(grid.clientHeight, Number.isFinite(nextTop) ? nextTop + nextHeight * 0.4 : foot + pad);
+      grid.style.maxHeight = `${Math.ceil(height)}px`;
+      grid.style.setProperty('--peek', `${Math.max(Math.round(pad), Math.ceil(height - foot))}px`);
+    }
   }
   grid.classList.toggle('can-scroll', grid.scrollHeight > grid.clientHeight + 1);
 }
@@ -1492,7 +1502,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
     if (next === 'equipment') renderStaleDossier();
-    if (next === 'appearance' && previous !== next) refreshCamoSel(); // the swatches it left for the drawer
+    if (next === 'appearance' && previous !== next) {
+      refreshCamoSel(); // the swatches it left for the drawer
+      // the sheet's grid stands whole rows tall once it has its room: a fit read on a resize while it was closed sliced
+      // its last row when it opened (the r16 critic at 2560, 1280, 1024 and 900)
+      requestAnimationFrame(() => fitCamoRows());
+    }
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
       [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
@@ -3249,6 +3264,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
   let stageFree: StageRect | null = null;
   let stageHero: StageRect | null = null;
+  // the callouts' room: the free stage a step clear of the bar and ending above the name, so no plate reads as part of
+  // the title or tucks under the bar (the r16 critic at 1280 and 1440)
+  let stageCallouts: StageRect | null = null;
   const stageRect = (x0: number, y0: number, x1: number, y1: number): StageRect =>
     ({ x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) });
   /** The free stage and the hero's rect (CSS px), from the live layout; a hidden Garage keeps the last ones. */
@@ -3270,7 +3288,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const floor = sideways ? countryRailEl.getBoundingClientRect() : head;
       const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
         : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
-      stageFree = stageHero = stageRect(rr.left + 18, rr.top + 66, x1, y1);
+      stageFree = stageHero = stageCallouts = stageRect(rr.left + 18, rr.top + 66, x1, y1);
       return;
     }
     const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
@@ -3279,6 +3297,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const y0 = Math.max(rr.top + 66, bar && bar.height ? bar.bottom + 8 : rr.top + 78);
     const floor = band && band.height ? band.top - 10 : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190;
     stageFree = stageRect(x0, y0, x1, Math.min(rr.bottom, floor));
+    stageCallouts = stageRect(x0, y0 + 8, x1, head && head.height ? head.top - 12 : Math.min(rr.bottom, floor));
     // the hero stands above the name (the full width) or beside it (down to the band), whichever shows it larger: the
     // name never covers the hull
     const above = head && head.height ? stageRect(x0, y0, x1, head.top - 12) : null;
@@ -3321,7 +3340,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let hotspots: GarageHotspots | null = null;
   let hotspotsLoading = false;
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
-  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(false),
+  const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => {
@@ -3568,10 +3587,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="armor-grid">` +
       figurePlate('shield', t('garage.dossier.protection.hull'), hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;') +
       figurePlate('turretRing', t('garage.dossier.protection.turret'), turMm != null ? `${Math.round(turMm)} mm` : '&mdash;') + `</div>` +
-      `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
+      `<button class="cot-gallery-link cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 16)}<span>${t('garage.dossier.protection.inspect')}</span><span class="go">&#8250;</span></button></section>` +
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), t('garage.dossier.modulesCount', { count: moduleRows.length }), 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
-      `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
+      `<button class="cot-gallery-link cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 16)}<span>${t('garage.dossier.modules.open')}</span><span class="go">&#8250;</span></button></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     renderLowerThird(spec, crewRows.length);

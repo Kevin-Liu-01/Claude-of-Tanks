@@ -67,6 +67,8 @@ body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-overview-section[data-stations] .cot-ammo-tiles{margin-top:auto;}
 /* a tall column opens the figures' pitch a little (capped), at full density only */
 body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density~='1']) .cot-headline{row-gap:clamp(var(--s3),2.2vh,var(--s5));}
+/* the vehicle's action chips stand one figure's pitch under the last figure (the r16 critic: 6 px under its bar) */
+body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density~='1']) .cot-actions{margin-top:clamp(var(--s3),2.2vh,var(--s5));}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats .cot-ammo-tiles{padding-top:var(--s3);}
 body[data-cot-panels='persistent'] .cot-garage .stats [data-stations]{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats [data-stations~='overview'],
@@ -96,8 +98,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .sr
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armor-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow .lr b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-stat-section{margin-bottom:var(--s4);}
-/* the roomy overview opens its figures' pitch and its rounds' plates into the column's height */
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-headline{row-gap:clamp(var(--s4),4vh,var(--s8));}
+/* the roomy overview opens its figures' pitch and its rounds' plates into the column's height, a step at most (at 2560
+   the figures stood 90 px apart) */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-headline{row-gap:clamp(var(--s4),3vh,var(--s6));}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-actions{margin-top:clamp(var(--s4),3vh,var(--s6));}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-ammo-tile{min-height:88px;align-content:space-between;}
 .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
 .cot-garage[data-station] .stats[data-density~='1'] :is(.cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
@@ -141,7 +145,9 @@ html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow)
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .sicon{align-self:start;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr>span{min-width:0;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{grid-column:1/-1;justify-self:end;margin:0;white-space:nowrap;}
+/* the figure stands under its label, as in every other layout of the plate (the r16 critic: right-aligned in this one,
+   left in the rest) */
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{grid-column:2;justify-self:start;margin:0;white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{grid-column:1/-1;}
 /* a label stands whole on its line, in both languages (the gauntlet 10-25: a figure beside it wrapped "Between / shots"
    and broke 车体转向散布 mid-word) */
@@ -222,7 +228,8 @@ body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
 /* the docked paint sheet names itself and closes from its head, as the phone's sheet does (no second Camouflage name) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:flex;flex:0 0 auto;align-items:center;
-  justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2);color:var(--ink-1);font:600 var(--fs-16)/1 var(--font-display);}
+  justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2);padding-inline-start:var(--s3);color:var(--ink-1);
+  font:600 var(--fs-16)/1 var(--font-display);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{--h:var(--btn-h-s);flex:0 0 auto;margin:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle>:is(svg,span){display:none;}
 /* the roster filter opens over the band's place: the band steps aside while it is open, so no control is half under it */
@@ -442,10 +449,10 @@ body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-battle-control{grid-template-rows:minmax(0,1fr) var(--btn-h-m);}
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
-body[data-cot-panels='persistent'][data-cot-width='tablet'] .cot-roster-count{display:none;}
 /* the count stands at the row's end while a search, the filter or the favourites narrow the strip (the chosen nation's
-   chip already names its own count): one line of the control's height, so its figures sit on the chips' line */
-body[data-cot-panels='persistent']:not([data-cot-width='tablet']) .cot-roster-count{display:block;grid-column:5;align-self:center;padding:0 var(--s1);
+   chip already names its own count): one line of the control's height, so its figures sit on the chips' line; the
+   tablet keeps it too (at 1024 and 900 a search to nothing read no count), the chip strip giving up the width */
+body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:5;align-self:center;padding:0 var(--s1);
   font:500 max(var(--fs-floor-11),var(--fs-13))/var(--btn-h-s) var(--font-data);color:var(--ink-3);white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-roster-count[hidden]{display:none;}
 body[data-cot-panels='persistent'] .cot-roster-search input::placeholder{color:var(--ink-3);}
