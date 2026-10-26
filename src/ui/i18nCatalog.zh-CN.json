@@ -1594,6 +1594,7 @@
   "playMenu.solo.desc": "本地运行同一套权威战斗，对手是完整的机器人阵容。",
   "playMenu.private.title": "私人房间",
   "playMenu.lan.title": "局域网",
+  "playMenu.kind": "房间类型",
   "playMenu.rules.heading": "战斗规则",
   "playMenu.identity.callsign": "呼号",
   "playMenu.create.title": "创建房间",

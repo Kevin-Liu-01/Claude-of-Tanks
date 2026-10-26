@@ -885,9 +885,10 @@ body[data-cot-input='coarse'] .cot-play .menu-select-trigger,
 body[data-cot-input='coarse'] .cot-play .menu-select-option{min-height:44px}
 /* the room's segmented settings are 44 px like its triggers, as Settings' are: the options sit inside the track's 3 px
    inset and their hit areas reach its edge (a 50 px track put the foot's labels 6 px apart, Rooms r28) */
-body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
   position:relative;min-height:0;height:calc(var(--cot-control-floor) - 6px)}
-body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
+body[data-cot-input='coarse'] .cot-play .brain-allies .cot-c-toggle{min-height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
   content:'';position:absolute;inset:-3px 0}
 
 @media (prefers-reduced-motion:reduce){

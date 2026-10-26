@@ -18,6 +18,7 @@ function element<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:
 /** Lazy editor: one still scene, inert HUD snapshots, no second renderer/simulation. */
 export function openHudEditor(trigger:HTMLElement):void {
   const draft=readHudPreferences();
+  const stored=JSON.stringify(draft);
   // the viewport the runtime HUD customisation places parts in (hudCustomization.ts), so both pick one profile
   const liveSize=():[number,number]=>{const {width,height}=layoutViewportSize(window);return [width,height];};
   const activeProfile=hudProfile(...liveSize(),document.body.classList.contains('cot-touch-layout'));
@@ -29,7 +30,7 @@ export function openHudEditor(trigger:HTMLElement):void {
   const dimensions=new Map<HudPartId,[number,number]>();
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
-  const modal=createModal({title:label('title'),subtitle:label('help'),size:'wide',onClose:()=>{
+  const modal=createModal({title:label('title'),subtitle:label('help'),size:'wide',unsaved:()=>JSON.stringify(draft)!==stored,onClose:()=>{
     closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');

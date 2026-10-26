@@ -134,7 +134,7 @@ export const INTERACTION_SITES = Object.freeze({
   'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:profile===id'], lane: 'premiere-site' },
 
   // ---- Rooms (the lead)
-  'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
+  'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.modes'], lane: 'lead', path: 'start-room' },
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.create-size'], lane: 'lead' },
   'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */

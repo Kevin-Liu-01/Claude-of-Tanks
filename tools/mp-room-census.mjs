@@ -364,8 +364,8 @@ try {
     await pageA.waitForSelector('#cot-battle-menu.open [data-deploy-room="lan"]', { timeout: 30_000 });
     await pageA.evaluate(() => document.querySelector('#cot-battle-menu [data-deploy-room="lan"]')?.click());
   }
-  await pageA.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-  await pageA.click('.cot-play .modes [data-mode="lan"]');
+  await pageA.waitForSelector('.cot-play.show .modes [data-value="lan"]', { timeout: 30_000 });
+  await pageA.click('.cot-play .modes [data-value="lan"]');
   await pageA.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';

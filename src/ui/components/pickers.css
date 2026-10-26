@@ -46,6 +46,9 @@
 /* a list row: the glyph, then the name over its facts; the row's end keeps the favourite star's room */
 .cot-c-picker--list .cot-c-picker__opt{flex-direction:row;align-items:center;min-height:44px;padding:var(--s2) calc(var(--s2) * 2 + 32px) var(--s2) var(--s3)}
 .cot-c-picker--list .cot-c-picker__words{flex:1 1 auto}
+/* a card's facts stand on its foot: the cards of a row share a height, so their facts line up whether a name takes one
+   line or two (Rooms r32) */
+.cot-c-picker--cards .cot-c-picker__words{flex:1 1 auto;align-content:space-between}
 .cot-c-picker__opt:hover{background:var(--surface-hover)}
 .cot-c-picker__opt:focus-visible{box-shadow:var(--focus-ring)}
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
@@ -106,6 +109,8 @@
 /* the frame's line sits inside its box on the column's edge, as a plate's ring does; a short picker crops the picture's
    height before its caption */
 .cot-bf .cot-bf__hero{flex:0 1 auto;min-height:0;aspect-ratio:16/9;box-shadow:var(--ring-1)}
+.cot-bf__hero>video{opacity:0}
+.cot-bf__hero>video.is-playing{opacity:1;transition:opacity var(--dur-fast) var(--ease-enter)}
 .cot-bf .cot-bf__map{position:absolute;right:var(--s3);bottom:var(--s3);width:34%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);
   background:var(--surface-scene);box-shadow:var(--plate-shadow)}
 .cot-bf .cot-bf__map[hidden]{display:none}

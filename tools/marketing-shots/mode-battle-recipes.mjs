@@ -1863,8 +1863,8 @@ Object.assign(RECIPES, {
         await A.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await A.page.click('.cot-multiplayer-entry');
         await A.page.waitForFunction(() => document.querySelector('.cot-play')?.classList.contains('show'), { timeout: 30000 });
-        await A.page.click('.cot-play .modes [data-mode="lan"]');
-        await A.page.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10000 });
+        await A.page.click('.cot-play .modes [data-value="lan"]');
+        await A.page.waitForFunction(() => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', { timeout: 10000 });
         await A.page.evaluate(() => {
           const size = document.querySelector('.cot-play [data-field="create-size"]');
           if (size) size.value = '1';

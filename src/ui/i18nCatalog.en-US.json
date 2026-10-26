@@ -1570,6 +1570,7 @@
   "playMenu.solo.desc": "Run the same authoritative combat locally against a full bot roster.",
   "playMenu.private.title": "Private room",
   "playMenu.lan.title": "Local network",
+  "playMenu.kind": "Room type",
   "playMenu.rules.heading": "Battle rules",
   "playMenu.identity.callsign": "Callsign",
   "playMenu.create.title": "Create a room",

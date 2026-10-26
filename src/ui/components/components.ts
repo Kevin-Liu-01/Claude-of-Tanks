@@ -273,6 +273,13 @@ export function toggle(options: ToggleOptions): string {
     + `${esc(options.checked ? options.onWord : options.offWord)}</span></button>`;
 }
 
+/** Set a toggle()'s state: its switch and the state word written beside it. */
+export function setToggle(control: HTMLElement, checked: boolean): void {
+  control.setAttribute('aria-checked', String(checked));
+  const word = control.querySelector<HTMLElement>('.cot-c-toggle__word');
+  if (word) word.textContent = (checked ? word.dataset.on : word.dataset.off) ?? '';
+}
+
 /* ---------------------------------------------------------------------------------------------- data and stats */
 
 /**
