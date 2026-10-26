@@ -1,19 +1,24 @@
 // The technical drawings' studio (258; the owner, 2026-10-26: "make all technical drawings much better and much higher
 // quality and update that whole system"). For one tank and each view (side, top, front) it renders:
-//   - the plate: the shipped model as a technical drawing on a transparent ground, graphite body with soft form shading,
-//     light ink lines where depth or surface direction breaks (silhouette, panel and part edges), fine hatching in the
-//     shade; supersampled 2x, at the view's frame size (the 2x asset) and half of it (the 1x asset); no text;
-//   - the overlay data: each armour plate (the combat collision shell's exact faces and the detail plates), module and
-//     crew seat drawn in its own flat ID colour with depth testing, the ID buffer traced into polygons
-//     (tools/technicalDrawingTrace.ts), each with its key, tone, values and label point, in the frame's pixels.
+//   - the plate: the shipped model in the technical look (src/engine/technicalPass.ts: graphite form shading, cavity,
+//     engraved part edges, a light silhouette, hatching in the shade) on a transparent ground; supersampled 2x, at the
+//     view's frame size (the 2x asset) and half of it (the 1x asset); no text;
+//   - the overlay data: the Gallery's own anatomy (src/gallery/anatomyScene.ts, the scene its 3D Armor, Modules and Crew
+//     layers draw, in the combat frames, so a presentation-only rig scale moves nothing): each armour surface, module
+//     part and crew station in its own flat ID colour with depth testing, the ID buffer traced into polygons
+//     (tools/technicalDrawingTrace.ts), each with the Gallery's key (H01, M04.2, C1), its tone, values and label point,
+//     in the frame's pixels.
 // The vehicle fills the frame to DRAWING_FILL of its width (less where its height binds); the scale (px per metre) is
 // recorded for the viewer's scale bar. Driven by tools/genDrawings.mjs through window.__drawTank(id, views).
 // First-party: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
-import { createInspectionOverlay } from '../src/gallery/overlays.ts';
-import { technicalToneOf } from '../src/ui/technicalDiagramLegend.ts';
+import { createTechnicalCompositeMaterial } from '../src/engine/technicalPass.ts';
+import { buildAnatomyScene, type AnatomyPick } from '../src/gallery/anatomyScene.ts';
+import { plateMetricMm, type AnatomyArmor } from '../src/gallery/anatomyData.ts';
+import { isPostwarVehicleEra } from '../src/sim/vehicleEras.ts';
+import { technicalToneHex } from '../src/ui/technicalDiagramLegend.ts';
 import { cleanLoops, labelPoint, loopsToPath, traceIdBuffer } from './technicalDrawingTrace.ts';
 
 type View = 'side' | 'top' | 'front';
@@ -132,71 +137,13 @@ const quadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 quadScene.add(quad);
 
-/** The plate's composite: graphite form shading from the view-space normals (a key from the upper left toward the viewer,
- * a sky fill from above) darkened by a cavity term (a neighbour nearer the camera by 1.5 to 120 cm within 5 or 11 px
- * occludes: the wheels behind the skirts, the recesses between plates), ink where depth or normal breaks, hatching in
- * the shade. */
-const plateComposite = new THREE.ShaderMaterial({
-  uniforms: {
-    tShade: { value: null }, tNormal: { value: null }, tDepth: { value: null },
-    texel: { value: new THREE.Vector2() }, near: { value: 0.05 }, far: { value: 100 }, ss: { value: SS },
-  },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
-  fragmentShader: `
-    uniform sampler2D tShade; uniform sampler2D tNormal; uniform sampler2D tDepth;
-    uniform vec2 texel; uniform float near; uniform float far; uniform float ss;
-    varying vec2 vUv;
-    float metresAt(vec2 uv){ return texture2D(tDepth, uv).x * (far - near); }
-    vec3 normalAt(vec2 uv){ return normalize(texture2D(tNormal, uv).xyz * 2. - 1.); }
-    float coverAt(vec2 uv){ return texture2D(tShade, uv).a; }
-    void main(){
-      vec4 shade = texture2D(tShade, vUv);
-      // silhouette: coverage breaks within two texels (a heavier line), part edges: depth or normal breaks
-      float silhouette = 0.;
-      for (int i = -2; i <= 2; i++) for (int j = -2; j <= 2; j++) {
-        if (i * i + j * j > 5) continue;
-        float c = coverAt(vUv + vec2(float(i), float(j)) * texel);
-        silhouette = max(silhouette, abs(c - shade.a));
-      }
-      float m0 = metresAt(vUv);
-      vec3 n0 = normalAt(vUv);
-      float crease = 0.;
-      for (int k = 0; k < 4; k++) {
-        vec2 o = k == 0 ? vec2(texel.x, 0.) : k == 1 ? vec2(-texel.x, 0.) : k == 2 ? vec2(0., texel.y) : vec2(0., -texel.y);
-        if (coverAt(vUv + o) < .5) continue;
-        crease = max(crease, smoothstep(.04, .14, abs(metresAt(vUv + o) - m0)));
-        crease = max(crease, smoothstep(.10, .28, 1. - dot(normalAt(vUv + o), n0)));
-      }
-      float occ = 0.;
-      for (int k = 0; k < 12; k++) {
-        float a = float(k) * .5236;
-        vec2 uv = vUv + vec2(cos(a), sin(a)) * texel * ss * (k - (k / 2) * 2 == 0 ? 5. : 11.);
-        if (coverAt(uv) < .5) continue;
-        float nearer = m0 - metresAt(uv);
-        occ += smoothstep(.015, .12, nearer) * (1. - smoothstep(.6, 1.2, nearer));
-      }
-      float cavity = occ / 12.;
-      vec3 light = normalize(vec3(-.5, .65, .58));
-      float key = smoothstep(-.35, 1., dot(n0, light));
-      float lum = (.10 + .64 * key + .16 * (.5 + .5 * n0.y)) * (1. - .62 * cavity) * mix(.84, 1.06, vUv.y);
-      // fine 45 deg hatching where the form turns from the light or sits in a recess
-      float hatch = step(fract((gl_FragCoord.x + gl_FragCoord.y) / (4. * ss)), .22) * (1. - smoothstep(.16, .30, lum));
-      vec3 body = mix(vec3(.07, .085, .10), vec3(.43, .48, .52), smoothstep(.0, .9, lum));
-      body = mix(body, vec3(.05, .06, .075), hatch * .5);
-      // part edges engraved dark into the body, the silhouette drawn light round it
-      vec3 rgb = mix(body, vec3(.035, .045, .06), crease * .7);
-      rgb = mix(rgb, vec3(.80, .85, .89), silhouette * .95);
-      float alpha = max(shade.a, silhouette * .95);
-      gl_FragColor = vec4(rgb * alpha, alpha);
-    }`,
-  depthTest: false, depthWrite: false, premultipliedAlpha: true, transparent: true,
-});
+/** The plate's composite: the technical look (src/engine/technicalPass.ts, the Gallery's 3D view draws the same) over
+ * the plate's coverage, normal and depth passes. */
+const plateComposite = createTechnicalCompositeMaterial();
+plateComposite.uniforms.pxScale!.value = SS;
+plateComposite.uniforms.orthographic!.value = true;
 
-const shadeScene = new THREE.Scene();
-shadeScene.add(new THREE.HemisphereLight(0xffffff, 0x3a4048, 1.1));
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.3);
-shadeScene.add(keyLight, keyLight.target);
-const shadeMaterial = new THREE.MeshLambertMaterial({ color: 0xb8bfc5, side: THREE.DoubleSide });
+const passScene = new THREE.Scene();
 const normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
 
 /** Swap the drawn meshes' material for one pass, and put them back (drawTank keeps every other mesh hidden). */
@@ -215,23 +162,18 @@ function readTarget(target: THREE.WebGLRenderTarget, width: number, height: numb
 /** The plate at the frame's size and half of it, as WebP data URLs (rows flipped to image order, downsampled from SS). */
 function renderPlate(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Frame, view: View): { full: string; half: string; box: [number, number, number, number]; body: [number, number, number, number] } {
   const w = frame.width * SS, h = frame.height * SS;
-  const shadeTarget = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
+  const coverTarget = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
   const normalTarget = new THREE.WebGLRenderTarget(w, h, { depthTexture: new THREE.DepthTexture(w, h) });
   const outTarget = new THREE.WebGLRenderTarget(w, h);
   try {
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    // the key light comes from the upper front-left of the viewer, the same for every view
-    const cam = frame.camera, right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion), toward = new THREE.Vector3(0, 0, 1).applyQuaternion(cam.quaternion);
-    keyLight.position.copy(cam.position).addScaledVector(right, -0.45 * 40).addScaledVector(camUp, 0.8 * 40).addScaledVector(toward, 40);
-    keyLight.target.position.copy(cam.position).addScaledVector(toward, -40);
-    keyLight.target.updateMatrixWorld();
-    shadeScene.add(root);
-    withMaterial(meshes, shadeMaterial, () => { renderer.setRenderTarget(shadeTarget); renderer.clear(); renderer.render(shadeScene, cam); });
-    withMaterial(meshes, normalMaterial, () => { renderer.setRenderTarget(normalTarget); renderer.clear(); renderer.render(shadeScene, cam); });
-    shadeScene.remove(root);
-    plateComposite.uniforms.tShade!.value = shadeTarget.texture;
+    const cam = frame.camera;
+    passScene.add(root);
+    withMaterial(meshes, coverageMaterial, () => { renderer.setRenderTarget(coverTarget); renderer.clear(); renderer.render(passScene, cam); });
+    withMaterial(meshes, normalMaterial, () => { renderer.setRenderTarget(normalTarget); renderer.clear(); renderer.render(passScene, cam); });
+    passScene.remove(root);
+    plateComposite.uniforms.tCover!.value = coverTarget.texture;
     plateComposite.uniforms.tNormal!.value = normalTarget.texture;
     plateComposite.uniforms.tDepth!.value = normalTarget.depthTexture;
     plateComposite.uniforms.texel!.value.set(1 / w, 1 / h);
@@ -288,7 +230,7 @@ function renderPlate(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame:
     void view;
     return { full: scaled(frame.width, frame.height), half: scaled(frame.width / 2, frame.height / 2), box, body };
   } finally {
-    shadeTarget.dispose(); normalTarget.depthTexture?.dispose(); normalTarget.dispose(); outTarget.dispose();
+    coverTarget.dispose(); normalTarget.depthTexture?.dispose(); normalTarget.dispose(); outTarget.dispose();
   }
 }
 
@@ -315,66 +257,86 @@ export interface DrawingElement {
   keMm?: number; ceMm?: number; kind?: string; plate?: string; module?: string; crew?: string; title?: string;
 }
 
-function pickerMeta(picker: THREE.Mesh): Omit<DrawingElement, 'd' | 'at' | 'area' | 'tone'> {
-  const inspection = (picker.userData.inspection || {}) as Record<string, unknown>;
-  const meta: Omit<DrawingElement, 'd' | 'at' | 'area' | 'tone'> = { key: String(inspection.id || '') };
-  if (inspection.mode === 'armor') {
-    meta.keMm = Math.round(Number(inspection.keMm || 0));
-    meta.ceMm = Math.round(Number(inspection.ceMm || 0));
-    meta.kind = String(inspection.kind || 'main');
-    if (inspection.plateName) meta.plate = String(inspection.plateName);
-  } else if (inspection.mode === 'modules') meta.module = String(inspection.module || '');
-  else meta.crew = String(inspection.crew || '');
-  if (inspection.title) meta.title = String(inspection.title);
-  return meta;
+const kebab = (name: string): string => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+const words = (value: string): string => value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()).trim();
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+/** A tone with a token, else the fallback (technicalToneHex throws for a tone without one). */
+function toneOr(tone: string, fallback: string): string {
+  try { technicalToneHex(tone); return tone; } catch { return fallback; }
 }
 
-function pickerTone(picker: THREE.Mesh): string | null {
-  const visual = (picker.userData.inspectionVisual || picker) as THREE.Object3D;
-  let color: string | null = null;
-  visual.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (color || !(mesh.isMesh || (object as THREE.LineSegments).isLineSegments)) return;
-    const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as (THREE.Material & { color?: THREE.Color })[];
-    const material = materials.find((m) => m?.color && (m.userData?.galleryAnatomyLine || m.userData?.galleryAnatomyFill || m.colorWrite !== false));
-    if (material?.color) color = `#${material.color.getHexString()}`;
+/** An element's identity, tone and values: the Gallery's readout key (anatomyView.ts anatomyReadout) and the diagrams'
+ * tones (the KE bands, ERA, spaced and external for armour; each module's and crew role's own). */
+function elementOf(pick: AnatomyPick): Omit<DrawingElement, 'd' | 'at' | 'area'> | null {
+  if (pick.kind === 'armor') {
+    const { plate, frame, layer } = pick.surface;
+    const ke = plateMetricMm(plate, 'ke'), ce = plateMetricMm(plate, 'ce');
+    const tone = layer === 'era' ? 'armor-era' : layer === 'spaced' ? 'armor-spaced' : layer === 'external' || layer === 'housing' ? 'armor-external'
+      : `armor-ke-${ke >= 650 ? 4 : ke >= 350 ? 3 : ke >= 180 ? 2 : ke >= 80 ? 1 : 0}`;
+    return { key: `${frame[0]!.toUpperCase()}${pad2(pick.index + 1)}`, tone, keMm: Math.round(ke), ceMm: Math.round(ce), kind: layer,
+      ...(plate.name ? { plate: String(plate.name), title: words(String(plate.name)) } : {}) };
+  }
+  if (pick.kind === 'module') {
+    const { part } = pick;
+    return { key: `M${pad2(part.index + 1)}${part.parts > 1 ? `.${part.part + 1}` : ''}`, tone: toneOr(`module-${kebab(part.module)}`, 'module-radio'), module: part.module };
+  }
+  if (pick.kind === 'crew') {
+    const { station } = pick;
+    return { key: `C${station.index + 1}`, tone: toneOr(`crew-${kebab(station.crew)}`, 'crew-other'), crew: station.crew };
+  }
+  return null;
+}
+
+/** One kind's elements in one view: the Gallery's anatomy for the vehicle as posed, each surface, part or station in its
+ * ID colour (nothing else drawn: what the plate shows is not an occluder), the ID buffer traced. */
+function traceKind(spec: { readonly armor?: unknown; readonly era?: unknown; readonly gun?: { readonly caliberMm?: number; readonly shells?: readonly { readonly caliberMm?: number }[] } },
+  visual: { root: THREE.Object3D }, kind: Kind, frame: Frame): DrawingElement[] {
+  const anatomy = buildAnatomyScene(spec.armor as AnatomyArmor, {
+    caliberMm: Number(spec.gun?.shells?.[0]?.caliberMm || spec.gun?.caliberMm || 0),
+    modern: isPostwarVehicleEra(spec.era as Parameters<typeof isPostwarVehicleEra>[0]),
   });
-  return color ? technicalToneOf(color) : null;
-}
-
-/** One kind's elements in one view: each picker's visible surfaces traced from the ID buffer. */
-function traceKind(spec: unknown, visual: { root: THREE.Object3D }, kind: Kind, frame: Frame): DrawingElement[] {
-  const overlay = createInspectionOverlay(spec as never, visual as never, kind);
   const w = frame.width * SS, h = frame.height * SS;
   const target = new THREE.WebGLRenderTarget(w, h);
   const idScene = new THREE.Scene();
-  const parked: { object: THREE.Object3D; visible: boolean }[] = [];
+  const owned: { dispose(): void }[] = [];
   try {
     visual.root.updateMatrixWorld(true);
-    // every mesh of the tank hidden but the pickers' own surfaces, each in its ID colour
-    const drawn = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
-    const owners: THREE.Mesh[] = [];
-    overlay.pickables.forEach((picker: THREE.Mesh, index: number) => {
-      const surface = (picker.userData.inspectionVisual || picker) as THREE.Object3D;
-      const id = index + 1;
-      owners[id] = picker;
-      surface.traverse((object) => {
-        const mesh = object as THREE.Mesh;
-        if (!mesh.isMesh || mesh === picker && surface !== picker) return;
-        if (!drawn.has(mesh)) drawn.set(mesh, mesh.material);
-        mesh.material = idMaterial(id);
+    const root = anatomy.frames.root;
+    root.matrixAutoUpdate = false;
+    root.matrix.copy(visual.root.matrixWorld);
+    anatomy.syncPose(visual.root.getObjectByName('rig_turret')?.rotation.y || 0, -(visual.root.getObjectByName('rig_gun')?.rotation.x || 0));
+    anatomy.setToggles({ armor: false, addOns: false, hits: false, modules: kind === 'modules', crew: kind === 'crew' });
+    anatomy.groups.barrel.visible = false;
+    const picks: AnatomyPick[] = [];
+    const idOf = new Map<AnatomyPick, number>();
+    const take = (pick: AnatomyPick): number => {
+      let id = idOf.get(pick);
+      if (id === undefined) { picks.push(pick); id = picks.length; idOf.set(pick, id); }
+      return id;
+    };
+    if (kind === 'armor') {
+      // every surface its own mesh in its frame, one-sided as the sim strikes it
+      const frames = { hull: anatomy.frames.hull, turret: anatomy.frames.turret, gun: anatomy.frames.gun };
+      anatomy.surfaces.forEach((surface, index) => {
+        if (surface.positions.length < 9) return;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(surface.positions, 3));
+        owned.push(geometry);
+        const material = idMaterial(take({ kind: 'armor', surface, index })).clone();
+        material.side = THREE.FrontSide;
+        owned.push(material);
+        frames[surface.frame].add(new THREE.Mesh(geometry, material));
       });
-    });
-    visual.root.traverse((object) => {
-      if ((object as THREE.Mesh).isMesh || (object as THREE.LineSegments).isLineSegments || (object as THREE.Points).isPoints) {
-        if (!drawn.has(object as THREE.Mesh)) { parked.push({ object, visible: object.visible }); object.visible = false; }
-      }
-    });
-    // a picker's own box (the modules' and crew's) stays out: its visual model is what is drawn
-    for (const picker of overlay.pickables) if (picker.userData.inspectionVisual && picker.userData.inspectionVisual !== picker) {
-      parked.push({ object: picker, visible: picker.visible }); picker.visible = false;
+    } else {
+      root.traverse((object) => {
+        const mesh = object as THREE.Mesh, pick = mesh.userData?.anatomyPick as AnatomyPick | undefined;
+        if (!mesh.isMesh) return;
+        if (!pick || pick.kind !== (kind === 'modules' ? 'module' : 'crew')) { mesh.visible = false; return; }
+        mesh.material = idMaterial(take(pick));
+      });
     }
-    idScene.add(visual.root);
+    idScene.add(root);
+    root.updateMatrixWorld(true);
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     renderer.setRenderTarget(target);
@@ -383,8 +345,7 @@ function traceKind(spec: unknown, visual: { root: THREE.Object3D }, kind: Kind, 
     renderer.render(idScene, frame.camera);
     renderer.setRenderTarget(null);
     renderer.setClearColor(0x000000, 0);
-    idScene.remove(visual.root);
-    for (const [mesh, material] of drawn) mesh.material = material;
+    idScene.remove(root);
     const pixels = readTarget(target, w, h);
     const ids = new Uint32Array(w * h);
     for (let y = 0; y < h; y++) {
@@ -394,11 +355,10 @@ function traceKind(spec: unknown, visual: { root: THREE.Object3D }, kind: Kind, 
         ids[y * w + x] = pixels[i]! | (pixels[i + 1]! << 8) | (pixels[i + 2]! << 16);
       }
     }
-    const traced = traceIdBuffer(ids, w, h);
     const elements: DrawingElement[] = [];
-    for (const [id, loops] of traced) {
-      const picker = owners[id];
-      if (!picker) continue;
+    for (const [id, loops] of traceIdBuffer(ids, w, h)) {
+      const pick = picks[id - 1], meta = pick ? elementOf(pick) : null;
+      if (!meta) continue;
       const clean = cleanLoops(loops, TRACE_TOLERANCE, TRACE_MIN_AREA);
       if (!clean.length) continue;
       const area = clean.reduce((sum: number, points: number[]) => {
@@ -407,17 +367,15 @@ function traceKind(spec: unknown, visual: { root: THREE.Object3D }, kind: Kind, 
         return sum + twice / 2;
       }, 0) / (SS * SS);
       const at = labelPoint(clean);
-      elements.push({
-        ...pickerMeta(picker), tone: pickerTone(picker), d: loopsToPath(clean, 1 / SS, 1),
-        at: at ? [Number((at[0] / SS).toFixed(1)), Number((at[1] / SS).toFixed(1))] : null, area: Math.round(area),
-      });
+      elements.push({ ...meta, d: loopsToPath(clean, 1 / SS, 1),
+        at: at ? [Number((at[0] / SS).toFixed(1)), Number((at[1] / SS).toFixed(1))] : null, area: Math.round(area) });
     }
     elements.sort((a, b) => b.area - a.area);
     return elements;
   } finally {
-    for (const { object, visible } of parked) object.visible = visible;
     target.dispose();
-    overlay.clear();
+    for (const resource of owned) resource.dispose();
+    anatomy.dispose();
   }
 }
 

@@ -123,7 +123,7 @@ assert.deepEqual(drawingProblems(fixture.data, fixture.read), [], 'control: the 
 const [control, read] = drawings[0] ? [drawings[0], (name) => readFileSync(join(DIR, name))] : [fixture.data, fixture.read];
 {
   const view = Object.keys(control.views)[0], v = control.views[view];
-  const narrow = (b) => [b[0], b[1], b[0] + (b[2] - b[0]) * 0.7, b[3]];
+  const narrow = (b) => [b[0], b[1], b[0] + (b[2] - b[0]) * 0.7, b[1] + (b[3] - b[1]) * 0.7];
   const shrunk = { ...control, views: { [view]: { ...v, plate: { ...v.plate, box: narrow(v.plate.box), body: narrow(v.plate.body) } } } };
   assert.ok(drawingProblems(shrunk, read).some((p) => /fills/.test(p)), 'control: a shrunken extent fails the fill');
   const armor = v.layers.armor.map((e, i) => i ? e : { ...e, d: `M${v.size[0] - 1} 1L${v.size[0] - 1} 9L${v.size[0] - 9} 9Z` });
