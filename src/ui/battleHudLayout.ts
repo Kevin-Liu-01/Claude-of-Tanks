@@ -1316,6 +1316,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
     setRows(toastHost, stack.toastRows);
     // r10e: a touch layout's centre notices and medal card keep off the reticle's footprint and the HUD's panels
     // (touchNoticePlan.ts); integ's place stays wherever it keeps clear
+    // A short landscape parks the warning chip under the map; beside the objective's side seat at its top, below the
+    // network button where that stands there. Its place is written before the touch plan measures it (a chip the last pass
+    // left elsewhere had the alert set onto its new seat at 568x320, the layout receipt).
+    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : touch && map ? Math.round(map.left) : 8;
+    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
+    if (side) {
+      chipTop = side.top;
+      if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
+    }
+    if (touch) {
+      setBodyVar('--hud-aim-warning-top', `${Math.floor(chipTop)}px`);
+      setBodyVar('--hud-aim-warning-left', `${Math.floor(chipLeft)}px`);
+    }
     let touchPlan = null;
     if (touch) {
       const boxes = (selector: string): TouchBox[] => {
@@ -1415,15 +1428,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
         banner.dispatchEvent(new Event('cot-banner-placement'));
       }
     }
-    // A short landscape parks the warning chip under the map; beside the objective's side seat at its top, below the
-    // network button where that stands there.
-    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : touch && map ? Math.round(map.left) : 8;
-    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
-    if (side) {
-      chipTop = side.top;
-      if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
+    if (slotChip && touchPlan) {
+      chipTop = touchPlan.noticeTop;
+      setBodyVar('--hud-aim-warning-top', `${Math.floor(chipTop)}px`);
     }
-    if (slotChip && touchPlan) chipTop = touchPlan.noticeTop;
     const chipNode = slotChip ? root.querySelector<HTMLElement>('.cot-aim-warning') : null;
     const underNotice = !!chipNode && !!root.querySelector('.cot-sixth.on,.cot-alert.show');
     if (chipNode && chipNode.hasAttribute('data-under-notice') !== underNotice) chipNode.toggleAttribute('data-under-notice', underNotice);
@@ -1487,7 +1495,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,
       'chat-height': stack.chatHeight,
     };
-    let chipMoved = false;
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
       // (a centre and a centred left are written exact: a floored one sets its element up to 1 px off the centre line)
@@ -1496,12 +1503,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
         document.body.style.setProperty(property, pixels);
         // an instrument the mouse plan keeps off moves with this write: the next relayout measures its inputs again
         if (movesPlanInputs.has(name)) planInputs = true;
-        // (the touch plan measured the warning chip where the last pass left it: moved, a second pass sets the notices
-        // off its new place, the layout receipt at 568x320)
-        if (touch && (name === 'aim-warning-top' || name === 'aim-warning-left')) chipMoved = true;
       }
     }
-    if (chipMoved && root.querySelector('.cot-aim-warning:not([hidden])')) schedule();
     if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount,
       alert: !!root.querySelector('.cot-alert.show') }, medalWaiting, medalFeedWait);
     // (the touch countdown's and its rules panel's scales and the top slot's buttons a row, unitless)
