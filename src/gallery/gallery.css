@@ -451,7 +451,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   :root body .take-actions a,:root body .take-media .fleet-take-toggle{width:44px;height:44px}
   :root body .take-media .fleet-take-toggle{right:calc(12px + 52px)}
   .fam .it{min-height:44px}
-  .order__dir,.order__sort .cot-c-menu__trigger{min-height:40px;min-width:40px}
+  .order__dir,.order__sort .cot-c-menu__trigger{min-height:44px;min-width:44px}
   /* the camera rail and the layer dock at a finger's size (the landscape phone's were 30 to 34 px); eight cameras still fit
      the short stage's height */
   .views button{height:36px;min-width:36px}
