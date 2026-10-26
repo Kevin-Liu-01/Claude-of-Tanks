@@ -61,6 +61,8 @@ const CALLOUT_STACK_GAP_PX = 8;
 const CALLOUT_GAP_PX = 12;
 const CALLOUT_EDGE_PX = 16;
 const CALLOUT_HEIGHT_PX = 28;
+/** The parts whose boxes trace the vehicle's silhouette for the callout rows (the largest, by their boxes' diagonals). */
+const SILHOUETTE_PARTS = 64;
 const byAnchorX = (a: { ax: number }, b: { ax: number }): number => a.ax - b.ax;
 
 export interface AnatomyVehicle {
@@ -293,8 +295,11 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   // inset, the turntable and photo buttons), read again only when the stage changes size or the legend is redrawn
   let toolbarFoot = 0, footFor = '', stageFoot = Infinity;
   const obstacles: Array<{ left: number; top: number; right: number; bottom: number }> = [];
-  // the vehicle's box in its own frame (ensureScene), whose corners on screen set where the two label columns stand
-  const heroBox = new THREE.Box3();
+  // the vehicle's silhouette points in its own frame (ensureScene): the corners of its largest parts' boxes, whose places
+  // on screen set where the two label rows stand (one box round the whole vehicle, seen from above at three quarters,
+  // stood the rows a third of the stage off the tank)
+  const heroPoints = new Float32Array(SILHOUETTE_PARTS * 24);
+  let heroPointCount = 0;
   const corner = new THREE.Vector3();
   const placed: Array<{ item: typeof badgeItems[number]; ax: number; ay: number; row: number; x: number; y: number }> = [];
   // the row above the silhouette and the row under it: the plates' middle line, the run they may use, the width taken
@@ -328,13 +333,13 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
 
   function current(): ViewToggles { return toggles[mode || 'armor']; }
 
-  /** The vehicle's box in its own frame, from its exterior meshes (the visible state does not matter: the anatomy hides
-   *  them), once per vehicle state. */
-  function measureHeroBox(root: THREE.Object3D): void {
-    heroBox.makeEmpty();
+  /** The vehicle's silhouette points in its own frame: the box corners of its largest exterior parts (the visible state
+   *  does not matter: the anatomy hides them), once per vehicle state. */
+  function measureHeroPoints(root: THREE.Object3D): void {
     root.updateMatrixWorld(true);
     const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
-    const part = new THREE.Box3(), toPart = new THREE.Matrix4();
+    const part = new THREE.Box3(), toPart = new THREE.Matrix4(), size = new THREE.Vector3();
+    const parts: Array<{ box: THREE.Box3; reach: number }> = [];
     root.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || !object.geometry || object.userData.shadowOnly) return;
       if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
@@ -348,8 +353,19 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         if (!object.geometry.boundingBox) return;
         part.copy(object.geometry.boundingBox);
       }
-      if (!part.isEmpty()) heroBox.union(part.applyMatrix4(toPart.multiplyMatrices(toRoot, object.matrixWorld)));
+      if (part.isEmpty()) return;
+      part.applyMatrix4(toPart.multiplyMatrices(toRoot, object.matrixWorld));
+      parts.push({ box: part.clone(), reach: part.getSize(size).length() });
     });
+    parts.sort((a, b) => b.reach - a.reach);
+    heroPointCount = 0;
+    for (const { box } of parts.slice(0, SILHOUETTE_PARTS)) {
+      for (let i = 0; i < 8; i++, heroPointCount++) {
+        heroPoints[heroPointCount * 3] = i & 1 ? box.max.x : box.min.x;
+        heroPoints[heroPointCount * 3 + 1] = i & 2 ? box.max.y : box.min.y;
+        heroPoints[heroPointCount * 3 + 2] = i & 4 ? box.max.z : box.min.z;
+      }
+    }
   }
 
   /** Whether a row's run still holds a plate this wide (its stack gap included). */
@@ -406,7 +422,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     anatomy.frames.root.matrixAutoUpdate = false;
     anatomy.frames.root.visible = false;
     host.scene.add(anatomy.frames.root);
-    measureHeroBox(nextVehicle.root);
+    measureHeroPoints(nextVehicle.root);
     buildBadges();
     selected = findPick(keep);
   }
@@ -788,33 +804,39 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       // the callouts stand beside the tank, never on it (the g10 critic: plates stacked over the turret hid their parts and
       // each other's leaders): a row of plates above the silhouette and one under it, the parts taken left to right and
       // dealt to the two rows in turn, so each plate keeps over or under its own part and no two leaders cross
-      let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
-      if (!heroBox.isEmpty()) {
-        for (let i = 0; i < 8; i++) {
-          corner.set(i & 1 ? heroBox.max.x : heroBox.min.x, i & 2 ? heroBox.max.y : heroBox.min.y, i & 4 ? heroBox.max.z : heroBox.min.z)
-            .applyMatrix4(root.matrixWorld).project(host.camera);
-          const sx = (corner.x + 1) / 2 * width, sy = (1 - corner.y) / 2 * height;
-          left = Math.min(left, sx); right = Math.max(right, sx); top = Math.min(top, sy); bottom = Math.max(bottom, sy);
-        }
+      let top = Infinity, bottom = -Infinity;
+      for (let i = 0; i < heroPointCount; i++) {
+        corner.fromArray(heroPoints, i * 3).applyMatrix4(root.matrixWorld).project(host.camera);
+        const sy = (1 - corner.y) / 2 * height;
+        top = Math.min(top, sy);
+        bottom = Math.max(bottom, sy);
       }
       if (!(bottom > top)) for (const entry of placed) { top = Math.min(top, entry.ay); bottom = Math.max(bottom, entry.ay); }
       const half = CALLOUT_HEIGHT_PX / 2;
       for (let k = 0; k < 2; k++) {
-        // a row's run is the stage's width less the controls standing in its band; a control across the band's middle
-        // third (the turntable buttons) closes the row
+        // a row stands its gap off the silhouette, held between the layer chips and the stage's foot (a short stage lays
+        // it over the silhouette's edge rather than drop it) and off a control across the band's middle third (the
+        // turntable buttons: the row under the tank stands above them); its run is the stage's width less the controls
+        // standing at the band's ends
         const row = rows[k];
-        row.y = k ? bottom + CALLOUT_ROW_GAP_PX + half : top - CALLOUT_ROW_GAP_PX - half;
+        row.y = k ? Math.min(bottom + CALLOUT_ROW_GAP_PX + half, stageFoot - half)
+          : Math.max(top - CALLOUT_ROW_GAP_PX - half, toolbarFoot + half);
+        for (const box of obstacles) {
+          const middle = (box.left + box.right) / 2;
+          if (middle < width / 3 || middle > width * 2 / 3 || box.bottom <= row.y - half || box.top >= row.y + half) continue;
+          row.y = k ? box.top - half : box.bottom + half;
+        }
         row.x0 = CALLOUT_EDGE_PX;
         row.x1 = width - CALLOUT_EDGE_PX;
         row.used = 0;
-        let open = row.y - half >= toolbarFoot && row.y + half <= stageFoot;
         for (const box of obstacles) {
-          if (!open || box.bottom <= row.y - half || box.top >= row.y + half) continue;
+          if (box.bottom <= row.y - half || box.top >= row.y + half) continue;
           const middle = (box.left + box.right) / 2;
           if (middle < width / 3) row.x0 = Math.max(row.x0, box.right);
           else if (middle > width * 2 / 3) row.x1 = Math.min(row.x1, box.left);
-          else open = false;
         }
+        // a row pushed off the stage, or the lower one pushed onto the upper, takes no plates
+        const open = row.y - half >= toolbarFoot && row.y + half <= stageFoot && (!k || row.y - rows[0].y >= CALLOUT_HEIGHT_PX + CALLOUT_STACK_GAP_PX);
         if (!open) row.x1 = row.x0 - CALLOUT_STACK_GAP_PX;
       }
       placed.sort(byAnchorX);

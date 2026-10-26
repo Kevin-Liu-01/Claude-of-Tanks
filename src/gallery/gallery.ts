@@ -1136,12 +1136,10 @@ function populateRivals(): void {
     return group;
   }));
 }
-/** The rival's side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip),
- * the silhouette facing the selection. */
+/** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
+ * picker above names it (the g10 critic read the name under the picker as the same name twice). */
 function versusSide(record: GalleryRecord): string {
-  const name = record.shortName || record.displayName;
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`
-    + `<b${name === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`}>${esc(keepDesignation(name))}</b>`;
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
