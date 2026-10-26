@@ -4,13 +4,13 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them); and the Campaign tab's briefing plates, op-0N-1280, one Scene Studio still per operation; and each core mode's plate background, <id>-1600, a 1600x900 cut of the same still as its card (the Deploy plate behind the rules, owner 2026-10-26).",
- "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py); the plate backgrounds: ffmpeg (scale lanczos) + cwebp -q 70 -m 6",
+ "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them); and the Campaign tab's briefing plates, op-0N-1280, one Scene Studio still per operation; and each mode's plate background on the Deploy screen, <id>-1600 (1600x900, the `-panel` rows: the core modes' a cut of their card stills, the others the media lane's HUD-free battle frames; owner 2026-10-26).",
+ "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py); the core plate backgrounds: ffmpeg (scale lanczos) + cwebp -q 70 -m 6",
  "dimensions": {
   "width": 640,
   "height": 360
  },
- "count": 24,
+ "count": 33,
  "items": [
   {
    "id": "standard",
@@ -19,10 +19,28 @@
    "source": "public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
   },
   {
+   "id": "standard-panel",
+   "file": "standard-1600.webp",
+   "mode": "standard",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 75368
+  },
+  {
    "id": "zone_control",
    "file": "zone_control-640.webp",
    "mode": "zone_control",
    "source": "public/media/versus-r1/f7-t90m-column-r5.webp"
+  },
+  {
+   "id": "zone_control-panel",
+   "file": "zone_control-1600.webp",
+   "mode": "zone_control",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/f7-t90m-column-r5.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 127994
   },
   {
    "id": "capture_the_flag",
@@ -31,46 +49,28 @@
    "source": "public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp"
   },
   {
+   "id": "capture_the_flag-panel",
+   "file": "capture_the_flag-1600.webp",
+   "mode": "capture_the_flag",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 76752
+  },
+  {
    "id": "frontline_assault",
    "file": "frontline_assault-640.webp",
    "mode": "frontline_assault",
    "source": "public/media/site50-r14/stills/s225-verdant-duel.webp"
   },
   {
-   "id": "standard-plate",
-   "file": "standard-1600.webp",
-   "mode": "standard",
-   "source": "public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
-   "use": "the Deploy plate's background (owner 2026-10-26)",
-   "width": 1600,
-   "height": 900
-  },
-  {
-   "id": "zone_control-plate",
-   "file": "zone_control-1600.webp",
-   "mode": "zone_control",
-   "source": "public/media/versus-r1/f7-t90m-column-r5.webp",
-   "use": "the Deploy plate's background (owner 2026-10-26)",
-   "width": 1600,
-   "height": 900
-  },
-  {
-   "id": "capture_the_flag-plate",
-   "file": "capture_the_flag-1600.webp",
-   "mode": "capture_the_flag",
-   "source": "public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
-   "use": "the Deploy plate's background (owner 2026-10-26)",
-   "width": 1600,
-   "height": 900
-  },
-  {
-   "id": "frontline_assault-plate",
+   "id": "frontline_assault-panel",
    "file": "frontline_assault-1600.webp",
    "mode": "frontline_assault",
-   "source": "public/media/site50-r14/stills/s225-verdant-duel.webp",
-   "use": "the Deploy plate's background (owner 2026-10-26)",
+   "source": "a 1600x900 cut of the still its card shows (public/media/site50-r14/stills/s225-verdant-duel.webp)",
    "width": 1600,
-   "height": 900
+   "height": 900,
+   "bytes": 75576
   },
   {
    "id": "turbo_ball-tile",
@@ -85,6 +85,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "turbo_ball-panel",
+   "file": "turbo_ball-1600.webp",
+   "mode": "turbo_ball",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a K2 Black Panther leaps after the ball on Kestrel Airfield, the ball looming beside it (airfield, day, player k2_black_panther; battle-257b/modes/turbo_ball #10, 3840x2160)",
+   "capture": {
+    "run": "battle-257b",
+    "slot": "modes/turbo_ball",
+    "candidate": 10,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 108996
   },
   {
    "id": "gun_game-tile",
@@ -106,6 +121,21 @@
    "height": 270
   },
   {
+   "id": "gun_game-panel",
+   "file": "gun_game-1600.webp",
+   "mode": "gun_game",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the player fires its howitzer stage beside the green weapon-stage beacon (oasis, sunset, player k2_black_panther; battle-257/modes/gun_game #13, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/gun_game",
+    "candidate": 13,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 240556
+  },
+  {
    "id": "mars-tile",
    "file": "mars-480.webp",
    "mode": "mars",
@@ -118,6 +148,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "mars-panel",
+   "file": "mars-1600.webp",
+   "mode": "mars",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a tank mid-hop in low gravity against the sun's glow (mars, day, player t14_armata; battle-257/modes/mars #5, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/mars",
+    "candidate": 5,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 165038
   },
   {
    "id": "juggernaut-tile",
@@ -139,6 +184,21 @@
    "height": 270
   },
   {
+   "id": "juggernaut-panel",
+   "file": "juggernaut-1600.webp",
+   "mode": "juggernaut",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the glowing boss tank fires inside its ring under its beacon (foundry, night, player merkava4_barak; battle-257/modes/juggernaut #1, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/juggernaut",
+    "candidate": 1,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 156260
+  },
+  {
    "id": "infected-tile",
    "file": "infected-480.webp",
    "mode": "infected",
@@ -151,6 +211,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "infected-panel",
+   "file": "infected-1600.webp",
+   "mode": "infected",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a survivor with its headlights on the road as a glowing infected tank closes and fires (urban, night, player leo2a6; battle-257/modes/infected #11, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/infected",
+    "candidate": 11,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 95890
   },
   {
    "id": "endless_horde-tile",
@@ -172,6 +247,21 @@
    "height": 270
   },
   {
+   "id": "endless_horde-panel",
+   "file": "endless_horde-1600.webp",
+   "mode": "endless_horde",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the player's tank holds the road as a column of hostiles streams across the field behind it (railyard, sunset, player challenger3; battle-257/modes/endless_horde #5, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/endless_horde",
+    "candidate": 5,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 229206
+  },
+  {
    "id": "realistic-tile",
    "file": "realistic-480.webp",
    "mode": "realistic",
@@ -191,6 +281,21 @@
    "height": 270
   },
   {
+   "id": "realistic-panel",
+   "file": "realistic-1600.webp",
+   "mode": "realistic",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a knocked-out tank burns by a hut in the snowy forest under a black smoke column, no markers anywhere (winter, day, player strv122; battle-257b/modes/realistic #13, 3840x2160)",
+   "capture": {
+    "run": "battle-257b",
+    "slot": "modes/realistic",
+    "candidate": 13,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 236730
+  },
+  {
    "id": "drone-tile",
    "file": "drone-480.webp",
    "mode": "drone",
@@ -205,6 +310,21 @@
    "height": 270
   },
   {
+   "id": "drone-panel",
+   "file": "drone-1600.webp",
+   "mode": "drone",
+   "source": "in-engine Scene Studio still on release 251, HUD-free: an FPV drone dives on a burning T-80U by the kolkhoz gate on Verdant Fields, a Challenger 3 below (site50/drone-251b-out/drone-ve, 3840x2160, 2 ms)",
+   "capture": {
+    "run": "drone-251b",
+    "slot": "deploy/drone",
+    "candidate": "ve",
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 186992
+  },
+  {
    "id": "ac130-tile",
    "file": "ac130-480.webp",
    "mode": "ac130",
@@ -217,6 +337,21 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "ac130-panel",
+   "file": "ac130-1600.webp",
+   "mode": "ac130",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: the gunship's thermal view down on the convoy at a crossroads, a tracer and a burst (airfield, night, player leo2a7v; battle-257/modes/ac130 #11, 3840x2160)",
+   "capture": {
+    "run": "battle-257",
+    "slot": "modes/ac130",
+    "candidate": 11,
+    "crop": null
+   },
+   "width": 1600,
+   "height": 900,
+   "bytes": 34004
   },
   {
    "id": "proving_ground-tile",
