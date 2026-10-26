@@ -99,11 +99,17 @@ export const SURFACE_REGISTRY = Object.freeze({
   },
   objective: {
     places: [
-      // (on the two smallest touch windows, 320x568 and 568x256, the Frontline's objective drops its hostiles part, so
-      // DETECTED keeps its row over the sight: Main 254, battleHudLayout.css; touch hides the rosters, so the count has no
-      // other place there)
-      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv',
-        yields: "the Frontline's hostiles part, at 320x568 and 568x256 on touch (battleHudLayout.css)" },
+      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv' },
+    ],
+  },
+  // The Frontline's hostiles still standing: a part of its objective, which on the two smallest touch windows (320x568,
+  // 568x256) drops it so DETECTED keeps its row over the sight; the score plate's enemy side carries it there instead,
+  // Horde-style (Main 254; battleHudLayout.css). Touch hides the rosters, so these are its only places.
+  hostiles: {
+    places: [
+      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv .seg', states: ['frontline'],
+        yields: 'the score plate takes it on the smallest touch windows' },
+      { screen: 'battle', owner: HUD, surface: '.cot-top .fh', states: ['frontline-smallest-touch'] },
     ],
   },
   'mode-name': {

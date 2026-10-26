@@ -298,6 +298,10 @@ body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-statu
   body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault'].stacked :is(.seg,.sep){display:inline}
   /* (its sides 2 px past the plate's 12 px slant: the line needs 103 px in en, 111 in zh, of the 166 px plate) */
   body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault']{padding-inline:14px}
+  /* (and the hostiles stand on the score plate's enemy side, Horde-style, in the enemy's score's place: Main 254) */
+  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .sc.enemy .fe{display:none}
+  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .sc .bar{visibility:hidden}
+  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .fh{display:flex}
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}

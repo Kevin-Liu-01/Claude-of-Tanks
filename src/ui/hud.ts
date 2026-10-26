@@ -20,6 +20,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
+import type { DatumKey } from './surfaceRegistry.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
@@ -1516,7 +1517,7 @@ const HUD_CSS = `
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
 /* (two figures' width held, so a score reaching 10 does not widen the plate) */
-.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
+.cot-top .fg,.cot-top .fe,.cot-top .fh b{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
   letter-spacing:0;min-width:2ch;}
 .cot-top .fg{color:var(--hud-own);text-align:right;}
 /* (the Horde's wave is no side's score: in the ink, the hostiles left beside it in the enemy's, gauntlet r4) */
@@ -1536,6 +1537,8 @@ const HUD_CSS = `
 .cot-top .sc.ally .bar i{background:var(--hud-own);}
 .cot-top .sc.enemy .bar i{background:var(--hud-enemy);transform-origin:right;}
 .cot-top .fe .of{font-size:.5em;font-weight:700;letter-spacing:0;margin-left:2px;opacity:.82;}
+.cot-top .fh{display:none;align-items:center;gap:var(--s2);}
+.cot-top .fh b{min-width:0;color:var(--hud-enemy);}
 .cot-top .tm-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
 .cot-top .tm-block .tm{order:1;}.cot-top .tm-block .tm-label{order:2;}
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
@@ -2201,10 +2204,13 @@ const SCORE_BAR_STUB = 0.05;
  *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). A tab too narrow for the parts on one line
  *  stacks them too, one a line without their dots (gauntlet r2: a wrap left "0 ALIVE" over "· 0/1 SAFE"); its width is
  *  the planner's (--hud-objective-width), its copy estimated at the 11 px caps' advance, so nothing is measured. */
-function setObjectiveValue(target: HTMLElement, copy: string): void {
+function setObjectiveValue(target: HTMLElement, copy: string, marks: readonly (DatumKey | null)[] = []): void {
   target.replaceChildren();
   copy.split(' · ').forEach((part, index) => {
     const seg = Object.assign(document.createElement('span'), { className: 'seg' });
+    // (a part that is a datum of its own: the Frontline's hostiles, surfaceRegistry.ts)
+    const mark = marks[index];
+    if (mark) markDatum(seg, mark);
     if (index) {
       target.append(' ');
       seg.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '·\u00a0' }));
@@ -2217,6 +2223,8 @@ function setObjectiveValue(target: HTMLElement, copy: string): void {
   // unchanged)
   target.closest?.('.cot-mode-status')?.classList.toggle('stacked', copy.includes(' · ') && objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W);
 }
+/** The Frontline objective's parts (line, wave, hostiles): the hostiles are a datum of their own (surfaceRegistry.ts). */
+const FRONTLINE_MARKS: readonly (DatumKey | null)[] = [null, null, 'hostiles'];
 /** The objective panel's default width (battleHudLayout.css). */
 const OBJECTIVE_DEFAULT_W = 278;
 
@@ -2318,9 +2326,12 @@ export function initHud(bus: EventBus): HudRuntime {
     `<b class="fg">0</b><i class="bar" aria-hidden="true"><i></i></i></div>` +
     `<div class="tm-block"><span class="tm-label"></span><span class="tm num"${datumAttr('clock')}>15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label" data-default>${t('hud.team.enemy')}</span>` +
-    `<b class="fe">0</b><i class="bar" aria-hidden="true"><i></i></i></div>`;
+    `<b class="fe">0</b><i class="bar" aria-hidden="true"><i></i></i>` +
+    // (the Frontline's hostiles, Horde-style, where its objective drops them: battleHudLayout.css, Main 254)
+    `<span class="fh"${datumAttr('hostiles')}><b class="num"></b><span class="team-label">${t('hud.remaining')}</span></span></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
   const feEl = requireElement<HTMLElement>(topPlate, '.fe');
+  const fhValueEl = requireElement<HTMLElement>(topPlate, '.fh b');
   const tmEl = requireElement<HTMLElement>(topPlate, '.tm');
   const allyBarEl = requireElement<HTMLElement>(topPlate, '.sc.ally .bar');
   const enemyBarEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .bar');
@@ -3700,7 +3711,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const modeName = t(`playMenu.matchMode.${modeId}.label`);
     modeStatusEl.dataset.tip = modeName;
     modeStatusName.textContent = modeName;
-    setObjectiveValue(modeStatusValue, copy);
+    setObjectiveValue(modeStatusValue, copy, modeId === 'frontline_assault' ? FRONTLINE_MARKS : []);
     // A Standard battle has no objective beyond the score: its plate shows only in the corner seat, where it is the
     // mission plate (battleHudLayout.css .quiet), never as a second row under the score. The Horde's plate shows in every
     // seat as the mode's name, its wave and those left being the score plate's (gauntlet r1: "WAVE 3 · 12 HOSTILES" under
@@ -3745,6 +3756,10 @@ export function initHud(bus: EventBus): HudRuntime {
       enemyLabelEl.textContent = horde ? t('hud.remaining') : enemyLabel();
       allyLabelEl.toggleAttribute('data-default', !horde);
       enemyLabelEl.toggleAttribute('data-default', !horde);
+      // (the Frontline's hostiles on the enemy side, shown where its objective drops them: battleHudLayout.css)
+      const frontline = modeState.id === 'frontline_assault';
+      topPlate.classList.toggle('frontline', frontline);
+      if (frontline) fhValueEl.textContent = String(Math.round(modeState.horde?.alive || 0));
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
