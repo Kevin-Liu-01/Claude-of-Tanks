@@ -30,7 +30,7 @@ function inWindow(times: Float64Array, now: number): number {
 
 const CSS = `
 .cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:var(--hud-ribbon-x,50%);top:var(--hud-ribbon-top,var(--hud-systems-top,80%));
-  transform:translate(-50%,calc(-100% - 12px));width:var(--hud-ribbon-w,min(520px,calc(100vw - 32px)));display:none;flex-direction:column;
+  transform:translate(-50%,calc(-100% - 8px));width:var(--hud-ribbon-w,min(520px,calc(100vw - 32px)));display:none;flex-direction:column;
   background:var(--hud-plate-strong);border-radius:var(--r1);box-shadow:var(--battle-edge-own);color:var(--ink-1);
   pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--dur-base) var(--ease-exit),visibility var(--dur-base) step-end}
 /* (a mouse layout from 768 px wide: centred over the systems row in the gap its lower corners leave, battleHudLayout.ts;

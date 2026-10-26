@@ -210,9 +210,10 @@ const RIBBON_W = 520;
 const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 /** How far past its gap's edge a rack may stand and still lend a strip or a ribbon its edges. */
 const RACK_SNAP_INSET = 4;
-/** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 12px))), and its height with the
- *  streak's row (44 + 28). */
-const RIBBON_LIFT = 12, RIBBON_H = 72;
+/** The ribbon's foot over its seat (hudKillRibbon.ts: translate(-50%, calc(-100% - 8px))), the hints plate's 8 px in the
+ *  same seat (at 12 its foot stood 4 px over the hull plate's and the speedometer's at 900x700, gauntlet r13), and its
+ *  height with the streak's row (44 + 28). */
+const RIBBON_LIFT = 8, RIBBON_H = 72;
 /** A portrait phone's personal feed under the global one: at most this wide. */
 const KILL_LANE_MAX_W = 400;
 /** The narrowest map whose width the report over it takes. */
@@ -1311,9 +1312,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // by the smaller move down: the later lane to the next row, or the earlier onto the later's; their rows sat 2-14 px
     // apart in one band, gauntlet r5)
     if (slotChip && systemsSlot === 'top') leftAnchor = Math.max(leftAnchor, systemsTop + systemsHeight + TOUCH_NOTICE_GAP + TOUCH_ONE_ROW.h + 8);
-    // (not where the global feed is bound to stack, beside the map or in its half: its rows' 41 px pitch never meets the
-    // personal lane's 29, and the step only cost the personal lane its one row in zh at 320x568, gauntlet r13)
+    // (where the global feed is bound to stack, beside the map or in its half, its rows' 41 px pitch never meets the
+    // personal lane's 29: the two first rows level only when they are 8 px or less apart, the later one's top for both; a
+    // whole-row step cost the personal lane its one row in zh at 320x568, gauntlet r13)
     const rightStacks = touch && sideWidth < FEED_STACK_W && (!map || width - map.right - 8 < FEED_STACK_W);
+    if (rightStacks && Math.abs(leftAnchor - rightAnchor) <= 8) leftAnchor = rightAnchor = Math.max(leftAnchor, rightAnchor);
     const pitchOff = touch && !rightStacks ? Math.abs(leftAnchor - rightAnchor) % 29 : 0;
     if (pitchOff) {
       const leftLater = leftAnchor >= rightAnchor;
