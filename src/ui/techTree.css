@@ -33,7 +33,7 @@
    scrolls, its flags spread so the room's edge cuts one in half (techTree.ts fitRail), and they fade into the plate at
    the edges they scroll toward (overlays, so the plate's own edge stays whole). */
 .cot-tt .tt-rail{--tt-rail-fade:48px;box-sizing:border-box;display:flex;align-items:center;gap:var(--tt-rail-gap, 2px);
-  flex:0 1 auto;min-width:0;max-width:100%;padding:2px;margin:0 auto 0 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
+  flex:0 1 auto;min-width:0;max-width:calc(100% - 2px);padding:2px;margin:1px auto 1px 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
   scrollbar-width:none}
 .cot-tt .tt-rail::-webkit-scrollbar{display:none}
 .cot-tt .tt-rail::before,.cot-tt .tt-rail::after{content:'';position:sticky;z-index:var(--z-lift);flex:none;align-self:stretch;
@@ -53,8 +53,9 @@
 /* the open nation: the lit slate with a light edge, at full strength among dimmed flags */
 .cot-tt .tt-rail-flag.is-on{opacity:1;background:linear-gradient(var(--fill-scale),var(--fill-scale)),var(--surface-hover);
   box-shadow:var(--ring-3)}
-/* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen. */
-.cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;margin-inline:1px;border-radius:var(--r2);background:var(--surface-raised);
+/* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen.
+   Each plate (and the picker) keeps 1 px of margin for its ring, so the header's gaps are the gaps between drawn plates. */
+.cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;margin:1px;border-radius:var(--r2);background:var(--surface-raised);
   box-shadow:var(--e2)}
 /* the zoom plate shows its current state: fit is lit while the board sits at fit */
 .cot-tt .tt-zoom .cot-c-btn[aria-pressed='true']{background:linear-gradient(var(--fill-scale),var(--fill-scale)),var(--surface-hover);
@@ -188,7 +189,7 @@
 /* Tablets: the rail takes its own row; the detail folds the stats under the name. */
 @media (max-width:1100px){
   .cot-tt{--tt-gutter:var(--s5)}
-  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s3);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-title{font-size:var(--fs-24)}
   .cot-tt .tt-nation{margin-right:auto}
   .cot-tt .tt-rail{order:1;margin-right:auto}
@@ -208,12 +209,12 @@
   .cot-tt{--tt-detail-art-w:128px;--tt-gutter:var(--s4)}
   /* two rows whatever the title's length: the nation and close, then the rail and the zoom plate */
   .cot-tt .tt-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'nation close' 'rail zoom';
-    align-items:center;gap:var(--s3) var(--s4);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+    align-items:center;gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{grid-area:nation;gap:var(--s3)}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-20)}
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
-  .cot-tt .tt-rail{grid-area:rail;justify-self:start;margin:0 1px;--tt-rail-fade:24px}
+  .cot-tt .tt-rail{grid-area:rail;justify-self:start;margin:1px;--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
     padding:var(--s3) var(--tt-gutter) var(--s4)}
@@ -231,7 +232,8 @@
   .cot-tt .tt-nation{margin-right:0}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-24)}
-  .cot-tt .tt-rail{order:0;margin-right:0}
+  /* (the zoom plate's auto margin drops its ring's 1 px: the picker keeps room for both) */
+  .cot-tt .tt-rail{order:0;margin-right:2px}
   .cot-tt .tt-zoom{margin-left:auto}
   /* every nation fits the row beside the title (a touch screen keeps its 44 px flags, below) */
   .cot-tt .tt-rail-flag{width:36px}
