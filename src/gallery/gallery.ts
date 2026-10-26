@@ -1214,7 +1214,17 @@ function renderDossier(record: GalleryRecord): void {
   favourite.setAttribute('aria-pressed', String(favourites.has(record.id)));
 }
 
+/** A pose slider's fill runs from its zero to its value (from its left edge it read as half the range at 0°). */
+function paintPoseFill(input: HTMLInputElement): void {
+  const min = Number(input.min), max = Number(input.max);
+  const at = (value: number): string => `${(((value - min) / Math.max(1e-6, max - min)) * 100).toFixed(2)}%`;
+  const zero = Math.min(max, Math.max(min, 0)), value = Number(input.value);
+  input.style.setProperty('--lo', at(Math.min(zero, value)));
+  input.style.setProperty('--hi', at(Math.max(zero, value)));
+}
+
 function updateArticulation(): void {
+  for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) paintPoseFill($<HTMLInputElement>(`#${id}`));
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
@@ -1226,6 +1236,7 @@ function updateArticulation(): void {
     gunInput.value = String(Math.max(Number(gunInput.min), Number(gunInput.value)));
   }
   const gunPitch = Number(gunInput.value);
+  paintPoseFill(gunInput);
   visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
