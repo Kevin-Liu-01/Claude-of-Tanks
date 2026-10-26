@@ -1947,6 +1947,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/footprintPointIndex.selftest.mjs', // battle-spikes-253: the binned footprint query answers as the scan
     'src/game/worldMaterialsBeforeCompile.selftest.mjs', // battle-spikes-253: both entries patch the world before compiling it
     'src/game/simStepRetention.selftest.mjs', // battle-spikes-253: simStep stores no closure that keeps a battle's world
+    'src/engine/gpuCatchUp.selftest.mjs', // battle-spikes-253: link polls ask only once the GPU caught up to their last poll
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round

@@ -745,9 +745,12 @@ const networkCompileBody = mainSource.match(
   /compile: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n\s{10}\},/,
 )?.[1];
 assert.ok(networkCompileBody, 'network entry retains its scoped async compile adapter');
+// (battle-spikes-253) the compile also patches the world's materials for the collapse mask, records the light census,
+// warms the watchdog's probe copy and bakes the far trees' impostors, their links awaited between painted frames
 const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame', 'battlePresentation', 'STRICT_DRAIN_STALL_MS',
+  'fxRuntimeAccess', 'recordLightCensus', 'warmSceneProbePrograms', 'renderer', 'currentWorld',
   `return async (signal) => {${networkCompileBody.replace(': ForwardProgramCompileTiming', '')}};`);
-for (const composited of [false, true]) {
+for (const [composited, withImpostors] of [[false, false], [true, false], [true, true]]) {
   const camera = new THREE.PerspectiveCamera();
   camera.layers.enable(7);
   camera.layers.enable(LATE_FX_LAYER);
@@ -763,8 +766,15 @@ for (const composited of [false, true]) {
   let finalized = false;
   let receivedTiming;
   let modeVisualsPrepared = 0;
+  const order = [];
+  const world = withImpostors ? {
+    async warmImpostorsAsync(waitLinks) { order.push('impostors'); await waitLinks(); order.push('baked'); return true; },
+    warmImpostors() { assert.fail('the network compile bakes through the async path'); },
+  } : null;
   const compile = networkCompileFactory(post, camera, LATE_FX_LAYER, {
+    *linkerBreathingSlices(maxSlices) { order.push(`links:${maxSlices}`); yield; yield; },
     *prepareSceneSteps(options) {
+      order.push('prepare');
       assert.equal(modeVisualsPrepared, 1, 'mode effects are present before program preparation');
       assert.equal(options.signal, signal);
       assert.equal(options.strict, true, 'network adapter opts into completion-enforced bounded admission');
@@ -787,11 +797,16 @@ for (const composited of [false, true]) {
         return { status: 'complete', pending: 0 };
       } finally { finalized = true; }
     },
-  }, async () => { paints++; }, { prepareModeVisuals() { modeVisualsPrepared++; } }, STRICT_DRAIN_STALL_MS);
+  }, async () => { paints++; }, { prepareModeVisuals() { modeVisualsPrepared++; } }, STRICT_DRAIN_STALL_MS,
+  { current: { prepareWorldMaterials() { order.push('worldMaterials'); } } }, (label) => order.push(`census:${label}`),
+  () => order.push('probe'), {}, () => world);
   const receipt = await compile(signal);
   assert.deepEqual(receipt, { programsAfter: 3, preparation: { status: 'complete', pending: 0 } });
   assert.notEqual(receipt, receivedTiming, 'the adapter returns its completed diagnostic copy');
-  assert.equal(paints, 2, 'each owner checkpoint retains its loader paint opportunity');
+  assert.deepEqual(order, ['worldMaterials', 'census:compile', 'probe',
+    ...(withImpostors ? ['impostors', 'links:90', 'baked'] : []), 'prepare'],
+    'the world patched, the census, the probe copy and the impostor bake (its links awaited) before the strict preparation');
+  assert.equal(paints, withImpostors ? 4 : 2, 'each owner checkpoint retains its loader paint opportunity');
   assert.equal(finalized, true);
   assert.equal(camera.layers.mask, initialMask);
   passed++;
@@ -966,7 +981,8 @@ for (const terminal of ['abort', 'return', 'throw', 'epoch', 'info', 'context', 
       try { yield; assert.fail('rejected caller must not resume preparation'); }
       finally { finalized = true; }
     },
-  }, async () => { throw reason; }, { prepareModeVisuals() {} });
+  }, async () => { throw reason; }, { prepareModeVisuals() {} }, STRICT_DRAIN_STALL_MS,
+  { current: null }, () => {}, () => {}, {}, () => null);
   await assert.rejects(compile(), (error) => error === reason);
   assert.equal(finalized, true, 'adapter closes strict owner when nextPaintFrame rejects');
   passed++;

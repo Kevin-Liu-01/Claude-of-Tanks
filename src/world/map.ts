@@ -322,6 +322,8 @@ export interface WorldRuntime {
   setTerrainStreamFocus(position: THREE.Vector3 | null): void;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
+  /** (battle-spikes-253) The same, its bake programs linked first between tasks (the network entry's compile). */
+  warmImpostorsAsync?(waitLinks: () => Promise<void>): Promise<boolean>;
   setWindTime(timeSeconds: number): void;
   /**
    * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
@@ -1234,6 +1236,7 @@ function* assembleWorldSteps(
       (terrain.userData.setStreamFocus as ((p: THREE.Vector3 | null) => void) | undefined)?.(position);
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
+    warmImpostorsAsync: (waitLinks) => { bakePanorama(); return vegetation.warmImpostorsAsync(waitLinks); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },

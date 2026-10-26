@@ -283,6 +283,24 @@ their cull), `lateFxColorHandoff.selftest` (no copy without the switch, both cop
 counts untouched), `worldMaterialsBeforeCompile.selftest` (the MP compile bakes the impostors before its strict
 compile). Each case fails against the previous source.
 
+**root-r** (nav-perf, load 31-33) confirmed the leave and `LateFxPass.Copy`, and named the rest's callers:
+
+- The depth variants were still made, by the opening effects' warm: its covered composer render drew the shadow pass
+  at the battle's light counts before `finalShadows` ran (one 1.6 s task on each page). It now renders without shadow
+  updates (`renderWithoutShadowUpdates`, exported from `deploymentWarm.ts`, where the solo deployment's warm already used
+  it), so the prime's batches, a painted frame apart, are the first drawers.
+- The impostor bake did run under the cover (the MP compile), but linked its two programs inside its first draw: a
+  1.1 s task. `ensureBakedAsync` submits them against the atlas with no draw, the compile waits for their links between
+  painted frames (`linkerBreathingSlices`), and the draws follow.
+- Page B's leave (1.3 s) and its watchdog stage (1.3 s) were single `getProgramParameter` calls: a completion query is
+  a synchronous round trip behind the GPU process's whole queue. `engine/gpuCatchUp.ts` gives each link poll a fence:
+  a poll asks only once the fence its previous poll left has signalled (Blink answers `clientWaitSync(sync, 0, 0)` from a
+  cached status, no round trip). The first-use rounds, `linkerBreathingSlices` and the watchdog's link wait use it; a
+  held poll takes no round and does not count as a stalled cohort.
+- The panel stage (2.0-3.2 s) was its mask programs' link wait (`hullCompile` 1.9 s): kicked at the warm's start, they
+  linked behind the scene's programs submitted at the WELCOME. The panel stage now follows the strict compile, by which
+  time they are linked.
+
 **The room's leave** (root-p, Garage return): one 661 ms task, all `getBufferSubData`, under `beginRgba8Readback`.
 The stack named the `tankThumbs` chunk only because `rgba8Readback.ts` is bundled there. Its one synchronous starter
 was the clouds' `updateSunMean`, a 32² readback every 30 frames in every battle and Garage with clouds. Chromium serves

@@ -100,7 +100,7 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
+import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2823,9 +2823,14 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 // Keep the actual compositor path and its pooled FX atomic.
                 // Pass measurements locate indivisible first-use work before
                 // deciding where a cooperative preparation boundary is safe.
-                const rendered = renderCoveredComposerWarm(post.composer);
-                timing.openingRenderMs = rendered.totalMs;
-                timing.openingPasses = rendered.passes;
+                // (battle-spikes-253) No shadow pass, as the solo deployment's warm: this render drew every caster's depth
+                // program at the battle's light counts in one task (nav-perf's root-r room: 1.6 s), ahead of finalShadows'
+                // prime, which makes them a batch at a time between painted frames.
+                renderWithoutShadowUpdates(lighting.csm?.lights ?? [], () => {
+                  const rendered = renderCoveredComposerWarm(post.composer);
+                  timing.openingRenderMs = rendered.totalMs;
+                  timing.openingPasses = rendered.passes;
+                });
               },
             });
             return { ...timing };
@@ -2901,8 +2906,19 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             warmSceneProbePrograms(renderer);
             // (battle-spikes-253) and the far trees' impostor atlas, as the solo loading bakes it: the room's world is built
             // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
-            // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials)
-            try { currentWorld()?.warmImpostors?.(); } catch { /* the first update bakes lazily */ }
+            // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
+            // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            try {
+              const world = currentWorld();
+              if (world?.warmImpostorsAsync) {
+                await world.warmImpostorsAsync(async () => {
+                  for (const _ of forwardProgramWarm.linkerBreathingSlices(90)) {
+                    signal?.throwIfAborted();
+                    await nextPaintFrame();
+                  }
+                });
+              } else world?.warmImpostors?.();
+            } catch (error) { if (signal?.aborted) throw error; /* the first update bakes lazily */ }
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
