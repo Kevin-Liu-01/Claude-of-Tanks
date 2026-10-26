@@ -1,13 +1,11 @@
 import { battleMapArt } from './battleReportMedia.ts';
 import { createModal } from './modal.ts';
 import { t } from './i18n.ts';
-import { uiIconSVG } from './uiIcons.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { getServiceRecord, markServiceRecordSeen } from '../game/serviceRecord.ts';
 import { awardDetails } from './awardDetails.ts';
 import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type RecordTab, type RecordViewNames } from './serviceRecordView.ts';
 
-const TAB_ICONS = { overview: 'battleRecord', medals: 'gold', achievements: 'stamp', history: 'clock' } as const;
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
   const modal = createModal({ title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
@@ -20,7 +18,7 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   modal.header.insertBefore(plate, modal.closeButton);
   const tabs = document.createElement('div'); tabs.className = 'cot-record-tabs'; tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label',t('garage.record.tabsAria'));
-  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-record-tab" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel">${uiIconSVG(TAB_ICONS[tab],18)}<span>${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
+  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-record-tab" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel"><span>${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
   const body = document.createElement('div'); body.className = 'cot-record-body'; body.id='cot-record-panel';
   body.setAttribute('role','tabpanel'); body.tabIndex=0;
   modal.body.append(tabs,body);

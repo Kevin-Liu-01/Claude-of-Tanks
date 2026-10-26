@@ -177,7 +177,7 @@ function overview(view: ServiceRecordView): string {
       ? `<div class="cot-record-latest-row">${latest.map((medal) =>
         `<button type="button" class="cot-record-latest-medal" data-medal-tip="${medal.id}">${medalSVG(medal, 56)}` +
         `<span>${medalName(medal.id)}</span></button>`).join('')}</div>`
-      : emptyState({ text: t('garage.record.noMedals'), className: 'cot-record-empty' })) +
+      : emptyState({ text: t('garage.record.noMedals'), icon: 'gold', className: 'cot-record-empty' })) +
     `</section>`;
 
   // batch 19/20 (2026-09-14): the campaign ladder's standing — operations cleared, stars, best push
@@ -185,12 +185,12 @@ function overview(view: ServiceRecordView): string {
   const front = frontlineSummary();
   const standing = front.attempts
     ? `<div class="cot-record-campaign-grid">` +
-      `<div>${statLabel(t('garage.record.campaignOperations'), 'battleRecord')}<b>${num(ladder.cleared)}/${num(ladder.total)}</b></div>` +
+      `<div>${statLabel(t('garage.record.campaignOperations'), 'modeFrontline')}<b>${num(ladder.cleared)}/${num(ladder.total)}</b></div>` +
       `<div>${statLabel(t('garage.record.campaignStars'), 'star')}<b>${num(ladder.stars)}/${num(ladder.maxStars)}</b></div>` +
       `<div>${statLabel(t('garage.record.campaignPush'), 'moveForward')}<b>${num(front.bestLine)}/${num(front.total)}</b></div>` +
       `<div>${statLabel(t('garage.record.campaignHeld'), 'shield')}<b>${num(front.held)}</b></div></div>`
-    : emptyState({ text: t('garage.record.campaignNone'), className: 'cot-record-empty' });
-  const campaign = `<section class="cot-record-card cot-record-campaign"><header class="cot-record-card-head">${uiIconSVG('battleRecord', 15)}` +
+    : emptyState({ text: t('garage.record.campaignNone'), icon: 'modeFrontline', className: 'cot-record-empty' });
+  const campaign = `<section class="cot-record-card cot-record-campaign"><header class="cot-record-card-head">${uiIconSVG('modeFrontline', 15)}` +
     `<strong>${t('garage.record.campaign')}</strong>${front.attempts ? `<small>${safe(t(`campaign.op.${ladder.next.id}.title`))}</small>` : ''}</header>${standing}</section>`;
   return `${career}<div class="cot-record-cards">${reasoningCard}${latestCard}</div>${campaign}`;
 }
@@ -272,7 +272,7 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
     return `<li><details class="cot-record-battle result-${battle.result}">` +
       `<summary><span class="cot-record-battle-row">${battleVehicleArt(battle)}` +
       `<span class="cot-record-battle-what"><span class="cot-record-result">${resultLabel(battle.result)}</span><b>${safe(battleVehicleName(battle, names))}</b>` +
-      `<small>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))} · ${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</small>` +
+      `<small><span>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))}&nbsp;·</span> <span>${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</span></small>` +
       `<time>${safe(when(battle.at))}</time></span>` +
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${statLabel(t('garage.record.kills'), 'skull')}</small></span>` +
       `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${statLabel(t('garage.record.damage'), 'damage')}</small></span>` +

@@ -64,7 +64,7 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-chip[aria-pressed=true]{color:var(--ink-1);background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-chip__count{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
-  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
+  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}
