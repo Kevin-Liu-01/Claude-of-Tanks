@@ -77,8 +77,10 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - Main: "owner map/camo picker (interaction redesign A)" (interaction-picker-254 2c11b57f98): game -69 B, entry -311 B,
   //   Gallery +261 B, home +173 B, docs +272 B, 404 +311 B; no extra request (its sheet in the game's CSS, its facts' tags
   //   in the playMode chunk). Requests unchanged.
-  game: { brotliBytes: 1079169, requests: 129, entryBrotliBytes: 238976 },
-  cn: { brotliBytes: 1122356, requests: 130, entryBrotliBytes: 238976 },
+  // 2026-10-26 (integrator 256, Main's ruling 'hotfix: solo default back to page', the release build of 60b664f11f):
+  //   soloAuthorityFor's default back to the page: -170 B game and cn, -170 B entry. Other pages and requests unchanged.
+  game: { brotliBytes: 1078999, requests: 129, entryBrotliBytes: 238806 },
+  cn: { brotliBytes: 1122186, requests: 130, entryBrotliBytes: 238806 },
   gallery: { brotliBytes: 667458, requests: 75 },
   home: { brotliBytes: 26144, requests: 8 },
   docs: { brotliBytes: 33230, requests: 12 },

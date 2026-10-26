@@ -1061,9 +1061,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // a free sortie on a local host (soloAuthorityFor) enters through the network composition (mp/session/soloHostEntry.ts):
-  // the intent warms it and prepares the battle's host thread (its world, the player's anatomy, the bots' ground); the
-  // page's own solo stays warm beside it for the battles it keeps
+  // a free sortie on a local host (soloAuthorityFor: only ?soloAuthority=host since 256) enters through the network
+  // composition (mp/session/soloHostEntry.ts): the intent warms it and prepares the battle's host thread (its world, the
+  // player's anatomy, the bots' ground). By default the intent warms the page's own solo alone: no host Worker, no session
   preloadSoloBattle: () => (soloAuthorityFor('standard').authority === 'host'
     ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
@@ -3012,11 +3012,11 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 let lastEntryWatched = false;
 
 /**
- * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5, the default from 255): a free sortie in a versus
- * battle mode plays on a local host, its authority in the browser host's Worker (mp/session/soloHostEntry.ts). The page
- * keeps its own simulation for the campaign, a watched battle, the practice and co-op modes (rooms host neither), the
- * mobile tier (it never hosts, MULTIPLAYER-V2 §13.3), a browser without Workers, and `?soloAuthority=page`;
- * `?soloAuthority=host` forces the host for any free versus sortie (the probes).
+ * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5). Every solo battle is the page's own simulation by
+ * default (2026-10-26, release 256: the owner ruled that a solo game against bots must not create a multiplayer session).
+ * Only `?soloAuthority=host` puts a free sortie in a versus battle mode on a local host, its authority in the browser
+ * host's Worker (mp/session/soloHostEntry.ts), pending the Rust lane's rework; the campaign, a watched battle, the
+ * practice and co-op modes (rooms host neither) and a browser without Workers stay on the page even then.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|page)\b/.exec(location.search)?.[1] ?? null;
 function soloAuthorityFor(
@@ -3030,7 +3030,7 @@ function soloAuthorityFor(
   if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
-  return getDeviceTier() === 'mobile' ? page('mobile') : { authority: 'host', reason: 'default' };
+  return page('default');
 }
 
 /** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
@@ -3105,7 +3105,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // a free sortie on a local host by default (soloAuthorityFor)
+  // the page's own simulation by default; a free sortie on a local host only under ?soloAuthority=host (soloAuthorityFor)
   const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
   noteSoloAuthority(authority);
   if (authority.authority === 'host') {

@@ -28,9 +28,9 @@
 // --dist=<dir> serves a production build (vite preview) instead of the dev server: the entry as a player meets it (the
 // dev server loads every module of a path the first time that path runs).
 //
-// --click enters through the Garage's BATTLE button instead of the debug entry: the host runs then take the free sortie's
-// default (no flag), the page's runs its opt-out (?soloAuthority=page). Without it the host is forced (?soloAuthority=host),
-// since the debug entry keeps the page's simulation.
+// --click enters through the Garage's BATTLE button instead of the debug entry. The host runs always force the host
+// (?soloAuthority=host: the page is every solo battle's default again since 256, and the debug entry keeps the page's
+// simulation without the flag); the page's runs take its opt-out (?soloAuthority=page).
 //
 // --battles=N plays N battles in one page, returning to the Garage between them; --memory samples, in each battle and in
 // the Garage after each, the page's and the host Worker's JS heaps (two forced collections first) and the browser's
@@ -96,9 +96,9 @@ async function run(mode, size) {
   await page.evaluateOnNewDocument((sides) => {
     localStorage.setItem('cot.game.teams.v1', JSON.stringify({ standard: sides }));
   }, { allies: size - 1, enemies: size });
-  // today's solo: the opt-out (the Battle hover prepares no host); the host: the free sortie's default through the BATTLE
-  // button (--click), or forced for the debug entry, which keeps the page's simulation otherwise
-  const authority = mode === 'host' ? (clickEntry ? '' : '&soloAuthority=host') : '&soloAuthority=page';
+  // today's solo: the opt-out (the Battle hover prepares no host); the host: forced, through the BATTLE button (--click) or
+  // the debug entry (256: the page is the default again, and the debug entry keeps the page's simulation otherwise)
+  const authority = mode === 'host' ? '&soloAuthority=host' : '&soloAuthority=page';
   await page.goto(`${origin}/?nosplash=1&tier=desktop${authority}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   await waitFor('the garage', () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 300_000);
   const cdp = await page.target().createCDPSession();

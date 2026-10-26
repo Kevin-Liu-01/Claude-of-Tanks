@@ -1,6 +1,6 @@
 /**
- * A solo battle on a local host (RUST-ENGINE-DECISION §7 step 5; the free sorties' default from 255, main.ts
- * soloAuthorityFor; `?soloAuthority=page` opts out). The battle is a LAN room in the page (room/inPageRoom.ts) whose
+ * A solo battle on a local host (RUST-ENGINE-DECISION §7 step 5; the free sorties' default in 255 only, since 256 reached
+ * only through `?soloAuthority=host`, main.ts soloAuthorityFor, pending the Rust lane's rework). The battle is a LAN room in the page (room/inPageRoom.ts) whose
  * only seat hosts its p2p match: the authority steps in the browser host's Worker on the world kernels, and the page
  * keeps the client — the room, session, host and presentation a multiplayer battle uses, handed to the browser
  * composition as the Play menu hands a room's match. The room's bots fill each side to `teamSize`.
