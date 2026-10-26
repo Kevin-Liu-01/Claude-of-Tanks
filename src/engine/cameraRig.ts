@@ -1509,7 +1509,7 @@ export function createCameraRig(
 // therefore byte-identical whether or not the player had dragged the view.
 
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
-const SHOW_FOV_UPRIGHT_MAX_DEG = 70;   // a screen held upright opens the lens up to this (showFovDeg)
+const SHOW_FOV_UPRIGHT_MAX_DEG = 80;   // a screen held upright opens the lens up to this (showFovDeg)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
 // garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
@@ -1531,11 +1531,11 @@ const SHOW_ZOOM_MIN = 0.62;
 const SHOW_ZOOM_MAX = 1.55;
 const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
 // A screen held upright (the 246 Garage fix): the hero framed whole, gun included, in a frame narrower than it is tall.
-// The camera pitches down onto the tank and stands back a little further, still under the hall's lamps and truss chords
-// (8.66 m: at 12 degrees and 22 m the eye is about 6.5 m up, about 8 m inside the bay's walls on its diagonal), and the
-// frame keeps a fifth of the window for the guns that reach past the canonical box.
+// The camera pitches down onto the tank and stands back no further than a screen held wide does (19 m; the UI gauntlet
+// 10-25: at 22 m the eye stood past Verdant's overhead crane, which filled a phone's stage), the lens opening to 80
+// degrees instead, and the frame keeps a fifth of the window for the guns that reach past the canonical box.
 const SHOW_UPRIGHT_PITCH = THREE.MathUtils.degToRad(12);
-const SHOW_UPRIGHT_DIST_MAX_M = 22;
+const SHOW_UPRIGHT_DIST_MAX_M = 19;
 const SHOW_UPRIGHT_HERO_FILL = 0.8;
 const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
 const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane

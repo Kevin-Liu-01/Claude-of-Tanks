@@ -1437,6 +1437,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     if (!multiplayerLobby?.prepareLobby()) battleIntent.preload(options);
   },
   onTankIntent: pedestal.preloadIntent,
+  onOverlayChange: () => invalidateGaragePresentation(),
+  actionKeyFor: (binding) => input.labelFor(input.getBinding(binding, 0)),
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
@@ -3809,6 +3811,7 @@ const studioAccess = createStudioAccess({
       mapAmbience.setEnabled(true);
     },
     getStudioLight: () => studioLightLive,
+    programWarm: forwardProgramWarm,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

@@ -21,6 +21,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { TYPE100_PROFILES } from './type100.ts';
 import { ZTZ100_X_PROFILES } from './ztz100X.ts';
 import { ZTZ100_PROTOTYPE_PROFILES } from './ztz100Prototype.ts';
+import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -485,19 +486,17 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
   }
 }
 
-function buildVtFamilyChevronTurret(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  addVtFamilyChevronFoundation(P, config);
-  addVtFamilyChevronRoof(P, config);
-  addVtFamilyChevronReceipt(P, config);
-}
-
-function buildVT4A1Turret(P: FrontlinePort): void {
-  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.vt4a1);
-}
-
-function buildVT4A1(P: FrontlinePort): void {
+/** The VT4A1 a stage a slice (UI-LOCKDOWN E): the hull, the turret's foundation, its roof (the open-yoke station), the
+ *  receipt and markings. */
+const buildVT4A1 = steppedBuilder(function* (P: FrontlinePort): TankProfileBuild {
   buildVT4A1Hull(P);
-  buildVT4A1Turret(P);
+  yield 'hull';
+  const config = VT_FAMILY_TURRETS.vt4a1;
+  addVtFamilyChevronFoundation(P, config);
+  yield 'turret-foundation';
+  addVtFamilyChevronRoof(P, config);
+  yield 'turret-roof';
+  addVtFamilyChevronReceipt(P, config);
   // All primary widths are authored at their installed dimensions.
   const installedWidthScale = 1;
   P.decal('hull', 'number', P.spec.visual.number || '401', 0.25, [1.82, 1.30, 0.84], Math.PI / 2);
@@ -511,7 +510,7 @@ function buildVT4A1(P: FrontlinePort): void {
       qualityGateFloor: 92, duplicateTrackMeshes: 0,
     });
   }
-}
+});
 
 export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),

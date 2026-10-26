@@ -2,10 +2,13 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export type ProfileBuilderPort = RuntimeValue;
 
-type AuthoredProfileBuilder = (
+type AuthoredProfileBuilder = ((
   builder: ProfileBuilderPort,
   profile: VehicleProfile,
-) => void;
+) => void) & {
+  /** the builder's stepped body, when it has one (tankBuildCooperation.ts withBuildSteps) */
+  readonly buildSteps?: (builder: ProfileBuilderPort, profile: VehicleProfile) => Iterator<unknown, void, void>;
+};
 
 interface VehicleProfile extends Record<string, RuntimeValue> {
   readonly build?: RuntimeValue;
@@ -33,15 +36,15 @@ export function createProfileBuilders(
       throw new TypeError(`Profile builder ${id} must be a function`);
     }
     const custom = profile.build as AuthoredProfileBuilder | undefined;
-    return [
-      id,
-      (builder: ProfileBuilderPort) => (
-        custom
-          ? custom(builder, profile)
-          : profile.base
-            ? buildDonorVariant(builder, profile)
-            : buildProfile(builder, profile)
-      ),
-    ];
+    const build = (builder: ProfileBuilderPort) => (
+      custom
+        ? custom(builder, profile)
+        : profile.base
+          ? buildDonorVariant(builder, profile)
+          : buildProfile(builder, profile)
+    );
+    // an authored builder's stepped body travels with it (tankBuildCooperation.ts withBuildSteps)
+    const steps = custom?.buildSteps;
+    return [id, steps ? Object.assign(build, { buildSteps: (builder: ProfileBuilderPort) => steps(builder, profile) }) : build];
   }));
 }

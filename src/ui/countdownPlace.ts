@@ -62,10 +62,11 @@ const coveredBy = (x0: number, y0: number, x1: number, y1: number, blocks: reado
 
 /**
  * The dial's and the rules panel's places (see the module's note). `top`: the bottom of the score and objective;
- * `blocks`: the panels, controls and readouts each keeps `gap` from (never the reticle: the centre line is its place).
+ * `blocks`: the panels, controls and readouts each keeps `gap` from (never the reticle: the centre line is its place);
+ * `maxScale`: the largest dial (a step smaller while a mouse alert shows beside it, mouseNoticePlan.ts).
  */
 export function placeCountdown(width: number, height: number, top: number, dial: CountdownSize, rules: CountdownSize | null,
-  blocks: readonly CountdownBox[], gap: number, overSight = false): CountdownPlace {
+  blocks: readonly CountdownBox[], gap: number, overSight = false, maxScale = 1): CountdownPlace {
   const cx = noticeCentreX(width), cy = height / 2;
   const ceiling = Math.ceil(top + gap);
   const lowest = Math.floor(cy - SIGHT_CLEAR_PX - gap);
@@ -74,6 +75,7 @@ export function placeCountdown(width: number, height: number, top: number, dial:
     rulesTop: Math.ceil(cy + MARKS_BELOW_PX + gap), rulesScale: 1, rulesShown: false };
   let found = false;
   for (const s of DIAL_SCALES) {
+    if (s > maxScale) continue;
     const w = dial.w * s, h = dial.h * s;
     if (w + 2 * gap > width || bottom - h < ceiling) continue;
     for (let y = Math.floor(bottom - h); y >= ceiling && !found; y -= STEP_PX) {

@@ -16,8 +16,10 @@ if (searchHost && searchInput) {
     searchInput.focus();
     searchInput.select();
   });
-  const kbd = searchHost.querySelector('kbd');
-  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
+  // one key cap a key: the platform's modifier, then K
+  const keys = searchHost.querySelector('.dm-search__keys');
+  if (keys) keys.innerHTML = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut')
+    .split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('');
 }
 
 /** The archive failed to load: the kit's error notice, static in the dialog (the top layer hides a page toast), shows

@@ -78,7 +78,7 @@ import { killcamCameraFloor } from './killcamGround.ts';
 import * as THREE from 'three';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
-import { createElement as el } from '../ui/dom.ts';
+import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
@@ -108,6 +108,7 @@ import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { WorldRayHit } from '../world/map.ts';
 import { t } from '../ui/i18n.ts';
 import { attackerLabel, killSourceIdentity } from '../ui/killSourceIdentity.ts';
+import { scratchCanvas } from '../ui/uiCanvas.ts';
 
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
@@ -849,8 +850,7 @@ function sharedMats(): SharedMaterials {
   // orange stick — no bloom halo, no motion stretch. A sprite with this
   // gradient fakes a bloomed tracer core at any exposure without pushing
   // the HDR buffer over the bloom threshold (the r2 screen-wide-beam trap).
-  const glowCanvas = document.createElement('canvas');
-  glowCanvas.width = glowCanvas.height = 64;
+  const glowCanvas = scratchCanvas(64, 64);
   const gctx = glowCanvas.getContext('2d');
   if (!gctx) throw new Error('killcam glow canvas requires a 2D context');
   const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -1515,7 +1515,7 @@ export function createKillCam(deps: KillcamDeps) {
     const banner = el('div', 'cot-kc-banner', annot);
     banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
     // killer card (death view only — populated per replay in beginXray)
-    const killer = el('div', 'cot-kc-killer', root);
+    const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
       '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
       '<div class="rows"></div>';

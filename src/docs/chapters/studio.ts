@@ -45,7 +45,7 @@ function takesStrip(): string {
   if (takes.length < 6) throw new Error('docs: fewer than six lead takes in the fleet index');
   return `<ul class="dm-takes">${takes.map((take) => `<li><a href="${hrefForLocale(`/studio?scene=${take.scene}`, getLocale())}">`
     + `<img src="${take.poster}" width="640" height="360" alt="" loading="lazy" decoding="async">`
-    + `<span>${icon('studio', { size: 14 })}<b>${esc(zh ? take.short.zh : take.short.en)}</b></span></a></li>`).join('')}</ul>`;
+    + `<span>${icon('studio', { size: 18 })}<b>${esc(zh ? take.short.zh : take.short.en)}</b></span></a></li>`).join('')}</ul>`;
 }
 
 function openSection(): string {

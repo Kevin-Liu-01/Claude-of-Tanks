@@ -65,13 +65,13 @@ assert.match(garageSource, /<span class="plus" aria-hidden="true">\+<\/span><spa
   'an empty slot is labelled');
 assert.equal((garageSource.match(/magazineFigures\(spec\.gun, eqM\.reload\)/g) || []).length, 2,
   'the magazine figures show in the overview and the firepower station');
-assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*noteHeroModel\(model\);\s*if \(!calloutsShown \|\| !hotspots\) return;/,
   'no frame projects the callouts while they are off');
 assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
 assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
-assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
-  'the readout steps through its four densities until the station fits');
+assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 5 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
+  'the readout steps from roomy through its four densities until the station fits');
 assert.match(garageSource, /activateTechnicalTab\(view\);\s*queueReadoutFit\(false, true\);/,
   'a station change refits the readout and returns it to its top in the frame, not in the press');
 assert.match(garageSource, /else queueReadoutFit\(false, vehicleChanged\);\s*requestAnimationFrame\(syncScrollFades\);/,
@@ -98,9 +98,9 @@ assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) re
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
-for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
+for (const density of ['roomy', '1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
+assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
@@ -382,8 +382,8 @@ assert.match(garageSource,
   /\.cot-country-chips\{[^}]*justify-content:safe center;[^}]*width:100%;[^}]*overflow-x:auto;/,
   'the complete country list centers when it fits while retaining honest overflow');
 assert.match(garageSource,
-  /\.cot-country-edge\{position:relative;[^}]*width:26px;height:36px;/,
-  'country overflow arrows use compact balanced gutters instead of looking like nation tiles');
+  /\.cot-country-edge\{position:relative;[^}]*align-self:stretch;[^}]*width:26px;height:auto;/,
+  'country overflow arrows use compact gutters as tall as the flags beside them (the gauntlet 10-25)');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
 assert.match(garageSource,

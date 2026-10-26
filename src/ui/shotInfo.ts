@@ -382,8 +382,10 @@ const SI_CSS = `
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
 @container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
+/* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
+   gauntlet r7) */
 .cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
-  color:var(--accent-hi);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
+  color:var(--ink-1);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
@@ -455,12 +457,13 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
+.cot-si-log.open.starved{visibility:hidden;}
 /* (a chevron on the plate under the last whole row while more lies below, the plate's own edge kept: a mask erased it,
    a fade lay across a sliced row; its band runs from that row's foot to the plate's, opaque and taking no flow (fitLog
    --si-cue-h): an 18 px cue over a stale cap let the next row's first line show through it, gauntlet r5) */
 .cot-si-log .more-cue{display:none}
-.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:flex-end;justify-content:center;
-  height:var(--si-cue-h,18px);margin-top:calc(-1 * var(--si-cue-h,18px));padding-bottom:3px;box-sizing:border-box;
+.cot-si-log.more .more-cue{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;
+  height:18px;box-sizing:border-box;
   border-top:1px solid var(--line-2);background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--hud-plate-strong);
   color:var(--ink-2);pointer-events:none}
 /* (the plate twice, so the band is opaque over the rows it covers: once, the 96 % plate let them ghost through, gauntlet r6) */
@@ -528,7 +531,7 @@ body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
 body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
 body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
 body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log,
-body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !important;}
+body.cot-si-report .cot-ret-text,body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !important;}
 .cot-si-ban{font-family:${FONT_COND};font-weight:700;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px oklch(from var(--surface-scene) l c h / .85);}
 .cot-si-ban.v{color:var(--ok);}.cot-si-ban.d{color:var(--danger);}.cot-si-ban.n{color:var(--ink-2);}
@@ -1035,17 +1038,21 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
    *  gauntlet r4 found a row sliced through its glyphs at 1280, 1024 and 900 wide); measured as it fills, as the planner
    *  resizes its dock and as its rows change size (a face landing), never on a scroll. */
   const fitLog = (): void => {
-    logPanel.classList.remove('more');
-    logPanel.style.removeProperty('--si-cue-h');
+    logPanel.classList.remove('more', 'starved');
+    logPanel.style.removeProperty('--si-log-fit');
     const room = logPanel.clientHeight;
     if (logPanel.scrollHeight - room <= 1) return;
     const top = logPanel.getBoundingClientRect().top - logPanel.scrollTop;
-    let fit = 0;
+    let fit = 0, rows = 0;
     for (const part of logPanel.querySelectorAll<HTMLElement>('.sec,.cot-si-lrow')) {
       const bottom = part.getBoundingClientRect().bottom - top;
-      if (bottom <= room - LOG_CUE_H && bottom > fit) fit = bottom;
+      if (bottom <= room - LOG_CUE_H && bottom > fit) { fit = bottom; if (part.classList.contains('cot-si-lrow')) rows++; }
     }
-    logPanel.style.setProperty('--si-cue-h', `${Math.floor(Math.max(LOG_CUE_H, room - fit))}px`);
+    // (a dock that holds no whole row shows no log: its header's count over an empty body read as a cut log, gauntlet r7)
+    if (!rows) { logPanel.classList.add('starved'); return; }
+    // (capped at its last whole row, the cue under it: a band of empty plate down to the dock's foot read as a clipped row,
+    // r7; the log is one column, with no other column's foot to keep level)
+    logPanel.style.setProperty('--si-log-fit', `${Math.ceil(fit + LOG_CUE_H)}px`);
     markLogMore();
   };
   logPanel.addEventListener('scroll', markLogMore, { passive: true });
@@ -1318,7 +1325,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier
-        ? `<span class="q" style="color:${penetration.qualifier === 'era' ? COL.yellow : '#9fb0bf'}">${
+        ? `<span class="q" style="color:${penetration.qualifier === 'era' ? COL.yellow : 'var(--ink-2)'}">${
           t(penetration.qualifier === 'era' ? 'killcam.era' : 'killcam.screens')}</span>`
         : ''), 'w pen');
       r.dataset.tip = penetration.legend
@@ -1452,8 +1459,11 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       const specId = ev.attackerSpecId || attacker?.specId;
       // (the attacker's silhouette in the enemy ink the rosters and lanes use: a pink of its own, gauntlet r4)
       if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, 'var(--hud-enemy)');
-      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', 'var(--hud-enemy)');
-      else silhouette.remove();
+      else if (specId) {
+        maskIcon(silhouette, specId, 'side_silhouette', 'var(--hud-enemy)');
+        // (from the row's start, the column's 12 px line: centred in its box, a short hull began 7 px in, gauntlet r7)
+        silhouette.style.maskPosition = silhouette.style.webkitMaskPosition = 'left center';
+      } else silhouette.remove();
       toastHost.prepend(toast);
     }
     latestToast = { element: toast, group };

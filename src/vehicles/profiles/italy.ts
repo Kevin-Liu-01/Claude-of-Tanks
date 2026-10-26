@@ -40,6 +40,7 @@ import { sectionSolid } from './sectionSolid.ts';
 import { fitsInSkirt, profileSkirtGeometry, skirtBand, skirtBottomAt, skirtSegment, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { ARIETE_PROTO_TURRET_LIFT_M } from '../modern3Specs.ts';
+import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -152,7 +153,7 @@ const ARIETE_SKIRT: ProfileSkirt = { inner: 1.725, outer: 1.76, stations: [
   [-2.92, 0.78, 1.42], [-2.60, 0.60, 1.42], [1.67, 0.60, 1.42], [2.55, 0.60, 1.3208], [3.09, 0.95, 1.26],
 ] };
 // ---------------------------------------------------------------------------
-function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
+function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfileBuild {
   const { box, cylY, cylZ, openRackGrid, torus, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;
@@ -192,6 +193,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT + ARIETE_PROTO_TURRET_LIFT_M, -0.10);
   };
   buildArieteMkAssemblyStage1();
+  yield 'buildArieteMkAssemblyStage1';
   const L = (zWorld: number): number => zWorld + 0.10;                         // world z -> turret local
   const localY = (yWorldBeforeLift: number): number => yWorldBeforeLift - 1.30;
 
@@ -311,6 +313,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.add('hullDark', box(0.40, 0.012, 0.44), -0.11, 1.514, 0.62);
   };
   buildArieteMkHullStage1();               // hatch seam
+  yield 'buildArieteMkHullStage1';
   const buildArieteMkHullStage2 = (): void => {
     // release 231: no episcopes on the driver plate: it lies under the turret, and they stood through its side walls
     // as it traversed
@@ -373,6 +376,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
   };
   buildArieteMkHullStage2();
+  yield 'buildArieteMkHullStage2';
   // ---- skirts (plan: heavy applique run z -0.41..+3.09 ONLY; stations rear
   // 3.04-3.07 = no wide rear skirt. WIDTH GUARD: max |x| = 1.80) -------------
   // The old skirt faces stopped below the hull-side sill and were connected
@@ -460,6 +464,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
   };
   buildArieteMkHullStage3();
+  yield 'buildArieteMkHullStage3';
   // ---- running gear: SEVEN wheels, gate-ref stations (contact [-2.44,
   // +2.52]; ramp 0.30@-2.92 / 0.66@-3.29 / 0.87@-3.67; front wrap crest
   // 0.81-0.89 @ +3.49..+3.63) -------------------------------------------------
@@ -501,6 +506,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       [-0.80, 1.29 + BODY_RIDE_LIFT, 2.72], 0, -0.16);
   };
   buildArieteMkRunningGearStage1();
+  yield 'buildArieteMkRunningGearStage1';
 
   // ---- turret ---------------------------------------------------------------
   // main shell loft: front plate behind the mantlet at +1.30, cheek corner
@@ -567,6 +573,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.add('turret', box(1.60, 0.14, 0.46), 0, -0.025, L(0.51));
   };
   buildArieteMkTurretStage1();
+  yield 'buildArieteMkTurretStage1';
   // bustle: roof continues the 2.16 line to -1.69, underside 1.40
   const ARIETE_BUSTLE = [
     [-1.13, L(-1.02)], [1.13, L(-1.02)], [1.13, L(-1.69)], [-1.13, L(-1.69)],
@@ -686,6 +693,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
   };
   buildArieteMkTurretStage2();
+  yield 'buildArieteMkTurretStage2';
   // welded roof panel cadence (owner c425f495: flat dark fields + fastener
   // strips — zero silhouette)
   const buildArieteMkTurretStage3 = (): void => {
@@ -747,6 +755,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     liftEye(P, 'turretDetail', 1.05, 0.82, L(0.60), -0.3);
   };
   buildArieteMkTurretStage3();
+  yield 'buildArieteMkTurretStage3';
 
   const buildArieteMkMarkingsStage1 = (): void => {
     if (c2) {
@@ -878,6 +887,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
   };
   buildArieteMkMarkingsStage1();
+  yield 'buildArieteMkMarkingsStage1';
   const buildArieteMkHullStage4 = (): void => {
     P.turretG.userData.arieteSidePanelReceipt = Object.freeze({
       owner: 'turret',
@@ -941,6 +951,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     ], 0, BODY_RIDE_LIFT, 0);
   };
   buildArieteMkHullStage4();
+  yield 'buildArieteMkHullStage4';
 
   // Owner scale pass: bake the full C1/C2 family into a genuinely 10%
   // larger authored frame. Geometry buckets, direct smart-running-gear and
@@ -957,6 +968,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
   };
   buildArieteMkAssemblyStage2();
+  yield 'buildArieteMkAssemblyStage2';
   for (const child of [...P.turretG.children]) {
     if (child === P.gunG) continue;
     child.position.multiplyScalar(scale);
@@ -983,6 +995,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.topY = (2.55 + BODY_RIDE_LIFT + ARIETE_PROTO_TURRET_LIFT_M) * scale;
   };
   buildArieteMkAssemblyStage3();
+  yield 'buildArieteMkAssemblyStage3';
   const scaleReceipt = Object.freeze({
     uniformScale: scale,
     bakedGeometry: true,
@@ -1015,12 +1028,12 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   buildArieteMkReceiptStage1();
 }
 
-function buildArieteC1(P: ItalyBuilderPort): void { buildArieteMk(P, 'c1'); }
-function buildArieteC2(P: ItalyBuilderPort): void {
+const buildArieteC1 = steppedBuilder((P: ItalyBuilderPort) => buildArieteMkSteps(P, 'c1'));
+const buildArieteC2 = steppedBuilder(function* (P: ItalyBuilderPort): TankProfileBuild {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  buildArieteMk(P, 'c2');
-}
+  yield* buildArieteMkSteps(P, 'c2');
+});
 
 // ---------------------------------------------------------------------------
 // Carro 45t — OTO 45-tonne paper project, print-true ground-up build.
@@ -1033,7 +1046,7 @@ function buildArieteC2(P: ItalyBuilderPort): void {
 // 105mm with mid-tube evacuator (2.03@+5.55), muzzle +7.11; exposed
 // six-wheel gear with raised idler (ramp to +3.5) and rear sprocket.
 // ---------------------------------------------------------------------------
-function buildCarro45T(P: ItalyBuilderPort): void {
+function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
   const { box, cylY, cylZ, torus, frustum, buildGun,
     buildRunningGear, headlight, periscope, liftEye } = KIT;
   const slab = orientedSlab;
@@ -1113,6 +1126,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.decal('hull', 'number', '45T', 0.26, [-0.72, 1.345, 2.62], 0, -0.255);
   };
   buildCarro45TMarkingsStage1();
+  yield 'buildCarro45TMarkingsStage1';
   // ---- fenders + side aprons (front_hull: fender band ±1.40..1.71 tops
   // 1.50-1.53, outer droop 1.40; aprons ±1.62..1.71 down to 0.90; stations
   // w 3.42 the whole run) -----------------------------------------------------
@@ -1166,6 +1180,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     }
   };
   buildCarro45THullStage1();
+  yield 'buildCarro45THullStage1';
   const buildCarro45TRunningGearStage1 = (): void => {
     liftEye(P, 'hullDetail', -1.05, 1.325, 2.62);                               // bow eyes on the glacis plane, under the fender line
     liftEye(P, 'hullDetail', 1.05, 1.325, 2.62);
@@ -1187,6 +1202,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.turretG.position.set(0, 1.50, -0.30);
   };
   buildCarro45TRunningGearStage1();
+  yield 'buildCarro45TRunningGearStage1';
   const L = (zWorld: number): number => zWorld + 0.30;
   // One closed crown replaces the stacked fan cap, plateau and shoulder patches.
   // Each station owns the wall AND roof edge, so no plate can extend through its
@@ -1259,6 +1275,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, roofY(0.73, L(0.70)) + 0.12, L(0.805));
   };
   buildCarro45TTurretStage1();
+  yield 'buildCarro45TTurretStage1';
   // Rear service grille and fittings follow the integral bustle.
   const buildCarro45TTurretStage2 = (): void => {
     // The shell itself now closes the bustle; only its external service grille remains.
@@ -1310,6 +1327,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     for (const s2 of [-1, 1]) P.add('turretDetail', box(0.02, 0.10, 0.16), s2 * 1.435, 0.30, L(-1.30));
   };
   buildCarro45TTurretStage2(); // flush shackle plates (lift eyes read 2.32 over the 1.9-2.1 cant)
+  yield 'buildCarro45TTurretStage2';
   // roof lid cadence (owner c425f495): unequal service plates + hinge bars
   const buildCarro45TMarkingsStage2 = (): void => {
     for (const [lx, lz, w, dd] of [[-0.74, -0.30, 0.44, 0.38], [-0.20, -0.34, 0.42, 0.36],
@@ -1335,6 +1353,10 @@ function buildCarro45T(P: ItalyBuilderPort): void {
   buildCarro45TMarkingsStage2();
   roofProbe.material.dispose();
 }
+function buildCarro45T(...args: Parameters<typeof buildCarro45TSteps>): void {
+  drainTankBuild(buildCarro45TSteps(...args));
+}
+withBuildSteps(buildCarro45T, buildCarro45TSteps);
 
 export const ITALY_PROFILES = {
   c1_ariete_preserie: { build: buildAriete },

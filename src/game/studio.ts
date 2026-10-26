@@ -108,7 +108,9 @@ import type {
   Storyboard,
   StoryboardInput,
 } from './studioTimeline.ts';
-import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
+import { createFrameBudgetYielder, nextFrame } from '../engine/frameScheduler.ts';
+import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { createStudioCinematics } from '../fx/cinematicFx.ts';
 import type { CineActor, CineTrackActor, CineTrackSample, StudioCinematics } from '../fx/cinematicFx.ts';
 import type { SmokeScreenWalls } from '../fx/cinematicRecipes.ts';
@@ -243,6 +245,8 @@ interface StudioContext {
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
+  /** The renderer's forward program warm (main.ts): the first view's programs are prepared with it (prepareFirstViewPrograms). */
+  programWarm?: Pick<ForwardProgramWarmOwner, 'prepareSceneSteps'>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -659,6 +663,9 @@ export const EFFECT_TYPES = [
 
 // scratch
 const _v1 = new THREE.Vector3();
+// prepareFirstViewPrograms's view
+const _firstViewMatrix = new THREE.Matrix4();
+const _firstViewFrustum = new THREE.Frustum();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
@@ -5560,6 +5567,39 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return mine;
   }
 
+  /**
+   * (2026-10-25, UI-LOCKDOWN E) The first view's programs link and reflect between frames, before that view's frame: the
+   * world's forward renderables inside the placed camera's frustum (or never culled), on the gameplay targets, as the
+   * Garage mode preview's are. A first entry's first frame waited 613 ms on links inside one task; preparing the whole map
+   * instead queued hundreds of compiles ahead of that frame (a 14.2 s task, reverted in fe9035e418). A preparation that
+   * cannot finish leaves its links to that frame, as before.
+   */
+  async function prepareFirstViewPrograms(current: () => boolean): Promise<void> {
+    const root = getWorld()?.group;
+    if (!ctx.programWarm || !root || !current()) return;
+    camera.updateMatrixWorld();
+    _firstViewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _firstViewFrustum.setFromProjectionMatrix(_firstViewMatrix);
+    const objects: THREE.Object3D[] = [];
+    root.traverseVisible((object) => {
+      const drawn = object as THREE.Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean };
+      if (!drawn.isMesh && !drawn.isPoints && !drawn.isLine) return;
+      if (!object.frustumCulled || _firstViewFrustum.intersectsObject(object)) objects.push(object);
+    });
+    if (!objects.length) return;
+    const lateMask = 1 << LATE_FX_LAYER;
+    const passes = post.composer ? [
+      { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+      { layerMask: lateMask, target: post.lateFx.target },
+    ] : undefined;
+    const steps = ctx.programWarm.prepareSceneSteps({ objects, passes, strict: true, sliceMs: 4 });
+    try {
+      while (current() && !steps.next().done) await nextFrame();
+    } catch {
+      // the first frame links what is left, as it did before this preparation
+    } finally { steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' }); }
+  }
+
   async function doEnter(opts: EnterOptions): Promise<void> {
     const generation = ++entryGeneration;
     const owns = (): boolean => generation === entryGeneration;
@@ -5675,6 +5715,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cam.orbit.target.copy(_v2);
       cam.orbit.dist = 24;
       lighting.updateFrustums();
+      // the programs the first view draws, linked before it
+      await prepareFirstViewPrograms(owns);
+      stillOwned();
       // Direct-route boot has not started the shared rAF yet. Produce one
       // complete real Studio frame behind the boot veil so readiness means a
       // stable canvas, not merely a finished scene graph.

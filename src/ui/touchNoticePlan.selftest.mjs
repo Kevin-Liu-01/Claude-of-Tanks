@@ -8,8 +8,8 @@
 // rendered receipt, tools/hud-touch-notices.browser.mjs, measures the real ink there).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { planTouchNotices, touchFreePlace, touchSightKeepOut, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP }
-  from './touchNoticePlan.ts';
+import { planTouchNotices, touchFreePlace, touchSightKeepOut, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP,
+  TOUCH_ONE_ROW } from './touchNoticePlan.ts';
 
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
 // the furniture a notice covers first where nothing clears (battleHudLayout TOUCH_NOTICE_SOFT, the map apart: `map`)
@@ -51,6 +51,26 @@ const centred = (width, y, size) => ({ x0: width / 2 - size.w / 2, y0: y, x1: wi
     assert.ok(apart(box, label) < 0 && keep.every((block) => apart(box, block) >= 0),
       `where none clears the ${name} covers the label, not the footprint (${JSON.stringify(plan)})`);
   }
+}
+
+// 1b2. The tiniest landscapes (568x256, the layout receipt): under the objective the band over the sight holds one row,
+// so the notices share it (the alert in the detection's place while it shows) rather than go onto the hull panel under
+// the systems row; the row keeps off the panels and the resting ring.
+{
+  const [width, height] = [568, 256];
+  const objective = { x0: 201, y0: 48, x1: 367, y1: 78 }, dp = { x0: 209, y0: 208, x1: 359, y1: 248 };
+  const rack = { x0: 207, y0: 156, x1: 345, y1: 200 }, chip = { x0: 12, y0: 100, x1: 154, y1: 124 };
+  const input = { width, height, top: 78, obstacles: [dp, rack, chip], soft: [{ x0: 177, y0: 0, x1: 392, y1: 48 }, objective],
+    scope: false, seated: false, notice: { w: 214, h: 32 }, alert: { w: 214, h: 40 }, alertCompact: { w: 136, h: 34 },
+    countdown: null, banner: null, fallbackTop: 86 };
+  const apartPlan = planTouchNotices(input);
+  assert.ok(!apartPlan.oneRow && [apartPlan.noticeTop, apartPlan.alertTop].some((y) => y + 30 > dp.y0),
+    `568x256: two notices find no place over the sight (${JSON.stringify(apartPlan)})`);
+  const plan = planTouchNotices({ ...input, oneRow: true });
+  const row = centred(width, plan.noticeTop, TOUCH_ONE_ROW);
+  assert.ok(plan.oneRow && plan.noticeTop === plan.alertTop && plan.alertW === TOUCH_ONE_ROW.w, `568x256: one row (${JSON.stringify(plan)})`);
+  assert.ok([dp, rack, chip, objective].every((box) => apart(row, box) >= TOUCH_NOTICE_GAP - 1e-6) && row.y1 <= height / 2 - 14 - 4 + 1e-6,
+    `568x256: the row keeps off the panels and the resting ring (${JSON.stringify(row)})`);
 }
 
 // 1c. Where nothing clears, the notices stay on the centre line, reaching into the sight's footprint (the ring, or the

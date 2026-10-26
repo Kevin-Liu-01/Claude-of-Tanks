@@ -25,6 +25,7 @@ import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
 import { applyTopMaskCoverage } from './topMaskCoverage.ts';
+import { scratchCanvas } from './uiCanvas.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
@@ -191,9 +192,7 @@ function portraitUrl(specId: string, index: number): string {
 
 function measurePortraitBounds(img: HTMLImageElement): PortraitBounds | null {
   if (!(img.naturalWidth > 0) || !(img.naturalHeight > 0)) return null;
-  const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
+  const canvas = scratchCanvas(img.naturalWidth, img.naturalHeight);
   const context = canvas2d(canvas);
   context.drawImage(img, 0, 0);
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -845,9 +844,7 @@ async function finishMaskReadback(
 
 function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
   const size = MASK_RT_SIZE;
-  const big = document.createElement('canvas');
-  big.width = size;
-  big.height = size;
+  const big = scratchCanvas(size, size);
   const context = canvas2d(big);
   const image = context.createImageData(size, size);
   const data = image.data;
@@ -876,16 +873,11 @@ function maskCanvasFromPixels(pixels: Uint8Array): MaskCanvasResult | null {
 
 /** A transparent layer canvas the size of every cached mask layer (a turretless build's turret layer). */
 function emptyMaskCanvas(): HTMLCanvasElement {
-  const output = document.createElement('canvas');
-  output.width = MASK_SIZE;
-  output.height = MASK_SIZE;
-  return output;
+  return scratchCanvas(MASK_SIZE, MASK_SIZE);
 }
 
 function downscaleMask(source: HTMLCanvasElement): HTMLCanvasElement {
-  const output = document.createElement('canvas');
-  output.width = MASK_SIZE;
-  output.height = MASK_SIZE;
+  const output = scratchCanvas(MASK_SIZE, MASK_SIZE);
   canvas2d(output).drawImage(source, 0, 0, MASK_SIZE, MASK_SIZE);
   return output;
 }

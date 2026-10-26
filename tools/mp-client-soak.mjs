@@ -9,6 +9,9 @@
  *   node tools/mp-client-soak.mjs --server=fixture      the scripted server fixture (src/mp/match/scriptedServer.test-support.ts)
  *   node tools/mp-client-soak.mjs --clients=8 --seconds=30 --rtt=160 --jitter=40 --loss=0.05 --map=alpine
  *   node tools/mp-client-soak.mjs --json                machine-readable report
+ *   node tools/mp-client-soak.mjs --clients=1 --bots=31 --world=dedicated --kernels --rtt=0 --jitter=0 --loss=0
+ *                                                       a solo battle on a local host (RUST-ENGINE-DECISION §7 step 5):
+ *                                                       the actor on the map's world and its kernels, 16 a side
  *
  * Gates (exit 1 when any fails): no hard snaps; remote and own presented pose
  * steps ≤ 0.5 m per frame; correction release ≤ 0.25 m per frame; input ack
@@ -21,7 +24,9 @@
  * The actor mode runs `server/match/matchActor.ts` (the authority, its bots,
  * lag compensation and publisher) driven by `actor.advance(nowMs)` on the same
  * virtual clock; seats are admitted through signed seat tokens exactly as the
- * service does. Everything is deterministic for a seed.
+ * service does. Everything is deterministic for a seed. Each display frame's
+ * thread CPU is split between the actor (what a host's Worker carries) and the
+ * clients (what stays on the page's main thread) in the report's `cpu`.
  */
 import { fileURLToPath } from 'node:url';
 import { createLoopbackPair } from '../src/mp/transport/index.ts';
@@ -109,7 +114,7 @@ async function createFixtureServer({ clock, clientCount, seats }) {
 }
 
 /** The real MatchActor on the virtual clock; seats admitted through signed tokens like the service does. */
-async function createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz }) {
+async function createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz, botCount, worldKind, kernels }) {
   const [{ createMatchActor }, { signSeatToken, verifySeatToken }, { getSpec }, { ensureAuthorityFleet }] = await Promise.all([
     import('../server/match/matchActor.ts'),
     import('../server/match/seatToken.ts'),
@@ -127,12 +132,13 @@ async function createActorServer({ clock, clientCount, seats, mapId, seed, snaps
       iat, exp: iat + 24 * 3600 * 1000,
     });
   }
-  const bots = Array.from({ length: Math.max(0, 8 - clientCount) }, (_, index) => ({
+  const bots = Array.from({ length: botCount ?? Math.max(0, 8 - clientCount) }, (_, index) => ({
     playerId: `bot${index + 1}`, name: `Bot ${index + 1}`, team: index % 2 === 0 ? 'alpha' : 'bravo',
     specId: index % 2 ? 't90am' : 'm1a1_abrams_hc', difficulty: 'normal',
   }));
+  const worldKernels = kernels ? await (await import('../server/match/simKernels.ts')).serverWorldKernels('wasm') : null;
   const actor = createMatchActor({
-    roomId: 'soak', mapId, seed, seats: actorSeats, bots, world: 'terrain', countdownS: 2,
+    roomId: 'soak', mapId, seed, seats: actorSeats, bots, world: worldKind, worldKernels, countdownS: 2,
     now: clock, schedule: () => () => {}, autoStart: true, endedLingerTicks: 600,
     ...(snapshotHz !== undefined ? { snapshotHz } : {}),
   });
@@ -223,6 +229,10 @@ export async function runClientSoak({
   seed = 0x50ac,
   /** The actor's snapshot rate (its default, SNAPSHOT_HZ, when unset); the clients follow the WELCOME. */
   snapshotHz = undefined,
+  /** The actor's bots (8 seats less the clients when unset), its world ('terrain' or the map's 'dedicated' one) and kernels. */
+  bots: botCount = undefined,
+  world: worldKind = 'terrain',
+  kernels = false,
   onProgress = null,
 } = {}) {
   let nowMs = 100_000;
@@ -230,10 +240,19 @@ export async function runClientSoak({
   const seats = seatList(clientCount);
   const world = serverKind === 'fixture'
     ? await createFixtureServer({ clock, clientCount, seats })
-    : await createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz });
+    : await createActorServer({ clock, clientCount, seats, mapId, seed, snapshotHz, botCount, worldKind, kernels });
   const link = { latencyMs: rttMs / 2, jitterMs: jitterMs / 2, loss, lossFilter: (frame) => LOSSY_TYPES.has(frame[1]) };
   const pairs = [];
-  const pump = (t) => { for (const pair of pairs) pair.pump(t); world.advance(t); for (const pair of pairs) pair.pump(t); };
+  // the actor's share of each frame's thread CPU (a host's Worker); the rest of the frame is the clients' (the page)
+  let actorCpuMs = 0;
+  const cpuMs = (since) => { const used = process.threadCpuUsage(since); return (used.user + used.system) / 1000; };
+  const pump = (t) => {
+    for (const pair of pairs) pair.pump(t);
+    const before = process.threadCpuUsage();
+    world.advance(t);
+    actorCpuMs += cpuMs(before);
+    for (const pair of pairs) pair.pump(t);
+  };
   const clients = seats.map((seat, index) => {
     const pair = createLoopbackPair({ clock, clientToServer: link, serverToClient: link, random: mulberry(seed + index * 7919) });
     pairs.push(pair);
@@ -268,12 +287,25 @@ export async function runClientSoak({
 
   const startedAt = performance.now();
   const frames = Math.round(seconds * 60);
+  const actorFrames = [], clientFrames = [];
   for (let frame = 0; frame < frames; frame++) {
     nowMs += 1000 / 60;
+    actorCpuMs = 0;
+    const before = process.threadCpuUsage();
     for (const entry of clients) entry.driver.step(nowMs);
+    const frameMs = cpuMs(before);
+    // past the countdown and the clients' warm-up
+    if (frame >= 300) { actorFrames.push(actorCpuMs); clientFrames.push(frameMs - actorCpuMs); }
     if (onProgress && frame % 600 === 599) onProgress(frame / 60);
   }
   const wallMs = performance.now() - startedAt;
+  const summary = (list) => {
+    const sorted = [...list].sort((a, b) => a - b);
+    const round = (value) => Math.round(value * 1000) / 1000;
+    return { mean: round(list.reduce((a, b) => a + b, 0) / Math.max(1, list.length)), p50: round(sorted[sorted.length >> 1] ?? 0),
+      p95: round(sorted[Math.floor(sorted.length * 0.95)] ?? 0) };
+  };
+  const cpu = { actorMsPerFrame: summary(actorFrames), clientsMsPerFrame: summary(clientFrames) };
 
   const rows = clients.map((entry) => {
     const gates = entry.driver.gates();
@@ -331,7 +363,7 @@ export async function runClientSoak({
   });
   const report = {
     server: serverKind, mapId: serverKind === 'actor' ? mapId : 'fixture', clients: clientCount, seconds, rttMs, jitterMs, loss, seed,
-    wallMs: Math.round(wallMs), serverStats: world.stats(), rows, pass: rows.every((row) => row.failures.length === 0),
+    world: worldKind, kernels, wallMs: Math.round(wallMs), cpu, serverStats: world.stats(), rows, pass: rows.every((row) => row.failures.length === 0),
   };
   for (const entry of clients) entry.client.dispose();
   world.dispose();
@@ -350,6 +382,9 @@ export function formatReport(report) {
       (row.failures.length ? `\n    FAIL: ${row.failures.join('; ')}` : ''));
   }
   lines.push(`  server: ${JSON.stringify(report.serverStats)}`);
+  const { actorMsPerFrame: actor, clientsMsPerFrame: page } = report.cpu;
+  lines.push(`  thread CPU a frame (world ${report.world}${report.kernels ? ', kernels' : ''}): the actor (a host's Worker) mean ${actor.mean} ms ` +
+    `p50 ${actor.p50} p95 ${actor.p95}; the clients (the page) mean ${page.mean} ms p50 ${page.p50} p95 ${page.p95}`);
   lines.push(report.pass ? 'mp client soak: PASS' : 'mp client soak: FAIL');
   return lines.join('\n');
 }
@@ -365,6 +400,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     clients: number('clients', 4), seconds: number('seconds', 120), rttMs: number('rtt', 100), jitterMs: number('jitter', 30),
     ...(process.argv.some((entry) => entry.startsWith('--snapshot-hz=')) ? { snapshotHz: number('snapshot-hz', 20) } : {}),
     loss: number('loss', 0.03), server: args.get('server') ?? 'actor', mapId: args.get('map') ?? 'verdant', seed: number('seed', 0x50ac),
+    ...(args.has('bots') ? { bots: number('bots', 0) } : {}), world: args.get('world') ?? 'terrain', kernels: args.has('kernels'),
     onProgress: json ? null : (elapsed) => process.stderr.write(`  ${elapsed.toFixed(0)} s\r`),
   });
   console.log(json ? JSON.stringify(report, null, 2) : formatReport(report));

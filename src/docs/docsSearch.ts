@@ -85,7 +85,9 @@ export function snippetOf(text: string, query: string, room = 64): string {
   let start = Math.max(lineStart, at - room), end = Math.min(lineEnd, start + room * 2);
   if (start > lineStart) { const space = text.indexOf(' ', start); if (space >= 0 && space < at) start = space + 1; }
   if (end < lineEnd) { const space = text.lastIndexOf(' ', end); if (space > at) end = space; }
-  return `${start > lineStart ? '…' : ''}${text.slice(start, end).trim()}${end < lineEnd ? '…' : ''}`;
+  const cut = text.slice(start, end).trim();
+  // a snippet that ends on its sentence's full stop needs no ellipsis after it
+  return `${start > lineStart ? '…' : ''}${cut}${end < lineEnd && !/[.。]$/.test(cut) ? '…' : ''}`;
 }
 
 export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {

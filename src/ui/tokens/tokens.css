@@ -7,6 +7,10 @@
 :root{
   --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;--graphite-750:#161b21;
   --graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
+  --modehue-standard:#efb258;--modehue-drone:#34eee5;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
+  --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
+  --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
+  --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
   --paper-50:#f6f3ec;--paper-100:#ece8de;--paper-300:#c9c5bb;--paper-500:#9a9a95;--paper-600:#7c8187;--paper-700:#5d636a;
   --tungsten-300:#ffd08a;--tungsten-400:#ffbd5c;--tungsten-500:#f0a030;--tungsten-600:#c97f1c;--tungsten-800:#4a2e0a;
   --sky-400:#57b8ff;--sky-200:#b8e0ff;--vermilion-400:#ff5a4e;--mint-400:#5bd69b;--yellow-400:#ffd15c;
@@ -41,6 +45,11 @@
   --line-1:rgba(246,243,236,.07);--line-2:rgba(246,243,236,.13);--line-3:rgba(246,243,236,.24);--line-control:rgba(246,243,236,.38);
   --accent:var(--tungsten-500);--accent-hi:var(--tungsten-400);--accent-lo:var(--tungsten-600);--accent-wash:rgba(240,160,48,.12);
   --focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--tungsten-400);
+  --mode-standard:var(--modehue-standard);--mode-drone:var(--modehue-drone);--mode-zone-control:var(--modehue-zone-control);
+  --mode-capture-the-flag:var(--modehue-capture-the-flag);--mode-frontline-assault:var(--modehue-frontline-assault);
+  --mode-turbo-ball:var(--modehue-turbo-ball);--mode-mars:var(--modehue-mars);--mode-endless-horde:var(--modehue-endless-horde);
+  --mode-gun-game:var(--modehue-gun-game);--mode-juggernaut:var(--modehue-juggernaut);--mode-infected:var(--modehue-infected);
+  --mode-realistic:var(--modehue-realistic);--mode-ac130:var(--modehue-ac130);--mode-proving-ground:var(--modehue-proving-ground);
   --team-own:var(--sky-400);--team-enemy:var(--vermilion-400);--team-squad:var(--mint-400);--team-neutral:var(--paper-100);
   --ok:var(--mint-400);--warn:var(--yellow-400);--danger:var(--vermilion-400);--info:var(--sky-200);
   --text-own:var(--team-own);--text-enemy:var(--team-enemy);--text-squad:var(--team-squad);--text-ok:var(--ok);
@@ -52,6 +61,7 @@
   --sys-crew:#ece6d8;
   --role-commander:#9ec9ff;--role-gunner:#ff9e7a;--role-loader:#c6a2ff;--role-driver:#7ee0b5;--role-radio:var(--paper-100);
   --e0:none;--e1:0 1px 0 rgba(255,255,255,.04) inset,0 0 0 1px var(--line-1);--e2:0 1px 0 rgba(255,255,255,.05) inset,0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
+  --e1-flush:0 1px 0 rgba(255,255,255,.04) inset,inset 0 0 0 1px var(--line-1);--e2-flush:0 1px 0 rgba(255,255,255,.05) inset,inset 0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
   --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);--e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
   --e5:0 1px 0 rgba(255,255,255,.07) inset,inset 2px 0 0 var(--accent),0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
   --z-scene:0;--z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;--z-shell:100;
@@ -71,22 +81,22 @@
   --ring-accent:inset 0 0 0 1px var(--accent);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
   --btn-secondary-ring-hover:inset 0 0 0 1px var(--ink-2);--ring-ok:inset 0 0 0 1px var(--ok);--ring-warn:inset 0 0 0 1px var(--warn);
   --ring-danger:inset 0 0 0 1px var(--danger);--z-lift:1;--fill-faint:rgba(246,243,236,.03);--fill-quiet:rgba(246,243,236,.04);
-  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 12px 32px rgba(0,0,0,.35);
+  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 12px 32px rgba(0,0,0,.35);
   --btn-media-fill:rgba(5,6,8,.55);--kbd-on-accent-ink:rgba(20,13,3,.78);--kbd-on-accent-ring:inset 0 0 0 1px oklch(from var(--ink-on-accent) l c h / .35);
-  --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
+  --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,inset 0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
   --sil-shadow:drop-shadow(0 1px 0 rgba(0,0,0,.5));--glyph-plate:rgba(5,6,8,.86);--row-plate:rgba(17,21,26,.88);
   --side-plate:rgba(11,14,17,.92);--media-fade:linear-gradient(0deg,rgba(5,6,8,.95) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 62%);
   --media-fade-soft:linear-gradient(0deg,rgba(5,6,8,.92),rgba(5,6,8,0) 55%);--media-fade-full:linear-gradient(0deg,rgba(5,6,8,.95),rgba(5,6,8,.2) 70%);
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
   --hollow-shadow:0 8px 28px rgba(0,0,0,.32);--stage-halo:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55);
-  --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.62),rgba(5,6,8,.34) 55%,rgba(5,6,8,0));
+  --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.66),rgba(5,6,8,.46) 62%,rgba(5,6,8,0));
   --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-font:var(--font-ui);
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
   --focus-bracket-color:var(--accent-hi);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
   --focus-bracket-dur:var(--dur-fast);
   --media-toggle-z:4;
   --warn-hatch:8px;--team-squad-ring:0px;
-  --studio-z:58;--studio-pop-z:40;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 2px 0 0 var(--accent);
+  --studio-z:58;--studio-pop-z:40;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 0 0 0 1px var(--accent);
   --studio-knob-ring:0 0 0 2px var(--surface-page);--studio-swatch-on:0 0 0 2px var(--accent);--studio-frame-mask:0 0 0 1px oklch(from var(--ink-1) l c h / .18),0 0 0 2000px var(--scrim);
   --studio-clip-fx:rgba(255,90,78,.16);
   --battle-plate-shadow:0 0 0 1px var(--line-1),0 6px 18px rgba(0,0,0,.35);--battle-edge-own:0 0 0 1px oklch(from var(--accent) l c h / .5),0 6px 18px rgba(0,0,0,.35);

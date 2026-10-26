@@ -18,7 +18,14 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   pl01_105: 'price the four-round 105 mm branch for Tier X sustained combat',
   m1a3: 'remove the next-generation autoloader, protection and missile ceiling',
   challenger3_proto: 'restore the base Challenger 3 firepower and mobility envelope',
-  challenger3: 'retain a measured protection and fire-control step over the base vehicle',
+  challenger3: 'retain a measured protection and fire-control step over the base vehicle, inside the modern fire-control ceiling',
+  // 2026-10-25: the IFVs relabelled modern fold into their modern Tier X peers (fleetBalancePass applyModernEraFold)
+  kf41_lynx: 'fold the Raijū-donor cannon package into the modern IFV cadence and 35 mm penetration',
+  cv90_mk4: 'fold the Raijū-donor cannon package into the modern IFV cadence',
+  type89: 'fold the Raijū replica\'s cannon package into the modern IFV cadence and an older 35 mm round',
+  cv90_mk4_concept: 'slow the 50 mm cycle to the modern IFV output and keep its round inside the modern ceiling',
+  lrmv_lynx: 'bring the 30 mm round to the modern 30 mm penetration',
+  borsuk: 'bring the 30 mm round to the modern 30 mm penetration',
   chieftain_mk9: 'restore the late Chieftain as a competitive protected Tier VIII MBT',
   centurion5_2: 'remove the Tier VIII Centurion survivability and mobility trough',
   fv4034: 'trim the UK Tier VIII peer ceiling while retaining its protected identity',
@@ -100,17 +107,6 @@ function balanceValues(spec: FleetTankSpec): BalanceValues {
   };
 }
 
-/**
- * Vehicles relabelled modern on 2026-10-25 (taxonomy.ts) keep the next-generation envelope they were balanced to: the
- * audit still measures them against those peers until a balance pass folds them into the modern ones.
- */
-const BALANCED_AS_NEXT_GENERATION: ReadonlySet<string> = new Set([
-  't72b3m_hetman_ii', 't72b3_zubr_ii', 't80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk',
-  't72b3_zubr', 't80u_yun', 't72b3m_kunlun', 't72b3_qilin', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
-  'challenger3_proto', 'challenger3', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
-  'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
-]);
-
 function groupFleetBalanceRows(
   ids: readonly string[],
   specs: TankSpecRegistry,
@@ -121,8 +117,7 @@ function groupFleetBalanceRows(
     const spec = specs[id];
     if (!spec) continue;
     const cohort = spec.balanceCohort ? `/${spec.balanceCohort}` : '';
-    const era = BALANCED_AS_NEXT_GENERATION.has(id) ? 'next-generation' : spec.era;
-    const key = `${era}/${tierOf(id)}/${spec.role}${cohort}`;
+    const key = `${spec.era}/${tierOf(id)}/${spec.role}${cohort}`;
     const group = groups.get(key) || [];
     group.push({ id, spec });
     groups.set(key, group);

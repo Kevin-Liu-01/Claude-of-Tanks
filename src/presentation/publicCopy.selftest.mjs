@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { typeTokenCss, TYPE_STACK } from '../ui/typeFaces.ts';
+import { MEDIA_PAUSE_ICON } from './mediaPlayer.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pageFiles = ['site/home.html', 'site/gallery.html', 'site/docs.html'];
@@ -122,8 +123,11 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
 // (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
 const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'close', 'fullscreen', 'sound'];
-// the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place
-assert.match(homeSource, /data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="M4 2\.5h3v11H4zM9 2\.5h3v11H9z"\/>/, 'the reel\'s pause draws the player\'s glyph');
+// the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place; read from the player, so a
+// redrawn pair (252's fifth gauntlet round thinned the bars) moves the reel and this receipt together
+const pauseGlyph = MEDIA_PAUSE_ICON.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+assert.match(homeSource, new RegExp(`data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="${pauseGlyph}"/>`),
+  'the reel\'s pause draws the player\'s glyph');
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }

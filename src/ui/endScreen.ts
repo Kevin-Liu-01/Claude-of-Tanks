@@ -36,7 +36,7 @@ import { containModalTab } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, escapeHtml } from './dom.ts';
+import { createElement as el, escapeHtml, datumAttr, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
@@ -293,7 +293,7 @@ const ES_CSS = `
 .cot-es .es-meta{margin-top:var(--s1);text-align:center;font-family:${FONT_COND};
   font-weight:700;font-size:var(--battle-fs-12);letter-spacing:.14em;color:var(--ink-2);
   text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:18px;}
-.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--ink-3)}
+.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}
 .cot-es .es-meta b{color:var(--ink-2);font-weight:700;}
 .cot-es .es-campaign{margin:var(--s3) auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
   border:1px solid oklch(from var(--accent) l c h / .5);border-left:3px solid var(--accent);border-radius:4px;background:var(--battle-chip-plate);}
@@ -630,7 +630,7 @@ function vehicleName(specId: string | null | undefined): string {
 /** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them. */
 const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
   + '.es-stat-secondary,.es-kill-block,.es-rematch';
-const FIT_CUE_H = 22;
+const FIT_CUE_H = 18;
 /** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
 const LATIN_NAME = /^[\x20-\x7e]+$/;
 
@@ -684,7 +684,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     moreObserver?.disconnect();
     for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
       const cue = el('div', 'es-more', panel);
-      cue.innerHTML = uiIconSVG('chevronDown', 16);
+      cue.innerHTML = uiIconSVG('chevronDown', 14);
       cue.setAttribute('aria-hidden', 'true');
       panel.addEventListener('scroll', () => markMore(panel), { passive: true });
       moreObserver?.observe(panel);
@@ -943,11 +943,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details = rosterRowDetails(result, revives);
+    // (a Latin callsign keeps the Latin size in zh: .lat)
+    const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm${LATIN_NAME.test(result.name || result.id) ? ' lat' : ''}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
@@ -1056,7 +1058,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     host.dataset.banner = bannerText;
     if (sum.allies.length || sum.enemies.length) {
       const own = fmtN(summarizeTeam(sum.allies).kills), enemy = fmtN(summarizeTeam(sum.enemies).kills);
-      const score = el('div', 'es-score', headline);
+      const score = markDatum(el('div', 'es-score', headline), 'score');
       score.setAttribute('role', 'img');
       score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
       score.innerHTML = `<span class="o">${own}</span><span class="sep" aria-hidden="true">:</span><span class="e">${enemy}</span>`;
@@ -1064,7 +1066,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
     sub.style.setProperty('--i', nextI());
-    sub.innerHTML = `${sum.playerVehicle ? `<b>${escapeHtml(sum.playerVehicle)}</b>` : ''}` +
+    sub.innerHTML = `${sum.playerVehicle ? `<b${datumAttr('tank-name')}>${escapeHtml(sum.playerVehicle)}</b>` : ''}` +
       `<span class="es-why">${outcomeLine(result, sum)}</span>`;
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
@@ -1115,13 +1117,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const bits: string[] = [];
     const mode = sum.mode && Object.hasOwn(GAME_MODE_DEFINITIONS, sum.mode)
       ? GAME_MODE_DEFINITIONS[sum.mode as keyof typeof GAME_MODE_DEFINITIONS] : null;
-    if (mode) bits.push(`<span class="mode">${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
-    if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
+    // (each mode glyph in its mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+    if (mode) bits.push(`<span class="mode" data-mode-tone="${mode.id}"${datumAttr('mode-name')}>${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
+    if (sum.map) bits.push(`<span${datumAttr('map-name')}>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
     if (sum.timeS > 0) {
-      bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
+      bits.push(`<span${datumAttr('clock')}>${datumGlyph('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
     }
     if (sum.hordeWave != null && Number.isFinite(sum.hordeWave)) {
-      bits.push(`<span>${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
+      bits.push(`<span data-mode-tone="endless_horde">${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
       host.dataset.hordeWave = String(Math.floor(sum.hordeWave));
     }
     // Jev commander (2026-09-25): the report says who commanded the bots when it was not the classic brain
