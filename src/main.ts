@@ -3709,8 +3709,12 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
-  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end
-  isBootCovering: () => STUDIO_BOOT_INTENT && !bootComplete,
+  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end.
+  // (2026-10-26, the boot census) Nor does the Garage boot: the hero's switch scheduled a frame as the vehicle stage
+  // ended, before the post stage's warm compiled anything, and that frame compiled and first-used all of the hero's
+  // programs in one task (1.4 s on a cold desktop, 13.8 s on the 4x phone, the GPU process linking them one by one
+  // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
+  isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
   isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
@@ -3941,6 +3945,7 @@ await bootStage('post', async () => {
     timings: BOOT_TIMINGS,
     reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
+    awaitProgramLinks: awaitRendererProgramLinks,
   });
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
@@ -4093,6 +4098,9 @@ if (STUDIO_BOOT_INTENT) {
   });
 }
 
+// (2026-10-26, the boot census) every program the boot submitted links between frames before the first live frame:
+// three's first use of a program still linking reads its log inside that frame (1.3-1.5 s on a cold desktop)
+try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {

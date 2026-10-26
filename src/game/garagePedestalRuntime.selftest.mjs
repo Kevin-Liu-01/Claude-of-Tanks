@@ -142,11 +142,14 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     discardSharedTextures: () => undefined,
     createBudgetYield: () => async () => {
       buildYields++;
-      if (failBudget) throw new Error('frame budget failure');
-      await delayedBuilds.shift()?.promise;
+      // the delayed and failing yields are the post-boot switches' (the boot hero builds in slices too, 2026-10-26)
+      if (bootComplete) {
+        if (failBudget) throw new Error('frame budget failure');
+        await delayedBuilds.shift()?.promise;
+      }
       nowMs += 11;
     },
-    nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
+    nextFrame: async () => { frameCalls += 1; if (bootComplete) await delayedFrames.shift()?.promise; },
     waitForPaint,
     getDeviceTier: () => deviceTier,
     getPhase: () => phase,
@@ -238,8 +241,9 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   h.setSelected('bravo');
   await h.runtime.set('bravo');
   assert.equal(h.runtime.current?.specId, 'bravo');
-  assert.equal(h.compileCalls, 1, 'cold interactive hero must submit its exact programs');
-  assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
+  // (2026-10-26) the boot screen's hero submits its programs too (its build and links no longer one task under the boot)
+  assert.equal(h.compileCalls, 2, 'the boot hero and the cold interactive hero each submit their exact programs');
+  assert.equal(h.frameCalls, 4, 'each submission settles behind two painted frames');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
   assert.ok(h.visuals[0].root.parent === null, 'parked hero leaves the active scene graph');
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
@@ -259,7 +263,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.runtime.current, h.visuals[0], 'cached reveal restores the exact original visual');
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.visuals[0].root]));
   assert.ok(h.visuals[1].root.parent === null);
-  assert.equal(h.compileCalls, 1, 'cached reattachment requires no shader rewarm');
+  assert.equal(h.compileCalls, 2, 'cached reattachment requires no shader rewarm (the boot hero and bravo submitted)');
   assert.deepEqual(h.releasedResources, []);
   assert.equal(h.presentationInvalidations, 4,
     'cached hero reveal follows the same invalidation contract');
@@ -624,7 +628,8 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
 {
   const h = createHarness({ buildCheckpoints: 2 });
   await h.runtime.set('alpha');
-  assert.equal(h.buildClosures, 0, 'covered boot retains synchronous construction');
+  // (2026-10-26) the boot screen's hero builds a slice at a time too (the owner: no freeze on the boot screen)
+  assert.equal(h.buildClosures, 1, 'the boot hero builds through the private sliced factory');
   h.setBootComplete(true);
   await h.runtime.set('bravo');
   const timing = h.debugTarget.__SWITCH_TIMINGS.at(-1);
@@ -632,7 +637,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.equal(timing.buildYieldMs, 22);
   assert.equal(timing.buildCheckpointCount, 2);
   assert.equal(timing.maxBuildStepMs, 7);
-  assert.equal(h.buildClosures, 1);
+  assert.equal(h.buildClosures, 2);
   assert.deepEqual(h.disposed, []);
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   h.runtime.dispose();
@@ -647,7 +652,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([outgoing.root]));
   assert.deepEqual(h.runtime.cacheIds, ['alpha']);
   assert.deepEqual(h.disposed, ['bravo']);
-  assert.equal(h.buildClosures, 1, 'failed frame wait closes the private factory iterator');
+  assert.equal(h.buildClosures, 2, 'failed frame wait closes the private factory iterator (the boot hero\'s closed at its end)');
   h.runtime.dispose();
 }
 
@@ -656,13 +661,13 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   // and the switch record carries the link receipt.
   const h = createHarness({ programSlices: 3, programOutcome: { status: 'complete', pending: 0 } });
   await h.runtime.set('alpha');
-  assert.equal(h.programPrepared, 0, 'covered boot keeps its synchronous path');
+  assert.equal(h.programPrepared, 1, 'the boot hero links its programs between frames too');
   h.setBootComplete(true);
   const framesBefore = h.frameCalls;
   await h.runtime.set('bravo');
   assert.equal(h.compileCalls, 0, 'strict preparation replaces the submit-only fallback');
-  assert.equal(h.programPrepared, 1);
-  assert.equal(h.programClosures, 1);
+  assert.equal(h.programPrepared, 2);
+  assert.equal(h.programClosures, 2);
   assert.equal(h.frameCalls - framesBefore, 3, 'one frame per preparation yield');
   assert.equal(h.runtime.current?.specId, 'bravo');
   const record = h.debugTarget.__GARAGE_SWITCH.at(-1);
@@ -683,15 +688,15 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.setBootComplete(true);
   const bravo = h.runtime.set('bravo');
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(h.programPrepared, 1, 'bravo is waiting on its first link slice');
+  assert.equal(h.programPrepared, 2, 'bravo is waiting on its first link slice (after the boot hero\'s)');
   const charlie = h.runtime.set('charlie');
   await charlie;
   assert.equal(h.runtime.current?.specId, 'charlie');
   gate.resolve();
   await bravo;
   assert.equal(h.runtime.current?.specId, 'charlie', 'the stale link wait cannot replace the newer hero');
-  assert.equal(h.programPrepared, 2);
-  assert.equal(h.programClosures, 2, 'both preparations are closed exactly once');
+  assert.equal(h.programPrepared, 3);
+  assert.equal(h.programClosures, 3, 'every preparation is closed exactly once');
   const stale = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
   assert.equal(stale.path, 'aborted');
   assert.equal(stale.abortReason, 'compile-stale');
@@ -771,7 +776,7 @@ console.log('garagePedestalRuntime.selftest: private sliced construction, cancel
  const h=createHarness({deviceTier:'mobile',programSlices:2,programOutcome:{status:'complete',pending:0}});
  await h.runtime.set('alpha');h.setBootComplete(true);
  await h.runtime.set('bravo');
- assert.equal(h.programPrepared,1,'mobile also prepares links before revealing a new tank');
+ assert.equal(h.programPrepared,2,'mobile also prepares links before revealing a new tank (the boot hero first)');
  assert.equal(h.debugTarget.__GARAGE_SWITCH.at(-1).link.status,'complete');
  h.runtime.dispose();
 }
