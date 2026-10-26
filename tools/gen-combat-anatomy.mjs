@@ -603,9 +603,18 @@ function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
   return rows;
 }
 
-function eraPlateReceipts(root) {
+// 258 (vehicles-hit-volume-fit-258): the build fits each zone's surfaces in its owner rig's own frame
+// (tankFactoryCore eraVisualBindingReceipt), before the rig's scale; the combat frames carry none (rigid-hull-frame.mjs),
+// so each point takes its owner rig's scale (hull rigs sit at the root's origin and turret rigs on their turret pivots,
+// so the scale is about the frame's origin). Unscaled, the Challenger 2E's skirt ERA stood 19 cm inside the cassettes it
+// draws and the Sheridan's 10 cm outside them.
+function eraPlateReceipts(root, rigScales = {}) {
   const receipt = root.userData.eraVisualBindingReceipt;
   if (!receipt || !Array.isArray(receipt.plates)) return [];
+  const scaled = (owner, point) => {
+    const s = rigScales[owner];
+    return s ? [point[0] * s.x, point[1] * s.y, point[2] * s.z] : point;
+  };
   return receipt.plates
     .filter((plate) => plate.registered && plate.ownerMatches
       && plate.partCount > 0 && Array.isArray(plate.fittedSurfaces)
@@ -614,7 +623,7 @@ function eraPlateReceipts(root) {
       name: plate.name,
       owner: plate.owner,
       surfaces: plate.fittedSurfaces.map(
-        (surface) => surface.map((point) => point.map(round)),
+        (surface) => surface.map((point) => scaled(plate.owner, point).map(round)),
       ),
       visualSectors: [...(plate.visualSectors || [])],
     }));
@@ -642,6 +651,8 @@ function receiptFor(id) {
     const seatReceipt = combatAnatomyCalibration(id)?.turretRing;
     const seatedTurret = !!seatReceipt && seatReceipt.rimR > 0.3 && Number.isFinite(seatReceipt.deckY);
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
+    // (the rigs' scales, before the frames below take them, for the ERA receipts the build fitted in the rigs' frames)
+    const rigScales = { hull: hullRig.scale.clone(), turret: turretRig.scale.clone() };
     rigidHullFrame(tank, id);
     rigidTurretFrame(tank);
     // Only the explicitly structural armor buckets calibrate shell collision.
@@ -686,7 +697,7 @@ function receiptFor(id) {
       moduleShapes: moduleShapeReceipts(
         tank.root, hullRig, turretRig, TANK_SPECS[id]?.armor?.modules,
       ),
-      eraPlates: eraPlateReceipts(tank.root),
+      eraPlates: eraPlateReceipts(tank.root, rigScales),
       ...(tank.root.userData.weaponGeometryParts?.length
         ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },
