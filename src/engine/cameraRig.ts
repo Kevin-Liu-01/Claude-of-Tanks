@@ -1546,6 +1546,8 @@ const SHOW_FRAME_TAU_S = 0.22;
 const SHOW_FRAME_EPS = 1e-4;           // NDC: a stage rect moved by less than this is the same rect
 const SHOW_BLEND_EPS_M = 1e-3;         // m: a blended pose this close to its solve has arrived
 const SHOW_REMEASURE_S = 3;            // a new hero's late parts (its stowage, its decor) land in its first seconds
+const SHOW_LATE_CHECK_S = 1;           // after them, a check a second: under load a part can land after the first window,
+const SHOW_LATE_UNTIL_S = 20;          // which framed the hero too close; a change found restarts the dense window
 const SHOW_POINTS_MAX = 4096;          // silhouette points (8 per drawn part); past it the hero frames its whole box
 const SHOW_FOV_SHORT_MAX_DEG = 58;     // a stage too short for the hero at the bay's reach opens the lens up to this
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1948,11 +1950,17 @@ export function createShowroomOrbit(
   // again through its first seconds, while its late parts land; never every refresh.
   let pointsRoot: THREE.Object3D | null = null;
   let pointsAgeS = Infinity;
+  let pointsCheckS = 0;
   let pointsCount = 0;
   const pointsMin = new THREE.Vector3(), pointsMax = new THREE.Vector3();
+  const lateMin = new THREE.Vector3(), lateMax = new THREE.Vector3();
 
   function measureSubjectFrame(root: THREE.Object3D): boolean {
-    if (root !== pointsRoot || pointsAgeS < SHOW_REMEASURE_S) {
+    const late = root === pointsRoot && pointsAgeS >= SHOW_REMEASURE_S && pointsAgeS < SHOW_LATE_UNTIL_S
+      && pointsAgeS - pointsCheckS >= SHOW_LATE_CHECK_S;
+    if (root !== pointsRoot || pointsAgeS < SHOW_REMEASURE_S || late) {
+      const lateCount = pointsCount;
+      if (late) { pointsCheckS = pointsAgeS; lateMin.copy(pointsMin); lateMax.copy(pointsMax); }
       let count = measureLocalPoints(root, true);
       if (count === 0) count = measureLocalPoints(root, false);
       if (count < 0) {
@@ -1974,7 +1982,8 @@ export function createShowroomOrbit(
         pointsMin.min(_sbV);
         pointsMax.max(_sbV);
       }
-      if (root !== pointsRoot) { pointsRoot = root; pointsAgeS = 0; }
+      if (root !== pointsRoot) { pointsRoot = root; pointsAgeS = 0; pointsCheckS = 0; }
+      else if (late && (count !== lateCount || !pointsMin.equals(lateMin) || !pointsMax.equals(lateMax))) { pointsAgeS = 0; pointsCheckS = 0; }
     } else {
       root.updateMatrixWorld(true);
     }

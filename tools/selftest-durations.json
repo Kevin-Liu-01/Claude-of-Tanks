@@ -98,6 +98,7 @@
     "src/engine/battleWeatherPolicy.selftest.mjs": 1000,
     "src/engine/bootLifecycle.selftest.mjs": 1000,
     "src/engine/cameraRig.selftest.mjs": 1000,
+    "src/engine/showroomLateParts.selftest.mjs": 1000,
     "src/engine/capabilityGate.selftest.mjs": 1000,
     "src/engine/capabilityGateCache.selftest.mjs": 1000,
     "src/engine/cascadePoseHold.selftest.mjs": 1000,
