@@ -2,7 +2,7 @@
 // .sectors), over the recording DOM: a pip a tank on its side, the player's ringed, a destroyed tank's struck, a departed
 // tank's gone, a team too large for the strip left to the rosters; a chip a capture zone, drawn by the shared glyph set
 // from the shared markers (a contested zone's ring dashed in the contested ink), repainted only when its zone moves.
-import { created } from './hudDomHarness.test-support.mjs';
+import { created, resizeObserved } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createTeamPips } from './hudTeamPips.ts';
@@ -47,6 +47,10 @@ const markers = objectiveMarkers({ id: 'zone_control', perspectiveTeam: 'alpha',
 strip.updateSectors(markers);
 const chips = () => created.filter((node) => node.tagName === 'CANVAS' && node.parentNode?.classes.has('cot-pips-sectors'));
 assert.equal(chips().length, 3, 'a chip for every capture zone');
+// (UI-LOCKDOWN A) each chip is a uiCanvas: it draws once its box is laid out (the wide plate's 38 x 42)
+for (const chip of chips()) assert.equal(chip.getContext('2d').ops.length, 0, 'no chip draws before its box is measured');
+for (const chip of chips()) resizeObserved(chip, 38, 42);
+assert.ok(chips().every((chip) => chip.dataset.uiCanvas === ''), 'every chip is a uiCanvas');
 assert.equal(strip.root.classes.has('show'), true, 'the chips show the strip on their own');
 const contested = chips()[1].getContext('2d').ops;
 assert.ok(contested.some((op) => op.op === 'stroke' && op.dash.length && op.style === sideColor('contested')),

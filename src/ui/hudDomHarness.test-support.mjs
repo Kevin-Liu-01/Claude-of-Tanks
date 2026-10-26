@@ -167,7 +167,25 @@ const documentStub = Object.assign(new EventTarget(), {
   getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
   exitPointerLock() {}, hasFocus: () => true, elementFromPoint: () => null,
 });
-const mediaQuery = (query) => Object.assign(new EventTarget(), { matches: false, media: query, addListener() {}, removeListener() {} });
+const mediaQueries = [];
+const mediaQuery = (query) => {
+  const list = Object.assign(new EventTarget(), { matches: false, media: query, addListener() {}, removeListener() {} });
+  mediaQueries.push(list);
+  return list;
+};
+// (UI-LOCKDOWN A) observers report only when a receipt says so: resizeObserved(target, w, h) delivers a content box to
+// every observer of `target` (uiCanvas sizes a canvas's store from it), as a browser would after layout
+const observing = new Map();
+class StubResizeObserver {
+  constructor(callback) { this.callback = callback; }
+  observe(target) { if (!observing.has(target)) observing.set(target, new Set()); observing.get(target).add(this); }
+  unobserve(target) { observing.get(target)?.delete(this); }
+  disconnect() { for (const set of observing.values()) set.delete(this); }
+}
+function resizeObserved(target, width, height) {
+  const entry = { target, contentRect: { width, height }, contentBoxSize: [{ inlineSize: width, blockSize: height }] };
+  for (const observer of [...(observing.get(target) ?? [])]) observer.callback([entry], observer);
+}
 const windowStub = Object.assign(new EventTarget(), {
   innerWidth: WIDTH, innerHeight: HEIGHT, devicePixelRatio: 1, document: documentStub,
   location: { search: '', href: 'http://localhost/', hostname: 'localhost', pathname: '/', hash: '', origin: 'http://localhost' },
@@ -183,7 +201,7 @@ for (const [key, value] of Object.entries({
   localStorage: { getItem: (k) => stored.get(k) ?? null, setItem: (k, v) => stored.set(k, String(v)), removeItem: (k) => stored.delete(k) },
   sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
   Element: StubElement, HTMLElement: StubElement, HTMLCanvasElement: StubElement, HTMLImageElement: class {},
-  ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
+  ResizeObserver: StubResizeObserver,
   MutationObserver: class { observe() {} disconnect() {} takeRecords() { return []; } },
   IntersectionObserver: class { observe() {} unobserve() {} disconnect() {} },
   Image: class { addEventListener() {} decode() { return Promise.resolve(); } },
@@ -191,4 +209,4 @@ for (const [key, value] of Object.entries({
   innerWidth: WIDTH, innerHeight: HEIGHT, devicePixelRatio: 1, CSS: { supports: () => true, escape: (s) => s },
 })) Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
 
-export { created, recordingContext, StubElement, windowStub, documentStub, WIDTH, HEIGHT };
+export { created, recordingContext, StubElement, windowStub, documentStub, mediaQueries, resizeObserved, WIDTH, HEIGHT };

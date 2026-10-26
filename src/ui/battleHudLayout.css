@@ -102,9 +102,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    The count takes the top-right corner, the key the top-left (the consumables' keys match it), the label centres on the
    floor, and the shell stands 3 px over the label's ink, small enough that its widest top (the HE drum) keeps 3 px from both corners. A
    three-digit count shrinks its shell and steps it left; an empty slot's strike spans its icon. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{top:auto;bottom:14px;transform:translateX(-50%) scale(.6);transform-origin:50% 100%}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{top:auto;bottom:14px;transform:translateX(-50%);--shell-k:.6}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell .ty{left:0;right:0;text-align:center}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide canvas{transform:translateX(calc(-50% - 3px)) scale(.54)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide canvas{transform:translateX(calc(-50% - 3px));--shell-k:.54}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell .cnt{top:2px;right:3px;bottom:auto;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.unlimited .cnt{font-size:16px;line-height:11px}
@@ -112,7 +112,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.empty::before{left:12px;right:12px}
 /* the 44 px wide slots (under 768 px) draw it smaller again and 1 px left, so the HE drum keeps 3 px from a two-digit
    count (r7 capture: 2.7 px at 640 px) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 1px)) scale(.56)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 1px));--shell-k:.56}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:80px}
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
@@ -420,7 +420,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px)) scale(.6)}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px));--shell-k:.6}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
@@ -430,7 +430,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:215px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%) scale(.6)}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%);--shell-k:.6}
 }
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible

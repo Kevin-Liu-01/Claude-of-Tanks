@@ -2292,6 +2292,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
+    // that fails on any on-screen canvas built outside it
+    'src/ui/uiCanvas.selftest.mjs',
+    'src/ui/uiCanvasCensus.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
     'src/ui/hudNotices.selftest.mjs',

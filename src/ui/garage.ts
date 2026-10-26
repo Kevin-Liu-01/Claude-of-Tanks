@@ -51,6 +51,7 @@ import {
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
+import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
@@ -502,22 +503,19 @@ function scheduleCamoSwatchLoad(immediate = false) {
   return camoSwatchAccess.preload({ immediate });
 }
 
-function paintCamoSwatchPlaceholder(
-  canvas: HTMLCanvasElement,
-  spec: GarageTankSpec,
-  pid: string,
-): void {
-  const W = 128;
-  const H = 44;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+/** Each swatch's placeholder seed, until its exact tile arrives (the surface's image). */
+const camoSwatchSeed = new WeakMap<HTMLCanvasElement, number>();
+
+function camoSwatchPlaceholderSeed(spec: GarageTankSpec, pid: string): number {
   let hash = 2166136261;
   for (const ch of `${spec?.id ? tankSeedId(spec.id) : 'tank'}:${pid || 'factory'}`) { // schema-1 spelling (SSOT 2.19)
     hash ^= ch.charCodeAt(0);
     hash = Math.imul(hash, 16777619);
   }
+  return hash;
+}
+
+function paintCamoSwatchPlaceholder(ctx: CanvasRenderingContext2D, W: number, H: number, hash: number): void {
   const hue = ((hash >>> 0) % 46) + 72;
   ctx.fillStyle = `hsl(${hue} 22% 25%)`;
   ctx.fillRect(0, 0, W, H);
@@ -532,6 +530,18 @@ function paintCamoSwatchPlaceholder(
   light.addColorStop(1, 'rgba(0,0,0,.18)');
   ctx.fillStyle = light;
   ctx.fillRect(0, 0, W, H);
+}
+
+/** (UI-LOCKDOWN A) a picker, band or custom-preview swatch: its exact tile (or the placeholder before it) covers the
+ *  canvas's own box at min(DPR, 2), as the CSS's object-fit did over the fixed 128 x 44 store it replaces. */
+const paintCamoSwatchSurface: UiCanvasDraw = (ctx, width, height, surface) => {
+  ctx.clearRect(0, 0, width, height);
+  if (surface.image) drawImageFit(ctx, surface.image, width, height, 'cover');
+  else paintCamoSwatchPlaceholder(ctx, width, height, camoSwatchSeed.get(surface.canvas) ?? 0);
+};
+
+function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
+  return uiCanvas(canvas, { draw: paintCamoSwatchSurface });
 }
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
@@ -549,7 +559,8 @@ function queueExactCamoSwatch(
 ): void {
   const version = (camoSwatchPaintVersion.get(canvas) || 0) + 1;
   camoSwatchPaintVersion.set(canvas, version);
-  paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
+  camoSwatchSeed.set(canvas, camoSwatchPlaceholderSeed(spec, auto ? 'auto' : pid));
+  camoSwatchSurface(canvas).setImage(null);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
     if (!swatchGateInstalled) {
@@ -2040,8 +2051,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
-        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
+        ? `<div class="sw auto"></div><div class="cl"></div>`
+        : `<div class="sw"></div><div class="cl"></div>`;
+      createUiCanvas(card.querySelector('.sw'), '', { draw: paintCamoSwatchSurface });
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.dataset.tip = (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -2546,14 +2558,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.innerHTML = picks.map((patternId, index) => {
       const label = escapeHtmlAttribute(camoPatternLabel(patternId));
       return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
+        `aria-pressed="${index === 0}" aria-label="${label}">` +
         (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
     }).join('') +
       `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
       `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
     paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
-      const canvas = button.querySelector('canvas');
-      if (canvas) paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
+      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
+      button.prepend(canvas);
+      paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
     });
   }
   paintEl.addEventListener('click', (event) => {

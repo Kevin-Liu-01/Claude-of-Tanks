@@ -30,8 +30,8 @@ import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hud
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
 import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
 import { vehicleAction } from '../game/vehicleActions.ts';
-import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { DESKTOP_OUTPUT_PIXEL_BUDGET } from '../engine/resolutionPolicy.ts';
+import { createUiCanvas, scratchCanvas, type UiCanvas } from './uiCanvas.ts';
 import { getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -595,7 +595,7 @@ interface SceneRenderable extends THREE.Object3D {
 }
 
 interface ShellSlotButton extends HTMLButtonElement {
-  _icon: HTMLCanvasElement;
+  _icon: UiCanvas;
 }
 
 interface AlertOptions { tone?: string; icon?: string }
@@ -1363,13 +1363,10 @@ const CONSUMABLES = [
 // consumable pictograms). Only the nose/body profile differs (the WoT read):
 //   AP/APCR  sharp ogive           HEAT  tapered cone + standoff probe
 //   APFSDS   finned dart in sabot  HE    fat blunt round-nose
-function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
-  const S = 46;
-  const dpr = uiPixelRatio(S, S, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
-  canvas.width = Math.round(S * dpr); canvas.height = Math.round(S * dpr);
-  canvas.style.width = `${S}px`; canvas.style.height = `${S}px`;
-  const c = requireCanvasContext(canvas);
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+/** The shell artwork's design square: each tray's CSS sizes the canvas (46 px × --shell-k) and uiCanvas maps it there. */
+const SHELL_ICON_UNITS = 46;
+function drawShellIcon(c: CanvasRenderingContext2D, type: string): void {
+  const S = SHELL_ICON_UNITS;
   c.clearRect(0, 0, S, S);
   const cx = S / 2;
   const TOP = 4, BOT = 42; // shared silhouette extents — uniform set
@@ -1973,7 +1970,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    every tray sets them as the stacked and touch trays already did: the key top-left, the count top-right, the type label
    along the floor, and the shell between them, scaled to stand 3 px clear of the label's ink and of a three-digit count
    (the HE drum's shoulder is the widest top). */
-.cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.78);}
+.cot-shell canvas{position:absolute;left:50%;top:50%;width:calc(46px * var(--shell-k,.78));height:calc(46px * var(--shell-k,.78));transform:translate(-50%,-50%);}
 /* The reload shade (.cool, z-index 3) dims the slot's picture, never its marks: the key, the count and the type label
    sit above it, as the consumables' do (critic r7: on the stacked and touch trays the count takes the top-right corner,
    under the shade's top-anchored edge, and a reloading 24 read about 2:1 on its panel while the ∞ beside it stayed
@@ -2242,10 +2239,17 @@ export function initHud(bus: EventBus): HudRuntime {
   const touchAimWarningGlyph = el('span', 'g', touchAimWarning);
   touchAimWarningGlyph.setAttribute('aria-hidden', 'true');
   const touchAimWarningText = el('span', 'tx', touchAimWarning);
-  const retCanvas = el('canvas', 'cot-ret', root);
-  const ctx = requireCanvasContext(retCanvas);
-  const markCanvas = el('canvas', 'cot-hitmark', root);
-  const markCtx = requireCanvasContext(markCanvas);
+  // (UI-LOCKDOWN A) the sight and the gunship's mark size through uiCanvas: each store is its box × the capped ratio,
+  // released while the HUD or the mark is hidden; a box change repaints the sight (the reuse signature drops)
+  const retSurface = createUiCanvas(root, 'cot-ret', {
+    maxPixels: DESKTOP_OUTPUT_PIXEL_BUDGET,
+    initialBox: () => [root.clientWidth || window.innerWidth, root.clientHeight || window.innerHeight],
+    onResize: () => { reticlePaint.valid = false; scopeGrad = null; scopeGradZoom = -1; },
+  });
+  const ctx = retSurface.context;
+  const markSurface = createUiCanvas(root, 'cot-hitmark', { initialBox: () => [HIT_MARK_BOX_PX, HIT_MARK_BOX_PX] });
+  const markCanvas = markSurface.canvas;
+  const markCtx = markSurface.context;
   let markShown = false, markX = NaN, markY = NaN;
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
@@ -2961,11 +2965,16 @@ export function initHud(bus: EventBus): HudRuntime {
   for (let i = 0; i < 3; i++) {
     const s = el('button', 'cot-shell', shellBox) as ShellSlotButton;
     s.type = 'button';
-    s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
+    s.innerHTML = `<div class="key">${i + 1}</div><div class="cnt"></div><div class="ty"></div>` +
       `<div class="clr"></div><span class="tchev" aria-hidden="true">${uiIconSVG('chevronLeft', 14)}</span>` +
       `<div class="tip"><div class="tnm"></div>${t('hud.shell.pen')} <b class="p"></b> &nbsp;&middot;&nbsp; ${t('hud.shell.dmg')} <b class="d"></b></div>` +
       `<div class="cool"></div>`;
-    s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
+    let iconType = '';
+    s._icon = createUiCanvas(null, '', {
+      units: [SHELL_ICON_UNITS, SHELL_ICON_UNITS],
+      draw: (c) => { if (iconType) drawShellIcon(c, iconType); },
+    });
+    requireElement<HTMLElement>(s, '.key').after(s._icon.canvas);
     slotPresentations.push(createRetainedAmmunitionSlot({
       index: i,
       elements: {
@@ -2979,7 +2988,7 @@ export function initHud(bus: EventBus): HudRuntime {
         cooldown: requireElement<HTMLElement>(s, '.cool'),
       },
       locale: getLocale,
-      drawIcon: (type) => drawShellIcon(s._icon, type),
+      drawIcon: (type) => { iconType = type; s._icon.redraw(); },
       typeLabel: shellTypeCode,
       count: shellCount,
       selectionLabel: ammunitionSelectionLabel,
@@ -3079,7 +3088,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // --- minimap ---
   const mmWrap = el('div', 'cot-minimap', root);
-  const mmCanvas = el('canvas', '', mmWrap);
+  // (UI-LOCKDOWN A) the map draws in its 220-unit square, stretched by uiCanvas over the plate's box at the capped ratio:
+  // every size step (--mm-k) and layout gets a store of its own size, released while the plate is hidden
+  const MM = 220;
+  const mmSurface = createUiCanvas(mmWrap, '', { units: [MM, MM], onResize: () => { mmDirty = true; } });
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
   mmHead.innerHTML = `<span class="nm"></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
@@ -3090,13 +3102,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const mmCols = el('div', 'cot-mm-gx', mmWrap), mmRows = el('div', 'cot-mm-gy', mmWrap);
   mmCols.setAttribute('aria-hidden', 'true'); mmRows.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < 10; i++) { el('span', '', mmCols).textContent = String((i + 1) % 10); el('span', '', mmRows).textContent = GRID_LETTERS[i]; }
-  const MM = 220;
-  // Follow the phone's native DPR (bounded by the shared output policy) so a
-  // DPR-3 browser never stretches a DPR-2 tactical map.
-  const mmDpr = uiPixelRatio(MM, MM, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
-  mmCanvas.width = Math.round(MM * mmDpr); mmCanvas.height = Math.round(MM * mmDpr);
-  const mmCtx = requireCanvasContext(mmCanvas);
-  mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
+  /** The baked underlay's texels per map unit: a texture, independent of the screen (the plate draws it scaled). */
+  const MM_BAKE_RATIO = 2;
+  const mmCtx = mmSurface.context;
   // Canvas for the procedural/bake path, HTMLImageElement for production.
   // Keeping the decoded baked image as the draw source avoids iPad Safari's
   // memory-pressure canvas purge, which left live blips over a blank panel.
@@ -3123,7 +3131,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const minimapAssetCache = new Map<string, Promise<HTMLImageElement>>();
   const minimapForestX = new Float32Array(12);
   const minimapForestY = new Float32Array(12);
-  let w = 1, h = 1, dpr = 1;
+  let w = 1, h = 1;
   let scopeGrad: CanvasGradient | null = null;
   let scopeGradZoom = -1;
   let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
@@ -3262,23 +3270,12 @@ export function initHud(bus: EventBus): HudRuntime {
     mmDirty = true;
   }
 
+  // The sight's layout box (projection and placement, CSS px). Its backing store is uiCanvas's: the box × min(DPR, 2)
+  // within the renderer's 4K budget (a DPR-3 phone keeps the 2x raster: the sight repaints every frame), sized in
+  // retSurface.begin() from the observer's box, so a resize, a DPR flip or a hidden HUD never leaves an old store.
   function resize(): void {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
-    // The sight is a cheap 2D overlay, so keep it truly retina-sharp even
-    // when the 3D scene's dynamic resolution governor scales down under load.
-    // Match the renderer's native-phone output policy. The pixel budget keeps
-    // large tablets bounded while DPR-3 reticles remain 1:1 with the display.
-    // The full-screen sight is repainted every frame. Keep its established 2x
-    // raster on DPR-3 phones; small/static HUD canvases above remain native.
-    // Lines are positioned in CSS space and composite over the native 3D
-    // canvas without forcing a 3.3 MP 2D clear/upload on every mobile frame.
-    dpr = uiPixelRatio(w, h, window.devicePixelRatio || 1, false);
-    retCanvas.width = Math.round(w * dpr);
-    retCanvas.height = Math.round(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    markCanvas.width = markCanvas.height = Math.round(HIT_MARK_BOX_PX * dpr);
-    markCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scopeGrad = null;
     scopeGradZoom = -1;
   }
@@ -5996,8 +5993,7 @@ export function initHud(bus: EventBus): HudRuntime {
         for (const o of hidden) o.visible = true;
         rt.dispose();
       }
-      const c = document.createElement('canvas');
-      c.width = N; c.height = N;
+      const c = scratchCanvas(N, N);
       const x2 = requireCanvasContext(c);
       const img = x2.createImageData(N, N);
       // GL pixel rows come bottom-up, so undo only the vertical readback flip.
@@ -6035,8 +6031,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // Mean luminance of a capture (32x32 downsample): snow, salt and sand maps
   // keep a gentler curve so their highlights survive the contrast lift.
   function captureLuminance(capture: HTMLCanvasElement): number {
-    const probe = document.createElement('canvas');
-    probe.width = 32; probe.height = 32;
+    const probe = scratchCanvas(32, 32);
     const pctx = requireCanvasContext(probe);
     pctx.drawImage(capture, 0, 0, 32, 32);
     const data = pctx.getImageData(0, 0, 32, 32).data;
@@ -6075,8 +6070,7 @@ export function initHud(bus: EventBus): HudRuntime {
     size: number,
   ): void {
     const cells = Math.max(24, Math.round(size / 6));
-    const relief = document.createElement('canvas');
-    relief.width = cells; relief.height = cells;
+    const relief = scratchCanvas(cells, cells);
     const rctx = requireCanvasContext(relief);
     const image = rctx.createImageData(cells, cells);
     const data = image.data;
@@ -6358,8 +6352,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   /** A blank layer at the target canvas's device resolution (identity transform). */
   function minimapLayer(context: CanvasRenderingContext2D): [HTMLCanvasElement, CanvasRenderingContext2D] {
-    const canvas = document.createElement('canvas');
-    canvas.width = context.canvas.width; canvas.height = context.canvas.height;
+    const canvas = scratchCanvas(context.canvas.width, context.canvas.height);
     return [canvas, requireCanvasContext(canvas)];
   }
 
@@ -6409,8 +6402,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function visibleWaterMask(context: CanvasRenderingContext2D, raster: HudVisibleWater): HTMLCanvasElement | null {
     const cells = raster.cells;
     if (!(cells > 0) || raster.water.length !== cells * cells) return null;
-    const texels = document.createElement('canvas');
-    texels.width = cells; texels.height = cells;
+    const texels = scratchCanvas(cells, cells);
     const tctx = requireCanvasContext(texels);
     const image = tctx.createImageData(cells, cells);
     const data = image.data;
@@ -6490,7 +6482,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const pal = { ...MM_PALETTE_DEFAULT, ...(palette || {}) };
     heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
-    const N = MM * mmDpr;
+    const N = MM * MM_BAKE_RATIO;
     // r6: preferred underlay is the one-time ortho capture of the REAL scene
     // (terrain, forests, roads, buildings as actually rendered); the sampled
     // procedural cartography below survives as the no-renderer fallback.
@@ -6501,19 +6493,17 @@ export function initHud(bus: EventBus): HudRuntime {
     // overlays below still draw on top — the tree billboards are edge-on
     // (invisible) in a straight-down render, so the forest polygons carry
     // canopy just like WoT's stylized aerial tiles.
-    const bg = document.createElement('canvas');
-    bg.width = N; bg.height = N;
+    const bg = scratchCanvas(N, N);
     const bctx = requireCanvasContext(bg);
     if (snapBg) paintCapturedMinimapUnderlay(bctx, snapBg, N);
     else paintProceduralMinimapTerrain(bctx, heightField, pal, N);
     paintMinimapRelief(bctx, heightField, N);
 
     // compose feature layers at device resolution (vector coords in CSS px)
-    const out = document.createElement('canvas');
-    out.width = MM * mmDpr; out.height = MM * mmDpr;
+    const out = scratchCanvas(N, N);
     const octx = requireCanvasContext(out);
-    octx.drawImage(bg, 0, 0); // 1:1 device pixels — no resampling blur
-    octx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
+    octx.drawImage(bg, 0, 0); // 1:1 texels — no resampling blur
+    octx.setTransform(MM_BAKE_RATIO, 0, 0, MM_BAKE_RATIO, 0, 0);
 
     const f = features || {};
     paintMinimapWaterLayers(octx, f, pal);
@@ -6629,7 +6619,9 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.5, 0.5, MM - 1, MM - 1);
   }
 
-  function drawMinimapBackground(): void {
+  /** The plate's underlay and chrome; false (nothing drawn) while the plate is hidden. */
+  function drawMinimapBackground(): boolean {
+    if (!mmSurface.begin()) return false;
     mmCtx.fillStyle = '#0b100e';
     mmCtx.fillRect(0, 0, MM, MM);
     if (mmBg) {
@@ -6639,6 +6631,7 @@ export function initHud(bus: EventBus): HudRuntime {
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
     }
     drawMinimapChrome(mmCtx);
+    return true;
   }
 
   // Team spawn flags (mode objective markers for annihilation): captured from
@@ -7030,7 +7023,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function drawMinimap(frame: HudFrame): void {
-    drawMinimapBackground();
+    if (!drawMinimapBackground()) return;
     const tanks = frame.tanks || [];
     const player = frame.player;
     // player map position first — base rings fade while the arrow sits on them
@@ -7788,6 +7781,12 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function renderCanvas(dt: number, force = false): void {
     if (!force && reticleCanReuse(aimView)) return;
+    // (UI-LOCKDOWN A) no store while the HUD is hidden: nothing to paint (its next shown frame repaints in full)
+    if (!retSurface.begin()) {
+      reticlePaint.valid = false;
+      hideAerialHitMark();
+      return;
+    }
     ctx.clearRect(0, 0, w, h);
     // Clearing for a cinematic/garage invalidates the pixels represented by
     // the last battle signature. Without this reset, returning to an
@@ -7816,12 +7815,14 @@ export function initHud(bus: EventBus): HudRuntime {
   // compositor makes of it, can leave that box; the ground sight keeps the full-screen canvas it always fills.
   function paintAerialHitMark(timeS: number): void {
     if (!hitMark) { hideAerialHitMark(); return; }
-    markCtx.clearRect(0, 0, HIT_MARK_BOX_PX, HIT_MARK_BOX_PX);
-    drawHitMark(markCtx, HIT_MARK_BOX_PX / 2, HIT_MARK_BOX_PX / 2, timeS);
-    if (!hitMark) { hideAerialHitMark(); return; }
     const x = Math.round(aimView.cx - HIT_MARK_BOX_PX / 2), y = Math.round(aimView.cy - HIT_MARK_BOX_PX / 2);
     if (x !== markX || y !== markY) { markX = x; markY = y; markCanvas.style.transform = `translate(${x}px,${y}px)`; }
     if (!markShown) { markShown = true; markCanvas.style.display = 'block'; }
+    // (UI-LOCKDOWN A) a hidden mark holds no store: the frame it shows is measured, and the next one draws
+    if (!markSurface.begin()) return;
+    markCtx.clearRect(0, 0, HIT_MARK_BOX_PX, HIT_MARK_BOX_PX);
+    drawHitMark(markCtx, HIT_MARK_BOX_PX / 2, HIT_MARK_BOX_PX / 2, timeS);
+    if (!hitMark) { hideAerialHitMark(); return; }
   }
   function hideAerialHitMark(): void {
     if (!markShown) return;
@@ -8256,9 +8257,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (requireTextured) requireSceneMinimap(mmCaptureReceipt, mmBuildGeneration);
       if (!mmBg) return null;
       if (mmBg instanceof HTMLCanvasElement) return mmBg.toDataURL(type, quality);
-      const out = document.createElement('canvas');
-      out.width = mmBg.naturalWidth || Math.round(MM * mmDpr);
-      out.height = mmBg.naturalHeight || Math.round(MM * mmDpr);
+      const out = scratchCanvas(mmBg.naturalWidth || MM * MM_BAKE_RATIO, mmBg.naturalHeight || MM * MM_BAKE_RATIO);
       requireCanvasContext(out).drawImage(mmBg, 0, 0, out.width, out.height);
       return out.toDataURL(type, quality);
     },
@@ -8332,8 +8331,8 @@ export function initHud(bus: EventBus): HudRuntime {
         backgroundReady: !!mmBg && (mmBg instanceof HTMLImageElement
           ? mmBg.complete && mmBg.naturalWidth > 0
           : mmBg.width > 0 && mmBg.height > 0),
-        backingWidth: mmCanvas.width,
-        backingHeight: mmCanvas.height,
+        backingWidth: mmSurface.canvas.width,
+        backingHeight: mmSurface.canvas.height,
       }),
       // MOBILE-UX r1 probe seam (introspection only): everything the reticle
       // clamp math consumed and produced on the LAST drawn frame, so a

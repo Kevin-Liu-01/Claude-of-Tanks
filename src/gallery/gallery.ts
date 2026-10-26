@@ -1079,7 +1079,7 @@ function drawStageScale(record: GalleryRecord): void {
   void drawTrueScale($<HTMLCanvasElement>('#stageScale'), [
     ...(rival ? [{ id: rival.id, lengthM: rival.dimensions.overallLengthM, tone: '--ink-4', facing: 'right' as const }] : []),
     { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-2', facing: 'right' },
-  ], { layout: 'overlay', human: true, label: t('gallery.inset.aria', { name: record.displayName }) });
+  ], { layout: 'overlay', human: $<HTMLElement>('#stageHuman'), label: t('gallery.inset.aria', { name: record.displayName }) });
 }
 function setRival(id: string | null, pinned: boolean): void {
   rivalId = id && recordById.has(id) && id !== selectedId ? id : null;

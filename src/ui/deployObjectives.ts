@@ -7,6 +7,7 @@
 import { objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import { drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, sideColor, sideFill } from './objectiveGlyphs.ts';
 import { projectWorldToMinimap } from './minimapOrientation.ts';
+import { uiCanvas } from './uiCanvas.ts';
 
 interface BakedMap { readonly size: number; readonly modes: Readonly<Record<string, ObjectiveStateView>> }
 interface Baked { readonly maps: Readonly<Record<string, BakedMap>> }
@@ -28,21 +29,24 @@ function markersOf(state: ObjectiveStateView): ObjectiveMarker[] {
 
 const _point = [0, 0];
 
-/** Draw `mapId`'s opening objectives for `mode` on `canvas`, sized to its box; cleared when there are none. */
+/** What each objective canvas shows (its drawing redraws from it at every box and ratio). */
+const shown = new WeakMap<HTMLCanvasElement, { map: BakedMap | null; mode: string }>();
+
+/** Draw `mapId`'s opening objectives for `mode` on `canvas` (sized to its box by uiCanvas, redrawn when the box or the
+ *  ratio changes and when it shows again); cleared when there are none. */
 export async function drawDeployObjectives(canvas: HTMLCanvasElement, mapId: string, mode: string): Promise<void> {
   const data = await load();
-  const ctx = canvas.getContext('2d');
-  const box = canvas.clientWidth;
-  if (!ctx || !box) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const px = Math.round(box * dpr);
-  if (canvas.width !== px || canvas.height !== px) { canvas.width = px; canvas.height = px; }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, px, px);
-  const map = data?.maps[mapId];
-  const state = map?.modes[mode];
+  shown.set(canvas, { map: data?.maps[mapId] ?? null, mode });
+  uiCanvas(canvas, { draw: paintObjectives }).redraw();
+}
+
+function paintObjectives(ctx: CanvasRenderingContext2D, width: number, height: number, surface: { readonly canvas: HTMLCanvasElement }): void {
+  ctx.clearRect(0, 0, width, height);
+  const entry = shown.get(surface.canvas);
+  const map = entry?.map;
+  const state = entry && map ? map.modes[entry.mode] : undefined;
   if (!map || !state) return;
-  ctx.scale(dpr, dpr);
+  const box = Math.min(width, height);
   // the badges scale with the map, as the direction's (a hex a tenth of its side)
   const r = Math.max(7, box * 0.05);
   for (const marker of markersOf(state)) {
