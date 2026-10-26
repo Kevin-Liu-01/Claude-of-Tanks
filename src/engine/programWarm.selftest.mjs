@@ -478,6 +478,21 @@ function assertQueriesAfterGo(events) {
   assert.equal(timing.gpuBehind, 4);
 }
 
+{
+  // one gate per context: a drain after another finds the last mark signalled and asks at once (a gate per drain spent
+  // each drain's first poll placing a mark: one per wreck visual doubled a room's wreck warm, nav-perf's root-s)
+  const fixture = timedForwardFixture();
+  const gl = fixture.renderer.getContext();
+  fencedPolls(gl, fixture.events, 0);
+  const queries = () => fixture.events.filter(([kind]) => kind === 'query').length;
+  assert.equal([...fixture.owner.linkerBreathingSlices(2, {})].length, 2);
+  assert.equal(queries(), 1, 'the context\'s first drain marks the queue on its first poll');
+  const timing = {};
+  assert.equal([...fixture.owner.linkerBreathingSlices(2, timing)].length, 2);
+  assert.equal(queries(), 3, 'the next drain asks on both of its polls');
+  assert.equal(timing.gpuBehind, undefined);
+}
+
 function visibleRootFixture() {
   const f = firstUseFixture();
   f.mesh.name = 'terrain';

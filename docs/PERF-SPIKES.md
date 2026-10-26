@@ -301,6 +301,15 @@ compile). Each case fails against the previous source.
   linked behind the scene's programs submitted at the WELCOME. The panel stage now follows the strict compile, by which
   time they are linked.
 
+**root-s** (load 12-18): no battle long task makes a program; the panel stage is 35 ms (it ran 2.0-3.2 s); compile
+910/951 ms (root-r: 2829/4090). Two costs of the gate: the wreck warm doubled (2.2 -> 4.3 s), one uniform drain per
+wreck visual each spending its first poll placing a mark, so the gate is now one per context (a drain after another
+finds the last mark signalled). And guest B's leave still had one 1.4 s query in `linkerBreathingSlices`, after its own
+fence had signalled: the census's two pages share one GPU process, and B's query can wait behind A's simultaneous
+Garage restore, which no fence of B's context sees. The env validity probe's synchronous 1x1 read (88 ms at B's leave)
+stays synchronous: the sky's install decides on its answer, and a provisional answer would show the poisoned-PMREM
+iPhones black frames before the rescue; its per-call relink is nav-perf's (4cae8e9c43, the probe kept for the session).
+
 **The room's leave** (root-p, Garage return): one 661 ms task, all `getBufferSubData`, under `beginRgba8Readback`.
 The stack named the `tankThumbs` chunk only because `rgba8Readback.ts` is bundled there. Its one synchronous starter
 was the clouds' `updateSunMean`, a 32² readback every 30 frames in every battle and Garage with clouds. Chromium serves

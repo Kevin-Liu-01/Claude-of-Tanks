@@ -1,6 +1,6 @@
 import { Object3D } from 'three';
 import { nextFrame } from './frameScheduler.ts';
-import { createGpuCatchUpGate } from './gpuCatchUp.ts';
+import { createGpuCatchUpGate, type GpuCatchUpGate } from './gpuCatchUp.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   Camera,
@@ -208,6 +208,12 @@ interface ProgramWarmLifetime {
   readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
   readonly reflected: WeakMap<LinkedProgram, WebGLProgram>;
   parallelCompile?: ParallelShaderCompileExtension | null;
+  /**
+   * (battle-spikes-253) The context's link-poll gate (gpuCatchUp.ts), shared by every drain on it: a drain after
+   * another finds the last mark already signalled instead of spending its first poll placing one (one per wreck visual
+   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns.
+   */
+  catchUp?: GpuCatchUpGate;
 }
 
 export type ContextProgramRenderer = Pick<ForwardWarmRenderer, 'info' | 'getContext'>;
@@ -851,7 +857,7 @@ function* initializeMaterialProgramSteps(
   // (battle-spikes-253) each round's completion queries wait for the GPU to catch up to the previous round (gpuCatchUp.ts):
   // a query behind a deep queue blocked a Garage return 1.3 s. A held poll takes no round, and a GPU still behind is
   // not a stalled cohort; the wall-clock budget still ends the drain.
-  const gate = extension ? createGpuCatchUpGate(context.gl) : null;
+  const gate = extension ? (context.lifetime.catchUp ??= createGpuCatchUpGate(context.gl)) : null;
   try {
     for (;;) {
       if (gate && entries.some((entry) => !entry.initialized && !entry.failed) && !gate.caughtUp()) {
@@ -866,7 +872,7 @@ function* initializeMaterialProgramSteps(
       if (!pending) break;
     }
     return materialPreparationResult(context, entries);
-  } finally { entries.length = 0; gate?.dispose(); }
+  } finally { entries.length = 0; }
 }
 
 function acquirePreparationExtension(context: FirstUseWarmContext): void {
@@ -1321,7 +1327,6 @@ export function createForwardProgramWarmOwner({
   ): Generator<void, void, void> {
     signal?.throwIfAborted();
     const ownedEpoch = epoch;
-    let gate: ReturnType<typeof createGpuCatchUpGate> | null = null;
     let polling = !!timing;
     let pollAt = timing ? diagnosticNow(now) : NaN;
     const finishPoll = (): void => {
@@ -1353,7 +1358,7 @@ export function createForwardProgramWarmOwner({
       const programs = [...captureNewProgramCohort(renderer, new Set()).values()];
       const context = { renderer, gl, valid, now, timing, existingPrograms, lifetime };
       // (battle-spikes-253) a slice asks only once the GPU has caught up to the previous slice (gpuCatchUp.ts)
-      gate = createGpuCatchUpGate(gl);
+      const gate = lifetime.catchUp ??= createGpuCatchUpGate(gl);
       for (let slice = 0; slice < maxSlices; slice += 1) {
         if (!valid()) return;
         if (gate.caughtUp()) {
@@ -1372,7 +1377,7 @@ export function createForwardProgramWarmOwner({
     } catch {
       signal?.throwIfAborted();
       // Best effort: the following real render still resolves outstanding links.
-    } finally { finishPoll(); gate?.dispose(); }
+    } finally { finishPoll(); }
   };
 
   return {
