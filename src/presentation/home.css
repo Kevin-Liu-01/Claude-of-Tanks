@@ -205,7 +205,10 @@ img{display:block;max-width:100%}
 .press__posts .v5-social-card__body blockquote,.press__posts .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
 .press__posts .v5-social-card--threejs .v5-social-card__body blockquote{font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .v5-social-card--urban-crossfire{--social-card-image:url('/media/site50-r14/stills/s19-roof-tiles-close.webp');--social-card-position:50% 48%}
-.v5-social-card--threejs .v5-social-card__body{justify-content:flex-end}
+/* the band's lead card carries its still: the copy stands at the top and the counts at the foot, each on a scrim, with the
+   picture between them (home r30: the largest card was 460 px of near-black plate) */
+.press__posts .v5-social-card--threejs::after{opacity:.62}
+.press__posts .v5-social-card--threejs>a{background:linear-gradient(180deg,var(--scrim),transparent 42%,transparent 62%,var(--scrim))}
 :is(.press__posts,.press__reddit) .v5-social-metrics{gap:var(--s4);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .press__posts .v5-social-card__body{justify-content:flex-start}
 .v5-social-card--reddit{min-height:240px}
@@ -394,6 +397,10 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__reelbar{flex:1 1 100%;justify-content:flex-end;height:auto;min-height:44px}
 }
 @media (height < 520px) and (width >= 768px){
+  /* the headline takes its height-led size under the 44 px floor and the column's width, so it holds one line and the
+     hero's stat row stays on the screen (home r30: two lines ran the en hero 22 px past 844x390) */
+  :root{--home-h1:clamp(var(--fs-32),min(5.4vw,9.5svh),var(--fs-88))}
+  .hero__lead{max-width:none}
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
 }
@@ -405,5 +412,6 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .film-scrub{height:44px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
+@media(hover:hover) and (pointer:fine){.press__posts .v5-social-card--threejs:hover::after{opacity:.7}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after{transition:none}.v5-social-card::after{transform:none}html{scroll-behavior:auto}.feat>img,.feat>video,.feat__link .cot-i{transition:none}.feat:hover>img,.feat:hover>video{transform:none}}
 }
