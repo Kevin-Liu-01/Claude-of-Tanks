@@ -436,9 +436,20 @@ async function pageDrawAttribution(frames) {
   const props = R.properties;
   const orig = R.renderBufferDirect;
   const at = { x: 0, y: 0, z: 0 };
+  // (battle-spikes-253) shadow draws by cascade (the shadow camera's light), the static cache's phase (a rebuild's static
+  // layer, the dynamic layer over a copy, or an ordinary render) and owner (world, tank, other)
+  const cascadeOf = new Map((D.lighting?.csm?.lights ?? []).map((light, index) => [light.shadow.camera, index]));
+  const cascades = {};
   R.renderBufferDirect = function (cam, sc, geometry, material, object) {
     const pass = cam?.isOrthographicCamera ? 'shadow' : 'main';
     passes[pass] = (passes[pass] ?? 0) + 1;
+    if (pass === 'shadow') {
+      let top = object;
+      while (top.parent && top.parent !== scene) top = top.parent;
+      const owner = ownerOf(object) ? 'tank' : /^world/.test(top.name || '') ? 'world' : 'other';
+      const key = `c${cascadeOf.get(cam) ?? '?'}|${D.lighting?.staticCacheFrame?.drawPhase || 'full'}|${owner}`;
+      cascades[key] = (cascades[key] ?? 0) + 1;
+    }
     materials.add(material);
     const program = props?.get?.(material)?.currentProgram;
     if (program) programs.add(program);
@@ -495,7 +506,8 @@ async function pageDrawAttribution(frames) {
     const band = k.split('|')[0];
     return [k, Math.round(v / frames / Math.max(1, tanksIn[band] ?? 1) * 100) / 100];
   }).sort((a, b) => b[1] - a[1]).slice(0, 60);
-  return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
+  return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])),
+    shadowCascades: Object.fromEntries(Object.entries(cascades).sort().map(([k, v]) => [k, per(v)])), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
     fxKinds: Object.entries(fxKinds).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30),
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
@@ -657,7 +669,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
       const da = record.drawAttribution;
       if (da && !da.error) log(`${key}: tanks by band ${JSON.stringify(da.tanksIn)}, a tank's draws ${JSON.stringify(da.perTank)}; passes `
         + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms}); `
-        + `shadow cache ${JSON.stringify(da.shadowCache)}`);
+        + `shadow cache ${JSON.stringify(da.shadowCache)}; shadow draws by cascade|phase|owner ${JSON.stringify(da.shadowCascades)}`);
       const dc = record.domCensus;
       if (dc && !dc.error) log(`${key}: DOM reads ${dc.callsPerFrame} a frame, ${dc.perFrameMs.median} ms (p90 ${dc.perFrameMs.p90}, max ${dc.perFrameMs.max}); `
         + `${dc.sites.slice(0, 6).map(([site, calls, ms]) => `${site} ${calls}x ${ms} ms`).join('; ')}`);
