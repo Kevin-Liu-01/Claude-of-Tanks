@@ -70,7 +70,10 @@ function observe(page, name, log) {
     try {
       const session = worker.client;
       session.on('Log.entryAdded', ({ entry }) => { if (CSP_TEXT.test(entry.text)) log.csp.push(`${name} worker ${worker.url().split('/').pop()}: ${entry.text.slice(0, 200)}`); });
+      // the worker's own requests (a cached module included): the match host's kernels fetch
+      session.on('Network.requestWillBeSent', ({ request }) => { if (/\.wasm(\?|$)/.test(request.url)) log.wasm.push(`${name} worker: ${request.url.split('/').pop()}`); });
       await session.send('Log.enable');
+      await session.send('Network.enable').catch(() => {});
     } catch { /* a worker that ended at once */ }
   });
   page.on('console', async (m) => {
