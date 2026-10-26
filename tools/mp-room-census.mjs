@@ -37,6 +37,9 @@ const mapId = option('map', '');
 const solo = argv.includes('--solo');
 // --vercel-json=<path>: the headers (CSP among them) the preview serves, when the build's own tree is not this one
 const vercelJson = option('vercel-json', '');
+// --transport=p2p: the match runs in the host commander's browser (its Worker, as production's rooms do) instead of the
+// LAN helper's in-process service, so the host's kernels and their CSP show
+const transport = option('transport', 'service');
 const CSP_TEXT = /Content Security Policy|Content-Security-Policy|\[Report Only\]|Refused to (compile|evaluate|load|execute)/i;
 const root = new URL('..', import.meta.url).pathname;
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
@@ -124,7 +127,8 @@ try {
     setTimeout(() => { console.error(`mp-room-census: past its ${budgetMin} min budget`); process.exit(3); }, budgetMin * 60_000).unref();
   }
   if (!await portFree(LAN_ROOMS_PORT)) throw new Error(`port ${LAN_ROOMS_PORT} (the LAN room helper's) is in use`);
-  rooms = await createRoomsServer({ host: '127.0.0.1', port: LAN_ROOMS_PORT, seatSecret: randomBytes(24).toString('hex'), world: 'terrain' });
+  rooms = await createRoomsServer({ host: '127.0.0.1', port: LAN_ROOMS_PORT, seatSecret: randomBytes(24).toString('hex'), world: 'terrain',
+    matchTransport: transport === 'p2p' ? 'p2p' : 'service' });
   const port = await freePort();
   server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
     ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
