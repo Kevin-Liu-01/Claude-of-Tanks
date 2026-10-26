@@ -109,6 +109,8 @@
 /* the frame's line sits inside its box on the column's edge, as a plate's ring does; a short picker crops the picture's
    height before its caption */
 .cot-bf .cot-bf__hero{flex:0 1 auto;min-height:0;aspect-ratio:16/9;box-shadow:var(--ring-1)}
+.cot-bf__hero>video{opacity:0}
+.cot-bf__hero>video.is-playing{opacity:1;transition:opacity var(--dur-fast) var(--ease-enter)}
 .cot-bf .cot-bf__map{position:absolute;right:var(--s3);bottom:var(--s3);width:34%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);
   background:var(--surface-scene);box-shadow:var(--plate-shadow)}
 .cot-bf .cot-bf__map[hidden]{display:none}

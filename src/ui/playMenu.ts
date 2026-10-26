@@ -1057,7 +1057,7 @@ export function createPlayMenu({
   function mapCard(map: PlayMenuMap): BattlefieldCard {
     const poster = battlefieldFacts(map.id).poster;
     return { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, tags: [...mapRegionTags(map.id)] };
+      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, loop: poster.loop, tags: [...mapRegionTags(map.id)] };
   }
   function closeBattlefieldPick(restoreFocus = false): void {
     if (battlefieldPick.hidden) return;

@@ -3693,7 +3693,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         }
         const facts = battlefieldFacts(map.id);
         return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-          media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, tags: [...facts.regions] };
+          media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, loop: facts.poster.loop,
+          tags: [...facts.regions] };
       });
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
