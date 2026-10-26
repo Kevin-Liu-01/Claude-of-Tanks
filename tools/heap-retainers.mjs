@@ -163,14 +163,18 @@ export function retainerPaths({ meta, nodes, edges, strings }, markerName, max =
     }
     return roots.map((root) => {
       const steps = [];
+      // (the nodes' heap ids beside the steps: a caller can name them through the page when the strings are suspect)
+      const nodeIds = [];
       for (let node = root; node !== marker && via[node] >= 0;) {
+        nodeIds.push(nodes[node * NF + nId]);
         const e = via[node], kind = edgeTypes[edges[e * EF + eType]];
         const label = kind === 'element' || kind === 'hidden' ? `[${edges[e * EF + eName]}]` : strings[edges[e * EF + eName]];
         steps.push(`${typeOf(node) === 'closure' ? 'fn ' : ''}${nameOf(node) || typeOf(node)} .${String(label).slice(0, 60)}`);
         node = edges[e * EF + eTo] / NF;
       }
       steps.push(markerName);
-      return steps;
+      nodeIds.push(nodes[marker * NF + nId]);
+      return Object.defineProperty(steps, 'nodeIds', { value: nodeIds, enumerable: false });
     });
   });
 }
@@ -201,5 +205,19 @@ export async function snapshotRetainerPaths(cdp, markerNames, max = 3, locate = 
     if (id && id !== '0') ids[name] = id;
   }
   if (Object.keys(locate).length) console.error(`[heap-retainers] marker ids ${JSON.stringify(ids)}`);
-  return Object.fromEntries(markerNames.map((name) => [name, retainerPaths(snapshot, name, max, ids[name] ?? null)]));
+  const result = Object.fromEntries(markerNames.map((name) => [name, retainerPaths(snapshot, name, max, ids[name] ?? null)]));
+  // a string table that lost more than one stretch names some steps wrongly: each step's object as the page describes it
+  if (snapshot.fault && !(snapshot.fault.gaps === 1)) {
+    for (const perMarker of Object.values(result)) for (const steps of perMarker) {
+      for (let k = 0; k < steps.length; k++) {
+        const id = steps.nodeIds?.[k];
+        if (id == null) continue;
+        const described = await cdp.send('HeapProfiler.getObjectByHeapObjectId', { objectId: String(id), objectGroup: 'cot-heap-retainers' })
+          .then(({ result: o }) => o?.description ?? o?.className ?? o?.type ?? '?', () => '(not an object)');
+        steps[k] = `${steps[k]} {${String(described).replace(/\s+/g, ' ').slice(0, 90)}}`;
+      }
+    }
+    await cdp.send('Runtime.releaseObjectGroup', { objectGroup: 'cot-heap-retainers' }).catch(() => {});
+  }
+  return result;
 }
