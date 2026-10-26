@@ -237,7 +237,7 @@ const CSS = `
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
 .cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
-  --rules-col:calc(320px * var(--cot-type-scale, 1))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+  --rules-col:max(320px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -433,7 +433,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .mode-pick[hidden]{display:none}
 .cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-play .menu-select--mode .menu-select-trigger{gap:var(--s3)}
-.cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
+.cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
 .cot-play .player{--foot-track:var(--rules-col);display:grid;
