@@ -62,7 +62,9 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 /* ---- the lower band: the campaign's next operation and the recent battles (.lower, .camp-card, .rec) ---- */
 .cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:var(--s3);flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
 /* a compact height gives the mode picker the lower band's room */
-@media (max-height:760px){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-lower{display:none;}}
+/* a short screen sets the lower band aside: Proving Ground, the column's last row, ends on the plate's foot */
+@media (max-height:760px){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-lower{display:none;}
+  body[data-cot-panels='persistent'] .cot-garage .cot-deploy-proving{margin-bottom:0;}}
 /* the battle modes: the one mode picker (modePicker.ts, the Rooms host's too) takes the list's room and scrolls its cards in
    place; the plate beside it is the rules card of the mode under the pointer or the focus, so the picker keeps none */
 /* (as tall as its cards, then scrolling them in place where the list is shorter; its grid's fade band reaches past its
@@ -448,7 +450,7 @@ body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-fie
 
 /* ---- folded layouts: the direction's phone Deploy (91-phone-deploy.html): the bar, the ways to play as pills, the
    modes as rows with the chosen one opened over its picture, the plate under them, Deploy docked at the bottom ---- */
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-head{flex-wrap:wrap;gap:var(--s2) var(--s3);height:auto;padding:max(6px,env(safe-area-inset-top)) var(--s3) var(--s2) var(--s1);
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-head{flex-wrap:wrap;gap:var(--s2) var(--s3);height:auto;padding:max(6px,env(safe-area-inset-top)) var(--s3) 0 var(--s1);
   background:var(--surface-page);border-bottom:1px solid var(--line-1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back{width:44px;justify-content:center;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
