@@ -6,7 +6,6 @@
  * from its own controls, so a command does exactly what its button does). Typing filters; the arrows move, Enter runs,
  * Esc closes and never reaches the Studio's own Esc; focus returns to where it was.
  */
-import { keycap } from './components/components.ts';
 import { t } from './i18n.ts';
 
 export interface StudioCommand {
@@ -99,7 +98,15 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
       const label = document.createElement('span');
       label.textContent = command.label;
       row.appendChild(label);
-      if (command.hint) row.insertAdjacentHTML('beforeend', keycap(command.hint));
+      if (command.hint) {
+        // the kit's key cap (components.ts keycap: cot-c-kbd, hidden from assistive technology), built as nodes: a Studio
+        // sink writes no markup from data (studioSceneShare.selftest §10); no command hint is an arrow
+        const cap = document.createElement('kbd');
+        cap.className = 'cot-c-kbd';
+        cap.setAttribute('aria-hidden', 'true');
+        cap.textContent = command.hint;
+        row.appendChild(cap);
+      }
       // a press runs the row without stealing focus from the field first
       row.addEventListener('pointerdown', (event) => event.preventDefault());
       row.addEventListener('click', () => run(command));

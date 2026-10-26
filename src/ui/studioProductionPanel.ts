@@ -2,7 +2,8 @@
 import { PRODUCTION_PRESETS, productionAspect, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
-import { notice, type NoticeSeverity } from './components/notice.ts';
+import type { NoticeSeverity } from './components/notice.ts';
+import { uiIconSVG } from './uiIcons.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
@@ -205,8 +206,20 @@ export function mountStudioProductionPanel(
   let takesRequested = false;
   let loadingTake = false;
   let stagedTake = '';
+  // the kit's inline notice (components/notice.ts notice(): its severity's glyph, the line, a status or an alert), built as
+  // nodes so no Studio sink writes text as markup (studioSceneShare.selftest §10)
+  const TAKE_NOTICE_GLYPH: Readonly<Record<NoticeSeverity, string>> = { info: 'info', success: 'check', warning: 'alert', error: 'alert', progress: 'clock' };
   function takeStatus(text: string, severity: NoticeSeverity = 'progress'): void {
-    takesStatus.innerHTML = text ? notice({ severity, text }) : '';
+    if (!text) { takesStatus.replaceChildren(); return; }
+    const box = node('div', 'cot-c-notice');
+    box.dataset.severity = severity;
+    box.setAttribute('role', severity === 'error' ? 'alert' : 'status');
+    const glyph = node('span', 'cot-c-notice__glyph');
+    glyph.innerHTML = uiIconSVG(TAKE_NOTICE_GLYPH[severity], 20);
+    const body = node('span', 'cot-c-notice__body');
+    body.append(node('span', 'cot-c-notice__text', text));
+    box.append(glyph, body);
+    takesStatus.replaceChildren(box);
   }
   function mapName(id: string): string {
     try { return S.getMapInfo(id).name; } catch (_) { return id; }
