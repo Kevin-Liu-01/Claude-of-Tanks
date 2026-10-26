@@ -10,6 +10,8 @@ import {
   createTankSteps as createTankCoreSteps,
   registerCanonicalBuilders,
   registerProfiledBuilders,
+  type DecorPlanner,
+  type TankBuildStep,
 } from './tankFactoryCore.ts';
 import { FLEET_GROUP_BY_ID, type FleetGroup } from './fleetManifest.ts';
 import {
@@ -45,6 +47,8 @@ export interface CreateTankOptions {
   batchStatic?: boolean;
   battleDetailLod?: boolean;
   decor?: boolean;
+  /** stage 2b: where a stepped build's decoration plans (offThreadDecorPlanner); its driver awaits the yielded waits */
+  decorPlanner?: DecorPlanner;
   deferStaticBatch?: boolean;
   geometryQuality?: 'high' | 'low';
   geometryReceipt?: boolean;
@@ -253,6 +257,8 @@ export function ensureTankBuilder(specId: string): Promise<void> {
   });
 }
 
+let ridingPartsPrebuildAsked = false;
+
 export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
   const groups = new Set<FleetGroup>();
   for (const id of specIds || []) {
@@ -266,6 +272,12 @@ export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
     ensureInteriorFills(specIds),
   ]).then(() => {
     for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
+    // the first ask for builders ahead of their builds starts the riding stations' off-thread prebuild, these tanks
+    // first (UI-LOCKDOWN E): every such ask comes after the Garage's first tank, and its chunk loads only here
+    if (!ridingPartsPrebuildAsked && typeof Worker === 'function') {
+      ridingPartsPrebuildAsked = true;
+      void import('./ridingPartsPrebuild.ts').then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
+    }
   });
 }
 
@@ -304,11 +316,24 @@ export function createTankSteps(
   specId: string,
   engineCtx: RuntimeValue,
   opts: CreateTankOptions = {},
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
   return createTankCoreSteps(specId, engineCtx, opts);
+}
+
+/**
+ * Stage 2b pass 1 (UI-LOCKDOWN E): the decor worker's planner, for a stepped build whose driver awaits the waits it
+ * yields (the Garage pedestal, the battle streamer); null where no Worker runs (the Node tools). Asking for it starts the
+ * client and the worker, so they load while the core builds ahead of its decoration; a failed load or worker falls
+ * back to the in-line pass for that tank.
+ */
+export function offThreadDecorPlanner(): DecorPlanner | null {
+  if (typeof Worker !== 'function') return null;
+  const client = import('./decorPlanClient.ts');
+  client.then(({ startDecorWorker }) => startDecorWorker(), () => {});
+  return (args) => client.then(({ planDecoration }) => planDecoration(args));
 }
 
 export { KIT } from './tankFactoryCore.ts';

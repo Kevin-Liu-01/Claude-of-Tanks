@@ -108,7 +108,10 @@ import {
 // createTank (see the seam near the GLB-swap block). Procedural/metrology
 // builds skip it by default so parity boards measure bare silhouettes;
 // presentation callers may explicitly opt in with decor:true.
-import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttachmentArgs } from './decorations.ts';
+import {
+  attachDecorationPlanSteps, attachTankDecorations, attachTankDecorationsSteps, decorationWanted, type DecorationAttachmentArgs,
+  type DecorPlan,
+} from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.ts. Live play is identical (the
@@ -1182,6 +1185,13 @@ function buildRunningGearPublic(builder: object, options: object): RunningGearUn
   return buildRunningGear(builder, options);
 }
 
+/** What a stepped build yields: nothing at a checkpoint, or work it waits on off the main thread (stage 2b), which a
+ *  driver that passed a planner awaits before the next step. */
+export type TankBuildStep = void | PromiseLike<unknown>;
+/** Stage 2b pass 1 (UI-LOCKDOWN E): the decoration's plan made elsewhere (the decor worker: vehiclePassClient.ts),
+ *  null when the tank takes no decoration; a throw or a rejection falls back to the in-line pass. */
+export type DecorPlanner = (args: DecorationAttachmentArgs) => DecorPlan | null | PromiseLike<DecorPlan | null>;
+
 export interface TankFactoryOptions {
   camoSeed?: number;
   camoPattern?: string | null;
@@ -1198,6 +1208,9 @@ export interface TankFactoryOptions {
   solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
+  /** A stepped build's decoration plans here (a driver that awaits the yielded waits passes it); createTank and the
+   *  Node tools plan in-line. */
+  decorPlanner?: DecorPlanner;
   batchStatic?: boolean;
   deferStaticBatch?: boolean;
   battleDetailLod?: boolean;
@@ -7846,7 +7859,7 @@ export function createTankSteps(
   specId: string,
   engineContext: RuntimeValue,
   opts: TankFactoryOptions = {},
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   return createTankOwnedSteps(specId, engineContext, opts, false);
 }
 
@@ -7867,7 +7880,8 @@ export function createTank(
 function* prepareTankDecorationSteps(
   args: DecorationAttachmentArgs,
   legacyDecoration: boolean,
-): Generator<void, void, void> {
+  planner?: DecorPlanner,
+): Generator<TankBuildStep, void, void> {
   const root = args.root;
   let workMs = 0, yieldMs = 0, checkpointCount = 0;
   if (legacyDecoration) {
@@ -7878,7 +7892,38 @@ function* prepareTankDecorationSteps(
     root.userData.decorCheckpointCount = 0;
     return;
   }
-  const steps = attachTankDecorationsSteps(args);
+  // stage 2b pass 1: a planner makes the plan (the decor worker) while the driver waits on it; this thread attaches it
+  let given: { plan: DecorPlan | null } | null = null;
+  if (planner && decorationWanted(args)) {
+    const startedAt = performance.now();
+    let waitMs = 0;
+    try {
+      const planned = planner(args);
+      if (planned && typeof (planned as PromiseLike<unknown>).then === 'function') {
+        let settled: { plan: DecorPlan | null } | null = null, failed = false;
+        const wait = Promise.resolve(planned).then((plan) => { settled = { plan }; }, () => { failed = true; });
+        workMs += performance.now() - startedAt;
+        const waitedAt = performance.now();
+        while (!settled && !failed) yield wait;
+        waitMs = performance.now() - waitedAt;
+        given = settled;
+      } else {
+        given = { plan: planned as DecorPlan | null };
+        workMs += performance.now() - startedAt;
+      }
+    } catch {
+      workMs += performance.now() - startedAt;
+    }
+    root.userData.decorPlanWaitMs = waitMs;
+    root.userData.decorPlanned = !!given;
+    if (given && !given.plan) {
+      root.userData.decorBuildMs = workMs;
+      root.userData.decorYieldMs = 0;
+      root.userData.decorCheckpointCount = 0;
+      return;
+    }
+  }
+  const steps = given?.plan ? attachDecorationPlanSteps(args, given.plan) : attachTankDecorationsSteps(args);
   let complete = false;
   try {
     while (!complete) {
@@ -7926,7 +7971,7 @@ function* createTankOwnedSteps(
   engineContext: RuntimeValue,
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   const owner: TankCoreOwner = { mats: null, disposables: [], handedOff: false };
   try {
     return yield* buildTankCoreSteps(specId, engineContext, opts, legacyDecoration, owner);
@@ -7975,7 +8020,7 @@ function* buildTankCoreSteps(
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
   owner: TankCoreOwner,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   // The core's stages are stamped on a clock that leaves out its checkpoint waits (coreBuildTiming stays work time).
   const coreYield = { ms: 0 };
   const coreClock = (): number => performance.now() - coreYield.ms;
@@ -9921,7 +9966,7 @@ export const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
 export function* createTankRuntimeSteps(
   env: TankRuntimeEnv,
   adoption: TankRuntimeAdoption | null = null,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   const {
     specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
     coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, coreYieldMs = 0, proceduralOnly, geometryQuality,
@@ -11734,7 +11779,7 @@ export function* createTankRuntimeSteps(
       root, hullG, turretG, spec, engineCtx, disposables,
       opts: { proceduralOnly, decor: opts.decor, geometryQuality },
       isDestroyed: () => destroyed,
-    }, legacyDecoration);
+    }, legacyDecoration, opts.decorPlanner);
     const tailDecorFinishedAt = performance.now();
 
     // The ring's race in the seam under the seated turret (seatTurretOverDeck, after the core), from the calibration's
