@@ -69,6 +69,10 @@ interface SceneBandTiming {
   restoreMs?: number;
   programsBeforeRender?: number;
   programsAfterRender?: number;
+  /** (battle-spikes-253) The programs the probe's render made (12 at most): each one's shader and where its cache key
+   *  parts differ from the nearest program of that shader already made (index:new/old) — what the warm did not compile
+   *  (nav-perf's profiled room entry: the probe render linked 1.4 s of programs synchronously, after the link wait). */
+  newPrograms?: string[];
   /** Programs still linking when the probe began, the wait for them between tasks, and those still linking after it. */
   linkPending?: number;
   linkWaitMs?: number;
@@ -444,12 +448,36 @@ function finishSceneProbeTiming(timing?: SceneBandTiming): void {
   if (timing && Number.isFinite(endedAt)) timing.endTime = endedAt;
 }
 
+const programsBeforeProbe = new WeakMap<SceneBandTiming, readonly object[]>();
 function recordSceneProbePrograms(timing: SceneBandTiming | undefined, renderer: THREE.WebGLRenderer,
   field: 'programsBeforeRender' | 'programsAfterRender'): void {
   if (!timing) return;
   try {
-    const count = renderer.info.programs?.length;
+    const programs = (renderer.info.programs ?? []) as unknown as { name?: string; cacheKey?: string }[];
+    const count = programs.length;
     if (count !== undefined && Number.isFinite(count)) timing[field] = count;
+    if (field === 'programsBeforeRender') { programsBeforeProbe.set(timing, programs.slice()); return; }
+    const before = programsBeforeProbe.get(timing);
+    if (!before) return;
+    const known = new Set(before);
+    const made = programs.filter((program) => !known.has(program)).slice(0, 12);
+    if (!made.length) return;
+    timing.newPrograms = made.map((program) => {
+      const parts = String(program.cacheKey ?? '').split(',');
+      let nearest: string[] | null = null, nearestDiff = Infinity;
+      for (const other of before as { name?: string; cacheKey?: string }[]) {
+        if (other.name !== program.name) continue;
+        const otherParts = String(other.cacheKey ?? '').split(',');
+        if (otherParts.length !== parts.length) continue;
+        let diff = 0;
+        for (let i = 0; i < parts.length && diff < nearestDiff; i++) if (parts[i] !== otherParts[i]) diff++;
+        if (diff < nearestDiff) { nearest = otherParts; nearestDiff = diff; }
+      }
+      const differs = nearest
+        ? parts.map((part, i) => (part === nearest![i] ? '' : `${i}:${part.slice(0, 24)}/${nearest![i].slice(0, 24)}`)).filter(Boolean).slice(0, 6).join(' ')
+        : 'no program of that shader before';
+      return `${program.name ?? '?'} ${differs}`;
+    });
   } catch { /* Optional program diagnostics cannot trigger a compatibility fallback. */ }
 }
 
