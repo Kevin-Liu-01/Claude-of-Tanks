@@ -6,6 +6,7 @@
 //        [--profile=desktop|phone] [--reps=6] [--lock] [--place=<key>] [--budget-min=18]
 //   node tools/click-timeline.mjs --report=<dir> [--labels=base,after] [--dist=<label>=<dist dir>]
 //   node tools/click-timeline.mjs --list
+//   node tools/click-timeline.mjs --base=<label>=<url> --out=<dir> --paths=steps,access   the interaction census's receipts
 //
 // Serve each build with tools/vercel-static-preview.mjs and pass a non-loopback name (http://cot.test:<port>/): the
 // tool maps cot.test to 127.0.0.1. One profile per run and one browser at a time: every page the chosen paths start in
@@ -28,6 +29,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { accessProblems } from './interaction-access.mjs';
+import { STEP_PATHS } from './interaction-steps.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -494,6 +497,43 @@ const PICK_IDS = ['m1a1_abrams_hc', 't90m', 'm60a2', 'leo2a6', 'm1a1_abrams_aim'
   'm1a1_abrams_fep'];
 const GARAGE_BACK = `shown('.cot-garage') && window.__GAME_READY === true && (!window.__GARAGE_ENTRY || window.__GARAGE_ENTRY.presentationUnready === false)`;
 
+// (interaction census) the surfaces the access path opens from the Garage, each judged as it stands
+const ACCESS_SURFACES = [
+  { id: 'garage', open: async () => {} },
+  { id: 'deploy', open: openDeploy, scope: '#cot-battle-menu' },
+  { id: 'battlefield', scope: '#cot-battle-menu',
+    open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-field]'), ctx);
+      await waitFor(page, `shown('.cot-map-card .cot-map-select')`, 15000); } },
+  { id: 'settings', scope: '.cot-settings',
+    open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-settings-slot .cot-gear, [data-nav=settings]'), ctx);
+      await waitFor(page, `shown('.cot-settings.open')`, 15000); } },
+  { id: 'record', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-record-trigger'), ctx);
+    await waitFor(page, `shown('#cot-record-modal')`, 20000); } },
+  { id: 'paint', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-lt-paint-all'), ctx);
+    await waitFor(page, `shown('.cot-camo-card')`, 15000); } },
+  { id: 'equipment', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.eqslot[data-slot]'), ctx);
+    await waitFor(page, `shown('.cot-eqtile')`, 15000); } },
+  { id: 'rooms', scope: '.cot-play',
+    open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-room="private"]'), ctx);
+      await waitFor(page, `shown('.cot-play .panel')`, 30000); } },
+];
+/** Undo a step path's task (not counted): close what it opened, leave the room, or end the battle it started. */
+async function resetStepPath(page, ctx, reset) {
+  if (reset === 'battle') {
+    await waitFor(page, '!!window.__BATTLE_REVEAL', 240000);
+    await page.evaluate(() => window.__DEBUG.slayEnemies());
+    await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
+    await tapOrClick(page, await target(page, '.cot-es.show [data-es-action="garage"]'), ctx);
+    await waitFor(page, GARAGE_BACK, 120000);
+  } else if (reset === 'room') {
+    if (await page.evaluate(expression(`shown('.cot-play [data-action="leave"]')`)).catch(() => false)) {
+      await tapOrClick(page, await target(page, '.cot-play [data-action="leave"]'), ctx);
+    }
+    await restoreGarage(page, ctx);
+  }
+  await restoreGarage(page, ctx);
+}
+
 // Paths, after the 244 Garage (brand-ui Premiere). Doc 'game' runs the Garage, Deploy, settings and Studio presses;
 // 'battle' runs DEPLOY into a battle, the end screen back to the Garage, Watch and its hops; 'gallery' the Gallery.
 export const PATHS = [
@@ -836,6 +876,41 @@ export const PATHS = [
     done: `!!document.querySelector('[data-click-target]')
       && window.__TANK_GALLERY?.getState?.().mode === document.querySelector('[data-click-target]')?.dataset.mode
       && (window.__TANK_GALLERY?.getState?.().mode === 'appearance' || window.__TANK_GALLERY?.getState?.().overlayCount > 0)`, doneTimeoutMs: 60000 },
+  // (interaction census, part D) the common paths, press by press (tools/interaction-steps.mjs): each press measured as
+  // any other, then the path's presses and whether it finished; --report checks them against the baseline
+  ...STEP_PATHS.map((path) => ({ id: `steps-${path.id}`, doc: path.doc, reps: 1, group: 'steps',
+    script: async (page, i, run, ctx) => {
+      await restoreGarage(page, ctx);
+      let presses = 0;
+      try {
+        for (const step of path.steps) {
+          const sample = await run(`steps:${path.id}:${step.name}`, () => (step.key ? null : target(page, step.press, step.index ?? 0)),
+            { key: step.key ?? null, shown: step.shown, shownTimeoutMs: step.shownTimeoutMs ?? 15000 });
+          if (sample.error) throw new Error(`${step.name}: ${sample.error}`);
+          presses += 1;
+        }
+      } finally {
+        const done = await waitFor(page, path.done, 20000).then(() => true, () => false);
+        ctx.record(`steps:${path.id}`, { presses, planned: path.steps.length, done });
+        await resetStepPath(page, ctx, path.reset).catch((cause) => ctx.record(`steps:${path.id}:reset`, { error: firstLine(cause) }));
+      }
+    } })),
+  // (interaction census, part D; UI-GAUNTLET line 12) keyboard and touch on each surface as it opens: names, reach, the kit's
+  // focus ring (desktop: the Tab walk) and target sizes (44 px on a phone, 24 on a desktop)
+  { id: 'access', doc: 'game', reps: 1, group: 'access',
+    script: async (page, i, run, ctx) => {
+      for (const surface of ACCESS_SURFACES) {
+        await restoreGarage(page, ctx);
+        try {
+          await surface.open(page, ctx);
+          const problems = await accessProblems(page, { phone: !!ctx.touch, scope: surface.scope ?? 'body' });
+          ctx.record(`access:${surface.id}`, { problems });
+        } catch (cause) {
+          ctx.record(`access:${surface.id}`, { error: firstLine(cause) });
+        }
+      }
+      await restoreGarage(page, ctx);
+    } },
 ];
 
 // The renderer's live programs (name, use count, key), so a path can diff the sets two states link: a long key keeps
@@ -962,7 +1037,8 @@ async function main() {
   if (!profile) throw new Error(`unknown profile ${profileName}`);
   const reps = Number(option('reps', '0')) || null;
   const wanted = option('paths', 'all').split(',');
-  const paths = PATHS.filter((path) => wanted.includes('all') || wanted.includes(path.id) || wanted.includes(path.doc));
+  const paths = PATHS.filter((path) => wanted.includes(path.id) || wanted.includes(path.doc) || wanted.includes(path.group)
+    || (wanted.includes('all') && !path.group));
   const docs = [...new Set(paths.map((path) => path.doc))];
   const host = option('host-map', 'cot.test');
   const budgetMs = Number(option('budget-min', '18')) * 60000;
@@ -1185,6 +1261,7 @@ async function report(dir) {
   console.log(`\nWorst by ${labels[0]} INP p95: ${ranked.sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ')}`);
   console.log(`\n| press.profile | build | script (source) | ms per press | forced layout ms |\n|---|---|---|---:|---:|`);
   console.log(culprits.join('\n'));
+  interactionReport(kinds, labels);
   // --census runs: every surface's spikes (frames over 33 ms, long tasks over 50 ms), console errors, and the code its
   // long tasks sampled, summed over the run
   const censusRows = [];
@@ -1242,6 +1319,32 @@ async function report(dir) {
     console.log(`\n| build | console error | count |\n|---|---|---:|`);
     console.log([...errorsSeen].sort((a, b) => b[1] - a[1]).map(([text, n]) => `| ${text.replace(/\|/g, '/')} | ${n} |`).join('\n'));
   }
+}
+
+/** (interaction census, part D) each common path's presses against tools/interaction-baseline.json, which may only fall,
+ *  and each surface's keyboard and touch problems; a path over its baseline, or one that did not finish, sets the exit code. */
+function interactionReport(kinds, labels) {
+  const baseline = JSON.parse(readFileSync(new URL('./interaction-baseline.json', import.meta.url), 'utf8'));
+  const steps = [];
+  const access = [];
+  for (const [key, byLabel] of [...kinds].sort()) {
+    const [kind, profile] = [key.slice(0, key.lastIndexOf('.')), key.slice(key.lastIndexOf('.') + 1)];
+    for (const label of labels) {
+      for (const sample of byLabel[label] || []) {
+        if (/^steps:[^:]+$/.test(kind)) {
+          const id = kind.slice(6);
+          const over = sample.presses > (baseline.paths[id] ?? Infinity);
+          if (over || !sample.done) process.exitCode = 1;
+          steps.push(`| ${id} | ${profile} | ${label} | ${sample.presses} | ${baseline.paths[id] ?? '-'} | ${sample.done ? 'yes' : 'NO'} | ${over ? 'OVER' : 'ok'} |`);
+        } else if (/^access:/.test(kind)) {
+          access.push(`| ${kind.slice(7)} | ${profile} | ${label} | ${sample.error ? `error: ${sample.error}` : sample.problems.length} |`);
+          for (const problem of sample.problems ?? []) access.push(`|  | | | ${problem.replace(/\|/g, '/')} |`);
+        }
+      }
+    }
+  }
+  if (steps.length) console.log(`\n| common path | profile | build | presses | baseline | finished | |\n|---|---|---|---:|---:|---|---|\n${steps.join('\n')}`);
+  if (access.length) console.log(`\n| surface | profile | build | keyboard and touch problems |\n|---|---|---|---|\n${access.join('\n')}`);
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

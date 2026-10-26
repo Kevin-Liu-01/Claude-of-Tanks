@@ -2350,6 +2350,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
     // again"): one row a datum, placed only by its owner, its glyph through the registry
     'src/ui/surfaceRegistry.selftest.mjs',
+    // 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and systems"):
+    // every choose-one registered against the kit picker, failing sites only in a shrinking baseline, common-path presses
+    // that only fall; the keyboard and touch judge the gauntlet and click-timeline captures run
+    'src/ui/interactionRegistry.selftest.mjs',
+    'tools/interaction-access.selftest.mjs',
     // 2026-10-14 (owner, Kestrel: "water spots by spawn even though you can't actually see any water"): the tactical
     // map paints water only where the world draws it — all 33 maps, Kestrel's pads, the liquid maps' wet discs
     'src/ui/minimapLiquidWater.selftest.mjs',
