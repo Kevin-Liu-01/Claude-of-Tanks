@@ -91,15 +91,15 @@ const BATTLEFIELDS = 34;
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
   'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
-  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById'], lane: 'premiere-gallery-studio' },
+  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
   'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:fittedAt===openSlot'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
-  'garage-camo': { chooses: 'camo', options: 173, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:patternId===selectedPatternId'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-collection': { chooses: 'filter', options: 14, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===activeCamoCollection'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-tag': { chooses: 'filter', options: 13, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:tagId===activeCamoTag'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
+  // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
+  // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
+  'garage-camo': { chooses: 'camo', options: 175, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-camo'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
   'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], lane: 'premiere-gallery-studio' },
   'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:#cot-garage-variant-menu', 'bespoke:id===selected.id'], lane: 'premiere-gallery-studio' },
   'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },

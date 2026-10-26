@@ -287,7 +287,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-garage-panel-scrim{position:absolute;z-index:44;inset:0;border:0;background:var(--btn-media-fill);
   pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
 .cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
-.cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
+.cot-garage.vehicle-locked .cot-camo-picker .cot-c-picker__opt,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
 .cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:attr(data-locked);
   display:block;margin-top:var(--s2);color:var(--text-ok);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:var(--track-label-s)}
 .cot-battle-choice{position:relative;min-height:60px;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;
@@ -665,9 +665,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-maps,.cot-camos{box-sizing:border-box;width:100%;height:var(--cot-sidebar-panel-height,280px);
   flex:0 1 var(--cot-sidebar-panel-height,280px);min-height:108px;
   background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);padding:var(--s2) var(--s2) var(--s2);}
-.cot-maps .mtitle,.cot-camos .ctitle{
+.cot-maps .mtitle{
   display:flex;align-items:center;gap:7px;}
-.cot-maps .mtitle svg,.cot-camos .ctitle svg{
+.cot-maps .mtitle svg{
   width:14px;height:14px;flex:0 0 auto;color:var(--ink-3);}
 .cot-maps{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
@@ -724,82 +724,24 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-map-region{position:relative;display:inline-grid;place-items:center;width:18px;height:18px;background:var(--scrim);
   border:1px solid var(--line-2);color:var(--ink-1)}
 .cot-map-region>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.cot-map-region svg,.cot-camo-tag svg{flex:none;display:block}
+.cot-map-region svg{flex:none;display:block}
 .cot-map-card.sel .cot-map-region{color:var(--text-accent);border-color:var(--line-3)}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
-.cot-camos .ctitle{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);color:var(--ink-3);
-  text-transform:uppercase;margin-bottom:5px;}
-.cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
-.cot-camos .ctitle .cot-info-trigger,.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
-/* Create is an action, not a choice: a quiet bordered button in sentence case, its brush in the accent (it wore a chosen
-   chip's orange edge and wash, so an action nobody had pressed read as switched on) */
-.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 var(--s2);border:1px solid var(--line-control);
-  background:var(--surface-plate);color:var(--ink-1);cursor:pointer;font:500 max(var(--fs-floor-11),var(--fs-12)) var(--font-ui);
-  letter-spacing:0;white-space:nowrap}
-.cot-custom-open svg{color:var(--accent)}
-.cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
-  border-color:var(--line-3);background:var(--surface-hover);outline:none}
-.cot-camo-tags{display:flex;flex:0 0 auto;gap:var(--s1);margin:0 0 var(--s1);min-width:0;overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;
-  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
-.cot-camo-tags::-webkit-scrollbar{display:none}
-.cot-camo-collections{display:flex;flex:0 0 auto;gap:var(--s1);min-width:0;margin-bottom:var(--s1);overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;padding-inline-end:var(--s5);
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent);
-  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 28px),transparent)}
-/* a sheet already named "Camouflage" in its head keeps only the section's actions, not a second name */
-body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
-.cot-camo-collections::-webkit-scrollbar{display:none;}
-.cot-camo-collection{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:30px;min-height:24px;
-  padding:2px 6px;border:1px solid var(--line-3);background:var(--surface-menu);color:var(--ink-2);cursor:pointer;font-family:inherit;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;scroll-snap-align:start}
-.cot-camo-collection .cot-flag{width:18px;height:12px;object-fit:cover}
-.cot-camo-collection[aria-pressed='true']{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-hi)}
-.cot-camo-collection:focus-visible,.cot-camo-card:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
-.cot-camo-card[hidden],.cot-camo-tag[hidden]{display:none}
-.cot-camo-tag{display:inline-flex;align-items:center;justify-content:center;gap:var(--s1);flex:0 0 auto;min-height:24px;padding:0 6px;border:1px solid var(--line-2);
-  background:var(--scrim);color:var(--ink-3);cursor:pointer;scroll-snap-align:start;
-  font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);
-  letter-spacing:0;transition:border-color var(--dur-fast),background var(--dur-fast),color var(--dur-fast)}
-.cot-camo-tag:hover,.cot-camo-tag:focus-visible{border-color:var(--line-control);color:var(--ink-1);outline:none}
-.cot-camo-tag[aria-pressed='true']{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-hi)}
-/* garage_polish r9: minmax(0,1fr) + min-width:0 — grid items default to
-   min-width:auto, so the widest nowrap label (DESERT PINK ~80px) silently
-   inflated every track past the panel and CLIPPED the third column. */
-.cot-camos .cgrid{display:grid;align-content:start;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
-/* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
-   grid below stays static). The bottom fade signals overflow without a
-   scrollbar gutter narrowing and misaligning the swatch columns. */
-.cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;flex:1 1 auto;
-  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
-.cot-camos .cgrid.camo.can-scroll{
+/* INTERACTION-REDESIGN B: the sheet is the kit picker (camoPicker.ts): it fills the sheet under the picker's own search and
+   kind chips, its grid scrolls, and each swatch is a UI canvas drawing its paint's tile to fit (the skeleton until then) */
+.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
+.cot-camo-picker{flex:1 1 auto;min-height:0}
+.cot-camo-picker .cot-c-picker__media{position:relative;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-2)}
+.cot-camo-picker .cot-camo-swatch{position:absolute;inset:0;display:block;width:100%;height:100%}
+.cot-camos .cot-c-picker__grid.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);}
-.cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
-.cot-camo-card{cursor:pointer;text-align:center;padding:5px var(--s1) var(--s1);min-width:0;
-  background:linear-gradient(180deg,var(--scrim),var(--side-plate));
-  border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background var(--dur-fast);}
-.cot-camo-card:hover{border-color:var(--line-control);}
-.cot-camo-card.sel{border-color:var(--accent);border-bottom-color:var(--accent);
-  background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));
-  box-shadow:none;}
-.cot-camo-card .sw{width:100%;height:auto;aspect-ratio:2.55;margin:0 auto var(--s1);border:1px solid var(--surface-scene);
-  position:relative;overflow:hidden;box-shadow:var(--ring-2);}
-.cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
-  object-fit:cover;object-position:center;}
-.cot-camo-card .sw.auto{background:var(--surface-raised);}
 /* a swatch waiting for its paint is the kit's skeleton, never a stand-in pattern */
-:is(.cot-camo-card .sw,.cot-lt-swatch) canvas[data-loading]{background:var(--fill-quiet);}
-/* equipment tiles: distinct procedural icons on a dark plate (r3: identical
-   stripe bars read as placeholders) */
-.cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(180deg,var(--surface-hover),var(--surface-raised));}
-.cot-camo-card .sw.eq svg{display:block;}
-.cot-camo-card .cl{display:block;min-width:0;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;line-height:1.18;
-  letter-spacing:0em;color:var(--ink-3);text-transform:uppercase;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;}
-.cot-camo-card.sel .cl{color:var(--text-accent);}
+:is(.cot-camo-swatch,.cot-lt-swatch canvas)[data-loading]{background:var(--fill-quiet);}
+/* the sheet's head carries its actions (the nation's paint, the about tip) beside its close, for the paint sheet only */
+.cot-drawer-actions{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
+.cot-garage:not([data-garage-panel='appearance']) .cot-drawer-actions{display:none}
 .cot-camo-lab{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:18px;min-height:460px}
 .cot-camo-lab__canvas,.cot-camo-lab__controls{min-width:0;display:flex;flex-direction:column;gap:var(--s3)}
 .cot-camo-lab__panel{padding:13px;border:1px solid var(--line-2);background:var(--scrim)}
@@ -911,7 +853,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   scrollbar-color:var(--line-3) var(--scrim);}
 /* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
    the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
-:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:var(--peek,16px);}
+:is(.cot-eqpick .pgrid,.cot-camos .cot-c-picker__grid){padding-bottom:var(--peek,16px);}
 .cot-eqpick .pgrid.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);
   mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);}
@@ -1656,7 +1598,7 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:none}
 /* the Gallery and proving-ground links keep their row (glyph, label, chevron at the end) over the sheet's block reset */
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-gallery-link{display:flex}
-body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
+body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
 /* a 44 px touch target that draws only its glyph (the glyph carries its own ring; the 20 px plate stretched to 44 read
    as a second, off-centre ring) */
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;place-items:center;border-color:transparent;background:transparent}
@@ -1689,9 +1631,7 @@ body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-chip{min-h
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-width:44px;flex-basis:44px}
 
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cgrid.camo{max-height:none;overflow:visible;flex:none;
-  grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}
-body[data-cot-input='coarse'] :is(.cot-camo-tag,.cot-camo-collection){font-size:max(var(--fs-floor-11),var(--fs-11))}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-c-picker__grid{max-height:none;overflow:visible;flex:none}
 body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden])){z-index:80}
 
 body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){min-width:44px;min-height:44px}
@@ -1735,7 +1675,7 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-room-ready{min-width:64px;padding:6px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:20px;height:20px}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mname,.cot-camo-card .cl){font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-map-card .mname{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.35;white-space:normal;overflow-wrap:anywhere}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-map-region{font-size:max(var(--fs-floor-11),var(--fs-11))}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mthumb,.cot-camo-card .sw){max-height:28dvh}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-map-card .mthumb{max-height:28dvh}
 }

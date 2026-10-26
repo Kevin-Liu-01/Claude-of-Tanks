@@ -19,11 +19,10 @@ import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
-import {
-  CAMO_TAG_IDS, CAMO_TAG_LABEL, CAMO_COUNTRY_TAG_IDS, CUSTOM_CAMO_ID,
-  camoMatchesTag, camoPatternTags, customCamoPatternId, camoInCollection,
-  camoCollectionFor,
-} from '../vehicles/camoPolicy.ts';
+import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
+import { pickerText } from './pickerText.ts';
+import { notify } from './components/notice.ts';
+import { CUSTOM_CAMO_ID, customCamoPatternId } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
@@ -90,7 +89,7 @@ import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
-import type { CamoTagId, CamoCollectionId, CustomCamo } from '../vehicles/camoPolicy.ts';
+import type { CamoTagId, CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
@@ -166,6 +165,8 @@ interface GarageCamoOptions {
   /** Try a paint on the hero (hover and focus; main.ts garageCamoTryOn), or null to put the worn paint back. Returns
    *  at once: the try-on paints on a later task. */
   preview?(specId: string, patternId: string | null): void;
+  /** Wear `patternId` on every tank in `specIds` (the sheet's "Wear on every <nation> tank"). */
+  setMany?(specIds: readonly string[], patternId: string): void;
 }
 
 interface GarageRoomStatus {
@@ -2008,7 +2009,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     fitWholeRows(grid);
   };
   const fitCamoRows = (): void => {
-    const cg = root.querySelector<HTMLElement>('.cot-camos .cgrid.camo');
+    const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
     if (cg) fitWholeRows(cg);
   };
   window.addEventListener('resize', fitCamoRows);
@@ -2043,161 +2044,112 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   camosEl.addEventListener('pointerenter', promoteCamoSwatches, { once: true });
   camosEl.addEventListener('focusin', promoteCamoSwatches, { once: true });
   camosEl.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
-  const camoCardById = new Map<string, HTMLElement>();
-  const camoTagButtonById = new Map<CamoTagId, HTMLButtonElement>();
-  const camoCollectionButtons = new Map<CamoCollectionId, HTMLButtonElement>();
-  let activeCamoCollection: CamoCollectionId = 'default';
-  let activeCamoTag: CamoTagId = 'all';
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
-  function bindCamoStripScroll(strip: HTMLElement): void {
-    strip.addEventListener('wheel', (event) => {
-      // Native horizontal trackpad gestures pan the strip themselves. ctrl+wheel is a trackpad pinch: the
-      // app-wide pinch guard owns it (ui/pinchZoomGuard.ts), so the strip must not scroll on it.
-      if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
-      const maxScroll = strip.scrollWidth - strip.clientWidth;
-      if (maxScroll <= 1) return;
-      const delta = horizontalRailWheelDelta(event.deltaX, event.deltaY, event.deltaMode, strip.clientWidth);
-      const target = Math.max(0, Math.min(maxScroll, strip.scrollLeft + delta));
-      if (Math.abs(target - strip.scrollLeft) < 0.5) return;
-      event.preventDefault();
-      strip.scrollLeft = target;
-    }, { passive: false });
+  // INTERACTION-REDESIGN B (owner 2026-10-26: "make ... camo much more intituitve"): the sheet is the kit picker
+  // (camoPicker.ts), every paint as a swatch of itself on this tank, the kinds as its chips, Auto first and "Make your
+  // own" (the custom studio) last; the band keeps its three one-press paints
+  let camoPicker: GarageCamoPicker | null = null;
+  let applyNationButton: HTMLButtonElement | null = null;
+  /** The custom studio's trigger: the picker's "Make your own" swatch while it is drawn (its aria-expanded follows the
+   *  studio). */
+  const makeOwnOption = (): HTMLElement | null => camosEl.querySelector<HTMLElement>(`.cot-c-picker__opt[data-id="${CUSTOM_CAMO_ID}"]`);
+  async function openCustomCamoStudio(): Promise<void> {
+    const option = makeOwnOption();
+    option?.setAttribute('aria-busy', 'true');
+    try {
+      await customCamoStudioAccess?.open();
+    } catch (error) {
+      notify({ id: 'cot-custom-camo', severity: 'error', text: t('garage.camo.customStudioRetryTitle'),
+        retry: () => customCamoStudioAccess?.open() ?? Promise.resolve() });
+      console.warn('[garage] custom camouflage studio failed to load', error);
+    } finally {
+      option?.removeAttribute('aria-busy');
+    }
+  }
+  /** A press (the picker, the band) wears `patternId` on the selected tank. */
+  function wearCamo(patternId: string): void {
+    if (!camoOpts || !selectedId || vehicleLocked) return;
+    if (camoOpts.get(selectedId) === patternId) return;
+    camoOpts.set(selectedId, patternId);
+    refreshCamoSel();
+    if (isOverlayPanelLayout()) setGaragePanel('');
+    // Keep the packaged portrait healthy; the live pedestal is the authoritative camouflage preview.
+    requeueTankThumbs(selectedId);
+  }
+  /** "Wear on every <nation> tank": the worn paint on each of the nation's tanks in the roster, a deliberate press. */
+  function wearCamoOnNation(): void {
+    if (!camoOpts?.setMany || !selectedId) return;
+    const spec = specById.get(selectedId);
+    if (!spec) return;
+    const patternId = camoOpts.get(selectedId);
+    const ids = [...cardById.keys()].filter((id) => specById.get(id)?.nation === spec.nation);
+    camoOpts.setMany(ids, patternId);
+    for (const id of ids) requeueTankThumbs(id);
+    notify({ id: 'cot-camo-nation', severity: 'success',
+      text: t('garage.camo.appliedNation', { paint: camoPatternLabel(patternId), count: ids.length, nation: tNation(spec.nation) }) });
   }
   function initializeCamoPicker(): void {
     if (!camoOpts?.patterns?.length) return;
-    const title = document.createElement('div');
-    title.className = 'ctitle cot-sidebar-section-title';
-    title.innerHTML = `${uiIconSVG('camouflage', 13)}<span>${t('garage.camo.heading')}</span>`;
-    const titleActions = document.createElement('div');
-    titleActions.className = 'cot-camo-title-actions';
-    titleActions.appendChild(createInfoButton({
+    // the sheet's actions stand in its head, beside its close: the nation's paint and the about tip
+    const actions = document.createElement('div');
+    actions.className = 'cot-drawer-actions';
+    if (camoOpts.setMany) {
+      applyNationButton = document.createElement('button');
+      applyNationButton.type = 'button';
+      applyNationButton.className = 'cot-c-btn cot-c-btn--36 cot-camo-nation';
+      applyNationButton.dataset.uiSound = 'confirm';
+      applyNationButton.addEventListener('click', wearCamoOnNation);
+      actions.appendChild(applyNationButton);
+    }
+    actions.appendChild(createInfoButton({
       label: t('garage.camo.about'),
       title: t('garage.camo.aboutTitle'),
-      text: () => {
-        return activeCamoCollection === 'default'
-          ? t('garage.camo.defaultDescription')
-          : t('garage.camo.countryDescription', { country: tNation(CAMO_TAG_NATION[activeCamoCollection] || '') });
-      },
+      text: () => t('garage.camo.defaultDescription'),
       guide: 'camo',
       vehicle: () => { const spec = specById.get(selectedId); return spec ? { id: spec.id, name: spec.name } : null; },
       sections: [
         { icon: 'brush', title: t('garage.info.localStudioTitle'), text: t('garage.info.localStudioText') },
       ],
     }));
-    let customOpenButton: HTMLButtonElement | null = null;
-    if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
-      customOpenButton = document.createElement('button');
-      customOpenButton.type = 'button';
-      customOpenButton.className = 'cot-custom-open';
-      customOpenButton.innerHTML = `${uiIconSVG('brush', 12)}<span>${t('garage.camo.create')}</span>`;
-      customOpenButton.setAttribute('aria-label', t('garage.camo.createAria'));
-      customOpenButton.setAttribute('aria-haspopup', 'dialog');
-      customOpenButton.setAttribute('aria-expanded', 'false');
-      titleActions.appendChild(customOpenButton);
-    }
-    title.appendChild(titleActions);
-    camosEl.appendChild(title);
-    const collections = document.createElement('div');
-    collections.className = 'cot-camo-collections';
-    bindCamoStripScroll(collections);
-    collections.setAttribute('role', 'group');
-    collections.setAttribute('aria-label', t('garage.camo.collections'));
-    for (const id of ['default', ...CAMO_COUNTRY_TAG_IDS] as const) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cot-camo-collection';
-      button.dataset.camoCollection = id;
-      const nation = id === 'default' ? null : CAMO_TAG_NATION[id];
-      const label = nation ? tNation(nation) : t('garage.camo.defaultCollection');
-      if (nation) button.innerHTML = flagIconHTML(nation, 22);
-      else button.textContent = label;
-      button.setAttribute('aria-label', label);
-      button.addEventListener('click', () => {
-        emit('ui:click', {});
-        activeCamoCollection = id;
-        activeCamoTag = 'all';
-        refreshCamoTagFilters();
-        const spec = specById.get(selectedId);
-        if (spec) repaintTankCamoSwatches(spec);
-        grid.scrollTop = 0;
-      });
-      collections.appendChild(button);
-      camoCollectionButtons.set(id, button);
-    }
-    camosEl.appendChild(collections);
-    const tagBar = document.createElement('div');
-    tagBar.className = 'cot-camo-tags';
-    bindCamoStripScroll(tagBar);
-    tagBar.setAttribute('role', 'toolbar');
-    tagBar.setAttribute('aria-label', t('garage.camo.filterByTag'));
-    for (const tagId of CAMO_TAG_IDS) {
-      // Nations are primary collections; factory/signature are organization,
-      // not useful secondary filters inside those collections.
-      if (CAMO_TAG_NATION[tagId] || tagId === 'factory' || tagId === 'signature') continue;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cot-camo-tag';
-      button.dataset.camoTag = tagId;
-      const tagLabel = t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId];
-      const regionIcon = regionTagIcon(tagId);
-      if (regionIcon) button.innerHTML = uiIconSVG(regionIcon, 13);
-      const label = document.createElement('span');
-      label.textContent = tagLabel;
-      button.appendChild(label);
-      button.dataset.tip = t('garage.camo.showTag', { tag: tagLabel });
-      button.setAttribute('aria-label', t('garage.camo.showTag', { tag: tagLabel }));
-      button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
-      button.addEventListener('click', () => {
-        emit('ui:click', {});
-        activeCamoTag = activeCamoTag === tagId && tagId !== 'all' ? 'all' : tagId;
-        refreshCamoTagFilters();
-        const spec = specById.get(selectedId);
-        if (spec) repaintTankCamoSwatches(spec);
-      });
-      tagBar.appendChild(button);
-      camoTagButtonById.set(tagId, button);
-    }
-    camosEl.appendChild(tagBar);
-    const grid = document.createElement('div');
-    // camo r8: 'camo' modifier — the pattern roster grew 6 -> 16, so THIS
-    // grid scrolls (max-height in css) while the equipment grid below stays
-    // static. Tools query `.cot-camos .cgrid` first-match as before.
-    grid.className = 'cgrid camo';
-    camosEl.appendChild(grid);
-    wireCamoTryOn(grid, '.cot-camo-card', (option) => option.dataset.pid);
-    for (const pid of ['factory', ...camoOpts.patterns.filter(id => id !== 'factory')]) {
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'cot-camo-card';
-      card.dataset.pid = pid; // camo r8: stable hook for tools + tests
-      card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"></div><div class="cl"></div>`
-        : `<div class="sw"></div><div class="cl"></div>`;
-      createUiCanvas(card.querySelector('.sw'), '', { draw: paintCamoSwatchSurface });
-      requiredElement<HTMLElement>(card, '.cl').textContent =
-        (camoOpts.label && camoOpts.label[pid]) || pid;
-      card.dataset.tip = (camoOpts.label && camoOpts.label[pid]) || pid;
-      card.addEventListener('click', () => {
-        emit('ui:click', {});
-        if (!selectedId) return;
-        camoOpts.set(selectedId, pid);
-        refreshCamoSel();
-        if (isOverlayPanelLayout()) setGaragePanel('');
-        // Keep the packaged portrait healthy; the live pedestal is the
-        // authoritative camouflage preview.
-        requeueTankThumbs(selectedId);
-      });
-      grid.appendChild(card);
-      camoCardById.set(pid, card);
-    }
-    if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
-      const button = requiredElement<HTMLButtonElement>(titleActions, '.cot-custom-open');
-      const getCustom = camoOpts.getCustom;
+    const heading = root.querySelector<HTMLElement>('.cot-leftcol .cot-drawer-heading');
+    heading?.insertBefore(actions, heading.querySelector('.cot-drawer-close'));
+    const host = document.createElement('div');
+    host.className = 'cot-camo-picker';
+    camosEl.appendChild(host);
+    const custom = typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function';
+    const getCustom = camoOpts.getCustom;
+    camoPicker = createGarageCamoPicker({
+      id: 'garage-camo',
+      host,
+      label: t('garage.tools.camos'),
+      patterns: camoOpts.patterns,
+      words: {
+        label: camoPatternLabel,
+        nationOfTag: (tag) => CAMO_TAG_NATION[tag as CamoTagId] ?? null,
+        nationName: tNation,
+        kindName: (kind) => t(`garage.camo.kind.${kind}`),
+        auto: camoPatternLabel('auto'),
+        makeOwn: t('garage.camo.makeOwn'),
+      },
+      text: pickerText(),
+      custom,
+      createSwatch: () => createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas,
+      paintSwatch: (canvas, specId, patternId) => {
+        const spec = specById.get(specId);
+        if (!spec) return;
+        if (patternId === 'auto') paintAutoCamoSwatch(canvas, spec);
+        else paintCamoSwatch(canvas, spec, patternId);
+      },
+      onPreview: (patternId) => { if (selectedId && !vehicleLocked) camoOpts.preview?.(selectedId, patternId); },
+      onChoose: wearCamo,
+      onMakeOwn: () => { void openCustomCamoStudio(); },
+    });
+    if (custom && getCustom && camoOpts.setCustom) {
       const setCustom = camoOpts.setCustom;
       customCamoStudioAccess = createCustomCamoStudioAccess(async () => {
         const { createCustomCamoStudio } = await import('./customCamoStudio.ts');
         return createCustomCamoStudio({
-          button,
+          button: makeOwnOption,
           camo: { getCustom, setCustom },
           selectedId: () => selectedId,
           selectedSpec: () => (selectedId ? specById.get(selectedId) : null),
@@ -2210,25 +2162,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           requeueThumb: requeueTankThumbs,
         });
       });
-      const preloadStudio = () => {
-        customCamoStudioAccess?.preload().catch(() => { /* the click path retries */ });
+      // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch
+      const preloadStudio = (event: Event): void => {
+        if (!eventElement(event)?.closest(`[data-id="${CUSTOM_CAMO_ID}"]`)) return;
+        customCamoStudioAccess?.preload().catch(() => { /* the press retries */ });
       };
-      button.addEventListener('pointerenter', preloadStudio, { once: true });
-      button.addEventListener('focus', preloadStudio, { once: true });
-      button.addEventListener('click', async () => {
-        button.setAttribute('aria-busy', 'true');
-        button.removeAttribute('data-load-error');
-        try {
-          await customCamoStudioAccess?.open();
-          delete button.dataset.tip;
-        } catch (error) {
-          button.dataset.loadError = 'true';
-          button.dataset.tip = t('garage.camo.customStudioRetryTitle');
-          console.warn('[garage] custom camouflage studio failed to load', error);
-        } finally {
-          button.removeAttribute('aria-busy');
-        }
-      });
+      host.addEventListener('pointerover', preloadStudio);
+      host.addEventListener('focusin', preloadStudio);
     }
   }
   initializeCamoPicker();
@@ -2537,63 +2477,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeEqPicker();
   }
   // --- END EQUIPMENT SYSTEM -------------------------------------------------
-  let swatchesFor: string | null = null; // spec id the swatches are currently painted for
-  function refreshCamoTagFilters() {
-    if (!camoOpts || !selectedId) return;
-    const spec = specById.get(selectedId);
-    if (!spec) return;
-    const available = new Set<CamoTagId>(['all']);
-    for (const pid of camoOpts.patterns) {
-      if (!camoInCollection(pid, activeCamoCollection)) continue;
-      for (const tagId of camoPatternTags(pid, spec.nation)) available.add(tagId);
-    }
-    for (const [id, button] of camoCollectionButtons) {
-      button.setAttribute('aria-pressed', String(id === activeCamoCollection));
-    }
-    if (!available.has(activeCamoTag)) activeCamoTag = 'all';
-    for (const [tagId, button] of camoTagButtonById) {
-      button.hidden = tagId !== 'all' && !available.has(tagId);
-      button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
-    }
-    for (const [pid, card] of camoCardById) {
-      const tags = camoPatternTags(pid, spec.nation);
-      card.hidden = !camoInCollection(pid, activeCamoCollection) || !camoMatchesTag(pid, spec.nation, activeCamoTag);
-      card.dataset.tags = tags.join(' ');
-      const originalLabel = camoOpts.label?.[pid] || pid;
-      const genericKey = `garage.camo.generic.${pid}`;
-      const genericLabel = t(genericKey);
-      const label = genericLabel !== genericKey ? genericLabel : originalLabel;
-      requiredElement<HTMLElement>(card, '.cl').textContent = label;
-      card.setAttribute('aria-label', label);
-      // the complete pattern name, when the single line truncates or the grid shows swatches alone
-      card.dataset.tip = label;
-    }
-    requestAnimationFrame(syncScrollFades);
-    requestAnimationFrame(fitCamoRows);
-  }
-
-  function syncCamoCardSelection(selectedPatternId: string): void {
-    for (const [patternId, card] of camoCardById) {
-      const selected = patternId === selectedPatternId;
-      card.classList.toggle('sel', selected);
-      card.setAttribute('aria-pressed', String(selected));
-      // The grid scrolls, so restoring a persisted selection must keep its
-      // active card visible without disturbing a deliberately filtered list.
-      if (selected && !card.hidden && openGaragePanel() === 'appearance') card.scrollIntoView?.({ block: 'nearest' });
-    }
-  }
-
-  function repaintTankCamoSwatches(spec: GarageTankSpec): void {
-    for (const [patternId, card] of camoCardById) {
-      if (card.hidden || card.dataset.swatchSpec === spec.id) continue;
-      const canvas = card.querySelector<HTMLCanvasElement>('.sw canvas');
-      if (!canvas) continue;
-      if (patternId === 'auto') paintAutoCamoSwatch(canvas, spec);
-      else paintCamoSwatch(canvas, spec, patternId);
-      card.dataset.swatchSpec = spec.id;
-    }
-  }
-
   const camoPatternLabel = (patternId: string): string => {
     const genericKey = `garage.camo.generic.${patternId}`;
     const genericLabel = t(genericKey);
@@ -2636,9 +2519,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!patternId || !camoOpts || !selectedId || vehicleLocked) return;
     emit('ui:click', {});
     if (camoOpts.get(selectedId) === patternId) return;
-    camoOpts.set(selectedId, patternId);
-    refreshCamoSel();
-    requeueTankThumbs(selectedId);
+    wearCamo(patternId);
     paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
   });
 
@@ -2670,24 +2551,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const selectedPatternId = camoOpts.get(selectedId);
-    if (swatchesFor !== selectedId) {
-      activeCamoCollection = camoCollectionFor(selectedPatternId);
-      activeCamoTag = 'all';
-    }
     customCamoStudioAccess?.peek()?.syncSelected();
-    refreshCamoTagFilters();
-    syncCamoCardSelection(selectedPatternId);
     const spec = specById.get(selectedId);
     if (!spec) return;
     refreshBandPaint(spec, selectedPatternId);
-    // repaint swatch tiles for THIS tank (factory palette + nation digital
-    // differ per vehicle — the preview must show what the hull will wear)
-    if (swatchesFor === selectedId) return;
-    // The catalog lives in the every-paint drawer in every layout (the 245 redesign): it repaints when that opens, not on
-    // every press (click-perf-244).
+    if (applyNationButton) {
+      const label = t('garage.camo.applyNation', { nation: tNation(spec.nation) });
+      applyNationButton.innerHTML = `${uiIconSVG('globe', 16)}<span>${escapeHtmlAttribute(label)}</span>`;
+      applyNationButton.setAttribute('aria-label', label);
+      // a custom paint is this tank's own drawing: it is not worn by the rest of the nation
+      applyNationButton.disabled = selectedPatternId === CUSTOM_CAMO_ID;
+    }
+    // the picker shows this tank's paints (factory palettes and nation digitals differ per vehicle: each swatch shows
+    // what the hull will wear) when the every-paint sheet is open, never on every press (click-perf-244)
     if (openGaragePanel() !== 'appearance') return;
-    repaintTankCamoSwatches(spec);
-    swatchesFor = selectedId;
+    camoPicker?.setTank(selectedId, spec.nation, selectedPatternId);
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 

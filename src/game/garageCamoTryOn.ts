@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { scratchCanvas } from '../ui/uiCanvas.ts';
 
 /**
  * The Garage's camo try-on (INTERACTION-REDESIGN B, owner 2026-10-26: "make ... camo much more intuitive"): hovering
@@ -53,7 +54,7 @@ const hasMap = (material: THREE.Material): material is MappedMaterial =>
 
 export function createGarageCamoTryOn(opts: TryOnOptions): GarageCamoTryOn {
   const schedule = opts.schedule ?? ((callback: () => void) => { const id = setTimeout(callback, 0); return () => clearTimeout(id); });
-  const createCanvas = opts.createCanvas ?? (() => document.createElement('canvas'));
+  const createCanvas = opts.createCanvas ?? (() => scratchCanvas(TRY_ON_PX, TRY_ON_PX));
   // each material the try-on re-mapped, with the worn texture it gives back
   const swapped = new Map<MappedMaterial, THREE.Texture>();
   let swappedRoot: THREE.Object3D | null = null;

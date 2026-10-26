@@ -23,7 +23,7 @@ const SHELL: readonly string[] = [
   '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
   '.cot-sidebar-section-title span',
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",
-  '.cot-map-card .mname', '.cot-camo-tag span', '.cot-camo-collection', '.cot-camo-card .cl',
+  '.cot-map-card .mname',
   '.cot-garage .sub>span', '.cot-garage .srow .lr>span', "body[data-cot-panels='persistent'] .cot-garage .srow .lr>span",
   '.cot-garage .eqslot .sl', '.cot-action>span',
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',

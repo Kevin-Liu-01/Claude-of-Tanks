@@ -223,7 +223,6 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
   max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh,
     calc(var(--band-bottom) + var(--slot) + max(var(--fs-floor-11),var(--fs-11)) + var(--s1) + var(--s2) - var(--edge)));
   border-radius:var(--plate-radius);background:var(--plate-highlight),var(--surface-menu);box-shadow:var(--plate-shadow);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{overflow-y:auto;overscroll-behavior:contain;}
 body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
 /* the docked paint sheet names itself and closes from its head, as the phone's sheet does (no second Camouflage name) */
@@ -231,31 +230,23 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .
   justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2);padding-inline-start:var(--s3);color:var(--ink-1);
   font:600 var(--fs-16)/1 var(--font-display);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{--h:var(--btn-h-s);flex:0 0 auto;margin:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle>:is(svg,span){display:none;}
 /* the roster filter opens over the band's place: the band steps aside while it is open, so no control is half under it */
 body[data-cot-panels='persistent'] .cot-garage.facets-open .cot-lower-third{visibility:hidden;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;overflow:visible;height:auto;}
-/* a window under 820 px tall keeps the nations and the kinds on one strip each (under an edge fade), so the sheet's room
-   goes to whole rows of paint rather than wrapped chips over a sliced one (the gauntlet 10-25: at 1280 x 720 the kinds
-   took two rows and the second swatch row was a 10 px sliver) */
-@media (height < 820px){
-  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){
-    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-inline-end:var(--s8);
-    -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 64px),transparent);}
-  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections)>*{flex:none;}
-}
-/* the compact sheet gives its height to the paint: the info and Create pair stands at the flags' row end, and the staging
-   strip is one control high (the gauntlet 10-25: one swatch row, cut, under three header rows) */
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{position:relative;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .ctitle{position:absolute;top:0;right:0;margin:0;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-collections{margin-right:132px;}
+/* the docked sheet is short (the tank stays in view above it): the picker's search and kind chips share one row, and its
+   swatches are compact (a 3:2 tile over the paint's name; its nation and kind are its tip and its search words), so two
+   rows and the next one's peek show at 1280 x 720 */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{height:38px;padding-block:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
-  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card{padding:2px;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card .sw{margin:0;aspect-ratio:1.5;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card .cl{position:absolute;width:1px;height:1px;
-  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker{gap:var(--s2)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__bar{flex-wrap:nowrap}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{flex:0 1 240px;height:var(--btn-h-s)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__chips{flex:1 1 auto;
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:var(--s1)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__opt{gap:var(--s1);padding:var(--s1)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:3/2}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__name{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.2}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__facts{display:none}
 
 /* ---- the selected tank's take, over the battle card on a screen tall enough that the readout keeps its full plates ---- */
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage>.cot-featured{position:absolute;right:var(--edge);

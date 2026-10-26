@@ -1512,6 +1512,14 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       }).then(() => camoTryOn.settle(patternId)).then(() => invalidateGaragePresentation());
       multiplayerLobby?.syncSelection();
     },
+    // "Wear on every <nation> tank" (INTERACTION-REDESIGN B): one paint on many tanks; the shown hero bakes first
+    setMany: (specIds: readonly string[], patternId: string) => {
+      for (const id of specIds) setCamoSelection(id, patternId);
+      camoSweepP = applyCamoPatternsChunked({
+        priorityIds: [selectedVehicle.id], onlySpecIds: [...specIds],
+      }).then(() => invalidateGaragePresentation());
+      multiplayerLobby?.syncSelection();
+    },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({

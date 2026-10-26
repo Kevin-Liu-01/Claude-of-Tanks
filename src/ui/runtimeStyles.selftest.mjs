@@ -116,7 +116,6 @@ assert.match(garageCss,
 for (const headerClass of [
   'ftitle cot-sidebar-section-title',
   'mtitle cot-sidebar-section-title',
-  'ctitle cot-sidebar-section-title',
   'cot-stat-title cot-sidebar-section-title',
 ]) {
   assert.match(garageSource, new RegExp(headerClass),
