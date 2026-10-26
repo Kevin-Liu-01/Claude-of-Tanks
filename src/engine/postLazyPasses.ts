@@ -14,8 +14,11 @@
  * marker, and the entry that replaced it took the rejection for its own supersession and never revealed. Every call now
  * runs its own warm.)
  */
+import type { Material, WebGLRenderTarget } from 'three';
 import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import { compileFullscreenPrograms, type FullscreenCompileRenderer } from './fullscreenProgramWarm.ts';
+import { createGpuCatchUpGate, type GpuCatchUpGate } from './gpuCatchUp.ts';
 import { createVisionWarmSteps } from './visionWarm.ts';
 
 export { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
@@ -25,7 +28,55 @@ export interface PostWarmTiming {
   ms: number;
 }
 
-type WarmComposer = Pick<EffectComposer, 'passes' | 'renderToScreen' | 'render'>;
+type WarmComposer = Pick<EffectComposer, 'passes' | 'renderToScreen' | 'render'>
+  & { renderer?: LinkRenderer; readBuffer?: WebGLRenderTarget };
+
+/** The renderer calls a pass's link wait needs (three's; absent on the receipts' fake composers). */
+type LinkRenderer = FullscreenCompileRenderer & {
+  info: { programs: ReadonlyArray<object> | null };
+  getContext(): WebGLRenderingContext | WebGL2RenderingContext;
+};
+
+/** A pass's own materials: its fields, its arrays of them, and the `material` of a field (a FullScreenQuad). */
+function passMaterials(pass: Pass): Material[] {
+  const found = new Set<Material>();
+  const take = (value: unknown): void => {
+    if (value && typeof value === 'object' && (value as { isMaterial?: boolean }).isMaterial === true) found.add(value as Material);
+  };
+  for (const value of Object.values(pass as unknown as Record<string, unknown>)) {
+    take(value);
+    if (Array.isArray(value)) for (const item of value) take(item);
+    else if (value && typeof value === 'object') take((value as { material?: unknown }).material);
+  }
+  return [...found];
+}
+
+/** The longest a pass's link wait holds its draw back; a link still pending then links at the draw, as before. */
+const PASS_LINK_WAIT_MS = 3_000;
+
+/**
+ * (battle-spikes-253) A pass's programs linked between tasks before it draws: its materials compiled against the
+ * composer's buffer with no draw, then one completion query a poll on the programs that compile made, each poll held
+ * until the GPU caught up to the last (gpuCatchUp.ts). A pass's first draw linked its program inside the warm's one
+ * synchronous render (nav-perf's root-w solo entry: renderPassAlone, getProgramParameter 560 ms).
+ */
+async function linkPassPrograms(composer: WarmComposer, pass: Pass, gate: GpuCatchUpGate | null,
+  yieldBeforePass: YieldBeforePass, label: string): Promise<void> {
+  const renderer = composer.renderer;
+  const programs = renderer?.info?.programs;
+  if (!renderer || !programs || !yieldBeforePass) return;
+  const before = new Set(programs);
+  const target = composer.readBuffer ?? null;
+  if (!compileFullscreenPrograms(renderer, passMaterials(pass).map((material) => ({ material, target })))) return;
+  // three's WebGLProgram.isReady: COMPLETION_STATUS once, cached true after
+  const fresh = (renderer.info.programs?.filter((program) => !before.has(program)) ?? []) as Array<{ isReady?(): boolean }>;
+  const deadline = performance.now() + PASS_LINK_WAIT_MS;
+  let cursor = 0;
+  while (cursor < fresh.length && performance.now() < deadline) {
+    if (!gate || gate.caughtUp()) while (cursor < fresh.length && fresh[cursor].isReady?.() !== false) cursor++;
+    if (cursor < fresh.length) await yieldBeforePass(`${label}-links`);
+  }
+}
 type GradePass = Pass & { uniforms: Record<string, { value: unknown }> };
 type YieldBeforePass = ((label: string) => Promise<void>) | null | undefined;
 
@@ -48,10 +99,16 @@ async function warmPasses(composer: WarmComposer, grade: GradePass, yieldBeforeP
   const timings: PostWarmTiming[] = [];
   // the passes the chain runs as the warm begins (a pass it turns on later warms at its first frame, as before)
   const passes = composer.passes.filter((pass) => pass.enabled);
+  let gate: GpuCatchUpGate | null = null;
+  try { if (composer.renderer?.getContext) gate = createGpuCatchUpGate(composer.renderer.getContext()); } catch { gate = null; }
+  try {
   for (const pass of passes) {
     const label = pass.constructor?.name || `post-pass-${composer.passes.indexOf(pass) + 1}`;
     if (yieldBeforePass) await yieldBeforePass(label);
     // a pass the chain dropped during the wait (the SMAA slot's swap, a Studio pass) is not drawn
+    if (!composer.passes.includes(pass)) continue;
+    try { await linkPassPrograms(composer, pass, gate, yieldBeforePass, label); }
+    catch (error) { if (!composer.passes.includes(pass)) continue; throw error; }
     if (!composer.passes.includes(pass)) continue;
     const startedAt = performance.now();
     if (pass === grade) {
@@ -68,6 +125,7 @@ async function warmPasses(composer: WarmComposer, grade: GradePass, yieldBeforeP
     }
     timings.push({ label, ms: Math.round(performance.now() - startedAt) });
   }
+  } finally { gate?.dispose(); }
   return timings;
 }
 

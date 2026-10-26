@@ -95,4 +95,47 @@ function chain() {
   assert.doesNotMatch(post, /createVisionWarmSteps/, 'the vision warm left the entry with the first-frame warm');
 }
 
+
+// (battle-spikes-253) each pass's own materials (a field, an array of them, a quad's `material`) are compiled against the
+// composer's buffer with no draw and their new programs' links waited for between tasks before the pass draws: a pass's
+// first draw linked its program inside the warm's one synchronous render (nav-perf's root-w solo entry: 560 ms)
+{
+  const c = chain();
+  const events = [];
+  const programs = [];
+  let calls = 0;
+  const material = { isMaterial: true, name: 'grade-material' };
+  const quadMaterial = { isMaterial: true, name: 'quad-material' };
+  c.grade.material = material;
+  c.grade.fsQuad = { material: quadMaterial };
+  c.composer.readBuffer = { name: 'read' };
+  let bound = null;
+  c.composer.renderer = {
+    info: { programs },
+    getContext: () => ({}),
+    getRenderTarget: () => bound,
+    setRenderTarget(target) { bound = target; },
+    compile(scene) {
+      let compiled = null;
+      scene.traverse((object) => { if (object.isMesh) compiled = object.material; });
+      events.push(['compile', compiled.name, bound?.name]);
+      // a fresh program per material: ready on its third query
+      programs.push({ isReady: () => ++calls > 2 });
+    },
+  };
+  const render = c.composer.render.bind(c.composer);
+  c.composer.render = () => { events.push(['draw', c.passes.filter((pass) => pass.enabled).map((pass) => pass.name)[0]]); render(); };
+  await warmPostFirstFrame(c.composer, c.grade, async (label) => { events.push(['yield', label]); });
+  const gradeAt = events.findIndex(([kind, name]) => kind === 'draw' && name === 'OutputGradePass');
+  const compiles = events.filter(([kind]) => kind === 'compile');
+  assert.deepEqual(compiles.map(([, name, target]) => [name, target]).sort(), [['grade-material', 'read'], ['quad-material', 'read']],
+    'the pass\'s own materials compiled against the composer\'s buffer');
+  assert.ok(events.findIndex(([kind]) => kind === 'compile') < gradeAt, 'before its draw');
+  assert.ok(events.slice(0, gradeAt).some(([kind, label]) => kind === 'yield' && label === 'OutputGradePass-links'),
+    'its draw waited a task for the links');
+  assert.ok(calls > 2, 'until the program reported its link done');
+  assert.equal(bound, null, 'the bound target restored');
+  assert.equal(compiles.length, 2, 'passes without materials of their own compile nothing');
+}
+
 console.log('postWarmFirstFrame.selftest: one pass per synchronous transaction, canonical flags between steps, overlapping warms each run their own and end canonical, a superseded caller never fails another');

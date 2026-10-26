@@ -1,0 +1,7 @@
+/* The kit's pickers on the Field Manual's pages (the battle takes, the Filming viewer's stages and takes), loaded with the
+   picker at those lazy boundaries. A sheet of its own that inlines pickers.css: importing pickers.css itself from a
+   second place split it out of the game's main stylesheet, one more boot request. Copyright © 2026 Kevin B. Liu. */
+@import url('../ui/components/pickers.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+/* every rule is the kit's (pickers.css, in the components layer); this sheet adds none */
+@layer components{}

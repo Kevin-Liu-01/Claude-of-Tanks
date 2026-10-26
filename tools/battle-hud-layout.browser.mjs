@@ -101,6 +101,12 @@ const recordMain = arg('record-main','');
 // notice stages whose key matches (a focused re-run, or recording main's numbers for new stages)
 const noticesOnly = process.argv.includes('--notices-only');
 const stageFilter = arg('stages','') ? new RegExp(arg('stages','')) : null;
+/** Tab holds the rosters while the battle has the cursor (hud.ts; INTERACTION-REDESIGN C): a headless page holds no pointer
+ *  lock, so the Tab stages stand one in for the press. */
+const cursorCaptured=(page,on)=>page.evaluate(on=>{
+  if(on)Object.defineProperty(document,'pointerLockElement',{configurable:true,get:()=>document.body});
+  else delete document.pointerLockElement;
+},on);
 const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
 const mainRecord = {};
 const noticeTable = [];
@@ -766,7 +772,7 @@ try {
         await page.evaluate(count=>{const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);},count);
         await page.waitForTimeout(120);
         for(const expanded of [false,true]){
-          if(expanded){await page.keyboard.down('Tab');await page.waitForTimeout(120);}
+          if(expanded){await cursorCaptured(page,true);await page.keyboard.down('Tab');await page.waitForTimeout(120);}
           const rowIssues=await page.evaluate(({count,expanded})=>{
             const failures=[];
             for(const ear of document.querySelectorAll('.cot-ear')){
@@ -782,7 +788,7 @@ try {
           },{count,expanded});
           errors.push(...rowIssues.map(issue=>`${name}: ${issue}`));
           await check(`row-size-${count}-${expanded?'tab':'normal'}`);
-          if(expanded){await page.keyboard.up('Tab');await page.waitForTimeout(120);}
+          if(expanded){await page.keyboard.up('Tab');await cursorCaptured(page,false);await page.waitForTimeout(120);}
         }
       }
       // Full participant identity survives visibility changes without rebuilding rows.
@@ -808,12 +814,14 @@ try {
       await check(`rosters-${allies}v${enemies}`);
       if(allies===14&&enemies===14&&!touch&&width>=820&&height>=600){
         const normalWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
+        await cursorCaptured(page,true);
         await page.keyboard.down('Tab');
         await page.waitForTimeout(120);
         const expandedWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
         if(expandedWidth<=normalWidth)errors.push(`${name}: Tab did not widen the roster`);
         await check('rosters-tab-expanded');
         await page.keyboard.up('Tab');
+        await cursorCaptured(page,false);
         await page.waitForTimeout(120);
         if(await page.locator('.rosters-expanded').count())errors.push(`${name}: releasing Tab did not collapse rosters`);
       }

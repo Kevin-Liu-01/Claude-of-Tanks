@@ -182,8 +182,10 @@ const garage = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
 for (const [name, pattern] of [
   ['country chip rail', /chipsEl\.addEventListener\('wheel', \(event\) => \{[^}]*?if \(event\.ctrlKey\) return;/],
   ['tank card carousel', /cardsEl\.addEventListener\('wheel', \(e\) => \{[^}]*?if \(e\.ctrlKey \|\|/],
-  ['camo strip', /strip\.addEventListener\('wheel', \(event\) => \{[^}]*?if \(event\.ctrlKey \|\|/],
 ]) assert.match(garage, pattern, `the garage ${name} ignores ctrl+wheel`);
+// the camo picker (the kit picker) scrolls natively: no wheel handler of its own to read a pinch as a scroll
+assert.doesNotMatch(readFileSync(new URL('./components/picker.ts', import.meta.url), 'utf8'), /addEventListener\('wheel'/,
+  'the kit picker leaves the wheel to the browser');
 const settings = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
 assert.match(settings, /function onCaptureWheel\(e: WheelEvent\): void \{[^}]*?e\.ctrlKey\) return;/,
   'a pinch during key capture binds nothing');

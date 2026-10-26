@@ -162,6 +162,11 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     wrap.dataset.more = max <= 1 ? '' : `${row.scrollLeft > 1 ? 'l' : ''}${row.scrollLeft < max - 1 ? 'r' : ''}`;
   };
   const updateCues = (): void => { for (const row of rowElements) updateCue(row); };
+  // a row measured while the panel was still unplaced read no overflow, and its cut chip showed no fade (the r17 critic
+  // at 844x390): each row reads its cue again once it has its size
+  const cueObserver = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+    for (const entry of entries) updateCue(entry.target as HTMLElement);
+  }) : null;
   const rows = (Object.keys(GARAGE_FACET_GROUPS) as GarageFacetGroup[]).map((group) => {
     const counts = garageFacetOptionCounts(index, EMPTY_GARAGE_FACET_STATE, group);
     const row = document.createElement('div');
@@ -198,6 +203,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     }
     optionButtons.set(group, buttons);
     row.addEventListener('scroll', () => updateCue(row), { passive: true });
+    cueObserver?.observe(row);
     rowElements.push(row);
     const wrap = document.createElement('div');
     wrap.className = 'cot-facet-rowwrap';

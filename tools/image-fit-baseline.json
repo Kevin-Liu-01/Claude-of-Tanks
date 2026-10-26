@@ -1,0 +1,73 @@
+{
+  "$comment": "The image-fit ratchet (tools/image-fit-lint.mjs). unfocused: the cover rules that declare no focal point (object-position or background-position) today, by file; the list only shrinks (a rule that gains its focal point leaves it, a new one never joins). Copyright 2026 Kevin B. Liu.",
+  "unfocused": {
+    "src/docs/chapters.css": [
+      ".dm-mode__still img",
+      ".dm-step__figure img",
+      ".dm-map img",
+      ".dm-figure--phone img",
+      ".dm-figure--crop img",
+      ".dm-tiles img",
+      ".dm-takes img"
+    ],
+    "src/docs/docs.css": [
+      ".docs-motion-grid video",
+      ".docs-chapter-grid img",
+      ".battle-reel-stage video",
+      ".filming-screen video",
+      ".manual-take .fleet-take-video"
+    ],
+    "src/gallery/gallery.css": [
+      ".take-media .fleet-take-video"
+    ],
+    "src/presentation/home.css": [
+      ".hero__thumb img",
+      ".v5-social-card__avatar"
+    ],
+    "src/presentation/mediaArchive.css": [
+      ".media-archive-card img"
+    ],
+    "src/ui/battleLoad.ts": [
+      "${WIDE} .cot-bl .map img",
+      "${PORTRAIT} .cot-bl .map img"
+    ],
+    "src/ui/components/components.css": [
+      ".cot-c-flag",
+      ".cot-c-media>img,.cot-c-media>video,.cot-c-media>picture>img"
+    ],
+    "src/ui/components/pickers.css": [
+      ".cot-c-picker__mosaic img",
+      ".cot-bf__map>:is(img,canvas)"
+    ],
+    "src/ui/customSelect.ts": [
+      ".cot-custom-select-trigger .cot-flag,.cot-custom-select-list .cot-flag"
+    ],
+    "src/ui/deploy.css": [
+      ".cot-garage .cot-deploy-proving-art",
+      ".cot-garage .cot-deploy-camp>img",
+      ".cot-garage .cot-deploy-brief-art img",
+      ".cot-garage .cot-deploy-field-mm img"
+    ],
+    "src/ui/garage.css": [
+      ".cot-garage .stats .sub .cot-flag",
+      ".cot-card .flag .cot-flag",
+      ".cot-featured .fleet-take-video"
+    ],
+    "src/ui/settings.ts": [
+      ".cot-set-preview img"
+    ],
+    "src/ui/showroom.css": [
+      ".cot-lt-swatch canvas"
+    ],
+    "src/ui/studioPanel.css": [
+      ".st-load__art",
+      ".st-out .it .th",
+      ".cot-studio .mapBtn .mhero",
+      ".cot-studio .production-card img",
+      ".st-tl .clip .th"
+    ],
+    "src/ui/watchHud.ts": [
+      ".cot-watch .cot-c-flag"
+    ]
+  }
+}

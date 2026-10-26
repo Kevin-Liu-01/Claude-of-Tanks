@@ -52,7 +52,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__icon{opacity:.82}
 .public-nav__tools{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .public-nav__lang,.public-footer__lang{display:inline-flex;height:36px;border:1px solid var(--line-2);border-radius:var(--control-radius);overflow:hidden}
-.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
+.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .public-nav__lang a:hover,.public-footer__lang a:hover{color:var(--ink-1)}
 :root:not(:lang(zh)) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
