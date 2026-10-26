@@ -231,7 +231,9 @@ body[data-cot-input='coarse'][data-cot-height='short'] .cot-settings{--cot-edge:
 body[data-cot-input='coarse'] .cot-set-card{padding-top:var(--s4)}
 body[data-cot-height='short'] .cot-set-preview{display:none}
 /* a compact screen keeps the preview to a strip, so the rows under it stay in view */
-body[data-cot-height='compact'] .cot-set-preview{max-width:356px;margin-inline:auto}
+/* a compact screen keeps the preview to a band across the content column, cropped to the tank's tracks */
+body[data-cot-height='compact'] .cot-set-preview{aspect-ratio:auto;height:200px}
+body[data-cot-height='compact'] .cot-set-preview img{object-position:50% 72%}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:var(--s3) var(--s4) var(--s2)}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:var(--s4)}

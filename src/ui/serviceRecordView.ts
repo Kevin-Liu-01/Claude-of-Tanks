@@ -273,7 +273,7 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
     return `<li><details class="cot-record-battle result-${battle.result}">` +
       `<summary><span class="cot-record-battle-row">${battleVehicleArt(battle)}` +
       `<span class="cot-record-battle-what"><span class="cot-record-result">${resultLabel(battle.result)}</span><b>${safe(battleVehicleName(battle, names))}</b>` +
-      `<small><span>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))}&nbsp;·</span> <span>${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</span></small>` +
+      `<small><span data-mode-tone="${battle.mode}">${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))}&nbsp;·</span> <span>${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</span></small>` +
       `<time>${safe(when(battle.at))}</time></span>` +
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${statLabel(t('garage.record.kills'), 'skull')}</small></span>` +
       `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${statLabel(t('garage.record.damage'), 'damage')}</small></span>` +

@@ -12,6 +12,7 @@ import { tanksSections } from './tanks.ts';
 import { startSections } from './start.ts';
 import { controlsSections } from './controls.ts';
 import type { RichSection } from './types.ts';
+import { keepPhrases } from '../designations.ts';
 
 const BUILDERS: Readonly<Record<string, () => RichSection[]>> = {
   modes: modesSections,
@@ -51,9 +52,10 @@ function stackWideTables(html: string): string {
   });
 }
 
-/** A data-built chapter's sections, or null for a chapter written as text sections (src/docs/topics.ts). */
+/** A data-built chapter's sections, or null for a chapter written as text sections (src/docs/topics.ts). Its numeric
+ *  phrases (7 v 7, 500 m) never break (src/docs/designations.ts). */
 export function richSections(slug: string): RichSection[] | null {
-  return BUILDERS[slug]?.().map((section) => ({ ...section, html: stackWideTables(section.html) })) ?? null;
+  return BUILDERS[slug]?.().map((section) => ({ ...section, html: keepPhrases(stackWideTables(section.html)) })) ?? null;
 }
 
 export type { RichSection } from './types.ts';

@@ -137,7 +137,7 @@ img{display:block;max-width:100%}
 .play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
 .play-tile__nm a:focus-visible{outline:none}
 /* a mode wears its Deploy glyph, in ink: the accent stays with the primary and the selection */
-.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--ink-2)}
+.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}
 /* a long name takes a second line, never an ellipsis */
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 

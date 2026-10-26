@@ -4,7 +4,7 @@ import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 import type { RichSection } from './chapters/types.ts';
-import { keepDesignations } from './designations.ts';
+import { keepDesignations, keepPhrases } from './designations.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -346,7 +346,7 @@ export interface TopicHeroLadder {
   readonly phone: string | null;
 }
 /** The trail's separator: the sprite's chevron (never a typed ›). */
-const CRUMB = icon('chevronRight', { size: 12 });
+const CRUMB = icon('chevronRight', { size: 16 });
 
 export function topicHeroLadder(hero: string): TopicHeroLadder | null {
   const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(hero)?.[1];
@@ -393,8 +393,9 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
   return `${poster}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
 }
 
+/** A text section's paragraph: its `code` spans, its numeric phrases held on one line (src/docs/designations.ts). */
 function formatText(text: string): string {
-  return text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  return keepPhrases(text.replace(/`([^`]+)`/g, '<code>$1</code>'));
 }
 
 export function topicSectionId(index: number): string {

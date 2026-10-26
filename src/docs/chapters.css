@@ -62,12 +62,13 @@
 .dm-mode__facts .cot-i{grid-row:span 2;color:var(--ink-3)}
 .dm-mode__facts dt{font:500 max(var(--fs-floor-12),var(--fs-12))/1.1 var(--font-body);color:var(--ink-3)}
 .dm-mode__facts dd{margin:0;font:600 var(--fs-15)/1.1 var(--font-body);color:var(--ink-1)}
-/* the first battle's steps: the screen beside what to do on it, numbered because the order is the point */
-.dm-step{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:var(--s5);align-items:center}
+/* the first battle's steps: the screen beside what to do on it, numbered because the order is the point; the number
+   stands on the figure's top edge */
+.dm-step{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:var(--s5);align-items:start}
 .dm-step__figure{margin:0}
 .dm-step__figure img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
 .dm-step__body{display:grid;gap:var(--s2)}
-.dm-step__n{font:700 var(--fs-36)/1 var(--font-display);color:var(--ink-3)}
+.dm-step__n{font:700 var(--fs-36)/1 var(--font-display);color:var(--ink-3);text-box:trim-start cap alphabetic}
 :lang(zh-CN) .dm-step__n{color:var(--ink-3)}
 .dm-step__body p{margin:0;font:400 var(--fs-16)/1.6 var(--font-body);color:var(--ink-2)}
 .dm-step__body .cot-c-kbd{vertical-align:baseline}
@@ -105,8 +106,10 @@
 .dm-classes+p{margin-top:var(--s3)}
 .dm-class{display:grid;grid-template-rows:auto 1fr;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-hc{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-scene);--hc-band:10px;--hc-share:0.74;--hc-hshare:0.72;--hc-cxr:0.5;--hc-flag-mask:var(--docs-hc-flag-mask)}
-.dm-class__body{display:grid;align-content:start;gap:4px;padding:10px 12px 12px}
-.dm-class__body h3{display:flex;align-items:baseline;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
+/* the title takes what the row leaves and the subline (the class's tank) sits on the card's foot, so a row's sublines share
+   one line whether its titles take one line or two */
+.dm-class__body{display:grid;grid-template-rows:1fr auto;gap:4px;padding:10px 12px 12px}
+.dm-class__body h3{display:flex;align-self:start;align-items:baseline;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
 .dm-class__body h3 .cot-i{flex:none;align-self:flex-start;color:var(--ink-3)}
 .dm-class__body h3 b{margin-left:auto;font:600 var(--fs-15)/1 var(--font-data);color:var(--ink-2)}
 .dm-class__body p{display:flex;align-items:center;gap:6px;margin:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
@@ -136,14 +139,18 @@
 .dm-equip span{font:400 max(var(--fs-floor-12),var(--fs-14))/1.45 var(--font-body);color:var(--ink-2)}
 .dm-equip small{justify-self:start;margin-top:2px;padding:2px 7px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
 .dm-chart{margin:var(--s4) 0}
-/* the chart scales as a picture, so where it is drawn under its size its type is set in chart units at the inverse of the
-   drawn scale: --dm-chart-k is the chart's units per drawn pixel, never under 1 (topics.ts counterScaleCharts measures it),
-   so the ticks and units hold the type floor at every width; before the measure lands a band's narrowest column stands in */
-.dm-chart svg{display:block;width:100%;height:auto;overflow:visible;font:500 calc(max(var(--fs-floor-12),var(--fs-12)) * var(--dm-chart-k,1))/1 var(--font-data)}
+/* the chart scales as a picture, so where it is drawn under its size its furniture is drawn at the inverse of the drawn
+   scale: --dm-chart-k is the chart's units per drawn pixel, never under 1 (topics.ts counterScaleCharts measures it), and
+   each .dm-k group (charts.ts: a tick's mark and value, a gridline's value, the axis titles) scales by it about its anchor,
+   so its type holds the floor and its marks and offsets keep their drawn size at every width; before the measure lands a
+   band's narrowest column stands in. The rules stay one drawn pixel at any scale. */
+.dm-chart svg{display:block;width:100%;height:auto;overflow:visible;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
 @media (width < 768px){.dm-chart svg{--dm-chart-k:1.36}}
 @media (width < 520px){.dm-chart svg{--dm-chart-k:2.23}}
+.dm-chart .dm-k{transform:scale(var(--dm-chart-k,1));transform-origin:0 0}
 .dm-chart .g{stroke:var(--line-1)}
 .dm-chart .k,.dm-chart .a{stroke:var(--line-3)}
+.dm-chart :is(.g,.a){vector-effect:non-scaling-stroke}
 .dm-chart .t{fill:var(--ink-3)}
 .dm-chart .u{fill:var(--ink-2)}
 .dm-chart .l{fill:none;stroke:var(--s);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
@@ -199,8 +206,6 @@
 /* the multiplayer, sound and studio chapters: ways in, seats drawn to scale, steps, linked chips, glyph rows */
 .dm-cell{display:inline-flex;align-items:center;gap:8px}
 .dm-cell .cot-i{flex:none;color:var(--ink-3)}
-/* inline code in a card's line: the plate outside its box, as in the reading column (docs.css .dm-article code) */
-.dm-section p code{white-space:nowrap;padding:0;border-radius:var(--r1);background:var(--fill-scale);outline:3px solid var(--fill-scale);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-data);color:var(--ink-1)}
 .dm-roles--ways{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 .dm-roles--ways li>.cot-i{color:var(--ink-3)}
 .dm-roles--rows{grid-template-columns:minmax(0,1fr);max-width:var(--measure-docs)}
@@ -262,6 +267,8 @@
 .dm-takes img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
 .dm-takes span{display:flex;min-width:0;align-items:center;gap:8px;padding:8px 10px;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body)}
 .dm-takes span .cot-i{flex:none;color:var(--ink-3)}
+/* a game mode's glyph wears its mode's hue (tokens --mode-<id>, mapped by the kit from data-mode-tone); its words stay ink */
+[data-mode-tone] .cot-i.dm-mode-glyph{color:var(--mode-ink,var(--ink-3))}
 .dm-takes b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dm-takes a:hover,.dm-takes a:focus-visible{outline:none;box-shadow:var(--ring-2);color:var(--ink-1)}
 @media (width < 768px){

@@ -2781,7 +2781,7 @@
   "docs.start.garage.body": "The Garage opens on your fleet of {tanks} tanks. Pick one: its dossier shows the armor, the gun and how it moves, and the Tank Gallery opens its full anatomy.",
   "docs.start.deploy.title": "Deploy",
   "docs.start.deploy.alt": "The Deploy screen with the modes and the battlefield",
-  "docs.start.deploy.body": "Deploy sets the battle: one of {modes} modes, a battlefield (or a random one of {maps}), the time of day, and the sides, {small} or {large}.",
+  "docs.start.deploy.body": "Deploy sets the battle: one of {modes} modes, one of {maps} battlefields or a random one, the time of day, and the sides, {small} or {large}.",
   "docs.start.drive.title": "Drive and aim",
   "docs.start.drive.alt": "The battle HUD in third person on Verdant Fields",
   "docs.start.drive.body": "{forward} {left} {back} {right} drive; the mouse turns the turret. {sight} drops into the gunner's sight at {zooms}, the wheel zooms, and {hold} holds the gun while you look around.",

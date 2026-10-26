@@ -163,6 +163,7 @@
 /* the place (with its glyph) and the mode each keep their words; the line breaks between them */
 .cot-record-battle-what small>span{display:inline-block}
 .cot-record-battle-what small svg{display:inline-block;margin-right:5px;vertical-align:-1px}
+.cot-record-battle-what small [data-mode-tone] svg{color:var(--mode-ink,var(--ink-3))}
 .cot-record-battle-what time{font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-3)}
 .cot-record-battle-num{display:flex;flex-direction:column-reverse;gap:2px}
 .cot-record-battle-num b{display:block;font:600 var(--fs-20)/1.1 var(--font-display);color:var(--ink-1)}

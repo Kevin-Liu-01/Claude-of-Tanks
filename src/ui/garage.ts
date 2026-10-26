@@ -4119,6 +4119,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
     setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    setupIcon.dataset.modeTone = battleGameMode;
     // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
     setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
       : solo ? `playMenu.matchMode.${battleGameMode}.desc`

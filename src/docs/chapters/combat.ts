@@ -101,7 +101,7 @@ const MODULE_ICONS: Readonly<Record<string, IconId>> = {
 };
 
 function moduleTable(): string {
-  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 16 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
+  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 18 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
     + `<td class="num">${pct(MODULE_DEFS[id].damageChance)} %</td></tr>`).join('');
   return `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t('docs.combat.modulesAria'))}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.combat.col.module'))}</th><th scope="col">${esc(t('docs.combat.col.hp'))}</th>`

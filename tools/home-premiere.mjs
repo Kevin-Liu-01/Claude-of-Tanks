@@ -210,7 +210,7 @@ function modeTile(id) {
   const picture = DEPLOY_ART.has(deploy(1280)) && DEPLOY_ART.has(deploy(480))
     ? `<img src="/${deploy(1280)}" srcset="/${deploy(480)} 480w, /${deploy(1280)} 1280w" sizes="${CARD_SIZES}" width="1280" height="720" alt="" loading="lazy" decoding="async">`
     : stillTag(`modes/${id}`, `media.home.modes.${id}`);
-  return `<figure class="play-tile cot-c-media" data-mode="${id}">${picture}`
+  return `<figure class="play-tile cot-c-media" data-mode="${id}" data-mode-tone="${id}">${picture}`
     + `<figcaption class="play-tile__nm"><a href="/docs/modes">${iconMarkup(def.icon, 24)}${t(`playMenu.matchMode.${id}.label`, 'b')}</a></figcaption></figure>`;
 }
 const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`mechanics/${id}`, `media.home.mechanics.${camel(id)}`)}`

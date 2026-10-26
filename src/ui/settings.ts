@@ -388,7 +388,9 @@ const SETTINGS_CSS = `
 /* the touch floors size the (i)'s hit area, never its box: a heading with an (i) is as tall as one without */
 body.cot-touch-layout .cot-settings .cot-set-info.cot-c-btn,body[data-cot-input='coarse'] .cot-settings .cot-set-info.cot-c-btn{min-height:0;}
 .cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2) calc(-1 * var(--s1));}
-body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2);}
+/* touch: the 44 px hit area reaches left and stays inside the heading's end padding (nothing drawn past its box) */
+body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2) calc(-1 * var(--s2))
+  calc((16px - var(--cot-control-floor,44px)) / 2) calc(16px - var(--cot-control-floor,44px) + var(--s2));}
 .cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
@@ -463,8 +465,8 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
    label columns */
 .cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
-/* a framed notice stands on the content column's edges, as the plate's other framed controls do */
-.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0;}
+/* the refusal is the Custom row's inline notice: its glyph on the rows' glyph column, its text on their label column */
+.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 0 var(--s1);}
 /* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
 .cot-set-refused .cot-c-notice__glyph{width:24px;place-items:center start;}
 .cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;}
@@ -1496,7 +1498,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
     // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
-    const refused = el('div', 'cot-c-notice cot-set-refused', customRow);
+    const refused = el('div', 'cot-c-notice cot-c-notice--inline cot-set-refused', customRow);
     refused.dataset.severity = 'error';
     refused.setAttribute('role', 'alert');
     refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`

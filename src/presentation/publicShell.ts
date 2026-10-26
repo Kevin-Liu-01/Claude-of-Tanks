@@ -85,7 +85,7 @@ function pageLinks(current: PublicPageKey | null, text: ShellText): string {
 /** The bar and its phone menu sheet. */
 export function publicNavHtml(shell: PublicShellPage, text: ShellText): string {
   const play = `${iconMarkup('play', 18)}<span data-i18n="publicNav.playNow">${escapeHtml(text('publicNav.playNow'))}</span>`;
-  const github = `<a class="public-nav__icon-link public-nav__github" href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 18)}</a>`;
+  const github = `<a class="public-nav__icon-link public-nav__github" href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 16)}</a>`;
   return `<a class="public-skip" href="#main" data-i18n="publicNav.skip">${escapeHtml(text('publicNav.skip'))}</a>`
     + `<nav class="public-nav" aria-label="${escapeHtml(text('publicNav.primaryAria'))}" data-i18n-aria-label="publicNav.primaryAria"><div class="public-nav__inner">`
     + `<a class="public-nav__brand" href="/home"${shell.page === 'home' ? ' aria-current="page"' : ''} aria-label="${escapeHtml(text('publicNav.brandAria'))}" data-i18n-aria-label="publicNav.brandAria">${markMarkup(28)}${WORDMARK}</a>`

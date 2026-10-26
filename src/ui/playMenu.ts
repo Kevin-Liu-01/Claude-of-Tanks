@@ -260,7 +260,7 @@ const CSS = `
 .cot-play .rule:hover{background:var(--surface-hover);color:var(--ink-1)}
 .cot-play .rule.on{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .cot-play .rule:disabled{cursor:not-allowed}
-.cot-play .rule svg{display:block}
+.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}
 .cot-play .rule-copy{display:grid;min-width:0;gap:2px}
 .cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-overflow:ellipsis;
   white-space:nowrap;text-transform:uppercase}
@@ -801,7 +801,7 @@ export function createPlayMenu({
   // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
   const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
+    `<button class="rule" data-game-mode="${rule.id}" data-mode-tone="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
