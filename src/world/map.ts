@@ -132,6 +132,7 @@ interface TerrainUserData {
   streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
   updateWater?(deltaSeconds: number, anchorX?: number, anchorZ?: number): void;
+  compileWaterPrograms?(): number;
   disposeWater?(): void;
   resetWater?(): void;
   setWaterTime?(timeSeconds: number): void;
@@ -324,6 +325,10 @@ export interface WorldRuntime {
   warmImpostors(): boolean;
   /** (battle-spikes-253) The same, its bake programs linked first between tasks (the network entry's compile). */
   warmImpostorsAsync?(waitLinks: () => Promise<void>): Promise<boolean>;
+  /** (battle-spikes-253) The GPU simulations' pass programs (the ocean, the water ripples, the ground pressure) submitted
+   *  with no draw under a covered entry: their passes run only on a frame that advances time, the warm's updates do not.
+   *  Returns the passes submitted. */
+  warmSimulationPrograms?(): number;
   setWindTime(timeSeconds: number): void;
   /**
    * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
@@ -1237,6 +1242,7 @@ function* assembleWorldSteps(
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     warmImpostorsAsync: (waitLinks) => { bakePanorama(); return vegetation.warmImpostorsAsync(waitLinks); },
+    warmSimulationPrograms: () => (terrain.userData.compileWaterPrograms?.() ?? 0) + tallGrass.compilePrograms(),
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },

@@ -20,18 +20,18 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // Strv 81 to Strv 122
-    node({ id: 'strv81', tier: 2, line: 'strv', lane: 0, parents: [], slot: 'line' }),
-    node({ id: 'strv103a', tier: 5, line: 'strv', lane: 0, parents: ['strv81'], slot: 'line' }),
-    node({ id: 'strv103b', tier: 7, line: 'strv', lane: 0, parents: ['strv103a'], slot: 'line' }),
-    node({ id: 'strv122', tier: 7, line: 'strv', lane: 1, parents: ['strv103b'], slot: 'line', builds: ['strv121'] }),
+    node({ id: 'strv81', tier: 2, line: 'strv', lane: 2, parents: ['udes03'], slot: 'line' }),
+    node({ id: 'strv103a', tier: 2, line: 'strv', lane: 1, parents: ['strv81'], slot: 'line' }),
+    node({ id: 'strv103b', tier: 2, line: 'strv', lane: 0, parents: ['strv103a'], slot: 'line' }),
+    node({ id: 'strv122', tier: 9, line: 'strv', lane: 2, parents: ['strv103b'], slot: 'line', builds: ['strv121'] }),
     // UDES 03
-    node({ id: 'udes03', tier: 3, line: 'strv_side', lane: 1, parents: ['strv81'], slot: 'line' }),
+    node({ id: 'udes03', tier: 1, line: 'strv_side', lane: 2, parents: [], slot: 'line' }),
     // CV90
-    node({ id: 'cv90105_tml', tier: 6, line: 'cv90', lane: 1, parents: ['strv103a'], slot: 'line' }),
-    node({ id: 'cv90', tier: 6, line: 'cv90', lane: 2, parents: ['cv90105_tml'], slot: 'line' }),
-    node({ id: 'cv9040c', tier: 7, line: 'cv90', lane: 2, parents: ['cv90'], slot: 'line' }),
+    node({ id: 'cv90105_tml', tier: 2, line: 'cv90', lane: 3, parents: ['udes03'], slot: 'line' }),
+    node({ id: 'cv90', tier: 4, line: 'cv90', lane: 2, parents: ['cv90105_tml'], slot: 'line' }),
+    node({ id: 'cv9040c', tier: 4, line: 'cv90', lane: 3, parents: ['cv90'], slot: 'line' }),
     node({
-      id: 'cv90_mk4', tier: 10, line: 'cv90', lane: 2, parents: ['cv9040c'], slot: 'line',
+      id: 'cv90_mk4', tier: 7, line: 'cv90', lane: 3, parents: ['cv9040c'], slot: 'line',
       builds: ['cv90_mk4_concept'],
     }),
   ]),

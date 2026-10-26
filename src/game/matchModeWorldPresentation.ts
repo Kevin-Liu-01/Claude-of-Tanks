@@ -836,7 +836,7 @@ export function createMatchModeWorldPresentation(
       fitObjectiveSurface(group.children[0] as THREE.Mesh, group.position.x, group.position.y, group.position.z, options.groundHeight);
       tintTeam(group, mark.side);
       setIcon(group.userData.icon, `spawn:${mark.side}`, (ctx, c) =>
-        drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side)));
+        drawSpawnGlyph(ctx, c, c, 44, sideColor(mark.side), sideFill(mark.side), mark.side === 'enemy' ? 'enemy' : 'own'));
       fadeByViewer(group);
     }
   };

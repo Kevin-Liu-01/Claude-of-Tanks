@@ -368,8 +368,14 @@ function equipmentChangeSummary(
   canApply: boolean,
 ): string {
   const fittedId = currentLoadout[openSlot] || null;
-  const fittedName = fittedId ? EQUIPMENT_BY_ID.get(fittedId)?.name || fittedId : '';
-  const itemName = itemId ? EQUIPMENT_BY_ID.get(itemId)?.name || itemId : '';
+  // the names in the player's language (the catalog's own name is English: the zh critic read "将 Gun Laying Drive 装备到槽位 1")
+  const nameOf = (id: string): string => {
+    const key = `equipment.${id}.name`;
+    const text = t(key);
+    return text === key ? EQUIPMENT_BY_ID.get(id)?.name || id : text;
+  };
+  const fittedName = fittedId ? nameOf(fittedId) : '';
+  const itemName = itemId ? nameOf(itemId) : '';
   const previousIndex = itemId ? currentLoadout.indexOf(itemId) : -1;
   const slotNo = openSlot + 1;
   if (!canApply) return t('garage.equipment.summary.unavailable');

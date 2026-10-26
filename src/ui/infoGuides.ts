@@ -28,7 +28,7 @@ body[data-cot-width='phone'] .cot-guide__step{padding:9px 12px}body[data-cot-wid
 body[data-cot-width='phone'] .cot-guide__detail{padding:13px;min-height:0}
 .cot-guide__photo{position:relative;aspect-ratio:16/9;container-type:inline-size;isolation:isolate}
 .cot-guide__image-error{padding:20px;color:#b9c9d2;font-size:14px}
-.cot-guide__photo>img{display:block;width:100%;height:100%;object-fit:contain}
+.cot-guide__photo>img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .cot-guide__photo>svg{position:absolute;inset:0;width:100%;height:100%;max-height:none;pointer-events:none;z-index:1;filter:drop-shadow(0 1px 2px #000)}
 .cot-guide__photo svg path,.cot-guide__photo svg ellipse{stroke-width:2;vector-effect:non-scaling-stroke}
 .cot-guide__photo [data-part]{opacity:.65}.cot-guide__photo [data-part].active{opacity:1}

@@ -28,6 +28,7 @@ assert.deepEqual(marks('a.ts', "const p = createPicker(host, { id: 'battlefield'
 assert.deepEqual(marks('a.ts', "export function createMapPicker(host, o) { return createPicker(host, { id: o.id }); }"), [],
   "a shared consumer's own call takes its caller's id");
 assert.deepEqual(marks('a.ts', "picker = createBattlefieldPicker(pick, {\n  id: 'rooms-battlefield', label })"), ['picker:rooms-battlefield']);
+assert.deepEqual(marks('a.ts', "const sort = createPickerMenu(host, { id: 'gallery-sort', label })"), ['picker:gallery-sort']);
 assert.deepEqual(marks('a.ts', '`<select data-rival aria-label="x"><option value="${o.id}"${o.id === v ? \' selected\' : \'\'}>`'), ['select:[data-rival]'],
   'an <option> belongs to its <select>');
 assert.deepEqual(marks('a.ts', "const format = document.createElement('select');"), ['select:format']);

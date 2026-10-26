@@ -9504,6 +9504,8 @@ function* terrainBuildSteps(
       }
       // round 73: the terrain's swash band breathes on the same clock the sheet's run-up runs on
       const groundClock = mat.userData.groundClock as { value: number } | undefined;
+      // (battle-spikes-253) the ripple and ocean pass programs submitted with no draw, under a covered entry's warm
+      group.userData.compileWaterPrograms = (): number => (ripples?.compilePrograms() ?? 0) + (ocean?.compilePrograms() ?? 0);
       group.userData.updateWater = (dt: number, anchorX?: number, anchorZ?: number): void => {
         water.update(dt, anchorX, anchorZ);
         if (groundClock && Number.isFinite(dt) && dt > 0) groundClock.value += dt;

@@ -36,7 +36,7 @@ try{
   for(const count of [1,7,14,21,41])for(const mapSize of [160,220,300]){
    await page.evaluate(({count,mapSize})=>{
     const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);
-    for(let i=0;i<3&&document.querySelector('.cot-minimap').dataset.zoom!==String([160,220,300].indexOf(mapSize));i++)f.bus.emit('ui:minimapZoom',{});
+    f.bus.emit('ui:minimapZoom',{step:[160,220,300].indexOf(mapSize)});
     if(count===21)f.multiplayer('healthy');
     if(count===41)f.multiplayer('reconnecting');
     f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);
@@ -50,9 +50,12 @@ try{
    });
    await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/arrivals');
+   // (Tab holds the rosters while the battle has the cursor, hud.ts: a headless page holds no pointer lock, so one stands in)
+   await page.evaluate(()=>Object.defineProperty(document,'pointerLockElement',{configurable:true,get:()=>document.body}));
    await page.keyboard.down('Tab');await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/tab');
    await page.keyboard.up('Tab');await page.clock.runFor(100);
+   await page.evaluate(()=>{delete document.pointerLockElement;});
    // Keep the report fresh while the production kill-notice timers expire.
    await page.clock.fastForward(4900);
    await page.evaluate(()=>window.__HUD_LAYOUT.hit());await page.clock.runFor(100);

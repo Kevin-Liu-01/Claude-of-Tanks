@@ -62,8 +62,11 @@ interface DeployScreenHost {
   lastBattle(): { readonly gameMode?: string; readonly mapId: string } | undefined;
   /** This device's load estimate in whole seconds, or null before the first load. */
   loadEstimateS(): number | null;
-  /** The kit's keycap. */
+  /** The kit's keycap, and its segmented control (the markup, its roving keys and its chosen value). */
   keycap(label: string): string;
+  segmented(options: { label: string; className: string; value: string; options: readonly { value: string; label: string }[] }): string;
+  wireRoving(group: HTMLElement, onSelect: (value: string) => void): void;
+  setRoving(group: HTMLElement, value: string): void;
   click(): void;
   /** The campaign tab's operations list (a row under the pointer or the keyboard briefs its operation), their ids in
    *  ladder order, and the operation in focus (the next to play for an empty or unknown id). */
@@ -99,17 +102,17 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   again.addEventListener('click', () => { if (againOf) host.again(againOf.mode, againOf.mapId); });
 
   // the bot tier and the toggle for the mode's own settings (nations, the goal, the respawn, Mars's world), after the time
+  // (the kit's segmented control, behind the bots' glyph: three exclusive tiers, roving keys; census row deploy-difficulty)
   const tiers = document.createElement('div');
   tiers.className = 'cot-deploy-diff';
-  tiers.setAttribute('role', 'group');
-  tiers.setAttribute('aria-label', t('settings.gameplay.difficultyNext'));
   tiers.hidden = true;
-  tiers.innerHTML = uiIconSVG('battleBots', 16) + TIERS.map((tier) =>
-    `<button type="button" data-diff="${tier}" aria-pressed="false">${t(`settings.difficulty.${tier}`)}</button>`).join('');
-  tiers.addEventListener('click', (event) => {
-    const tier = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-diff]')?.dataset.diff as AiDifficulty | undefined;
+  tiers.innerHTML = uiIconSVG('battleBots', 16) + host.segmented({ label: t('settings.gameplay.difficultyNext'), className: 'cot-deploy-tier',
+    value: 'normal', options: TIERS.map((tier) => ({ value: tier, label: t(`settings.difficulty.${tier}`) })) });
+  const tierGroup = tiers.querySelector<HTMLElement>('.cot-deploy-tier')!;
+  host.wireRoving(tierGroup, (value) => {
     const control = host.difficulty();
-    if (!control || !tier || !TIERS.includes(tier)) return;
+    const tier = value as AiDifficulty;
+    if (!control || !TIERS.includes(tier)) return;
     host.click();
     control.set(tier);
     renderTiers();
@@ -190,7 +193,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const control = host.difficulty();
     tiers.hidden = !control;
     const tier = control?.get();
-    for (const button of tiers.querySelectorAll<HTMLButtonElement>('[data-diff]')) button.setAttribute('aria-pressed', String(button.dataset.diff === tier));
+    if (tier) host.setRoving(tierGroup, tier);
   }
   // the drawer and its data load with the first map to draw (they share the HUD's glyph modules: their own chunk)
   let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
@@ -228,7 +231,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-facts">${host.rules([['clock', op.clock]])}` +
       `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span>` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
-      `${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div>` +
+      `<div class="cot-deploy-brief-where">${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div></div>` +
       `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async"></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;
     const mm = plateBrief.querySelector('.cot-deploy-brief-mm');
