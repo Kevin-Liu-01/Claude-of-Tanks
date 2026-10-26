@@ -75,7 +75,7 @@
   "k2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f21cd082e1979147","gun":"a4599132f5db8197"}},
   "k2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5976cd156af9ef6d","gun":"aa118c17e2454475"}},
   "kf41_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"43311f4a54abd68c","gun":"49ba9c9013b72e2c"}},
-  "kf51_evo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f132fae9bfcda044","gun":"e85f62473c9868b0"}},
+  "kf51_evo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b816b20866995298","gun":"f48cf461ae74a3a6"}},
   "kf51_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5392de0c924370f9","gun":"969cbdc09b5b2bc8"}},
   "kf51_u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21a5d620e11605dc","gun":"c7ba016a6fdc51b5"}},
   "kurganets25": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6f20072aa5fe66fb","gun":"3f89ae065c2ed22d"}},
