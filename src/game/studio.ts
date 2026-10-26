@@ -5739,6 +5739,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // first: 0.62 s of its first frame under load)
       try { await ctx.prepareFirstViewShadows?.(); } catch { /* the first frame links them as before */ }
       stillOwned();
+      // (2026-10-26, a release build of 177aa385d2) the view again, once the entry's own frames have run: the post warm's
+      // scene pass met programs the first preparation never saw, made in between — the props' collapse-mask and
+      // night-fixture variants (a cold entry: 8 programs, 3.0 s inside that render) and the map's air rebuilt for this
+      // entry (a second entry: MapAmbience.fluff, 1.9 s). That pass draws the camera's frustum, as this preparation reads.
+      await nextFrame();
+      await nextFrame();
+      stillOwned();
+      await prepareFirstViewPrograms(owns);
+      stillOwned();
       try { await ctx.awaitProgramLinks?.(); } catch { /* the post warm waits for them as before */ }
       stillOwned();
       // and the post chain's own, a pass at a time (LateFxPass.Copy: the one link left in a cold entry's first frame,
