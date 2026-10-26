@@ -142,12 +142,11 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
 // another frame.
 const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
 const HERO_ROTATE_MS = 9000;
-/** The progress fill: inside a stage it creeps toward CRAWL_CAP of the stage's span over CRAWL_MS (quick at first, then
- *  slower), and a finished load fills it in DONE_MS. */
-const CRAWL_MS = 7000;
-const CRAWL_CAP = 0.9;
-const CRAWL_EASING = 'cubic-bezier(.12,.62,.32,1)';
-const DONE_MS = 320;
+/** The progress fill moves only when the load does: each step runs STEP_MS (the --dur-base motion step) and the finished
+ *  load fills it in DONE_MS (--dur-screen). It never creeps on a timer (Main, 2026-10-26: a bar that moves without real
+ *  progress is lossy motion; the living mark says the page is alive). */
+const STEP_MS = 220;
+const DONE_MS = 360;
 
 function afterPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -319,10 +318,10 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * tips.length);
 
-  // The fill moves on the compositor by itself (owner, 2026-10-26: the boot "looks so laggy" while it loads): each change
-  // of the load (a stage begun or ended, a step inside one) starts one animation of its scaleX from where it stands, which
-  // runs on toward the stage's crawl cap, so the bar keeps moving while the main thread is busy loading; no frame loop
-  // drives it. Under reduced motion (the player's choice on :root, else the OS: accessibilityPreferences.ts, inlined as
+  // The fill moves on the compositor (owner, 2026-10-26: the boot "looks so laggy" while it loads): each change of the load
+  // (a stage begun or ended, a step inside one) starts one short animation of its scaleX from where it stands to where the
+  // load is, so a busy main thread cannot stall a step already started; no frame loop drives it, and it never moves without
+  // the load. Under reduced motion (the player's choice on :root, else the OS: accessibilityPreferences.ts, inlined as
   // modal.ts does on the boot path) it steps to each value.
   const motionChoice = document.documentElement?.dataset.motion;
   const reducedMotion = motionChoice === 'reduce' || (motionChoice !== 'full' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -332,16 +331,15 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     const transform = elFill ? getComputedStyle(elFill).transform : 'none';
     return transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).a : 0;
   }
-  /** Send the fill on from where it stands: to the current stage's crawl cap (or the load's value past it). */
+  /** Send the fill on from where it stands to where the load is. */
   function retarget(): void {
     if (!elFill || typeof elFill.animate !== 'function') return;
-    const sp = !finished && curKey ? span.get(curKey) : undefined;
-    const to = Math.min(1, Math.max(target, sp ? sp[0] + (sp[1] - sp[0]) * CRAWL_CAP : 0));
+    const to = Math.min(1, target);
     const from = fillNow();
     if (to <= from + 0.0005) return;
     fillMotion?.cancel();
     fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
-      { duration: reducedMotion ? 0 : finished ? DONE_MS : CRAWL_MS, easing: finished ? 'ease-out' : CRAWL_EASING, fill: 'forwards' });
+      { duration: reducedMotion ? 0 : finished ? DONE_MS : STEP_MS, easing: 'ease-out', fill: 'forwards' });
   }
 
   function showTip(i: number): void {

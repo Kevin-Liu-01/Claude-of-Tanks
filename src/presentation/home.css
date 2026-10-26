@@ -213,7 +213,7 @@ img{display:block;max-width:100%}
 .press__posts .v5-social-card__body{justify-content:flex-start}
 .v5-social-card--reddit{min-height:240px}
 .v5-social-card--reddit>a{padding:var(--s5);background:none}
-.v5-social-card .v5-social-card__avatar--reddit{display:grid;place-items:center;width:42px;height:42px;background:var(--surface-hover);box-shadow:var(--ring-2);outline:0}
+.v5-social-card .v5-social-card__avatar--reddit{display:grid;place-items:center;background:var(--surface-hover)}
 .v5-social-card__avatar--reddit .v5-social-platform-icon{width:22px;height:22px}
 .v5-social-card__title{margin:0;color:var(--ink-1);font:600 var(--fs-18)/1.3 var(--font-display);text-wrap:pretty}
 .press__reddit .v5-social-card__body{justify-content:flex-start;padding:var(--s5) 0}

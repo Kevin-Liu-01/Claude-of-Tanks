@@ -39,6 +39,11 @@
   scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent)}
+/* while rows lie below, the foot fades over 32 px, so the row it cuts reads as going on whatever its cut (picker.ts
+   markRowsBelow); at the list's end the fade is the padding's again */
+.cot-c-picker__grid[data-more]{
+  -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent);
+  mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent)}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 /* every cell is laid out at its real size (no content-visibility placeholder): the grid opens on its choice by measuring
