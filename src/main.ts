@@ -3347,6 +3347,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     return {
       mapId: known ? resolved : 'random', ...(known ? { mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : {}),
       ...(teams ? { allies: teams.allies, enemies: teams.enemies, teams: teamNationsFlags(teams.teamNations) } : {}),
+      // the rules row (mode chip, clock) from the cover's first frame, as the loading owner's show draws it
+      modeId: normalizeGameMode(options?.gameMode ?? 'standard'), ...(options?.campaignOperationId ? { campaign: true } : {}),
     };
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the

@@ -459,6 +459,10 @@ export interface PendingBattlefield {
   readonly allies?: readonly BattleLoadRosterRow[];
   readonly enemies?: readonly BattleLoadRosterRow[];
   readonly teams?: BattleLoadTeams | null;
+  /** The battle's mode and whether it is a campaign operation: the rules row (the mode chip, the clock) from the first
+   *  frame, so the loading owner's show does not grow the head under the sides (phones dropped them 25-50 px). */
+  readonly modeId?: string;
+  readonly campaign?: boolean;
 }
 
 /**
@@ -822,6 +826,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
         mode: t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
+        ...(pending?.modeId ? { modeId: pending.modeId } : {}),
+        ...(pending?.campaign ? { campaign: true } : {}),
         allies: planned?.allies ?? [],
         enemies: planned?.enemies ?? [],
         ...(planned ? {} : { slots: PENDING_ROSTER_SLOTS }),
