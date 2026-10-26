@@ -34,6 +34,8 @@ type PaintWorkerPort = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 
 export interface SurfacePaintPrefetch {
   /** The print painted ahead for these exact arguments, or null (paint it where it stands). */
   take(key: string): Promise<Record<string, unknown>> | null;
+  /** (battle-spikes-253) More prints for the same worker, planned later (a map's kit render prints, once its kits load). */
+  add(requests: readonly SurfacePaintRequest[]): void;
   dispose(): void;
   readonly stats: { planned: number; taken: number; missed: number; failed: number; doneMs: number; settledTaken: number };
 }
@@ -97,17 +99,21 @@ export function startSurfacePaints(
   };
   worker.onerror = (event) => { stats.failed += waiting.size; failAll((event as ErrorEvent).message || 'Surface paint worker failed'); };
   let id = 0;
-  for (const request of requests) {
-    const key = surfacePaintKey(request);
-    if (byKey.has(key)) continue;
-    const jobId = ++id;
-    const promise = new Promise<Record<string, unknown>>((resolve, reject) => { waiting.set(jobId, { key, resolve, reject }); });
-    promise.catch(() => {});
-    byKey.set(key, promise);
-    stats.planned++;
-    worker.postMessage({ ...request, id: jobId } as SurfacePaintJob);
-  }
+  const post = (more: readonly SurfacePaintRequest[]): void => {
+    for (const request of more) {
+      const key = surfacePaintKey(request);
+      if (!worker || byKey.has(key)) continue;
+      const jobId = ++id;
+      const promise = new Promise<Record<string, unknown>>((resolve, reject) => { waiting.set(jobId, { key, resolve, reject }); });
+      promise.catch(() => {});
+      byKey.set(key, promise);
+      stats.planned++;
+      worker.postMessage({ ...request, id: jobId } as SurfacePaintJob);
+    }
+  };
+  post(requests);
   return {
+    add(more) { post(more); },
     take(key) {
       const job = byKey.get(key);
       if (!job) { stats.missed++; return null; }

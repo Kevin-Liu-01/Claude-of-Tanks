@@ -94,6 +94,37 @@ assert.deepEqual(digest(drain(paintFieldMudBuffers(256))), digest(drain(paintFie
 }
 assert.equal(startSurfacePaints([], () => { throw new Error('no worker for nothing'); }), null);
 
+// (battle-spikes-253) a kit's render prints are added once the map's kits have loaded: planned with the fixed prints, a
+// lazily loaded architecture style failed the whole world build in the browser ("Architecture style franconian is not
+// loaded"; Node had loaded it). The fixed plan reads no style; the kit plan is added to the same worker after kitsReady.
+{
+  const posted = [];
+  let port;
+  const p = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }],
+    () => (port = { postMessage: (job) => posted.push(job), terminate() {}, onmessage: null, onerror: null }), () => 0);
+  p.add([{ kind: 'limeRender', size: 256, seed: 0x5e1b }, { kind: 'hay', size: 512, seed: HAY_PRINT_SEED }]);
+  assert.deepEqual(posted.map((job) => job.kind), ['hay', 'limeRender'], 'added prints go to the same worker, once each');
+  const lime = p.take(surfacePaintKey({ kind: 'limeRender', size: 256, seed: 0x5e1b }));
+  port.onmessage({ data: { id: posted[1].id, ok: true, buffers: { marker: 'lime' } } });
+  assert.equal((await lime).marker, 'lime');
+  p.dispose();
+  p.add([{ kind: 'limewash', size: 256, seed: 1 }]);
+  assert.equal(posted.length, 2, 'nothing is posted after disposal');
+}
+{
+  const propsSource = (await import('node:fs')).readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  const fixed = propsSource.slice(propsSource.indexOf('export function plannedSurfacePaints('), propsSource.indexOf('export function plannedKitRenderPaints('));
+  assert.ok(fixed.length > 0 && !fixed.includes('resolveRegionalArchitecture'), 'the fixed plan resolves no architecture style');
+  const mapSource = (await import('node:fs')).readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  assert.match(mapSource, /if \(surfacePrefetch\) void kitsReady\.then\(\(\) => surfacePrefetch\.add\(plannedKitRenderPaints\(config\)\)\)/,
+    'the kit plan joins the prefetch once the kits are loaded');
+  assert.deepEqual(props.plannedKitRenderPaints({ id: 'nowhere', props: { architecture: 'no-such-style' } }), [], 'a style not loaded: none');
+  const { loadRegionalArchitectures } = await import('./maps/regional/index.ts');
+  await loadRegionalArchitectures(['franconian']);
+  assert.deepEqual(props.plannedKitRenderPaints({ id: 'urban', props: { architecture: 'franconian' } }).map((r) => surfacePaintKey(r)),
+    ['limeRender|256|24091', 'limeRender|256|24092'], 'Steinburg\'s render on its two seeds');
+}
+
 // a settled tile: taken synchronously, once, and only by the noise registered with its seed; a tile still painting, or
 // an unregistered noise, is painted where it stands; disposal releases the settled tiles nobody took
 {

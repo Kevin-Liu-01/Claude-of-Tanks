@@ -1575,11 +1575,7 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
   // (2026-10-08) and the tiles it paints from its noise (seed + 7) — all in the order the build reaches them: the straw,
   // the building kit's three detail tiles, the rock tile, the dry-stone print
   const noiseSeed = propsSeed + 7;
-  // (battle-spikes-253) a regional kit's render first (makePlaster: the primary on its seed, plaster2 and plaster3 on the
-  // next), at the plaster canvas's 256 on every tier
-  const kitRender = resolveRegionalArchitecture((cfg?.props as { architecture?: string } | undefined)?.architecture)?.surfaces.render;
   const requests: SurfacePaintRequest[] = [
-    ...(kitRender ? [kitRender.seed, kitRender.seed + 1].map((seed) => ({ kind: kitRender.kind, size: 256, seed })) : []),
     { kind: 'hay', size, seed: HAY_PRINT_SEED },
     { kind: 'structureDetail', detail: 'wood', noiseSeed },
     { kind: 'structureDetail', detail: 'canvas', noiseSeed },
@@ -1592,6 +1588,19 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
   // (battle-spikes-253) and a mud-walled map's mud render (makeFieldMud), after the field stone as the build reaches it
   if (wallStyle === 'adobe') requests.push({ kind: 'fieldMud', size, seed: FIELD_MUD_PRINT_SEED });
   return requests;
+}
+
+/**
+ * (battle-spikes-253) A regional kit's render prints (makePlaster: the primary on its seed, plaster2 and plaster3 on the
+ * next), at the plaster canvas's 256 on every tier. Planned once the map's kits have loaded (map.ts: its architecture
+ * style resolves only then; planned with the fixed prints, a lazily loaded style failed the whole world build).
+ */
+export function plannedKitRenderPaints(cfg: PropsMapConfig | null): SurfacePaintRequest[] {
+  let kitRender: { kind: 'limeRender' | 'limewash'; seed: number } | undefined;
+  try {
+    kitRender = resolveRegionalArchitecture((cfg?.props as { architecture?: string } | undefined)?.architecture)?.surfaces.render;
+  } catch { return []; } // (a style not loaded: the props build paints them where it stands)
+  return kitRender ? [kitRender.seed, kitRender.seed + 1].map((seed) => ({ kind: kitRender!.kind, size: 256, seed })) : [];
 }
 
 /**

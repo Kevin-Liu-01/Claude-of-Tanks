@@ -35,6 +35,7 @@ import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
   createProps,
   createPropsAsync,
+  plannedKitRenderPaints,
   plannedSurfacePaints,
   preloadPropModels,
 } from './props.ts';
@@ -437,6 +438,8 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
+  // (battle-spikes-253) and its architecture kit's render prints once the kits have loaded (the style resolves only then)
+  if (surfacePrefetch) void kitsReady.then(() => surfacePrefetch.add(plannedKitRenderPaints(config))).catch(() => {});
   // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
   // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
   // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland in its worker instead of the ring: its
