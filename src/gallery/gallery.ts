@@ -1195,8 +1195,20 @@ function populateRivals(): void {
   }));
   if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
   rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
-    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival',
+    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival', bounds: rivalMenuBounds,
     filters: flagCodes.map((code) => ({ id: code, label: flagLabel(code) })), onChoose: (item) => setRival(item.id, true) });
+}
+/** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
+ * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
+function rivalMenuBounds(): { top: number; bottom: number } {
+  const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
+  const top = Math.max(0, bar ? bar.bottom : 0);
+  const panel = document.querySelector<HTMLElement>('.dossier-scroll');
+  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
+    const box = panel.getBoundingClientRect();
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
+  }
+  return { top, bottom: innerHeight };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
