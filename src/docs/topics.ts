@@ -314,8 +314,9 @@ export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, numbe
   '/media/ui-246/studio-workspace.webp': [1920, 1080],
 };
 const DEFAULT_FIGURE_SIZE = [1920, 1080] as const;
-/** A figure fills the article column (about 760 px; the full width on narrow screens). */
-const FIGURE_SIZES_ATTRIBUTE = '(max-width: 900px) 100vw, 760px';
+/** A figure fills the article column to its block edge, the tables' (about half the screen beside the shelf; the full
+ *  width on narrow screens), as the data-built chapters' figures do. */
+const FIGURE_SIZES_ATTRIBUTE = '(width < 1100px) 100vw, 60vw';
 
 function mediaFigure([src, caption]: TopicMedia): string {
   const [width, height] = TOPIC_FIGURE_SIZES[src] ?? DEFAULT_FIGURE_SIZE;
@@ -589,7 +590,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   const at = order.indexOf(slug);
   const ladder = topicHeroLadder(topic.hero);
   const caption = ladder ? t(ladder.captionKey) : '';
-  const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
+  const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}" data-doc-size="16"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
@@ -603,11 +604,11 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="${docsHref(topicId)}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
     : '');
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
-  const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
+  const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search" data-doc-size="16"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
     + `<span class="dm-search__keys" aria-hidden="true">${t('docs.search.shortcutMac').split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('')}</span></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
-    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
+    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual" data-doc-size="16"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`

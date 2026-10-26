@@ -79,6 +79,7 @@ export interface MediaPlayerOptions {
   readonly frame?: HTMLElement;
   /** Where the control goes (default: the frame's parent for a video frame, else the frame). */
   readonly controlParent?: HTMLElement | null;
+  /** The control's classes (default: the kit's square icon button over media, MEDIA_TOGGLE_CLASS). */
   readonly controlClass?: string;
   /** auto: shown when motion waits for the viewer or the loop runs longer than five seconds; always; none. */
   readonly control?: 'auto' | 'always' | 'none';
@@ -335,6 +336,8 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /** The player's play and pause glyphs (16 grid, filled): the landing's reel draws its pause control with the same pair. */
 export const MEDIA_PLAY_ICON = 'M4.5 2.5v11l9-5.5z';
 export const MEDIA_PAUSE_ICON = 'M5 2.5h1.25v11H5zM9.75 2.5H11v11H9.75z';
+/** The page control: the kit's square icon button (components.css) on its opaque plate over the picture (mediaPlayer.css). */
+const MEDIA_TOGGLE_CLASS = 'cot-c-btn cot-c-btn--icon cot-media-toggle';
 const TRANSFER_DONE = ['canplaythrough', 'suspend', 'stalled'] as const;
 
 /** A frame's visible share: of the viewport for a frame taller than it, else of the frame. */
@@ -364,7 +367,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   if (options.control !== 'none') {
     control = document.createElement('button');
     control.type = 'button';
-    control.className = options.controlClass ?? 'cot-media-toggle';
+    control.className = options.controlClass ?? MEDIA_TOGGLE_CLASS;
     control.hidden = true;
     const icon = document.createElementNS(SVG_NS, 'svg');
     icon.setAttribute('viewBox', '0 0 16 16');
@@ -435,9 +438,9 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
     if (!control || !glyph) return;
     const reachable = !!item && !!pick(true);
     const seconds = item?.seconds ?? (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity);
-    // auto: a pause disc on a playing loop over five seconds; a play disc whenever the loop waits for the viewer
+    // auto: a pause button on a playing loop over five seconds; a play button whenever the loop waits for the viewer
     // (reduced motion, data saving, their own pause, a slot another loop took); nothing while it is about to start
-    // by itself (off screen, or its transfer queued), so no play disc flashes ahead of every loop
+    // by itself (off screen, or its transfer queued), so no play button flashes ahead of every loop
     const waitsForViewer = manual() || held || wanted || core.crowded || mode !== 'loop';
     const show = options.control === 'always' ? reachable
       : reachable && (playing ? seconds > MEDIA_POLICY.pauseControlSeconds : waitsForViewer);
@@ -691,7 +694,7 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
       warm: mode === 'loop',
       label: (playing) => labels(playing, video),
       ...(tips ? { tip: tips } : {}),
-      controlClass: video.dataset.controlClass || 'cot-media-toggle',
+      controlClass: video.dataset.controlClass || MEDIA_TOGGLE_CLASS,
     });
     player.show({
       sources: ladderFromMarkup(video),

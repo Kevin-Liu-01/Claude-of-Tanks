@@ -525,7 +525,7 @@ const ACCESS_SURFACES = [
   { id: 'deploy', open: openDeploy, scope: '#cot-battle-menu' },
   { id: 'battlefield', scope: '#cot-battle-menu',
     open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-field]'), ctx);
-      await waitFor(page, `shown('.cot-map-card .cot-map-select')`, 15000); } },
+      await waitFor(page, `shown('[data-deploy-bf] .cot-c-picker__opt')`, 15000); } },
   { id: 'settings', scope: '.cot-settings',
     open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-settings-slot .cot-gear, [data-nav=settings]'), ctx);
       await waitFor(page, `shown('.cot-settings.open')`, 15000); } },
@@ -623,8 +623,8 @@ export const PATHS = [
   { id: 'deploy-open', doc: 'game', reps: 5,
     press: (page) => target(page, '[data-nav=deploy], .cot-battle-mode'), shown: `shown('#cot-battle-menu.open')`, after: closeDeploy },
   { id: 'deploy-mode', doc: 'game', reps: 6, setup: openDeploy,
-    press: (page, i) => target(page, '#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice[data-mode=solo]', i + 1),
-    teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu .cot-battle-choice[data-mode=solo], #cot-battle-menu .cot-battle-choice', 0), ctx).catch(() => {});
+    press: (page, i) => target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt', i + 1),
+    teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', 0), ctx).catch(() => {});
       await closeDeploy(page, ctx); } },
   { id: 'deploy-sides', doc: 'game', reps: 4, setup: openDeploy,
     press: (page, i) => target(page, `#cot-battle-menu .cot-sides-choice[data-sides="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
@@ -634,8 +634,8 @@ export const PATHS = [
     press: (page, i) => target(page, `#cot-battle-menu .cot-deploy-tab[data-tab="${i % 2 ? 'quick' : 'campaign'}"]`), teardown: closeDeploy },
   { id: 'deploy-map', doc: 'game', reps: 3, setup: openDeploy, teardown: closeDeploy,
     script: async (page, i, run) => {
-      await run('deploy-field', () => target(page, '#cot-battle-menu [data-deploy-field]'), { shown: `shown('.cot-map-card .cot-map-select')` });
-      await run('deploy-map-pick', () => target(page, '.cot-map-card .cot-map-select', i + 1), {});
+      await run('deploy-field', () => target(page, '#cot-battle-menu [data-deploy-field]'), { shown: `shown('[data-deploy-bf] .cot-c-picker__opt')` });
+      await run('deploy-map-pick', () => target(page, '[data-deploy-bf] .cot-c-picker__opt', i + 1), {});
     } },
   { id: 'studio-open', doc: 'game', reps: 3,
     press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
@@ -760,7 +760,7 @@ export const PATHS = [
       await canvasProbe(page, ctx, 'garage', [
         pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'),
         pressOn('.cot-settings-slot .cot-gear, [data-nav=settings]'), () => closeSettings(page, ctx),
-        () => openDeploy(page, ctx), pressOn('#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice'),
+        () => openDeploy(page, ctx), pressOn('#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt'),
         () => closeDeploy(page, ctx),
         pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
       ]);

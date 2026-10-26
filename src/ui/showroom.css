@@ -226,7 +226,6 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
   max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh,
     calc(var(--band-bottom) + var(--slot) + max(var(--fs-floor-11),var(--fs-11)) + var(--s1) + var(--s2) - var(--edge)));
   border-radius:var(--plate-radius);background:var(--plate-highlight),var(--surface-menu);box-shadow:var(--plate-shadow);}
-body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
 /* the docked paint sheet names itself and closes from its head, as the phone's sheet does (no second Camouflage name) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:flex;flex:0 0 auto;align-items:center;

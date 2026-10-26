@@ -75,7 +75,7 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -312,30 +312,20 @@ type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
 /** The modes public/media/deploy-r1 holds a 640 card picture for (the others have their 480 tile picture). */
 const DEPLOY_CARD_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
-/** A headline mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card): its 640
- *  card picture, or its tile picture until a card one lands (Drone, 2026-10-25). */
-const deployCardArt = (id: string): string => DEPLOY_CARD_ART.has(id)
-  ? `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
-  : `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+/** A mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick: a battle frame of that mode, HUD
+ *  hidden; Proving Ground's range too): its 640 card picture, else its 480 tile picture. */
+const deployModeArt = (id: string): string => `/media/deploy-r1/${id}-${DEPLOY_CARD_ART.has(id) ? 640 : 480}.webp`;
 
-/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range
- *  too); a mode that only has a card picture shows that one. */
-const deployTileArt = (id: string): string => DEPLOY_CARD_ART.has(id)
-  ? `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
-  : `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
-
-/**
- * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
- * glyph on a plate and the rules the ruleset sets at the foot (renderDeployChips); the rest as picture tiles in the same
- * grammar on a wide screen (rows, a glyph well, the name and its rules, on a folded one).
- */
-function deployCardsHTML(ids: readonly GameModeId[], card: boolean): string {
-  return ids.map((id) => {
-    const name = `<span class="choice-name">${t(`playMenu.matchMode.${id}.label`)}</span><span class="cot-deploy-chips" data-deploy-chips="${id}"></span>`;
-    return `<button class="cot-battle-choice${card ? ' cot-deploy-card' : ''}" type="button" data-game-mode="${id}" data-mode-tone="${id}" ` +
-      `aria-pressed="false">${card ? deployCardArt(id) : deployTileArt(id)}<span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', 21)}</span>` +
-      `<span class="cot-deploy-choice-t">${name}</span></button>`;
-  }).join('');
+/** A motion token's length in ms (tokens.css --dur-*; 1 ms under reduced motion), read once: a Web Animation times itself
+ *  on the tokens, as the stylesheets do (motion lint D). */
+const motionTokenMs = new Map<string, number>();
+function motionMs(token: '--dur-fast' | '--dur-base'): number {
+  let ms = motionTokenMs.get(token);
+  if (ms === undefined) {
+    ms = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
+    motionTokenMs.set(token, ms);
+  }
+  return ms;
 }
 
 function requiredElement<T extends Element>(parent: ParentNode, selector: string): T {
@@ -701,21 +691,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</nav></header>` +
     `<div class="cot-battle-menu-scroll">` +
     `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
-    `<div class="cot-deploy-cards">` +
-    `<button class="cot-battle-choice cot-deploy-card" type="button" data-mode="solo" data-mode-tone="standard" aria-pressed="true">` +
-    `${deployCardArt('standard')}<span class="choice-icon">${uiIconSVG('modeStandard', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="cot-deploy-chips" data-deploy-chips="standard"></span></span></button>` +
-    // the presentation order (sim/gameModeCatalog.ts): Standard leads as the solo card above, then the other headline modes
-    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(1, HEADLINE_MODE_COUNT), true) +
-    `</div><div class="cot-deploy-rows">` +
-    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
-    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
-    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving_ground">` +
-    `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span><span class="cot-deploy-chips"></span></span></button>` +
+    // the battle modes: the one mode picker (modePicker.ts, the Rooms host's too), filled when it loads (openDeployModes)
+    `<div class="cot-deploy-modes" data-deploy-modes></div>` +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen; an
+    // action beside the mode choices, not one of them
+    `<button class="cot-deploy-proving" type="button" data-proving data-mode-tone="proving_ground">` +
+    `<img class="cot-deploy-proving-art" src="${deployModeArt('proving_ground')}" alt="" width="480" height="270" loading="lazy" decoding="async">` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
+    `${uiIconSVG('chevronRight', 18)}</button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
-    `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
+    `<div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
     `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
     `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
@@ -813,7 +798,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
     `<span class="cot-garage-variant-action">` +
     `${uiIconSVG('chevronRight', 16, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
-    `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
@@ -1050,12 +1034,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The Deploy screen fills the viewport, so it lives at the Garage root, outside the Deploy button's transformed box.
   root.appendChild(battleMenu);
   const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
-  const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
-  const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
   const roomControls = requiredElement<HTMLElement>(root, '.cot-room-controls');
   const roomReady = requiredElement<HTMLButtonElement>(root, '.cot-room-ready');
-  const mapsEl = requiredElement<HTMLElement>(root, '.cot-maps');
   const recordTrigger = requiredElement<HTMLButtonElement>(root, '.cot-record-trigger');
   const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
   const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
@@ -1469,8 +1450,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
-      [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
-        t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos')],
+      [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'appearance', t('garage.tools.camos')],
     ] as const) {
       if (active) {
         element.setAttribute('role', 'dialog');
@@ -1483,7 +1463,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
     }
     const drawerTitle = root.querySelector<HTMLElement>('.cot-drawer-heading strong');
-    if (drawerTitle) drawerTitle.textContent = t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos');
+    if (drawerTitle) drawerTitle.textContent = t('garage.tools.camos');
     root.querySelectorAll<HTMLButtonElement>('[data-garage-panel]').forEach((button) => {
       const expanded = button.dataset.garagePanel === next;
       button.setAttribute('aria-expanded', String(expanded));
@@ -1494,7 +1474,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         .find((button) => button.getClientRects().length > 0)?.focus();
     }
     requestAnimationFrame(() => {
-      syncSidebarPanelHeight();
       queueCountryRailAffordances();
       if (next && previous !== next && openGaragePanel() === next) {
         // every paint opens on the worn swatch (the picker's arrows start there); the other panels on their close
@@ -1618,7 +1597,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   root.querySelector('.cot-drawer-close')?.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
     if (!isOverlayPanelLayout()) setGaragePanel('');
-    syncSidebarPanelHeight();
+    // an open battlefield picker whose place no longer fits (the mode list's when docked, the field's in a phone's column)
+    const fieldPop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
+    if (fieldPop && !fieldPop.hidden && (fieldPop.parentElement?.id === 'cot-deploy-quick') === isOverlayPanelLayout()) closeDeployField();
   });
   // a docked layout has no scrim under every paint: a press anywhere else closes it (in capture, before the stage's drag)
   document.addEventListener('pointerdown', (event) => {
@@ -1800,7 +1781,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
-  const mapCardById = new Map<string, HTMLElement>();
   // The selected battlefield on the battle card and the Deploy screen's field.
   function refreshBattlefield(): void {
     const selected = maps.find((map) => map.id === selectedMapId) || maps[0];
@@ -1827,116 +1807,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployScreen?.drawObjectives();
     closeDeployField();
   }
-  function initializeMapPicker(): void {
-    if (!maps.length) return;
-    const title = document.createElement('div');
-    title.className = 'mtitle cot-sidebar-section-title';
-    title.innerHTML = `${uiIconSVG('map', 13)}<span>${t('garage.battlefield.heading')}</span>`;
-    title.appendChild(createInfoButton({
-      label: t('garage.battlefield.about'),
-      title: t('garage.battlefield.heading'),
-      text: t('garage.battlefield.aboutText'),
-      guide: 'maps',
-      sections: [
-        { icon: 'map', title: t('garage.info.soloDeploymentTitle'), text: t('garage.info.soloDeploymentText') },
-        { icon: 'team', title: t('garage.info.multiplayerTitle'), text: t('garage.info.multiplayerText') },
-      ],
-    }));
-    mapsEl.appendChild(title);
-    const mapScroll = document.createElement('div');
-    mapScroll.className = 'cot-map-scroll';
-    mapsEl.appendChild(mapScroll);
-    const mapGrid = document.createElement('div');
-    mapGrid.className = 'cot-map-grid';
-    mapScroll.appendChild(mapGrid);
-    const mapThumbLoaders = new WeakMap<Element, () => void>();
-    const mapThumbObserver = typeof IntersectionObserver === 'function'
-      ? new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          mapThumbLoaders.get(entry.target)?.();
-          mapThumbObserver?.unobserve(entry.target);
-        }
-      }, { root: mapScroll, rootMargin: '120px' })
-      : null;
-    for (const m of maps) {
-      const card = document.createElement('div');
-      card.className = 'cot-map-card';
-      const selectMap = document.createElement('button');
-      selectMap.type = 'button';
-      selectMap.className = 'cot-map-select';
-      selectMap.setAttribute('aria-label', m.name);
-      const thumb = document.createElement('div');
-      thumb.className = `mthumb ${m.id}`;
-      const loadThumb = () => {
-        if (thumb.dataset.loaded === 'true') return;
-        thumb.dataset.loaded = 'true';
-        if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
-        else if (m.thumb) thumb.style.backgroundImage = `url("${m.thumb.replace(/"/g, '%22')}")`;
-      };
-      mapThumbLoaders.set(thumb, loadThumb);
-      if (mapThumbObserver) mapThumbObserver.observe(thumb);
-      else loadThumb();
-      const nm = document.createElement('div');
-      nm.className = 'mname';
-      nm.textContent = m.name;
-      selectMap.append(thumb, nm);
-      card.append(selectMap);
-      const regions = mapRegionTags(m.id);
-      if (regions.length) {
-        const tags = document.createElement('div');
-        tags.className = 'cot-map-regions';
-        for (const region of regions) {
-          const tag = document.createElement('span');
-          tag.className = 'cot-map-region';
-          tag.dataset.region = region;
-          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
-          const label = document.createElement('span');
-          label.textContent = t(`camoTag.${region}`);
-          tag.appendChild(label);
-          tags.appendChild(tag);
-        }
-        thumb.appendChild(tags);
-      }
-      const previewMap = (trigger: HTMLElement) => {
-        if (selectedMapId !== m.id) return;
-        void import('./mapPreview.ts').then(({ openMapPreview }) => {
-          if (selectedMapId === m.id) openMapPreview(m, trigger, () => api.setSelectedMap(m.id));
-        });
-      };
-      if (m.id !== 'random') {
-        const inspect = document.createElement('button');
-        inspect.type = 'button'; inspect.className = 'cot-map-inspect';
-        inspect.disabled = true;
-        inspect.setAttribute('aria-label', t('garage.map.inspect', { name: m.name }));
-        inspect.innerHTML = uiIconSVG('zoomIn', 18);
-        inspect.addEventListener('click', (event) => {
-          event.stopPropagation();
-          previewMap(inspect);
-        });
-        card.append(inspect);
-      }
-      selectMap.addEventListener('click', () => {
-        emit('ui:click', {});
-        if (m.id !== 'random' && selectedMapId === m.id) {
-          previewMap(selectMap);
-          return;
-        }
-        api.setSelectedMap(m.id);
-        if (isOverlayPanelLayout()) setGaragePanel('');
-      });
-      mapGrid.appendChild(card);
-      mapCardById.set(m.id, card);
-    }
-  }
-  initializeMapPicker();
   // Scroll masks are affordances, not decoration: the head appears only after
   // content moves above the viewport, while the tail appears only while more
   // remains below. Both depths collapse near their respective ends so the
   // first and last cards resolve to full opacity instead of hitting a shelf.
   const syncScrollFades = () => {
-    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
-    if (mapScroll) mapScroll.classList.toggle('can-scroll', mapScroll.scrollHeight > mapScroll.clientHeight + 1);
     const cg = root.querySelector('.cot-camos .cgrid.camo');
     if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
     const dossierPassed = Math.max(0, statsEl.scrollTop);
@@ -1992,14 +1867,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .cot-c-picker__grid');
     if (grid) holdGridHeight(grid, fitPickerGrid);
   });
-  // The map roster now exceeds the short-viewport column. Its flex height
-  // can settle after the first animation frame (once the camo grid measures),
+  // The dossier's flex height can settle after the first animation frame,
   // so window resize alone is insufficient to keep the fade affordance true.
   function observeScrollFadeSize(): void {
     if (typeof ResizeObserver !== 'function') return;
     const scrollFadeObserver = new ResizeObserver(syncScrollFades);
-    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
-    if (mapScroll) scrollFadeObserver.observe(mapScroll);
     scrollFadeObserver.observe(statsEl);
   }
   observeScrollFadeSize();
@@ -2152,46 +2024,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeCamoPicker();
-  // Battlefield and camouflage form one balanced pair. They share the
-  // available vertical budget, grow together, and stop once the taller
-  // section can show all of its content. Any excess room remains below the
-  // pair for Battle Gallery rather than stretching either plate into a void.
-  function syncSidebarPanelHeight() {
-    const leftcol = root.querySelector<HTMLElement>('.cot-leftcol');
-    if (!leftcol || isOverlayPanelLayout() || getComputedStyle(mapsEl).display === 'none') {
-      leftcol?.style.removeProperty('--cot-sidebar-panel-height');
-      return;
-    }
-    const style = getComputedStyle(leftcol);
-    const gap = Number.parseFloat(style.rowGap || style.gap) || 8;
-    const fixedChildren = [...leftcol.children]
-      .filter((child): child is HTMLElement => child instanceof HTMLElement &&
-        child !== mapsEl && child !== camosEl && getComputedStyle(child).display !== 'none');
-    const fixedHeight = fixedChildren.reduce((sum, child) => sum + child.offsetHeight, 0);
-    const gapHeight = gap * Math.max(0, leftcol.children.length - 1);
-    const pairBudget = Math.max(216, leftcol.clientHeight - fixedHeight - gapHeight);
-    const mapTitle = mapsEl.querySelector<HTMLElement>('.mtitle');
-    const mapGrid = mapsEl.querySelector<HTMLElement>('.cot-map-grid');
-    const camoTitle = camosEl.querySelector<HTMLElement>('.ctitle');
-    const camoGrid = camosEl.querySelector<HTMLElement>('.cgrid.camo');
-    const mapIntrinsic = (mapTitle?.offsetHeight || 0) + (mapGrid?.scrollHeight || 0) + 25;
-    const camoIntrinsic = (camoTitle?.offsetHeight || 0) + (camoGrid?.scrollHeight || 0) + 25;
-    const contentCap = Math.max(108, mapIntrinsic, camoIntrinsic);
-    const height = Math.floor(Math.min(pairBudget / 2, contentCap));
-    const next = `${height}px`;
-    if (leftcol.style.getPropertyValue('--cot-sidebar-panel-height') !== next) {
-      leftcol.style.setProperty('--cot-sidebar-panel-height', next);
-      requestAnimationFrame(syncScrollFades);
-    }
-  }
-  window.addEventListener('resize', syncSidebarPanelHeight);
-  requestAnimationFrame(syncSidebarPanelHeight);
-  function observeSidebarSize(): void {
-    if (typeof ResizeObserver !== 'function') return;
-    const sidebarSizeObserver = new ResizeObserver(syncSidebarPanelHeight);
-    sidebarSizeObserver.observe(requiredElement<HTMLElement>(root, '.cot-leftcol'));
-  }
-  observeSidebarSize();
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
   // `cot.equip.<specId>`, read battle-side by game/state.ts at spawn). The
@@ -2895,7 +2727,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (previousCountry && previousCountry !== countryId && api.isOpen &&
         cardsEl.animate && !prefersReducedMotion()) {
       cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
-        { duration: 140, easing: 'ease-out' });
+        { duration: motionMs('--dur-fast'), easing: 'ease-out' });
     }
     // the strip returns to its start in the frame's callback, ahead of the selection's reveal (queued after it): a
     // scroll write here laid the strip out inside the press (click-perf-248)
@@ -3122,7 +2954,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!shouldAnimate) return;
     statsEl.animate(
       [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 190, easing: 'ease-out' },
+      { duration: motionMs('--dur-base'), easing: 'ease-out' },
     );
   }
 
@@ -3743,32 +3575,75 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleRuleMeta = Object.fromEntries(Object.entries(MODE_GLYPH).map(([id, icon]) => [id, {
     label: t(`playMenu.matchMode.${id}.label`), icon,
   }])) as Partial<Record<GameModeId, BattleChoiceMeta>>;
+  // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
+  // the kit's battlefieldPicker opens in the mode list's place on a docked Deploy (the list's width and height give its
+  // cards and the preview beside them their room, and the plate beside it holds still) and in the field's place in a
+  // phone's column (deploy.css gives it the field's and the rules' room), its cards narrowed to the chosen mode with Random first, a large preview of the map under the pointer or the focus, and
+  // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Each card reads
+  // battlefieldFacts (its name, landscape and the maps-r1 stills; the Rooms host's picker reads the same). It loads with
+  // its first opening (the boot graph keeps no picker).
+  let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
+  let deployFieldLoad: Promise<void> | null = null;
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
-    pop.append(mapsEl);
-    // the open picker's one close, beside its (i); it leaves with the picker
-    mapsEl.querySelector('.mtitle')?.insertAdjacentHTML('beforeend', `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" ` +
-      `data-deploy-field-close aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>`);
-    pop.hidden = false;
-    pop.closest('.cot-battle-details')?.classList.add('is-picking');
-    // the picker opens where the battlefield and the rules stood (deploy.css gives it their room), so nothing scrolls
-    battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
-    requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
-    // the selected battlefield scrolls into view within the list only (its column keeps its place)
-    const list = mapsEl.querySelector<HTMLElement>('.cot-map-scroll');
-    const sel = mapsEl.querySelector<HTMLElement>('.cot-map-card.sel');
-    if (list && sel) {
-      const at = sel.getBoundingClientRect(), box = list.getBoundingClientRect();
-      if (at.top < box.top || at.bottom > box.bottom) list.scrollTop += at.top - box.top;
+    if (!pop.firstChild) {
+      pop.innerHTML = `<div class="cot-deploy-field-head">${uiIconSVG('map', 16)}<span id="cot-deploy-field-label">${t('garage.battlefield.heading')}</span>` +
+        `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" data-deploy-field-close ` +
+        `aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button></div><div class="cot-deploy-bf" data-deploy-bf></div>`;
     }
+    const docked = !isOverlayPanelLayout();
+    const list = requiredElement<HTMLElement>(battleMenu, '#cot-deploy-quick');
+    const dock = docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-deploy-field');
+    if (pop.parentElement !== dock) dock.append(pop);
+    pop.hidden = false;
+    (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
+    // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
+    if (docked) list.scrollTop = 0;
+    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view)
+    else requestAnimationFrame(() => {
+      const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
+      if (column) column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top;
+    });
+    // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
+    if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
+    requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
+    if (deployField) {
+      deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
+      deployField.picker.focus();
+      return;
+    }
+    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
+      { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
+    ]) => {
+      const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.map((map) => {
+        if (map.id === 'random') {
+          return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
+            media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
+        }
+        const facts = battlefieldFacts(map.id);
+        return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+          media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, tags: [...facts.regions] };
+      });
+      const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
+      const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
+        id: 'deploy-battlefield', label: t('garage.battlefield.heading'), cards: cards(), value: selectedMapId,
+        mode: battleGameMode, randomId: 'random', text: pickerText(),
+        filters: regions.map((tag) => ({ id: tag, label: t(`camoTag.${tag}`) })),
+        onChoose: (id) => {
+          emit('ui:click', {});
+          api.setSelectedMap(id);
+          requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').focus();
+        },
+      });
+      deployField = { picker, cards };
+    }, () => { deployFieldLoad = null; });
+    void deployFieldLoad.then(() => { if (!pop.hidden) deployField?.picker.focus(); });
   }
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
     pop.hidden = true;
-    pop.closest('.cot-battle-details')?.classList.remove('is-picking');
-    mapsEl.querySelector('[data-deploy-field-close]')?.remove();
-    camosEl.before(mapsEl);
+    for (const host of root.querySelectorAll('#cot-deploy-quick, .cot-battle-details')) host.classList.remove('is-picking');
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
   /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
@@ -3801,7 +3676,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
         selectedMap: () => selectedMapId, selectedMode: () => battleGameMode,
         again(mode, mapId) {
-          battleMenu.querySelector<HTMLButtonElement>(mode === 'standard' ? '.cot-deploy-cards [data-mode="solo"]' : `[data-game-mode="${mode}"]`)?.click();
+          if (mode === 'standard') setBattleMode('solo'); else setBattleGameMode(mode);
           api.setSelectedMap(mapId);
           battle();
         },
@@ -3853,17 +3728,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleMenu.classList.add('open');
     deployScreen?.drawObjectives();
     battleModeBtn.setAttribute('aria-expanded', 'true');
-    const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
-      : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    const scroller = battleMenuScroll;
-    scroller.scrollTop = 0;
-    const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
-    const scrollBounds = scroller.getBoundingClientRect();
-    const selectedBounds = selectedChoice?.getBoundingClientRect();
-    const visibleChoice = selectedBounds && selectedBounds.top >= scrollBounds.top
-      && selectedBounds.bottom <= scrollBounds.bottom ? selectedChoice : null;
-    (visibleChoice || requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]'))
-      .focus({ preventScroll: true });
+    battleMenuScroll.scrollTop = 0;
+    // the mode picker takes the focus on the chosen mode (the screen's close until the picker has loaded)
+    requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').focus({ preventScroll: true });
+    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); });
   }
   function setBattleMode(nextMode: string | undefined): void {
     if (!nextMode || !(nextMode in battleModeMeta)) return;
@@ -3882,10 +3750,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
-    for (const choice of battleChoices) {
-      choice.setAttribute('aria-pressed', String(choice.dataset.mode === mode));
-    }
-    for (const choice of battleRuleChoices) choice.setAttribute('aria-pressed', 'false');
+    deployModes?.setValue(battleGameMode);
     renderBattleOptions();
     opts.onGameModeSelect?.(battleGameMode);
   }
@@ -3903,10 +3768,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
-    for (const choice of battleChoices) choice.setAttribute('aria-pressed', 'false');
-    for (const choice of battleRuleChoices) {
-      choice.setAttribute('aria-pressed', String(choice.dataset.gameMode === id));
-    }
+    deployModes?.setValue(id);
     renderBattleOptions();
   }
 
@@ -3972,20 +3834,41 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (battleMenu.classList.contains('open')) closeBattleMenu();
     else openBattleMenu();
   });
-  for (const choice of battleChoices) choice.addEventListener('click', () => {
-    emit('ui:click', {});
-    if (choice.dataset.mode === 'private' || choice.dataset.mode === 'lan') {
-      openMultiplayer(choice.dataset.mode);
-    } else setBattleMode(choice.dataset.mode);
-  });
-  requiredElement<HTMLButtonElement>(root, '.cot-battle-choice[data-proving]').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-proving]').addEventListener('click', () => {
     emit('ui:click', {});
     startTestDrive(selectedId);
   });
-  for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
-    emit('ui:click', {});
-    setBattleGameMode(choice.dataset.gameMode);
-  });
+  // the battle modes (INTERACTION-REDESIGN.md part C; the census's deploy-mode row): the one mode picker, the Rooms host's
+  // too. Each card is the mode's picture, its glyph in its hue, its name and the first two rules the ruleset keeps
+  // (modeRuleLines); the plate is the rules card, showing the mode under the pointer or the focus and the chosen one
+  // again when it leaves; one press chooses. It loads at the Garage's first idle moment, before Deploy opens (the boot
+  // graph keeps no picker).
+  let deployModes: import('./modePicker.ts').ModePicker | null = null;
+  let deployModesLoad: Promise<void> | null = null;
+  let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
+  function openDeployModes(): Promise<void> {
+    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
+      const cards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
+        id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
+        // the picture, glyph and name alone: the plate beside the cards is the rules card, showing every rule of the mode under
+        // the pointer or the focus (a rule line under each picture wrapped and repeated the name)
+        facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
+      }));
+      deployModeCards = cards;
+      deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
+        id: 'deploy-mode', label: t('playMenu.battleRulesAria'), cards: cards(), value: battleGameMode, text: pickerText(),
+        layout: 'cards',
+        onPreview: (card) => renderModePlate(card ? normalizeGameMode(card.id) : battleGameMode),
+        onChoose: (id) => {
+          emit('ui:click', {});
+          if (id === 'standard') setBattleMode('solo'); else setBattleGameMode(id);
+        },
+      });
+    }, () => { deployModesLoad = null; });
+    return deployModesLoad;
+  }
+  const idleLoad = (globalThis as { requestIdleCallback?: (run: () => void) => number }).requestIdleCallback;
+  if (idleLoad) idleLoad(() => void openDeployModes()); else setTimeout(() => void openDeployModes(), 1200);
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
   // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
@@ -4094,15 +3977,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell',
     gravity: 'modeMars', speed: 'speed', boss: 'shield',
   } as const;
-  function renderDeployChips(): void {
-    for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
-      const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
-      const shown = (['gravity', 'speed', 'boss', 'respawn', 'victory', 'teams', 'clock'] as const).filter((key) => facts[key] != null).slice(0, 2);
-      row.innerHTML = rules(shown.map((key) => [DEPLOY_FACT_ICON[key], String(facts[key])] as const));
-    }
-  }
-  function renderDeployRules(): void {
-    const facts: DeployFacts = deployFacts(battleGameMode);
+  function renderDeployRules(mode: GameModeId): void {
+    const facts: DeployFacts = deployFacts(mode);
     // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
     const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
     const keys = ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
@@ -4201,7 +4077,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<span class="cot-deploy-op-index" aria-hidden="true">${String(operation.index).padStart(2, '0')}</span>` +
         `<span class="cot-deploy-op-map" aria-hidden="true"${thumb ? ` style="background-image:url(&quot;${escapeHtmlAttribute(thumb)}&quot;)"` : ''}></span>` +
         `<span><b class="cot-deploy-op-name">${title}</b><span class="cot-deploy-op-meta">` +
-        `<span>${uiIconSVG('map', 14)}${t(`map.${operation.mapId}`)}</span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
+        `<span>${uiIconSVG('map', 14)}<span class="cot-deploy-op-mapname">${t(`map.${operation.mapId}`)}</span></span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
         `<span class="cot-deploy-op-stars" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars, max: 3 }))}">${
           [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('')}</span>` +
         `<span class="cot-deploy-op-diff" role="img" aria-label="${escapeHtmlAttribute(t('garage.deploy.difficulty', { value: operation.difficulty, max: CAMPAIGN_OPERATIONS.length }))}">${
@@ -4238,20 +4114,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     battleMenu.dataset.modeTone = battleGameMode;
+    // an open battlefield picker follows the mode (its cards and its preview's objectives)
+    if (deployField && root.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
+      deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
+    }
     renderArrangementPanel();
     loadMarsDropdowns();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
     const meta = (solo && battleRuleMeta[battleGameMode]) || battleModeMeta[battleMode];
-    setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
-    setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
-    setupIcon.dataset.modeTone = battleGameMode;
-    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
-    setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
-      : solo ? `playMenu.matchMode.${battleGameMode}.desc`
-      : `garage.battle.${battleMode}SetupDescription`, solo ? modeCopyValues(battleGameMode) : undefined);
+    if (solo) renderModePlate(battleGameMode);
+    else {
+      setupTitle.textContent = meta.label;
+      setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+      setupIcon.dataset.modeTone = battleGameMode;
+      setupDescription.textContent = t(`garage.battle.${battleMode}SetupDescription`);
+      renderDeployRules(battleGameMode);
+    }
+    // the mode cards' rules follow the player's arrangement (sides, Mars)
+    if (deployModes && deployModeCards) deployModes.setCards(deployModeCards(), battleGameMode);
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
@@ -4267,10 +4150,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     marsField('gravity').value = settings.gravity;
     marsField('caches').value = settings.caches;
     marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
-    renderDeployRules();
-    renderDeployChips();
     deployScreen?.render();
   };
+  /** The plate's rules card for one mode, the chosen one or the one the mode picker previews under the pointer or the
+   *  focus: its name, glyph in its hue, sentence and rules. */
+  function renderModePlate(mode: GameModeId): void {
+    // Standard is the solo battle's own (battleModeMeta.solo); every other mode has its rule meta
+    const meta = battleRuleMeta[mode] ?? (mode === 'standard' ? battleModeMeta.solo : null);
+    if (!meta) return;
+    setupTitle.textContent = meta.label;
+    setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    setupIcon.dataset.modeTone = mode;
+    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
+    setupDescription.textContent = t(mode === 'mars' ? 'garage.battle.marsSetupDescription' : `playMenu.matchMode.${mode}.desc`,
+      modeCopyValues(mode));
+    renderDeployRules(mode);
+  }
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
     writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
@@ -4536,6 +4431,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
+    // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here
+    if (target?.closest('[data-deploy-field-pop], [data-deploy-modes]') && e.code !== 'Escape') return;
     if (openGaragePanel()) {
       const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');
       containModalTab(e, drawer, drawer);
@@ -4595,10 +4492,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
     }
     if (typing) return;
-    // (only from the mode list or the bare screen: a dropdown or a segmented control keeps its own arrows)
+    // the bare screen's arrows go to the mode picker (a dropdown or a segmented control keeps its own)
     if (deployOpen && /^Arrow(Left|Right|Up|Down)$/.test(e.code) && !e.metaKey && !e.ctrlKey && !e.altKey
-      && (!target || target === document.body || target === battleMenu || target.closest('.cot-deploy-panel'))) {
-      deployScreen?.move(e.code, target);
+      && (!target || target === document.body || target === battleMenu)) {
+      deployModes?.focus();
       e.preventDefault();
       return;
     }
@@ -4609,9 +4506,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      // on the Deploy screen a focused mode deploys (the arrows chose it); every other control keeps its own Enter
-      if (target?.closest('button,input,select,a,[role="button"]')
-        && !(deployOpen && target.closest('.cot-deploy-panel .cot-battle-choice:not([data-proving])'))) return;
+      // the bare screen's Enter deploys; every control keeps its own
+      if (target?.closest('button,input,select,a,[role="button"]')) return;
       battle();
       e.preventDefault();
     }
@@ -4828,17 +4724,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     /**
-     * Highlight a battlefield in the map picker.
+     * Choose the battlefield (Deploy's field and its picker show it).
      * @param {string} mapId map id or 'random'
      */
     setSelectedMap(mapId: string) {
-      if (!mapCardById.has(mapId)) return;
+      if (!maps.some((map) => map.id === mapId)) return;
       selectedMapId = mapId;
-      for (const [id, card] of mapCardById) {
-        card.classList.toggle('sel', id === mapId);
-        const inspect = card.querySelector<HTMLButtonElement>('.cot-map-inspect');
-        if (inspect) inspect.disabled = id !== mapId;
-      }
       refreshBattlefield();
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
       // Keep packaged portraits healthy after the biome/camo transition.
@@ -4846,7 +4737,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
   };
 
-  if (mapCardById.size) api.setSelectedMap(selectedMapId);
+  if (maps.length) api.setSelectedMap(selectedMapId);
 
   applyCountryFilter(countryFilter);
   // Paint the hidden initial dossier without overwriting a persisted choice

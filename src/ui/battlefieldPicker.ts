@@ -53,11 +53,12 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
   host.classList.add('cot-bf');
   // the preview is the cards' echo, so assistive tech reads the chosen option, not this figure
   host.innerHTML = '<div class="cot-bf__in"><figure class="cot-bf__preview" aria-hidden="true">'
-    + '<div class="cot-bf__hero cot-c-media cot-c-media--soft"><img alt="" decoding="async">'
+    + '<div class="cot-bf__hero cot-c-media cot-c-media--soft"><img alt="" decoding="async"><span class="cot-c-picker__mosaic"></span>'
     + '<div class="cot-bf__map" hidden><img alt="" decoding="async"></div></div>'
     + '<figcaption class="cot-bf__cap"><b class="cot-bf__name"></b><span class="cot-bf__facts"></span></figcaption></figure>'
     + '<div class="cot-bf__cards"></div></div>';
   const hero = host.querySelector<HTMLImageElement>('.cot-bf__hero>img')!;
+  const heroMosaic = host.querySelector<HTMLElement>('.cot-bf__hero>.cot-c-picker__mosaic')!;
   const inset = host.querySelector<HTMLElement>('.cot-bf__map')!;
   const plate = inset.querySelector<HTMLImageElement>('img')!;
   // the objectives' canvas is the kit's (uiCanvas: its store follows its box and ratio); deployObjectives.ts draws on it
@@ -77,9 +78,11 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     shownId = next?.id ?? null;
     const picture = next?.hero ?? next?.media?.poster ?? '';
     if (picture) hero.src = picture; else hero.removeAttribute('src');
+    // a card with no one picture (Random) shows its card's own mosaic
+    heroMosaic.innerHTML = picture ? '' : (next?.media?.mosaic ?? []).slice(0, 4).map((src) => `<img src="${esc(src)}" alt="" decoding="async">`).join('');
     name.textContent = next?.name ?? '';
     facts.innerHTML = (next?.facts ?? []).slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('');
-    // Random has no one map to show: its own card's picture, no tactical inset
+    // Random has no one map to show: no tactical inset
     const map = next && next.id !== options.randomId ? next.id : null;
     inset.hidden = !map;
     if (!map) return;

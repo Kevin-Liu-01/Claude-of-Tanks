@@ -23,7 +23,6 @@ const SHELL: readonly string[] = [
   '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
   '.cot-sidebar-section-title span',
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",
-  '.cot-map-card .mname',
   '.cot-garage .sub>span', '.cot-garage .srow .lr>span', "body[data-cot-panels='persistent'] .cot-garage .srow .lr>span",
   '.cot-garage .eqslot .sl', '.cot-action>span',
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',
@@ -73,16 +72,6 @@ const ROUTES: Readonly<Record<string, readonly string[]>> = {
   notFound: NOT_FOUND,
 };
 
-/**
- * Where a lifted label sits in a fixed-height card, the card keeps its height: the label takes back the leading the
- * larger size added (one line of Chinese needs no Latin descender room). The battlefield cards' names stay inside the
- * panel at 1440x900 as the English ones do.
- */
-const LEADING: Readonly<Record<string, string>> = {
-  game: ':lang(zh) .cot-map-card .mname{line-height:1;margin-top:2px}',
-  studio: ':lang(zh) .cot-map-card .mname{line-height:1;margin-top:2px}',
-};
-
 /** The label selectors a route's Chinese document lifts (docs topics share the overview's list). */
 export function zhTypeFloorSelectors(routeId: string): readonly string[] {
   return ROUTES[routeId] ?? (routeId.startsWith('docs') ? DOCS : PUBLIC_NAV);
@@ -94,7 +83,7 @@ export function zhTypeFloorCss(routeId: string): string {
   const tokens = ':root:lang(zh-CN){--fs-11:calc(13px*var(--cot-type-scale,1));--fs-12:calc(13px*var(--cot-type-scale,1))}';
   // A selector list, not :is(): each entry keeps its own base specificity plus the one class :lang() adds.
   const floor = selectors.length ? `\n${selectors.map((selector) => `:lang(zh) ${selector}`).join(',')}{font-size:13px}` : '';
-  return `${tokens}${floor}${LEADING[routeId] ? `\n${LEADING[routeId]}` : ''}`;
+  return `${tokens}${floor}`;
 }
 
 /** The block a zh-CN document's head carries. */

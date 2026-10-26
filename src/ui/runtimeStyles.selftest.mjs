@@ -106,7 +106,6 @@ assert.match(garageCss,
   'Garage sidebars must share one section-heading typography contract');
 for (const headerClass of [
   'ftitle cot-sidebar-section-title',
-  'mtitle cot-sidebar-section-title',
   'cot-stat-title cot-sidebar-section-title',
 ]) {
   assert.match(garageSource, new RegExp(headerClass),

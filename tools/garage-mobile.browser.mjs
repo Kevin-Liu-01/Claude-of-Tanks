@@ -55,11 +55,11 @@ try{
    for(const item of await page.locator('.cot-mobile-nav-menu button').all())await reach(item);
    await tap('[data-mobile-nav="environment"]');await box('.cot-garage-variant-menu');await tap(page.locator('.cot-garage-variant-card').last());
    await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-modal-root.is-open .cot-modal__close');
-   // the battlefields: the battle card opens the Deploy screen, whose field holds the map grid
-   step='maps';await tap('.cot-battle-mode');await tap('[data-deploy-field]');await box('[data-deploy-field-pop]');assert.ok(await page.locator('.cot-map-card').count()>25);
-   await reach(page.locator('.cot-map-select').last());
-   await tap('.cot-maps .cot-info-trigger');await closeModal();
-   await page.locator('.cot-map-scroll').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});
+   // the battlefields: the battle card opens the Deploy screen, whose field holds the battlefield picker
+   step='maps';await tap('.cot-battle-mode');await tap('[data-deploy-field]');await box('[data-deploy-field-pop]');
+   await page.locator('[data-deploy-bf] .cot-c-picker__opt').first().waitFor();assert.ok(await page.locator('[data-deploy-bf] .cot-c-picker__opt').count()>25);
+   await reach(page.locator('[data-deploy-bf] .cot-c-picker__opt').last());
+   await page.locator('[data-deploy-bf] .cot-c-picker__grid').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});
    await tap('[data-deploy-field]');await tap('[data-battle-close]');
    step='appearance';await tap('.cot-lt-paint-all');await box('.cot-leftcol');
    await tap('.cot-drawer-actions .cot-info-trigger');await closeModal();
