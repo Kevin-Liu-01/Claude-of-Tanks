@@ -3648,10 +3648,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
   // the kit's battlefieldPicker opens in the field's place (deploy.css gives it the field's and the rules' room), its
   // cards narrowed to the chosen mode with Random first, a large preview of the map under the pointer or the focus, and
-  // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Its cards read the
-  // Garage's battlefield list (catalog names, mapThumbs pictures, regionTags landscapes): a lazy import of
-  // battlefieldFacts.ts from here split mapThumbs off the boot chunk (one more game and cn request). It loads with its
-  // first opening (the boot graph keeps no picker).
+  // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Each card reads
+  // battlefieldFacts (its name, landscape and the maps-r1 stills; the Rooms host's picker reads the same). It loads with
+  // its first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
   let deployFieldLoad: Promise<void> | null = null;
   function openDeployField(): void {
@@ -3671,15 +3670,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField.picker.focus();
       return;
     }
-    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts')]).then(([{ createBattlefieldPicker }, { pickerText }]) => {
+    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
+      { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
+    ]) => {
       const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.map((map) => {
         if (map.id === 'random') {
           return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
             media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
         }
-        const regions = mapRegionTags(map.id);
-        return { id: map.id, name: map.name, facts: regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-          media: { poster: map.thumb || map.hero || '' }, hero: map.hero || map.thumb, tags: [...regions] };
+        const facts = battlefieldFacts(map.id);
+        return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+          media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, tags: [...facts.regions] };
       });
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {

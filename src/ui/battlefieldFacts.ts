@@ -5,14 +5,17 @@
 //   name: catalog.ts getLocalizedMapName      regions: regionTags.ts mapRegionTags (the camo browser's landscape tags)
 //   hours: battleWeatherPolicy.ts BATTLE_TIMES, Mars and the Moon held to day (battleAtmosphereRuntime.ts prepare)
 //   modes: every battle mode on every map (no mode is tied to a map; gameModeCatalog.ts BATTLE_MODE_IDS)
-//   random: mapIds.ts RANDOM_BATTLE_MAP_IDS   pictures: mapThumbs.ts MAP_HEROES and MAP_THUMBS, public/maps/cards
+//   random: mapIds.ts RANDOM_BATTLE_MAP_IDS
+//   pictures: the media lane's maps-r1 stills (public/media/maps-r1/manifest.json: 16:9 at 640, 1280 and 1920 wide) where a
+//     map has them, else the generated art: the 16:9 thumb and card (public/maps/thumbs, public/maps/cards) and the hero.
+//     The generated paths follow the map's id (mapThumbs.ts MAP_THUMBS and MAP_HEROES, which the selftest holds this to):
+//     importing that table from the picker's lazy chunk split it off the game's boot chunk, one more boot request.
 // There is no size datum: every map plays the same 1024 m square and its two sides start 720-860 m apart (Mars 513 m),
 // so a size class would sort all but one map together.
 import { MAP_IDS, RANDOM_BATTLE_MAP_IDS, isMapId, getLocalizedMapName, type MapId } from '../world/maps/catalog.ts';
 import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import { mapRegionTags } from './regionTags.ts';
-import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 
 type BattleModeId = typeof BATTLE_MODE_IDS[number];
 
@@ -27,11 +30,27 @@ interface BattlefieldFacts {
   readonly modes: readonly BattleModeId[];
   /** Whether Random may draw it (the space maps only by choice). */
   readonly random: boolean;
-  /** Its pictures: the 16:9 card (the picker's poster), the hero and the small thumb. */
-  readonly poster: { readonly card: string; readonly hero: string; readonly thumb: string };
+  /** Its pictures: the card's 16:9 picture (its smallest rung) with a srcset over every rung, the preview's large picture and
+   *  the small thumb. */
+  readonly poster: { readonly src: string; readonly srcset: string; readonly hero: string; readonly thumb: string };
 }
 
 const DAY_ONLY: ReadonlySet<MapId> = new Set(['mars', 'moon']);
+/** The maps the maps-r1 manifest holds stills for; each batch the media lane lands extends it (never a fetch of the manifest). */
+const STILLS: ReadonlySet<MapId> = new Set<MapId>([
+  'verdant', 'coastal', 'autumn', 'frontier', 'delta', 'badlands', 'monsoon', 'foundry', 'blackglass', 'copper_mesa',
+  'airfield', 'longleaf', 'mars', 'cliffbridge',
+]);
+const STILL_WIDTHS = [640, 1280, 1920] as const;
+
+function poster(id: MapId): BattlefieldFacts['poster'] {
+  const thumb = `/maps/thumbs/${id}.webp`;
+  if (!STILLS.has(id)) {
+    return { src: thumb, srcset: `${thumb} 512w, /maps/cards/${id}.webp 1280w`, hero: `/maps/${id}.webp`, thumb };
+  }
+  const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
+  return { src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb };
+}
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);
 
 /** Every battlefield's facts, in the catalog's order. */
@@ -49,7 +68,7 @@ export function battlefieldFacts(mapId: string): BattlefieldFacts {
     hours: DAY_ONLY.has(id) ? ['day'] : BATTLE_TIMES,
     modes: BATTLE_MODE_IDS,
     random: RANDOM.has(id),
-    poster: { card: `/maps/cards/${id}.webp`, hero: MAP_HEROES[id], thumb: MAP_THUMBS[id] },
+    poster: poster(id),
   };
 }
 
