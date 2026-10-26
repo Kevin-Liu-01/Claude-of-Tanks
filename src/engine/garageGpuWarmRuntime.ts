@@ -47,6 +47,8 @@ interface GaragePostRenderPort {
 }
 
 interface GaragePostWarmPort extends GaragePostRenderPort {
+  /** The live scene pass's MSAA sample count (post.msaaSamples). */
+  readonly msaaSamples?: number;
   warmFirstFrame(
     yieldBeforePass?: (label: string) => Promise<void>,
   ): Promise<Array<{ label: string; ms: number }>>;
@@ -344,9 +346,14 @@ export async function warmGarageGpuPipeline({
   timings.shadowPasses = shadowPasses;
 
   const sceneUploadAt = now();
+  // (2026-10-26, the boot census) every visible draw, whatever the warm camera frames, into a target with the scene
+  // pass's samples: on the 4x phone the Garage's stage materials met their first use in the first live frames (764 and
+  // 1194 ms, each first use ~55 ms behind a GPU flush) as the showroom's camera moved past the warm's framing
   const sceneUploadBatches = await warmScene(renderer, scene, camera, {
     maxObjects: 64,
     maxWeight: 240_000,
+    uncull: true,
+    samples: () => post.msaaSamples ?? 0,
     yieldBeforeBatch: async () => { await yieldGpuWarm(); },
   });
   timings.sceneUpload = Math.round(now() - sceneUploadAt);
