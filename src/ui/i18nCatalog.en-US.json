@@ -4227,6 +4227,7 @@
   "garage.record.requirement": "Requirements",
   "garage.record.awardedCount": "Awarded {count} times",
   "garage.record.loadError": "Could not open Service Record. Try again.",
+  "garage.techTree.loadError": "Could not open the tech tree. Try again.",
   "endScreen.combatDetails": "Combat breakdown & destroyed vehicles",
   "endScreen.reportViews": "Battle report views",
   "endScreen.awardedThisBattle": "Earned in this battle",

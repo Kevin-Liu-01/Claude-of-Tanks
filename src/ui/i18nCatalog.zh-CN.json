@@ -4251,6 +4251,7 @@
   "garage.record.requirement": "获得条件",
   "garage.record.awardedCount": "已获得 {count} 次",
   "garage.record.loadError": "无法打开服役记录，请重试。",
+  "garage.techTree.loadError": "无法打开科技树，请重试。",
   "endScreen.combatDetails": "战斗明细与击毁车辆",
   "endScreen.reportViews": "战斗报告视图",
   "endScreen.awardedThisBattle": "本场战斗获得",

@@ -1413,7 +1413,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
       });
       serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
-    } catch { recordTrigger.dataset.tip = t('garage.record.loadError'); }
+    } catch {
+      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only); the next press retries
+      notifyLater({ id: 'cot-record-load', severity: 'error', text: t('garage.record.loadError') });
+    }
     finally { recordOpening = false; }
   };
   const closeServiceRecord = ({ restoreFocus = true } = {}) => {
@@ -2790,6 +2793,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setRosterFacetFilter(rosterFacetMatch);
   });
   rosterSearchInput.addEventListener('keydown', (event) => {
+    // Enter takes the first tank the search shows (the interaction census: Enter did nothing here)
+    if (event.key === 'Enter') {
+      const first = [...cardById.entries()].find(([, card]) => card.style.display !== 'none' && card.getClientRects().length > 0);
+      if (first) { event.preventDefault(); event.stopPropagation(); emit('ui:click', {}); api.setSelected(first[0]); }
+      return;
+    }
     if (event.key !== 'Escape') return;
     event.stopPropagation();
     if (rosterSearchInput.value) { rosterSearchInput.value = ''; rosterQuery = ''; setRosterFacetFilter(rosterFacetMatch); }
@@ -4475,8 +4484,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       screen.open(opener);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
-      // a failed chunk fetch: the next press retries
+      // a failed chunk fetch says so (it reached the console only); the next press retries
       console.error('[garage] tech tree failed to open:', err);
+      notifyLater({ id: 'cot-techtree-load', severity: 'error', text: t('garage.techTree.loadError') });
     } finally {
       techTreeOpening = false;
     }
