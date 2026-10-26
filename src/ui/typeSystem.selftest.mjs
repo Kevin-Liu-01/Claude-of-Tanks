@@ -622,7 +622,7 @@ for (const path of SHIPPED_HTML) {
 assert.match(read('src/ui/brandMark.ts'), /WORDMARK_WORDS[\s\S]*WORDMARK_OF/, 'the wordmark is the outlined master (SPEC 3.1: never live text)');
 assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
 assert.match(read('src/presentation/publicShell.ts'), /WORDMARK = `<span class="cot-wordmark">\$\{BRAND_WORDMARK_HTML\}<\/span>`/, 'the public bar and footer set the one wordmark (no live text to track)');
-assert.match(read('index.html'), /<svg class="cot-boot-mark" [^>]*role="img" aria-label="Claude of Tanks"/,
+assert.match(read('index.html'), /<div class="cot-boot-mark" [^>]*role="img" aria-label="Claude of Tanks"/,
   'the boot title card is the outlined master (SPEC 3.3), named for assistive reading');
 
 // The zh-CN label floor (the type rules: Chinese labels one step up, 13 px floor) ships only inside Chinese documents, right

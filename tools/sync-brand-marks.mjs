@@ -5,8 +5,8 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BRAND_MOTION_CSS } from '../src/ui/brandMarkMotion.ts';
-import { brandMarkSVG } from '../src/ui/brandMark.ts';
+import { BRAND_MOTION_LAYER_CSS, brandMarkMotionLayers } from '../src/ui/brandMarkMotion.ts';
+import { BRAND_TANK_VIEWBOX, brandMarkSVG } from '../src/ui/brandMark.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
@@ -79,16 +79,31 @@ const cardBodyStart = titleCard.indexOf('-->') + 3;
 const cardBodyEnd = titleCard.lastIndexOf('</svg>');
 if (!cardViewBox || cardBodyStart < 3 || cardBodyEnd < cardBodyStart) throw new Error('invalid title-card master');
 const indexSource = read('index.html');
-const bootTag = /^ {6}<svg class="cot-boot-mark" [^>\n]*>\n/m.exec(indexSource);
-if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <svg> opening tag in index.html');
+const bootTag = /^ {6}<div class="cot-boot-mark" [^>\n]*>\n/m.exec(indexSource);
+if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <div> opening tag in index.html');
+// (2026-10-26, the boot census) the card's tank is the living mark as compositor layers (brandMarkMotionLayers), placed
+// where the master places its svg loop, over the master's stacked wordmark: the svg loop moved svg children, which Chrome
+// runs on the main thread only, so every long task of a cold load froze it
+const [vx, vy, vw, vh] = cardViewBox[1].split(' ').map(Number);
+const cardBody = titleCard.slice(cardBodyStart, cardBodyEnd);
+const placed = /^<g class="cot-mark--motion"><g transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)">/.exec(cardBody);
+const words = /(?:<path fill="[^"]+" d="[^"]+"\/>){2}$/.exec(cardBody);
+if (!placed || !words) throw new Error('invalid title-card master: its living tank group, then its stacked wordmark');
+const [ax, ay, k] = placed.slice(1).map(Number);
+const [tx, ty, tw] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
+const share = (n) => `${Number((n * 100).toFixed(4))}%`;
+const ink = /class="mk-run" fill="([^"]+)"/.exec(cardBody)?.[1], accent = /style="fill:([^"]+)"/.exec(cardBody)?.[1];
+if (!ink || !accent) throw new Error('invalid title-card master: its ink and accent');
 // the opening tag keeps whatever attributes the page gives it (its role and data-i18n-aria-label); only its frame follows
-const bootStart = bootTag[0].replace(/viewBox="[^"]*"/, `viewBox="${cardViewBox[1]}"`);
+const bootStart = bootTag[0].replace(/ style="aspect-ratio:[^"]*"/, '').replace('>\n', ` style="aspect-ratio:${vw}/${vh}">\n`);
 const bootBody = '      <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->\n'
-  + titleCard.slice(cardBodyStart, cardBodyEnd);
-let index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </svg>\n', bootBody);
-// (brand-ui 245) the card's tank is the living mark: its loop's rules, from src/ui/brandMarkMotion.ts, in the boot sheet
+  + `<svg class="cot-boot-words" viewBox="${cardViewBox[1]}" aria-hidden="true" focusable="false">${words[0]}</svg>`
+  + `<span class="cot-boot-tank" style="left:${share((ax + k * tx - vx) / vw)};top:${share((ay + k * ty - vy) / vh)};width:${share(k * tw / vw)}">`
+  + `${brandMarkMotionLayers(ink, accent)}</span>`;
+let index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </div>\n', bootBody);
+// the layers' rules, from src/ui/brandMarkMotion.ts, in the boot sheet
 index = replaceBetween(index, '/* cot:brand-motion */', '/* /cot:brand-motion */',
-  `\n${BRAND_MOTION_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
+  `\n${BRAND_MOTION_LAYER_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
 syncFile('index.html', index);
 
 // (brand-ui 247) the Field Manual's static pages carry the mark in their footer: the drawing src/ui/brandMark.ts gives at

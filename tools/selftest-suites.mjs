@@ -1008,6 +1008,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/picker.selftest.mjs',
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
+    'src/ui/brandMarkLayers.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
     // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
     // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)

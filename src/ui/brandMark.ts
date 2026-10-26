@@ -65,20 +65,32 @@ interface MarkInk {
  * gear (.mk-run, its wheels .mk-wheel), the hull (.mk-hull) carrying the turret (.mk-turret), which carries the antenna
  * (.mk-antenna) and the crew (.mk-crew: the commander and the helmet), and the exhaust's anchor (.mk-exhaust).
  */
-export function brandTankBody({ ink, accent, keyline = false, id = 'cot-mk' }: MarkInk): string {
+export function brandTankBody(markInk: MarkInk): string {
+  const { key, run, hull, turret, antenna, crew, front } = brandTankParts(markInk);
+  return `${key}<g class="mk-run" fill="${markInk.ink}">${run}</g>`
+    + `<g class="mk-hull"><g class="mk-exhaust"></g>${hull}`
+    + `<g class="mk-turret">${turret}<g class="mk-antenna">${antenna}</g><g class="mk-crew">${crew}</g>${front}</g></g>`;
+}
+
+/** The drawing of each group the motion moves, in painting order (brandMarkMotion.ts layers them; the key is the
+ *  one-colour mark's mask). */
+export function brandTankParts({ ink, accent, keyline = false, id = 'cot-mk' }: MarkInk): Readonly<Record<'key' | 'run' | 'hull'
+  | 'turret' | 'antenna' | 'crew' | 'front', string>> {
   const front = `<path d="${TURRET}"/><path d="${CUPOLA}"/>`;
-  const key = keyline
-    ? `<mask id="${id}-key" maskUnits="userSpaceOnUse" x="30" y="34" width="184" height="106"><rect x="30" y="34" width="184" height="106" fill="#fff"/>`
-      + `<g fill="#000" stroke="#000" stroke-width="2.4">${front}<path d="${HELMET}"/>${HELMET_RIM}</g></mask>`
-    : '';
   const commander = `<path fill-rule="evenodd" d="${COMMANDER_GLYPH}" transform="${COMMANDER_PLACE}"${keyline ? ` mask="url(#${id}-key)"` : ''}/>`;
-  return `${key}<g class="mk-run" fill="${ink}"><path fill-rule="evenodd" d="${TRACK}"/></g>`
-    + `<g class="mk-hull"><g class="mk-exhaust"></g><path fill="${ink}" d="${HULL}"/>`
-    + `<g class="mk-turret"><g fill="${ink}">${GUN}<path d="${LID}"/>${HINGE}</g>`
-    + `<g class="mk-antenna"><path d="${ANTENNA}" fill="none" stroke="${ink}" stroke-width="1.6"/><path style="fill:${accent}" d="${PENNANT}"/></g>`
-    + `<g class="mk-crew"><g style="fill:${accent}">${commander}</g><g fill="${ink}"><path fill-rule="evenodd" d="${HELMET}"/>${HELMET_RIM}</g>`
-    + `<g fill="none" stroke="${ink}" stroke-width="1.3">${LENSES}</g></g>`
-    + `<g fill="${ink}">${front}</g></g></g>`;
+  return {
+    key: keyline
+      ? `<mask id="${id}-key" maskUnits="userSpaceOnUse" x="30" y="34" width="184" height="106"><rect x="30" y="34" width="184" height="106" fill="#fff"/>`
+        + `<g fill="#000" stroke="#000" stroke-width="2.4">${front}<path d="${HELMET}"/>${HELMET_RIM}</g></mask>`
+      : '',
+    run: `<path fill-rule="evenodd" d="${TRACK}"/>`,
+    hull: `<path fill="${ink}" d="${HULL}"/>`,
+    turret: `<g fill="${ink}">${GUN}<path d="${LID}"/>${HINGE}</g>`,
+    antenna: `<path d="${ANTENNA}" fill="none" stroke="${ink}" stroke-width="1.6"/><path style="fill:${accent}" d="${PENNANT}"/>`,
+    crew: `<g style="fill:${accent}">${commander}</g><g fill="${ink}"><path fill-rule="evenodd" d="${HELMET}"/>${HELMET_RIM}</g>`
+      + `<g fill="none" stroke="${ink}" stroke-width="1.3">${LENSES}</g>`,
+    front: `<g fill="${ink}">${front}</g>`,
+  };
 }
 
 /** The commander's bust (inside an svg whose viewBox is BRAND_BUST_VIEWBOX): helmet and goggles, arms on the cupola. */
