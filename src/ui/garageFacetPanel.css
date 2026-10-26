@@ -12,7 +12,8 @@
   display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding:10px var(--s3) var(--s3);box-sizing:border-box;
   color:var(--ink-2);background:var(--surface-menu);
   border:1px solid var(--accent-lo);box-shadow:var(--e3);
-  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;}
+  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;
+  contain:content;}
 .cot-facet-panel[hidden]{display:none;}
 /* The Garage's side of the filter, loaded with the panel: the open rail lifts over the side cards and the
    Battle/Multiplayer buttons (which otherwise paint over it on phones; menus, drawers and the nav stay above), the
@@ -79,9 +80,7 @@
 .cot-facet-option[aria-pressed='true'] .ct{color:var(--accent-hi);}
 .cot-facet-option:disabled{cursor:default;opacity:.5;}
 .cot-facet-option:disabled svg{color:var(--ink-4);}
-.cot-facet-empty{display:flex;align-items:center;gap:var(--s3);margin:0;padding:10px var(--s3);font-size:max(12.5px,var(--fs-floor-12),var(--fs-12));color:var(--text-accent);
-  border:1px dashed var(--accent-lo);}
-.cot-facet-empty svg{flex:0 0 auto;color:var(--text-accent);opacity:.8;}
+.cot-facet-empty{padding:var(--s3);}
 .cot-facet-empty[hidden]{display:none;}
 /* Phones: each facet is one swipeable line of chips, so the panel stays short above the roster; the side with more
    chips shows an edge cue (garageFacetPanel.ts sets data-more). */

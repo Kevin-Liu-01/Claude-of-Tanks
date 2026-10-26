@@ -162,8 +162,19 @@ const turretShellBounds = new THREE.Box3().setFromObject(turretShell);
 const gunMountBounds = new THREE.Box3().setFromObject(gunMount);
 assert.ok(gunMountBounds.max.y <= turretShellBounds.max.y + 0.005,
   `mantlet crown stays at the turret roof (${gunMountBounds.max.y.toFixed(3)} <= ${turretShellBounds.max.y.toFixed(3)})`);
-assert.ok(gunMountBounds.min.y >= turretShellBounds.min.y - 0.005,
-  `mantlet chin stays at the turret base (${gunMountBounds.min.y.toFixed(3)} >= ${turretShellBounds.min.y.toFixed(3)})`);
+// 248: the turret seat (turretSeatRace.ts, on the turretRing receipt) lifts the shell's underside onto the deck plane
+// + 3 cm, while the mantlet's root, buried in the turret over the ring well, stays as built 3 cm under that base. The
+// chin that shows is the mantlet's ahead of the turret's nose: it stays at or above the turret's base.
+const worldPoints = (mesh) => {
+  const position = mesh.geometry.getAttribute('position'), points = [];
+  for (let i = 0; i < position.count; i++) points.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld));
+  return points;
+};
+const shellPoints = worldPoints(turretShell), mountPoints = worldPoints(gunMount);
+const noseZ = Math.max(...shellPoints.filter((p) => p.y < turretShellBounds.min.y + 0.25).map((p) => p.z));
+const chinY = Math.min(...mountPoints.filter((p) => p.z > noseZ).map((p) => p.y));
+assert.ok(chinY >= turretShellBounds.min.y - 0.005,
+  `mantlet chin stays at the turret base (${chinY.toFixed(3)} >= ${turretShellBounds.min.y.toFixed(3)})`);
 assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretReceipt, {
   forwardOffsetM: 0.57,
   structuralWidthM: 3.48,

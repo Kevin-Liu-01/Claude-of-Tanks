@@ -763,7 +763,10 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
   assert.ok(strength, 'a strength for every kind of contact');
   const [rock, prop, stack, foundation] = strength.slice(1).map(Number);
   assert.ok(rock === 1 && prop < rock && stack < rock && foundation < prop, `a boulder's foot full, a prop's and a stack's less, a foundation's least (${rock}, ${prop}, ${stack}, ${foundation})`);
-  for (const [who, call] of [['a foundation', /Math\.max\(building\.w, building\.d\) \* 1\.2, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.foundation\)\);/],
+  // (Frontier Basin, 5b848317f9: a map may scale its foundation discs or leave a kind bare; the default stays 1.2)
+  assert.match(source, /const discScale = 1\.2 \* \(discs\?\.scale \?\? 1\), discNone = discs\?\.none \?\? \[\];/,
+    'a foundation\'s disc 1.2 times its footprint unless its map scales it');
+  for (const [who, call] of [['a foundation', /Math\.max\(building\.w, building\.d\) \* discScale, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.foundation\)\);/],
     ['a crushable prop', /conformedDisc\(prop\.x, prop\.z, 1\.15, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.prop\)\);/],
     ['a field stack', /conformedDisc\(stack\.x, stack\.z, stack\.r, \[[^\]]*\], false, FULL_PATCH, CONTACT_STRENGTH\.stack\)\);/]]) {
     assert.match(source, call, `${who}'s patch at its strength`);

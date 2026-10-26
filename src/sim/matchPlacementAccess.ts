@@ -3,6 +3,7 @@ import { createBotNavigationGrid, createDryNavigationView, createNavigationReach
 import { collisionFootprintContainsPoint, type CollisionRecord, type ObstacleQuery } from '../world/collision.ts';
 import type { PlacementAnchors, PlacementPoint, PlacementTerrain } from './matchPlacement.ts';
 
+import * as detMath from './detMath.ts';
 interface AccessWorld {
   heightField: PlacementTerrain;
   obstacles: readonly CollisionRecord[];
@@ -22,7 +23,7 @@ export function createObjectiveAccess(world: AccessWorld, anchors: PlacementAnch
   getObstacles: () => world.obstacles as CollisionRecord[] });
   const scratch: CollisionRecord[] = [];
   function connectorClear(from: PlacementPoint, to: PlacementPoint): boolean {
-    const distance = Math.hypot(to.x - from.x, to.z - from.z);
+    const distance = detMath.hypot(to.x - from.x, to.z - from.z);
     const samples = Math.max(1, Math.ceil(distance / 2));
     for (let sample = 0; sample <= samples; sample++) {
       const t = sample / samples, x = from.x + (to.x - from.x) * t, z = from.z + (to.z - from.z) * t;

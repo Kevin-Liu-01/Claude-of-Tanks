@@ -33,6 +33,7 @@ import {
 } from './structureSections.ts';
 import { structureOpeningAt, STRUCTURE_HOLES_PER_SECTION } from '../world/collision.ts';
 
+import * as detMath from './detMath.ts';
 /** Stage index order: intact 0, damaged 1, breached 2, collapsed 3. */
 export const STAGE_ORDER: readonly StructureStage[] = Object.freeze(['intact', 'damaged', 'breached', 'collapsed']);
 /** Integrity at or below which a stage begins (§3.3). */
@@ -206,10 +207,10 @@ function shapePoints(shape: SimpleCollisionShape, out: Array<[number, number]>):
   if (shape.kind === 'circle') {
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      out.push([shape.cx + Math.cos(a) * shape.r, shape.cz + Math.sin(a) * shape.r]);
+      out.push([shape.cx + detMath.cos(a) * shape.r, shape.cz + detMath.sin(a) * shape.r]);
     }
   } else if (shape.kind === 'obb') {
-    const fx = Math.sin(shape.yaw), fz = Math.cos(shape.yaw), rx = fz, rz = -fx;
+    const fx = detMath.sin(shape.yaw), fz = detMath.cos(shape.yaw), rx = fz, rz = -fx;
     for (const [a, b] of [[1, 1], [1, -1], [-1, -1], [-1, 1]] as const) {
       out.push([shape.cx + rx * shape.hw * a + fx * shape.hl * b, shape.cz + rz * shape.hw * a + fz * shape.hl * b]);
     }
@@ -273,7 +274,7 @@ export function minimumAreaRectangle(points: ReadonlyArray<readonly [number, num
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
     let ux = hull[j * 2] - hull[i * 2], uz = hull[j * 2 + 1] - hull[i * 2 + 1];
-    const length = Math.hypot(ux, uz);
+    const length = detMath.hypot(ux, uz);
     if (length < 1e-9) continue;
     ux /= length; uz /= length;
     const vx = -uz, vz = ux;
@@ -292,7 +293,7 @@ export function minimumAreaRectangle(points: ReadonlyArray<readonly [number, num
       const halfU = (u1 - u0) * 0.5, halfV = (v1 - v0) * 0.5;
       // forward = (sin yaw, cos yaw) along the longer side
       const [fx, fz, hd, hw] = halfU >= halfV ? [ux, uz, halfU, halfV] : [vx, vz, halfV, halfU];
-      let yaw = Math.atan2(fx, fz);
+      let yaw = detMath.atan2(fx, fz);
       if (yaw < 0) yaw += Math.PI;
       if (yaw >= Math.PI - 1e-12) yaw -= Math.PI;
       best = { cx, cz, hw, hd, yaw };
@@ -394,7 +395,7 @@ export function structureRubbleHeightM(structure: Pick<StructureState, 'role' | 
 
 /** Hit points from the built volume: 0.72 · V^0.72, at least 10 (§3.2). */
 export function structureHitPoints(volumeM3: number): number {
-  return Math.max(HP_FLOOR, HP_SCALE * Math.pow(Math.max(0, volumeM3), HP_EXPONENT));
+  return Math.max(HP_FLOOR, HP_SCALE * detMath.pow(Math.max(0, volumeM3), HP_EXPONENT));
 }
 
 /** Structure points of a ram (§4.4): (½·m·v² − E₀(material)) / 40, 0 below the material's scuff energy. */
@@ -455,7 +456,7 @@ function buildState(id: number, group: Group, wallMaterial: StructureMaterial): 
 
 /** Squared distance from (x, y, z) to a structure's footprint box (0 inside). */
 function distanceToStructure(structure: StructureState, x: number, y: number, z: number): number {
-  const fx = Math.sin(structure.yaw), fz = Math.cos(structure.yaw);
+  const fx = detMath.sin(structure.yaw), fz = detMath.cos(structure.yaw);
   const dx = x - structure.cx, dz = z - structure.cz;
   const along = Math.abs(dx * fx + dz * fz) - structure.hd;
   const across = Math.abs(dx * fz - dz * fx) - structure.hw;
@@ -497,8 +498,8 @@ export function createStructureDamage(
   // blast buckets: each structure listed in every bucket its footprint's box touches (CSR, ascending ids)
   const bucketLists: number[][] = Array.from({ length: BUCKETS * BUCKETS }, () => []);
   structures.forEach((structure, index) => {
-    const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw;
-    const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw;
+    const ex = Math.abs(detMath.sin(structure.yaw)) * structure.hd + Math.abs(detMath.cos(structure.yaw)) * structure.hw;
+    const ez = Math.abs(detMath.cos(structure.yaw)) * structure.hd + Math.abs(detMath.sin(structure.yaw)) * structure.hw;
     for (let bz = bucketOf(structure.cz - ez); bz <= bucketOf(structure.cz + ez); bz++) {
       for (let bx = bucketOf(structure.cx - ex); bx <= bucketOf(structure.cx + ex); bx++) {
         bucketLists[bz * BUCKETS + bx].push(index);
@@ -699,7 +700,7 @@ export function createStructureDamage(
         strikeSection(direct, points, blow, Math.max(blastHoleRadiusM(chargeKg, munition), blow.holeRadiusM ?? 0));
         damage(direct, points, blow);
       }
-      const contact = SECTION_CONTACT_Z * Math.cbrt(chargeKg);
+      const contact = SECTION_CONTACT_Z * detMath.cbrt(chargeKg);
       const bx0 = bucketOf(blow.x - reach), bx1 = bucketOf(blow.x + reach);
       const bz0 = bucketOf(blow.z - reach), bz1 = bucketOf(blow.z + reach);
       for (let bz = bz0; bz <= bz1; bz++) {

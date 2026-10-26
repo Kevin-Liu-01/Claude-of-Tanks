@@ -1,0 +1,592 @@
+{
+  "libraryId": "claude-of-tanks-home-r2",
+  "schemaVersion": 1,
+  "author": "Kevin B. Liu",
+  "copyright": "Copyright © 2026 Kevin B. Liu",
+  "description": "The /home reel and feature slots (tools/home-premiere.mjs): the media lane's curated set (2026-10-25) — the hero reel of moving 1v1 duels and the montages, cut from the deterministic Scene Studio renders on release 246; slots the set does not name keep the lead's picks.",
+  "hero": [
+    {
+      "id": "vs03-reservoir-k2-vt4a1",
+      "map": "reservoir",
+      "title": {
+        "en": "A K2 Black Panther races a VT-4A1 past a farmhouse on Highland Reservoir at golden hour, both guns firing",
+        "zh": "黄金时刻，一辆 K2 Black Panther 在高地水库的农舍旁与一辆 VT-4A1 并驾齐驱，双方炮火交错"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 59794
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 113482
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 177636
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 276192
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.0,
+        "bytes": 3825506
+      },
+      "mobile": {
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1235946,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "frosthollow-cv90-bmp3",
+      "map": "winter",
+      "title": {
+        "en": "A CV90 Mk 4 races a BMP-3 across the snow at Frosthollow by day, both firing as they go",
+        "zh": "白天，一辆 CV90 Mk 4 在霜谷的雪地上与一辆 BMP-3 并驾齐驱，双方边行进边开火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 68590
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 134716
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 210302
+          },
+          {
+            "path": "/media/home-r2/frosthollow-cv90-bmp3-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 323210
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/frosthollow-cv90-bmp3.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3675192
+      },
+      "mobile": {
+        "path": "/media/home-r2/frosthollow-cv90-bmp3-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1185623,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "wadi-abrams-t90m",
+      "map": "desert",
+      "title": {
+        "en": "An M1A2 Abrams SEPv3 races a T-90M down Sirocco Wadi by day, firing across the sand",
+        "zh": "白天，一辆 M1A2 Abrams SEPv3 在西罗科干谷与一辆 T-90M 并驾齐驱，隔着沙地开火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56632
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 108624
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 167844
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 254996
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/wadi-abrams-t90m.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.3,
+        "bytes": 3710619
+      },
+      "mobile": {
+        "path": "/media/home-r2/wadi-abrams-t90m-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.3,
+        "bytes": 1212190,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "oasis-night-merkava-t72b3",
+      "map": "oasis",
+      "title": {
+        "en": "A Merkava Mk 4 races a T-72B3 over the dunes of Sunscar Oasis at night, muzzle flashes under the stars",
+        "zh": "夜晚，一辆 Merkava Mk 4 在日痕绿洲的沙丘上与一辆 T-72B3 并驾齐驱，星空下炮口火光闪烁"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50734
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 90974
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 129798
+          },
+          {
+            "path": "/media/home-r2/oasis-night-merkava-t72b3-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 188586
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/oasis-night-merkava-t72b3.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3763910
+      },
+      "mobile": {
+        "path": "/media/home-r2/oasis-night-merkava-t72b3-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1215548,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "glacier-strv122-t80bv",
+      "map": "alpine",
+      "title": {
+        "en": "A Stridsvagn 122 races a T-80BV over the snow of Glacier Pass by day, the peaks behind",
+        "zh": "白天，一辆 Stridsvagn 122 在冰川关的雪地上与一辆 T-80BV 并驾齐驱，身后是雪峰"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/glacier-strv122-t80bv-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 40740
+          },
+          {
+            "path": "/media/home-r2/glacier-strv122-t80bv-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 77636
+          },
+          {
+            "path": "/media/home-r2/glacier-strv122-t80bv-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 122890
+          },
+          {
+            "path": "/media/home-r2/glacier-strv122-t80bv-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 190402
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/glacier-strv122-t80bv.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3763745
+      },
+      "mobile": {
+        "path": "/media/home-r2/glacier-strv122-t80bv-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1212001,
+        "rung": "phone"
+      }
+    }
+  ],
+  "features": {
+    "watch": {
+      "id": "watch-1440",
+      "altKey": "media.homeR2.watch",
+      "title": {
+        "en": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
+        "zh": "观战模式：在翠野原的教堂旁跟随一辆 T-90MS，上方是坦克切换栏"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/watch-1440-640.webp",
+            "width": 640,
+            "height": 400,
+            "bytes": 60966
+          },
+          {
+            "path": "/media/ui-246/watch-1440.webp",
+            "width": 1440,
+            "height": 900,
+            "bytes": 259838
+          }
+        ]
+      }
+    },
+    "killcam": {
+      "id": "killcam-xray",
+      "altKey": "media.homeR2.killcam",
+      "title": {
+        "en": "The X-ray kill cam: the fatal shot's path through the target's armor and modules",
+        "zh": "X 光击杀回放：致命一击穿过目标装甲与模块的弹道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/killcam-xray-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 27242
+          },
+          {
+            "path": "/media/ui-246/killcam-xray.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 212958
+          }
+        ]
+      }
+    },
+    "destruction": {
+      "id": "destruction-steinburg-t90m",
+      "map": "urban",
+      "title": {
+        "en": "A T-90M on a Steinburg street is hit and knocked out, its turret thrown into the air",
+        "zh": "斯泰因堡街道上，一辆 T-90M 中弹被击毁，炮塔被掀上半空"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 39744
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70994
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 99958
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 170322
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/destruction-steinburg-t90m.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2789702
+      },
+      "mobile": {
+        "path": "/media/home-r2/destruction-steinburg-t90m-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1219105,
+        "rung": "phone"
+      }
+    },
+    "studio": {
+      "id": "studio-246",
+      "title": {
+        "en": "Scene Studio's Director workspace playing a Frontier Basin scene: a tank firing in the viewport, the shot cards and timeline around it",
+        "zh": "场景工作室的导演工作区正在播放边境盆地的场景：视口中一辆坦克开火，四周是镜头卡片与时间轴"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/studio-246-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41582
+          },
+          {
+            "path": "/media/home-r2/studio-246-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 75474
+          },
+          {
+            "path": "/media/home-r2/studio-246-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 116756
+          },
+          {
+            "path": "/media/home-r2/studio-246-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 210266
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/studio-246.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2615815
+      },
+      "mobile": {
+        "path": "/media/home-r2/studio-246-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1125424,
+        "rung": "phone"
+      }
+    },
+    "multiplayer": {
+      "id": "multiplayer-pair",
+      "altKey": "media.homeR2.multiplayer",
+      "title": {
+        "en": "Two players' live views of one private room, side by side",
+        "zh": "同一私人房间里两名玩家的实时视角并排显示"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/multiplayer-pair-640.webp",
+            "width": 640,
+            "height": 187,
+            "bytes": 34136
+          },
+          {
+            "path": "/media/ui-246/multiplayer-pair.webp",
+            "width": 2400,
+            "height": 700,
+            "bytes": 330256
+          }
+        ]
+      }
+    },
+    "garage": {
+      "id": "garage-merkava4-barak",
+      "title": {
+        "en": "A Merkava Mk 4 Barak on the Garage's turntable under the hangar lights, the motor pool's gantries and walkways behind",
+        "zh": "机库灯光下，一辆 Merkava Mk 4 Barak 停在车库的转台上，身后是车场的龙门架与走道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 37422
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70138
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 107840
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 194418
+          }
+        ]
+      }
+    },
+    "battlefields": {
+      "id": "battlefields-montage",
+      "title": {
+        "en": "Seven battlefields in quick cuts, a duel on each: Frontier Basin, Verdant Fields, Saltmere Bay, Amberford, Tarkhan Steppe, Sunscar Oasis and a Steinburg street",
+        "zh": "七个战场的快速剪辑，每处一场对决：边境盆地、翠野原、盐沼湾、琥珀渡、塔尔汗草原、日痕绿洲与斯泰因堡的街道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/battlefields-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 28356
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50796
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 74666
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 127340
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/battlefields-montage.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 8.4,
+        "bytes": 3760908
+      },
+      "mobile": {
+        "path": "/media/home-r2/battlefields-montage-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 8.4,
+        "bytes": 1233181,
+        "rung": "phone"
+      }
+    },
+    "fleet": {
+      "id": "fleet-montage",
+      "title": {
+        "en": "Nine vehicles from eight nations in quick cuts, each on its own battlefield: Merkava Mk 4, Type 10, Stridsvagn 122, M1A2 Abrams, ZTZ-99A2, KV-2, Leclerc, CV90 and KF51 Panther",
+        "zh": "八个国家的九辆战车快速剪辑，各在自己的战场上：Merkava Mk 4、Type 10、Stridsvagn 122、M1A2 Abrams、ZTZ-99A2、KV-2、Leclerc、CV90 与 KF51 Panther"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/fleet-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 30928
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56464
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 84044
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 146822
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/fleet-montage.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 9.9,
+        "bytes": 2814227
+      },
+      "mobile": {
+        "path": "/media/home-r2/fleet-montage-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 9.9,
+        "bytes": 1217691,
+        "rung": "phone"
+      }
+    }
+  }
+}

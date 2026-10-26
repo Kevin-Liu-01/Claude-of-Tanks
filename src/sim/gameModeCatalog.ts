@@ -27,6 +27,20 @@ export const BATTLE_MODE_IDS = Object.freeze([
 ] as const);
 
 /**
+ * The order every mode list shows the battle modes in (owner 2026-10-25: "standard battle, drone, zone control, capture
+ * the flag, then … frontline assault, turbo ball, gravity mode, endless horde, then everything else"): the four headline
+ * modes (Deploy's picture cards), the next four (the first row of its tiles), then the rest as Deploy listed them.
+ * Presentation only: BATTLE_MODE_IDS keeps the wire's order. Deploy, the room and LAN mode cards read this one list.
+ */
+export const MODE_PRESENTATION_ORDER = Object.freeze([
+  'standard', 'drone', 'zone_control', 'capture_the_flag',
+  'frontline_assault', 'turbo_ball', 'mars', 'endless_horde',
+  'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130',
+] as const satisfies readonly (typeof BATTLE_MODE_IDS[number])[]);
+/** How many of the presentation order's modes lead as picture cards (Deploy's top row). */
+export const HEADLINE_MODE_COUNT = 4;
+
+/**
  * The practice modes (v2 progression, owner 2026-10-17: "build out all the options" — the proving ground / test drive):
  * solo sessions on the same simulation with no opponent, no verdict and no record. Rooms never host them and they are
  * never listed as a battle; the Garage dossier and the Gallery launch them directly.

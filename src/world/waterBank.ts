@@ -23,6 +23,7 @@
  */
 import { shallowWaterDepth } from './waterContact.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** How far the dry shore stands over its water at the waterline (m): the sheet tucks under it, no shimmer at the edge. */
 export const WATER_BANK_LIP_M = 0.12;
 /** How far past the waterline the lip fades out (m): the mask texture's filtered edge and a little more. */
@@ -36,7 +37,7 @@ function smoothstep(a: number, b: number, x: number): number {
 /** The t in [0, 1] whose smoothstep is `y` (the shoreline laws' waterline by inversion). */
 function inverseSmoothstep(y: number): number {
   const v = Math.min(1, Math.max(0, y));
-  return 0.5 - Math.sin(Math.asin(1 - 2 * v) / 3);
+  return 0.5 - detMath.sin(detMath.asin(1 - 2 * v) / 3);
 }
 
 /**

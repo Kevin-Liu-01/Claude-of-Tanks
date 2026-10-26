@@ -88,18 +88,24 @@ function buildImpulse(ctx: BaseAudioContext, id: ReverbId, maxS = 2.4): AudioBuf
   const buffer = ctx.createBuffer(2, length, sr);
   const random = mulberry32(0x5eed + id.length * 977);
   const pre = Math.round(preset.preDelayS * sr);
+  // (2026-10-24, lockdown-251) the envelope and the cutoff's fall are per-sample geometric steps, not two Math.exp a
+  // sample (one stays, for the lowpass coefficient): the impulse is built on the main thread at an ambience change
+  const envStep = Math.exp(-6.91 / (Math.max(0.05, preset.decayS) * sr));
+  const fallStep = Math.exp(-3.2 / sr);
   for (let c = 0; c < 2; c++) {
     const data = buffer.getChannelData(c);
     let lp = 0;
+    let env = 1;
+    let fall = 1;
     for (let i = pre; i < length; i++) {
-      const t = (i - pre) / sr;
-      const env = Math.exp((-6.91 * t) / Math.max(0.05, preset.decayS));
       // One-pole lowpass whose cutoff falls from ~12 kHz to dampHz over the tail.
-      const cutoff = preset.dampHz + (12000 - preset.dampHz) * Math.exp(-t * 3.2);
+      const cutoff = preset.dampHz + (12000 - preset.dampHz) * fall;
       const alpha = 1 - Math.exp((-2 * Math.PI * cutoff) / sr);
       lp += alpha * ((random() * 2 - 1) - lp);
       const fadeIn = Math.min(1, (i - pre) / (0.004 * sr));
       data[i] = lp * env * fadeIn;
+      env *= envStep;
+      fall *= fallStep;
     }
     for (const [delay, gain] of preset.taps) {
       const at = pre + Math.round((delay + (c ? 0.0035 : 0)) * sr);
@@ -128,6 +134,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   let concussionCooldown = 0;
   let voiceDuck = 0;
   let reverbId: ReverbId = 'none';
+  const impulses = new Map<ReverbId, AudioBuffer>();
 
   // ---- master chain.
   const master = ctx.createGain();
@@ -312,7 +319,10 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     setReverb(id) {
       if (!convolver || id === reverbId) return;
       reverbId = id;
-      convolver.buffer = id === 'none' ? null : buildImpulse(ctx, id);
+      // each room's impulse is built once per context (an ambience change, a battle's entry and its return, set it again)
+      let impulse = id === 'none' ? null : impulses.get(id) ?? null;
+      if (id !== 'none' && !impulse) impulses.set(id, impulse = buildImpulse(ctx, id));
+      convolver.buffer = impulse;
       glide(reverbReturn.gain, dbToGain(SNAPSHOTS[snapshot].reverbDb) * REVERB_PRESETS[id].wet, 0.2);
     },
     admit(loudDb, priority, drivesWindow = true) {

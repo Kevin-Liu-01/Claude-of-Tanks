@@ -123,8 +123,22 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
   let plan: PlanGeometry | null = null, features: StudioPlanFeatures | null = null, base: HTMLCanvasElement | null = null, mapKey = '';
   const cam: CameraRailSample = {}, track: ActorTrackSample = {};
 
+  // each canvas's CSS box, kept by a resize observer: a draw runs on every playhead step and read the boxes each time,
+  // laying the panel out inside the press (perf 249); a new box redraws at its resolution
+  const boxes = new WeakMap<HTMLCanvasElement, { readonly w: number; readonly h: number }>();
+  const sizer = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const box = entry.contentBoxSize?.[0];
+      boxes.set(entry.target as HTMLCanvasElement, box ? { w: box.inlineSize, h: box.blockSize }
+        : { w: entry.contentRect.width, h: entry.contentRect.height });
+    }
+    draw();
+  }) : null;
+  sizer?.observe(map);
+  sizer?.observe(graph);
   const fit = (canvas: HTMLCanvasElement) => {
-    const ratio = Math.min(2, window.devicePixelRatio || 1), w = Math.max(1, Math.round(canvas.clientWidth * ratio)), h = Math.max(1, Math.round(canvas.clientHeight * ratio));
+    const box = boxes.get(canvas) ?? { w: canvas.clientWidth, h: canvas.clientHeight };
+    const ratio = Math.min(2, window.devicePixelRatio || 1), w = Math.max(1, Math.round(box.w * ratio)), h = Math.max(1, Math.round(box.h * ratio));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; return true; }
     return false;
   };

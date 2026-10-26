@@ -76,6 +76,8 @@ export interface MatchSessionP2pOptions {
   createHostPort?: () => HostPort<HostToWorkerMessage, WorkerToHostMessage>;
   /** Where the host fetches the collision manifests (null: the bare height field). */
   manifestBase?: string | null;
+  /** The world kernels' module URL the host's world runs on (?simKernels=wasm); null: the TypeScript. */
+  simKernelsUrl?: string | null;
   /** The device tier: the mobile tier declines to host (§13.3). */
   tier?: 'mobile' | 'desktop';
   /** The settings' "never host" switch. */
@@ -621,7 +623,7 @@ export class MatchSession {
         this.log(message.ok ? 'info' : 'warn', 'standby host prepared', { ok: message.ok, ms: message.ms, ...(message.error ? { error: message.error } : {}) });
       });
       this.standby = standby;
-      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, specIds, bots: plan.bots.length > 0 } });
+      port.post({ type: 'prepare', prepare: { mapId: round.matchStart.mapId, mode: round.matchStart.mode, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, specIds, bots: plan.bots.length > 0 } });
     }, delayMs);
   }
 
@@ -770,7 +772,7 @@ export class MatchSession {
       const plan = planHostBoot(round.room, payload, me);
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
-        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, resume: null,
+        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, resume: null,
         arrangement: round.room.settings.arrangement ?? null, campaignOperationId: round.room.settings.campaignOperationId ?? null,
         ...(p2p.snapshotHz !== undefined ? { snapshotHz: p2p.snapshotHz } : {}),
       };
@@ -940,7 +942,7 @@ export class MatchSession {
     const config: HostBootConfig = {
       roomId: round.room.roomCode, matchId: round.matchStart.matchId, generation: change.generation, mapId: round.matchStart.mapId, mode: round.matchStart.mode,
       seed: welcome ? welcome.seed : round.matchStart.seed, seats: plan.seats, bots: plan.bots, countdownS: resume ? 0 : this.p2pOptions?.countdownS ?? 5, battleLimitS, hostSecret: secret,
-      manifestBase: this.p2pOptions?.manifestBase ?? null, resume,
+      manifestBase: this.p2pOptions?.manifestBase ?? null, simKernelsUrl: this.p2pOptions?.simKernelsUrl ?? null, resume,
       arrangement, campaignOperationId,
       ...(this.p2pOptions?.snapshotHz !== undefined ? { snapshotHz: this.p2pOptions.snapshotHz } : {}),
     };

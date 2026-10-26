@@ -77,7 +77,9 @@ for (const quality of ['high', 'low']) for (const [id, authoredPivotY] of CASES)
       const ys=Array.from({length:position.count},(_,i)=>position.getY(i)+turret.position.y);
       assert.ok(ys.some(y=>Math.abs(y-1.450)<1e-5), 'bearing lip overlaps the sloping hull deck');
       assert.ok(ys.some(y=>Math.abs(y-1.533)<1e-5), 'bearing overlaps the shell floor by 3 mm');
-      assert.ok(ys.some(y=>Math.abs(y-1.530)<1e-5), 'relieved floor exposes 50 mm above the flat deck');
+      // 252: the turret seat (turretSeatRace.ts) lays the relieved floor on its swept plane where the hull rises under it
+      // at some bearing: the M1A1 HA's whole floor 1 mm up (1.531), still under the bearing's 1.533 face, no step
+      assert.ok(ys.some(y=>y>1.530-1e-5&&y<1.533-1e-5), 'relieved floor exposes 50 mm above the flat deck, under the bearing');
     }
 
     const spec=getSpec(id);

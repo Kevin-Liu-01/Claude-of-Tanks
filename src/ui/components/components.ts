@@ -7,31 +7,18 @@
 // in the `components` cascade layer: a surface restyles a component without !important (src/ui/styleLayers.ts).
 //
 // The kit is deliberately small (owner 2026-10-22: less is more). It holds what the rebuilt surfaces use: buttons,
-// key caps, chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed 20-cell scale,
-// and the vehicle identity (flag, silhouette, name). Plates are classes. Modal, select, slider and tooltip keep their
-// existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
+// key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed
+// 20-cell scale, stat tiles and empty states. The vehicle identity (flag, silhouette, name) is identity.ts: its flags are
+// asset imports, and the core imports none. Plates are classes.
+// Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
-import { flagIconUrl } from '../flags.ts';
-import { iconUrl } from '../icons.ts';
-import { esc } from './escape.ts';
+import { attrs, esc, type Attrs } from './escape.ts';
 /** Text and attribute values are escaped once (escape.ts). */
 export { esc };
 
 /** What a control sounds like when used (SPEC §10; src/audio/interfaceSounds.ts reads it). */
 type SoundRole = 'tick' | 'press' | 'confirm' | 'back' | 'tab' | 'toggle' | 'select' | 'deploy' | 'error';
-
-/** Extra attributes for a host element, escaped; `true` writes a bare attribute, false/null/undefined omit it. */
-type Attrs = Readonly<Record<string, string | number | boolean | null | undefined>>;
-function attrs(extra: Attrs | undefined): string {
-  if (!extra) return '';
-  let out = '';
-  for (const [name, value] of Object.entries(extra)) {
-    if (value === false || value === null || value === undefined) continue;
-    out += value === true ? ` ${name}` : ` ${name}="${esc(value)}"`;
-  }
-  return out;
-}
 
 /* ------------------------------------------------------------------------------------------------------- buttons */
 
@@ -45,7 +32,7 @@ interface ButtonOptions {
   readonly icon?: IconId;
   /** A key cap after the label (hidden on touch). */
   readonly key?: string;
-  /** Icon-only: the label becomes the accessible name and the visible text goes. */
+  /** Icon-only: the label becomes the accessible name (the kit's hover tip shows it) and the visible text goes. */
   readonly iconOnly?: boolean;
   readonly sound?: SoundRole;
   readonly className?: string;
@@ -60,27 +47,31 @@ export function button(options: ButtonOptions): string {
   const cls = ['cot-c-btn', `cot-c-btn--${variant}`, `cot-c-btn--${size}`, options.iconOnly ? 'cot-c-btn--icon' : '',
     options.className ?? ''].filter(Boolean).join(' ');
   const sound = options.sound ?? (variant === 'primary' ? 'confirm' : 'press');
-  const name = options.iconOnly ? ` aria-label="${esc(options.label)}" title="${esc(options.label)}"` : '';
+  const name = options.iconOnly ? ` aria-label="${esc(options.label)}"` : '';
   const text = options.iconOnly ? '' : `<span class="cot-c-btn__label">${esc(options.label)}</span>`;
   return `<button type="button" class="${cls}" data-ui-sound="${sound}"${name}${attrs(options.attrs)}>${glyph}${text}`
     + `${options.key && !options.iconOnly ? keycap(options.key) : ''}</button>`;
 }
 
+/** An arrow key's cap draws the sprite's arrow, not a typed one (the gauntlet's line 3). */
+const KEYCAP_GLYPHS: Readonly<Record<string, IconId>> = { '↑': 'moveForward', '↓': 'moveBack', '←': 'steerLeft', '→': 'steerRight' };
+
 /** A keyboard key cap; touch layouts hide it (SPEC §6.2 input glyphs). */
 export function keycap(key: string): string {
-  return `<kbd class="cot-c-kbd" aria-hidden="true">${esc(key)}</kbd>`;
+  const glyph = KEYCAP_GLYPHS[key];
+  return `<kbd class="cot-c-kbd" aria-hidden="true">${glyph ? icon(glyph, { size: 12 }) : esc(key)}</kbd>`;
 }
 
 /* ------------------------------------------------------------------------------------------------- chips and tags */
 
-interface ChipOptions {
+export interface ChipOptions {
   readonly label: string;
   readonly icon?: IconId;
-  /** A flag in place of the icon (nation filters). */
-  readonly nation?: string;
+  /** A kit-drawn lead in place of the icon (identity.ts nationChip passes a flag). */
+  readonly glyph?: string;
   /** A toggle chip (filters): aria-pressed carries the state. Omit for a static chip. */
   readonly pressed?: boolean;
-  /** Show only the glyph or flag; the label becomes the accessible name. */
+  /** Show only the glyph or flag; the label becomes the accessible name, which the hover tip shows. */
   readonly compact?: boolean;
   readonly count?: number | string;
   readonly className?: string;
@@ -88,11 +79,11 @@ interface ChipOptions {
 }
 
 export function chip(options: ChipOptions): string {
-  const lead = options.nation ? flag(options.nation, 'sm') : options.icon ? icon(options.icon, { size: 16 }) : '';
+  const lead = options.glyph ?? (options.icon ? icon(options.icon, { size: 16 }) : '');
   const cls = `cot-c-chip${options.compact ? ' cot-c-chip--compact' : ''}${options.className ? ` ${options.className}` : ''}`;
   const count = options.count === undefined ? '' : `<span class="cot-c-chip__count num">${esc(options.count)}</span>`;
   const text = options.compact ? '' : `<span class="cot-c-chip__label">${esc(options.label)}</span>`;
-  const name = options.compact ? ` aria-label="${esc(options.label)}" title="${esc(options.label)}"` : '';
+  const name = options.compact ? ` aria-label="${esc(options.label)}"` : '';
   if (options.pressed === undefined) return `<span class="${cls}"${name}${attrs(options.attrs)}>${lead}${text}${count}</span>`;
   return `<button type="button" class="${cls}" aria-pressed="${options.pressed}" data-ui-sound="toggle"${name}`
     + `${attrs(options.attrs)}>${lead}${text}${count}</button>`;
@@ -100,8 +91,32 @@ export function chip(options: ChipOptions): string {
 
 type TagTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 /** A short status word (New, Recommended, Campaign 3/6): at most 14 characters. */
-export function tag(text: string, tone: TagTone = 'neutral'): string {
-  return `<span class="cot-c-tag cot-c-tag--${tone}">${esc(text)}</span>`;
+export function tag(text: string, tone: TagTone = 'neutral', className = ''): string {
+  return `<span class="cot-c-tag cot-c-tag--${tone}${className ? ` ${esc(className)}` : ''}">${esc(text)}</span>`;
+}
+
+interface StatChipOptions {
+  /** The kind, in caps (APFSDS). Omit it, and the value, for a glyph-only chip whose tip names it (a fitting). */
+  readonly label?: string;
+  readonly value?: string | number;
+  readonly unit?: string;
+  readonly icon?: IconId;
+  /** What the value is, for the kit's hover tip (components/hoverTip.ts): "M829A4: 855 mm at 100 m". */
+  readonly tip?: string;
+  readonly className?: string;
+}
+/**
+ * A value with its kind, compact (a round and its penetration: APFSDS 855 mm), in the data voice. A glyph-only chip
+ * (no label, no value) carries its name as the tip and the accessible name.
+ */
+export function statChip(options: StatChipOptions): string {
+  const glyphOnly = options.label === undefined && options.value === undefined;
+  const cls = `cot-c-statchip${glyphOnly ? ' cot-c-statchip--glyph' : ''}${options.className ? ` ${options.className}` : ''}`;
+  const tip = options.tip ? ` data-tip="${esc(options.tip)}"${glyphOnly ? ` role="img" aria-label="${esc(options.tip)}"` : ''}` : '';
+  const label = options.label === undefined ? '' : `<span class="cot-c-statchip__label">${esc(options.label)}</span>`;
+  const value = options.value === undefined ? '' : `<b class="num">${esc(options.value)}</b>`;
+  const unit = options.unit ? `<small>${esc(options.unit)}</small>` : '';
+  return `<span class="${cls}"${tip}>${options.icon ? icon(options.icon, { size: 14 }) : ''}${label}${value}${unit}</span>`;
 }
 
 /* ---------------------------------------------------------------------------------------------- choice controls */
@@ -110,7 +125,7 @@ interface ChoiceOption {
   readonly value: string;
   readonly label: string;
   readonly icon?: IconId;
-  /** Show the glyph only; the label is the accessible name. */
+  /** Show the glyph only; the label is the accessible name, which the hover tip shows. */
   readonly iconOnly?: boolean;
   readonly disabled?: boolean;
 }
@@ -129,7 +144,7 @@ export function segmented(options: SegmentedOptions): string {
     const on = option.value === options.value;
     const glyph = option.icon ? icon(option.icon, { size: 16 }) : '';
     const text = option.iconOnly ? '' : `<span>${esc(option.label)}</span>`;
-    const name = option.iconOnly ? ` aria-label="${esc(option.label)}" title="${esc(option.label)}"` : '';
+    const name = option.iconOnly ? ` aria-label="${esc(option.label)}"` : '';
     return `<button type="button" role="radio" class="cot-c-seg__opt" data-value="${esc(option.value)}" aria-checked="${on}"`
       + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}>${glyph}${text}</button>`;
   }).join('');
@@ -176,7 +191,7 @@ const ROVING_STATE: Readonly<Record<string, string>> = { tab: 'aria-selected', r
  * selection, a click selects; `onSelect` hears the value. Returns a function that removes the listeners.
  */
 export function wireRoving(host: HTMLElement, onSelect: (value: string, item: HTMLElement) => void): () => void {
-  const items = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled'));
+  const items = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled') && !item.hidden);
   const select = (item: HTMLElement, focus: boolean): void => {
     const state = ROVING_STATE[item.getAttribute('role') ?? 'tab'];
     for (const other of items()) {
@@ -192,22 +207,43 @@ export function wireRoving(host: HTMLElement, onSelect: (value: string, item: HT
     if (item && host.contains(item) && !item.hasAttribute('disabled')) select(item, false);
   };
   const onKey = (event: KeyboardEvent): void => {
-    const list = items();
-    const at = list.indexOf(document.activeElement as HTMLElement);
-    if (at < 0) return;
-    const vertical = host.getAttribute('aria-orientation') === 'vertical';
-    const step = (vertical ? { ArrowUp: -1, ArrowDown: 1 } : { ArrowLeft: -1, ArrowRight: 1 }) as Readonly<Record<string, number>>;
-    let to = -1;
-    if (event.key === 'Home') to = 0;
-    else if (event.key === 'End') to = list.length - 1;
-    else if (step[event.key]) to = (at + step[event.key] + list.length) % list.length;
-    if (to < 0) return;
+    const to = rovingTarget(host, items(), event);
+    if (!to) return;
     event.preventDefault();
-    select(list[to], true);
+    select(to, true);
   };
   host.addEventListener('click', onClick);
   host.addEventListener('keydown', onKey);
   return () => { host.removeEventListener('click', onClick); host.removeEventListener('keydown', onKey); };
+}
+
+/** The item an arrow, Home or End moves to from the focused one (null for any other key). */
+function rovingTarget(host: HTMLElement, list: readonly HTMLElement[], event: KeyboardEvent): HTMLElement | null {
+  const at = list.indexOf(document.activeElement as HTMLElement);
+  if (at < 0) return null;
+  const vertical = host.getAttribute('aria-orientation') === 'vertical';
+  const step = (vertical ? { ArrowUp: -1, ArrowDown: 1 } : { ArrowLeft: -1, ArrowRight: 1 }) as Readonly<Record<string, number>>;
+  if (event.key === 'Home') return list[0] ?? null;
+  if (event.key === 'End') return list.at(-1) ?? null;
+  return step[event.key] ? list[(at + step[event.key] + list.length) % list.length] : null;
+}
+
+/**
+ * Arrow keys for a radio group or tab list whose items already handle their own clicks (a surface that built them
+ * itself): arrows (and Home / End) move focus to the next item and press it, so the item's click does the selection.
+ * The arrows stay inside the group. Returns a function that removes the listener.
+ */
+export function wireRovingKeys(host: HTMLElement): () => void {
+  const onKey = (event: KeyboardEvent): void => {
+    const to = rovingTarget(host, [...host.querySelectorAll<HTMLElement>(ROVING_ITEM)].filter((item) => !item.hasAttribute('disabled') && !item.hidden), event);
+    if (!to) return;
+    event.preventDefault();
+    event.stopPropagation();
+    to.focus();
+    to.click();
+  };
+  host.addEventListener('keydown', onKey);
+  return () => host.removeEventListener('keydown', onKey);
 }
 
 interface ToggleOptions {
@@ -259,49 +295,60 @@ interface StatRowOptions {
   readonly rivalCells?: number;
   /** A worded delta against the rival ("+0.3"), with which direction is better. */
   readonly delta?: string;
+  /** true: the delta is better; false: worse; omitted: an even comparison (neutral). */
   readonly better?: boolean;
+  /** The tight row gap of a dense panel (the Garage overview). */
+  readonly compact?: boolean;
 }
 
 /** Value + unit beside a fixed scale; raw values always shown beside any rating (SPEC §6.2). */
 export function statRow(options: StatRowOptions): string {
-  const delta = options.delta
-    ? `<em class="cot-c-stat__delta ${options.better ? 'is-better' : 'is-worse'}">${esc(options.delta)}</em>` : '';
+  const tone = options.better === undefined ? '' : options.better ? ' is-better' : ' is-worse';
+  const delta = options.delta ? `<em class="cot-c-stat__delta${tone}">${esc(options.delta)}</em>` : '';
   const unit = options.unit ? `<small>${esc(options.unit)}</small>` : '';
-  return `<div class="cot-c-stat">${options.icon ? icon(options.icon, { size: 18 }) : '<span></span>'}`
+  return `<div class="cot-c-stat${options.compact ? ' cot-c-stat--compact' : ''}">${options.icon ? icon(options.icon, { size: 18 }) : '<span></span>'}`
     + `<span class="cot-c-stat__label">${esc(options.label)}</span>`
     + `<span class="cot-c-stat__value"><b class="num">${esc(options.value)}</b>${unit}${delta}</span>`
     + `${scale20(options.cells, options.rivalCells)}</div>`;
 }
 
-/* ----------------------------------------------------------------------------------------- vehicle identity */
+/* ------------------------------------------------------------------------------------------------ stat tiles */
 
-type FlagSize = 'sm' | 'md' | 'lg';
-/** Each size's box (components.css .cot-c-flag--*), as the image's own size so the first layout reserves it. */
-const FLAG_BOX: Readonly<Record<FlagSize, readonly [number, number]>> = { sm: [16, 12], md: [22, 17], lg: [30, 23] };
-/** A nation flag chip (3:2 hairline frame, SPEC §6.2 badge). Decorative: the nation is named beside it. */
-export function flag(nation: string, size: FlagSize = 'md'): string {
-  const [width, height] = FLAG_BOX[size];
-  return `<img class="cot-c-flag cot-c-flag--${size}" src="${esc(flagIconUrl(nation))}" alt="" aria-hidden="true" width="${width}" height="${height}" draggable="false">`;
-}
-
-/** A vehicle's side silhouette, tinted by the text colour (team colours come from the host). */
-export function silhouette(id: string, facing: 'left' | 'right' = 'left'): string {
-  return `<span class="cot-c-sil${facing === 'right' ? ' cot-c-sil--right' : ''}" aria-hidden="true" `
-    + `style="--sil:url(${esc(iconUrl(id, 'side_silhouette'))})"></span>`;
-}
-
-interface VehicleOptions {
-  readonly id: string;
-  readonly nation: string;
-  readonly name: string;
-  readonly facing?: 'left' | 'right';
+interface StatTileOptions {
+  readonly label: string;
+  /** The figure, as text; or valueIcon draws a status glyph in its place (survived, destroyed). */
+  readonly value?: string;
+  readonly valueIcon?: IconId;
+  readonly icon?: IconId;
+  /** One line under the figure (a ratio, a date). */
+  readonly note?: string;
   readonly className?: string;
 }
 
-/** Flag, silhouette and name: how every vehicle is named on screen (owner UI rule 3). */
-export function vehicle(options: VehicleOptions): string {
-  return `<span class="cot-c-veh${options.className ? ` ${options.className}` : ''}">${flag(options.nation, 'sm')}`
-    + `${silhouette(options.id, options.facing)}<b>${esc(options.name)}</b></span>`;
+/** One figure with its name (a record's battles, a battle's accuracy): the glyph and name over the figure. */
+export function statTile(options: StatTileOptions): string {
+  const value = options.valueIcon ? icon(options.valueIcon, { size: 24 }) : esc(options.value ?? '');
+  const note = options.note ? `<small class="cot-c-tile__note">${esc(options.note)}</small>` : '';
+  return `<div class="cot-c-tile${options.className ? ` ${options.className}` : ''}"><span class="cot-c-tile__label">`
+    + `${options.icon ? icon(options.icon, { size: 16 }) : ''}${esc(options.label)}</span><strong class="cot-c-tile__value">${value}</strong>${note}</div>`;
+}
+
+/* ------------------------------------------------------------------------------------------------ empty states */
+
+interface EmptyStateOptions {
+  readonly text: string;
+  readonly icon?: IconId;
+  /** The one way forward (Clear filters): a quiet button with the caller's data attributes. */
+  readonly action?: { readonly label: string; readonly attrs?: Attrs };
+  readonly className?: string;
+}
+
+/** What a list says when it has nothing to show: one line, an optional glyph and at most one action. */
+export function emptyState(options: EmptyStateOptions): string {
+  const action = options.action
+    ? `<button type="button" class="cot-c-btn cot-c-btn--36" data-ui-sound="press"${attrs(options.action.attrs)}>${esc(options.action.label)}</button>` : '';
+  return `<div class="cot-c-empty${options.className ? ` ${options.className}` : ''}">${options.icon ? icon(options.icon, { size: 24 }) : ''}`
+    + `<p>${esc(options.text)}</p>${action}</div>`;
 }
 
 /* ---------------------------------------------------------------------------------------------------- rules */

@@ -8,20 +8,23 @@ import { formatDroneAltitude } from './aerialHud.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { readIconSprite } from '../../tools/icon-sprite-lib.mjs';
 
-assert.equal(formatDroneAltitude(0.15), '0.1m', 'a skimming pilot reads tenths');
-assert.equal(formatDroneAltitude(0.16), '0.2m');
-assert.equal(formatDroneAltitude(4.04), '4.0m');
-assert.equal(formatDroneAltitude(9.94), '9.9m', 'tenths up to the 10 m band edge');
-assert.equal(formatDroneAltitude(9.96), '10m', 'whole metres above it (no "10.0m" step)');
-assert.equal(formatDroneAltitude(57.4), '57m');
-assert.equal(formatDroneAltitude(-0.03), '0.0m', 'a probe a few centimetres under the ground never reads negative');
+assert.equal(formatDroneAltitude(0.15), '0.1\u202fm', 'a skimming pilot reads tenths');
+assert.equal(formatDroneAltitude(0.16), '0.2\u202fm');
+assert.equal(formatDroneAltitude(4.04), '4.0\u202fm');
+assert.equal(formatDroneAltitude(9.94), '9.9\u202fm', 'tenths up to the 10 m band edge');
+assert.equal(formatDroneAltitude(9.96), '10\u202fm', 'whole metres above it (no "10.0m" step)');
+assert.equal(formatDroneAltitude(57.4), '57\u202fm');
+assert.equal(formatDroneAltitude(-0.03), '0.0\u202fm', 'a probe a few centimetres under the ground never reads negative');
 
 assert.ok(uiIconIds().includes('altitude') && uiIconSVG('altitude', 24).includes('href="#i-altitude"')
   && readIconSprite().large.get('altitude').includes('<path'), 'the altimeter has its own glyph');
 const hud = readFileSync(new URL('./aerialHud.ts', import.meta.url), 'utf8');
 assert.match(hud, /const timer=instrument\(telemetry,'reload'[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*const altimeter=instrument\(telemetry,'altitude',t\('flight\.altitude'\)\)/,
   'the altimeter is the second drone instrument, beside the battery');
-assert.match(hud, /setHidden\(altimeter\.host,!drone\)/, 'the gunship never shows the drone altimeter');
+// (the ground is the drone's alone, so the gunship never shows the altimeter; nor does a drone over no field yet, whose
+// reading was a dash, gauntlet r5)
+assert.match(hud, /const field=drone\?ground\(\):null;[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*setHidden\(altimeter\.host,!field\)/,
+  'the gunship never shows the drone altimeter, nor a drone without its ground');
 assert.match(hud, /formatDroneAltitude\(view\.y-field\.getHeightAt\(view\.x,view\.z\)\)/, 'height above the ground under the airframe');
 const shell = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 assert.match(shell, /createAerialHud\(root,bus,\(\) => heightFieldRef\)/, 'the HUD hands the drone its terrain height field');

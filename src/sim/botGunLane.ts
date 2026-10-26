@@ -2,6 +2,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import { shellGravityMps2, solveBallisticGunLay } from './ballistics.ts';
 import type { BallisticShellSpec } from './ballistics.ts';
 
+import * as detMath from './detMath.ts';
 interface GunLaneEntity {
   state: {
     pos: { x: number; y: number; z: number };
@@ -51,7 +52,7 @@ export function botNominalGunLaneClear(
   const armor = shooter.spec.armor;
   const turret = armor?.turretPivot;
   const gun = armor?.gunPivot;
-  const sy = Math.sin(state.turretYaw), cy = Math.cos(state.turretYaw);
+  const sy = detMath.sin(state.turretYaw), cy = detMath.cos(state.turretYaw);
   const gx = gun?.[0] ?? 0, gz = gun?.[2] ?? 0;
   hullEuler.set(-(state.visualPitch || 0), state.yaw, state.visualRoll || 0, 'YXZ');
   hullRotation.setFromEuler(hullEuler);
@@ -62,16 +63,16 @@ export function botNominalGunLaneClear(
     (turret?.[2] ?? 0) - gx * sy + gz * cy,
   ).applyQuaternion(hullRotation).add(state.pos);
   barrel.set(
-    sy * Math.cos(state.gunPitch), Math.sin(state.gunPitch),
-    cy * Math.cos(state.gunPitch),
+    sy * detMath.cos(state.gunPitch), detMath.sin(state.gunPitch),
+    cy * detMath.cos(state.gunPitch),
   ).applyQuaternion(hullRotation);
   muzzle.addScaledVector(barrel, Math.max(0.5, armor?.gunBarrel?.lengthM ?? 3));
   destination.set(target.state.pos.x,
     target.state.pos.y + target.spec.dims.heightM * 0.85, target.state.pos.z);
   if (!solveBallisticGunLay(launch, muzzle, destination, shell)) return true;
-  const horizontal = Math.hypot(destination.x - muzzle.x, destination.z - muzzle.z);
+  const horizontal = detMath.hypot(destination.x - muzzle.x, destination.z - muzzle.z);
   const velocity = Math.max(1, shell.velocityMps || 1);
-  const flightS = horizontal / Math.max(1e-6, Math.hypot(launch.x, launch.z) * velocity);
+  const flightS = horizontal / Math.max(1e-6, detMath.hypot(launch.x, launch.z) * velocity);
   const gravity = shellGravityMps2(shell);
   // Curved nominal flight, at most eight existing world queries. Direct
   // guided lanes need only one. The usual high-velocity round needs 1–3.

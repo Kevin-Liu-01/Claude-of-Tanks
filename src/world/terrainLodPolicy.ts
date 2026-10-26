@@ -1,5 +1,6 @@
 // Pure terrain-LOD policy. Kept free of Three.js/DOM so the opening-region
 // streaming contract can be verified in Node without constructing WebGL.
+import * as detMath from '../sim/detMath.ts';
 
 export type TerrainLodLevel = 0 | 1 | 2;
 
@@ -103,7 +104,7 @@ export function chooseTerrainLodBuild(
   };
   for (let index = 0; index < chunks.length; index++) {
     const chunk = chunks[index];
-    const distanceM = Math.hypot(camX - chunk.cx, camZ - chunk.cz);
+    const distanceM = detMath.hypot(camX - chunk.cx, camZ - chunk.cz);
     const want = terrainLodForDistance(distanceM, chunk.level);
     const present = chunk.present || chunk.lods;
     if (!present) continue;

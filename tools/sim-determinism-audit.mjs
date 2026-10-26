@@ -11,6 +11,8 @@
  *   node tools/sim-determinism-audit.mjs --map=alpine --ticks=7200 --seed=11
  *   node tools/sim-determinism-audit.mjs --craters      # craters on, h2 firing HE at the ground (crater-render-spec §F)
  *   node tools/sim-determinism-audit.mjs --drone        # drone mode: both humans launch, fly and recall FPV drones
+ *   node tools/sim-determinism-audit.mjs --kernels      # run B on the WebAssembly kernels (docs/RUST-KERNELS.md): the
+ *                                                        # kernels must play the TypeScript's match, bit for bit
  */
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +22,7 @@ import { SIM_DT } from '../src/sim/movement.ts';
 import { matchRulesetFor } from '../src/sim/matchRuleset.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
 import { isHeClass } from '../src/sim/damage.ts';
+import { serverWorldKernels } from '../server/match/simKernels.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
 
@@ -74,7 +77,7 @@ function stateDigest(match, events) {
  * drone on a fixed schedule (launch, seven seconds of flight on its scripted inputs, recall), the bots launch their own,
  * and the drones' launch climbs, flights and recalls are in the hash with every other shell.
  */
-export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false, kills = false, drone = false } = {}) {
+export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7, every = 60, log = () => {}, craters = false, kills = false, drone = false, kernels = null } = {}) {
   const standard = matchRulesetFor('standard');
   const ruleset = craters ? { ...standard, destruction: { ...standard.destruction, craters: true } } : undefined;
   const gameMode = drone ? 'drone' : 'standard';
@@ -88,8 +91,8 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
     { id: 'b3', specId: 't90am', team: 'alpha', bot: true, difficulty: 'hard' },
     { id: 'b4', specId: 'leo2_improved', team: 'bravo', bot: true, difficulty: 'easy' },
   ];
-  const run = () => {
-    const world = createDedicatedWorldCollision(mapId, { retain: true });
+  const run = (worldKernels = null) => {
+    const world = createDedicatedWorldCollision(mapId, { retain: true, kernels: worldKernels });
     const match = createAuthoritativeMatch({ players: players.map((p) => ({ ...p })), mapId, seed, countdownS: 0, gameMode, worldCollision: world,
       ...(ruleset ? { ruleset } : {}) });
     match.onMatchReady();
@@ -139,7 +142,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
   const started = performance.now();
   const a = run();
   const midMs = performance.now();
-  const b = run();
+  const b = run(kernels);
   const wallMs = Math.round(performance.now() - started);
   let firstDiffTick = null;
   for (let index = 0; index < a.digests.length; index++) {
@@ -151,8 +154,9 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const kernels = process.argv.includes('--kernels') ? await serverWorldKernels('wasm') : null;
   const report = runDeterminismAudit({ mapId: arg('map', 'verdant'), ticks: Number(arg('ticks', 3600)), seed: Number(arg('seed', 7)),
-    craters: process.argv.includes('--craters'), kills: process.argv.includes('--kills'), drone: process.argv.includes('--drone') });
+    craters: process.argv.includes('--craters'), kills: process.argv.includes('--kills'), drone: process.argv.includes('--drone'), kernels });
   console.log(`sim determinism: ${report.mapId} seed ${report.seed}, ${report.ticks} ticks × 2 runs in ${report.wallMs} ms — ${report.identical ? 'IDENTICAL' : `DIVERGED at tick ${report.firstDiffTick}`}; run A ${JSON.stringify(report.countsA)}, run B ${JSON.stringify(report.countsB)}; final ${report.finalA} / ${report.finalB}`);
   process.exitCode = report.identical ? 0 : 1;
 }

@@ -192,6 +192,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/physicalMuzzleBore.selftest.mjs',
     'src/vehicles/carvedMuzzleBore.selftest.mjs',
     'src/vehicles/profiles/lathedWheelStock.selftest.mjs',
+    // 2026-10-25 (the owner's profile skirts): skirts swept on their hull's side and glacis lines, closed on both sides
+    'src/vehicles/profiles/profileSkirt.selftest.mjs',
     'src/vehicles/profiles/kf41LynxWheelStock.selftest.mjs',
     'src/vehicles/nationWheelSets.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
@@ -602,6 +604,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercXTrackLinks.selftest.mjs',
     'src/vehicles/profiles/leclercXRearShoulders.selftest.mjs',
     'src/vehicles/sourceXSecondWaveEra.selftest.mjs',
+    'src/vehicles/turretSeatEraSpans.selftest.mjs',
     'src/vehicles/profiles/t72buXGeometry.selftest.mjs',
     'src/vehicles/profiles/awSecondWaveGeometry.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSource.selftest.mjs',
@@ -707,6 +710,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
+    // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
+    'src/sim/detMath.selftest.mjs',
     // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
@@ -751,6 +757,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
+    'tools/hot-path-alloc.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
@@ -911,6 +918,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // tech-tree view 252 (2026-10-25): the read-only national trees (shape, layout, the fleet once each, no progression)
+    'src/techTree/techTree.selftest.mjs',
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',
@@ -1286,6 +1295,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',
+    'src/engine/coverageMipQuantile.selftest.mjs',
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
@@ -1321,6 +1331,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
@@ -1657,6 +1668,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
+    // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
+    'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
@@ -1694,6 +1707,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/catalog.selftest.mjs',
     'src/gallery/viewGlyphs.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',
+    'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',
     'src/gallery/surfaceMarkup.selftest.mjs',
     'src/vehicles/rosterPolicy.selftest.mjs',
@@ -1789,6 +1803,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapQuality.selftest.mjs',
     'src/world/waterMobility.selftest.mjs',
     'src/world/terrainContactSurface.selftest.mjs',
+    // 2026-10-25 (workstream #3, the Rust core's flagged kernels): the WebAssembly contact surface and grids, bit for bit
+    'src/world/wasmWorldKernels.selftest.mjs',
     // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
     'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
@@ -2280,6 +2296,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
+    // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
+    'src/ui/hudNotices.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',

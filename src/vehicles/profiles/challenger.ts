@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { turretPlinthGeometry } from './turretPlinth.ts';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
+import { fitsInSkirt, profileSkirtGeometry, skirtBand, skirtBottomAt, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -2262,14 +2263,17 @@ function buildChallenger2VariantPackage(
       // Enlarged segmented skirt package with a continuous carrier behind it.
       const buildChallenger2VariantPackageTurretCourse1 = (): void => {
         const buildChallenger2VariantPackageHullStage1 = (): void => {
-          for (const side of [-1, 1]) {
+          for (const side of [-1, 1] as const) {
             // 2026-10-19 (owner float sweep): the carrier stood 10 mm off the 1.755 skirt course (75 mm island with its
             // bricks); its inner face now runs 12 mm into the course, outer face kept at 1.855.
-            P.add('hull', box(0.112, 0.76, 6.82), side * 1.799, 0.98, -0.08);
-            P.add('hullDark', box(0.025, 0.10, 6.88), side * 1.862, 1.34, -0.08);
+            // 2026-10-25 (the owner: "update the sideskirts of tanks like ... challenger 2e ... to not be just
+            // rectangles, and instead match the geometries of their upperglacis and hull side profile"): the carrier is
+            // one profile plate (CR2E_SKIRT), its dark rail 3 cm proud of its top line all along it.
+            P.add('hull', profileSkirtGeometry(CR2E_SKIRT, side));
+            P.add('hullDark', profileSkirtGeometry(skirtBand(CR2E_SKIRT, -0.03, 0.10, 1.8495, 1.8745), side));
             for (let k = 0; k < 8; k++) {
-              const z = 2.92 - k * 0.84;
-              P.add('hullDetail', box(0.035, 0.70, 0.025), side * 1.865, 0.98, z - 0.42);
+              const z = 2.92 - k * 0.84 - 0.42, bottom = skirtBottomAt(CR2E_SKIRT, z) + 0.03, top = skirtTopAt(CR2E_SKIRT, z) - 0.03;
+              if (z > CR2E_SKIRT.stations[0][0] + 0.03) P.add('hullDetail', box(0.035, top - bottom, 0.025), side * 1.865, (top + bottom) / 2, z);
               receipt.enhancedSkirtPanels++;
             }
           }
@@ -2279,6 +2283,8 @@ function buildChallenger2VariantPackage(
           P.eraCluster('cr2e_skirt_era_R', (put) => {
             for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++) {
               // 2026-10-19 (owner float sweep): bricks stood 25 mm off the carrier's 1.855 face; inner face now 2 mm into it
+              // (release 240: only where the 0.33 x 0.17 brick lies on the profile plate)
+              if (!onCr2eSkirt(row, c)) continue;
               put(1.878, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, Math.PI / 2, 0, 1.18, 1.32, 0.72);
             }
           });
@@ -2286,8 +2292,10 @@ function buildChallenger2VariantPackage(
         buildChallenger2VariantPackageAssemblyStage1();
         const buildChallenger2VariantPackageAssemblyStage2 = (): void => {
           P.eraCluster('cr2e_skirt_era_L', (put) => {
-            for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++)
+            for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++) {
+              if (!onCr2eSkirt(row, c)) continue;
               put(-1.878, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, -Math.PI / 2, 0, 1.18, 1.32, 0.72);
+            }
           });
         };
         buildChallenger2VariantPackageAssemblyStage2();
@@ -2683,18 +2691,48 @@ function scaleChallenger3Family(P: ChallengerBuilderPort): void {
   P.turretG.userData.challenger3FamilyScaleReceipt = receipt;
 }
 
+// 2026-10-25: the Challenger 2E/Ukrainian package's skirt carrier as a profile plate (profileSkirt.ts) instead of a
+// 6.82 m box: its 1.36 top holds aft and falls with the hull's glacis band (1.33 at z 3.10, 1.27 at 3.69, where the
+// base course still stands at full width); its bottom rakes up over the idler's approach (from z 2.60) and the final
+// drive's departure (aft of -2.60), so the plate reaches the bow instead of ending square at 3.33.
+const CR2E_SKIRT: ProfileSkirt = { inner: 1.743, outer: 1.855, stations: [
+  [-3.49, 1.02, 1.36], [-2.60, 0.60, 1.36], [2.60, 0.60, 1.36], [3.10, 0.78, 1.33], [3.69, 1.06, 1.27],
+] };
+/** Whether the package's skirt brick in `row` and column `c` lies on the profile plate. */
+const onCr2eSkirt = (row: number, c: number): boolean => {
+  const y = 0.82 + row * 0.22, z = 3.00 - c * 0.55;
+  return fitsInSkirt(CR2E_SKIRT, z - 0.165, z + 0.165, y - 0.0858, y + 0.0858);
+};
+
+// 2026-10-25 (the owner: "update the sideskirts of tanks like the m551a1 tts and challenger 3 ... to not be just
+// rectangles, and instead match the geometries of their upperglacis and hull side profile (like the m6 linebacker)"): the
+// X's skirt is one profile plate (profileSkirt.ts), no longer a 7.18 m box. Its top runs on the 1.55 deck line from the
+// stern to the glacis knee (z 2.32), then down the wing's glacis line (1.24 at 3.60) and, aft of the rear deck, down the
+// stern's slope; its bottom rakes up over the idler's approach and the sprocket's departure.
+const C3X_SKIRT: ProfileSkirt = { inner: 1.74, outer: 1.90, stations: [
+  [-3.69, 1.20, 1.464], [-3.50, 1.13, 1.55], [-2.10, 0.64, 1.55], [2.32, 0.64, 1.55], [2.70, 0.64, 1.458], [3.49, 1.05, 1.267],
+] };
+
 function buildChallenger3XSkirts(
   P: ChallengerBuilderPort,
   receipt: Challenger3XReceipt,
 ): void {
   const { box } = KIT;
-  for (const side of [-1, 1]) {
-    P.add('hull', box(0.16, 0.82, 7.18), side * 1.82, 1.05, -0.10);
-    P.add('hullDark', box(0.035, 0.09, 7.22), side * 1.91, 1.43, -0.10);
+  // the field the cassettes keep to: under the dark rail that runs 2..8 cm under the top line
+  const eraField = skirtBand(C3X_SKIRT, 0.09, 9);
+  const [[rearZ], , , , , [frontZ]] = C3X_SKIRT.stations;
+  for (const side of [-1, 1] as const) {
+    P.add('hull', profileSkirtGeometry(C3X_SKIRT, side));
+    P.add('hullDark', profileSkirtGeometry(skirtBand(C3X_SKIRT, 0.02, 0.06, 1.899, 1.925), side));
     for (let station = 0; station < 9; station++) {
-      const z = 3.18 - station * 0.82;
-      P.add('hullDetail', box(0.035, 0.76, 0.035), side * 1.915, 1.04, z - 0.40);
-      P.add('hullDetail', box(0.22, 0.10, 0.08), side * 1.73, 1.43, z);
+      const z = 3.18 - station * 0.82, seamZ = z - 0.40;
+      // a panel seam where it falls on the plate, from its bottom line to the rail
+      if (seamZ > rearZ + 0.03) {
+        const bottom = skirtBottomAt(C3X_SKIRT, seamZ) + 0.02, top = skirtTopAt(C3X_SKIRT, seamZ) - 0.08;
+        P.add('hullDetail', box(0.035, top - bottom, 0.035), side * 1.915, (top + bottom) / 2, seamZ);
+      }
+      // the hanger from the hull's side into the plate, under its top line
+      if (z < frontZ - 0.05) P.add('hullDetail', box(0.22, 0.10, 0.08), side * 1.73, skirtTopAt(C3X_SKIRT, z) - 0.05, z);
       receipt.enhancedSkirtPanels++;
       receipt.skirtHangers++;
     }
@@ -2702,8 +2740,11 @@ function buildChallenger3XSkirts(
     P.eraCluster(sector, (place) => {
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 13; station++) {
+          const y = 0.79 + row * 0.235, z = 3.18 - station * 0.55;
+          // (1.72 x 1.42 of the 0.28 x 0.13 cassette: 0.482 along the plate, 0.185 tall) only where it lies on the plate
+          if (!fitsInSkirt(eraField, z - 0.241, z + 0.241, y - 0.0925, y + 0.0925)) continue;
           place(
-            side * 1.943, 0.79 + row * 0.235, 3.18 - station * 0.55,   // backs 2 mm into the skirt's 1.90 face (22 mm off it)
+            side * 1.943, y, z,   // backs 2 mm into the skirt's 1.90 face (22 mm off it)
             0, side * Math.PI / 2, 0,
             1.72, 1.42, 1.22,
           );
@@ -3187,7 +3228,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     // (release 240: 1 cm lower, under the turret's front underside, 1.694 m after the family scale, which grazed its corners)
     P.add('hull', box(2.75, 0.035, 1.00), 0, 1.515, 1.00);
     for (const side of [-1, 1]) P.add('hull', box(0.06, 0.12, 0.12), side * 0.99, 0.435, 0);   // from the 0.96 belly side out
-    P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
+    // (release 240: on the enhanced package's profile carrier (CR2E_SKIRT) the lug stands where it seated on the old
+    // box, its foot 5.5 mm into the carrier's 1.36 top; snapping, it caught only the plate's inner edge, 1.6 cm further
+    // in and higher, and the gun's 25 mm keep at its -6.8 deg stop over the right rear quarter fell to 21 mm)
+    if (variant === 'challenger2e' || variant === 'ua_challenger2') P.add('hull', box(0.04, 0.04, 0.12), 1.739, 1.3745, 0);
+    else P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
 
     // Glacis/deck furniture and the characteristic CR2 engine field. All are
     // seated on the measured profile and remain inside its silhouette except

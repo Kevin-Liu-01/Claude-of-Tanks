@@ -30,7 +30,7 @@ for (const [name, text, prefix] of [['solo', solo, 'game\\._destruction\\?\\.'],
   assert.match(text, /entity\._ramRecord = null;\s*entity\._ramKeep = undefined;\s*try \{ updateTank\(/, `${name}: the record is the tick's own`);
   assert.match(text, /\} finally \{ if \(parking\)[^\n]*\}\s*\n\s*if \(entity\._ramKeep !== undefined\) entity\.state\.speed \*= entity\._ramKeep;|finally \{ if \(parking\)[^\n]*\n\s*if \(entity\._ramKeep !== undefined\) entity\.state\.speed \*= entity\._ramKeep;/,
     `${name}: a hull keeps the yielded share of its speed after the move`);
-  assert.match(text, /const closing = Math\.max\(0, -state\.speed \* \(Math\.sin\(state\.yaw\) \* pushX \+ Math\.cos\(state\.yaw\) \* pushZ\) \/ length\);\s*return (game\._destruction|destruction)\.ramThrough\(obstacle, entity\.spec\.weightTons, closing, Math\.abs\(state\.speed\),/,
+  assert.match(text, /const closing = Math\.max\(0, -state\.speed \* \((?:det)?Math\.sin\(state\.yaw\) \* pushX \+ (?:det)?Math\.cos\(state\.yaw\) \* pushZ\) \/ length\);\s*return (game\._destruction|destruction)\.ramThrough\(obstacle, entity\.spec\.weightTons, closing, Math\.abs\(state\.speed\),/,
     `${name}: a structure a ram brings down yields on the closing speed along the contact`);
   assert.match(text, /tankDeath\((String\(payload\.cause\)|cause), (dead|ent)\.spec\.weightTons,/, `${name}: a hull's death bursts on the structures beside it`);
 }

@@ -7,7 +7,7 @@
 import {
   VEHICLE_BATTLE_ROLE_META, VEHICLE_BATTLE_ROLE_ORDER, VEHICLE_CLASS_META, VEHICLE_CLASS_ORDER, vehicleFacetLabel, vehicleIdsForFacet,
 } from '../../vehicles/vehicleFacets.ts';
-import { EQUIP_CATEGORIES, EQUIP_SLOTS, EQUIPMENT_CATALOG } from '../../game/equipment.ts';
+import { EQUIP_CATEGORIES, EQUIP_SLOTS, EQUIPMENT_CATALOG, type EquipmentItem } from '../../game/equipment.ts';
 import { CONSUMABLE_RULES } from '../../game/consumables.ts';
 import { AERIAL_RULES } from '../../sim/matchRuleset.ts';
 import { SMOKE_COOLDOWN_S } from '../../sim/auxiliarySystems.ts';
@@ -51,7 +51,7 @@ function classesSection(): string {
       + `<h3>${icon(CLASS_ICONS[cls] ?? 'vehicle', { size: 18 })}<span>${esc(vehicleFacetLabel(meta, t))}</span><b>${ids.length}</b></h3>`
       + `<p>${flagMarkup(fleet.get(lead)!.countryCode, 'cot-c-flag cot-c-flag--sm')}<span>${esc(fleet.get(lead)!.name)}</span></p></div></article>`;
   }).join('');
-  return `<p>${esc(t('docs.tanks.classesLede', { tanks: String(fleet.size), classes: String(shown.length) }))}</p><div class="dm-classes">${cards}</div>`;
+  return `<div class="dm-classes">${cards}</div>`;
 }
 
 function rolesSection(): string {
@@ -84,11 +84,18 @@ function tiersSection(): string {
     + `<h3>${esc(t('docs.tanks.nations', { nations: String(byNation.size) }))}</h3><ul class="dm-nations">${nations}</ul>`;
 }
 
+/** The hull an item needs, in the manual's words (the gates equipIneligibility applies in the Garage and at spawn). */
+function equipmentGateNote(item: EquipmentItem): string {
+  const notes = [item.era === 'modern' ? 'docs.tanks.modernOnly' : '', item.needs ? `docs.tanks.needs.${item.needs}` : '']
+    .filter(Boolean).map((key) => esc(t(key)));
+  return notes.length ? `<small>${notes.join(' · ')}</small>` : '';
+}
+
 function equipmentSection(): string {
   const groups = EQUIP_CATEGORIES.filter((cat) => cat.id !== 'all').map((cat) => {
     const items = EQUIPMENT_CATALOG.filter((item) => item.cat === cat.id).map((item) => `<li>${equipIconSVG(item.id, 26)}<div>`
       + `<b>${esc(t(`equipment.${item.id}.name`))}</b><span>${esc(t(`equipment.${item.id}.desc`))}</span>`
-      + `${item.era === 'modern' ? `<small>${esc(t('docs.tanks.modernOnly'))}</small>` : ''}</div></li>`).join('');
+      + `${equipmentGateNote(item)}</div></li>`).join('');
     return `<div class="dm-equip"><h3>${esc(t(`garage.equipment.cat.${cat.id}`))}</h3><ul>${items}</ul></div>`;
   }).join('');
   // the Garage's equipment station, cut to 4:3 (public/media/docs-r1 tanks-equipment-crop)

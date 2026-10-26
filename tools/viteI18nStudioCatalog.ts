@@ -15,26 +15,29 @@
 // added 46 strings per locale that only the panel shows (src/ui/i18nFleetKeys.ts); `virtual:cot-i18n-fleet/<locale>`
 // is each locale's fleet slice, which src/ui/fleetStrings.ts loads beside the panel (garage.ts), and the game's catalog
 // modules leave those keys out too.
+// 252 (tech-tree view): the tech-tree screen's strings are a third slice (src/ui/i18nTechTreeKeys.ts):
+// `virtual:cot-i18n-techTree/<locale>`, which src/ui/techTreeStrings.ts loads beside the screen (garage.ts).
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
 import { isFleetCatalogKey } from '../src/ui/i18nFleetKeys.ts';
 import { isStudioCatalogKey } from '../src/ui/i18nStudioKeys.ts';
+import { isTechTreeCatalogKey } from '../src/ui/i18nTechTreeKeys.ts';
 
 type Dictionary = Readonly<Record<string, string>>;
 /** The demand-loaded slices, each served as `virtual:cot-i18n-<slice>/<locale>`, and the keys each holds. */
-const SLICES = Object.freeze({ studio: isStudioCatalogKey, fleet: isFleetCatalogKey });
+const SLICES = Object.freeze({ studio: isStudioCatalogKey, fleet: isFleetCatalogKey, techTree: isTechTreeCatalogKey });
 type CatalogSlice = keyof typeof SLICES;
-const SPECIFIER = /^virtual:cot-i18n-(studio|fleet)\/(.*)$/;
+const SPECIFIER = /^virtual:cot-i18n-(studio|fleet|techTree)\/(.*)$/;
 // the id's file name names the emitted chunk (assets/i18n.<slice>.<locale>-<hash>.js; without the .js the locale
 // would read as an extension and both chunks as i18n.<slice>)
-const VIRTUAL_ID = /^\0cot-i18n-(studio|fleet)\/i18n\.\1\.(en-US|zh-CN)\.js$/;
+const VIRTUAL_ID = /^\0cot-i18n-(studio|fleet|techTree)\/i18n\.\1\.(en-US|zh-CN)\.js$/;
 const CATALOG_FILE = /[\\/]src[\\/]ui[\\/]i18nCatalog\.(en-US|zh-CN)\.json$/;
 
-/** One locale's catalog split into the game's keys and the demand-loaded slices (the Studio's, the Filter panel's). */
+/** One locale's catalog split into the game's keys and the demand-loaded slices (the Studio's, the Filter panel's, the tech tree's). */
 export function splitStudioCatalog(dictionary: Dictionary): Record<'game' | CatalogSlice, Record<string, string>> {
-  const split: Record<'game' | CatalogSlice, Record<string, string>> = { game: {}, studio: {}, fleet: {} };
+  const split: Record<'game' | CatalogSlice, Record<string, string>> = { game: {}, studio: {}, fleet: {}, techTree: {} };
   for (const [key, value] of Object.entries(dictionary)) {
     const slice = (Object.keys(SLICES) as CatalogSlice[]).find((name) => SLICES[name](key));
     split[slice ?? 'game'][key] = value;

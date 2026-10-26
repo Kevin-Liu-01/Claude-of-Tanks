@@ -128,6 +128,10 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
 }
 
 let sharedTexture: THREE.DataTexture | null = null;
+/** Paint the shared strips ahead of a pack's bake (its prepare's slice), so the first Garage with atmosphere only places them. */
+export function prepareGarageAtmosphere(): void {
+  atmosphereTexture();
+}
 function atmosphereTexture(): THREE.DataTexture {
   if (sharedTexture) return sharedTexture;
   const texture = new THREE.DataTexture(garageAtmosphereAtlasPixels(), TEX, TEX, THREE.RGBAFormat);

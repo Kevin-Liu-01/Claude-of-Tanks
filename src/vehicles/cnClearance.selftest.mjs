@@ -1,6 +1,7 @@
 // Release 227 (owner 2026-10-16): "for the qilin and kunlun, make their machine guns much smalelr and make thhem into the
 // more classic machine gunn emplacement on the turrets ... make the yun keep all its extra add ons and modifications but
-// altered slightly to be wrapped around the type 96b turret base". The CN track's moving-part clearances, measured
+// altered slightly to be wrapped around the type 96b turret base"; 252: "redesign the qilin around a type 96b inspired Yun
+// like turret". The CN track's moving-part clearances, measured
 // densely, so a fix can never pass while a part still goes through another. Each tank is built once and every check
 // reads that build.
 //  1. The main gun (every mesh under rig_gun, the recoiling parts at recoil 0 and 0.135 m) keeps 25 mm from every hull
@@ -22,12 +23,11 @@
 //     30 mm samples against the fixed stock), then both ways (15 mm samples of each against the other) at 0.5-degree by
 //     0.0125 rad steps round every local minimum under 75 mm. The arc and table the builder publishes are the loadout's and the
 //     combat anatomy's rows.
-//  5. Every Type 96B donor (Kunlun, Yun) sets boxSightOnGun: its box sight rides the boot on the gun's pitch group, seated (no gap
+//  5. Every Type 96B donor (Kunlun, Yun, Qilin) sets boxSightOnGun: its box sight rides the boot on the gun's pitch group, seated (no gap
 //     anywhere under it, the saddle no more than 5 mm into the boot), and keeps 10 mm from every turret mesh over the
 //     whole pitch range.
-//  Negative controls must fail the same checks: the Yun's and Kunlun's guns without their depression curves, the Qilin's
-//  station without its depression table, the Type 96B's box sight turret-fixed at its authored place (inside the boot), and the fleet
-//  99A2 collar on the Qilin (0.12 m off the pivot, sweeping into the B3's fenders).
+//  Negative controls must fail the same checks: the three guns without their depression curves, and the Type 96B's box
+//  sight turret-fixed at its authored place (inside the boot).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -184,7 +184,8 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
     const t2 = secs(t); progress(id, `gun/roof ${t2} s`);
     // ---- 3. the turret underside and bustle over the hull; the collar excused only inside its circle on the pivot
     t = Date.now();
-    const collar = donor.donor === 'type96b' ? { z: 0, r: 1.04, top: .125 } : { z: donor.builderOptions?.ringCollar?.z ?? -.12, r: donor.builderOptions?.ringCollar?.radiusM ?? 1.14, top: .025 };
+    assert.equal(donor.donor, 'type96b', `${id}: a Type 96B turret`);
+    const collar = { z: 0, r: 1.04, top: .125 };
     assert.equal(collar.z, 0, `${id}: the ring collar is concentric with the turret's pivot (it turns in place)`);
     const under = [], body = densePoints(meshTriangles(meshesUnder(turret, [gun, station]).filter((m) => !/^vehicleMarking/.test(m.name)), tInv), .02);
     for (let i = 0; i < body.length; i += 3) {
@@ -208,14 +209,8 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
         for (let i = 0; i < pts.length; i += 3) { v.set(pts[i], pts[i + 1], pts[i + 2]).applyMatrix4(M);
           for (const { p, g } of free) { if (p.box.distanceToPoint(v) > .05) continue; const d = g.distance(v.x, v.y, v.z); if (d < best.d) best = { d, yd, part: p }; } } }
       return best; };
-    const collarSize = donor.donor === 'type96b' ? { bottom: -.03, height: .15 } : { bottom: -.08, height: .10 };
-    const c3 = skirtClear(skirt(collar.z, collar.r, collarSize.bottom, collarSize.height));
+    const c3 = skirtClear(skirt(collar.z, collar.r, -.03, .15));
     assert.ok(c3.d >= .020 - 1e-4, `${id}: its ring collar's skirt keeps 20 mm from every fender, sponson and hatch at every yaw (${(c3.d * 1000).toFixed(1)} mm at yaw ${c3.yd}${c3.part ? `, ${c3.part.bucket} [${c3.part.box.min.toArray().map((x) => x.toFixed(2))}..${c3.part.box.max.toArray().map((x) => x.toFixed(2))}]` : ''})`);
-    // negative control: the fleet 99A2 collar (r 1.14, 0.12 m behind the pivot) sweeps into the B3's fenders
-    if (id === 't72b3_qilin') {
-      const fleet = skirtClear(skirt(-.12, 1.14, -.08, .10));
-      assert.ok(fleet.d < .020, `negative control: the fleet 99A2 collar sweeps into the B3's fenders (${(fleet.d * 1000).toFixed(1)} mm at yaw ${fleet.yd})`);
-    }
     const t3 = secs(t); progress(id, `underside ${t3} s`);
     // ---- 4. the roof station's moving mass over its arc and pitch range
     t = Date.now();

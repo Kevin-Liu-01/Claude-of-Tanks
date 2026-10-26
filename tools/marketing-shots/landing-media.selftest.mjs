@@ -11,29 +11,20 @@ const home = await readFile(resolve(root, 'site/home.html'), 'utf8');
 const presentation = await readFile(resolve(root, 'src/presentation/home.css'), 'utf8');
 const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
 const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.ts'), 'utf8');
-const main = home.match(/<main>([\s\S]*?)<\/main>/)?.[1] || '';
+const main = home.match(/<main id="main">([\s\S]*?)<\/main>/)?.[1] || '';
 
 assert.equal(main.includes('<p class="micro">'), false, 'landing sections do not use eyebrow copy');
 for (const retiredTitle of ['Ground rush', 'Charge thread', 'Overhead dive', 'Shell skim',
   'Terrain changes the fight', 'From resolved impact to directed scene']) {
   assert.equal(main.includes(retiredTitle), false, `landing copy does not use the retired title: ${retiredTitle}`);
 }
-// (246, owner 2026-10-24: "less clutter") the screenshot rail and the mosaic are one strip that scrolls: every still of
-// both, once, under no caption, with previous and next arrows and the way into the library
-const shotsMarkup = home.match(/<!--home:shots-->([\s\S]*?)<!--\/home:shots-->/)?.[1] || '';
-assert.equal(shotsMarkup.includes('<figcaption'), false, 'the screenshots strip does not overlay promotional shot names');
-assert.match(shotsMarkup, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the screenshots strip provides previous and next arrows');
-// (247 audit) a named group, not a second region with the section's name (axe landmark-unique)
-assert.match(shotsMarkup, /data-shots-rail tabindex="0" role="group" aria-labelledby="shots-title"/, 'the strip scrolls by keyboard too');
-assert.match(shotsMarkup, /href="\/docs\/filming#library" data-i18n="home\.mosaic\.library"/, 'the strip leads into the whole library');
-assert.match(presentation, /\.shots-rail\{[^}]*scrollbar-width:none/, 'the strip hides the large native scrollbar');
-assert.match(presentation, /\.shots-rail::-webkit-scrollbar\{display:none\}/, 'the strip hides the WebKit scrollbar');
-assert.match(publicPages, /function mountShotsRail\(section(?:: HTMLElement)?\)/, 'the strip mounts its arrows');
 assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
   'the local Three.js asset retains the official icon geometry');
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
+// The landing-r1 contract (tools/media-r5/site-media-wire.mjs keeps it with the picks) stays consistent with its picks;
+// the landing itself builds from public/media/home-r2 since 2026-10-25 (below).
 // (2026-10-19, the owner: "all our new frames need to go up with no removals of old ones"): the hero opens on six versus
 // stills (public/media/versus-r1) and keeps the six site fifty stills it showed before them; the screenshot rail adds the
 // combat round's duels and the 226/227 fleet takes before the eleven it had
@@ -65,173 +56,77 @@ manifest.hero.forEach((slide, i) => {
   assert.notEqual(heroMap(slide), heroMap(next), `hero slides ${i + 1} and ${(i + 1) % manifest.hero.length + 1} show different battlefields`);
 });
 
-// (brand-ui BUI-W2, 2026-10-22; 242, the direction's own page) the landing opens on the living versus, the Premiere
-// direction's 01: its own Steinburg still (the sky over the town for the headline, both tanks on the road), preloaded as
-// the page's LCP image with its size; beside it only the trailer button's thumbnail. The picks above stay the media
-// lane's set.
-const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[1] || '';
-const heroStill = versusById.get('f6-leo2a6-steinburg-r6');
-assert.ok(heroStill, 'the hero still is a published versus still');
-// (243, the first paint) the hero serves that still's responsive rungs (public/media/home-hero-r1, from its master):
-// 1440 on a desktop screen, 960 or 1920 by width and density, the preload naming the same set
-const heroRungs = JSON.parse(await readFile(resolve(root, 'public/media/home-hero-r1/manifest.json'), 'utf8'));
-assert.equal(heroRungs.still, 'f6-leo2a6-steinburg-r6', 'the rungs are the hero still\'s');
-assert.deepEqual(heroRungs.items.map((rung) => rung.width), [960, 1440, 1920], 'three rungs');
-for (const rung of heroRungs.items) {
-  const file = await readFile(resolve(root, 'public', rung.path.slice(1)));
-  assert.equal(file.length, rung.bytes, `${rung.path} is the manifest's file`);
-  assert.ok(rung.bytes < heroStill.bytes, `${rung.path} is lighter than the 1920 versus still`);
-}
-const srcset = heroRungs.items.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
-const rung1440 = heroRungs.items.find((rung) => rung.width === 1440).path;
-assert.ok(heroMarkup.includes(`<img class="hero__still" src="${rung1440}" alt="`) && heroMarkup.includes('data-i18n-alt="media.versus.title.f6Leo2a6SteinburgR6" width="1920" height="1080" fetchpriority="high"')
-  && heroMarkup.includes(`srcset="${srcset}"`), 'the hero still carries its size, priority and rungs');
-assert.equal(home.includes(`<link rel="preload" href="${rung1440}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${srcset}"`), true,
-  'the hero still is the preloaded LCP image, by the same rungs');
-assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its still and the trailer thumbnail, nothing else');
-assert.match(heroMarkup, /<a class="cot-c-btn cot-c-btn--64 hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="\/media\/site50-r14\/stills\/s16-street-duel-thumb\.webp" alt="" width="84" height="46"/,
-  'the trailer button shows a dimensioned thumbnail');
-
-// the screenshot rail's picks open the strip in their order, the eleven of 2026-10-19 kept after the new ones
-assert.deepEqual(manifest.rail.map((shot) => shot.id), picks.home.rail, 'the rail shows the picks in their order');
-assert.equal((shotsMarkup.match(/<figure class="shots-tile/g) || []).length, picks.home.rail.length + manifest.mosaic.length,
-  'the strip holds the rail and the mosaic');
-for (const id of KEPT_RAIL) assert.ok(picks.home.rail.includes(id), `${id} stays in the rail (no removals)`);
-assert.ok(picks.home.rail.length > KEPT_RAIL.length, 'the rail adds the new renders');
-const stripOrder = [...shotsMarkup.matchAll(/srcset="[^"]* 640w, ([^" ]+) 1920w"/g)].map((m) => m[1]);
-assert.deepEqual(stripOrder, [...manifest.rail, ...manifest.mosaic].map((shot) => shot.src), 'the rail\'s picks, then the mosaic\'s, in order');
-for (const shot of manifest.rail) {
-  assert.ok((await stat(resolve(root, 'public', shot.src.slice(1)))).size > 50_000, `${shot.id} is a substantial image`);
-}
-
-// the versus wall (the Premiere direction's 02): every versus film but the hero's duel, each tile its film's poster
-// (frame 0, so playing never jumps) under the film, with its phone file; the stills stay in the media library
-const versusFilmsManifest = JSON.parse(await readFile(resolve(root, 'public/media/versus-films-r1/manifest.json'), 'utf8'));
-const versusMarkup = home.match(/<!--home:versus-->([\s\S]*?)<!--\/home:versus-->/)?.[1] || '';
-const wallFilms = versusFilmsManifest.items.filter((item) => item.id !== 'f6-leo2a6-steinburg-r7');
-assert.equal((versusMarkup.match(/<figure class="vs-tile /g) || []).length, wallFilms.length, 'every other versus film has a tile');
-for (const film of wallFilms) {
-  assert.ok(versusMarkup.includes(`<img class="vs-tile__still" src="${film.poster.path}"`), `${film.id} shows its poster`);
-  assert.ok(versusMarkup.includes(`<source data-src="${film.film.path}" type="video/mp4"><source data-src="${film.mobile.path}" type="video/mp4" data-rung="phone">`),
-    `${film.id} plays its film, and its phone file on a phone`);
-}
-assert.equal((versusMarkup.match(/data-media-player muted/g) || []).length, 1, 'the big duel plays by itself; the others play on hover');
-
-// the trailers: the motion stage's cut buttons swap in each cut, which plays on that click and loads nothing before it
-// (no poster attribute in the markup, preload none; publicPages.ts sets the poster as the cut shows)
-const trailerMarkup = home.match(/<figure class="motion-trailer" data-trailer-stage>([\s\S]*?)<\/figure>/)?.[1] || '';
-assert.deepEqual(manifest.trailers.map((f) => f.film), picks.home.trailers);
-assert.ok(picks.home.trailers.every((film) => picks.films.includes(film)), 'the row plays the films the site ships');
-assert.equal((trailerMarkup.match(/<video [^>]*data-trailer/g) || []).length, picks.home.trailers.length, 'the stage holds each trailer cut once, beside the reel');
-for (const film of manifest.trailers) {
-  const tag = trailerMarkup.match(new RegExp(`<video [^>]*data-poster="${film.poster}"[^>]*>`))?.[0] || '';
-  assert.ok(tag.includes('controls') && tag.includes('preload="none"') && tag.includes('data-trailer') && / hidden>$/.test(tag), `${film.film} plays on a click`);
-  assert.equal(/\sposter=/.test(tag), false, `${film.film} loads its poster only near the viewport`);
-  assert.equal(trailerMarkup.includes(`<source src="${film.webm}" type="video/webm"><source src="${film.mp4}" type="video/mp4">`), true,
-    `${film.film}: its webm, then its mp4`);
-  for (const path of [film.webm, film.mp4, film.poster]) assert.ok((await stat(resolve(root, 'public', path.slice(1)))).size > 100_000, `${path} ships`);
-}
-assert.equal((trailerMarkup.match(/<button [^>]*data-trailer-cut/g) || []).length, picks.home.trailers.length, 'one cut button per trailer');
-assert.match(publicPages, /function mountTrailerStage\(stage(?:: HTMLElement)?\)/, 'the stage swaps in a cut, sets its poster and plays one at a time');
-// every other landing video is an autoplay loop gated on the viewport
-assert.equal([...home.matchAll(/<video (?![^>]*data-trailer)[^>]*>/g)].every((m) => /data-autoplay-video|data-media-player/.test(m[0]) && m[0].includes('preload="none"')), true,
-  'every video outside the trailers row is a viewport-gated loop');
-
-assert.equal(manifest.featureReel.video, `${site50}/films/reel.mp4`);
-// the reel's light web encode (2026-10-14): 1600x900 under its 4.3 Mbit/s cap; site-media-wire.mjs records the file's size
-assert.equal(manifest.featureReel.width, 1600);
-assert.equal(manifest.featureReel.height, 900);
-assert.equal(home.split(manifest.featureReel.video).length - 1, 1,
-  'the former video hero appears once as a dedicated feature reel');
-assert.equal(home.includes(`poster="${manifest.featureReel.poster}"`), true,
-  'feature reel retains its approved poster');
-for (const path of [manifest.featureReel.video, manifest.featureReel.poster]) {
-  const file = resolve(root, 'public', path.replace(/^\//, ''));
-  assert.ok((await stat(file)).size > 100_000, `feature reel ${path} exists`);
-}
-
-assert.equal('gameplay' in manifest, false, 'the retired duplicate gameplay block is absent from the landing contract');
-assert.equal(home.split('data-i18n-label="media.site50.title.reel"').length - 1, 1,
-  'the reel opens the motion stage, named once');
-// (242: the owner's 10-22 rule cut the section ledes; the reel shows its heading and its call only)
-assert.equal(home.includes('data-i18n="home.reel.lede"'), false, 'the reel carries no helper line');
-assert.equal(home.includes('Watch live tank combat'), false,
-  'the reel no longer calls its offline 4K renders live combat');
-assert.equal(home.includes('See the complete game in one video'), false,
-  'the previous feature-reel heading is retired');
-assert.equal(home.includes('gameplay-urban-overhead-1080.mp4'), false,
-  'the duplicate gameplay proxy is not mounted on the landing page');
-
-assert.equal(manifest.rails.length, 4, 'four site fifty loops fill the camera-path grid');
-assert.deepEqual(manifest.rails.map((rail) => rail.id), picks.home.paths);
-for (const rail of manifest.rails) {
-  assert.equal(home.split(rail.video).length - 1, 1, `${rail.id} is used once outside the hero`);
-  for (const path of [rail.video, rail.poster]) {
-    const file = resolve(root, 'public', path.replace(/^\//, ''));
-    assert.ok((await stat(file)).size > 100_000, `${rail.id} ${path} exists`);
+// (2026-10-25, the owner: "have big hero pics always animate and show multiple (like showing videos), tell our media
+// manager to look in and only use the good ones") the landing builds from the media lane's curated set:
+// public/media/home-r2/manifest.json names the hero reel's clips and the eight features (tools/home-premiere.mjs).
+const reel = JSON.parse(await readFile(resolve(root, 'public/media/home-r2/manifest.json'), 'utf8'));
+assert.equal(reel.libraryId, 'claude-of-tanks-home-r2');
+assert.equal(reel.schemaVersion, 1);
+assert.ok(reel.hero.length >= 5 && reel.hero.length <= 8, `the reel cycles five to eight clips (${reel.hero.length})`);
+assert.deepEqual(Object.keys(reel.features).sort(), ['battlefields', 'destruction', 'fleet', 'garage', 'killcam', 'multiplayer', 'studio', 'watch'],
+  'the eight feature slots');
+const en = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
+const zh = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
+const clipFiles = (clip) => [...clip.poster.rungs, clip.film, clip.mobile, clip.wide].filter(Boolean);
+for (const clip of [...reel.hero, ...Object.values(reel.features)]) {
+  assert.ok(en[clip.altKey] && zh[clip.altKey], `${clip.id}: its alt text is in both catalogs`);
+  for (const file of clipFiles(clip)) {
+    assert.equal((await stat(resolve(root, 'public', file.path.slice(1)))).size, file.bytes, `${file.path} is the manifest's file`);
   }
 }
-assert.equal(manifest.destructionRail, `${site50}/loops/${picks.home.destruction}.webm`);
-assert.equal(home.split(manifest.destructionRail).length - 1, 1,
-  'the destruction loop appears once in the destruction section');
+for (const clip of reel.hero) assert.ok(clip.mobile, `${clip.id}: the hero clip has its phone rung`);
 
+// the hero: the first clip's poster is the LCP picture (its rungs, preloaded by the same set), the clips wait without a
+// source in the manifest's order, the trailer button's thumbnail is the only other picture
+const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[1] || '';
+const rungs = reel.hero[0].poster.rungs;
+const srcset = rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
+const lcp = (rungs.find((rung) => rung.width >= 1440) ?? rungs.at(-1)).path;
+assert.ok(heroMarkup.includes(`<img class="hero__still" src="${lcp}" alt="`) && heroMarkup.includes(`data-i18n-alt="${reel.hero[0].altKey}"`)
+  && heroMarkup.includes('fetchpriority="high"') && heroMarkup.includes(`srcset="${srcset}"`), 'the poster carries its size, priority and rungs');
+assert.match(heroMarkup, /<img class="hero__still" [^>]*width="1920" height="\d+"/, 'the poster reserves its box');
+assert.equal(home.includes(`<link rel="preload" href="${lcp}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${srcset}"`), true,
+  'the poster is preloaded by the same rungs');
+assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its poster and the trailer thumbnail, nothing else');
+const clips = [...heroMarkup.matchAll(/<video class="hero__clip" ([^>]*)>([\s\S]*?)<\/video>/g)];
+assert.equal(clips.length, reel.hero.length, 'one clip per manifest entry');
+clips.forEach(([, attrs, body], i) => {
+  const clip = reel.hero[i];
+  assert.ok(/\bmuted\b/.test(attrs) && /\bplaysinline\b/.test(attrs) && attrs.includes('preload="none"') && attrs.includes('aria-hidden="true"')
+    && attrs.includes('data-reel-clip'), `clip ${i + 1}: muted, inline, no preload, hidden from assistive tech`);
+  assert.equal(/\ssrc=/.test(`${attrs}${body}`), false, `clip ${i + 1} names no file before its turn`);
+  assert.ok(body.includes(`data-src="${clip.film.path}"`) && body.includes(`data-src="${clip.mobile.path}" type="video/mp4" data-rung="phone"`),
+    `clip ${i + 1} plays its film, and its phone rung on a phone`);
+});
+assert.match(heroMarkup, /<button class="cot-c-btn cot-c-btn--64 hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="[^"]+" alt="" width="84" height="46"/,
+  'the trailer button shows a dimensioned thumbnail');
+assert.match(heroMarkup, /data-reel-toggle hidden aria-label="[^"]+" data-i18n-aria-label="publicPages\.reel\.pauseAria"/, 'the reel has its pause control');
+const heroReel = await readFile(resolve(root, 'src/presentation/heroReel.ts'), 'utf8');
+assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return null;/, 'no clip moves under reduced motion or data saving');
+const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
+assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
+assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) void import\('\.\/homePage\.ts'\);/, 'the landing\'s behaviour loads with the landing alone');
+
+// the features: in their rows, each its poster (lazy, sized, described) and, where the slot has motion, its loop
+const featureMarkup = home.match(/<!--home:features-->([\s\S]*?)<!--\/home:features-->/)?.[1] || '';
+const featureSlots = [...featureMarkup.matchAll(/<figure class="feat[^"]*" data-feature="([a-z]+)">/g)].map((m) => m[1]);
+assert.deepEqual(featureSlots, ['battlefields', 'killcam', 'destruction', 'watch', 'studio', 'multiplayer', 'fleet', 'garage'], 'the features in their rows');
+for (const slot of featureSlots) {
+  const clip = reel.features[slot];
+  const tile = featureMarkup.match(new RegExp(`<figure class="feat[^"]*" data-feature="${slot}">([\\s\\S]*?)</figure>`))?.[1] ?? '';
+  assert.match(tile, new RegExp(`<img src="${clip.poster.rungs.at(-1).path}"[^>]* width="\\d+" height="\\d+" alt="[^"]+" data-i18n-alt="${clip.altKey}" loading="lazy"`),
+    `${slot}: its poster is sized, described and lazy`);
+  const motion = clip.film || clip.mobile || clip.wide;
+  assert.equal(/<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/.test(tile), Boolean(motion), `${slot}: a loop exactly where the slot has motion`);
+  assert.match(tile, /<figcaption class="feat__cap"><a class="feat__link" href="\/[^"]*">/, `${slot}: its name is the way in`);
+}
+// every landing video waits for its turn: the reel's clips, the features' loops, the trailer in its dialog
+assert.equal([...home.matchAll(/<video [^>]*>/g)].every((m) => m[0].includes('preload="none"')), true, 'no landing video preloads');
 const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].map((match) => match[1]);
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
-// the site's seven loops and films, then (2026-10-22) the versus films, each with its own 540p phone file
-const versusFilms = wallFilms;
-const siteVideos = videos.filter((path) => !path.startsWith('/media/versus-films-r1/') && !path.startsWith('/media/site50-r14/fleet/'));
-// (242, the direction's 03 fleet wall) each of the twelve fleet takes plays its own loop on hover
-const fleetLoops = videos.filter((path) => path.startsWith('/media/site50-r14/fleet/'));
-assert.equal(fleetLoops.length, 12, 'the fleet wall plays its twelve takes');
-assert.equal(videos.length, 7 + versusFilms.length * 2 + fleetLoops.length, 'all landing videos remain source-gated until viewport activation');
-assert.equal(siteVideos.length, 7, 'the seven site videos');
-assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).length, siteVideos.length,
-  'every landing video supplies a lightweight mobile proxy');
-assert.equal((home.match(/<source data-src="\/media\/versus-films-r1\/[a-z0-9-]+-mobile\.mp4" type="video\/mp4" data-rung="phone">/g) || []).length, versusFilms.length,
-  'every versus film supplies its phone file');
-// (the manifest is the site's: since media db2bff2901 it also carries the manual's first-battle hero loops)
-const landingProxies = [...new Set([...home.matchAll(/data-mobile-src="\/media\/web-video-r1\/([^"]+)"/g)].map((match) => match[1]))];
-assert.equal(landingProxies.length, siteVideos.length, 'one proxy per landing video');
-assert.deepEqual(landingProxies.filter((file) => !mobileVideoManifest.files.some((entry) => entry.path === file)), [],
-  'mobile proxy manifest covers every landing video');
-assert.ok(mobileVideoManifest.files.filter((file) => landingProxies.includes(file.path)).reduce((total, file) => total + file.bytes, 0) < 9_000_000,
-  'the landing\'s complete mobile proxy library stays below the nine-megabyte transfer budget');
-for (const proxy of mobileVideoManifest.files.filter((file) => landingProxies.includes(file.path))) {
-  const publicPath = `/media/web-video-r1/${proxy.path}`;
-  assert.equal(home.includes(`data-mobile-src="${publicPath}"`), true, `${proxy.path} is wired into the landing page`);
-  assert.equal((await stat(resolve(root, 'public', publicPath.slice(1)))).size, proxy.bytes,
-    `${proxy.path} matches its byte receipt`);
-}
+assert.equal(/<source src=/.test(home), false, 'no landing video names its file in the markup');
 
-assert.equal(manifest.mosaic.length, 24);
-assert.equal(manifest.mosaic.filter((shot) => shot.still === 'moment').length, 12, 'twelve key moments');
-assert.equal(manifest.mosaic.filter((shot) => shot.still === 'close').length, 12, 'twelve close portraits');
-assert.ok(manifest.mosaic.every((shot) => shot.src.startsWith(`${site50}/stills/`)));
-assert.equal(new Set(manifest.mosaic.map((shot) => shot.src)).size, manifest.mosaic.length);
-for (const shot of manifest.mosaic) {
-  assert.equal(home.split(`${shot.src} 1920w`).length - 1, 1, `${shot.id} appears once, in the screenshots strip`);
-  const file = resolve(root, 'public', shot.src.replace(/^\//, ''));
-  assert.ok((await stat(file)).size > 50_000, `${shot.id} is a substantial image`);
-}
-
-assert.ok(manifest.studio.width >= 1920 && manifest.studio.height >= 1080, 'Studio loop is full HD');
-assert.ok(manifest.studio.durationMs >= 6500 && manifest.studio.durationMs <= 7000,
-  'Studio loop includes the complete 6.5-second storyboard and UI settle frame');
-assert.equal(manifest.studio.captureMode, 'studio-ui', 'Studio loop records the live production interface');
-// home r2 (2026-10-12): the Studio card's loop is re-recorded on the current interface (shots/media-r5/home-r2/shot-list.json,
-// features/studio), so its cast may change; a victim and a shooter's kill stay the contract
-assert.ok(manifest.studio.actors.some((actor) => actor.name === 'victim'), 'the Studio loop stages a victim');
-assert.ok(manifest.studio.effects.some((effect) => effect.type === 'fire' && effect.actor === 'shooter'));
-assert.ok(manifest.studio.effects.some((effect) => effect.type === 'tank_kill' && effect.actor === 'victim'));
-assert.equal(home.includes(`src="${manifest.studio.video}"`), true, 'Studio loop is mounted on the landing page');
-assert.equal(home.includes(`poster="${manifest.studio.poster}"`), true, 'Studio poster is mounted on the landing page');
-assert.equal(home.includes('Create scenes in Scene Studio'), true, 'Studio evidence uses direct interface-focused copy');
-for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes], [manifest.studio.poster, manifest.studio.posterBytes]]) {
-  const file = resolve(root, 'public', path.replace(/^\//, ''));
-  assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
-}
-
-console.log('landing-media.selftest: the site fifty hero, the motion stage, the screenshots strip and the Studio knockout pass');
+console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features and the landing-r1 picks pass`);
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);

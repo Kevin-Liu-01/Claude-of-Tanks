@@ -88,6 +88,7 @@ import {
   tileableTorusNoise as torusNoise,
 } from './proceduralTexture.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** The installed horizon ring's builder (horizonRingHook.ts): this module never imports the visual horizon. It sits
  * above the chunk section on purpose: receipts that compile the chunk section on its own (from the CHUNKS constant to
  * the end) supply their own buildHorizonRingSteps stub, which a later declaration would override. Keep the chunk
@@ -897,7 +898,7 @@ function rampTerraceGround(ramps: readonly TerraceRamp[], weight: number, x: num
       const ax = nodes[i][0], az = nodes[i][1], ay = nodes[i][2];
       const dx = nodes[i + 1][0] - ax, dz = nodes[i + 1][1] - az, len2 = dx * dx + dz * dz;
       const t = len2 > 0 ? clamp(((x - ax) * dx + (z - az) * dz) / len2, 0, 1) : 0;
-      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      const d = detMath.hypot(x - ax - dx * t, z - az - dz * t);
       if (d >= halfWidth + feather) continue;
       const k = 1 - smoothstep(halfWidth, halfWidth + feather, d);
       wsum += k; ysum += k * (ay + (nodes[i + 1][2] - ay) * t); kmax = Math.max(kmax, k);
@@ -991,11 +992,11 @@ function roadShoulderWeight(start: number | null, mapId: string | undefined, roa
 function buildCountryRoads(): RoadLine[] {
   const roadA: RoadLine = []; // roughly N-S, curving through the village
   for (let z = -HALF; z <= HALF; z += 32) {
-    roadA.push([10 + 26 * Math.sin(z * 0.0062) + 8 * Math.sin(z * 0.017 + 2.1), z]);
+    roadA.push([10 + 26 * detMath.sin(z * 0.0062) + 8 * detMath.sin(z * 0.017 + 2.1), z]);
   }
   const roadB: RoadLine = []; // roughly E-W
   for (let x = -HALF; x <= HALF; x += 32) {
-    roadB.push([x, 46 + 34 * Math.sin(x * 0.0043 + 1.0) + 7 * Math.sin(x * 0.013 - 0.6)]);
+    roadB.push([x, 46 + 34 * detMath.sin(x * 0.0043 + 1.0) + 7 * detMath.sin(x * 0.013 - 0.6)]);
   }
   return [roadA, roadB];
 }
@@ -1014,11 +1015,11 @@ function buildGridRoads(grid: GridRoadConfig, originalCounts: number[], complete
     const { at: gx, lo, hi } = parse(grid.xs[gi]);
     const line: RoadLine = [];
     for (let z = lo; z <= hi; z += 32) {
-      line.push([gx + Math.sin(z * 0.011 + gi * 2.3) * jit, z]);
+      line.push([gx + detMath.sin(z * 0.011 + gi * 2.3) * jit, z]);
     }
     originalCounts.push(line.length);
     if (completeRoads && line.length && line[line.length - 1][1] < hi) {
-      line.push([gx + Math.sin(hi * 0.011 + gi * 2.3) * jit, hi]);
+      line.push([gx + detMath.sin(hi * 0.011 + gi * 2.3) * jit, hi]);
     }
     roads.push(line);
   }
@@ -1026,11 +1027,11 @@ function buildGridRoads(grid: GridRoadConfig, originalCounts: number[], complete
     const { at: gz, lo, hi } = parse(grid.zs[gi]);
     const line: RoadLine = [];
     for (let x = lo; x <= hi; x += 32) {
-      line.push([x, gz + Math.sin(x * 0.011 + gi * 1.7) * jit]);
+      line.push([x, gz + detMath.sin(x * 0.011 + gi * 1.7) * jit]);
     }
     originalCounts.push(line.length);
     if (completeRoads && line.length && line[line.length - 1][0] < hi) {
-      line.push([hi, gz + Math.sin(hi * 0.011 + gi * 1.7) * jit]);
+      line.push([hi, gz + detMath.sin(hi * 0.011 + gi * 1.7) * jit]);
     }
     roads.push(line);
   }
@@ -1049,7 +1050,7 @@ function buildPathRoads(paths: AuthoredRoadConfig['paths']): RoadLine[] {
     const line: RoadLine = [];
     for (let pi = 0; pi < path.length - 1; pi++) {
       const [ax, az] = path[pi], [bx, bz] = path[pi + 1];
-      const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 32));
+      const steps = Math.max(1, Math.ceil(detMath.hypot(bx - ax, bz - az) / 32));
       for (let step = 0; step < steps; step++) {
         const t = step / steps;
         line.push([ax + (bx - ax) * t, az + (bz - az) * t]);
@@ -1079,23 +1080,23 @@ function buildRoadExitLines(roads: readonly RoadLine[], seed: number): RoadExitL
       if (Math.max(Math.abs(ex), Math.abs(ez)) < HALF - 24) continue;
       const back = nodes[end === 0 ? Math.min(nodes.length - 1, 2) : Math.max(0, nodes.length - 3)];
       let dx = ex - back[0], dz = ez - back[1];
-      const len = Math.hypot(dx, dz);
+      const len = detMath.hypot(dx, dz);
       if (len < 1) continue;
       dx /= len; dz /= len;
       const major = Math.abs(ex) >= Math.abs(ez);
       const nx = major ? Math.sign(ex) : 0, nz = major ? 0 : Math.sign(ez);
       if (dx * nx + dz * nz < 0.35) continue; // a road along the edge is not leaving the square
-      if (seen.some(([sx, sz]) => Math.hypot(sx - ex, sz - ez) < 30)) continue;
+      if (seen.some(([sx, sz]) => detMath.hypot(sx - ex, sz - ez) < 30)) continue;
       seen.push([ex, ez]);
       const xs = new Float64Array(ROAD_EXIT_STEPS + 1), zs = new Float64Array(ROAD_EXIT_STEPS + 1), ss = new Float64Array(ROAD_EXIT_STEPS + 1);
       xs[0] = ex; zs[0] = ez;
-      let heading = Math.atan2(dz, dx);
-      const outward = Math.atan2(nz, nx);
+      let heading = detMath.atan2(dz, dx);
+      const outward = detMath.atan2(nz, nx);
       for (let i = 1; i <= ROAD_EXIT_STEPS; i++) {
         heading += exitNoise.noise(i * 0.43 + r * 3.1, end * 7.7 + 0.5) * 0.16;
-        heading = outward + clamp(Math.atan2(Math.sin(heading - outward), Math.cos(heading - outward)), -0.95, 0.95);
-        xs[i] = xs[i - 1] + Math.cos(heading) * ROAD_EXIT_STEP_M;
-        zs[i] = zs[i - 1] + Math.sin(heading) * ROAD_EXIT_STEP_M;
+        heading = outward + clamp(detMath.atan2(detMath.sin(heading - outward), detMath.cos(heading - outward)), -0.95, 0.95);
+        xs[i] = xs[i - 1] + detMath.cos(heading) * ROAD_EXIT_STEP_M;
+        zs[i] = zs[i - 1] + detMath.sin(heading) * ROAD_EXIT_STEP_M;
         ss[i] = ss[i - 1] + ROAD_EXIT_STEP_M;
       }
       let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -1158,8 +1159,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     }
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
     const prepared: LandformConfig = form.relief
-      ? { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) }
-      : { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+      ? { ...form, _c: detMath.cos(yaw), _s: detMath.sin(yaw), _relief: preparePlayableRelief(form.relief) }
+      : { ...form, _c: detMath.cos(yaw), _s: detMath.sin(yaw) };
     prepared._bounds = landformSupportBounds(prepared);
     return prepared;
   });
@@ -1176,9 +1177,9 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
   for (const enemy of enemies) { enemyCx += enemy.x; enemyCz += enemy.z; }
   enemyCx /= enemies.length || 1;
   enemyCz /= enemies.length || 1;
-  player.yaw = Math.atan2(enemyCx - player.x, enemyCz - player.z);
+  player.yaw = detMath.atan2(enemyCx - player.x, enemyCz - player.z);
   for (const enemy of enemies) {
-    enemy.yaw = Math.atan2(player.x - enemy.x, player.z - enemy.z);
+    enemy.yaw = detMath.atan2(player.x - enemy.x, player.z - enemy.z);
   }
   let roads: RoadLine[];
   let roadStyles: (RoadPathStyle | null)[] | null = null;
@@ -1266,7 +1267,7 @@ function segDist(
 function raiseMounds(x: number, z: number, h: number,
   mounds: readonly { x: number; z: number; crestR: number; baseR: number }[], crestYs: Float64Array): number {
   for (let i = 0; i < mounds.length; i++) {
-    const m = mounds[i], d = Math.hypot(x - m.x, z - m.z);
+    const m = mounds[i], d = detMath.hypot(x - m.x, z - m.z);
     if (d >= m.baseR) continue;
     const t = d <= m.crestR ? 0 : (d - m.crestR) / Math.max(0.01, m.baseR - m.crestR), r = 0.125, k = 1 / (1 - r);
     const w = t < r ? 1 - k * t * t / (2 * r) : t > 1 - r ? k * (1 - t) * (1 - t) / (2 * r) : 1 - k * (r / 2 + (t - r));
@@ -1329,8 +1330,8 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
   phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
   if (phase === 'authored-relief' && form._relief) return (form.height || 0) * samplePlayableRelief(form._relief, x, z);
   const dx = x - form.x, dz = z - form.z;
-  const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
-  const s = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
+  const c = form._c ?? detMath.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
+  const s = form._s ?? detMath.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
   let lx = dx * c + dz * s;
   let lz = -dx * s + dz * c;
   if (form._path) {
@@ -1349,7 +1350,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     // the walls step in together in buttresses and bays (a mirror-symmetric layout stays symmetric; never wider than
     // authored, so whatever stands back from the rim stays back); the middle holds the authored line (a crossing there
     // keeps its abutments), the steps growing over 30 m either side
-    const wave = 0.55 * Math.sin(lx / 41 + 0.7) + 0.3 * Math.sin(lx / 17.3 + 2.3) + 0.15 * Math.sin(lx / 7.9 + 4.1);
+    const wave = 0.55 * detMath.sin(lx / 41 + 0.7) + 0.3 * detMath.sin(lx / 17.3 + 2.3) + 0.15 * detMath.sin(lx / 7.9 + 4.1);
     const wander = -(form.meander || 0) * smoothstep(0, 30, Math.abs(lx)) * (0.5 + 0.5 * wave);
     const across = 1 - smoothstep(w * foot + wander, w * top + wander, Math.abs(lz));
     return height * along * across;
@@ -1479,7 +1480,7 @@ function* heightFieldBuildSteps(
       const samples = Math.max(12, Math.ceil(Math.PI * station.r));
       for (let k = 0; k < samples; k++) {
         const angle = (k / samples) * Math.PI * 2, reach = shorelineRadiusAt(station, angle);
-        const x = station.x + Math.cos(angle) * reach, z = station.z + Math.sin(angle) * reach;
+        const x = station.x + detMath.cos(angle) * reach, z = station.z + detMath.sin(angle) * reach;
         if (_MARSHES.some((other) => other !== station && other.sorFlat !== undefined
           && shorelineDistance(other, x, z, 1) < 0.999)) continue;
         const cw = gridSample(gCorridor, x, z), vm = villageMask(x, z);
@@ -1593,7 +1594,7 @@ function* heightFieldBuildSteps(
         if (_MARSHES.some((marsh) => shorelineDistance(marsh, px, pz, 1.25) < 1.25)) return false;
       }
       return !sectors || !sectors.lines.some((sector) =>
-        Math.hypot(sector.x - line.x, sector.z - line.z) < sector.halfLengthM + line.halfLengthM + 10);
+        detMath.hypot(sector.x - line.x, sector.z - line.z) < sector.halfLengthM + line.halfLengthM + 10);
     });
     const plan = lines.length ? { lines, connector: null, profile: FIELD_TRENCH.profile } : null;
     if (!provisional) _fieldPlan = plan;
@@ -1611,7 +1612,7 @@ function* heightFieldBuildSteps(
   const railExitValleys = (T.railSpurs ?? []).flatMap((spur) => {
     const end = spur.path[spur.path.length - 1], prev = spur.path[spur.path.length - 2];
     if (!end || !prev || Math.max(Math.abs(end[0]), Math.abs(end[1])) < HALF - 4) return [];
-    const len = Math.hypot(end[0] - prev[0], end[1] - prev[1]) || 1;
+    const len = detMath.hypot(end[0] - prev[0], end[1] - prev[1]) || 1;
     const ux = (end[0] - prev[0]) / len, uz = (end[1] - prev[1]) / len;
     const xs: number[] = [], zs: number[] = [];
     for (let s = 0; s <= RAIL_OPEN_RUN_M; s += 40) { xs.push(end[0] + ux * s); zs.push(end[1] + uz * s); }
@@ -1751,7 +1752,7 @@ function* heightFieldBuildSteps(
   function villageMask(x: number, z: number): number {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
     const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
-    return (1 - smoothstep(0, _VILLAGE.feather, Math.hypot(dx, dz))) * (_VILLAGE.flatten ?? 0.85);
+    return (1 - smoothstep(0, _VILLAGE.feather, detMath.hypot(dx, dz))) * (_VILLAGE.flatten ?? 0.85);
   }
 
   const padYs = new Float64Array(8); // filled below (player + 7 enemies)
@@ -1859,7 +1860,7 @@ function* heightFieldBuildSteps(
       for (let p = 0; p < padPts.length; p++) {
         const dx = x - padPts[p].x, dz = z - padPts[p].z;
         if (dx * dx + dz * dz >= 90 * 90) continue;
-        const pd = Math.hypot(dx, dz);
+        const pd = detMath.hypot(dx, dz);
         if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
       }
     }
@@ -2012,7 +2013,7 @@ function* heightFieldBuildSteps(
       for (let p = 0; p < padPts.length; p++) {
         const dx = x - padPts[p].x, dz = z - padPts[p].z;
         if (dx * dx + dz * dz >= padRadiusSquared) continue;
-        const pd = Math.hypot(dx, dz);
+        const pd = detMath.hypot(dx, dz);
         if (pd < 22) h += (padYs[p] - h) * (1 - smoothstep(9, 22, pd));
         if (lakeWetness > 0) padWetness *= smoothstep(22, 26, pd);
       }
@@ -2057,8 +2058,8 @@ function* heightFieldBuildSteps(
           lakeWetness * smoothstep(14, 18, rd) * padWetness) : 1;
       if (liquidDetail === 0 || marshWeight === 1) return h;
       const bermA = 0.5 + 0.5 * noi.noise(x * 0.031 + 71, z * 0.031 - 44);
-      const berm = Math.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
-      const ditch = -Math.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
+      const berm = detMath.exp(-(((rd - 7.0) / 1.9) ** 2)) * 0.26 * bermA;
+      const ditch = -detMath.exp(-(((rd - 11.5) / 2.4) ** 2)) * 0.20 * (1 - bermA * 0.5);
       h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight) * liquidDetail;
     }
     return h;
@@ -2079,7 +2080,7 @@ function* heightFieldBuildSteps(
     for (let li = 0; li < _LAKES.length; li++) {
       const lake = _LAKES[li];
       const dx = x - lake.x, dz = z - lake.z;
-      const outside = Math.hypot(dx, dz) - shorelineRadiusAt(lake, Math.atan2(dz, dx)) * 0.96;
+      const outside = detMath.hypot(dx, dz) - shorelineRadiusAt(lake, detMath.atan2(dz, dx)) * 0.96;
       keep = Math.min(keep, smoothstep(0, coastRimFadeM, outside));
     }
     return keep;
@@ -2164,7 +2165,7 @@ function* heightFieldBuildSteps(
   function clearanceReduction(x: number, z: number, h: number, roadDistance = Infinity): number {
     const half = CLEARANCE_SIDE_M / 2;
     if (Math.max(Math.abs(x), Math.abs(z)) <= half || border.settings.classic) return 0;
-    const cx = clamp(x, -half, half), cz = clamp(z, -half, half), dist = Math.hypot(x - cx, z - cz);
+    const cx = clamp(x, -half, half), cz = clamp(z, -half, half), dist = detMath.hypot(x - cx, z - cz);
     const release = smoothstep(260, 540, dist);
     if (release >= 1) return 0;
     const ref = clearanceReference(), n = ref.length;
@@ -2227,7 +2228,7 @@ function* heightFieldBuildSteps(
         const l2 = bx * bx + bz * bz;
         const t = clamp(((x - ax) * bx + (z - az) * bz) / l2, 0, 1);
         const px = x - (ax + bx * t), pz = z - (az + bz * t);
-        const d = Math.hypot(px, pz);
+        const d = detMath.hypot(px, pz);
         if (d >= best) continue;
         best = d; hit.exit = e;
         hit.offset = (bx * pz - bz * px) >= 0 ? d : -d;
@@ -2414,7 +2415,7 @@ function* heightFieldBuildSteps(
           const coverage = waterCoverage(shorelineWetnessFromDistance(md, false), waterRampStart, waterRampEnd);
           if (coverage > marshBank.coverage) { marshBank.coverage = coverage; marshBank.level = level; }
           else if (coverage === 0) {
-            const beyondM = Math.max(0, (md - marshWaterline) * shorelineRadiusAt(m, Math.atan2(z - m.z, x - m.x)));
+            const beyondM = Math.max(0, (md - marshWaterline) * shorelineRadiusAt(m, detMath.atan2(z - m.z, x - m.x)));
             if (beyondM < WATER_BANK_LIP_FADE_M && beyondM < marshBank.beyondM) { marshBank.beyondM = beyondM; marshBank.shoreLevel = level; }
           }
         }
@@ -2577,7 +2578,7 @@ function* heightFieldBuildSteps(
     if (protect <= 0.001) return h;
     const smooth = (px: number, pz: number) => applyMacroTerrain(px, pz, baseTerrainHeight(px, pz, cw, vm), cw, vm, marshW);
     const h0 = smooth(x, z);
-    const grade = Math.hypot(smooth(x + 2, z) - h0, smooth(x, z + 2) - h0) / 2;
+    const grade = detMath.hypot(smooth(x + 2, z) - h0, smooth(x, z + 2) - h0) / 2;
     const w = tz.weight * protect * smoothstep(zone.minGrade, zone.fullGrade, grade);
     if (w <= 0.001) return h;
     const r = clamp(grade / zone.riserGrade, 0.12, 0.85);
@@ -2610,7 +2611,7 @@ function* heightFieldBuildSteps(
   function findRoadJunction(ra: number, rb: number, gradeRoads: RoadLine[] = roads): number[] {
     let jA = 0, jB = 0, best = 1e9;
     for (let a = 0; a < gradeRoads[ra].length; a++) for (let b = 0; b < gradeRoads[rb].length; b++) {
-      const dd = Math.hypot(gradeRoads[ra][a][0] - gradeRoads[rb][b][0], gradeRoads[ra][a][1] - gradeRoads[rb][b][1]);
+      const dd = detMath.hypot(gradeRoads[ra][a][0] - gradeRoads[rb][b][0], gradeRoads[ra][a][1] - gradeRoads[rb][b][1]);
       if (dd < best) { best = dd; jA = a; jB = b; }
     }
     _junctionScratch[0] = jA;
@@ -2640,7 +2641,7 @@ function* heightFieldBuildSteps(
     for (const bridge of T.bridges ?? []) {
       const nodes = gradeRoads[bridge.route], elev = nodeElev[bridge.route];
       if (!nodes || !elev) continue;
-      const a = bridge.yawDeg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);
+      const a = bridge.yawDeg * Math.PI / 180, ux = detMath.cos(a), uz = detMath.sin(a);
       const halfLength = bridge.spanM / 2, end = halfLength + 4;
       const y0 = heightAt(bridge.x - ux * end, bridge.z - uz * end, false, false);
       const y1 = heightAt(bridge.x + ux * end, bridge.z + uz * end, false, false);
@@ -2681,7 +2682,7 @@ function* heightFieldBuildSteps(
         if (!capped) continue;
         for (let pass = 0; pass < 2; pass++) for (let k = 1; k < nodes.length; k++) {
           const i = pass ? nodes.length - 1 - k : k, j = pass ? i + 1 : i - 1;
-          const run = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
+          const run = detMath.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
           row[i] = Math.max(row[i], row[j] - 0.15 * run);
         }
       }
@@ -2792,8 +2793,8 @@ function* heightFieldBuildSteps(
       for (let a = 0; a < 12; a++) {
         const angle = a * Math.PI / 6;
         const radius = shorelineRadiusAt(lk, angle) * 0.95;
-        const hh = heightAt(lk.x + Math.cos(angle) * radius,
-          lk.z + Math.sin(angle) * radius, false, false, false);
+        const hh = heightAt(lk.x + detMath.cos(angle) * radius,
+          lk.z + detMath.sin(angle) * radius, false, false, false);
         if (hh < lo) lo = hh;
       }
       // maps r1 (ADDITIVE): lk.level pins the sheet elevation absolutely — a
@@ -2851,7 +2852,7 @@ function* heightFieldBuildSteps(
           const { d, t } = segDist(station.x, station.z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
           if (d >= best) continue;
           const dx = nodes[s + 1][0] - nodes[s][0], dz = nodes[s + 1][1] - nodes[s][1];
-          const length = Math.hypot(dx, dz);
+          const length = detMath.hypot(dx, dz);
           if (length <= 0) continue;
           best = d; route = r; ux = dx / length; uz = dz / length;
           cx = nodes[s][0] + dx * t; cz = nodes[s][1] + dz * t;
@@ -2887,7 +2888,7 @@ function* heightFieldBuildSteps(
   if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();
   if (T.bridges?.length) {
     const authored = T.bridges.map(bridge => {
-      const a = bridge.yawDeg * Math.PI / 180, ux = Math.cos(a), uz = Math.sin(a);
+      const a = bridge.yawDeg * Math.PI / 180, ux = detMath.cos(a), uz = detMath.sin(a);
       const halfLength = bridge.spanM / 2;
       const bedY = heightAt(bridge.x, bridge.z, false, false);
       // A curved/noisy bank can stand higher than its road centre. Fit the
@@ -3173,7 +3174,7 @@ function* heightFieldBuildSteps(
     for (const pad of padPts) {
       const dx = x - pad.x, dz = z - pad.z;
       if (dx * dx + dz * dz >= 26 * 26) continue;
-      const distance = Math.hypot(dx, dz);
+      const distance = detMath.hypot(dx, dz);
       if (distance < 26) wetness *= smoothstep(22, 26, distance);
     }
     return canalWet > wetness ? canalWet : wetness;
@@ -3341,7 +3342,7 @@ function* heightFieldBuildSteps(
     // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose
     // ground profile asks it; `?ground=legacy` keeps the even carpet
     ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {
-      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;
+      const sun = skySunDirection(cfg?.sky), l = detMath.hypot(sun.x, sun.z) || 1;
       return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);
     })() } : {}),
     ...railBerthField(T.railSpurs), // the landmarks lane (2026-10-05): a 'clearance' spur's berth, for the grass and litter
@@ -3594,9 +3595,9 @@ function makeGrassLayer(
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.quadraticCurveTo(
-        x + Math.cos(a) * len * 0.5 - Math.sin(a) * bend,
-        y + Math.sin(a) * len * 0.5 + Math.cos(a) * bend,
-        x + Math.cos(a) * len, y + Math.sin(a) * len);
+        x + detMath.cos(a) * len * 0.5 - detMath.sin(a) * bend,
+        y + detMath.sin(a) * len * 0.5 + detMath.cos(a) * bend,
+        x + detMath.cos(a) * len, y + detMath.sin(a) * len);
       ctx.stroke();
     });
   }
@@ -3677,8 +3678,8 @@ function makeDirtLayer(
     const ptsX = [x], ptsY = [y];
     for (let q = 0; q < segs; q++) {
       a += (rng() - 0.5) * 1.2;
-      x += Math.cos(a) * (7 + rng() * 12);
-      y += Math.sin(a) * (7 + rng() * 12);
+      x += detMath.cos(a) * (7 + rng() * 12);
+      y += detMath.sin(a) * (7 + rng() * 12);
       ptsX.push(x); ptsY.push(y);
     }
     drawWrapped(ctx, s, () => {
@@ -3690,7 +3691,7 @@ function makeDirtLayer(
   }
   // pebbles with a contact-shadow offset
   for (let b = 0; b < 640; b++) {
-    const x = rng() * s, y = rng() * s, r = 0.8 + Math.pow(rng(), 1.8) * 3.2;
+    const x = rng() * s, y = rng() * s, r = 0.8 + detMath.pow(rng(), 1.8) * 3.2;
     const lum = 0.2 + rng() * 0.2;
     const sh = _css(0.075, 0.2, 0.08);
     const fill = _css(0.075 + rng() * 0.02, 0.10 + rng() * 0.12, lum);
@@ -4120,9 +4121,9 @@ function* makeMaskTextureSteps(
     for (let ri = 0; ri < layout.roads.length; ri++) {
       const nodes = layout.roads[ri];
       let arc0 = 0;
-      for (let sg = 0; sg < nodes.length - 1; sg++, arc0 += Math.hypot(nodes[sg][0] - nodes[sg - 1][0], nodes[sg][1] - nodes[sg - 1][1])) {
+      for (let sg = 0; sg < nodes.length - 1; sg++, arc0 += detMath.hypot(nodes[sg][0] - nodes[sg - 1][0], nodes[sg][1] - nodes[sg - 1][1])) {
         const [ax, az] = nodes[sg], [bx, bz] = nodes[sg + 1];
-        const heading = Math.atan2(bz - az, bx - ax), segLen = Math.hypot(bx - ax, bz - az);
+        const heading = detMath.atan2(bz - az, bx - ax), segLen = detMath.hypot(bx - ax, bz - az);
         const x0 = clamp(Math.floor((Math.min(ax, bx) - 14 + HALF) * T), 0, s - 1);
         const x1 = clamp(Math.ceil((Math.max(ax, bx) + 14 + HALF) * T), 0, s - 1);
         const z0 = clamp(Math.floor((Math.min(az, bz) - 14 + HALF) * T), 0, s - 1);
@@ -4177,7 +4178,7 @@ function* makeMaskTextureSteps(
   function paintVillageMask(x: number, z: number, j: number): void {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
     const dz = Math.max(_VILLAGE.z0 - z, z - _VILLAGE.z1, 0);
-    const vm = 1 - smoothstep(0, 26, Math.hypot(dx, dz));
+    const vm = 1 - smoothstep(0, 26, detMath.hypot(dx, dz));
     if (vm <= 0) return;
     if (plotWear) {
       // the plots' edges box-filtered over the 2 m texel (four samples): a plot's boundary crosses the texel grid at any
@@ -4191,8 +4192,8 @@ function* makeMaskTextureSteps(
   }
   // map revival lane 2 (townPaving): the ground under a dry viaduct's deck (its span, to the road field's 12 m) is the gorge's
   // bed and walls, not the road that rides the deck over them
-  const viaducts = viaductCut ? (layout.terrain.bridges ?? []).map((b) => ({ x: b.x, z: b.z, ux: Math.cos(b.yawDeg * Math.PI / 180),
-    uz: Math.sin(b.yawDeg * Math.PI / 180), hl: b.spanM / 2, hw: Math.max(b.widthM / 2, 12) })) : [];
+  const viaducts = viaductCut ? (layout.terrain.bridges ?? []).map((b) => ({ x: b.x, z: b.z, ux: detMath.cos(b.yawDeg * Math.PI / 180),
+    uz: detMath.sin(b.yawDeg * Math.PI / 180), hl: b.spanM / 2, hw: Math.max(b.widthM / 2, 12) })) : [];
   function underViaduct(x: number, z: number): boolean {
     for (const v of viaducts) {
       const dx = x - v.x, dz = z - v.z;
@@ -4343,7 +4344,7 @@ function createVillagePlotWear(layout: TerrainLayout): (x: number, z: number) =>
     let acc = 0;
     for (let i = 0; i + 1 < nodes.length; i++) {
       const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
-      const len = Math.hypot(bx - ax, bz - az);
+      const len = detMath.hypot(bx - ax, bz - az);
       if (len > 1e-6 && Math.max(Math.min(ax, bx) - v.x1, v.x0 - Math.max(ax, bx), Math.min(az, bz) - v.z1, v.z0 - Math.max(az, bz)) < reach) {
         segs.push({ ax, az, tx: (bx - ax) / len, tz: (bz - az) / len, len, s0: acc, road });
       }
@@ -4497,7 +4498,7 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
 function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null | undefined): THREE.Vector3 {
   const sunAz = (sky?.sunAzimuthDeg ?? 115) * Math.PI / 180;
   const sunEl = (sky?.sunElevationDeg ?? 32) * Math.PI / 180;
-  return new THREE.Vector3(Math.sin(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.cos(sunAz) * Math.cos(sunEl));
+  return new THREE.Vector3(detMath.sin(sunAz) * detMath.cos(sunEl), detMath.sin(sunEl), detMath.cos(sunAz) * detMath.cos(sunEl));
 }
 const SPLAT_COMMON_FRAG = /* glsl */`
 #define MID_SWARD_GAIN 0.5
@@ -8098,7 +8099,7 @@ export const SNOW_ROCK_HOLD_LINE = 'float hold = 1.0 - smoothstep(0.30, 0.56, sl
  */
 export function snowRockHoldLine(S: Pick<SplatConfig, 'snowRockSlopeDeg' | 'snowRockFadeDeg' | 'snowRockCrest'> | null | undefined): string | null {
   if (S?.snowRockSlopeDeg === undefined && S?.snowRockFadeDeg === undefined && S?.snowRockCrest === undefined) return null;
-  const slopeOf = (deg: number): number => 1 - Math.cos(deg * Math.PI / 180);
+  const slopeOf = (deg: number): number => 1 - detMath.cos(deg * Math.PI / 180);
   const s0 = S.snowRockSlopeDeg !== undefined ? slopeOf(S.snowRockSlopeDeg) : 0.30;
   const s1 = S.snowRockFadeDeg !== undefined ? slopeOf(S.snowRockFadeDeg) : 0.56;
   const k = S.snowRockCrest ?? 0.12;
@@ -8212,7 +8213,7 @@ function* createSplatMaterialSteps(
       const srgb = texture!.colorSpace === THREE.SRGBColorSpace;
       const lin = (c: number): number => {
         const v = c / 255;
-        return !srgb ? v : v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        return !srgb ? v : v <= 0.04045 ? v / 12.92 : detMath.pow((v + 0.055) / 1.055, 2.4);
       };
       let r = 0, g = 0, b = 0, a = 0;
       for (let i = 0; i < n * n; i++) { r += lin(px[i * 4]); g += lin(px[i * 4 + 1]); b += lin(px[i * 4 + 2]); a += px[i * 4 + 3] / 255; }
@@ -8324,7 +8325,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadFrame = { value: maskStack.frame }; // roads lane (2026-10-09): the road frame layer's size and first row
     shader.uniforms.uLandTier = landTier;
     shader.uniforms.uTerrainLite = liteTerrain; // Ultra Low (quality.ts terrainLite)
-    shader.uniforms.uLandRot = { value: new THREE.Vector2(Math.cos(landUse.landA[1]), Math.sin(landUse.landA[1])) };
+    shader.uniforms.uLandRot = { value: new THREE.Vector2(detMath.cos(landUse.landA[1]), detMath.sin(landUse.landA[1])) };
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
     // terrain v2: the layers' measured means (the same vectors measureLayerMeans refreshes after the sourced swap)
@@ -8471,7 +8472,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTerraceRect = terraceUniforms.uTerraceRect;
     shader.uniforms.uTerraceParam = terraceUniforms.uTerraceParam;
     const rd = S.rippleDir || [0.8, 0.6];
-    const rl = Math.hypot(rd[0], rd[1]) || 1;
+    const rl = detMath.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
       // terrain v2: the wind's share of the authored ripples (groundRedux windRipple: 0 on an airless map)
       value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, (S.rippleAmp ?? 0) * Math.max(0, groundProfile.windRipple ?? 1), S.rippleShoreOnly ? 1 : 0),
@@ -8913,10 +8914,10 @@ function* buildChunkGeometrySteps(
     const src = ring[k], dst = n * n + k;
     pos[dst * 3] = pos[src * 3]; pos[dst * 3 + 1] = pos[src * 3 + 1] - SKIRT_DROP; pos[dst * 3 + 2] = pos[src * 3 + 2];
     let ox = pos[src * 3] - ccx, oz = pos[src * 3 + 2] - ccz;
-    const ol = Math.hypot(ox, oz) || 1;
+    const ol = detMath.hypot(ox, oz) || 1;
     ox /= ol; oz /= ol;
     // outward + strong down bias: crack-revealed skirts read as shaded seams
-    const oy = -0.55, oil = 1 / Math.hypot(ox, oy, oz);
+    const oy = -0.55, oil = 1 / detMath.hypot(ox, oy, oz);
     nrm[dst * 3] = ox * oil; nrm[dst * 3 + 1] = oy * oil; nrm[dst * 3 + 2] = oz * oil;
     fold[dst] = fold[src]; // round 73: a skirt continues its top vertex's fold
     shore[dst] = shore[src]; // round 73b: and its shore distance
@@ -9102,7 +9103,7 @@ export function createShoreAt(
           const { d, lake } = discs[i];
           const dist = shorelineDistance(d, x, z, 1.32);
           if (!Number.isFinite(dist)) continue;
-          const radius = shorelineRadiusAt(d, Math.atan2(z - d.z, x - d.x));
+          const radius = shorelineRadiusAt(d, detMath.atan2(z - d.z, x - d.x));
           const shelf = (d as { shelfM?: number }).shelfM;
           const start = lake ? (shelf !== undefined ? Math.min(0.94, 1 - shelf / Math.max(1, radius)) : 0.80) : 0.45;
           const m = (dist - (start + tLine * ((lake ? 0.96 : 1) - start))) * radius;
@@ -9291,7 +9292,7 @@ function* terrainBuildSteps(
     for (let cx = 0; cx < CHUNKS; cx++) {
       const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
       const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
-      const openingDistance = Math.hypot(focus.x - ccx, focus.z - ccz);
+      const openingDistance = detMath.hypot(focus.x - ccx, focus.z - ccz);
       const initialLevels: TerrainLodLevel[] = streamFarLods
         ? initialTerrainLods(openingDistance) : [0, 1, 2];
       // A far-only chunk computes the same height and fine-step normals just
@@ -9547,7 +9548,7 @@ function* terrainBuildSteps(
     if (c.lods.every(Boolean)) c.fine = null;
     streamStats.streamedGeometryCount++;
     streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
-    const d = Math.hypot(streamCameraX - c.cx, streamCameraZ - c.cz);
+    const d = detMath.hypot(streamCameraX - c.cx, streamCameraZ - c.cz);
     const want = terrainLodForDistance(d, c.level);
     if (want === job.level) {
       c.level = want;
@@ -9585,7 +9586,7 @@ function* terrainBuildSteps(
     // the frame they land, before any decal or dressing reads it (an O(1) check when nothing moved)
     (group.userData.syncGroundOverlay as (() => void) | undefined)?.();
     for (const c of chunks) {
-      const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
+      const d = detMath.hypot(camPos.x - c.cx, camPos.z - c.cz);
       const want = terrainLodForDistance(d, c.level);
       if (want !== c.level && c.lods[want]) {
         c.level = want;

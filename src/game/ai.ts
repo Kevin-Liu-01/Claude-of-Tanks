@@ -60,6 +60,7 @@ import type {
   TankState,
 } from '../sim/movement.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
@@ -847,7 +848,7 @@ function wrapAngle(a: number): number {
 function gauss(rng: RandomSource): number {
   let u = rng();
   while (u <= 1e-9) u = rng();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rng());
+  return Math.sqrt(-2 * detMath.log(u)) * detMath.cos(TAU * rng());
 }
 
 /** Error function (Abramowitz–Stegun 7.1.26, |error| < 1.5e-7): P(|X| < a) = erf(a / (σ√2)) for X ~ N(0, σ). */
@@ -856,13 +857,13 @@ function erf(x: number): number {
   const ax = Math.abs(x);
   const t = 1 / (1 + 0.3275911 * ax);
   const poly = ((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592;
-  return sign * (1 - poly * t * Math.exp(-ax * ax));
+  return sign * (1 - poly * t * detMath.exp(-ax * ax));
 }
 
 function tankSafetyRadius(ent: AiEntity | null | undefined): number {
   if (!ent || !ent.spec) return 2.5;
   const dims = ent.spec.dims || {};
-  const hullR = Math.hypot(dims.widthM || 3, dims.lengthM || 6) * 0.38;
+  const hullR = detMath.hypot(dims.widthM || 3, dims.lengthM || 6) * 0.38;
   const armorR = ent.spec.armor && ent.spec.armor.boundingRadiusM;
   return Math.max(2.2, hullR, armorR ? armorR * 0.72 : 0);
 }
@@ -888,7 +889,7 @@ export function botFriendlyFireRisk(
   const sp = shooter.state.pos;
   let dx = aimPoint.x - sp.x;
   let dz = aimPoint.z - sp.z;
-  const shotLen = Math.hypot(dx, dz);
+  const shotLen = detMath.hypot(dx, dz);
   if (shotLen < 4) return null;
   dx /= shotLen;
   dz /= shotLen;
@@ -934,8 +935,8 @@ function friendlyFireRiskForAlly(
     Math.max(0, initialAlong) / velocity,
   );
   const speed = ally.state.speed || 0;
-  const predictedX = position.x + Math.sin(ally.state.yaw || 0) * speed * travelS;
-  const predictedZ = position.z + Math.cos(ally.state.yaw || 0) * speed * travelS;
+  const predictedX = position.x + detMath.sin(ally.state.yaw || 0) * speed * travelS;
+  const predictedZ = position.z + detMath.cos(ally.state.yaw || 0) * speed * travelS;
   const pathX = predictedX - sourceX;
   const pathZ = predictedZ - sourceZ;
   const along = pathX * dirX + pathZ * dirZ;
@@ -947,7 +948,7 @@ function friendlyFireRiskForAlly(
     }
   }
   if (heRadius <= 0) return null;
-  const blastClearance = Math.hypot(
+  const blastClearance = detMath.hypot(
     predictedX - aimPoint.x,
     predictedZ - aimPoint.z,
   ) - radius - heRadius;
@@ -1215,7 +1216,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function vantageVetoed(cx: number, cz: number): boolean {
     for (let i = 0; i < vantageVeto.length; i++) {
       const v = vantageVeto[i];
-      if (nowS < v.untilS && Math.hypot(v.x - cx, v.z - cz) < 15) return true;
+      if (nowS < v.untilS && detMath.hypot(v.x - cx, v.z - cz) < 15) return true;
     }
     return false;
   }
@@ -1942,7 +1943,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     _vG.set(source.x, source.y + selfGunM, source.z);
     _vH.set(candidateX - _vG.x, candidateY - _vG.y, candidateZ - _vG.z);
     const distance = _vH.length();
-    let visible = withinGunArc(Math.atan2(_vH.y, Math.hypot(_vH.x, _vH.z) || 1e-6));
+    let visible = withinGunArc(detMath.atan2(_vH.y, detMath.hypot(_vH.x, _vH.z) || 1e-6));
     if (visible && distance > 1e-3) {
       _vH.multiplyScalar(1 / distance);
       const hit = deps.raycast(_vG, _vH, distance);
@@ -2095,7 +2096,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const targetPosition = target.state.pos;
     let lateralX = targetPosition.z - source.z;
     let lateralZ = -(targetPosition.x - source.x);
-    const lateralLength = Math.hypot(lateralX, lateralZ) || 1;
+    const lateralLength = detMath.hypot(lateralX, lateralZ) || 1;
     lateralX /= lateralLength;
     lateralZ /= lateralLength;
     const pose = tankPoseFromState(target.state);
@@ -2129,7 +2130,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const tp = target.state.pos;
     let ax = st.pos.x - tp.x, az = st.pos.z - tp.z;
-    const al = Math.hypot(ax, az) || 1;
+    const al = detMath.hypot(ax, az) || 1;
     ax /= al; az /= al;
     return findCrestAlong(ax, az, tp.x, eyeY(target), tp.z, out, full);
   }
@@ -2188,8 +2189,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let found = false;
     for (let offset = 0; offset < count; offset++) {
       const angle = baseAngle + (firstIndex + offset) * angleStep;
-      const candidateX = centerX + Math.sin(angle) * radius;
-      const candidateZ = centerZ + Math.cos(angle) * radius;
+      const candidateX = centerX + detMath.sin(angle) * radius;
+      const candidateZ = centerZ + detMath.cos(angle) * radius;
       if (vantageVetoed(candidateX, candidateZ)) continue;
       if (!reachableSpot(candidateX, candidateZ)) continue; // round 48 pacing: a vantage the hull can hold
       const candidateY = hf.getHeightAt(candidateX, candidateZ) + selfEyeM;
@@ -2212,7 +2213,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function findVantage(): boolean {
     const st = entity.state;
     const targetY = hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.5;
-    const bearing = Math.atan2(lastSeen.x - st.pos.x, lastSeen.z - st.pos.z) +
+    const bearing = detMath.atan2(lastSeen.x - st.pos.x, lastSeen.z - st.pos.z) +
       vantageBias;
     const nearRings = losBlockedT > 10 ? VANTAGE_WIDE_RINGS_M : VANTAGE_NEAR_RINGS_M;
     for (let i = 0; i < nearRings.length; i++) {
@@ -2235,8 +2236,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const tp = target.state.pos;
     const dx = st.pos.x - tp.x, dz = st.pos.z - tp.z;
-    const dist = Math.hypot(dx, dz) || 1;
-    const baseAng = Math.atan2(dx, dz);            // bearing target → self
+    const dist = detMath.hypot(dx, dz) || 1;
+    const baseAng = detMath.atan2(dx, dz);            // bearing target → self
     let preferred = rng() < 0.5 ? 1 : -1;
     // Round 60: a hull already off the nose prefers the side whose first ring point lies further round toward the
     // rear (the symmetric front case keeps the random side; the RNG draw above stays for stream stability).
@@ -2260,8 +2261,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         let score = 0;
         for (let i = 0; i < 3; i++) {
           const a = baseAng + side * (0.6 + 0.6 * i);
-          const x = tp.x + Math.sin(a) * radii[k];
-          const z = tp.z + Math.cos(a) * radii[k];
+          const x = tp.x + detMath.sin(a) * radii[k];
+          const z = tp.z + detMath.cos(a) * radii[k];
           if (Math.max(Math.abs(x), Math.abs(z)) <= 470 && reachableSpot(x, z)) score++;
         }
         if (score > bestScore) { bestScore = score; bestSide = side; bestR = radii[k]; }
@@ -2269,8 +2270,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     for (let i = 0; i < 3; i++) {
       const a = baseAng + bestSide * (0.6 + 0.6 * i);  // 34°, 69°, 103° around the target
-      flankPoints[i].x = clamp(tp.x + Math.sin(a) * bestR, -470, 470);
-      flankPoints[i].z = clamp(tp.z + Math.cos(a) * bestR, -470, 470);
+      flankPoints[i].x = clamp(tp.x + detMath.sin(a) * bestR, -470, 470);
+      flankPoints[i].z = clamp(tp.z + detMath.cos(a) * bestR, -470, 470);
     }
     flankIndex = 0;
     flankUntilS = timeS + FLANK_TIMEOUT_S;
@@ -2282,7 +2283,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!target) return 0;
     const st = entity.state;
     const tp = target.state.pos;
-    const bearing = Math.atan2(st.pos.x - tp.x, st.pos.z - tp.z);
+    const bearing = detMath.atan2(st.pos.x - tp.x, st.pos.z - tp.z);
     return Math.abs(wrapAngle(bearing - target.state.yaw));
   }
 
@@ -2292,7 +2293,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function avoidObstacles(input: AiInput): void {
     const st = entity.state;
     const look = 6 + Math.abs(st.speed) * 1.5;
-    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
+    const fx = detMath.sin(st.yaw), fz = detMath.cos(st.yaw);
     const px = st.pos.x + fx * look;
     const pz = st.pos.z + fz * look;
     const margin = spec.dims.widthM * 0.5 + 1.2;
@@ -2364,16 +2365,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const rx = ally.state.pos.x - st.pos.x;
     const rz = ally.state.pos.z - st.pos.z;
-    const distance = Math.hypot(rx, rz);
+    const distance = detMath.hypot(rx, rz);
     if (distance >= look) return bestScore;
     const along = rx * fx + rz * fz;
     const cross = fz * rx - fx * rz;
-    const allyFx = Math.sin(ally.state.yaw);
-    const allyFz = Math.cos(ally.state.yaw);
+    const allyFx = detMath.sin(ally.state.yaw);
+    const allyFz = detMath.cos(ally.state.yaw);
     const allyMotionSign = (ally.state.speed || 0) < -0.2 ? -1 : 1;
     const headingDot = fx * allyFx * allyMotionSign + fz * allyFz * allyMotionSign;
-    const rvx = allyFx * (ally.state.speed || 0) - Math.sin(st.yaw) * (st.speed || 0);
-    const rvz = allyFz * (ally.state.speed || 0) - Math.cos(st.yaw) * (st.speed || 0);
+    const rvx = allyFx * (ally.state.speed || 0) - detMath.sin(st.yaw) * (st.speed || 0);
+    const rvz = allyFz * (ally.state.speed || 0) - detMath.cos(st.yaw) * (st.speed || 0);
     const relativeSpeedSq = rvx * rvx + rvz * rvz;
     const closestT = relativeSpeedSq > 0.01
       ? clamp(-(rx * rvx + rz * rvz) / relativeSpeedSq, 0, FRIENDLY_SEPARATION_PREDICT_S)
@@ -2389,11 +2390,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const radialSafe = allyRisk.ownRadius + tankSafetyRadius(ally) * 0.74 + 1.4;
     const aheadRisk = along > -1 && along < look && Math.abs(cross) < laneSafe;
     const crossingRisk = closestT > 0 && predictedAlong > -longSafe &&
-      Math.hypot(predictedX, predictedZ) < radialSafe;
+      detMath.hypot(predictedX, predictedZ) < radialSafe;
     if (!aheadRisk && !crossingRisk) return bestScore;
     const score = Math.min(
       aheadRisk ? Math.max(0, along) : Infinity,
-      crossingRisk ? Math.hypot(predictedX, predictedZ) + closestT * 2 : Infinity,
+      crossingRisk ? detMath.hypot(predictedX, predictedZ) + closestT * 2 : Infinity,
     );
     if (score >= bestScore) return bestScore;
     allyRisk.ally = ally;
@@ -2413,8 +2414,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Braking/reversing input does not instantly reverse a moving hull.
     allyRisk.motionSign = Math.abs(st.speed) > 0.5
       ? Math.sign(st.speed) : input.throttle >= 0 ? 1 : -1;
-    const forwardX = Math.sin(st.yaw) * allyRisk.motionSign;
-    const forwardZ = Math.cos(st.yaw) * allyRisk.motionSign;
+    const forwardX = detMath.sin(st.yaw) * allyRisk.motionSign;
+    const forwardZ = detMath.cos(st.yaw) * allyRisk.motionSign;
     allyRisk.speed = Math.abs(st.speed || 0);
     allyRisk.stoppingDistance = allyRisk.speed * allyRisk.speed /
       (2 * FRIENDLY_STOP_DECEL_MPS2);
@@ -2467,8 +2468,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function aftCorridorClear(): boolean {
     const st = entity.state;
-    const backX = -Math.sin(st.yaw);
-    const backZ = -Math.cos(st.yaw);
+    const backX = -detMath.sin(st.yaw);
+    const backZ = -detMath.cos(st.yaw);
     for (let i = 0; i < allyRisk.friends.length; i++) {
       const other = allyRisk.friends[i];
       if (!other || other === entity || !other.state || other.modeActive === false ||
@@ -2493,9 +2494,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    */
   function allyTooCloseToPivot(best: AiEntity): boolean {
     const own = spec.dims, other = best.spec.dims;
-    const ownHalfDiagonal = Math.hypot((own.hullLengthM || own.lengthM || 6) * 0.5, (own.widthM || 3) * 0.5);
-    const allyHalfDiagonal = Math.hypot((other.hullLengthM || other.lengthM || 6) * 0.5, (other.widthM || 3) * 0.5);
-    const gap = Math.hypot(best.state.pos.x - entity.state.pos.x, best.state.pos.z - entity.state.pos.z);
+    const ownHalfDiagonal = detMath.hypot((own.hullLengthM || own.lengthM || 6) * 0.5, (own.widthM || 3) * 0.5);
+    const allyHalfDiagonal = detMath.hypot((other.hullLengthM || other.lengthM || 6) * 0.5, (other.widthM || 3) * 0.5);
+    const gap = detMath.hypot(best.state.pos.x - entity.state.pos.x, best.state.pos.z - entity.state.pos.z);
     return gap < ownHalfDiagonal + allyHalfDiagonal + 0.5;
   }
 
@@ -2557,11 +2558,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function trafficLegSafe(x: number, z: number, tx: number, tz: number): boolean {
-    const distance = Math.hypot(tx - x, tz - z);
-    const yaw = Math.atan2(tx - x, tz - z);
-    return !findBlockingObstacle(x, z, Math.sin(yaw), Math.cos(yaw), distance,
+    const distance = detMath.hypot(tx - x, tz - z);
+    const yaw = detMath.atan2(tx - x, tz - z);
+    return !findBlockingObstacle(x, z, detMath.sin(yaw), detMath.cos(yaw), distance,
       (spec.dims.widthM || 3) * .5 + 1) &&
-      Number.isFinite(terrainLineCost(x, z, terrainSafety.surfaceY(x, z), Math.sin(yaw), Math.cos(yaw))) &&
+      Number.isFinite(terrainLineCost(x, z, terrainSafety.surfaceY(x, z), detMath.sin(yaw), detMath.cos(yaw))) &&
       (!liquidSafe || liquidSafe(x, z, yaw, distance));
   }
 
@@ -2580,7 +2581,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         (!allyYielding || allyDeadlockT < 0.45 || allyTooCloseToPivot(best))) return false;
     const st = entity.state;
     let ux = best.state.pos.x - st.pos.x, uz = best.state.pos.z - st.pos.z;
-    const gap = Math.hypot(ux, uz) || 1;
+    const gap = detMath.hypot(ux, uz) || 1;
     ux /= gap; uz /= gap;
     const base = (spec.dims.widthM + best.spec.dims.widthM) * .5 + 5;
     const preferred = Math.sign(-allyRisk.cross || 1);
@@ -2609,12 +2610,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (timeS >= trafficDetourUntilS) return;
     const st = entity.state;
     let point = trafficDetourStage === 0 ? trafficNear : trafficFar;
-    if (Math.hypot(point.x - st.pos.x, point.z - st.pos.z) < 2) {
+    if (detMath.hypot(point.x - st.pos.x, point.z - st.pos.z) < 2) {
       if (trafficDetourStage === 1) { trafficDetourUntilS = -1; return; }
       trafficDetourStage = 1;
       point = trafficFar;
     }
-    const error = wrapAngle(Math.atan2(point.x - st.pos.x, point.z - st.pos.z) - st.yaw);
+    const error = wrapAngle(detMath.atan2(point.x - st.pos.x, point.z - st.pos.z) - st.yaw);
     input.steer = clamp(error * 2.2, -1, 1);
     input.throttle = Math.abs(error) < .45 ? .65 : 0;
     input.brake = Math.abs(error) >= .45 && Math.abs(st.speed) > .5;
@@ -2636,7 +2637,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateAllyHold(dt: number, timeS: number, held: boolean): void {
     const st = entity.state;
     if (allyHoldT > 0 && (timeS - allyHoldLastS > ALLY_HOLD_FORGET_S ||
-        Math.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
+        detMath.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
     const holding = held && driveIntent;
     if (holding) {
       if (allyHoldT === 0) {
@@ -2752,7 +2753,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     ux: number,
     uz: number,
   ): number {
-    if (liquidSafe && !liquidSafe(sx,sz,Math.atan2(ux,uz),TERRAIN_ROUTE_LOOK_M)) return Infinity;
+    if (liquidSafe && !liquidSafe(sx,sz,detMath.atan2(ux,uz),TERRAIN_ROUTE_LOOK_M)) return Infinity;
     let previousH = startH;
     let worstCost = 1;
     const debuff = entity.state._debuff;
@@ -2793,8 +2794,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let bestZ = 0;
     for (let index = 0; index < TERRAIN_ROUTE_FAN_RAD.length; index++) {
       const angle = TERRAIN_ROUTE_FAN_RAD[index];
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
+      const c = detMath.cos(angle);
+      const s = detMath.sin(angle);
       const ux = dirx * c + dirz * s;
       const uz = -dirx * s + dirz * c;
       if (liquidSafe && findBlockingObstacle(sx,sz,ux,uz,TERRAIN_ROUTE_LOOK_M,spec.dims.widthM*0.5+1.4)) continue;
@@ -2804,7 +2805,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const cz = sz + uz * TERRAIN_ROUTE_LOOK_M;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) continue;
       const side = Math.sign(angle) || 1;
-      const score = Math.hypot(goalX - cx, goalZ - cz) + (terrainCost - 1) * 7 +
+      const score = detMath.hypot(goalX - cx, goalZ - cz) + (terrainCost - 1) * 7 +
         Math.abs(angle) * 5 + (side === detourSide ? 0 : 8);
       if (score < bestScore) {
         bestScore = score;
@@ -2951,7 +2952,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    */
   function laneMeetsSolid(sx: number, sz: number, ex: number, ez: number, margin: number, skip: AiObstacle | null): boolean {
     let dx = ex - sx, dz = ez - sz;
-    const length = Math.hypot(dx, dz);
+    const length = detMath.hypot(dx, dz);
     if (length < 1e-6) return false;
     dx /= length; dz /= length;
     const candidates = solidsAround(Math.min(sx, ex) - margin, Math.min(sz, ez) - margin,
@@ -2995,7 +2996,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     margin: number,
   ): boolean {
       let ddx = endX - sourceX, ddz = endZ - sourceZ;
-      const len = Math.hypot(ddx, ddz) || 1e-9;
+      const len = detMath.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
       return rayCollisionClearanceEntry2(
         box as CollisionRecord,
@@ -3024,11 +3025,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     box: AiObstacle, sourceX: number, sourceZ: number, cx: number, cz: number, margin: number,
   ): boolean {
     if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) return false;
-    const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
+    const d1 = detMath.hypot(cx - sourceX, cz - sourceZ);
     if (d1 < 2) return false; // standing on this corner already
-    if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) return false;
+    if (liquidSafe && !liquidSafe(sourceX,sourceZ,detMath.atan2(cx-sourceX,cz-sourceZ),d1)) return false;
     if (nowS < lastCorner.untilS &&
-        Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) return false;
+        detMath.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) return false;
     return !routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin);
   }
 
@@ -3060,8 +3061,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         cx = px; cz = pz; cellClear = true;
       }
       if (!cornerOpen(box, sourceX, sourceZ, cx, cz, margin)) continue;
-      const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
-      const score = d1 + Math.hypot(goalX - cx, goalZ - cz) +
+      const d1 = detMath.hypot(cx - sourceX, cz - sourceZ);
+      const score = d1 + detMath.hypot(goalX - cx, goalZ - cz) +
         cornerBias(sourceX, sourceZ, directionX, directionZ, cx, cz);
       if (bestClear && score >= best) continue;
       const clear = !careful || (cellClear && !laneMeetsSolid(sourceX, sourceZ, cx, cz, margin * 0.85, box));
@@ -3088,7 +3089,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const sourceZ = st.pos.z;
     let directionX = gx - sourceX;
     let directionZ = gz - sourceZ;
-    const distance = Math.hypot(directionX, directionZ);
+    const distance = detMath.hypot(directionX, directionZ);
     routeOutcome = 'short';
     if (distance < 12) return;
     directionX /= distance;
@@ -3110,9 +3111,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       chooseRouteCorner(
         box, sourceX, sourceZ, gx, gz, directionX, directionZ, margin,
       );
-      if (routeActive && wasActive && Math.hypot(routeCorner.x - heldX, routeCorner.z - heldZ) > 1) {
+      if (routeActive && wasActive && detMath.hypot(routeCorner.x - heldX, routeCorner.z - heldZ) > 1) {
         const takesBack = nowS - routeCornerGivenUp.atS < ROUTE_CORNER_FLIP_S
-          && Math.hypot(routeCorner.x - routeCornerGivenUp.x, routeCorner.z - routeCornerGivenUp.z) < 1;
+          && detMath.hypot(routeCorner.x - routeCornerGivenUp.x, routeCorner.z - routeCornerGivenUp.z) < 1;
         if (takesBack && heldOpen) {
           // a flip: keep the corner the hull is on its way to
           routeCorner.x = heldX;
@@ -3162,7 +3163,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let bestScore = -Infinity, bx = 0, bz = 0;
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * TAU + scanPhase;
-      const ux = Math.sin(a), uz = Math.cos(a);
+      const ux = detMath.sin(a), uz = detMath.cos(a);
       // clear length against solid boxes (crushables are drive-through)
       let clear = 34;
       for (let i = 0; i < obstacles.length; i++) {
@@ -3245,13 +3246,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const planner = deps.planRoute;
     if (!planner) return null;
     const st = entity.state;
-    if (nowS - combatRouteAtS > 4 || Math.hypot(x - combatGoalX, z - combatGoalZ) > 35) {
+    if (nowS - combatRouteAtS > 4 || detMath.hypot(x - combatGoalX, z - combatGoalZ) > 35) {
       combatGoal.x = combatGoalX = x; combatGoal.z = combatGoalZ = z;
       combatRoute = planner(st.pos, combatGoal);
       combatRouteIndex = 0; combatRouteAtS = nowS;
     }
     while (combatRouteIndex < combatRoute.length - 1 &&
-        Math.hypot(combatRoute[combatRouteIndex][0] - st.pos.x, combatRoute[combatRouteIndex][1] - st.pos.z) < 7) combatRouteIndex++;
+        detMath.hypot(combatRoute[combatRouteIndex][0] - st.pos.x, combatRoute[combatRouteIndex][1] - st.pos.z) < 7) combatRouteIndex++;
     return combatRoute[combatRouteIndex] ?? null;
   }
 
@@ -3271,7 +3272,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     driveGoalX = x; driveGoalZ = z; driveGoalAtS = nowS;
     let dx = x - st.pos.x, dz = z - st.pos.z;
-    let dist = Math.hypot(dx, dz);
+    let dist = detMath.hypot(dx, dz);
     if (dist < ARRIVE_DIST_M) {
       // an arrival holds the hull on purpose: no drive intent, or the low-speed watchdog read every hold at a
       // destination as a wedge and reversed the hull off it (a zone holder jiggled on its line every 4-5 s)
@@ -3300,7 +3301,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (routeActive) {
       const cdx = routeCorner.x - st.pos.x;
       const cdz = routeCorner.z - st.pos.z;
-      if (Math.hypot(cdx, cdz) < 4.5) {
+      if (detMath.hypot(cdx, cdz) < 4.5) {
         // corner reached — veto it briefly and replan (next hop or straight)
         lastCorner.x = routeCorner.x;
         lastCorner.z = routeCorner.z;
@@ -3313,7 +3314,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         z = routeCorner.z;
         dx = cdx;
         dz = cdz;
-        dist = Math.hypot(dx, dz);
+        dist = detMath.hypot(dx, dz);
       }
     } else if (nowS < detourUntilS && dist > 25) {
       // Blocked-route detour (see detourUntilS): steer for a point offset
@@ -3323,10 +3324,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       x += px * 55 * detourSide;
       z += pz * 55 * detourSide;
       dx = x - st.pos.x; dz = z - st.pos.z;
-      dist = Math.hypot(dx, dz);
+      dist = detMath.hypot(dx, dz);
     }
     steerGoalX = x; steerGoalZ = z;
-    const bearing = Math.atan2(dx, dz);
+    const bearing = detMath.atan2(dx, dz);
     const err = wrapAngle(bearing - st.yaw);
     input.steer = clamp(err * 2.2, -1, 1);
     input.brake = false;
@@ -3378,7 +3379,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let chaseUntilS = -1;
   function chaseToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     if (nowS >= chaseUntilS ||
-        Math.hypot(x - chasePoint.x, z - chasePoint.z) > CHASE_REPICK_DIST_M) {
+        detMath.hypot(x - chasePoint.x, z - chasePoint.z) > CHASE_REPICK_DIST_M) {
       chasePoint.x = x;
       chasePoint.z = z;
       chaseUntilS = nowS + CHASE_COMMIT_MIN_S + rng() * CHASE_COMMIT_VAR_S;
@@ -3404,7 +3405,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function driveOnLine(input: AiInput, x: number, z: number, facing: number, throttle: number): boolean {
     const st = entity.state;
     const dx = x - st.pos.x, dz = z - st.pos.z;
-    const ahead = dx * Math.sin(facing) + dz * Math.cos(facing);
+    const ahead = dx * detMath.sin(facing) + dz * detMath.cos(facing);
     if (dx * dx + dz * dz < 16 || ahead * throttle <= 0) return true;
     if (throttle < 0) {
       reverseFacing(input, facing, throttle);
@@ -3421,15 +3422,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const bearing = targetBearing();
     const dx = x - st.pos.x, dz = z - st.pos.z;
-    const length = Math.hypot(dx, dz);
-    return length > 1e-3 && -(dx * Math.sin(bearing) + dz * Math.cos(bearing)) / length > Math.SQRT1_2;
+    const length = detMath.hypot(dx, dz);
+    return length > 1e-3 && -(dx * detMath.sin(bearing) + dz * detMath.cos(bearing)) / length > Math.SQRT1_2;
   }
 
   /** The bearing to the target (the hull's own heading without one). */
   function targetBearing(): number {
     const st = entity.state;
     return target && target.state
-      ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
+      ? detMath.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
       : st.yaw;
   }
 
@@ -3457,8 +3458,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < 4; i++) {
       const a = a0 + (i / 4) * TAU + (rng() - 0.5) * 0.5;
       waypoints.push({
-        x: clamp(st.pos.x + Math.sin(a) * r, -500, 500),
-        z: clamp(st.pos.z + Math.cos(a) * r, -500, 500),
+        x: clamp(st.pos.x + detMath.sin(a) * r, -500, 500),
+        z: clamp(st.pos.z + detMath.cos(a) * r, -500, 500),
       });
     }
     wpIndex = 0;
@@ -3499,7 +3500,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function driveFallback(input: AiInput, navX: number, navZ: number): void {
     const st = entity.state;
     if (fallbackReverse) {
-      reverseFacing(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z), -0.75);
+      reverseFacing(input, detMath.atan2(navX - st.pos.x, navZ - st.pos.z), -0.75);
       return;
     }
     driveToXZ(input, fallbackPoint.x, fallbackPoint.z, 1.0);
@@ -3528,9 +3529,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const qx = Math.round(cx / count / 50) * 50;
     const qz = Math.round(cz / count / 50) * 50;
-    const bearing = Math.atan2(qx - st.pos.x, qz - st.pos.z) + (rng() - 0.5) * 0.6;
-    vantage.x = st.pos.x + Math.sin(bearing) * 90;
-    vantage.z = st.pos.z + Math.cos(bearing) * 90;
+    const bearing = detMath.atan2(qx - st.pos.x, qz - st.pos.z) + (rng() - 0.5) * 0.6;
+    vantage.x = st.pos.x + detMath.sin(bearing) * 90;
+    vantage.z = st.pos.z + detMath.cos(bearing) * 90;
     hasVantage = true;
   }
 
@@ -3606,7 +3607,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function faceNavigationTarget(input: AiInput, navX: number, navZ: number): void {
     const st = entity.state;
-    faceYaw(input, Math.atan2(navX - st.pos.x, navZ - st.pos.z));
+    faceYaw(input, detMath.atan2(navX - st.pos.x, navZ - st.pos.z));
   }
 
   function driveToEngagementEnvelope(
@@ -3629,7 +3630,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const lateralX = navZ - st.pos.z;
     const lateralZ = -(navX - st.pos.x);
-    const length = Math.hypot(lateralX, lateralZ) || 1;
+    const length = detMath.hypot(lateralX, lateralZ) || 1;
     chaseToXZ(input, navX + (lateralX / length) * 48 * angleSide,
       navZ + (lateralZ / length) * 48 * angleSide, 0.7);
   }
@@ -3678,7 +3679,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     navZ: number,
   ): void {
     const st = entity.state;
-    const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
+    const bearing = detMath.atan2(navX - st.pos.x, navZ - st.pos.z);
     const reload = entity.combat && entity.combat.reload;
     const modules = entity.combat && entity.combat.modules;
     const gunOut = mainWeaponModuleState(entity.combat) === 'red';
@@ -3697,8 +3698,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (ramming && target) {
       const dx = navX - st.pos.x;
       const dz = navZ - st.pos.z;
-      const dist = Math.hypot(dx, dz) || 1;
-      const bearing = Math.atan2(dx, dz);
+      const dist = detMath.hypot(dx, dz) || 1;
+      const bearing = detMath.atan2(dx, dz);
       // a run that has stalled against the hull (no closing speed left) backs off for the next run-up
       if (timeS >= ramBackoffUntilS && dist < 12 && Math.abs(st.speed) < 2.5) ramBackoffUntilS = timeS + 3.5;
       if (timeS < ramBackoffUntilS && dist < RAM_RUN_UP_M) {
@@ -3741,9 +3742,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     const ex = enemy.state.pos.x - st.pos.x;
     const ez = enemy.state.pos.z - st.pos.z;
-    const dist = Math.hypot(ex, ez) || 1;
+    const dist = detMath.hypot(ex, ez) || 1;
     if (dist >= EMPTY_RETIRE_M) {
-      faceYaw(input, Math.atan2(ex, ez)); // keep the enemy lit for the team from here
+      faceYaw(input, detMath.atan2(ex, ez)); // keep the enemy lit for the team from here
       return;
     }
     const support = nearestSupport();
@@ -3820,7 +3821,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     const point = order!.point;
     if ((posture === 'capture' || posture === 'support') && point) {
-      if (Math.hypot(point.x - entity.state.pos.x, point.z - entity.state.pos.z) < ARRIVE_DIST_M) return false;
+      if (detMath.hypot(point.x - entity.state.pos.x, point.z - entity.state.pos.z) < ARRIVE_DIST_M) return false;
       setWaypoints([[point.x, point.z]], { loop: false });
       const waypoint = waypoints[wpIndex];
       if (!waypoint) return false;
@@ -3859,7 +3860,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (near < 2) { guardT = 0; return false; }
     const st = entity.state;
     const tp = target.state.pos;
-    const myD = Math.hypot(tp.x - st.pos.x, tp.z - st.pos.z);
+    const myD = detMath.hypot(tp.x - st.pos.x, tp.z - st.pos.z);
     const friends = getAllies();
     for (let i = 0; i < friends.length; i++) {
       const f = friends[i];
@@ -3867,7 +3868,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const dx = f.state.pos.x - st.pos.x;
       const dz = f.state.pos.z - st.pos.z;
       if (dx * dx + dz * dz < 170 * 170) { guardT = 0; return false; }
-      const fd = Math.hypot(tp.x - f.state.pos.x, tp.z - f.state.pos.z);
+      const fd = detMath.hypot(tp.x - f.state.pos.x, tp.z - f.state.pos.z);
       if (fd < myD + 40) { guardT = 0; return false; } // line abreast = support
     }
     const step = nowS - guardLastS;
@@ -3911,11 +3912,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         if (d2 < nd2) { nd2 = d2; nearest = e; }
       }
       if (nearest && nd2 < SCOUT_KITE_M * SCOUT_KITE_M) {
-        const away = Math.atan2(st.pos.x - nearest.state.pos.x,
+        const away = detMath.atan2(st.pos.x - nearest.state.pos.x,
           st.pos.z - nearest.state.pos.z);
         const esc = away + orbitSide * 0.7;
-        kitePoint.x = st.pos.x + Math.sin(esc) * 150;
-        kitePoint.z = st.pos.z + Math.cos(esc) * 150;
+        kitePoint.x = st.pos.x + detMath.sin(esc) * 150;
+        kitePoint.z = st.pos.z + detMath.cos(esc) * 150;
         kiteUntilS = timeS + 5;
       }
     }
@@ -3928,11 +3929,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       orbitFlipS = timeS + 9 + rng() * 6;
     }
     const holdR = roleHoldR();
-    const bearing = Math.atan2(navX - st.pos.x, navZ - st.pos.z);
+    const bearing = detMath.atan2(navX - st.pos.x, navZ - st.pos.z);
     // tangential orbit with a spiral bias: >90° off the bearing when inside
     // the band (opens distance), <90° when outside (closes it)
     const orb = bearing + orbitSide * (Math.PI / 2) * (dist < holdR ? 1.2 : 0.8);
-    driveToXZ(input, st.pos.x + Math.sin(orb) * 60, st.pos.z + Math.cos(orb) * 60, 0.95);
+    driveToXZ(input, st.pos.x + detMath.sin(orb) * 60, st.pos.z + detMath.cos(orb) * 60, 0.95);
   }
 
   /**
@@ -3953,13 +3954,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let k = 0; k < 8; k++) {
       const angle = (k / 8) * TAU;
       // no cell along the travel a dead leg tried (see LEG_DEAD_M)
-      if (travelBlocked(Math.sin(angle), Math.cos(angle))) continue;
-      const candidateX = st.pos.x + Math.sin(angle) * radius;
-      const candidateZ = st.pos.z + Math.cos(angle) * radius;
+      if (travelBlocked(detMath.sin(angle), detMath.cos(angle))) continue;
+      const candidateX = st.pos.x + detMath.sin(angle) * radius;
+      const candidateZ = st.pos.z + detMath.cos(angle) * radius;
       if (Math.max(Math.abs(candidateX), Math.abs(candidateZ)) > 470) continue;
       const normal = hf.getNormalAt ? hf.getNormalAt(candidateX, candidateZ) : null;
       const normalX = normal?.x ?? 0, normalZ = normal?.z ?? 0;
-      const normalLength = normal ? Math.hypot(normalX, normal.y, normalZ) : 1;
+      const normalLength = normal ? detMath.hypot(normalX, normal.y, normalZ) : 1;
       const normalY = normal ? normal.y : 1;
       if (normalY < 0.94) continue;
       const candidateY = hf.getHeightAt(candidateX, candidateZ) + selfEyeM;
@@ -3973,10 +3974,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let reach = true;
       if (normal && normalLength > 1e-6) {
         const dx = targetX - candidateX, dy = targetY - candidateY, dz = targetZ - candidateZ;
-        const distance = Math.hypot(dx, dy, dz);
+        const distance = detMath.hypot(dx, dy, dz);
         if (distance > 1e-6) {
           const along = (dx * normalX + dy * normal.y + dz * normalZ) / (distance * normalLength);
-          reach = withinGunArc(Math.asin(clamp(along, -1, 1)));
+          reach = withinGunArc(detMath.asin(clamp(along, -1, 1)));
         }
       }
       const score = (hasSight ? 100 : 0) + (reach ? 100 : 0) + normalY * 10 - radius * 0.1;
@@ -4049,8 +4050,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const first = lineScootUp ? 1 : -1;
     for (const direction of [first, -first]) {
       for (const distance of [CASEMATE_SCOOT_M, CASEMATE_SCOOT_M * 0.5]) {
-        const cx = st.pos.x + Math.sin(bearing) * distance * direction;
-        const cz = st.pos.z + Math.cos(bearing) * distance * direction;
+        const cx = st.pos.x + detMath.sin(bearing) * distance * direction;
+        const cz = st.pos.z + detMath.cos(bearing) * distance * direction;
         if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
         if (!reachableSpot(cx, cz) || !legDrivable(st.pos.x, st.pos.z, cx, cz)) continue;
         scootPoint.x = cx;
@@ -4071,7 +4072,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function pickScoot(): boolean {
     const st = entity.state;
     const tb = target && target.state
-      ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
+      ? detMath.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
       : st.yaw;
     const ty = hf.getHeightAt(lastSeen.x, lastSeen.z) + 1.5;
     let fx = 0, fz = 0, found = false;
@@ -4079,8 +4080,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // ±(94°..152°) off the contact bearing — sideways-to-rear arcs
       const a = tb + (k % 2 ? -1 : 1) * (1.65 + 0.5 * ((k / 2) | 0));
       const r = 45 + rng() * 40;
-      const cx = st.pos.x + Math.sin(a) * r;
-      const cz = st.pos.z + Math.cos(a) * r;
+      const cx = st.pos.x + detMath.sin(a) * r;
+      const cz = st.pos.z + detMath.cos(a) * r;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
       if (!reachableSpot(cx, cz)) continue; // round 48 pacing: no scoot onto a ridge flank
       const cy = hf.getHeightAt(cx, cz) + selfEyeM;
@@ -4104,7 +4105,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (!friend || !friend.state) continue;
       clearance = Math.min(
         clearance,
-        Math.hypot(friend.state.pos.x - x, friend.state.pos.z - z),
+        detMath.hypot(friend.state.pos.x - x, friend.state.pos.z - z),
       );
     }
     return clearance;
@@ -4146,7 +4147,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const targetPosition = target.state.pos;
     let directionX = targetPosition.x - st.pos.x;
     let directionZ = targetPosition.z - st.pos.z;
-    const distance = Math.hypot(directionX, directionZ) || 1;
+    const distance = detMath.hypot(directionX, directionZ) || 1;
     directionX /= distance;
     directionZ /= distance;
     const friends = getAllies ? getAllies() : [];
@@ -4188,9 +4189,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function setIdleScan(input: AiInput, timeS: number): void {
     const state = entity.state;
-    const scanYaw = state.yaw + Math.sin(timeS * 0.3 + scanPhase) * 0.9;
-    const scanX = state.pos.x + Math.sin(scanYaw) * 160;
-    const scanZ = state.pos.z + Math.cos(scanYaw) * 160;
+    const scanYaw = state.yaw + detMath.sin(timeS * 0.3 + scanPhase) * 0.9;
+    const scanX = state.pos.x + detMath.sin(scanYaw) * 160;
+    const scanZ = state.pos.z + detMath.cos(scanYaw) * 160;
     input.aimPoint.set(scanX, hf.getHeightAt(scanX, scanZ) + selfEyeM, scanZ);
     input.fire = false;
   }
@@ -4219,7 +4220,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const eyeZ = self.pos.z;
     aimLateralX = targetPosition.z - eyeZ;
     aimLateralZ = -(targetPosition.x - eyeX);
-    const lateralLength = Math.hypot(aimLateralX, aimLateralZ) || 1;
+    const lateralLength = detMath.hypot(aimLateralX, aimLateralZ) || 1;
     aimLateralX /= lateralLength;
     aimLateralZ /= lateralLength;
     _vC.set(
@@ -4227,8 +4228,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       targetPosition.y + aimHFrac * height,
       targetPosition.z + aimLateralZ * aimLatFrac * width,
     );
-    const velocityX = Math.sin(targetState.yaw) * targetState.speed;
-    const velocityZ = Math.cos(targetState.yaw) * targetState.speed;
+    const velocityX = detMath.sin(targetState.yaw) * targetState.speed;
+    const velocityZ = detMath.cos(targetState.yaw) * targetState.speed;
     _vC.x -= velocityX * targetTrackLagS;
     _vC.z -= velocityZ * targetTrackLagS;
     _vD.copy(_vC);
@@ -4318,18 +4319,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const dx = input.aimPoint.x - state.pos.x;
     const dy = input.aimPoint.y - gunY;
     const dz = input.aimPoint.z - state.pos.z;
-    const horizontal = Math.hypot(dx, dz) || 1e-6;
-    const desiredYaw = Math.atan2(dx, dz);
-    const desiredPitch = Math.atan2(dy, horizontal);
+    const horizontal = detMath.hypot(dx, dz) || 1e-6;
+    const desiredYaw = detMath.atan2(dx, dz);
+    const desiredPitch = detMath.atan2(dy, horizontal);
     _hullEuler.set(-(state.visualPitch || 0), state.yaw, state.visualRoll || 0, 'YXZ');
     _hullQuat.setFromEuler(_hullEuler);
     _vF.set(
-      Math.sin(state.turretYaw) * Math.cos(state.gunPitch),
-      Math.sin(state.gunPitch),
-      Math.cos(state.turretYaw) * Math.cos(state.gunPitch),
+      detMath.sin(state.turretYaw) * detMath.cos(state.gunPitch),
+      detMath.sin(state.gunPitch),
+      detMath.cos(state.turretYaw) * detMath.cos(state.gunPitch),
     ).applyQuaternion(_hullQuat).normalize();
-    const gunYaw = Math.atan2(_vF.x, _vF.z);
-    const gunPitch = Math.atan2(_vF.y, Math.hypot(_vF.x, _vF.z));
+    const gunYaw = detMath.atan2(_vF.x, _vF.z);
+    const gunPitch = detMath.atan2(_vF.y, detMath.hypot(_vF.x, _vF.z));
     fireGate.yawError = Math.abs(wrapAngle(desiredYaw - gunYaw));
     fireGate.pitchError = Math.abs(desiredPitch - gunPitch);
     fireGate.distance = distance;
@@ -4361,7 +4362,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateAlignment(input: AiInput, dt: number, timeS: number, distance: number): void {
     calculateGunAlignment(input, distance);
     const width = target?.spec.dims.widthM ?? 0;
-    const tolerance = Math.max(0.0015, Math.atan2(width * 0.3, distance));
+    const tolerance = Math.max(0.0015, detMath.atan2(width * 0.3, distance));
     const pitchTolerance = updateArcLimit(dt, timeS, tolerance);
     fireGate.aligned = fireGate.yawError < tolerance
       && fireGate.pitchError < pitchTolerance;
@@ -4452,7 +4453,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!target || distance < 1) return 1;
     const m = tier.aimErrMult;
     const sigmaTierRad = ((spec.gun.baseAccuracy / 2) / 100) * Math.sqrt(Math.max(0, m * m - 1));
-    const sigmaM = Math.hypot(sigmaTierRad * distance,
+    const sigmaM = detMath.hypot(sigmaTierRad * distance,
       computeDispersionRadM(spec, entity.state, distance) * 0.5); // the reticle radius is 2σ
     if (sigmaM < 1e-3) return 1;
     const dims = target.spec.dims;
@@ -4515,19 +4516,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.aimPoint.set(ball.x, ball.y, ball.z);
     input.fire = false;
     if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
-    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = Math.hypot(dx, dz) || 1;
+    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = detMath.hypot(dx, dz) || 1;
     _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
     _hullQuat.setFromEuler(_hullEuler);
-    _vF.set(Math.sin(st.turretYaw) * Math.cos(st.gunPitch), Math.sin(st.gunPitch), Math.cos(st.turretYaw) * Math.cos(st.gunPitch))
+    _vF.set(detMath.sin(st.turretYaw) * detMath.cos(st.gunPitch), detMath.sin(st.gunPitch), detMath.cos(st.turretYaw) * detMath.cos(st.gunPitch))
       .applyQuaternion(_hullQuat).normalize();
-    if (Math.abs(wrapAngle(Math.atan2(dx, dz) - Math.atan2(_vF.x, _vF.z))) > BALL_SHOT.bearRad) return true;
+    if (Math.abs(wrapAngle(detMath.atan2(dx, dz) - detMath.atan2(_vF.x, _vF.z))) > BALL_SHOT.bearRad) return true;
     if (!hasLos(st.pos.x, st.pos.y + selfEyeM, st.pos.z, ball.x, ball.y, ball.z)) return true;
     const friends = getAllies ? getAllies() : [];
     for (let i = 0; i < friends.length; i++) {
       const f = friends[i]!.state.pos;
       const along = clamp(((f.x - st.pos.x) * dx + (f.z - st.pos.z) * dz) / (distance * distance), 0, 1);
-      const off = Math.hypot(st.pos.x + dx * along - f.x, st.pos.z + dz * along - f.z);
-      if (off < BALL_SHOT.clearM || Math.hypot(f.x - ball.x, f.z - ball.z) < BALL_SHOT.clearM * BALL_SHOT.clearBallScale) return true;
+      const off = detMath.hypot(st.pos.x + dx * along - f.x, st.pos.z + dz * along - f.z);
+      if (off < BALL_SHOT.clearM || detMath.hypot(f.x - ball.x, f.z - ball.z) < BALL_SHOT.clearM * BALL_SHOT.clearBallScale) return true;
     }
     input.fire = true;
     lastFiredAtS = timeS;
@@ -4672,7 +4673,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const aimPoint = entity.input.aimPoint;
     const yawPinned = st.atGunLimit && aimPoint && Math.abs(wrapAngle(
-      Math.atan2(aimPoint.x - st.pos.x, aimPoint.z - st.pos.z) -
+      detMath.atan2(aimPoint.x - st.pos.x, aimPoint.z - st.pos.z) -
       st.yaw - st.turretYaw,
     )) > 0.02;
     // (perf-249) nor does a rack with nothing that can hurt the target back up for depression (updateArcLimit's rule): it
@@ -4685,7 +4686,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (gunLimitT <= GUN_LIMIT_NUDGE_S || timeS < nudgeUntilS) return;
     gunLimitT = 0;
     // no back-up while the arc limit's leg runs, nor into a face that stopped the last leg (see LEG_DEAD_M)
-    const backX = -Math.sin(st.yaw), backZ = -Math.cos(st.yaw);
+    const backX = -detMath.sin(st.yaw), backZ = -detMath.cos(st.yaw);
     if ((arcScoot && timeS < scootUntilS) || travelBlocked(backX, backZ)) return;
     nudgeUntilS = timeS + 1.2;
     beginLeg(1, backX, backZ);
@@ -4871,11 +4872,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // 'sweep' / 'wide': a ring round the enemy's sector; the first bearing faces the hull, the next ones
     // alternate sides further round (0, +45°, -45°, +90°, …) so consecutive legs look from different sides
     const radius = kind === 'wide' ? SEARCH_WIDE_RING_M : SEARCH_SWEEP_RING_M;
-    const base = Math.atan2(position.x - enemy.state.pos.x, position.z - enemy.state.pos.z);
+    const base = detMath.atan2(position.x - enemy.state.pos.x, position.z - enemy.state.pos.z);
     const k = searchSweepIndex++;
     const angle = base + Math.ceil(k / 2) * (TAU / 8) * (k % 2 ? 1 : -1);
-    out.x = clamp(enemy.state.pos.x + Math.sin(angle) * radius, -470, 470);
-    out.z = clamp(enemy.state.pos.z + Math.cos(angle) * radius, -470, 470);
+    out.x = clamp(enemy.state.pos.x + detMath.sin(angle) * radius, -470, 470);
+    out.z = clamp(enemy.state.pos.z + detMath.cos(angle) * radius, -470, 470);
     return !hf.getNormalAt || hf.getNormalAt(out.x, out.z).y >= SPOT_NORMAL_Y_MIN;
   }
 
@@ -4895,7 +4896,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     searchLegs++;
     searchLegStartS = timeS;
     searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / SEARCH_LEG_SPEED_MPS, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
-    searchLegStartDistM = Math.hypot(goalX - entity.state.pos.x, goalZ - entity.state.pos.z);
+    searchLegStartDistM = detMath.hypot(goalX - entity.state.pos.x, goalZ - entity.state.pos.z);
     searchStrikesAtStart = strikeEvents;
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S;
@@ -4912,19 +4913,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < order.length; i++) {
       const kind = order[i];
       if (!searchCandidateGoal(kind, enemy, goal)) continue;
-      let routeLength = Math.hypot(goal.x - position.x, goal.z - position.z);
+      let routeLength = detMath.hypot(goal.x - position.x, goal.z - position.z);
       if (routeLength < SEARCH_GOAL_ARRIVE_M) continue;
       if (deps.planRoute) {
         const route = deps.planRoute(position, goal);
         if (!route.length) continue; // another connected component: not a goal
         const end = route[route.length - 1];
-        if (kind !== 'wide' && Math.hypot(end[0] - goal.x, end[1] - goal.z) > SEARCH_PROJECTION_M) continue;
+        if (kind !== 'wide' && detMath.hypot(end[0] - goal.x, end[1] - goal.z) > SEARCH_PROJECTION_M) continue;
         setSearchWaypoints(route);
         routeLength = 0;
         let previousX = position.x;
         let previousZ = position.z;
         for (let p = 0; p < route.length; p++) {
-          routeLength += Math.hypot(route[p][0] - previousX, route[p][1] - previousZ);
+          routeLength += detMath.hypot(route[p][0] - previousX, route[p][1] - previousZ);
           previousX = route[p][0];
           previousZ = route[p][1];
         }
@@ -4942,7 +4943,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // nothing plans from here (a courtyard the 25 m grid reads as solid): the local router gets the old leg
     routeTowardEnemySector(enemy);
     const sector = waypoints[waypoints.length - 1];
-    startSearchLeg('direct', sector.x, sector.z, Math.hypot(sector.x - position.x, sector.z - position.z), timeS);
+    startSearchLeg('direct', sector.x, sector.z, detMath.hypot(sector.x - position.x, sector.z - position.z), timeS);
   }
 
   function updateSearchLeg(enemy: AiEntity, timeS: number): void {
@@ -4952,16 +4953,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     const last = waypoints.length ? waypoints[waypoints.length - 1] : null;
     const consumed = !last || (wpIndex >= waypoints.length - 1
-      && Math.hypot(last.x - position.x, last.z - position.z) < ARRIVE_DIST_M * 2);
+      && detMath.hypot(last.x - position.x, last.z - position.z) < ARRIVE_DIST_M * 2);
     const stuck = strikeEvents - searchStrikesAtStart >= SEARCH_LEG_STRIKES;
     const overBudget = timeS - searchLegStartS > searchLegBudgetS;
     const enemyMoved = searchKind === 'sector'
-      && Math.hypot(enemy.state.pos.x - searchGoal.x, enemy.state.pos.z - searchGoal.z) > 120;
+      && detMath.hypot(enemy.state.pos.x - searchGoal.x, enemy.state.pos.z - searchGoal.z) > 120;
     if (!consumed && !stuck && !overBudget && !enemyMoved) return;
     // a leg that ran out of time but halved its distance to the goal is progress, not a failure: it is
     // re-planned from here toward the same goals rather than rotated away from them
     const progressed = overBudget && !stuck && !consumed
-      && Math.hypot(searchGoal.x - position.x, searchGoal.z - position.z) < searchLegStartDistM * 0.5;
+      && detMath.hypot(searchGoal.x - position.x, searchGoal.z - position.z) < searchLegStartDistM * 0.5;
     if ((consumed || stuck || overBudget) && !progressed) searchFailures++; // the leg ended without contact
     beginSearchLeg(enemy, timeS);
   }
@@ -5018,7 +5019,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function currentTargetDistance(): number {
     if (!target) return Infinity;
     const position = entity.state.pos;
-    return Math.hypot(
+    return detMath.hypot(
       target.state.pos.x - position.x,
       target.state.pos.z - position.z,
     );
@@ -5039,7 +5040,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /** A back-up (kind 1) or a scoot leg (kind 2) begins here, trying the travel (dx, dz) (see LEG_DEAD_M). */
   function beginLeg(kind: number, dx: number, dz: number): void {
     const st = entity.state;
-    const length = Math.hypot(dx, dz);
+    const length = detMath.hypot(dx, dz);
     legKind = kind;
     leg.x = st.pos.x;
     leg.z = st.pos.z;
@@ -5077,7 +5078,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const kind = legKind;
     legKind = 0;
-    if (Math.hypot(st.pos.x - leg.x, st.pos.z - leg.z) >= LEG_DEAD_M
+    if (detMath.hypot(st.pos.x - leg.x, st.pos.z - leg.z) >= LEG_DEAD_M
       || Math.abs(wrapAngle(st.yaw - leg.yaw)) >= LEG_DEAD_TURN_RAD) return;
     deadLegs++;
     stuckStrikes++;
@@ -5095,7 +5096,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const reloadTime = combat?.reload?.t ?? 0;
     if (reloadTime > prevReloadT + 1) {
       const position = entity.state.pos;
-      if (Math.hypot(position.x - spotPos.x, position.z - spotPos.z) > 22) {
+      if (detMath.hypot(position.x - spotPos.x, position.z - spotPos.z) > 22) {
         spotPos.x = position.x;
         spotPos.z = position.z;
         shotsFromSpot = 0;
@@ -5103,7 +5104,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       shotsFromSpot++;
       if (target) { // a round left the gun at the target: it counts against this spot until a hit reports back
         if (target.id !== missStreakTargetId
-            || Math.hypot(position.x - missSpot.x, position.z - missSpot.z) > MISS_SPOT_M) {
+            || detMath.hypot(position.x - missSpot.x, position.z - missSpot.z) > MISS_SPOT_M) {
           missStreakTargetId = target.id;
           missStreak = 0;
           missSpot.x = position.x;
@@ -5184,7 +5185,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     let awayX = position.x - opponent.state.pos.x;
     let awayZ = position.z - opponent.state.pos.z;
-    const length = Math.hypot(awayX, awayZ) || 1;
+    const length = detMath.hypot(awayX, awayZ) || 1;
     awayX /= length;
     awayZ /= length;
     fallbackPoint.x = clamp(position.x + awayX * 75, -470, 470);
@@ -5196,7 +5197,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     fallbackPoint.x = support.state.pos.x;
     fallbackPoint.z = support.state.pos.z;
-    const supportYaw = Math.atan2(
+    const supportYaw = detMath.atan2(
       fallbackPoint.x - position.x,
       fallbackPoint.z - position.z,
     );
@@ -5344,7 +5345,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (const friend of getAllies()) {
       if (!friend || friend === entity || friend.modeActive === false || friend.combat?.destroyed) continue;
       const ctl = (friend as ControllerOwnedEntity).aiCtl ?? (friend as ControllerOwnedEntity).ai;
-      if (ctl?.targetId !== target.id || Math.hypot(friend.state.pos.x - entity.state.pos.x, friend.state.pos.z - entity.state.pos.z) > 220) continue;
+      if (ctl?.targetId !== target.id || detMath.hypot(friend.state.pos.x - entity.state.pos.x, friend.state.pos.z - entity.state.pos.z) > 220) continue;
       partners++;
       if (ctl.state === 'flank') alreadyFlanking = true;
       if ((friend.combat?.hp ?? 1) / (friend.combat?.maxHp ?? 1) < .45) continue;
@@ -5361,7 +5362,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos, other = candidate.state.pos;
     const rise = other.y - position.y;
     if (Math.abs(rise) < ELEVATION_LEVEL_M) return false;
-    return !withinGunArc(Math.atan2(rise, Math.max(1, Math.hypot(other.x - position.x, other.z - position.z))));
+    return !withinGunArc(detMath.atan2(rise, Math.max(1, detMath.hypot(other.x - position.x, other.z - position.z))));
   }
 
   function endLevelRoute(): void {
@@ -5388,7 +5389,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!route.length) return false;
     let length = 0, previousX = position.x, previousZ = position.z;
     for (let i = 0; i < route.length; i++) {
-      length += Math.hypot(route[i][0] - previousX, route[i][1] - previousZ);
+      length += detMath.hypot(route[i][0] - previousX, route[i][1] - previousZ);
       previousX = route[i][0];
       previousZ = route[i][1];
     }
@@ -5423,7 +5424,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       const last = waypoints[waypoints.length - 1];
       const usedUp = !last || (wpIndex >= waypoints.length - 1
-        && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+        && detMath.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
       if (usedUp || timeS >= levelRouteUntilS || strikeEvents - levelRouteStrikes >= LEVEL_ROUTE_STRIKES) {
         endLevelRoute();
         // arrived on its level, the ordinary engagement takes over; short of it, the target is left alone
@@ -5524,7 +5525,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const tp = target.state.pos;
     const gunY = hf.getHeightAt(x, z) + selfGunM;
     const hullY = tp.y + target.spec.dims.heightM * PASSIVE_PRESS_LANE_HULL_FRAC;
-    return withinGunArc(Math.atan2(hullY - gunY, distance)) && hasLos(x, gunY, z, tp.x, hullY, tp.z);
+    return withinGunArc(detMath.atan2(hullY - gunY, distance)) && hasLos(x, gunY, z, tp.x, hullY, tp.z);
   }
 
   /** The flank exemption's lane from where the hull stands (see PASSIVE_PRESS_MISSES), re-tested at a fixed cadence. */
@@ -5540,7 +5541,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function missedOut(timeS: number): boolean {
     const st = entity.state;
     return !!target && missStreakTargetId === target.id && missStreak >= PASSIVE_PRESS_MISSES
-      && timeS - missLastShotS >= MISS_SETTLE_S && Math.hypot(st.pos.x - missSpot.x, st.pos.z - missSpot.z) <= MISS_SPOT_M;
+      && timeS - missLastShotS >= MISS_SETTLE_S && detMath.hypot(st.pos.x - missSpot.x, st.pos.z - missSpot.z) <= MISS_SPOT_M;
   }
 
   /** Keep (x, z) out of the press picks until untilS, in the veto slot that frees soonest. */
@@ -5553,7 +5554,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function pressPointVetoed(x: number, z: number): boolean {
-    for (const veto of pressVetoes) if (nowS < veto.untilS && Math.hypot(x - veto.x, z - veto.z) < 12) return true;
+    for (const veto of pressVetoes) if (nowS < veto.untilS && detMath.hypot(x - veto.x, z - veto.z) < 12) return true;
     return false;
   }
 
@@ -5570,7 +5571,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!target) return false;
     const st = entity.state;
     const tp = target.state.pos;
-    const bearing = Math.atan2(st.pos.x - tp.x, st.pos.z - tp.z);   // target → self
+    const bearing = detMath.atan2(st.pos.x - tp.x, st.pos.z - tp.z);   // target → self
     const nose = target.state.yaw;
     const nearSide = Math.abs(wrapAngle(nose + PASSIVE_PRESS_ASPECT_RAD - bearing))
       <= Math.abs(wrapAngle(nose - PASSIVE_PRESS_ASPECT_RAD - bearing)) ? 1 : -1;
@@ -5585,19 +5586,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
           const [side, delta] = PASSIVE_PRESS_FALLBACKS[k - 2];
           a = nose + side * nearSide * (PASSIVE_PRESS_ASPECT_RAD + delta);
         }
-        const x = clamp(tp.x + Math.sin(a) * radius, -470, 470);
-        const z = clamp(tp.z + Math.cos(a) * radius, -470, 470);
+        const x = clamp(tp.x + detMath.sin(a) * radius, -470, 470);
+        const z = clamp(tp.z + detMath.cos(a) * radius, -470, 470);
         if (pressPointVetoed(x, z)) continue;
         if (!reachableSpot(x, z)) continue;
         // round 67: a point on water is no press point where the map avoids liquid (the hull faces the target there)
-        if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
+        if (liquidSafe && !liquidSafe(x, z, detMath.atan2(tp.x - x, tp.z - z), 0)) continue;
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
         if (!pressLaneClear(x, z, radius)) continue;
         // the reach deadline survives a restart onto the same point, or a flickering sight line would reset it forever
-        const samePoint = Math.hypot(x - pressPoint.x, z - pressPoint.z) <= 12 && nowS - pressPickS < 30;
+        const samePoint = detMath.hypot(x - pressPoint.x, z - pressPoint.z) <= 12 && nowS - pressPickS < 30;
         if (!samePoint) {
-          pressReachByS = nowS + PRESS_REACH_SLACK_S + Math.hypot(x - st.pos.x, z - st.pos.z) / PRESS_REACH_SPEED_MPS;
+          pressReachByS = nowS + PRESS_REACH_SLACK_S + detMath.hypot(x - st.pos.x, z - st.pos.z) / PRESS_REACH_SPEED_MPS;
         }
         pressPickS = nowS;
         pressPoint.x = x;
@@ -5636,7 +5637,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     const st = entity.state;
-    const atPoint = Math.hypot(pressPoint.x - st.pos.x, pressPoint.z - st.pos.z) < ARRIVE_DIST_M * 2;
+    const atPoint = detMath.hypot(pressPoint.x - st.pos.x, pressPoint.z - st.pos.z) < ARRIVE_DIST_M * 2;
     passivePressArcT = atPoint && st.atGunLimit ? passivePressArcT + dt : 0;
     if (timeS >= passivePressRepickS) {
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
@@ -5669,7 +5670,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const tp = target.state.pos;
     if (driveToXZ(input, pressPoint.x, pressPoint.z, 1.0)) {
-      faceYaw(input, Math.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
+      faceYaw(input, detMath.atan2(tp.x - st.pos.x, tp.z - st.pos.z));
     }
   }
 
@@ -5717,7 +5718,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!stampIntel) return;
     const st = entity.state;
     const position = shooter.state.pos;
-    threatBearing = Math.atan2(position.x - st.pos.x, position.z - st.pos.z);
+    threatBearing = detMath.atan2(position.x - st.pos.x, position.z - st.pos.z);
     if (!target || !enemyAlive(target)) {
       lastSeen.x = position.x;
       lastSeen.z = position.z;
@@ -5743,9 +5744,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (nowS < reactCdUntilS || !shooter.state || reactionPolicy === 'none') return;
     const st = entity.state;
     const sp = shooter.state.pos;
-    threatBearing = Math.atan2(sp.x - st.pos.x, sp.z - st.pos.z);
+    threatBearing = detMath.atan2(sp.x - st.pos.x, sp.z - st.pos.z);
     const away = threatBearing + Math.PI;
-    const ax = Math.sin(away), az = Math.cos(away);
+    const ax = detMath.sin(away), az = detMath.cos(away);
     const cb = entity.combat;
     const hpFrac = cb && cb.maxHp ? cb.hp / cb.maxHp : 1;
     const burst = cb && cb.maxHp ? burstDamage / cb.maxHp : 0;
@@ -5844,7 +5845,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (hf.getNormalAt!(x, z).y < min) return false;
     for (let k = 0; k < 8; k++) {
       const a = k * (TAU / 8);
-      if (hf.getNormalAt!(x + Math.sin(a) * ZONE_HOLD_FOOTPRINT_M, z + Math.cos(a) * ZONE_HOLD_FOOTPRINT_M).y < min) {
+      if (hf.getNormalAt!(x + detMath.sin(a) * ZONE_HOLD_FOOTPRINT_M, z + detMath.cos(a) * ZONE_HOLD_FOOTPRINT_M).y < min) {
         return false;
       }
     }
@@ -5853,7 +5854,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   /** The straight leg from (x0, z0) to (x1, z1) is no steeper than a comfortable climb (every ZONE_LEG_STEP_M). */
   function legDrivable(x0: number, z0: number, x1: number, z1: number): boolean {
-    const length = Math.hypot(x1 - x0, z1 - z0);
+    const length = detMath.hypot(x1 - x0, z1 - z0);
     for (let d = ZONE_LEG_STEP_M; d < length; d += ZONE_LEG_STEP_M) {
       const f = d / length;
       if (hf.getNormalAt!(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f).y < LEG_NORMAL_Y_MIN) return false;
@@ -5870,7 +5871,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     zoneHold.z = z;
     if (!hf.getNormalAt || holdableGround(x, z)) return zoneHold;
     const st = entity.state;
-    const own = Math.atan2(st.pos.x - x, st.pos.z - z);
+    const own = detMath.atan2(st.pos.x - x, st.pos.z - z);
     for (let ring = 0; ring < ZONE_HOLD_RINGS_M.length; ring++) {
       const r = ZONE_HOLD_RINGS_M[ring];
       if (r > radiusM * ZONE_HOLD_MAX_FRAC) break;
@@ -5878,7 +5879,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // the hull's own side first, then alternately either way round
         const step = (k + 1) >> 1;
         const a = own + (k & 1 ? step : -step) * (TAU / ZONE_HOLD_BEARINGS);
-        const px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r;
+        const px = x + detMath.sin(a) * r, pz = z + detMath.cos(a) * r;
         if (!holdableGround(px, pz)) continue;
         zoneHold.x = px;
         zoneHold.z = pz;
@@ -5899,18 +5900,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let k = 0; k < 8 * OBJECTIVE_SHIFT_RINGS.length; k++) {
       const radius = objective.radiusM * OBJECTIVE_SHIFT_RINGS[k >> 3];
       const a = (k & 7) * (TAU / 8) + (k >> 3) * (TAU / 16); // the outer ring sits between the inner ring's bearings
-      const x = objective.x + Math.sin(a) * radius;
-      const z = objective.z + Math.cos(a) * radius;
-      if (Math.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
+      const x = objective.x + detMath.sin(a) * radius;
+      const z = objective.z + detMath.cos(a) * radius;
+      if (detMath.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
       if (!reachableSpot(x, z)) continue;
       // the shift point is holdable ground the hull reaches without crossing a face (see ZONE_HOLD_RINGS_M)
       if (hf.getNormalAt && (!holdableGround(x, z) || !legDrivable(st.pos.x, st.pos.z, x, z))) continue;
-      if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
+      if (liquidSafe && !liquidSafe(x, z, detMath.atan2(tp.x - x, tp.z - z), 0)) continue;
       if (!hasLos(x, hf.getHeightAt(x, z) + selfEyeM, z, tp.x, ty, tp.z)) continue;
       // 0 at the target's bow, π at its rear: a gate the front shuts is opened from the side
       // (capped at the beam: a side plate is enough, and the rear would mean driving round the target)
-      const aspect = Math.min(Math.PI / 2, Math.abs(wrapAngle(Math.atan2(x - tp.x, z - tp.z) - target.state.yaw)));
-      const score = aspect * 10 - Math.hypot(x - st.pos.x, z - st.pos.z) * 0.1;
+      const aspect = Math.min(Math.PI / 2, Math.abs(wrapAngle(detMath.atan2(x - tp.x, z - tp.z) - target.state.yaw)));
+      const score = aspect * 10 - detMath.hypot(x - st.pos.x, z - st.pos.z) * 0.1;
       if (score <= bestScore) continue;
       bestScore = score;
       objectiveShiftPoint.x = x;
@@ -5921,7 +5922,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updateObjectiveShift(dt: number): void {
     const objective = zoneObjective();
-    const onObjective = !!objective && Math.hypot(objective.x - entity.state.pos.x, objective.z - entity.state.pos.z)
+    const onObjective = !!objective && detMath.hypot(objective.x - entity.state.pos.x, objective.z - entity.state.pos.z)
       <= objective.radiusM;
     if (!onObjective || !target || !enemyAlive(target) || emptyRack) {
       cannotFightT = 0;
@@ -5945,7 +5946,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!objectiveShifting || !target) return false;
     if (driveToXZ(input, objectiveShiftPoint.x, objectiveShiftPoint.z, 0.8)) {
       const st = entity.state;
-      faceYaw(input, Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z));
+      faceYaw(input, detMath.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z));
       driveIntent = false; // holding the firing point is the point: the low-speed watchdog must not back it off
     }
     return true;
@@ -5970,7 +5971,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     if (target && enemyAlive(target) && losClear && isVisibleToTeam(target)) {
       const tp = target.state.pos;
-      const dist = Math.hypot(st.pos.x - tp.x, st.pos.z - tp.z) || 1;
+      const dist = detMath.hypot(st.pos.x - tp.x, st.pos.z - tp.z) || 1;
       if (dist < RUSH_DRIVE.directM) {
         const out = orbitRingFor(tp.x, tp.z, dist);
         if (dist >= RUSH_DRIVE.orbitInM + out) {
@@ -5988,7 +5989,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // the hunt point itself (the spotted quarry's place, its last sighting, a sweep point) is circled, never driven
     // into: behind a corner the quarry has no line of sight yet, and a straight drive at its place would ram it (round
     // 2: the hunter rams the guard counted were these)
-    const pointDist = Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) || 1;
+    const pointDist = detMath.hypot(st.pos.x - objective.x, st.pos.z - objective.z) || 1;
     if (pointDist < RUSH_DRIVE.orbitInM) {
       orbitAround(input, objective.x, objective.z, pointDist, 0);
       return true;
@@ -6017,7 +6018,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < friends.length; i++) {
       const f = friends[i]!;
       if (f === entity || !f.combat || f.combat.destroyed || (f as { modeActive?: boolean }).modeActive === false) continue;
-      const fd = Math.hypot(f.state.pos.x - cx, f.state.pos.z - cz);
+      const fd = detMath.hypot(f.state.pos.x - cx, f.state.pos.z - cz);
       if (fd < dist && fd < RUSH_DRIVE.orbitMaxM + RUSH_DRIVE.orbitStepM * RUSH_DRIVE.orbitRings) inner++;
     }
     return Math.min(inner, RUSH_DRIVE.orbitRings) * RUSH_DRIVE.orbitStepM;
@@ -6031,7 +6032,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // at the radius it has, never out to a wider ring; inside noRamM out to orbitMinM, beyond the band in to orbitMaxM
     const lo = RUSH_DRIVE.orbitMinM + out, hi = RUSH_DRIVE.orbitMaxM + out;
     const ring = dist < RUSH_DRIVE.noRamM + out ? lo : dist > hi ? hi : dist;
-    const closing = dist < RUSH_DRIVE.noRamM && (Math.sin(st.yaw) * -rx + Math.cos(st.yaw) * -rz) * st.speed > 0;
+    const closing = dist < RUSH_DRIVE.noRamM && (detMath.sin(st.yaw) * -rx + detMath.cos(st.yaw) * -rz) * st.speed > 0;
     const lead = closing ? RUSH_DRIVE.closingLeadM : RUSH_DRIVE.tangentLeadM;
     driveToXZ(input, cx + rx * ring + tx * lead, cz + rz * ring + tz * lead, 1);
     input.brake = false;
@@ -6042,11 +6043,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const reach = doctrineOf().zoneSortieM;
     if (reach <= 0 || !target || !enemyAlive(target) || !isVisibleToTeam(target)) return false;
     const tp = target.state.pos, st = entity.state;
-    const targetOff = Math.hypot(tp.x - objective.x, tp.z - objective.z);
+    const targetOff = detMath.hypot(tp.x - objective.x, tp.z - objective.z);
     if (targetOff <= objective.radiusM || targetOff > objective.radiusM + reach) return false;
     // never further from the zone than the sortie's reach: past it the hull turns for home
-    if (Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) > objective.radiusM + reach) return false;
-    if (Math.hypot(tp.x - st.pos.x, tp.z - st.pos.z) <= SORTIE_DRIVE.standoffM) {
+    if (detMath.hypot(st.pos.x - objective.x, st.pos.z - objective.z) > objective.radiusM + reach) return false;
+    if (detMath.hypot(tp.x - st.pos.x, tp.z - st.pos.z) <= SORTIE_DRIVE.standoffM) {
       input.throttle = 0;
       input.brake = Math.abs(st.speed) > 0.5;
       return true;
@@ -6066,9 +6067,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const ball = objective?.mission === 'striker' ? objective.ball : null;
     if (!ball) return false;
     const st = entity.state;
-    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, dist = Math.hypot(dx, dz);
+    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, dist = detMath.hypot(dx, dz);
     if (dist > STRIKER_JUMP.rangeM || dist < STRIKER_JUMP.minM) return false;
-    return Math.abs(wrapAngle(Math.atan2(dx, dz) - st.yaw)) < STRIKER_JUMP.coneRad;
+    return Math.abs(wrapAngle(detMath.atan2(dx, dz) - st.yaw)) < STRIKER_JUMP.coneRad;
   }
 
   function driveMission(input: AiInput): boolean {
@@ -6083,14 +6084,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const critical = (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < doctrine.missionBreakOffHp;
     if (critical && objective.mission !== 'carrier' && objective.mission !== 'striker'
         && nowS < fallbackUntilS) return false;
-    if (objective.mission === 'striker' && Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z) < 55) {
+    if (objective.mission === 'striker' && detMath.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z) < 55) {
       // The last ball approach follows its live position, not a coarse grid
       // waypoint or a several-second target commitment.
       driveToXZ(input, destination.x, destination.z, 1);
       return true;
     }
     if (nowS < missionReleaseUntilS) return false;
-    const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
+    const offObjective = detMath.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
       > objective.radiusM;
     missionOffObjective = offObjective;
     const zoneMission = objective.mission === 'capture' || objective.mission === 'assault';
@@ -6113,7 +6114,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (offObjective && routeUsedUp()) {
       // a short way off (the doctrine's missionLocalReachM): the local router finishes it, the mission keeps the hull
       const reach = doctrine.missionLocalReachM;
-      if (reach > 0 && Math.hypot(hold.x - entity.state.pos.x, hold.z - entity.state.pos.z) <= reach) {
+      if (reach > 0 && detMath.hypot(hold.x - entity.state.pos.x, hold.z - entity.state.pos.z) <= reach) {
         driveToXZ(input, hold.x, hold.z, nowS < 60 ? 1.0 : doctrine.missionSpeed);
         return true;
       }
@@ -6146,8 +6147,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // point, a hold band's stand: their goal this tick within leashM of where it stood, the hull within twice ringM of
     // it); the drivers' call back drove it in and braked it to a stand at every leg
     const leashed = jockeyAnchored && driveGoalAtS === nowS
-      && Math.hypot(driveGoalX - jockeyAX, driveGoalZ - jockeyAZ) <= JOCKEY_DRIVE.leashM
-      && Math.hypot(st.pos.x - jockeyAX, st.pos.z - jockeyAZ) <= 2 * JOCKEY_DRIVE.ringM;
+      && detMath.hypot(driveGoalX - jockeyAX, driveGoalZ - jockeyAZ) <= JOCKEY_DRIVE.leashM
+      && detMath.hypot(st.pos.x - jockeyAX, st.pos.z - jockeyAZ) <= 2 * JOCKEY_DRIVE.ringM;
     // a target the side sees, in the gun's line: the strafe runs round its place, which no hidden hull gives away
     if (after <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !losClear || !isVisibleToTeam(target)
       || !st.grounded || emptyRack || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
@@ -6160,7 +6161,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     jockeyStandS += dt;
     if (jockeyStandS < after && !jockeyAnchored) return;
     const tp = target.state.pos;
-    const rdx = st.pos.x - tp.x, rdz = st.pos.z - tp.z, range = Math.hypot(rdx, rdz) || 1;
+    const rdx = st.pos.x - tp.x, rdz = st.pos.z - tp.z, range = detMath.hypot(rdx, rdz) || 1;
     if (!jockeyAnchored) {
       // the first leg runs the way the hull's bow already points across the line to the target
       jockeyAnchored = true;
@@ -6169,13 +6170,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       jockeyRange = range;
       jockeyAtS = timeS;
       jockeyStallS = 0;
-      jockeyDir = Math.sin(st.yaw) * -rdz + Math.cos(st.yaw) * rdx >= 0 ? 1 : -1;
+      jockeyDir = detMath.sin(st.yaw) * -rdz + detMath.cos(st.yaw) * rdx >= 0 ? 1 : -1;
       jockeyLegs++;
     }
     const legS = timeS - jockeyAtS;
     jockeyStallS = legS >= JOCKEY_DRIVE.legSettleS && Math.abs(st.speed) < JOCKEY_DRIVE.blockedMps ? jockeyStallS + dt : 0;
     // how far round the circle the leg has run from where the hull stood (+ the way this leg runs)
-    const run = wrapAngle(Math.atan2(rdx, rdz) - Math.atan2(jockeyAX - tp.x, jockeyAZ - tp.z)) * jockeyRange * jockeyDir;
+    const run = wrapAngle(detMath.atan2(rdx, rdz) - detMath.atan2(jockeyAX - tp.x, jockeyAZ - tp.z)) * jockeyRange * jockeyDir;
     if (jockeyStallS > JOCKEY_DRIVE.blockedS || (legS >= JOCKEY_DRIVE.legMinS && run > JOCKEY_DRIVE.ringM)) {
       jockeyDir = -jockeyDir;
       jockeyAtS = timeS;
@@ -6184,11 +6185,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     // the leg's lead point: leadM on round the circle about the target at the range the hull has (the circle bends toward
     // the target, so a turn-about swings the bow through it, never the stern: the gun keeps its front arc)
-    const bearing = Math.atan2(rdx, rdz) + jockeyDir * JOCKEY_DRIVE.leadM / range;
-    const px = tp.x + Math.sin(bearing) * range, pz = tp.z + Math.cos(bearing) * range;
+    const bearing = detMath.atan2(rdx, rdz) + jockeyDir * JOCKEY_DRIVE.leadM / range;
+    const px = tp.x + detMath.sin(bearing) * range, pz = tp.z + detMath.cos(bearing) * range;
     // steered straight at it: no route, no arrival and none of the wedge watchdogs (a lap's lead point is never reached,
     // so the orbit watchdog read a strafe as a wedge after six seconds and reversed it out)
-    const err = wrapAngle(Math.atan2(px - st.pos.x, pz - st.pos.z) - st.yaw);
+    const err = wrapAngle(detMath.atan2(px - st.pos.x, pz - st.pos.z) - st.yaw);
     input.steer = clamp(err * 2.2, -1, 1);
     input.throttle = JOCKEY_DRIVE.throttle;
     input.brake = false;
@@ -6232,7 +6233,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     // the settled-shot halt, but not under fire in the open (SETTLE_STARVED_S)
     if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack && !exposedUnderFire(timeS)) {
-      faceYaw(input, Math.atan2(
+      faceYaw(input, detMath.atan2(
         target.state.pos.x - entity.state.pos.x,
         target.state.pos.z - entity.state.pos.z,
       ));
@@ -6261,7 +6262,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const dz = position.z - progZ;
     progX = position.x;
     progZ = position.z;
-    const instantaneous = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
+    const instantaneous = detMath.hypot(dx, dz) / Math.max(dt, 1e-4);
     progressRate += (instantaneous - progressRate) * Math.min(1, dt * 2.5);
   }
 
@@ -6307,13 +6308,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let tx = nz, tz = -nx;
     const goalX = navGoalX - st.pos.x, goalZ = navGoalZ - st.pos.z;
     const toGoal = driveIntent && Math.abs(navGoalX) < 1e8;
-    if ((toGoal ? tx * goalX + tz * goalZ : tx * Math.sin(st.yaw) + tz * Math.cos(st.yaw)) < 0) {
+    if ((toGoal ? tx * goalX + tz * goalZ : tx * detMath.sin(st.yaw) + tz * detMath.cos(st.yaw)) < 0) {
       tx = -tx;
       tz = -tz;
     }
     escalateStuckRecovery(timeS, true);
     // reversing flips the steer (movement.ts): the opposite command swings the bow toward the tangent
-    unstickSteer = wrapAngle(Math.atan2(tx, tz) - st.yaw) >= 0 ? -1 : 1;
+    unstickSteer = wrapAngle(detMath.atan2(tx, tz) - st.yaw) >= 0 ? -1 : 1;
     // and the detour (driveToXZ) goes round on that side (+1 offsets the goal to its bearing's right)
     if (toGoal) detourSide = tx * goalZ - tz * goalX >= 0 ? 1 : -1;
     unstickUntilS = timeS + UNSTICK_TIME_S;
@@ -6391,13 +6392,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let ramGap = Infinity, ramCross = 0;
   function laneGap(other: AiEntity, fx: number, fz: number, buffer: number, stopM: number): void {
     const st = entity.state, od = other.spec?.dims;
-    const otherHalf = Math.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
+    const otherHalf = detMath.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
     const halfLane = (spec.dims.widthM || 3) * 0.5 + otherHalf + RUSH_DRIVE.laneMarginM;
     const os = other.state.speed || 0, oyaw = other.state.yaw || 0;
     for (let k = 0; k < 2; k++) {
       const lead = k === 0 ? 0 : RUSH_DRIVE.lookaheadS;
-      const rx = other.state.pos.x + Math.sin(oyaw) * os * lead - st.pos.x;
-      const rz = other.state.pos.z + Math.cos(oyaw) * os * lead - st.pos.z;
+      const rx = other.state.pos.x + detMath.sin(oyaw) * os * lead - st.pos.x;
+      const rz = other.state.pos.z + detMath.cos(oyaw) * os * lead - st.pos.z;
       const along = rx * fx + rz * fz, cross = fz * rx - fx * rz;
       if (along <= 0 || Math.abs(cross) > halfLane) continue;
       const gap = along - ownHalfLengthM() - otherHalf;
@@ -6414,7 +6415,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (speed <= 0.5 && input.throttle <= 0) return;
     // moving backwards the lane is behind the hull
     const sign = speed < -0.5 || (speed <= 0.5 && input.throttle < 0) ? -1 : 1;
-    const fx = Math.sin(st.yaw) * sign, fz = Math.cos(st.yaw) * sign;
+    const fx = detMath.sin(st.yaw) * sign, fz = detMath.cos(st.yaw) * sign;
     const stopM = Math.abs(speed) ** 2 / (2 * SOLID_STOP_MPS2);
     ramGap = Infinity; ramCross = 0;
     const list = deps.getEnemies();
@@ -6424,7 +6425,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // only a hull the team sees (round 2, the critic's E6: braking for a hidden hull acted on knowledge the bot does not
       // have and gave the bush away; inside the spotting's 50 m proximity floor every hull is seen)
       if (!isVisibleToTeam(other)) continue;
-      if (ball && Math.hypot(other.state.pos.x - ball.x, other.state.pos.z - ball.z) < BALL_SHOT.contestM) continue;
+      if (ball && detMath.hypot(other.state.pos.x - ball.x, other.state.pos.z - ball.z) < BALL_SHOT.contestM) continue;
       laneGap(other, fx, fz, RUSH_DRIVE.noRamM, stopM);
     }
     if (!Number.isFinite(ramGap)) return;
@@ -6470,7 +6471,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const st = entity.state;
       const sign = Math.sign(travel), speed = Math.abs(travel);
       const reach = ownHalfLengthM() + 1 + speed * 0.15 + speed * speed / (2 * SOLID_STOP_MPS2);
-      if (solidAhead(st.pos.x, st.pos.z, Math.sin(st.yaw) * sign, Math.cos(st.yaw) * sign, reach,
+      if (solidAhead(st.pos.x, st.pos.z, detMath.sin(st.yaw) * sign, detMath.cos(st.yaw) * sign, reach,
         spec.dims.widthM * 0.5 + 0.25)) {
         input.throttle = 0;
         input.brake = true;
@@ -6489,7 +6490,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       if (terrainBlocked && timeS >= terrainAvoidUntilS) {
         const waypoint = waypoints[wpIndex];
-        const goalYaw = waypoint ? Math.atan2(waypoint.x - st.pos.x, waypoint.z - st.pos.z) : st.yaw + Math.PI;
+        const goalYaw = waypoint ? detMath.atan2(waypoint.x - st.pos.x, waypoint.z - st.pos.z) : st.yaw + Math.PI;
         let bestCost = Infinity;
         terrainEscapeYaw = st.yaw + Math.PI;
         // Find an actually drivable escape direction. Fixed left/right turns
@@ -6542,12 +6543,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const baseY = hf.getHeightAt(st.pos.x, st.pos.z);
       for (let d = 5; safe && d <= travel + 5; d += 5) {
         const distance = Math.min(travel, d);
-        const y = hf.getHeightAt(st.pos.x + Math.sin(st.yaw) * distance, st.pos.z + Math.cos(st.yaw) * distance);
+        const y = hf.getHeightAt(st.pos.x + detMath.sin(st.yaw) * distance, st.pos.z + detMath.cos(st.yaw) * distance);
         if (!Number.isFinite(y) || Math.abs(y - baseY) > 3) safe = false;
       }
       if (safe) {
         jumpOrigin.set(st.pos.x, st.pos.y + 1, st.pos.z);
-        jumpDirection.set(Math.sin(st.yaw), 0, Math.cos(st.yaw));
+        jumpDirection.set(detMath.sin(st.yaw), 0, detMath.cos(st.yaw));
         safe = !deps.raycast(jumpOrigin, jumpDirection, travel + 5);
       }
       abilityContext.safeJump = safe;
@@ -6638,7 +6639,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let missionRouteEndX = NaN, missionRouteEndZ = NaN; // the planned mission route's last waypoint
   let missionOffObjective = false;                    // the hull stood off its objective at the last mission step
   function missionRouteNeedsRefresh(x: number, z: number): boolean {
-    return Math.hypot(x - missionRouteX, z - missionRouteZ) >= 12
+    return detMath.hypot(x - missionRouteX, z - missionRouteZ) >= 12
       || (nowS - missionRouteAtS >= 6 && (waypoints.length === 0 || terrainBlocked || navNoProgressT > 4
         || (missionOffObjective && missionRouteEnded())));
   }
@@ -6647,7 +6648,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function routeUsedUp(): boolean {
     const last = waypoints[waypoints.length - 1];
     return !last || (wpIndex >= waypoints.length - 1
-      && Math.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
+      && detMath.hypot(last.x - entity.state.pos.x, last.z - entity.state.pos.z) < ARRIVE_DIST_M * 2);
   }
 
   /**
@@ -6731,7 +6732,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (info.selfHit) {
       abilityContext.hitAtS = nowS;
-      abilityContext.hitBearing = Math.atan2(shooter.state.pos.x - entity.state.pos.x, shooter.state.pos.z - entity.state.pos.z);
+      abilityContext.hitBearing = detMath.atan2(shooter.state.pos.x - entity.state.pos.x, shooter.state.pos.z - entity.state.pos.z);
       reactToHit(shooter, isVisibleToTeam(shooter), info);
     }
     if (!isVisibleToTeam(shooter)) {

@@ -45,7 +45,7 @@ export type WheelConstructionId =
   | 'ztz100-recessed-web' | 'type100-paired-pressed'
   | 'merkava-deep-dish' | 'namer-stepped-hub'
   | 'strv122-pressed-recess' | 'cv90-armoured-hub'
-  | 'k2-flanged' | 'k1a1-deep-bowl'
+  | 'k2-dished-hub' | 'k1a1-deep-bowl'
   | 'pl01-plain-dish' | 'bwp1-armoured-hub'
   | 'type10-paired' | 'type90-recessed-forging'
   | 'ariete-recessed-dish'
@@ -77,8 +77,8 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'The source-measured Strv 122 X bowl with six pressed recesses defines the Stridsvagn 122 wheel; the base strv121 draws it through the standard (strv122XSuppliedGear.ts).' }),
   cv90_mk4: Object.freeze({ donor: 'cv90_mk4', self: ['cv90_mk4'], pattern: 'armored-hub-six', construction: 'cv90-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (cv90MkivSourceX.ts draws the generic stock).' }),
-  xk2_black_panther: Object.freeze({ donor: 'xk2_black_panther', self: ['xk2_black_panther', 'k2_black_panther'], pattern: 'flanged-twelve', construction: 'k2-flanged',
-    note: 'Fleet flanged twelve-fastener disc (both K2 studies draw the generic stock).' }),
+  xk2_black_panther: Object.freeze({ donor: 'xk2_black_panther', self: ['xk2_black_panther', 'k2_black_panther', 'k2b'], pattern: 'flanged-twelve', construction: 'k2-dished-hub',
+    note: 'The K2 X source twin wheel: deep dish, ten bolt heads, hub boss (nationWheelConstructions.ts k2RoadWheelFace); XK2, K2B and K2 draw it.' }),
   k1e1: Object.freeze({ donor: 'k1e1', self: ['k1a1'], pattern: 'flanged-twelve', construction: 'k1a1-deep-bowl',
     note: 'The K1A1 X small hub, deep dish and rolled rim (k1a1XWheels.ts); the base k1e1 and the Korean IFVs draw it through the standard.' }),
   pl01: Object.freeze({ donor: 'pl01', self: ['pl01', 'pl01_105'], pattern: 'plain-dish-twelve', construction: 'pl01-plain-dish',
@@ -226,6 +226,12 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   griffin_viper: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   griffin50mm: { donor: 'm1a1_abrams_hc', reason: 'round 40 axial fit: the ASCOD 2 chassis rides paired road wheels; the single Sheridan rim needed a 2× stretch to reach its measured 0.5 m width, the Abrams hollow paired wheel is its proportion' },
   leo2a6_ua: { donor: 'leo2a4', reason: 'Ukraine: Leopard 2A6 base hull → Germany MBT donor' },
+  // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
+  // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
+  // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type
+  // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
+  type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
+  stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

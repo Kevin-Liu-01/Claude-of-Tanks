@@ -22,6 +22,7 @@ const CURRENT = Object.freeze({
   'versus-films-r1': 'the versus films (round 7, 2026-10-22): the landing\'s versus wall',
   'home-hero-r1': 'the landing hero\'s responsive rungs of its versus still (243, from the 2560 px master)',
   'docs-r1': 'the Field Manual\'s current screens and its index banner (245, captured on 243: public/media/docs-r1/manifest.json)',
+  'docs-hero-r2': 'the Field Manual\'s moving topic heroes (the media lane\'s 251 duels, each with its whole ladder: public/media/docs-hero-r2/manifest.json)',
   'deploy-r1': 'the Deploy screen\'s mode art (242 Deploy page, 245 sweep: public/media/deploy-r1/manifest.json), which the landing\'s modes row reuses (tools/home-premiere.mjs)',
   'ui-246': 'S12, the post-overhaul interface set (246, captured on f02eb8653a: public/media/ui-246/manifest.json)',
   'showcase-r2/process': 'the review sheets of the filming process',

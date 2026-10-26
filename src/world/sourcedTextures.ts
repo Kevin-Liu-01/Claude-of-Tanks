@@ -24,6 +24,7 @@ import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { composeAlbedoPixels, composeSurfacePixels, type SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import { canComposeSourcedTextureInWorker, tryComposeSourcedTexture } from './sourcedTextureCompositionClient.ts';
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
+import * as detMath from '../sim/detMath.ts';
 
 interface SourceTextureSet {
   color: string;
@@ -949,7 +950,7 @@ function linearMeanOf(canvas: unknown): [number, number, number] | null {
     const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx || !c.width || !c.height) return null;
     const data = ctx.getImageData(0, 0, c.width, c.height).data;
-    const lin = (v: number): number => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+    const lin = (v: number): number => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : detMath.pow((x + 0.055) / 1.055, 2.4); };
     let r = 0, g = 0, b = 0, n = 0;
     for (let i = 0; i < data.length; i += 4 * 7) { r += lin(data[i]); g += lin(data[i + 1]); b += lin(data[i + 2]); n++; }
     return n > 0 && r > 0 && g > 0 && b > 0 ? [r / n, g / n, b / n] : null;

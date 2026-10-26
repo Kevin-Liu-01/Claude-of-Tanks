@@ -1,4 +1,5 @@
 /** Copper Mesa's construction/physics surface; no mesh, noise or texture owner. */
+import * as detMath from '../sim/detMath.ts';
 export const COPPER_QUARRY = Object.freeze({ x: -78, z: 20, rx: 178, rz: 214, depth: 11, maximumCut: 8 });
 
 function smoothstep(a: number, b: number, x: number): number {
@@ -38,10 +39,10 @@ export function sampleCopperQuarrySurface(
   x: number, z: number, originalY: number, floorY: number, roadDistance: number,
 ): number {
   if (!insideCopperQuarry(x, z) || roadDistance <= 24) return originalY;
-  const q = Math.hypot((x - COPPER_QUARRY.x) / COPPER_QUARRY.rx,
+  const q = detMath.hypot((x - COPPER_QUARRY.x) / COPPER_QUARRY.rx,
     (z - COPPER_QUARRY.z) / COPPER_QUARRY.rz);
   if (q >= 1) return originalY;
-  const wetDistance = Math.hypot(x + 66, z - 32);
+  const wetDistance = detMath.hypot(x + 66, z - 32);
   if (wetDistance <= 44) return originalY;
   const weight = (1 - smoothstep(0.84, 1, q)) * smoothstep(24, 44, roadDistance)
     * (1 - smoothstep(0, 40, x)) * smoothstep(44, 60, wetDistance);

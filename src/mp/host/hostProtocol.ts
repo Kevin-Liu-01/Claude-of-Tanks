@@ -63,6 +63,8 @@ export interface HostBootConfig {
   hostSecret: string;
   /** Where the collision manifests are served (`<base>/index.json`, `<base>/<map>.json`); null = the bare height field. */
   manifestBase: string | null;
+  /** The world kernels' module URL (?simKernels=wasm, src/world/wasmWorldKernels.ts); absent or null: the TypeScript. Host-local, never sealed. */
+  simKernelsUrl?: string | null;
   /**
    * A migration: boot at this state, at the tick the main thread computed (the keyframe's plus the wall time since).
    * `holdForSeats` names the players the new host waits for before its world moves (the resume hold, matchHostCore.ts):
@@ -130,6 +132,7 @@ export interface HostPrepareConfig {
   mapId: string;
   mode: string;
   manifestBase: string | null;
+  simKernelsUrl?: string | null;
   /** The vehicles the match fields (seats and bots): the calibration groups the host loads. */
   specIds: string[];
   /** The match fields bots: the authority's bot navigation grid is built too (the dearest part of its creation). */

@@ -20,6 +20,7 @@ import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, RELAY_REPEATERS, STATION_DOMES, SUN_SKY, roverTrack, stationTracks } from './earthriseStation.ts';
 import { LUNAR_STRUCTURE_VARIANTS } from './lunarWorksPlan.ts';
+import * as detMath from '../../sim/detMath.ts';
 // (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
 // not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
 const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .012, .30 + l * .35];
@@ -29,7 +30,7 @@ const grey = (_h: number, _s: number, l: number): [number, number, number] => [0
 const turned = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .014, .24 + l * .32];
 /** A painted ring of radius `r` round the landing field's centre, in `n` straight runs closed on itself. */
 const ring = (r: number, n: number): Array<[number, number]> =>
-  Array.from({ length: n + 1 }, (_, i) => [Math.round(Math.sin((i / n) * Math.PI * 2) * r * 100) / 100, Math.round(Math.cos((i / n) * Math.PI * 2) * r * 100) / 100]);
+  Array.from({ length: n + 1 }, (_, i) => [Math.round(detMath.sin((i / n) * Math.PI * 2) * r * 100) / 100, Math.round(detMath.cos((i / n) * Math.PI * 2) * r * 100) / 100]);
 /** An approach chevron on the landing field's axis at `d` m out along (ux, uz), its point toward the centre. */
 const chevron = (ux: number, uz: number, d: number): Array<[number, number]> =>
   [[ux * (d + 3) - uz * 4, uz * (d + 3) + ux * 4], [ux * d, uz * d], [ux * (d + 3) + uz * 4, uz * (d + 3) - ux * 4]];
@@ -40,7 +41,7 @@ const chevron = (ux: number, uz: number, d: number): Array<[number, number]> =>
  * south, each the other's rotation — white and safety yellow, worn by the dust the landers blow across it.
  */
 /** A hash in [0, 1) of an integer (the blast's streaks are fixed by their index). */
-const frac = (i: number, k: number): number => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
+const frac = (i: number, k: number): number => { const v = detMath.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
 /**
  * (round 3, 2026-10-18; the blind judge: "a bare white pad line crosses an empty foreground") the landers' blast across
  * the pad: forty soot streaks radiating from the touchdown point out to 11-20 m, overlapping into a dark core round it,
@@ -49,7 +50,7 @@ const frac = (i: number, k: number): number => { const v = Math.sin(i * 12.9898 
 const BLAST_SOOT = [
   ...Array.from({ length: 40 }, (_, i) => {
     const a = (i / 40) * Math.PI * 2 + (frac(i, 1) - 0.5) * 0.12, r0 = 2.5 + 2.5 * frac(i, 2), r1 = 11 + 9 * frac(i, 3);
-    const p = (r: number): [number, number] => [Math.round(Math.sin(a) * r * 100) / 100, Math.round(Math.cos(a) * r * 100) / 100];
+    const p = (r: number): [number, number] => [Math.round(detMath.sin(a) * r * 100) / 100, Math.round(detMath.cos(a) * r * 100) / 100];
     return { points: [p(r0), p(r1)], width: Math.round((0.9 + 1.5 * frac(i, 4)) * 100) / 100, paint: 'soot' as const, round: 0 };
   }),
   { points: ring(3.4, 24), width: 2.6, paint: 'soot' as const, round: 0.4 },

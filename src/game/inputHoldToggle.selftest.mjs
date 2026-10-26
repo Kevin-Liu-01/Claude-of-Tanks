@@ -141,11 +141,12 @@ try {
     'src/game/input.ts': 'the input layer itself (hold or toggle lives here)',
     'src/game/studio.ts': 'the Studio editor (BUI-ST1 owns its controls)',
     'src/ui/studioPanel.ts': 'dragging a Studio dial (BUI-ST1)',
+    'src/ui/techTree.ts': 'panning the tech-tree board (a drag) and pinching it (zoom)',
     'src/game/watchController.ts': 'a tap on the field rides the tank under it (watch-mode-243; the drone\'s climb, descend and boost are the handbrake, reloadMagazine and sniperToggle actions)',
   };
   const files = ['src/ui/hud.ts', 'src/ui/touchControls.ts', 'src/ui/settings.ts', 'src/ui/hudEditor.ts', 'src/ui/garage.ts',
     'src/ui/customCamoStudio.ts', 'src/game/garageShowroomRuntime.ts', 'src/game/input.ts', 'src/game/studio.ts', 'src/ui/studioPanel.ts',
-    'src/game/watchController.ts', 'src/ui/components/hoverTip.ts'];
+    'src/game/watchController.ts', 'src/ui/components/hoverTip.ts', 'src/ui/techTree.ts'];
   const { execFileSync } = await import('node:child_process');
   const found = execFileSync('git', ['grep', '-l', '-I', '-E', "addEventListener\\('(keyup|pointerup|mouseup|touchend)'|onpointerup=", '--', 'src/ui', 'src/game', 'src/app', 'src/main.ts'],
     { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter((f) => f && !/\.selftest\.|\.test\./.test(f)).sort();

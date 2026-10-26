@@ -15,6 +15,7 @@
 // each cell keeping the segments whose nearest distance to the cell is within the cell's best farthest distance. Pure
 // and deterministic; it allocates nothing per query. The curve's radius should exceed the reach on the inside of every
 // bend (prepareLandformPath reports the tightest), or the frame folds there.
+import * as detMath from '../sim/detMath.ts';
 
 /** The prepared path a ridge's frame reads (prepareLandformPath). */
 export interface PreparedLandformPath {
@@ -96,13 +97,13 @@ function preparePath(control: ReadonlyArray<readonly [number, number]>, reach: n
     const q: (readonly [number, number])[] = [control[0], control[0], ...control, control[control.length - 1], control[control.length - 1]];
     const p: number[] = [0, 0];
     for (let i = 0; i + 3 < q.length; i++) {
-      const span = Math.hypot(q[i + 2][0] - q[i + 1][0], q[i + 2][1] - q[i + 1][1]) + 1;
+      const span = detMath.hypot(q[i + 2][0] - q[i + 1][0], q[i + 2][1] - q[i + 1][1]) + 1;
       const steps = Math.max(2, Math.ceil(span / STEP_M));
       for (let k = i === 0 ? 0 : 1; k <= steps; k++) {
         bspline(q[i], q[i + 1], q[i + 2], q[i + 3], k / steps, p);
         const last = pts[pts.length - 1];
         // (the tripled ends make zero-length steps: a point is kept only past the last)
-        if (!last || Math.hypot(p[0] - last[0], p[1] - last[1]) > 1e-6) pts.push([p[0], p[1]]);
+        if (!last || detMath.hypot(p[0] - last[0], p[1] - last[1]) > 1e-6) pts.push([p[0], p[1]]);
       }
     }
   }
@@ -111,7 +112,7 @@ function preparePath(control: ReadonlyArray<readonly [number, number]>, reach: n
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < n; i++) {
     xs[i] = pts[i][0]; zs[i] = pts[i][1];
-    if (i) s[i] = s[i - 1] + Math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]);
+    if (i) s[i] = s[i - 1] + detMath.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]);
     minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]); minZ = Math.min(minZ, zs[i]); maxZ = Math.max(maxZ, zs[i]);
   }
   const length = s[n - 1];
@@ -122,7 +123,7 @@ function preparePath(control: ReadonlyArray<readonly [number, number]>, reach: n
     const ax = xs[i - 2], az = zs[i - 2], bx = xs[i], bz = zs[i], qx = xs[i + 2], qz = zs[i + 2];
     const area2 = Math.abs((bx - ax) * (qz - az) - (bz - az) * (qx - ax));
     if (area2 < 1e-9) continue;
-    const r = Math.hypot(bx - ax, bz - az) * Math.hypot(qx - bx, qz - bz) * Math.hypot(qx - ax, qz - az) / (2 * area2);
+    const r = detMath.hypot(bx - ax, bz - az) * detMath.hypot(qx - bx, qz - bz) * detMath.hypot(qx - ax, qz - az) / (2 * area2);
     minRadius = Math.min(minRadius, r);
   }
   // the grid over the reach (the ends' straight runs are answered from the end segments, which every cell past an end
@@ -168,7 +169,7 @@ function preparePath(control: ReadonlyArray<readonly [number, number]>, reach: n
   const items = new Int32Array(total);
   for (let c = 0, k = 0; c < lists.length; c++) for (const i of lists[c]) items[k++] = i;
   return {
-    xs, zs, s, length, cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, halfDiagonal: Math.hypot(maxX - minX, maxZ - minZ) / 2,
+    xs, zs, s, length, cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, halfDiagonal: detMath.hypot(maxX - minX, maxZ - minZ) / 2,
     reach, minRadius, gx, gz, cell: CELL_M, nx, nz, start, items,
   };
 }
@@ -209,7 +210,7 @@ export function landformPathFrame(path: PreparedLandformPath, x: number, z: numb
   }
   if (bi < 0 || best > path.reach * path.reach) return false;
   const last = xs.length - 2;
-  const ax = xs[bi], az = zs[bi], dx = xs[bi + 1] - ax, dz = zs[bi + 1] - az, len = Math.max(1e-9, Math.hypot(dx, dz));
+  const ax = xs[bi], az = zs[bi], dx = xs[bi + 1] - ax, dz = zs[bi + 1] - az, len = Math.max(1e-9, detMath.hypot(dx, dz));
   const tx = dx / len, tz = dz / len;
   // past an end the frame runs on along the end's tangent: the station past the end, the distance across it
   if ((bi === 0 && bt <= 0) || (bi === last && bt >= 1)) {
@@ -251,7 +252,7 @@ export function landformPathStation(path: PreparedLandformPath, s: number, out: 
   const t = s + path.length / 2;
   point(t, out);
   const a = point(t - 2, { x: 0, z: 0 }), b = point(t + 2, { x: 0, z: 0 });
-  const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+  const l = detMath.hypot(b.x - a.x, b.z - a.z) || 1;
   out.tx = (b.x - a.x) / l; out.tz = (b.z - a.z) / l;
   return out;
 }

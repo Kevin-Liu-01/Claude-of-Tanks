@@ -8,6 +8,8 @@
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/components/components.css';
+import '../../src/ui/components/figures.css';
+import '../../src/ui/components/notices.css';
 import '../../src/ui/battleTimeChoices.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { createInput } from '../../src/game/input.ts';
@@ -19,7 +21,8 @@ import { installAccessibility } from '../../src/ui/accessibilityPreferences.ts';
 import { applyAccessibility, normalizeAccessibility } from '../../src/ui/accessibilitySettings.ts';
 
 const params = new URLSearchParams(location.search);
-setLocale(params.get('locale') || 'en-US');
+// await the catalog: the product builds the panel after its locale's catalog is resident (a zh-CN capture shows Chinese)
+await setLocale(params.get('locale') || 'en-US');
 installResponsiveLayout();
 installAccessibility();
 if (params.get('prefs')) applyAccessibility(normalizeAccessibility(JSON.parse(params.get('prefs'))));

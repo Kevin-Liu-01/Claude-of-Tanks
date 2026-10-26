@@ -26,7 +26,7 @@ try {
   });
   assert.equal(await page.locator('.cot-ear.l .kills:not([hidden])').first().textContent(),'1');
   assert.equal(await page.locator('.cot-ear.r .kills:not([hidden])').first().textContent(),'1');
-  assert.match(await page.locator('[data-kill-cause=ammorack]').textContent(),/AMMO RACK/);
+  assert.match(await page.locator('[data-kill-cause=ammorack]').textContent(),/ammo rack/i);
   await page.evaluate(()=>{document.body.style.background='url("/media/site50-r14/stills/s19-roof-tiles.webp") center/cover no-repeat #233039';});
   await page.screenshot({path:resolve(out,`${name}-killfeed.png`)});
   await page.evaluate(async()=>{

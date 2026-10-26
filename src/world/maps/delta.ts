@@ -16,6 +16,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { createMarshChannel } from './marshChannel.ts';
+import * as detMath from '../../sim/detMath.ts';
 import { CHAR_VILLAGE } from './deltaVillage.ts'; // the maps lane, 2026-10-14: the char's market village
 
 // The braided river: a stem from each map edge splits round the char the market village stands on, and the pattern
@@ -41,7 +42,7 @@ const paddyRow = (x: number, z: number, count: number) => {
   const yaw = PADDY_YAW * Math.PI / 180;
   return Array.from({ length: count }, (_, k) => {
     const off = (k - (count - 1) / 2) * PADDY_STEP;
-    return { x: x + Math.cos(yaw) * off, z: z - Math.sin(yaw) * off };
+    return { x: x + detMath.cos(yaw) * off, z: z - detMath.sin(yaw) * off };
   });
 };
 // (2026-10-16, the 226 gate: scenery's "the straw stacks at the north homestead stand (water)") the second row's centre and

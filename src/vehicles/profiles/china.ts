@@ -1176,7 +1176,7 @@ function addZTZ99A2SmokeBanks(P: ChinaBuilderPort): void {
 
 /** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
  * at the 99A2 hull's ring; a reusing caller moves the group onto its own ring. */
-export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99A2TurretOptions = {}): void {
+function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99A2TurretOptions = {}): void {
   const { box, cylY, torus, periscope, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
   P.gunG.position.set(0, .38, .78);

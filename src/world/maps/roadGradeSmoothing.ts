@@ -1,9 +1,10 @@
+import * as detMath from '../../sim/detMath.ts';
 type Road = readonly (readonly [number, number])[];
 
 function distances(road: Road): number[] {
   const result = [0];
   for (let i = 1; i < road.length; i++) result.push(result[i - 1]
-    + Math.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]));
+    + detMath.hypot(road[i][0] - road[i - 1][0], road[i][1] - road[i - 1][1]));
   return result;
 }
 function sample(values: readonly number[], distance: readonly number[], at: number): number {
@@ -40,10 +41,10 @@ function collectRoadPairGrades(roads: readonly Road[], elevations: number[][],
     const t = (rx * ez - rz * ex) / cross, u = (rx * dz - rz * dx) / cross;
     if (t < -1e-8 || t > 1 + 1e-8 || u < -1e-8 || u > 1 + 1e-8) continue;
     const x = p[0] + dx * t, z = p[1] + dz * t;
-    if (seen.some(point => Math.hypot(point[0] - x, point[1] - z) < 1)) continue;
+    if (seen.some(point => detMath.hypot(point[0] - x, point[1] - z) < 1)) continue;
     seen.push([x, z]);
-    const da = along[a][i - 1] + Math.hypot(dx, dz) * t;
-    const db = along[b][j - 1] + Math.hypot(ex, ez) * u;
+    const da = along[a][i - 1] + detMath.hypot(dx, dz) * t;
+    const db = along[b][j - 1] + detMath.hypot(ex, ez) * u;
     const level = (sample(elevations[a], along[a], da) + sample(elevations[b], along[b], db)) * .5;
     knots[a].push({at: da, level}); knots[b].push({at: db, level});
   }

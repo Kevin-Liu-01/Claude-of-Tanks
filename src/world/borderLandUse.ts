@@ -6,6 +6,7 @@
 // boundaries (and on a walled region every boundary) past the edge as polylines for borderHedgerows.ts, from the
 // grid's own point query (landUseAt): a scan across the band finds where a boundary is crossed, and each crossing is
 // followed along its boundary in 8 m steps, re-centred on the boundary at every step.
+import * as detMath from '../sim/detMath.ts';
 
 /** The land-use sample this module reads (landUse.ts LandFieldSample, structurally). */
 export interface LandUseSampleLike {
@@ -49,7 +50,7 @@ export function traceLandUseLines(
 ): LandUseLine[] {
   const walls = landUse.boundary > 2.5;
   const s = landUse.sample();
-  const ux = Math.cos(landUse.heading), uz = Math.sin(landUse.heading), vx = -uz, vz = ux;
+  const ux = detMath.cos(landUse.heading), uz = detMath.sin(landUse.heading), vx = -uz, vz = ux;
   const R = edge + maxOut, span = R * Math.SQRT2 + 20;
   const visited = new Set<number>();
   const cellKey = (x: number, z: number): number => (Math.floor(x / VISIT_CELL_M) + 4096) * 8192 + (Math.floor(z / VISIT_CELL_M) + 4096);

@@ -186,6 +186,7 @@ export function createMainFrameRuntime({
     lastFov = fov;
   };
 
+  // hot-path: every frame (the scoped fog)
   const updateFogDensity = (): void => {
     if (!(scene.fog instanceof FogExp2)) return;
     const fogScale = camera.fov < 15
@@ -217,6 +218,7 @@ export function createMainFrameRuntime({
     post.render(dtSeconds, frameWallDtSeconds);
   };
 
+  // hot-path: every frame in the Garage
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
     if (game.phase !== 'garage') { garageModePreview?.clear(); return true; }
     networkSession.pump(dtSeconds, nowMs);
@@ -228,6 +230,7 @@ export function createMainFrameRuntime({
     return !garageModePreview?.pending;
   };
 
+  // hot-path: every battle frame
   const updateCombatCamera = (
     frame: BattleFrameReceipt,
     dtSeconds: number,
@@ -241,6 +244,7 @@ export function createMainFrameRuntime({
     if (frame.killcamActive) killcam.update(dtSeconds);
   };
 
+  // hot-path: every frame
   const updateCinematicVeil = (killcamActive: boolean): void => {
     if (killcamActive || killcam.isActive()
       || rig.cinematicActive === lastCinematicActive) return;
@@ -248,6 +252,7 @@ export function createMainFrameRuntime({
     veilHud(lastCinematicActive);
   };
 
+  // hot-path: every frame
   const updateWorldPresentation = (
     frame: BattleFrameReceipt,
     dtSeconds: number,
@@ -274,6 +279,7 @@ export function createMainFrameRuntime({
     audioListener.update(dtSeconds, frame.inBattle, frame.killcamActive);
   };
 
+  // hot-path: every rendered frame
   const renderPresentation = (
     frame: BattleFrameReceipt,
     dtSeconds: number,
@@ -312,17 +318,22 @@ export function createMainFrameRuntime({
     if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
     stages?.stage(FRAME_STAGE.perfHud);
     perfHud.update(dtSeconds * 1000);
-    if (profileGarageReturn) {
-      trace.mark?.('garage:return-frame', {
-        preRenderMs: +(lightingStartedAt - frameStartedAt).toFixed(3),
-        lightingMs: +(postStartedAt - lightingStartedAt).toFixed(3),
-        postMs: +(frameFinishedAt - postStartedAt).toFixed(3),
-        totalMs: +(frameFinishedAt - frameStartedAt).toFixed(3),
-      });
-    }
+    if (profileGarageReturn) markGarageReturnFrame(frameStartedAt, lightingStartedAt, postStartedAt, frameFinishedAt);
     lastRenderedPhase = game.phase;
   };
 
+  /** The traced Garage return's first frame (a diagnostics trace only, once per return). */
+  const markGarageReturnFrame = (frameStartedAt: number, lightingStartedAt: number, postStartedAt: number,
+    frameFinishedAt: number): void => {
+    trace?.mark?.('garage:return-frame', {
+      preRenderMs: +(lightingStartedAt - frameStartedAt).toFixed(3),
+      lightingMs: +(postStartedAt - lightingStartedAt).toFixed(3),
+      postMs: +(frameFinishedAt - postStartedAt).toFixed(3),
+      totalMs: +(frameFinishedAt - frameStartedAt).toFixed(3),
+    });
+  };
+
+  // hot-path: every rendered frame
   const renderLiveFrame = (
     dtSeconds: number,
     frameWallDtSeconds: number,
@@ -347,6 +358,7 @@ export function createMainFrameRuntime({
     renderPresentation(frame, appliedDtSeconds, frameWallDtSeconds);
   };
 
+  // hot-path: the animation frame callback
   const tick = (nowMs: number): void => {
     // the spike census's recorder, when installed (game/frameStages.ts): the frame's begin and end around its work
     const stages = frameStages;

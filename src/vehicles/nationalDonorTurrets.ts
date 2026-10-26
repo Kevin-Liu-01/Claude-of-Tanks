@@ -4,12 +4,13 @@
 // loading a geometry pack.
 //   "for the t72nn3 qilin, adopt its turret to actually use the ztz-99a2 turret and make the kunlun usee the type 96b
 //    turret except with the special era, autocannon, shtora eyes"
+//   252: "redesign the qilin around a type 96b inspired Yun like turret"
 //   "make the t72 b3m hetman and t72 b3 sich use turrets properly based off the t72 b3m 2016, t72 b3, exceept obviously
 //    up armored annnd using modern autocannon and cages and the leaves and lights and ERa and other emplacements"
 //   "make the t72b3 zubr turret properly based off the t72 b3m 2016, except obvioulsy up armored annnd using modern
 //    autocannon and cages and the leaves and lights and ERa and other emplacements"
 
-export type NationalTurretDonorId = 't72b3' | 't72b3m_2016' | 'ztz99a2' | 'type96b';
+export type NationalTurretDonorId = 't72b3' | 't72b3m_2016' | 'type96b';
 type Point3 = readonly [number, number, number];
 
 export interface NationalDonorTurret {
@@ -32,8 +33,8 @@ export interface NationalDonorTurret {
   gunPitchByYawDeg?: readonly (readonly [number, number])[];
   /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
   heightM?: number;
-  /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
-   * ZTZ-99A2: whips moved out of the concept station's sweep). */
+  /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. bins: false for the
+   * Type 96B: its open side bins left out where a concept's armour housing fills their volume). */
   builderOptions?: Readonly<Record<string, unknown>>;
 }
 
@@ -68,18 +69,19 @@ function rimSocket(cupola: readonly [number, number], bearingDeg: number, s: Omi
 
 // The T-72B3 and T-72B3M rings sit exactly where their own hulls carry them. A T-72B3M turret on the T-72B3 hull keeps
 // its casting's lower edge where the T-72B3's own casting meets that roof (1.446 m); the Type 96B shell's floor meets
-// the T-72B3M roof (1.5295 m) as it meets its own hull's; the 99A2 shell's lower course lands on the T-72B3 roof.
+// the T-72B3M roof (1.5295 m) as it meets its own hull's.
 const T72B3_RING: Point3 = [.0000002374, 1.457100315, .065591405];
 const T72B3M_RING: Point3 = [.0000072471277, 1.52948397398, .1143146502203];
 const T72B3M_ON_T72B3: Point3 = [0, 1.446 + (1.52948397398 - 1.5153), .065591405];
 // CN lane 2026-10-15: the Type 96B ring rides 20 mm above the B3M roof so the 96B mantlet chin clears the driver's
 // hatch, the shoulder covers and the engine-deck louvres at the gun's full 6 degree depression at every yaw (it cut the
-// louvres by 5 mm at yaw 165); the 99A2 ring rides 54 mm above the B3 roof so the chevrons' lower returns (turret-local
-// y -0.04) clear the B3 roof by 12 mm at every yaw instead of sitting 42 mm inside it. The rings' own collars bridge
-// the running gap.
+// louvres by 5 mm at yaw 165). The ring's own collar bridges the running gap.
 const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
-// Release 227: 2 mm higher again, so the 99A2 shell's lower course passes 25 mm over the B3 driver's hatch at every yaw
-// (23.5 mm at yaw 290).
+// 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin's Type 96B rides the T-72B3
+// ring 40 mm over the B3 roof. The B3's driver's hatch (its top 1.488) stands 31 mm over the B3 roof round the ring, where
+// the B3M's sits level with it: 20 mm up, as the Kunlun rides, the heeled boot passed 8 mm over the hatch at full
+// elevation and the trunnion ring 13 mm at level (cnClearance holds 25 mm); 40 mm up it passes 28 mm over it.
+const TYPE96B_ON_T72B3: Point3 = [0, 1.457100315 + .040, .065591405];
 // Release 227 (owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to be
 // wrapped around the type 96b turret base"): the Type 96B ring rides 40 mm above the T-80U's own yaw datum, so the 96B
 // shell's floor and the Yun's wrap clear the T-80U roof and its drums at every yaw; where the 96B barrel (its trunnion
@@ -87,41 +89,36 @@ const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
 // transom, its depression stops follow the measured clearance (gunPitchByYawDeg below). A stationary ring race on the
 // hull closes the running gap under the collar (nationalChina.ts yunRingRace).
 const TYPE96B_ON_T80U: Point3 = [0, 1.55158 + .040, .0718698169];
-const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .056, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
 // The T-72B3 cupola's raised hatch ring (t72b3X.ts roofEquipment: r .358 at -.61355, -.363), its seat 70 mm aft of the
 // ring's centre so the station's 260 mm yaw base clears the commander's sight block on the ring's front edge.
 const T72B3_CUPOLA_RING = [-.61355 - .0000002374, -.363 - .065591405 - .07] as const;
 const T72B3M_CUPOLA = [-.62689 - .0000072471277, -.24424 - .1143146502203] as const;
-const ZTZ99A2_CUPOLA = [.52, -.88] as const;
 const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 // Release 227, round 4 (critics D10, S1): the QJC-88 emplacements' pintle sockets on the cupolas' rims, off the hatch
 // lids. Each stands 22.5 degrees off the turret's forward line toward the gun's feed side (+X), so the ammunition can
-// faces away from the hatch: on the 99A2 cupola (ring r .279 over its lid's .251) clear of its periscope at the inboard
-// rim; on the Type 96B cupola (fixed ring r .377, lid inside the periscope ring at r .276) between its forward and its
-// forward-inboard periscopes and beside the lid's forward latch. The 96B's roof falls away ahead of the cupola, so the
-// Kunlun's post stands 0.25 m tall, welded to the cupola's base and ring by a web plate up to 7 mm under the ring's top.
-const QILIN_SOCKET = rimSocket(ZTZ99A2_CUPOLA, 22.5, { lidR: .251, ringR: .279, topY: .905, postR: .046 });
-const KUNLUN_SOCKET = rimSocket(TYPE96B_CUPOLA, 22.5, { lidR: .276, ringR: .377, topY: .91, postR: .046,
+// faces away from the hatch: on the Type 96B cupola (fixed ring r .377, lid inside the periscope ring at r .276) between
+// its forward and its forward-inboard periscopes and beside the lid's forward latch. The 96B's roof falls away ahead of
+// the cupola, so the post stands 0.25 m tall, welded to the cupola's base and ring by a web plate up to 7 mm under the
+// ring's top. 252: the Kunlun's and the Qilin's Type 96B cupolas carry the same socket.
+const TYPE96B_RIM_SOCKET = rimSocket(TYPE96B_CUPOLA, 22.5, { lidR: .276, ringR: .377, topY: .91, postR: .046,
   web: { innerR: .352, topY: .822 } });
 
-/** The Qilin's bustle cut (metres): 10 % of the ZTZ-99A2 body's 3.954 m front-to-rear length. */
-export const QILIN_BUSTLE_CUT_M = .395;
-
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
-  // Release 227 (owner 2026-10-16: "also make the qqilin turret 10% shorter ... and redesign the qilin turret around this
-  // principle"): the 99A2 bustle loses 0.395 m (donorBustleCut.ts: the body 3.954 -> 3.559 m, the rear armour assembly
-  // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own flank
-  // sleeves (chinaDonorTurretKit.ts), and both whips stand on the right rear roof edge, at least 1.6 m from the
-  // cupola emplacement and clear of the drone's dock on the right rear roof.
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, ...QILIN_SOCKET, heightM: 3.213,
+  // 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin's ZTZ-99A2 gives way to the
+  // Type 96B, built as the Yun's is (its open side bins and cheek launchers left out for the Qilin's own wrap, its boot
+  // heeled, the box sight riding the gun) and wrapped in the Qilin's own kit (chinaDonorTurretKit.ts qilin): the stepped
+  // brow and flank sleeve, the closed bustle and its loaded rack. Its QJC-88 stands in the Kunlun's rim socket on the
+  // same Type 96B cupola; the 96B's own whip is the Qilin's mast.
+  // Its depression by turret yaw is measured as the Kunlun's (tools/gun-depression-sweep.mjs: 26 mm between the whole gun
+  // and every hull mesh, both sides, each degree's shallowest neighbour): over the B3 hull's glacis-corner fittings at
+  // yaw 24-30 (5.4 deg at worst) and the skirts' rear modules at 142-151 (5.3 deg); full 6 deg elsewhere.
+  t72b3_qilin: { donor: 'type96b', pivot: TYPE96B_ON_T72B3, roofY: .70, ...TYPE96B_RIM_SOCKET, heightM: 3.097,
+    gunPitchByYawDeg: [[0, -6], [22, -6], [28, -5.4], [30, -5.4], [32, -6], [140, -6], [145, -5.3], [147, -5.3], [153, -6],
+      [180, -6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
-    // Release 227: its ring collar turns in place on the pivot, its skirt at r 1.08 inside the B3 deck's edge (x 1.11)
-    // and 25 mm clear of the fenders' inner edge (the 99A2's own 1.14 m collar, 0.12 m behind the pivot, swept 11 mm
-    // into the fender tops at yaw 110-250).
-    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.20, -1.25], [-1.14, -.96]],
-      ringCollar: { z: 0, radiusM: 1.08 } } },
+    builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
   // Release 227 (cnClearance, 2026-10-17): the gun's depression by turret yaw, measured: at each degree the deepest pitch
   // keeping 26 mm between the whole gun (boot, box sight, barrel at recoil 0 and 0.135 m) and every hull mesh, on both
   // sides, then a conservative curve through each degree's shallowest neighbour. Round 5 (critic CN5-05): the hull lamps
@@ -130,7 +127,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // the skirts' tops at 111-114 deg (5.3 deg) and, aft of 133 deg, the hull deck's rear edge, the skirts' rear ends and
   // the engine deck's cooling panels (3.4-5.7 deg): the Type 96B's trunnion stands 0.26 m over the ring, and at -6 deg
   // the barrel meets the deck itself there.
-  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, ...KUNLUN_SOCKET, heightM: 3.35,
+  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, ...TYPE96B_RIM_SOCKET, heightM: 3.35,
     gunPitchByYawDeg: [[0, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
       [155, -4.9], [158, -4.8], [162, -3.8], [163, -3.7], [166, -3.7], [178, -4], [180, -4.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],

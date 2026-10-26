@@ -37,6 +37,7 @@ interface KoreanVariantOptions {
   reloadS?: number;
   shellName?: string;
   armorFactor?: number;
+  gunPitchByYawDeg?: FleetTankSpec['gunPitchByYawDeg'];
 }
 
 function variant(
@@ -54,6 +55,7 @@ function variant(
   }
   if (options.shellName && spec.gun.shells[0]) spec.gun.shells[0].name = options.shellName;
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
+  if (options.gunPitchByYawDeg) spec.gunPitchByYawDeg = options.gunPitchByYawDeg;
   spec.visual = {
     ...spec.visual,
     scheme: options.scheme,
@@ -77,6 +79,14 @@ const KOREA_SPECS = {
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
     reloadS: 5.4, shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
+    // 252 (tools/gun-depression-sweep.mjs, the K2 gun front with its mantlet trimmed to 0.24 m under the bore): the gun's
+    // lowest pitch by absolute turret yaw keeping 26 mm off every hull mesh, both sides, each degree's shallowest
+    // neighbour. Over the glacis's lamp clusters and front corners 7.6-9.6 deg, over the engine deck and the stern
+    // fittings from yaw 125 3.3-7.3 deg; the full 10 deg elsewhere.
+    gunPitchByYawDeg: [[0, -9.2], [1, -7.7], [2, -7.6], [4, -7.6], [10, -8.2], [13, -8.6], [14, -8.1], [15, -7.8], [20, -7.6],
+      [21, -7.6], [22, -7.9], [23, -9.5], [24, -9.4], [26, -9.4], [27, -9.6], [28, -9.1], [29, -9], [41, -8], [48, -8],
+      [51, -8.3], [55, -9], [56, -9.9], [57, -9.9], [58, -10], [124, -10], [125, -7.3], [126, -6.4], [130, -5.5],
+      [139, -5.2], [141, -4.6], [146, -4.2], [150, -4.2], [152, -3.3], [155, -3.4], [159, -4.2], [174, -4.2], [180, -4.5]],
   }),
 } satisfies Record<string, FleetTankSpec>;
 
