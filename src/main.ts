@@ -101,6 +101,7 @@ import {
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2036,12 +2037,27 @@ bus.on('ui:debugHud', (payload) => {
 const armorAimOverlay = createArmorAimOverlayAccess();
 // transitions-249: wait, between tasks, until the renderer's queued program links are in, so the draw that binds them
 // does not wait inside one task. Bounded: a link still pending at the deadline waits at its draw, as before.
+// (battle-spikes-253) One completion query a poll, and only once the GPU caught up to the previous poll (gpuCatchUp.ts):
+// asking every pending program each poll was a synchronous round trip apiece behind the GPU's queue. Linked programs
+// answer from three's cache; a last full check covers a program the live array dropped under the cursor.
 const awaitRendererProgramLinks = async (yieldForBudget: (force?: boolean) => Promise<void> | undefined): Promise<void> => {
   const deadline = performance.now() + 12_000;
   const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
-  while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
-    await yieldForBudget(true);
-  }
+  if (!programs) return;
+  const gate = createGpuCatchUpGate(renderer.getContext());
+  let cursor = 0;
+  try {
+    while (performance.now() < deadline) {
+      if (gate.caughtUp()) {
+        while (cursor < programs.length && programs[cursor].isReady?.() !== false) cursor++;
+        if (cursor >= programs.length) {
+          if (programs.every((program) => program.isReady?.() !== false)) return;
+          cursor = 0;
+        }
+      }
+      await yieldForBudget(true);
+    }
+  } finally { gate.dispose(); }
 };
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
