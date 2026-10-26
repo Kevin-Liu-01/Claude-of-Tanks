@@ -437,7 +437,11 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again .short{display:inl
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-end{font-size:var(--fs-13);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate{display:block;padding:var(--s3);box-shadow:var(--e1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details{overflow:visible;gap:var(--s3);}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview{display:none;}
+/* the details under a phone's mode picker lead with the chosen mode's name (its card scrolls with the picker) */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview{gap:var(--s3);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview-icon{width:36px;height:36px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{width:21px;height:21px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview h3{font-size:var(--fs-20);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rules{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rules[data-count='5']{grid-template-columns:repeat(6,minmax(0,1fr));}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rules[data-count='5']>.cot-deploy-rule{grid-column:span 2;}
