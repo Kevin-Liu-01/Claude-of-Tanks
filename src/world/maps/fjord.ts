@@ -247,10 +247,11 @@ export default {
       { kind: 'stabbur', x: 67.9, z: 169.7, yawDeg: -76, ground: 'veto', name: 'a farm stabbur on its stilts' },
       { kind: 'hayRack', x: 99.7, z: 148.4, yawDeg: -76, ground: 'veto', name: 'a hay rack in the infield' },
       // the stockfish racks on the harbour's slopes, the cod hung in pairs to dry (a sixth at (231, -43) stood inside the
-      // harbour store's footprint, so the composer never built it: dropped, the shard unchanged)
+      // harbour store's footprint, so the composer never built it: dropped, the shard unchanged; 2026-10-25, a seventh at
+      // (235, -181) the same — its south end in the building below it, refused as a solid structure on every build since
+      // the shard's capture: dropped, the shard unchanged, landmarks.selftest's shard-record check green again)
       { kind: 'fishRack', x: 235, z: 77, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
       { kind: 'fishRack', x: 233, z: 139, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
-      { kind: 'fishRack', x: 235, z: -181, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
       { kind: 'fishRack', x: 269, z: 65, yawDeg: -94, ground: 'veto', name: 'a stockfish rack by the harbour' },
       { kind: 'fishRack', x: 231, z: 241, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
     ],
