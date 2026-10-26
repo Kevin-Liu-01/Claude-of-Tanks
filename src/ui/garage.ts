@@ -745,7 +745,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</div><div class="cot-deploy-rows">` +
     deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
-    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
+    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving_ground">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
     `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
@@ -4161,6 +4161,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
+    battleMenu.dataset.modeTone = battleGameMode;
     renderArrangementPanel();
     loadMarsDropdowns();
     renderSides();

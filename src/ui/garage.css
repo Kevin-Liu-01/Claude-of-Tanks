@@ -293,7 +293,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-choice{position:relative;min-height:60px;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;
   gap:var(--s2);padding:9px 23px 9px 9px;border:1px solid var(--line-1);background:var(--surface-hover);
   color:var(--ink-1);cursor:pointer;text-align:left;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);line-height:1.4;}
-.cot-battle-choice .choice-icon{width:24px;height:28px;display:grid;place-items:center;color:var(--ink-3);}
+.cot-battle-choice .choice-icon{width:24px;height:28px;display:grid;place-items:center;color:var(--mode-color,var(--ink-3));}
 .cot-battle-choice .choice-icon svg{display:block;width:19px;height:19px;}
 .cot-battle-choice .choice-name{letter-spacing:normal;text-transform:uppercase;text-wrap:balance;}
 .cot-battle-choice::after{content:'';position:absolute;right:10px;top:calc(50% - 6px);width:5px;height:9px;
@@ -1577,14 +1577,12 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry:hover,.cot-multiplayer-entry:focus-visible{background:var(--accent);color:var(--accent-hi);}
 
-/* each mode's colour: the selected rule's (the Deploy plate) and every Deploy choice's own, from the mode tokens */
-.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-standard);}
-.cot-battle-menu[data-rule='capture_the_flag'],.cot-garage [data-mode-tone='capture_the_flag']{--mode-color:var(--mode-capture-the-flag);}
-.cot-battle-menu[data-rule='zone_control'],.cot-garage [data-mode-tone='zone_control']{--mode-color:var(--mode-zone-control);}
-.cot-battle-menu[data-rule='turbo_ball'],.cot-garage [data-mode-tone='turbo_ball']{--mode-color:var(--mode-turbo-ball);}
-.cot-battle-menu[data-rule='endless_horde'],.cot-garage [data-mode-tone='endless_horde']{--mode-color:var(--mode-endless-horde);}
-.cot-battle-menu[data-rule='frontline_assault'],.cot-garage [data-mode-tone='frontline_assault']{--mode-color:var(--mode-frontline-assault);}
-.cot-battle-menu[data-rule='mars'],.cot-garage [data-mode-tone='mars']{--mode-color:var(--mode-mars);}
+/* every mode wears its own hue (owner 2026-10-25): the kit maps data-mode-tone=<mode id> to --mode-ink (components.css),
+   the menu carries its selected mode's tone and every choice its own; a mode the kit does not name falls back to standard */
+.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}
+/* a Deploy choice's glyph paints its mode on the glyph plate (deploy.css sets the plate and the ink); the chosen one keeps
+   the kit's selection, the accent plate */
+.cot-garage .cot-battle-choice[data-mode-tone]:not([aria-pressed='true']) .choice-icon{color:var(--mode-color);}
 .cot-battle-preview-icon,.cot-battle-preview h3{color:var(--mode-color);}
 .cot-battle-galaxy{border-color:#9977d8!important;background:radial-gradient(ellipse at 15% 10%,#6e40904a,transparent),#151127!important;color:#d7baff!important;}
 .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}

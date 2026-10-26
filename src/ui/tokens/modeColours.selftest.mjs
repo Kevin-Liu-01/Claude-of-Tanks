@@ -85,11 +85,16 @@ const SITES = [
   ['src/ui/playMenu.ts', '.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}', "Rooms' rule glyphs paint the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
+  ['src/ui/garage.ts', 'data-game-mode="${id}" data-mode-tone="${id}"', "every Garage Deploy choice carries its mode"],
+  ['src/ui/garage.ts', 'data-proving data-mode-tone="proving_ground"', "the Garage's proving-ground choice carries its mode"],
+  ['src/ui/garage.ts', 'battleMenu.dataset.modeTone = battleGameMode;', "the Garage battle menu carries its selected mode"],
+  ['src/ui/garage.css', '.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}',
+    "the Garage battle menu and its choices read every mode's tone (the plate's glyph and title, the features, the chosen edge)"],
+  ['src/ui/garage.css', ".cot-garage .cot-battle-choice[data-mode-tone]:not([aria-pressed='true']) .choice-icon{color:var(--mode-color);}",
+    "a Garage Deploy choice's glyph paints its mode"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
-const garage = read('src/ui/garage.css');
-for (const id of Object.keys(ORIGINAL)) {
-  assert.ok(garage.includes(`--mode-color:var(--mode-${tokenName(id)})`), `garage.css's battle menu reads --mode-${tokenName(id)}`);
-}
+// the Garage's battle menu names no mode by hand: every mode reaches it through the kit's data-mode-tone mapping
+assert.doesNotMatch(read('src/ui/garage.css'), /\[data-rule='[a-z_]+'\][^{]*\{--mode-color/, 'garage.css maps no mode by hand');
 
-console.log(`modeColours.selftest: ${GAME_MODE_IDS.length} modes, one token each, contrast and separation held, ${SITES.length + Object.keys(ORIGINAL).length} call sites on the tokens`);
+console.log(`modeColours.selftest: ${GAME_MODE_IDS.length} modes, one token each, contrast and separation held, ${SITES.length} call sites on the tokens`);
