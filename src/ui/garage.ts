@@ -3460,8 +3460,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const moduleRows = garageModuleRows(spec);
     readoutModuleCount = moduleRows.length;
     const crewRows = garageCrewRows(spec);
+    // a chip names its module (a tip that said "Damageable module: <name>" again sat on an element no key reaches)
     const moduleChips = moduleRows.map((row) =>
-      `<div class="cot-module-chip" data-tip="${t('garage.module.tooltip', { name: row.label })}">` +
+      `<div class="cot-module-chip">` +
       `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
