@@ -3464,7 +3464,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         1 / (1 + movingDispersion(spec.gun.bloom.turret, 20)), { icon: 'turretRing', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') })) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       `</div></section>` +
-      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), t('garage.dossier.ammunition.types', { count: shells.length }), 'Ammunition')}` +
       `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
@@ -3490,14 +3490,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
-      statBar(t('garage.dossier.stat.hp'), `${spec.hp} ${t('garage.unit.hp')}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
+      // hp as the overview column writes it (its unit is the game's own, in both languages)
+      statBar(t('garage.dossier.stat.hp'), `${spec.hp} hp`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b class="num">${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b class="num">${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
-      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
+      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), t('garage.dossier.modulesCount', { count: moduleRows.length }), 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew')}` +

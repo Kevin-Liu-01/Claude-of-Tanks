@@ -147,9 +147,11 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr>span{min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{margin:0;white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{grid-column:1/-1;}
-/* a Chinese label keeps its words whole and breaks at its phrase marks (the gauntlet 10-25: 车体转 / 向散布), or anywhere
-   only when its column is narrower than one word */
-html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{word-break:keep-all;overflow-wrap:anywhere;}
+/* Chinese sets each label whole on its line and the figure at the right edge under it, on every card (the gauntlet 10-25:
+   a figure beside it squeezed 车体转向散布 into 车体转 / 向散布, and 弹夹装填 into 弹夹 / 装填) */
+html[lang^='zh'] body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{grid-template-columns:auto minmax(0,1fr);}
+html[lang^='zh'] body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{grid-column:1/-1;justify-self:end;}
+html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{word-break:keep-all;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
