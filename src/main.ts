@@ -593,7 +593,16 @@ const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
-const camoTryOn = createGarageCamoTryOn({ paint: paintCamoTryOn, onChange: () => invalidateGaragePresentation() });
+// the camo try-on (INTERACTION-REDESIGN B); its timings ride on window.__CAMO_TRY_ON for click-timeline's camo paths
+const camoTryOnStats = { tries: 0, lastTryMs: 0, wears: 0, lastWearMs: 0 };
+(window as Window & { __CAMO_TRY_ON?: typeof camoTryOnStats }).__CAMO_TRY_ON = camoTryOnStats;
+const camoTryOn = createGarageCamoTryOn({
+  paint: paintCamoTryOn,
+  onChange: () => invalidateGaragePresentation(),
+  onTiming: (kind, ms) => {
+    if (kind === 'try') { camoTryOnStats.tries++; camoTryOnStats.lastTryMs = ms; } else { camoTryOnStats.wears++; camoTryOnStats.lastWearMs = ms; }
+  },
+});
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 worldRuntime = createWorldActivationRuntime<
   MainWorld,

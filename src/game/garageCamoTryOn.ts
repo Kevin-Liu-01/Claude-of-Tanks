@@ -40,6 +40,10 @@ interface TryOnOptions {
   schedule?(callback: () => void): () => void;
   /** A tile canvas (default: a document canvas). */
   createCanvas?(): HTMLCanvasElement;
+  /** Timings for the perf receipts (click-timeline's camo paths): a try-on's paint and swap ('try'), and a worn
+   *  paint's press to its bake ('wear'), in milliseconds. */
+  onTiming?(kind: 'try' | 'wear', ms: number, selection: string): void;
+  now?(): number;
 }
 
 type MappedMaterial = THREE.Material & { map: THREE.Texture | null };
@@ -59,8 +63,10 @@ export function createGarageCamoTryOn(opts: TryOnOptions): GarageCamoTryOn {
   const notCamo = new WeakSet<THREE.Texture>();
   let cancel: (() => void) | null = null;
   let trying: string | null = null;
-  // the selection a press wore, shown on its tile until its bake lands
+  // the selection a press wore, shown on its tile until its bake lands, and when it was pressed
   let held: { root: THREE.Object3D; selection: string } | null = null;
+  let wornAt: number | null = null;
+  const now = opts.now ?? (() => performance.now());
 
   const restore = (): void => {
     if (!swapped.size) return;
@@ -123,6 +129,7 @@ export function createGarageCamoTryOn(opts: TryOnOptions): GarageCamoTryOn {
   };
 
   const apply = (root: THREE.Object3D, selection: string): void => {
+    const start = opts.onTiming ? now() : 0;
     cancel = null;
     if (swappedRoot && swappedRoot !== root) restore();
     let changed = false;
@@ -134,6 +141,7 @@ export function createGarageCamoTryOn(opts: TryOnOptions): GarageCamoTryOn {
     }
     if (swapped.size) swappedRoot = root;
     if (changed) opts.onChange();
+    opts.onTiming?.('try', now() - start, selection);
   };
 
   const show = (root: THREE.Object3D | null, selection: string | null): void => {
@@ -152,9 +160,11 @@ export function createGarageCamoTryOn(opts: TryOnOptions): GarageCamoTryOn {
     preview: show,
     wear(root, selection) {
       held = root ? { root, selection } : null;
+      wornAt = opts.onTiming ? now() : null;
       show(root, selection);
     },
     settle(selection) {
+      if (wornAt !== null) { opts.onTiming?.('wear', now() - wornAt, selection); wornAt = null; }
       if (held?.selection === selection) held = null;
       if (trying !== selection) return;
       cancel?.();

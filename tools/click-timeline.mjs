@@ -414,6 +414,28 @@ export const PATHS = [
   { id: 'roster-chip', doc: 'game', reps: 5,
     press: (page, i) => target(page, '.cot-country-chips .cot-country-chip', i + 1), done: ROSTER_DONE, doneTimeoutMs: 60000,
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-country-chips .cot-country-chip', 0), ctx).catch(() => {}); } },
+  // INTERACTION-REDESIGN B, the camo try-on and the worn paint (main.ts garageCamoTryOn, window.__CAMO_TRY_ON). A hover on
+  // one of the band's next swatches paints its 256 px tile and swaps it onto the hero (done: the try-on count); a press
+  // wears the band's next paint and its full bake lands (done: the wear count). Each sample logs the try-on's paint and
+  // swap, or the wear's press-to-bake, in milliseconds.
+  { id: 'camo-try', doc: 'game', reps: 6,
+    script: async (page, i, run) => {
+      await page.mouse.move(2, 2);
+      const before = await page.evaluate(() => window.__CAMO_TRY_ON?.tries ?? 0);
+      await run('camo-try', () => target(page, '.cot-lt-paint [data-lt-paint]', 1 + (i % 3)),
+        { action: (p) => p.hover('[data-click-target]'), done: `(window.__CAMO_TRY_ON?.tries ?? 0) > ${before}`, doneTimeoutMs: 15000 });
+      const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastTryMs ?? -1);
+      console.log(`    camo-try #${i} tile paint and swap ${ms.toFixed(1)} ms`);
+      await page.mouse.move(2, 2);
+    } },
+  { id: 'camo-wear', doc: 'game', reps: 6,
+    script: async (page, i, run) => {
+      const before = await page.evaluate(() => window.__CAMO_TRY_ON?.wears ?? 0);
+      await run('camo-wear', () => target(page, '.cot-lt-paint [data-lt-paint]', 1),
+        { done: `(window.__CAMO_TRY_ON?.wears ?? 0) > ${before}`, doneTimeoutMs: 60000 });
+      const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastWearMs ?? -1);
+      console.log(`    camo-wear #${i} press to bake ${ms.toFixed(0)} ms`);
+    } },
   { id: 'settings-open', doc: 'game', reps: 4,
     press: (page) => target(page, '.cot-settings-slot .cot-gear, [data-nav=settings]'), shown: `shown('.cot-settings.open')`,
     after: closeSettings },
