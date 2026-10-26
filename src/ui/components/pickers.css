@@ -78,6 +78,7 @@
 /* touch has no hover: the star shows on the chosen card and on favourites, at the 44 px target */
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
+  .cot-c-picker--list .cot-c-picker__opt{min-height:52px}
   .cot-c-picker__more{--h:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }
@@ -131,4 +132,30 @@
 .cot-mp__name{display:block;font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-mp__desc{margin:var(--s2) 0 0;font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body);color:var(--ink-2);}
 .cot-mp__rules{display:grid;gap:var(--s1);margin:var(--s3) 0 0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2);}
+/* ---- the picker menu (pickerMenu.ts): the kit's field trigger (the chosen item's picture or glyph, its name, one fact, a
+   chevron that turns) and the kit picker in a popover in the top layer under it, or a bottom sheet on a phone ---- */
+.cot-c-menu__trigger{box-sizing:border-box;display:flex;align-items:center;gap:var(--s2);width:100%;min-width:0;min-height:36px;margin:0;
+  padding:var(--s1) var(--s2) var(--s1) var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
+  color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body);text-align:left;cursor:pointer}
+.cot-c-menu__trigger:hover{background:var(--surface-hover)}
+.cot-c-menu__trigger:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-c-menu__trigger[aria-expanded=true]{background:var(--surface-hover);box-shadow:var(--ring-accent)}
+.cot-c-menu__trigger:disabled{opacity:.55;cursor:default}
+.cot-c-menu__media{flex:none;width:40px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-1)}
+.cot-c-menu__media img{display:block;width:100%;height:100%;object-fit:cover}
+.cot-c-menu__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
+.cot-c-menu__words{display:flex;flex:1 1 auto;align-items:baseline;gap:var(--s2);min-width:0}
+.cot-c-menu__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-c-menu__fact{flex:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-12))}
+.cot-c-menu__chev{display:flex;flex:none;margin-left:auto;color:var(--ink-3);transition:rotate var(--dur-fast) var(--ease-enter)}
+.cot-c-menu__trigger[aria-expanded=true] .cot-c-menu__chev{rotate:180deg}
+/* placed by pickerMenu.ts (placeMenu): left, top, width and max-height; its grid scrolls inside */
+.cot-c-menu__pop{position:fixed;inset:auto;box-sizing:border-box;display:none;flex-direction:column;margin:0;padding:var(--s2);border:0;
+  border-radius:var(--plate-radius);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);overflow:hidden}
+.cot-c-menu__pop:popover-open{display:flex}
+.cot-c-menu__picker{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
+.cot-c-menu__picker>.cot-c-picker{flex:1 1 auto}
+.cot-c-menu__pop.is-sheet{border-radius:var(--plate-radius) var(--plate-radius) 0 0;padding-bottom:max(var(--s2),env(safe-area-inset-bottom))}
+@media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
+@media (prefers-reduced-motion:reduce){.cot-c-menu__chev{transition:none}}
 }

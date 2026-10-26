@@ -243,11 +243,13 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       options.onPreview(next);
     });
   };
+  // the rows as drawn: each option stands in its own positioned cell, so its offsetTop is 0 in every row (an Arrow Down
+  // jumped to the last option)
   const columns = (): number => {
     const list = options$();
     if (list.length < 2) return 1;
-    const top = list[0].offsetTop;
-    const second = list.findIndex((element) => element.offsetTop !== top);
+    const top = list[0].getBoundingClientRect().top;
+    const second = list.findIndex((element) => Math.abs(element.getBoundingClientRect().top - top) > 1);
     return second < 0 ? list.length : second;
   };
   const rove = (to: HTMLElement | undefined, focus: boolean, preventScroll = false): void => {
