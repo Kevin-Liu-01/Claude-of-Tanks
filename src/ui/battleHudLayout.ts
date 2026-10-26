@@ -883,7 +883,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       - (rightGrid ? REPORT_FEED_ROOM : 8) - (rightEarNow.top + (rightGrid ? 124 : 22 + Math.min(14, rightCount) * rosterRowLeast(rightCount)))) : Infinity;
     // (the cap sizes the plate's width; its grid labels make it taller by their row less their column)
     const mapNow = rightEarNow ? read('.cot-minimap') : null;
-    const mapCap = Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity,
+    // (and a mouse layout's map stops where the report and the log over it stop, short of the sight's widest ring
+    // (battleHudLayout.css, 176 px at the least), so their edges stay one: at 900x700 the large map stood 10 px past the
+    // log's left edge, gauntlet r8)
+    const sightStop = touch ? Infinity
+      : Math.max(176, width / 2 - Math.max(Math.min(width, height) * 0.15 + 8, 80) - (mapNow ? width - mapNow.right : 12));
+    const mapCap = Math.min(!touch && rackRight > width / 2 ? width - 16 - rackRight - 12 : Infinity, sightStop,
       mapRoom - (mapNow ? Math.max(0, mapNow.height - mapNow.width) : 0));
     setBodyVar('--hud-map-max', mapCap < Infinity ? `${Math.floor(mapCap)}px` : '');
     // (as many tiles as the rack has slots: each tile stands over its slot, as wide, the separator's gap with it, so the
