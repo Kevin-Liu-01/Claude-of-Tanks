@@ -189,6 +189,9 @@ export function retainerPaths({ meta, nodes, edges, strings }, markerName, max =
       for (let k = inStart[node]; k < inStart[node + 1]; k++) {
         const e = inEdges[k], kind = edgeTypes[edges[e * EF + eType]];
         if (kind === 'weak' || kind === 'shortcut') continue;
+        // a WeakMap's table holds a value only while its key lives (an ephemeron: "part of key (K) -> value (V)"): the path
+        // that keeps the key alive is the retainer, never the table itself
+        if (kind === 'internal' && String(strings[edges[e * EF + eName]] ?? '').includes('part of key (')) continue;
         const from = edgeFrom[e];
         if (seen[from]) continue;
         seen[from] = 1; via[from] = e; queue[tail++] = from;
