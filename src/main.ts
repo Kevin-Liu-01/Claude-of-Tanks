@@ -237,7 +237,7 @@ import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import { installAccessibility } from './ui/accessibilityPreferences.ts';
 import { installPinchZoomGuard } from './ui/pinchZoomGuard.ts';
 import {
-  spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
+  spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds, planBattleSeats,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
@@ -2499,6 +2499,15 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     prebakeSharedTextures,
     anisotropy: engineCtx.anisotropy ?? 4,
     rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
+    // the load card's both teams from its first frame: the seats setupBattle will field, planned before the world
+    plannedRosters: (specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) => {
+      const plan = planBattleSeats(game, specId, request);
+      return plan ? {
+        allies: rosterPresentation.battleRows(plan.seats, 'player'),
+        enemies: rosterPresentation.battleRows(plan.seats, 'enemy'),
+        teamNations: plan.teamNations,
+      } : null;
+    },
     warmShotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
     getCamoSweep: () => camoSweepP,
     prepareRevealCamera: prepareBattleRevealCamera,
