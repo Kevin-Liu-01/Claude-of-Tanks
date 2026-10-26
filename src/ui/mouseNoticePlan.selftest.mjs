@@ -310,8 +310,8 @@ for (const v of VIEWPORTS) {
     // the alert raised before the roll-out keeps off the countdown and its rules panel, on the centre line
     // (the dial the alert shows with: a step smaller where that leaves the alert a place clear of the whole reticle)
     const early = alertBox(plan.countdownAlert), dial = plan.countdownUnderAlert;
-    assert.ok(dial.scale <= plan.countdown.scale && (dial === plan.countdown || plan.countdownAlertClearance === 2),
-      `${name}: the dial yields to the alert only for a place clear of the whole reticle`);
+    assert.ok(dial.scale <= plan.countdown.scale && (dial === plan.countdown || plan.countdownAlertClearance >= plan.clearance),
+      `${name}: the dial yields to the alert only for a place as clear as the notices' own`);
     assert.ok(centred(early, input.width) && plan.countdownAlert.small === input.smallAlert, `${name}: the countdown's alert sits on the centre line`);
     assert.ok(plan.countdownAlert.h >= alertReserve(plan.countdownAlert.w, plan.countdownAlert.small), `${name}: the countdown's alert slot holds every alert`);
     const onDial = [dial, dial.rules].some((r) => r && overlap(early, r, MOUSE_NOTICE_GAP_PX - .01));

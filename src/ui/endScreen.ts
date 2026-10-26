@@ -293,7 +293,7 @@ const ES_CSS = `
 .cot-es .es-meta{margin-top:var(--s1);text-align:center;font-family:${FONT_COND};
   font-weight:700;font-size:var(--battle-fs-12);letter-spacing:.14em;color:var(--ink-2);
   text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:18px;}
-.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--ink-3)}
+.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}
 .cot-es .es-meta b{color:var(--ink-2);font-weight:700;}
 .cot-es .es-campaign{margin:var(--s3) auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
   border:1px solid oklch(from var(--accent) l c h / .5);border-left:3px solid var(--accent);border-radius:4px;background:var(--battle-chip-plate);}
@@ -1117,13 +1117,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const bits: string[] = [];
     const mode = sum.mode && Object.hasOwn(GAME_MODE_DEFINITIONS, sum.mode)
       ? GAME_MODE_DEFINITIONS[sum.mode as keyof typeof GAME_MODE_DEFINITIONS] : null;
-    if (mode) bits.push(`<span class="mode"${datumAttr('mode-name')}>${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
+    // (each mode glyph in its mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+    if (mode) bits.push(`<span class="mode" data-mode-tone="${mode.id}"${datumAttr('mode-name')}>${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
     if (sum.map) bits.push(`<span${datumAttr('map-name')}>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
     if (sum.timeS > 0) {
       bits.push(`<span${datumAttr('clock')}>${datumGlyph('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
     }
     if (sum.hordeWave != null && Number.isFinite(sum.hordeWave)) {
-      bits.push(`<span>${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
+      bits.push(`<span data-mode-tone="endless_horde">${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);
       host.dataset.hordeWave = String(Math.floor(sum.hordeWave));
     }
     // Jev commander (2026-09-25): the report says who commanded the bots when it was not the classic brain

@@ -1550,7 +1550,7 @@ const HUD_CSS = `
   background:var(--hud-plate);border:1px solid var(--line-2);box-shadow:0 5px 14px oklch(from var(--surface-scene) l c h / .38);
   font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
-.cot-mode-status .mi{color:var(--accent)}.cot-mode-status .mv{color:var(--ink-1);}
+.cot-mode-status .mi{color:var(--mode-ink,var(--accent))}.cot-mode-status .mv{color:var(--ink-1);}
 /* the mission plate (brand-ui H3, the direction's .mission): under the score it is the objective row; the corner seat
    (battleHudLayout.css data-objective-seat=corner) shows the mode's name over it, the link's ping and the Tab key */
 .cot-mode-status .mt{display:contents}.cot-mode-status :is(.mn,.cot-c-kbd){display:none}
@@ -3710,6 +3710,8 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
     const modeId = normalizeGameMode(modeState.id);
     modeStatusEl.dataset.mode = modeId;
+    // (the glyph in the mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+    modeStatusEl.dataset.modeTone = modeId;
     const modeName = t(`playMenu.matchMode.${modeId}.label`);
     modeStatusEl.dataset.tip = modeName;
     modeStatusName.textContent = modeName;

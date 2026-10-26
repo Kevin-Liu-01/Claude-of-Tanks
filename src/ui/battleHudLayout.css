@@ -278,7 +278,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net-link{display:none}
 /* (every mode's glyph in the one accent: its shape names the mode; a lilac, a cyan, a mint and a salmon of its own were
    off the palette, gauntlet r3) */
-body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--objective-accent)}
+body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}
 body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:1;min-width:0}
 body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
 /* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its

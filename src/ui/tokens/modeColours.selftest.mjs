@@ -95,6 +95,12 @@ const SITES = [
   ['src/docs/chapters/modes.ts', '<a href="#${modeAnchor(mode)}" data-mode-tone="${mode}">', "the Field Manual's modes table rows carry their mode"],
   ['src/docs/chapters/multiplayer.ts', '<a href="${modes}#${modeAnchor(mode)}" data-mode-tone="${mode}">', "the Field Manual's multiplayer mode chips carry their mode"],
   ['src/docs/chapters.css', '[data-mode-tone] .cot-i.dm-mode-glyph{color:var(--mode-ink,var(--ink-3))}', "the Field Manual's mode glyphs paint the mode"],
+  ['src/ui/hud.ts', 'modeStatusEl.dataset.modeTone = modeId;', "the battle HUD's objective plate carries its mode"],
+  ['src/ui/battleHudLayout.css', '.cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}', "the objective plate's glyph paints the mode"],
+  ['src/ui/battleLoad.ts', 'modeChip.dataset.modeTone = normalizeGameMode(info.modeId);', "the battle load's mode chip carries its mode"],
+  ['src/ui/battleLoad.ts', '.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}', "the battle load's mode glyph paints the mode"],
+  ['src/ui/endScreen.ts', '<span class="mode" data-mode-tone="${mode.id}"', "the end report's mode chip carries its mode"],
+  ['src/ui/endScreen.ts', '.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}', "the end report's mode glyph paints the mode"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
 const garage = read('src/ui/garage.css');
