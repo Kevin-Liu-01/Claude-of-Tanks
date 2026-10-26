@@ -106,7 +106,8 @@ html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,
 html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 @media(max-width:600px){
- .cot-watch{left:var(--inset-left);right:var(--inset-right);transform:none;justify-content:center;flex-wrap:wrap}
+ /* (on the map's and the feeds' 12 px line, not the shell's 24 px inset: the bar stood off every phone edge, gauntlet r11) */
+ .cot-watch{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));transform:none;justify-content:center;flex-wrap:wrap}
  .cot-watch .who{width:auto;flex:1 1 100%;grid-template-columns:auto 44px minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
