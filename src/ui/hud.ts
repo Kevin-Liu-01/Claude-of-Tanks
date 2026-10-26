@@ -19,7 +19,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el } from './dom.ts';
+import { createElement as el, datumAttr, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
@@ -1577,11 +1577,11 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-hud-gear .cot-c-kbd{display:none;font-size:var(--battle-fs-11);}
 .cot-net:is(.metered,:has(.cot-net-link:not([hidden]))) .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
 /* One link readout (owner 2026-10-25: "the ping or wifi is duplicated in the top right"; Main's ruling): in a networked
-   battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-link while it is up: its health, seat and
+   battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-battle while it is up: its health, seat and
    roster, and its details panel), so the corner drops its link chip and the meter reads its fps alone. A body class, never
    a body:has() (a whole-page restyle on every write). Solo battles keep the corner as it was. */
-body.cot-mp-link :is(.cot-net-link,.cot-net-unit.ping){display:none;}
-body.cot-mp-link .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
+body.cot-mp-battle :is(.cot-net-link,.cot-net-unit.ping){display:none;}
+body.cot-mp-battle .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
 /* touch: the readout keeps its own place (battleHudLayout.css), the gear is the toolbar's (touchControls.ts) */
 body.cot-touch-layout .cot-net:not(.metered){display:none;}
 body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
@@ -1990,7 +1990,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    drew it a fallback face wider, past its tile, gauntlet r2) */
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:var(--battle-fs-fig-11);font-weight:700;
   font-family:var(--font-display);color:var(--ink-2);
-  letter-spacing:-.02em;white-space:nowrap;z-index:4;}
+  letter-spacing:0;white-space:nowrap;z-index:4;}
+/* (the codes at the face's own tracking, as every label: tightened, APFSDS's letters touched, gauntlet r7) */
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
 .cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
@@ -2246,6 +2247,7 @@ export function initHud(bus: EventBus): HudRuntime {
     initialBox: () => [root.clientWidth || window.innerWidth, root.clientHeight || window.innerHeight],
     onResize: () => { reticlePaint.valid = false; scopeGrad = null; scopeGradZoom = -1; },
   });
+  markDatum(retSurface.canvas, 'reload');
   const ctx = retSurface.context;
   const markSurface = createUiCanvas(root, 'cot-hitmark', { initialBox: () => [HIT_MARK_BOX_PX, HIT_MARK_BOX_PX] });
   const markCanvas = markSurface.canvas;
@@ -2294,10 +2296,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // --- top score/timer plate ---
   // Scores and clock retain a fixed footprint regardless of roster size.
-  const topPlate = el('div', 'cot-top', root);
+  const topPlate = markDatum(el('div', 'cot-top', root), 'score');
   topPlate.innerHTML = `<div class="sc ally"><span class="team-label" data-default>${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b><i class="bar" aria-hidden="true"><i></i></i></div>` +
-    `<div class="tm-block"><span class="tm-label"></span><span class="tm num">15:00</span></div>` +
+    `<div class="tm-block"><span class="tm-label"></span><span class="tm num"${datumAttr('clock')}>15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label" data-default>${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b><i class="bar" aria-hidden="true"><i></i></i></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
@@ -2319,7 +2321,7 @@ export function initHud(bus: EventBus): HudRuntime {
   modeStatusEl.setAttribute('role', 'status');
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
   // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"></b><span class="mv"></span></span>`
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"${datumAttr('mode-name')}></b><span class="mv"${datumAttr('objective')}></span></span>`
     + `<kbd class="cot-c-kbd" aria-hidden="true">TAB</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
@@ -2342,11 +2344,13 @@ export function initHud(bus: EventBus): HudRuntime {
   const netUnits = el('span', 'cot-net-units', netEl);
   netUnits.setAttribute('role', 'status');
   netUnits.setAttribute('aria-label', t('hud.net.perfAria'));
-  netUnits.innerHTML = `<span class="cot-net-unit fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
-    `<span class="cot-net-unit ping"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
+  // (each readout names its datum, UI-LOCKDOWN part B: one visible element a datum, the overlap receipt's duplicate check)
+  netUnits.innerHTML = `<span class="cot-net-unit fps"${datumAttr('fps')}><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+    `<span class="cot-net-unit ping"${datumAttr('link')}><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
   const netLink = el('span', 'cot-net-link', netEl);
+  markDatum(netLink, 'link');
   netLink.hidden = true;
-  netLink.innerHTML = `${uiIconSVG('signal', 14)}<b class="num"></b>`;
+  netLink.innerHTML = `${datumGlyph('link', 14)}<b class="num"></b>`;
   const netLinkValue = requireElement<HTMLElement>(netLink, 'b');
   const gearBtn = el('button', 'cot-hud-gear', netEl);
   gearBtn.type = 'button';
@@ -2427,7 +2431,7 @@ export function initHud(bus: EventBus): HudRuntime {
     `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
     `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
-    `<strong class="speed num" data-drive-speed>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
+    `<strong class="speed num" data-drive-speed${datumAttr('speed')}>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
   const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
@@ -2533,7 +2537,7 @@ export function initHud(bus: EventBus): HudRuntime {
   window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 
-  const killfeed = el('div', 'cot-killfeed', root);
+  const killfeed = markDatum(el('div', 'cot-killfeed', root), 'kill-feed');
   const killLeft = el('div', 'cot-kill-lane l', killfeed);
   const killRight = el('div', 'cot-kill-lane r', killfeed);
   // the player's kills and what they earned, centre low (hudKillRibbon.ts)
@@ -2549,7 +2553,7 @@ export function initHud(bus: EventBus): HudRuntime {
   specBar.setAttribute('role', 'region');
   specBar.setAttribute('aria-label', t('spectator.spectating'));
   const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
-  const specWho = requireElement<HTMLElement>(specBar, '.who');
+  const specWho = markDatum(requireElement<HTMLElement>(specBar, '.who'), 'watched');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
   const specVeh = requireElement<HTMLElement>(specBar, '.veh');
   const specIndex = requireElement<HTMLElement>(specBar, '.idx');
@@ -2669,7 +2673,7 @@ export function initHud(bus: EventBus): HudRuntime {
     },
   };
 
-  const alertEl = el('div', 'cot-alert', root);
+  const alertEl = markDatum(el('div', 'cot-alert', root), 'notices');
   alertEl.setAttribute('role', 'status');
   alertEl.setAttribute('aria-live', 'polite');
   const alertIconEl = el('span', 'cot-alert-icon', alertEl);
@@ -2926,7 +2930,7 @@ export function initHud(bus: EventBus): HudRuntime {
     setAttr(specialButton, 'aria-pressed', active&&suspension ? 'true' : 'false');
   }
 
-  const shellBox = el('div', 'cot-shells', root);
+  const shellBox = markDatum(el('div', 'cot-shells', root), 'ammo');
   const ammoSwitchingStatus = el('span', 'cot-ammo-switching', shellBox);
   ammoSwitchingStatus.setAttribute('role', 'status');
   ammoSwitchingStatus.setAttribute('aria-live', 'polite');
@@ -3016,7 +3020,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const conSep = el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
-  const conBox = el('div', 'cot-cons', shellBox);
+  const conBox = markDatum(el('div', 'cot-cons', shellBox), 'consumables');
   const conEls: HTMLButtonElement[] = [];
   const conSlots: RetainedConsumableSlot[] = [];
   const conReadyAt = [0, 0, 0];
@@ -3094,7 +3098,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const mmSurface = createUiCanvas(mmWrap, '', { units: [MM, MM], onResize: () => { mmDirty = true; } });
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
-  mmHead.innerHTML = `<span class="nm"></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
+  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
   const mmName = requireElement<HTMLElement>(mmHead, '.nm');
   const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
   // the grid's coordinates, WoT's convention: numbers are the columns (1 west to 0 east, along the top), letters the rows
@@ -6619,6 +6623,39 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.strokeRect(0.5, 0.5, MM - 1, MM - 1);
   }
 
+  // The chrome never changes, so it renders once into its own layer at the
+  // plate's device size and each paint copies it 1:1 (two grid strokes, the
+  // full-plate vignette and two keylines become one drawImage). The layer
+  // re-renders every MM_CHROME_REFRESH paints, whenever its context reads
+  // lost and whenever the plate's store changes size (uiCanvas: a size step, a
+  // layout, a DPR flip), so a backing store a browser purged under memory
+  // pressure (iPadOS Safari, a lost GPU context) heals within seconds; the
+  // raster itself stays the decoded image (above). No layer context: the
+  // chrome draws direct.
+  const MM_CHROME_REFRESH = 120;
+  let mmChrome: HTMLCanvasElement | null = null;
+  let mmChromeCtx: CanvasRenderingContext2D | null = null;
+  let mmChromePaints = MM_CHROME_REFRESH;
+  function minimapChromeLayer(): HTMLCanvasElement | null {
+    const store = mmSurface.canvas;
+    if (!mmChrome) {
+      mmChrome = scratchCanvas(store.width, store.height);
+      mmChromeCtx = mmChrome.getContext('2d');
+    }
+    const lctx = mmChromeCtx;
+    if (!lctx) return null;
+    const resized = mmChrome.width !== store.width || mmChrome.height !== store.height;
+    if (resized) { mmChrome.width = store.width; mmChrome.height = store.height; }
+    if (resized || ++mmChromePaints > MM_CHROME_REFRESH || lctx.isContextLost?.()) {
+      mmChromePaints = 1;
+      lctx.setTransform(1, 0, 0, 1, 0, 0);
+      lctx.clearRect(0, 0, mmChrome.width, mmChrome.height);
+      lctx.setTransform(store.width / MM, 0, 0, store.height / MM, 0, 0);
+      drawMinimapChrome(lctx);
+    }
+    return mmChrome;
+  }
+
   /** The plate's underlay and chrome; false (nothing drawn) while the plate is hidden. */
   function drawMinimapBackground(): boolean {
     if (!mmSurface.begin()) return false;
@@ -6630,7 +6667,11 @@ export function initHud(bus: EventBus): HudRuntime {
       // camera cone rotate as the player looks around.
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
     }
-    drawMinimapChrome(mmCtx);
+    const chrome = minimapChromeLayer();
+    if (!chrome) { drawMinimapChrome(mmCtx); return true; }
+    mmCtx.setTransform(1, 0, 0, 1, 0, 0);
+    mmCtx.drawImage(chrome, 0, 0);
+    mmSurface.begin(); // back to the map's 220-unit transform
     return true;
   }
 

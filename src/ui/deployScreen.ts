@@ -10,6 +10,7 @@ import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { createUiCanvas } from './uiCanvas.ts';
+import { markDatum } from './dom.ts';
 
 /**
  * Each operation's briefing plate (public/media/deploy-r1/op-0N-1280.webp, the media lane's Scene Studio stills from
@@ -147,6 +148,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   // the keys the screen answers (the direction's .hints), for a keyboard
   const keys = document.createElement('footer');
   keys.className = 'cot-deploy-keys';
+  markDatum(keys, 'hints');
   keys.setAttribute('aria-hidden', 'true');
   keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>` +
     `<span>${keycap(t('garage.key.enter'))}${t('garage.battle')}</span><span>${keycap('Esc')}${t('garage.nav.garage')}</span>`;

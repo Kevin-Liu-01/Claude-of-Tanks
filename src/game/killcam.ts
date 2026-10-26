@@ -78,7 +78,7 @@ import { killcamCameraFloor } from './killcamGround.ts';
 import * as THREE from 'three';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
-import { createElement as el } from '../ui/dom.ts';
+import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
@@ -1515,7 +1515,7 @@ export function createKillCam(deps: KillcamDeps) {
     const banner = el('div', 'cot-kc-banner', annot);
     banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
     // killer card (death view only — populated per replay in beginXray)
-    const killer = el('div', 'cot-kc-killer', root);
+    const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
       '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
       '<div class="rows"></div>';

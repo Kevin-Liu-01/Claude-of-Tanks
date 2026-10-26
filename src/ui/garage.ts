@@ -52,6 +52,7 @@ import {
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
+import { datumAttr } from './dom.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
@@ -657,7 +658,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" data-tip="${t('garage.nav.record')} (R)" ` +
     `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('record', 16, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.record')}</span>` +
-    `<span class="record-badge" aria-hidden="true">0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
+    `<span class="record-badge" aria-hidden="true"${datumAttr('record')}>0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" data-tip="${t('garage.nav.docs')} (F1)">` +
     `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.docs')}</span>${keycap('F1')}</button>` +
     `</nav></div>` +
@@ -718,8 +719,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     // the battle card (the 245 redesign): the battlefield it deploys to as a picture, its name, and the mode
     `<span class="sum-pic" data-deploy-pic aria-hidden="true"></span>` +
-    `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="sum-map" data-deploy-map></span></button>` +
+    `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode"${datumAttr('mode-name')}>${t('garage.battle.soloLabel')}</span>` +
+    `<span class="sum-map" data-deploy-map${datumAttr('map-name')}></span></button>` +
     // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
     // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
     // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
@@ -762,14 +763,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-deploy-brief" data-deploy-brief aria-live="polite"></section>` +
     `<div class="cot-battle-details">` +
     `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
-    `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
+    `<h3 id="cot-deploy-mode-title" data-setup-title${datumAttr('mode-name')}></h3>` +
     `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
     `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +
     // the battlefield (the direction's .bfield): its art, name and region over a fade, the tactical map beside it; the
     // card opens the Garage's map picker over the plate
     `<div class="cot-deploy-field"><button type="button" class="cot-deploy-field-card" data-deploy-field aria-expanded="false" ` +
     `aria-controls="cot-deploy-field-pop" aria-label="${t('garage.tools.battlefields')}"><span class="cot-deploy-field-thumb" data-deploy-field-thumb aria-hidden="true"></span>` +
-    `<span class="cot-deploy-field-nm"><span class="cot-deploy-field-name" data-deploy-field-name></span>` +
+    `<span class="cot-deploy-field-nm"><span class="cot-deploy-field-name" data-deploy-field-name${datumAttr('map-name')}></span>` +
     `<span class="cot-deploy-field-tags" data-deploy-field-tags></span></span>` +
     `<span class="cot-c-chip cot-deploy-field-all" data-deploy-field-all aria-hidden="true"></span></button>` +
     `<span class="cot-deploy-field-mm" aria-hidden="true"><img data-deploy-field-mm alt="" width="256" height="256" decoding="async" hidden></span>` +
@@ -817,7 +818,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
-    `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
+    `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}"${datumAttr('room-code')}>` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
     // a phone held upright (the direction's 91 page): the tab bar, under the Garage and the Deploy screen alike
@@ -862,9 +863,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
     // The band under the name (the 245 redesign): the three equipment slots, the paint (what the tank wears, three more to
     // try and every paint) and the stage's acts, always in view, so nothing about the tank hides behind a tab.
-    `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
+    `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"${datumAttr('tank-name')}></h2><div class="cot-lt-id"></div></div>` +
     `<div class="cot-lt-band"><div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.equipment')}</span>` +
-    `<div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"></div></div>` +
+    `<div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"${datumAttr('equipment')}></div></div>` +
     `<div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.paint')}</span>` +
     `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div></div>` +
     `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-lt-act" data-lt-callouts aria-pressed="false" ` +
@@ -3231,9 +3232,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     lowerName.classList.toggle('is-long', name.length > 16);
     const tier = tierNumeral(spec.id) || '';
     lowerId.innerHTML =
-      `<span class="lt-nation">${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
+      `<span class="lt-nation"${datumAttr('nation')}>${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
       `<span>${uiIconSVG(ERA_GLYPH[spec.era] || 'eraModern', 18)}<span>${vehicleEraLabelI18n(spec.era, t)}</span></span>` +
-      (tier ? `<span class="lt-tier">${tierChipHTML(tier)}</span>` : '') +
+      (tier ? `<span class="lt-tier"${datumAttr('tier')}>${tierChipHTML(tier)}</span>` : '') +
       `<span data-tip="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
       `<span class="lt-class" hidden></span>`;
     // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
@@ -4021,7 +4022,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const glyph = equipIconId(id);
       return glyph ? statChip({ icon: glyph, tip: equipmentLabel(id) }) : '';
     }).join('');
-    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b>${flagIconHTML(spec.nation, 22, 16)}` +
+    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b${datumAttr('tank-name')}>${flagIconHTML(spec.nation, 22, 16)}` +
       `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
       `${vehicleLocked ? '' : tag(t('garage.deploy.ready'), 'ok')}</div><div class="load">${rounds}${fittings}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +

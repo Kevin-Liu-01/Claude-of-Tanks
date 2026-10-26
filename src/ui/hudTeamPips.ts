@@ -9,7 +9,7 @@
 // battleHudLayout.ts.
 // Nothing here runs per frame: a pip changes only when its tank dies or returns, a chip only when its zone moves.
 
-import { createElement as el } from './dom.ts';
+import { createElement as el, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { iconUrl } from './icons.ts';
 import { FONT_COND } from './fonts.ts';
@@ -98,7 +98,7 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
   ensureStyle('cot-hud-pips-style', CSS, 'surfaces');
   const root = el('div', 'cot-pips', parent);
   root.setAttribute('aria-hidden', 'true');
-  const row = el('div', 'cot-pips-row', rowHost ?? root);
+  const row = markDatum(el('div', 'cot-pips-row', rowHost ?? root), 'team-counts');
   if (rowHost) row.setAttribute('aria-hidden', 'true');
   const ownSide = el('span', 'side own', row);
   const enemySide = el('span', 'side enemy', row);

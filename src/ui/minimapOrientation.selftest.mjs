@@ -41,8 +41,8 @@ const worldActivationSource = await readFile(
 assert.doesNotMatch(hudSource, /minimapRotation|minimapViewHeading|minimapPlayerHeading/,
   'camera and hull movement never rotate or translate the fixed battlefield raster');
 assert.match(hudSource,
-  /function drawMinimapBackground\(\)[\s\S]{0,600}drawImage\(mmBg, 0, 0, MM, MM\)[\s\S]{0,300}drawMinimapChrome\(mmCtx\)/,
-  'the decoded north-up battlefield image is drawn once without tiling or transforms');
+  /function drawMinimapBackground\(\)[\s\S]{0,600}drawImage\(mmBg, 0, 0, MM, MM\)[\s\S]{0,300}minimapChromeLayer\(\)/,
+  'the decoded north-up battlefield image is drawn once without tiling or transforms, under the chrome');
 assert.doesNotMatch(hudSource, /N - 1 - x3/,
   'the top-down capture keeps its native screen-right/world -X handedness');
 assert.match(hudSource,
@@ -276,6 +276,60 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   const expected = projectWorldToMinimap(100, -40, worldSize, mapSize);
   assert.deepEqual(placed, [['spawn', ...expected], ['badge', ...expected], ['goal', ...expected]],
     'co-located objective glyphs share one exact point instead of being spread apart');
+}
+
+{
+  // the chrome (grid, vignette, keylines) renders once into a layer at the plate's device size; each paint copies it 1:1
+  // over the raster, and the layer re-renders on its refresh count or a lost context (a purged backing store heals)
+  const begin = hudSource.indexOf('  const MM_CHROME_REFRESH');
+  const end = hudSource.indexOf('  function captureSpawnFlags(', begin);
+  assert.ok(begin >= 0 && end > begin, 'the minimap chrome layer remains discoverable');
+  const refresh = Number(/const MM_CHROME_REFRESH = (\d+);/.exec(hudSource)[1]);
+  const recorder = (log) => new Proxy({ lost: false, isContextLost() { return this.lost; } }, {
+    get: (target, key) => (key in target ? target[key] : (...args) => { log.push([key, ...args]); }),
+    set: (target, key, value) => { target[key] = value; return true; },
+  });
+  const drawBackground = (layerContext) => {
+    const main = [], layer = [], chromeOn = [], made = [];
+    const mmCtx = recorder(main), mmBg = { raster: true }, dpr = 2.625;
+    const draw = new Function('MM', 'mmDpr', 'mmCanvas', 'mmCtx', 'mmBg', 'drawMinimapChrome', 'document',
+      `${stripTypeScriptTypes(hudSource.slice(begin, end))}\nreturn drawMinimapBackground;`)(
+      mapSize, dpr, { width: 578, height: 578 }, mmCtx, mmBg,
+      (context) => { chromeOn.push(context === mmCtx ? 'plate' : 'layer'); },
+      { createElement: (tag) => { const canvas = { tag, getContext: () => layerContext?.(layer) ?? null }; made.push(canvas); return canvas; } });
+    return { draw, main, layer, chromeOn, made, mmBg, dpr };
+  };
+  let layerContext = null;
+  const run = drawBackground((log) => (layerContext ??= recorder(log)));
+  run.draw();
+  assert.equal(run.made.length, 1, 'one chrome layer canvas');
+  assert.deepEqual([run.made[0].width, run.made[0].height], [578, 578], 'the layer is the plate\'s own device size');
+  assert.deepEqual(run.chromeOn, ['layer'], 'the first paint renders the chrome into the layer');
+  assert.deepEqual(run.layer.map(([op]) => op), ['setTransform', 'clearRect', 'setTransform'],
+    'the layer clears at device scale and draws the chrome in the plate\'s CSS frame');
+  assert.deepEqual(run.layer[2], ['setTransform', run.dpr, 0, 0, run.dpr, 0, 0]);
+  assert.deepEqual(run.main, [
+    ['fillRect', 0, 0, mapSize, mapSize], ['drawImage', run.mmBg, 0, 0, mapSize, mapSize],
+    ['setTransform', 1, 0, 0, 1, 0, 0], ['drawImage', run.made[0], 0, 0], ['setTransform', run.dpr, 0, 0, run.dpr, 0, 0],
+  ], 'each paint is the raster, then the chrome layer copied 1:1 at device scale, then the plate\'s transform again');
+  for (let paint = 1; paint < refresh; paint++) run.draw();
+  assert.deepEqual(run.chromeOn, ['layer'], `the next ${refresh - 1} paints reuse the layer`);
+  assert.equal(run.main.filter(([op, image]) => op === 'drawImage' && image === run.made[0]).length, refresh,
+    'every paint copies the layer');
+  run.draw();
+  assert.deepEqual(run.chromeOn, ['layer', 'layer'], `paint ${refresh + 1} re-renders the layer (a purged store heals)`);
+  layerContext.lost = true;
+  run.draw();
+  assert.deepEqual(run.chromeOn, ['layer', 'layer', 'layer'], 'a lost layer context re-renders at once');
+  layerContext.lost = false;
+  run.draw();
+  assert.equal(run.chromeOn.length, 3, 'a restored layer is reused again');
+  assert.equal(run.made.length, 1, 'the layer canvas is created once');
+  // no 2D context for the layer (a canvas memory cap): the chrome draws straight onto the plate every paint
+  const direct = drawBackground(null);
+  direct.draw(); direct.draw();
+  assert.deepEqual(direct.chromeOn, ['plate', 'plate'], 'without a layer context the chrome draws direct');
+  assert.ok(!direct.main.some(([op]) => op === 'setTransform'), 'the direct path keeps the plate\'s transform');
 }
 
 const paintTerrain = hudPainter('paintProceduralMinimapTerrain', 'fillMinimapPatches', {

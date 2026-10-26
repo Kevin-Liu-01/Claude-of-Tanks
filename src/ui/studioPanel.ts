@@ -15,6 +15,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
@@ -461,7 +462,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const mark = el('span', 'st');
   mark.innerHTML = STUDIO_GLYPHS.mark;
   mark.append(el('span', 'wd', t('studio.ws.title')));
-  const projectName = el('span', 'pn', '');
+  const projectName = markDatum(el('span', 'pn', ''), 'map-name');
   // the scene's safety (09-studio header .sv and the undo/redo pair): its autosave, and the steps either side
   const savedState = el('span', 'sv');
   savedState.hidden = true;
@@ -597,14 +598,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const lensChip = chipButton('', 'optics');
   lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
   vpTools.append(guidesChip, lensChip);
-  const frameCounter = el('span', 'st-fc');
+  const frameCounter = markDatum(el('span', 'st-fc'), 'playhead');
   // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
   // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
   const selBox = el('div', 'st-sel');
   selBox.hidden = true;
   selBox.setAttribute('aria-hidden', 'true');
   // the name tag sits on the outline's top edge, kept inside the picture and below the chips
-  const selTag = el('span', 'st-sel-tag');
+  const selTag = markDatum(el('span', 'st-sel-tag'), 'tank-name');
   selTag.hidden = true;
   selTag.setAttribute('aria-hidden', 'true');
   const selTagText = el('span');
