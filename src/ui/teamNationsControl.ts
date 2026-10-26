@@ -31,7 +31,7 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
 .cot-teams>b{min-width:54px;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-teams .cot-c-seg__opt{padding-inline:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .cot-flag{border-radius:1px;box-shadow:var(--flag-ring)}
-.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
 `, 'surfaces');

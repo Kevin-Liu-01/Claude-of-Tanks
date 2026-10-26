@@ -9,15 +9,36 @@
 /* data-built chapters (src/docs/chapters): a table to pick from, cards with the game's stills, objective maps and rules */
 .dm-table{margin:var(--s4) 0;overflow-x:auto;border-radius:var(--r1);box-shadow:var(--ring-1)}
 /* a phone's table fades at its end where it scrolls on, and keeps room to scroll clear of the fade */
-@media (width < 520px){.dm-table{padding-right:var(--s5);mask-image:linear-gradient(90deg,var(--scrim) calc(100% - var(--s5)),transparent)}}
+/* a table wider than its column fades at its end (topics.ts marks it); one that fits keeps its whole frame */
+.dm-table.is-scrollable{mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s5)),transparent)}
 .dm-table:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .dm-table table{width:100%;border-collapse:collapse;font:400 max(var(--fs-floor-12),var(--fs-14))/1.35 var(--font-body);color:var(--ink-2)}
-.dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--line-1);white-space:nowrap}
+.dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:baseline;border-bottom:1px solid var(--line-1);white-space:nowrap}
 .dm-table thead th{font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);background:var(--surface-plate)}
 .dm-table tbody tr:last-child>*{border-bottom:0}
 .dm-table tbody th a{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);text-decoration:none}
 .dm-table tbody th a:hover span{text-decoration:underline}
+/* the name's text, not its glyph, sets the row's baseline */
+.dm-table tbody th a>span{align-self:baseline}
 .dm-table tbody th .cot-i{color:var(--ink-3)}
+/* a Chinese cell that wraps keeps its words whole: it breaks at its punctuation and spaces, not between the two
+   characters of a word (弹/开, 瞄/准), and only an over-long run breaks inside */
+:lang(zh-CN) .dm-table :is(th,td){word-break:keep-all;line-break:strict;overflow-wrap:break-word}
+/* a table of four or more columns (src/docs/chapters/index.ts marks it .dm-table--stack and labels each body cell with
+   its column's header) reflows on a narrow screen: each row is a block, its first cell the block's head, every other cell
+   a line led by its column's name, so no column sits off the screen behind a fade */
+@media (width < 768px){
+  .dm-table--stack table,.dm-table--stack tbody,.dm-table--stack tr,.dm-table--stack tbody :is(th,td){display:block}
+  .dm-table--stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .dm-table--stack tbody tr{padding:var(--s2) 0;border-bottom:1px solid var(--line-1)}
+  .dm-table--stack tbody tr:last-child{border-bottom:0}
+  .dm-table--stack tbody :is(th,td){padding:var(--s1) var(--s3);border-bottom:0;white-space:normal}
+  .dm-table--stack tbody td{display:grid;grid-template-columns:minmax(0,6.5em) minmax(0,1fr);gap:var(--s3);align-items:baseline}
+  /* the column's name is read from the table's header already: the printed one is visual only ("/ ''", after a plain
+     fallback for an engine without alternative text) */
+  .dm-table--stack tbody td::before{content:attr(data-label);content:attr(data-label) / "";font:600 max(var(--fs-floor-12),var(--fs-12))/1.35 var(--font-body);letter-spacing:var(--track-label);
+    text-transform:uppercase;color:var(--ink-3)}
+}
 .dm-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
 .dm-legend li{display:inline-flex;align-items:center;gap:6px}
 /* a data-built chapter takes the width to the contents rail; its prose keeps the reading measure */
@@ -41,12 +62,13 @@
 .dm-mode__facts .cot-i{grid-row:span 2;color:var(--ink-3)}
 .dm-mode__facts dt{font:500 max(var(--fs-floor-12),var(--fs-12))/1.1 var(--font-body);color:var(--ink-3)}
 .dm-mode__facts dd{margin:0;font:600 var(--fs-15)/1.1 var(--font-body);color:var(--ink-1)}
-/* the first battle's steps: the screen beside what to do on it, numbered because the order is the point */
-.dm-step{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:var(--s5);align-items:center}
+/* the first battle's steps: the screen beside what to do on it, numbered because the order is the point; the number
+   stands on the figure's top edge */
+.dm-step{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:var(--s5);align-items:start}
 .dm-step__figure{margin:0}
 .dm-step__figure img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
 .dm-step__body{display:grid;gap:var(--s2)}
-.dm-step__n{font:700 var(--fs-36)/1 var(--font-display);color:var(--ink-3)}
+.dm-step__n{font:700 var(--fs-36)/1 var(--font-display);color:var(--ink-3);text-box:trim-start cap alphabetic}
 :lang(zh-CN) .dm-step__n{color:var(--ink-3)}
 .dm-step__body p{margin:0;font:400 var(--fs-16)/1.6 var(--font-body);color:var(--ink-2)}
 .dm-step__body .cot-c-kbd{vertical-align:baseline}
@@ -72,20 +94,23 @@
 .dm-view{padding:var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-view p{margin:0;font:400 var(--fs-15)/1.5 var(--font-body);color:var(--ink-2)}
 .dm-figure{margin:var(--s4) 0}
-.dm-figure img{display:block;width:100%;max-width:var(--measure-docs);height:auto;border-radius:var(--r1);background:var(--surface-scene)}
+.dm-figure img{display:block;width:100%;height:auto;border-radius:var(--r1);background:var(--surface-scene)}
 .dm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
 .dm-chips li{padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-13))/1.1 var(--font-body);color:var(--ink-2)}
 .dm-chips+p{margin-top:var(--s3)}
 /* the tanks, combat and battlefields chapters: hero cards, bars drawn to one scale, line charts, map cards */
 .dm-section>h3,.dm-pair h3,.dm-equip>h3{margin:var(--s5) 0 var(--s3);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
-.dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--accent-hi);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
+.dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
 .dm-link:hover span{text-decoration:underline;text-underline-offset:3px}
 .dm-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);margin-top:var(--s4)}
-.dm-class{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
+.dm-classes+p{margin-top:var(--s3)}
+.dm-class{display:grid;grid-template-rows:auto 1fr;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-hc{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-scene);--hc-band:10px;--hc-share:0.74;--hc-hshare:0.72;--hc-cxr:0.5;--hc-flag-mask:var(--docs-hc-flag-mask)}
-.dm-class__body{display:grid;gap:4px;padding:10px 12px 12px}
-.dm-class__body h3{display:flex;align-items:center;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
-.dm-class__body h3 .cot-i{flex:none;color:var(--ink-3)}
+/* the title takes what the row leaves and the subline (the class's tank) sits on the card's foot, so a row's sublines share
+   one line whether its titles take one line or two */
+.dm-class__body{display:grid;grid-template-rows:1fr auto;gap:4px;padding:10px 12px 12px}
+.dm-class__body h3{display:flex;align-self:start;align-items:baseline;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
+.dm-class__body h3 .cot-i{flex:none;align-self:flex-start;color:var(--ink-3)}
 .dm-class__body h3 b{margin-left:auto;font:600 var(--fs-15)/1 var(--font-data);color:var(--ink-2)}
 .dm-class__body p{display:flex;align-items:center;gap:6px;margin:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
 .dm-roles{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
@@ -113,10 +138,19 @@
 .dm-equip b{font:600 var(--fs-15)/1.25 var(--font-body);color:var(--ink-1)}
 .dm-equip span{font:400 max(var(--fs-floor-12),var(--fs-14))/1.45 var(--font-body);color:var(--ink-2)}
 .dm-equip small{justify-self:start;margin-top:2px;padding:2px 7px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
-.dm-chart{margin:var(--s4) 0;max-width:760px}
+.dm-chart{margin:var(--s4) 0}
+/* the chart scales as a picture, so where it is drawn under its size its furniture is drawn at the inverse of the drawn
+   scale: --dm-chart-k is the chart's units per drawn pixel, never under 1 (topics.ts counterScaleCharts measures it), and
+   each .dm-k group (charts.ts: a tick's mark and value, a gridline's value, the axis titles) scales by it about its anchor,
+   so its type holds the floor and its marks and offsets keep their drawn size at every width; before the measure lands a
+   band's narrowest column stands in. The rules stay one drawn pixel at any scale. */
 .dm-chart svg{display:block;width:100%;height:auto;overflow:visible;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
+@media (width < 768px){.dm-chart svg{--dm-chart-k:1.36}}
+@media (width < 520px){.dm-chart svg{--dm-chart-k:2.23}}
+.dm-chart .dm-k{transform:scale(var(--dm-chart-k,1));transform-origin:0 0}
 .dm-chart .g{stroke:var(--line-1)}
 .dm-chart .k,.dm-chart .a{stroke:var(--line-3)}
+.dm-chart :is(.g,.a){vector-effect:non-scaling-stroke}
 .dm-chart .t{fill:var(--ink-3)}
 .dm-chart .u{fill:var(--ink-2)}
 .dm-chart .l{fill:none;stroke:var(--s);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
@@ -150,6 +184,11 @@
 .dm-chips--icons li{display:inline-flex;align-items:center;gap:6px}
 .dm-chips--icons .cot-i{color:var(--ink-3)}
 .dm-chips--icons b{font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-data);color:var(--ink-1)}
+/* static labels with a count (the battlefields' landscapes): the kit's tag, never its chip (a multi-select control) */
+.dm-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.dm-tags .cot-c-tag{gap:6px}
+.dm-tags .cot-i{color:var(--ink-3)}
+.dm-tags b{font-weight:600;color:var(--ink-1)}
 .dm-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
 .dm-map{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-map img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
@@ -162,13 +201,11 @@
   .dm-class__body{padding:8px 9px 10px}
   .dm-maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .dm-map__name{padding:7px 8px;font-size:max(var(--fs-floor-12),var(--fs-13))}
-  .dm-chart svg{font-size:calc(var(--fs-11) * 2)}
   .dm-bars b{min-width:3.5em}
 }
 /* the multiplayer, sound and studio chapters: ways in, seats drawn to scale, steps, linked chips, glyph rows */
 .dm-cell{display:inline-flex;align-items:center;gap:8px}
 .dm-cell .cot-i{flex:none;color:var(--ink-3)}
-.dm-section p code{white-space:nowrap;padding:1px 5px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-data);color:var(--ink-1)}
 .dm-roles--ways{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 .dm-roles--ways li>.cot-i{color:var(--ink-3)}
 .dm-roles--rows{grid-template-columns:minmax(0,1fr);max-width:var(--measure-docs)}
@@ -201,7 +238,7 @@
 .dm-steps p,.dm-section .dm-steps p{margin:0;font:400 var(--fs-15)/1.5 var(--font-body);color:var(--ink-2)}
 .dm-cell--quotes{align-items:flex-start}
 .dm-cell--quotes .cot-i{margin-top:2px}
-.dm-cell--quotes>span{display:flex;flex-wrap:wrap;gap:2px 10px}
+.dm-cell--quotes>span{display:flex;flex-wrap:wrap;gap:2px 10px;align-self:baseline}
 .dm-cell q{font-weight:600;color:var(--ink-1);white-space:normal}
 .dm-cell q::before,.dm-cell q::after{color:var(--ink-3)}
 .dm-table--wrap :is(th,td){white-space:normal}
@@ -230,6 +267,8 @@
 .dm-takes img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
 .dm-takes span{display:flex;min-width:0;align-items:center;gap:8px;padding:8px 10px;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body)}
 .dm-takes span .cot-i{flex:none;color:var(--ink-3)}
+/* a game mode's glyph wears its mode's hue (tokens --mode-<id>, mapped by the kit from data-mode-tone); its words stay ink */
+[data-mode-tone] .cot-i.dm-mode-glyph{color:var(--mode-ink,var(--ink-3))}
 .dm-takes b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dm-takes a:hover,.dm-takes a:focus-visible{outline:none;box-shadow:var(--ring-2);color:var(--ink-1)}
 @media (width < 768px){

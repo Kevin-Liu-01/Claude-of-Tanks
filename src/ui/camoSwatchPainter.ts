@@ -145,6 +145,7 @@ function cachedSwatch(sample: HTMLCanvasElement, recipe: CamoSwatchRecipe): HTML
 /** Show `swatch` on `canvas`: an on-screen swatch (a uiCanvas) covers its own box with it at the capped ratio; a bare
  *  canvas (a receipt's, an offscreen copy) takes the 128 x 44 swatch itself. */
 function blit(canvas: HTMLCanvasElement, swatch: HTMLCanvasElement): void {
+  if (canvas.dataset) delete canvas.dataset.loading; // the Garage's skeleton mark (garage.ts markCamoSwatchLoading)
   const surface = uiCanvasOf(canvas);
   if (surface) { surface.setImage(swatch); return; }
   canvas.width = CAMO_SWATCH_WIDTH;

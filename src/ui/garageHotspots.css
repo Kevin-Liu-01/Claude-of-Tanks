@@ -18,6 +18,6 @@
 .cot-hotspot .v{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
   background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
 .cot-hotspot .v svg{flex:none;color:var(--ink-3);}
-.cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
+.cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-data);color:var(--ink-1);}
 .cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
 }

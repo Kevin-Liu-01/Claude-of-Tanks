@@ -7,6 +7,9 @@
 // tank-id schema, its scene (scenes/<id>.json) and the file's bytes and sha256. Nothing is written unless every pick
 // has its master. Files in the folder that no pick names are removed. tools/marketing-shots/versus-media.selftest.mjs
 // holds the result.
+// (2026-10-25, the /home Versus section) a still also ships the other widths found beside its master, <id>-640.webp,
+// <id>-1280.webp and <id>-3840.webp (16:9), listed with the 1920 as the item's `rungs`; the item names its `view` (top
+// for a top-down scene, else side) and the manifest carries picks.json's `featured`, the section's twelve in order.
 //   node tools/media-r5/versus/versus-media.mjs --masters <dir> [--dry]     (or COT_VERSUS_MASTERS=<dir>)
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -93,7 +96,22 @@ function itemOf(id) {
     en: `${word(EN, `map.${map}`, 'en-US')}, ${word(EN, `atmosphere.${hour}`, 'en-US').toLowerCase()}${above ? ', from above' : ''}: ${hero.displayName} v ${foe.displayName}`,
     zh: `${word(ZH, `map.${map}`, 'zh-CN')}，${word(ZH, `atmosphere.${hour}`, 'zh-CN')}${above ? '，俯瞰' : ''}：${hero.displayName} 对 ${foe.displayName}`,
   };
-  return { id, round: roundOf(id), map, hour, title, tanks, scene: relative(ROOT, sceneFile) };
+  return { id, round: roundOf(id), map, hour, view: above ? 'top' : 'side', title, tanks, scene: relative(ROOT, sceneFile) };
+}
+
+// (2026-10-25, the /home Versus section) a still's other widths: <id>-<w>.webp beside its 1920 master, each 16:9; the
+// 1920 is the item's own file. A still without them ships its 1920 alone.
+const RUNG_WIDTHS = [640, 1280, 3840];
+function rungsOf(id) {
+  const rungs = [];
+  for (const width of RUNG_WIDTHS) {
+    const file = join(MASTERS, `${id}-${width}.webp`);
+    if (!existsSync(file)) continue;
+    const bytes = readFileSync(file), size = webpSize(bytes);
+    if (!size || size[0] !== width || size[1] !== width * 9 / 16) throw new Error(`${basename(file)} is ${size ? `${size[0]}x${size[1]}` : 'not a webp'}, not ${width}x${width * 9 / 16}`);
+    rungs.push({ width, name: `${id}-${width}.webp`, bytes });
+  }
+  return rungs;
 }
 
 const items = [], problems = [], files = new Map();
@@ -105,11 +123,16 @@ for (const id of PICKS.ship) {
   else if (!problem && (!size || size[0] !== WIDTH || size[1] !== HEIGHT)) problem = `${still.source} is ${size ? `${size[0]}x${size[1]}` : 'not a webp'}, not ${WIDTH}x${HEIGHT}`;
   else if (!problem && still.bytes.length > MAX_BYTES) problem = `${still.source} is ${still.bytes.length} B, over ${MAX_BYTES}`;
   console.log(`${id.padEnd(30)} ${problem ? 'NOT READY' : `${(still.bytes.length / 1024).toFixed(0).padStart(4)} KB `}  ${item?.title.en ?? ''}${problem ? `\n    ${problem}` : ''}`);
+  let extra = [];
+  if (!problem) { try { extra = rungsOf(id); } catch (e) { problem = String(e.message ?? e); } }
   if (problem) { problems.push(id); continue; }
   const name = `${id}.webp`;
   files.set(name, still.bytes);
+  for (const r of extra) files.set(r.name, r.bytes);
+  const rungs = [...extra.map((r) => ({ width: r.width, path: `${URL_BASE}/${r.name}`, bytes: r.bytes.length })),
+    { width: WIDTH, path: `${URL_BASE}/${name}`, bytes: still.bytes.length }].sort((a, b) => a.width - b.width);
   items.push({ ...item, path: `${URL_BASE}/${name}`, bytes: still.bytes.length, sha256: sha256(still.bytes), width: WIDTH, height: HEIGHT,
-    source: still.source });
+    source: still.source, rungs });
 }
 if (problems.length) {
   console.error(`versus-media: nothing written; ${problems.length} of ${PICKS.ship.length} picks are not ready (${problems.join(', ')})`);
@@ -127,8 +150,14 @@ const manifest = {
   sources: 'the delivered 1440p masters of the Scene Studio renders (each item\'s source names its file)',
   dimensions: { width: WIDTH, height: HEIGHT },
   count: items.length,
+  // the /home Versus section's twelve, in its order (picks.json `featured`)
+  ...(PICKS.featured ? { featured: PICKS.featured } : {}),
   items,
 };
+if (PICKS.featured?.some((id) => !PICKS.ship.includes(id))) {
+  console.error(`versus-media: featured names a still that does not ship (${PICKS.featured.filter((id) => !PICKS.ship.includes(id)).join(', ')})`);
+  process.exit(1);
+}
 const total = items.reduce((sum, i) => sum + i.bytes, 0);
 console.log(`versus-media: ${items.length} stills, ${(total / 1048576).toFixed(2)} MB -> ${relative(ROOT, OUT)}${DRY ? ' (dry run: nothing written)' : ''}`);
 if (!DRY) {

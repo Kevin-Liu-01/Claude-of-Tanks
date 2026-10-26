@@ -268,8 +268,10 @@ export interface SpareTrackSeatReport {
 
 const r2 = (x: number): string => (Math.round(x * 100) / 100).toFixed(2);
 
-/** Discover, measure and (re)seat or drop every authored run of a built-but-unmerged tank. */
-export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatReport {
+/** Discover, measure and (re)seat or drop every authored run of a built-but-unmerged tank, a run a slice (the factory
+ *  steps it). The keep-outs and the outline are the build's own: another build may seat its runs at a pause, so they are
+ *  held across each one. */
+export function* seatAuthoredSpareTracks(a: AuthoredSeatArgs): Generator<void, SpareTrackSeatReport, void> {
   const report: SpareTrackSeatReport = { runs: [], rejected: [] };
   // each marking a square of its edge, 3 cm clear all round
   markingBoxes = { hull: [], turret: [] };
@@ -395,6 +397,9 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       authored: { support, air, maxEmbedCm, clearCm, cutCm, sweepCm, exposure } });
   };
   for (const run of runs) {
+    const held = [outlineBoxes, markingBoxes, dockBoxes] as const;
+    yield;
+    [outlineBoxes, markingBoxes, dockBoxes] = held;
     const placed = run.shape.box.clone().applyMatrix4(new THREE.Matrix4().compose(run.hint.pos, run.hint.quat, UNIT));
     const env = seatEnv(frames, run.frame, placed, motion);
     // 1. authored mounts first: the seat as authored, or lifted straight off a mount it sinks into

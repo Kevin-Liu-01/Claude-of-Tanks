@@ -758,6 +758,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
     'tools/hot-path-alloc.selftest.mjs',
+    'tools/frontend-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
@@ -2393,6 +2394,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
+    'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',

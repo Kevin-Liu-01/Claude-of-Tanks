@@ -39,9 +39,10 @@ tiers and last 25 battles in `cot.service.v1`, emitting `service:medal` live
 and `service:battleAwards` at the end; medals never unlock anything;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
-`equipment.ts` owns the strict catalog, persistence, legal-loadout, multiplier,
-combat-attachment, bot-default, and Garage-stat contract shared by both
-authorities;
+`equipment.ts` owns the Garage's picker, persistence and stat card, and
+re-exports the rules from the DOM-free `src/sim/equipmentRules.ts` (the strict
+catalog, legal-loadout, multiplier, combat-attachment and bot-default contract
+shared by both authorities and read by the rooms Worker's rulesets);
 `playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 `pointerLockFeedbackRuntime.ts` owns pointer-lock denial/restoration listeners,

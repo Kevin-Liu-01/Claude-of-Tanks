@@ -841,10 +841,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
       if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
       stagedArt = artKey;
-      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
+      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next). A room whose map is
+      // not chosen yet names it 'none' (the art's own word for no map): its slot keeps its frame and asks for nothing
+      // until the map is known (2026-10-25: /minimaps/none.webp was a 404 and a console error in every room).
+      const planId = info.biome && info.biome !== 'none' ? info.biome : undefined;
       mapEl.hidden = !info.biome;
-      if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
-      drawObjectives(info.biome, info.modeId);
+      if (planId) mapImg.src = minimapAssetUrl(planId);
+      else mapImg.removeAttribute('src');
+      drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);

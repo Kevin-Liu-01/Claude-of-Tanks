@@ -29,6 +29,8 @@
 .cot-c-btn--56{--h:var(--btn-h-l);padding:0 26px;font-size:var(--fs-16)}
 .cot-c-btn--64{--h:var(--btn-h-xl);padding:0 30px;font-size:var(--fs-18)}
 .cot-c-btn--icon{padding:0;width:var(--h)}
+/* a secondary on a plate sits a step above it (the default's media fill is for buttons over art and footage) */
+.cot-c-btn--secondary{background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring)}
 .cot-c-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
 .cot-c-btn--ghost,.cot-c-btn--quiet{background:transparent;box-shadow:none;color:var(--ink-2)}
 .cot-c-btn--quiet{color:var(--ink-3);text-transform:none;letter-spacing:normal;font-family:var(--font-ui)}
@@ -48,7 +50,8 @@
 .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
   border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);letter-spacing:normal;
   text-transform:none;color:var(--ink-2)}
-.cot-c-kbd svg{width:12px;height:12px}
+.cot-c-kbd svg{width:12px;height:12px;margin-inline:-1px}
+/* a glyph cap is as wide as a letter cap (22 px): the glyph gives back the 2 px it has over a capital */
 .cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
 @media (hover:none),(pointer:coarse){.cot-c-kbd{display:none}}
@@ -62,7 +65,7 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-chip[aria-pressed=true]{color:var(--ink-1);background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-chip__count{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
-  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
+  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}

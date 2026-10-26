@@ -343,7 +343,9 @@ identity slice (ids, names, the random rotation, the resolvers) now lives in `sr
 it for the browser. `src/mp/room/roomWorkerProgram.selftest.mjs` walks the Worker's import graph (value and type imports) and
 fails on any renderer-facing module, then runs `npm run typecheck:rooms` when `cloudflare/rooms/node_modules` is installed
 (`npm ci --prefix cloudflare/rooms` — do it in the gate worktree; without it the receipt says so and only the graph check runs).
-A network module that needs something from the world takes a DOM-free slice like `mapIds.ts`, never the catalog.
+A network module that needs something from the world takes a DOM-free slice like `mapIds.ts`, never the catalog. The same holds
+for the rulesets the Worker reaches through `protocol.ts`: their equipment rules are `src/sim/equipmentRules.ts` (which
+`src/game/equipment.ts` re-exports) and the era gate is `src/sim/vehicleEras.ts` (which `src/vehicles/taxonomy.ts` re-exports).
 
 ### Self-leasing browser receipts (2026-09-26)
 

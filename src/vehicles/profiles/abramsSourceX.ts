@@ -1,6 +1,6 @@
 import { buildAbramsSourceXHullCooperativeSteps } from './abramsSourceXHull.ts';
 import { buildAbramsSourceXEquipmentCooperativeSteps } from './abramsSourceXEquipment.ts';
-import { drainTankBuild, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // Owner-supplied SEP v2 study, rebuilt as independent first-party solids.
 // This profile never imports a legacy Abrams builder or an external model.
 import { KIT, orientedSlab } from './kit.ts';
@@ -102,6 +102,8 @@ function buildTurretArmor(P: TankBuilderPort): void {
 export function buildAbramsX(P: TankBuilderPort): void {
   drainTankBuild(buildAbramsXCooperativeSteps(P, false));
 }
+// the factory's frame-budgeted builds take it a stage a slice (a whole build was one 8 s task on the 4x phone's Garage)
+withBuildSteps(buildAbramsX, (P: TankBuilderPort) => buildAbramsXCooperativeSteps(P));
 
 function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): TankProfileBuild {
   const frame = ABRAMS_SOURCE_X_FRAME;

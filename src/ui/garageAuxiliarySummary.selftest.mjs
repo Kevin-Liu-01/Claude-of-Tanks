@@ -15,10 +15,15 @@ for (const [id, kit] of Object.entries(AUXILIARY_INVENTORY)) {
 assert.ok(Object.values(GARAGE_AUXILIARY_SUMMARY).some(([smoke, lights, guns]) => smoke && lights && guns),
   'the fixture of real data covers all three controls');
 
+// (the Garage redesign 77095ab7f4: the selected tank's actions read the counts through vehicleActionList.ts)
 const garage = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
-assert.doesNotMatch(garage, /from ['"][^'"]*auxiliaryInventory(?:\.generated)?\.ts['"]/,
-  'the garage reads the counts, never the 217 kB mount-geometry inventory');
-assert.match(garage, /from '\.\/garageAuxiliarySummary\.generated\.ts'/);
+const actionList = readFileSync(new URL('./vehicleActionList.ts', import.meta.url), 'utf8');
+for (const [name, source] of [['garage.ts', garage], ['vehicleActionList.ts', actionList]]) {
+  assert.doesNotMatch(source, /from ['"][^'"]*auxiliaryInventory(?:\.generated)?\.ts['"]/,
+    `${name} reads the counts, never the 217 kB mount-geometry inventory`);
+}
+assert.match(garage, /from '\.\/vehicleActionList\.ts'/, 'the garage takes its actions from vehicleActionList.ts');
+assert.match(actionList, /from '\.\/garageAuxiliarySummary\.generated\.ts'/, 'the action list reads the generated counts');
 const generator = readFileSync(new URL('../../tools/vehicle-controls-inventory.mjs', import.meta.url), 'utf8');
 assert.match(generator, /src\/ui\/garageAuxiliarySummary\.generated\.ts/,
   'tank:controls:update/check own the summary beside the inventory');

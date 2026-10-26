@@ -21,13 +21,13 @@ export const FRANCE_TREE: NationTree = Object.freeze({
     // AMX-30 to Leclerc
     node({ id: 'amx30', tier: 1, line: 'amx', lane: 0, parents: [], slot: 'line', builds: ['amx30b'] }),
     node({ id: 'amx30b2', tier: 3, line: 'amx', lane: 0, parents: ['amx30'], slot: 'line' }),
-    node({ id: 'amx40', tier: 4, line: 'amx', lane: 0, parents: ['amx30b2'], slot: 'line', builds: ['amx40_proto'] }),
+    node({ id: 'amx40', tier: 5, line: 'amx', lane: 0, parents: ['amx30b2'], slot: 'line', builds: ['amx40_proto'] }),
     node({ id: 'leclerc_s1', tier: 6, line: 'amx', lane: 0, parents: ['amx40'], slot: 'line' }),
     node({ id: 'leclerc_s2', tier: 7, line: 'amx', lane: 0, parents: ['leclerc_s1'], slot: 'line', builds: ['amx56'] }),
-    node({ id: 'leclerc_sxxi', tier: 8, line: 'amx', lane: 0, parents: ['leclerc_s2'], slot: 'line' }),
-    node({ id: 'leclerc_xlr', tier: 9, line: 'amx', lane: 0, parents: ['leclerc_sxxi'], slot: 'line' }),
+    node({ id: 'leclerc_sxxi', tier: 7, line: 'amx', lane: 1, parents: ['leclerc_s2'], slot: 'line' }),
+    node({ id: 'leclerc_xlr', tier: 9, line: 'amx', lane: 1, parents: ['leclerc_sxxi'], slot: 'line' }),
     // AMX-10P
-    node({ id: 'amx10p', tier: 4, line: 'amx10', lane: 1, parents: ['amx30b2'], slot: 'line' }),
-    node({ id: 'amx10p_25', tier: 5, line: 'amx10', lane: 1, parents: ['amx10p'], slot: 'line' }),
+    node({ id: 'amx10p', tier: 5, line: 'amx10', lane: 1, parents: ['amx30b2'], slot: 'line' }),
+    node({ id: 'amx10p_25', tier: 7, line: 'amx10', lane: 2, parents: ['amx10p'], slot: 'line' }),
   ]),
 });

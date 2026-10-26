@@ -23,7 +23,8 @@ const pages = [
   ['site/docs-multiplayer.html', '/docs'],
   ['site/docs-audio.html', '/docs'],
   ['site/docs-studio.html', '/docs'],
-  ['site/docs-filming.html', '/docs/filming#library'],
+  // every Field Manual chapter marks the manual, the Filming chapter too (Media is its #library section, not a page)
+  ['site/docs-filming.html', '/docs'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');

@@ -28,6 +28,7 @@ import {buildNationalDonorTurret,donorTurretSeatY,nationalDonorTurret} from './n
 import {buildUkraineDonorKit,buildHetmanIIDonorKit} from './ukraineDonorTurretKit.ts';
 import {buildPolandDonorKit,buildZubrIIDonorKit} from './polandDonorTurretKit.ts';
 import {buildChinaDonorKit} from './chinaDonorTurretKit.ts';
+import {steppedBuilder,type TankProfileBuild} from '../tankBuildCooperation.ts';
 import {addGunFloodlight,type GunFloodlightSeat} from './gunFloodlight.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
@@ -63,8 +64,10 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
 }
 /** Owner 2026-10-15 (VEH-19..VEH-22): the donor fleet turret on this hull, its remote station on the commander's
  * cupola (replacing the donor's own commander gun), then the country's hull package and turret up-armour. */
-function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
+function* fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>TankProfileBuild):TankProfileBuild {
  const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id],[x,z]=d.station;
+ // the donor turret, its station and the kit's stages each a slice of the factory's stepped build (UI-LOCKDOWN E)
+ yield 'donor-turret';
  if(l.mount==='pintle'){
   // Release 227: a classic emplacement on the commander's cupola. Its flange sits 2 mm into the cupola's own top (the
   // highest permanent surface inside the 0.10 m foot, never the periscopes beyond it). Round 4 (critics D10, S1): with a
@@ -78,7 +81,8 @@ function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
   nationalRoofWeapon(P,[x,base,z],null,l);
   P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
  }
- kit();
+ yield 'donor-station';
+ yield* kit();
  P.topY=d.roofY;
 }
 
@@ -92,16 +96,17 @@ const NATIONAL_GUN_FLOODLIGHTS:Readonly<Record<string,GunFloodlightSeat>>={
  t80u_zoria:{side:'right',x:.40,y:.02,backZ:1.05,anchorX:.19,anchorY:.05,anchorZ:.92},
 };
 
-function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
+function* build(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuild {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
  P.hullG.position.set(0,0,0);P.turretG.position.set(.008,c.y,c.z);
- if(c.model===0){buildT80UXRunningGear(P);buildT80UXHullCore(P);buildT80UXFenders(P);}
- else if(c.model===1){buildT72B3MXRunningGear(P);buildT72B3MXHullCore(P);buildT72B3MXFenders(P);}
- else {buildT72B3XRunningGear(P);buildT72B3XHullCore(P);buildT72B3XFenders(P);}
+ if(c.model===0){buildT80UXRunningGear(P);yield 'running-gear';buildT80UXHullCore(P);yield 'hull-core';buildT80UXFenders(P);}
+ else if(c.model===1){buildT72B3MXRunningGear(P);yield 'running-gear';buildT72B3MXHullCore(P);yield 'hull-core';buildT72B3MXFenders(P);}
+ else {buildT72B3XRunningGear(P);yield 'running-gear';buildT72B3XHullCore(P);yield 'hull-core';buildT72B3XFenders(P);}
+ yield 'fenders';
  const donor=nationalDonorTurret(c.id);
  if(donor){
-  fitDonorTurret(P,c.id,()=>({ua:buildUkraineDonorKit,pl:buildPolandDonorKit,cn:buildChinaDonorKit} as const)[c.package as 'ua'|'pl'|'cn'](P,c));
+  yield* fitDonorTurret(P,c.id,()=>({ua:buildUkraineDonorKit,pl:buildPolandDonorKit,cn:buildChinaDonorKit} as const)[c.package as 'ua'|'pl'|'cn'](P,c));
   // The Chinese concepts keep their rear field rack (cans and unditching log) on the native transom.
   if(c.package==='cn')addRearFieldStowage(P,true);
   P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:7,concept:true,
@@ -112,10 +117,12 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  // Release 227: every Chinese concept carries a donor fleet turret (nationalDonorTurrets.ts); the cast CN turrets are gone.
  if(c.package==='cn')throw new Error(`${c.id}: the Chinese concepts carry donor turrets (nationalDonorTurrets.ts)`);
  ({ua:buildNationalUkraine,pl:buildNationalPoland,ru:buildNationalRussia}[c.package])(P,c);
+ yield 'national-package';
  P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
  mainWeapon(P,c);
  const floodlight=NATIONAL_GUN_FLOODLIGHTS[c.id];
  if(floodlight)addGunFloodlight(P,floodlight);
+ yield 'main-weapon';
  const d=nationalModernizationDesign(c),l=NATIONAL_ROOF_LOADOUTS[c.id];
  nationalRoofSystems(P,l);nationalRoofWeapon(P,d.rws,d.cupola,l);
  if(c.package==='ua')addFieldRoofCage(P);
@@ -128,8 +135,8 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};
 }
 export const NATIONAL_MODERNIZATION_PROFILES={
- ...Object.fromEntries(NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>build(P,c)}])),
- ...Object.fromEntries(NATIONAL_LEGACY_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>{
+ ...Object.fromEntries(NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:steppedBuilder((P:TankBuilderPort)=>build(P,c))}])),
+ ...Object.fromEntries(NATIONAL_LEGACY_CONFIG.map(c=>[c.id,{build:steppedBuilder(function*(P:TankBuilderPort):TankProfileBuild{
    const donor=nationalDonorTurret(c.id);
    if(donor){
     P.hullG.position.set(0,0,0);
@@ -138,10 +145,12 @@ export const NATIONAL_MODERNIZATION_PROFILES={
      // own frontal package (ukraineFrontEra.ts) replaces the native glacis Relikt, skirt boxes and glacis lamps; the deck
      // cover strap in its mantlet's sweep is left off.
      buildT72B3MXHull(P,{nativeEra:false,glacisLamps:false,sweptStrap:false});
-     fitDonorTurret(P,c.id,()=>buildHetmanIIDonorKit(P));
+     yield 'hull';
+     yield* fitDonorTurret(P,c.id,()=>buildHetmanIIDonorKit(P));
     }else{
      buildZubrIIHull(P);
-     fitDonorTurret(P,c.id,()=>buildZubrIIDonorKit(P));
+     yield 'hull';
+     yield* fitDonorTurret(P,c.id,()=>buildZubrIIDonorKit(P));
     }
     P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,revision:3,concept:true,
      preserved:'native-hull-and-national-hull-package',primaryTurret:`${donor.donor}-turret-with-national-up-armour`,
@@ -158,5 +167,5 @@ export const NATIONAL_MODERNIZATION_PROFILES={
    P.topY=c.design.roofY;
    P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,revision:2,concept:true,
      preserved:'earlier-welded-turret-concept-lineage',primaryTurret:'independent-national-welded-turret'};
- }}])),
+ })}])),
 };

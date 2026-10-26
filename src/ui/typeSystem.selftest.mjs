@@ -190,9 +190,10 @@ for (const c of ACCENT_CHARS) {
 }
 // Every character a catalog string or a tank name prints is drawn by a shipped face on both voice paths: the Plex path
 // (Plex Sans, then the accents face, then the marks face) and the Chakra Petch path (its cmap or its composition, then
-// the marks face). Chinese and emoji use the system faces by design.
+// the marks face). Chinese and emoji use the system faces by design; the zero-width space the Chinese catalog marks its
+// phrase breaks with (equipment descriptions: never 装/备 at a line end) draws nothing, like the joiner.
 const systemFace = (c) => (c >= 0x2e80 && c <= 0x9fff) || (c >= 0x3000 && c <= 0x303f) || (c >= 0xf900 && c <= 0xfaff)
-  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d;
+  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d || c === 0x200b;
 const chakraDraws = (c) => CHAKRA_CHARS.has(c) || SYMBOL_CHARS.has(c)
   || [...String.fromCodePoint(c).normalize('NFD')].every((ch) => CHAKRA_CHARS.has(ch.codePointAt(0)));
 const printed = new Map();
