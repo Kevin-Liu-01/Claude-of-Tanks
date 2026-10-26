@@ -42,7 +42,7 @@ import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
   box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, reprojectMovedFaceBoxUV, thinPartBoxUV,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
-  torus, xform,
+  torus, xform, type CamoUvRemap,
 } from './factoryGeometry.ts';
 import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
@@ -9216,7 +9216,7 @@ function* buildTankCoreSteps(
     // 253: the seat lifts a camo surface's low corners after faceBoxUV projected them; the camo follows the lifted corner.
     seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
       const camoScale = built.userData.camoFaceProjection as number | undefined;
-      if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale);
+      if (camoScale) reprojectMovedFaceBoxUV(built, seated, camoScale, (built.userData.camoUvRemap as CamoUvRemap | undefined) ?? null);
       const was = built.getAttribute('position'), now = seated.getAttribute('position');
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) {

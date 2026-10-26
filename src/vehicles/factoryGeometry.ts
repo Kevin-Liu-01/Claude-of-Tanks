@@ -585,14 +585,41 @@ export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.B
 }
 
 /**
+ * A profile's camouflage split on a merged surface, applied after its projection (253: the KF51's coarser turret and
+ * finer hull, profiles/leopard.ts): each UV scaled by `k`, offset by (du, dv), then turned by `th` radians. The surface
+ * records it (`geometry.userData.camoUvRemap`) so a later vertex edit re-projects into the same frame.
+ */
+export type CamoUvRemap = readonly [k: number, du: number, dv: number, th: number];
+
+/** One UV through a camouflage split, in the profile's own arithmetic order (so re-projected values compare exactly). */
+function camoUvRemapped(u: number, v: number, [k, du, dv, th]: CamoUvRemap): [number, number] {
+  const c = Math.cos(th), s = Math.sin(th), U = u * k + du, V = v * k + dv;
+  return [Math.fround(c * U - s * V), Math.fround(s * U + c * V)];
+}
+
+/** Apply a camouflage split to a merged surface's UVs and record it on the geometry (see CamoUvRemap). */
+export function remapCamoUv(geometry: THREE.BufferGeometry, remap: CamoUvRemap): void {
+  const uv = geometry.getAttribute('uv');
+  if (!uv) return;
+  for (let i = 0; i < uv.count; i++) {
+    const [u, v] = camoUvRemapped(uv.getX(i), uv.getY(i), remap);
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+  geometry.userData.camoUvRemap = remap;
+}
+
+/**
  * 253 (camo sliding on seated turrets): re-project a face-projected surface's UVs where a later edit moved vertices
  * (the turret seat, turretSeatRace.ts, lifts a merged turret's low corners after faceBoxUV ran, so the camo stayed
  * where the corner had been). `before` is the geometry as projected, `after` its edited copy (same vertex order,
  * non-indexed); only triangles with a moved corner change. Each such corner takes the projection its stored UV came
  * from: the face projection (faceBoxUV) along the edited triangle's own axis; a thin part's whole-part axis
- * (thinPartBoxUV) along that axis; a shifted part's (shiftPartCamouflage) the new face projection plus its shift.
+ * (thinPartBoxUV) along that axis; a shifted part's (shiftPartCamouflage) the new face projection plus its shift. A
+ * surface with a camouflage split (`remap`, CamoUvRemap) compares and writes its projections through it.
  */
-export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THREE.BufferGeometry, scale: number): number {
+export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THREE.BufferGeometry, scale: number,
+  remap: CamoUvRemap | null = null): number {
   if (before.index || after.index) return 0;
   const was = before.getAttribute('position'), now = after.getAttribute('position'), uv = after.getAttribute('uv');
   if (!was || !now || !uv || was.count !== now.count) return 0;
@@ -606,7 +633,8 @@ export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THR
   };
   const project = (position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, i: number, axis: number): [number, number] => {
     const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    return [f((axis === 0 ? z : x) * scale), f((axis === 1 ? z : y) * scale)];
+    const u = f((axis === 0 ? z : x) * scale), v = f((axis === 1 ? z : y) * scale);
+    return remap ? camoUvRemapped(u, v, remap) : [u, v];
   };
   let moved = 0;
   for (let index = 0; index + 2 < now.count; index += 3) {
