@@ -166,7 +166,13 @@ button.cot-c-chip{cursor:pointer}
 /* the chips keep one row on the column and scroll sideways, so the cards keep the height; the row's end fades over a
    32 px band of its own padding (wide enough that a cut word reads as faded), which the last chip clears at the
    scroll's end */
-.cot-c-picker__chips{display:flex;flex:1 1 100%;gap:var(--s2);min-width:0;padding-inline-end:var(--s6);overflow-x:auto;
+.cot-c-picker__filters{display:flex;flex:1 1 100%;align-items:center;gap:var(--s2);min-width:0}
+.cot-c-picker__more{flex:none}
+.cot-c-picker__more[hidden]{display:none}
+.cot-c-picker__more.is-back svg{transform:scaleX(-1)}
+/* a short screen gives the cards the height: the search and the filters share one row */
+@media (height < 520px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
+.cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;padding-inline-end:var(--s6);overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;
   -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent);
   mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent)}
@@ -187,7 +193,9 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-picker__cell{position:relative;min-width:0}
 .cot-c-picker__opt{box-sizing:border-box;display:flex;flex-direction:column;gap:var(--s2);height:100%;padding:var(--s2);border-radius:var(--plate-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);cursor:pointer;outline:none}
-.cot-c-picker--list .cot-c-picker__opt{flex-direction:row;align-items:center;min-height:44px;padding:var(--s2) var(--s3)}
+/* a list row: the glyph, then the name over its facts; the row's end keeps the favourite star's room */
+.cot-c-picker--list .cot-c-picker__opt{flex-direction:row;align-items:center;min-height:44px;padding:var(--s2) calc(var(--s2) * 2 + 32px) var(--s2) var(--s3)}
+.cot-c-picker--list .cot-c-picker__words{flex:1 1 auto}
 .cot-c-picker__opt:hover{background:var(--surface-hover)}
 .cot-c-picker__opt:focus-visible{box-shadow:var(--focus-ring)}
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
@@ -200,7 +208,8 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-c-picker__name{min-width:0;font:500 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);color:var(--ink-1)}
 .cot-c-picker__facts{display:flex;flex-basis:100%;gap:var(--s2);font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
-.cot-c-picker--list .cot-c-picker__facts{flex-basis:auto;margin-left:auto}
+.cot-c-picker--list .cot-c-picker__facts{flex-basis:100%}
+.cot-c-picker--list .cot-c-picker__glyph~.cot-c-picker__facts{padding-left:calc(18px + var(--s2))}
 .cot-c-picker__facts span+span::before{content:'·';margin-right:var(--s2)}
 /* a favourite's star: the kit's square icon button in the picture's corner, 4 px in from it, while the card is pointed at
    or focused, and always once it is a favourite */
@@ -218,6 +227,7 @@ button.cot-c-chip{cursor:pointer}
 /* touch has no hover: the star shows on the chosen card and on favourites, at the 44 px target */
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
+  .cot-c-picker__more{--h:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }
 @media (prefers-reduced-motion:reduce){.cot-c-picker__fav{transition:none}}
@@ -250,6 +260,27 @@ button.cot-c-chip{cursor:pointer}
 .cot-bf__name{font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-bf__facts{display:flex;gap:var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-bf__facts span+span::before{content:'·';margin-right:var(--s2)}
+/* ---- the mode picker (modePicker.ts): the mode under the pointer or the focus as one rules card (its glyph in its hue,
+   its sentence and every rule line) beside the cards, the card first where the space is narrow and gone on a phone ---- */
+.cot-mp{container-type:inline-size;min-width:0;min-height:0}
+.cot-mp__in{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);height:100%}
+.cot-mp__cards{display:flex;min-width:0;min-height:0}
+.cot-mp__cards>.cot-c-picker{flex:1}
+@container (width >= 720px){
+  .cot-mp__in{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-items:start}
+  .cot-mp__cards{height:100%}
+}
+@container (width < 520px){
+  .cot-mp .cot-mp__preview{display:none}
+  .cot-mp__in{grid-template-rows:minmax(0,1fr)}
+}
+.cot-mp__preview{display:grid;align-content:start;gap:var(--s3);min-width:0;max-height:100%;margin:0;padding:var(--s4);overflow:auto;
+  border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}
+.cot-mp__name{display:block;font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-mp__desc{margin:var(--s2) 0 0;font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body);color:var(--ink-2);}
+.cot-mp__rules{display:grid;gap:var(--s1);margin:var(--s3) 0 0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2);}
+.cot-mp__rules li::before{content:'·';margin-right:var(--s2);color:var(--ink-3)}
 /* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
    its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
 [data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}

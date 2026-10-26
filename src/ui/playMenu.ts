@@ -2,6 +2,8 @@ import { createCustomSelect } from './customSelect.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
+import { createModePicker, type ModeCard, type ModePicker } from './modePicker.ts';
+import type { IconId } from './icons/icon.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
@@ -234,7 +236,8 @@ const CSS = `
 .cot-play .play-head{position:sticky;top:calc(-1 * var(--s5));z-index:5;flex-shrink:0;margin:calc(-1 * var(--s5)) calc(-1 * var(--s5)) 0;
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
-.cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+.cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
+  --rules-col:320px}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -270,25 +273,9 @@ const CSS = `
 
 /* the game modes behind Room rules */
 .cot-play .rule-heading{display:flex;align-items:end;justify-content:space-between;gap:var(--s3);margin:var(--s4) 0 var(--s2)}
-.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s3)}
-.cot-play .rule{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:var(--s2);min-height:54px;
-  padding:var(--s2) var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);
-  color:var(--ink-2);text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),
-    box-shadow var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
-.cot-play .rule:hover{background:var(--surface-hover);color:var(--ink-1)}
-.cot-play .rule.on{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
-.cot-play .rule:disabled{cursor:not-allowed}
-.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}
-.cot-play .rule-copy{display:grid;min-width:0;gap:2px}
-.cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-overflow:ellipsis;
-  white-space:nowrap;text-transform:uppercase}
-.cot-play .rule-copy small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
-.cot-play .rule-copy .rule-progress{color:var(--accent)}
-.cot-play .rule-copy .rule-lines{color:var(--ink-3);line-height:1.35;white-space:normal}
 .cot-play .rule-note{display:block;margin:var(--s2) 0 0;color:var(--accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-body)}
 .cot-play .rule-note[hidden]{display:none}
 .cot-play.lobby-active .rule-heading{margin-top:var(--s3)}
-.cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 
 /* host arrangement and the opponent brain: plates */
 .cot-play :is(.arrange,.brain){margin:var(--s3) 0 0;padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -394,7 +381,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
-.cot-play :is(.menu-select-trigger,.mode,.rule,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
+.cot-play :is(.menu-select-trigger,.mode,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
   outline:none;box-shadow:var(--focus-ring)}
 /* the vehicle picker opens in the foot above its trigger: the fleet's cards, each tank's own angle render centred on its
    ink (the render's ink sits --icon-ink-y of its width down a square), two to a phone's row, a short screen's sized to
@@ -425,7 +412,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .roomhead>.action{align-self:center}
 .cot-play .seats-count{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
-.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr);column-gap:var(--s3);min-height:108px;
+.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) var(--rules-col);column-gap:var(--s3);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat padding-box;
   border-right:1px solid var(--line-1)}
@@ -442,10 +429,16 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .battlefield-pick{box-sizing:border-box;height:min(clamp(340px,52vh,520px),calc(var(--cot-viewport-height,100dvh) - 112px));margin-top:var(--s3);padding:var(--s4);border-radius:var(--plate-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-pick[hidden]{display:none}
-.cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
+/* the mode picker opens under the plate as the battlefield's does; the trigger names the mode in its hue */
+.cot-play .mode-pick{box-sizing:border-box;height:min(clamp(340px,52vh,520px),calc(var(--cot-viewport-height,100dvh) - 112px));
+  margin-top:var(--s3);padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-play .mode-pick[hidden]{display:none}
+.cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
+.cot-play .menu-select--mode .menu-select-trigger{gap:var(--s3)}
+.cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{--foot-track:calc((100% + 2 * var(--s4) - 2 * var(--s3)) / 3.6);display:grid;
+.cot-play .player{--foot-track:var(--rules-col);display:grid;
   grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) calc(var(--foot-track) - 7em - var(--s3)) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
@@ -472,7 +465,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
 .cot-play .lobby.show .controls{position:sticky;bottom:calc(-1 * var(--s5));z-index:4;margin:var(--s3) calc(-1 * var(--s5)) 0;
   padding:var(--s4) var(--s5);background:var(--play-plate);border-top:1px solid var(--line-2)}
-.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr);gap:var(--s3);align-items:end}
+.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1fr) var(--rules-col);gap:var(--s3);align-items:end}
 .cot-play .control-options .field{width:auto;min-width:0}
 .cot-play .format-field[hidden]{display:none}
 /* a room's small settings (battle format, deployment) are the kit's segmented control, as wide as their field and as
@@ -480,6 +473,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play :is(.create-size,.room-size,.room-team){display:flex;width:100%}
 .cot-play :is(.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
 .cot-play :is(.room-size,.room-team) .cot-c-seg__opt[aria-checked=true]:disabled{color:var(--ink-2)}
+/* the five formats are mono numbers: they need little air to fit the rules column */
+.cot-play :is(.create-size,.room-size) .cot-c-seg__opt{padding-inline:var(--s1)}
+.cot-play .room-team .cot-c-seg__opt[hidden]{display:none}
 .cot-play .start-count{margin-left:var(--s2);font-family:var(--font-data);letter-spacing:normal}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
@@ -517,16 +513,16 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* open, the rules show their own selection: the summary's echo of it steps aside */
 .cot-play .room-rules[open] [data-selected-rule]{visibility:hidden}
 .cot-play .teams-host:not(:empty){margin-top:var(--s5)}
-.cot-play .cot-teams{flex-direction:column;align-items:flex-start;gap:var(--s2)}
-.cot-play .cot-teams .cot-c-seg__opt{height:38px}
+.cot-play .cot-teams{flex-direction:column;align-items:stretch;gap:var(--s2)}
+.cot-play .cot-teams .cot-c-seg{display:flex}
+.cot-play .cot-teams .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
 /* the arrangement's pickers are the room's selects: the 44 px row and the thin chevron */
 .cot-play .cot-custom-select-trigger{position:relative;min-height:44px}
 .cot-play .cot-custom-select-trigger::after{position:absolute;right:var(--s4);top:50%;margin:0;border-right-width:1.5px;border-bottom-width:1.5px;color:var(--ink-2);transform:translateY(-68%) rotate(45deg)}
-.cot-play .room-rules .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
-.cot-play .room-rules .rule{min-height:64px;padding:var(--s3) var(--s4)}
-.cot-play .room-rules .rule-copy b{white-space:normal;line-height:1.4}
-.cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none}
+.cot-play .rules-mode{height:clamp(340px,52vh,520px)}
+/* in a room the mode is the battlefield plate's first rule: Room Rules keeps the nations and the arrangement */
+.cot-play.lobby-active :is(.rules-mode,[data-selected-rule]){display:none}
 
 /* phone and compact */
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play{--play-gutter:var(--s4)}
@@ -721,18 +717,20 @@ export function createPlayMenu({
   const ruleLineValues = (line: { key: string; values: Readonly<Record<string, string>> }): Record<string, string> =>
     line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) }
       : line.key === 'teamsMono' ? { scope: t(`rules.teams.scope.${line.values.scope}`) } : { ...line.values };
-  const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
-    rulesetLines(matchRulesetFor(id, null, arrangement))
-      .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
+  const ruleLines = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string[] =>
+    rulesetLines(matchRulesetFor(id, null, arrangement)).map((line) => t(`rules.line.${line.key}`, ruleLineValues(line)));
   // the one presentation order (sim/gameModeCatalog.ts), as Deploy shows the modes
   const modeRank = (id: GameModeId): number => { const rank = (MODE_PRESENTATION_ORDER as readonly string[]).indexOf(id); return rank < 0 ? MODE_PRESENTATION_ORDER.length : rank; };
-  // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
-  const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
-    .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" data-mode-tone="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
-      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b>${
-        ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
-        rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
+  /** The battle modes as the mode picker's cards (the practice modes launch from the Garage dossier and the Gallery, never
+   *  a room): each mode's glyph in its hue, its first two rules, and its sentence and every rule for the preview's card.
+   *  Frontline Assault's first fact is the campaign push. */
+  const modeCards = (arrangementOf: (id: GameModeId) => TeamArrangement | null = (id) => readTeamArrangement(id)): ModeCard[] =>
+    BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id]).sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) => {
+      const rules = ruleLines(rule.id, arrangementOf(rule.id));
+      return { id: rule.id, name: t(`playMenu.matchMode.${rule.id}.label`), glyph: rule.icon as IconId, tone: rule.id,
+        facts: rule.id === 'frontline_assault' ? [frontlineProgressLabel(), ...rules.slice(0, 1)] : rules.slice(0, 2),
+        description: t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id)), rules };
+    });
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
     <section class="version-refusal cot-c-notice" data-severity="info" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
@@ -770,7 +768,14 @@ export function createPlayMenu({
         <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
-        <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
+        <div class="battlefield-copy"><div class="field mode-field"><span class="field-label" id="cot-room-mode-label">${t('playMenu.advanced.mode')}</span>
+            <div class="menu-select menu-select--mode" data-control="mode">
+              <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"
+                aria-controls="cot-room-mode-pick" aria-labelledby="cot-room-mode-label cot-room-mode-value">
+                <span class="menu-select-glyph" data-select-glyph aria-hidden="true"></span>
+                <span class="menu-select-trigger-copy"><span id="cot-room-mode-value" data-select-value${datumAttr('mode-name')}></span></span></button>
+            </div></div>
+          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
             <div class="menu-select menu-select--map" data-control="map" data-value="random">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"
                 aria-controls="cot-room-bf" aria-labelledby="cot-room-map-label cot-room-map-value">
@@ -783,6 +788,7 @@ export function createPlayMenu({
                 `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div>
           <div class="field format-field"><span class="field-label">${t('playMenu.advanced.size')}</span>
             ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
+      <div class="mode-pick" id="cot-room-mode-pick" role="group" aria-labelledby="cot-room-mode-label" hidden></div>
       <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
       <div class="players"></div><div class="controls">
         <div class="vehicle-pick" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
@@ -804,7 +810,7 @@ export function createPlayMenu({
     </div></section>
     <details class="room-rules"><summary>${t('playMenu.roomRules')}${uiIconSVG('chevronRight', 16)}<span data-selected-rule${datumAttr('mode-name')}></span></summary>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b></div>
-    <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
+    <div class="rules-mode" data-rules-mode></div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
     <div class="teams-host" data-teams-host></div>
     <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
@@ -866,7 +872,6 @@ export function createPlayMenu({
   const teamSelect = requiredElement<MenuSelectElement>(root, '[data-control="team"]');
   const sizeSelect = requiredElement<MenuSelectElement>(root, '[data-control="size"]');
   const mapSelect = requiredElement<MenuSelectElement>(root, '[data-control="map"]');
-  const ruleButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
   const mapById = new Map<string, PlayMenuMap>(maps.map((map) => [map.id, map]));
   const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
   const initialSelection = getSelection();
@@ -952,6 +957,7 @@ export function createPlayMenu({
     if (!vehiclePick.hidden) { closeVehiclePick(true); return; }
     if (vehicleSelect.disabled) return;
     closeBattlefieldPick();
+    closeModePick();
     vehiclePick.hidden = false;
     vehicleTrigger.setAttribute('aria-expanded', 'true');
     if (vehiclePicker) vehiclePicker.setValue(vehicleSelect.value);
@@ -1054,6 +1060,7 @@ export function createPlayMenu({
     if (!battlefieldPick.hidden) { closeBattlefieldPick(true); return; }
     if (mapSelect.disabled) return;
     closeVehiclePick();
+    closeModePick();
     battlefieldPick.hidden = false;
     battlefieldCard.classList.add('picking');
     mapTrigger.setAttribute('aria-expanded', 'true');
@@ -1070,25 +1077,26 @@ export function createPlayMenu({
         },
       });
     }
-    revealBattlefieldPick();
+    revealUnderCard(battlefieldPick);
     battlefieldPicker.focus();
   }
   /** One picker is open at a time; a change of the room's kind or the dialog's closing folds both. */
   function closePicks(): void {
     closeBattlefieldPick();
     closeVehiclePick();
+    closeModePick();
   }
-  /** The opened picker in the panel's view: the battlefield card at the top under the sticky head, the picker under it
-   *  clear of the sticky foot (the grid shows the chosen card itself). A short screen holds the picker alone: it takes
-   *  the view, its preview standing for the card (Rooms r25). */
-  function revealBattlefieldPick(): void {
+  /** An opened picker under the battlefield plate (the mode's or the battlefield's) in the panel's view: the plate at the
+   *  top under the sticky head, the picker under it clear of the sticky foot (the grid shows the chosen card itself). A
+   *  short screen holds the picker alone: it takes the view, its preview standing for the plate (Rooms r25). */
+  function revealUnderCard(region: HTMLElement): void {
     const panel = battlefieldCard.closest<HTMLElement>('.panel');
     if (!panel) return;
     const head = panel.querySelector<HTMLElement>('.play-head');
     const sticky = head && getComputedStyle(head).position === 'sticky' ? head.offsetHeight : 0;
     const origin = panel.getBoundingClientRect().top - panel.scrollTop + sticky + 12;
     const card = battlefieldCard.getBoundingClientRect().top - origin;
-    const pick = battlefieldPick.getBoundingClientRect();
+    const pick = region.getBoundingClientRect();
     const both = pick.bottom - origin - card <= panel.clientHeight - sticky - 12;
     panel.scrollTop = Math.max(0, both ? card : pick.top - origin);
   }
@@ -1154,6 +1162,9 @@ export function createPlayMenu({
   let returnFocus: HTMLElement | null = null;
   let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
+  /** The mode pickers: Room Rules' (the entry and solo) and the lobby's, made on its first opening. */
+  let rulesModePicker: ModePicker | null = null;
+  let lobbyModePicker: ModePicker | null = null;
 
   // ---- TEAM NATIONS (gameplay-modes-228): MONO-NATION or RANDOM, one switch solo and in a lobby -------------------
   // solo it is the player's preference; in a lobby the room's arrangement holds it, the host changes it (and keeps it
@@ -1178,7 +1189,7 @@ export function createPlayMenu({
         command({ type: 'set_arrangement', arrangement: normalizeTeamArrangement(selectedGameMode, { ...(state.arrangement ?? {}), teamNations: value }) });
       }
       renderArrangement(selectedGameMode, teamsFromLobby);
-      refreshRuleLines(selectedGameMode);
+      refreshRuleLines();
     },
     playerCountry,
     enemyCountry: () => currentArrangement(selectedGameMode)?.enemyNation ?? null,
@@ -1201,10 +1212,10 @@ export function createPlayMenu({
   };
   const range = (from: number, to: number): Array<[string, string]> =>
     Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
-  function refreshRuleLines(mode: GameModeId): void {
-    const card = ruleButtons.find((button) => button.dataset.gameMode === mode);
-    const lines = card?.querySelector<HTMLElement>('[data-rule-lines]');
-    if (lines) lines.textContent = ruleLineCopy(mode, currentArrangement(mode));
+  /** The mode cards follow the arrangement (their rules) and the campaign (Frontline Assault's push). */
+  function refreshRuleLines(): void {
+    rulesModePicker?.setCards(modeCards(currentArrangement));
+    lobbyModePicker?.setCards(modeCards(currentArrangement));
   }
   // ---- sides (owner 2026-09-18): 7v7 / 14v14 / custom for the symmetric modes ---------------------------
   const sidesGroup = arrangeSection.querySelector<HTMLElement>('[data-arrange-sides]')!;
@@ -1285,7 +1296,7 @@ export function createPlayMenu({
     arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.disabled = locked;
     const note = arrangeSection.querySelector<HTMLElement>('[data-arrange-note]');
     if (note) note.textContent = fromLobby ? t(role === 'host' ? 'playMenu.arrange.subHost' : 'playMenu.arrange.subGuest') : '';
-    refreshRuleLines(mode);
+    refreshRuleLines();
   }
   function readArrangementPanel(mode: GameModeId): TeamArrangement | null {
     const wave = isWaveMode(mode);
@@ -1352,6 +1363,69 @@ export function createPlayMenu({
     renderBrain(!!state);
   });
 
+  /** Choose a battle mode: the room's own change for its host while it waits; the next room's or solo battle's before. */
+  function chooseMode(next: string): void {
+    if (state && (role !== 'host' || state.phase !== 'waiting')) return;
+    const mode = normalizeGameMode(next);
+    showSelectedGameMode(mode, { fromLobby: !!state });
+    if (state) command({ type: 'set_game_mode', gameMode: mode });
+  }
+  // the mode picker (INTERACTION-REDESIGN.md line 1): inline in Room Rules before a room exists (the entry, solo), and in a
+  // room under the battlefield plate's Mode trigger, where the host's rules stand together
+  rulesModePicker = createModePicker(requiredElement<HTMLElement>(root, '[data-rules-mode]'), {
+    id: 'rooms-rules-mode', label: t('playMenu.battleRulesAria'), cards: modeCards(), value: selectedGameMode, text: pickerText(),
+    onChoose: (id) => chooseMode(id),
+  });
+  const modeSelect = requiredElement<HTMLElement>(root, '[data-control="mode"]');
+  const modeTrigger = requiredElement<HTMLButtonElement>(modeSelect, '[data-select-trigger]');
+  const modeGlyph = requiredElement<HTMLElement>(modeTrigger, '[data-select-glyph]');
+  const modeValue = requiredElement<HTMLElement>(modeTrigger, '[data-select-value]');
+  const modePick = requiredElement<HTMLElement>(root, '.mode-pick');
+  function closeModePick(restoreFocus = false): void {
+    if (modePick.hidden) return;
+    modePick.hidden = true;
+    modeTrigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) modeTrigger.focus();
+  }
+  function toggleModePick(): void {
+    if (!modePick.hidden) { closeModePick(true); return; }
+    if (modeTrigger.disabled) return;
+    closeBattlefieldPick();
+    closeVehiclePick();
+    modePick.hidden = false;
+    modeTrigger.setAttribute('aria-expanded', 'true');
+    if (lobbyModePicker) lobbyModePicker.setCards(modeCards(currentArrangement), selectedGameMode);
+    else {
+      lobbyModePicker = createModePicker(modePick, {
+        id: 'rooms-mode', label: t('playMenu.advanced.mode'), cards: modeCards(currentArrangement), value: selectedGameMode,
+        text: pickerText(), onChoose: (id) => { chooseMode(id); closeModePick(true); },
+      });
+    }
+    revealUnderCard(modePick);
+    lobbyModePicker.focus();
+  }
+  modeTrigger.addEventListener('click', () => toggleModePick());
+  modeTrigger.addEventListener('keydown', (event) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    if (modePick.hidden) toggleModePick();
+  });
+  modePick.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    closeModePick(true);
+  });
+  /** The Mode trigger names the room's mode in its hue; a guest, or a room past waiting, reads it disabled. */
+  function showModeTrigger(fromLobby: boolean): void {
+    modeGlyph.innerHTML = uiIconSVG(GAME_MODE_DEFINITIONS[selectedGameMode].icon, 20);
+    modeGlyph.dataset.modeTone = selectedGameMode;
+    modeValue.textContent = t(`playMenu.matchMode.${selectedGameMode}.label`);
+    const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
+    modeTrigger.disabled = locked;
+    modeSelect.classList.toggle('disabled', locked);
+    if (locked) closeModePick();
+  }
+
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
@@ -1361,11 +1435,9 @@ export function createPlayMenu({
     // Frontline Assault rooms are co-op: the note says every player attacks together (batch 27)
     const note = root.querySelector<HTMLElement>('[data-rule-note]');
     if (note) note.hidden = selectedGameMode !== 'frontline_assault';
-    for (const button of ruleButtons) {
-      button.classList.toggle('on', button.dataset.gameMode === selectedGameMode);
-      button.setAttribute('aria-pressed', String(button.dataset.gameMode === selectedGameMode));
-      button.disabled = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
-    }
+    rulesModePicker?.setValue(selectedGameMode);
+    lobbyModePicker?.setValue(selectedGameMode);
+    showModeTrigger(fromLobby);
     renderArrangement(selectedGameMode, fromLobby);
     renderBrain(fromLobby);
     requiredElement<HTMLElement>(root, '[data-selected-rule]').textContent = t(`playMenu.matchMode.${selectedGameMode}.label`);
@@ -1727,6 +1799,7 @@ export function createPlayMenu({
     const coop = isCoopGameMode(next.gameMode);
     sizeSelect.closest<HTMLElement>('.field')!.hidden = coop;
     root.classList.toggle('coop', coop);
+    teamSelect.querySelector<HTMLElement>('[data-value="bravo"]')!.hidden = coop;
     startBtn.style.display = role === 'host' ? '' : 'none';
     rejoinBtn.hidden = !canRejoinBattle(next) || !!versionRefusal;
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
@@ -1980,14 +2053,6 @@ export function createPlayMenu({
     const requested = button.dataset.mode;
     selectMode(normalizePlayMode(requested));
   }));
-  for (const button of ruleButtons) {
-    button.addEventListener('click', () => {
-      const next = normalizeGameMode(button.dataset.gameMode);
-      if (state && (role !== 'host' || state.phase !== 'waiting')) return;
-      showSelectedGameMode(next, { fromLobby: !!state });
-      if (state) command({ type: 'set_game_mode', gameMode: next });
-    });
-  }
   createBtn.addEventListener('click', () => { void requestRoom('create'); });
   joinBtn.addEventListener('click', () => { void requestRoom('join'); });
   retryBtn.addEventListener('click', () => {
@@ -2095,7 +2160,7 @@ export function createPlayMenu({
     initialMode: PlayMode | null = null,
     invite: PlayMenuInvite | null = null,
   ): void {
-    { const badge = root.querySelector<HTMLElement>('[data-rule-progress]'); if (badge) badge.textContent = frontlineProgressLabel(); }
+    refreshRuleLines();
     { const campaign = root.querySelector<HTMLElement>('[data-campaign]'); if (campaign) campaign.innerHTML = campaignMarkup(); }
     if (showCurrentRoom()) return;
     revealMenu();
