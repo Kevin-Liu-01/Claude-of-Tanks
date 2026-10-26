@@ -1491,7 +1491,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       });
     }
     if (!roomContext?.state) {
-      const again = action(actions, 'primary', 'again', 'rematch', t('endScreen.battleAgain'));
+      // (one primary: with the campaign's next operation leading, Again is the secondary, INTERACTION-REDESIGN C)
+      const again = action(actions, actions.querySelector('[data-campaign-next]') ? 'secondary' : 'primary', 'again', 'rematch',
+        t('endScreen.battleAgain'));
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});
@@ -1511,6 +1513,28 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     mark.loading = 'lazy';
     mark.setAttribute('aria-hidden', 'true');
   }
+
+  /** The report takes the keyboard as it opens (INTERACTION-REDESIGN C, the census's end-screen row): focus on its one
+   *  primary, so Enter confirms it, and Esc backs out to the Garage, never the Settings panel behind the report. */
+  const focusPrimary = (): void => {
+    // (only while the keyboard is nobody's: never from a dialog or a field the player is in; again after the frame the
+    // report becomes visible on, and after a slow sheet's hold, as a hidden button takes no focus)
+    if (!visible || (document.activeElement && document.activeElement !== document.body)) return;
+    (host.querySelector<HTMLButtonElement>('.es-actions .cot-c-btn--primary:not(:disabled)') ?? garageBtn)?.focus({ preventScroll: true });
+  };
+  const takeFocus = (): void => {
+    focusPrimary();
+    setTimeout(focusPrimary, 0);
+    if (host.classList.contains('es-sheet-wait')) setTimeout(focusPrimary, 1600);
+  };
+  const onReportKey = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || !visible || !garageBtn?.isConnected) return;
+    // (a dialog over the report, Settings among them, takes its own Esc)
+    if (event.target instanceof Element && event.target.closest('[role="dialog"],[aria-modal="true"]:not(.cot-es)')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    garageBtn.click();
+  };
 
   api = {
     root: host,
@@ -1558,6 +1582,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         host.classList.add('show');
         host.setAttribute('aria-hidden', 'false');
         document.body.classList.add('cot-si-report');
+        window.addEventListener('keydown', onReportKey, true);
+        takeFocus();
         return;
       }
 
@@ -1593,6 +1619,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       // battle-HUD chrome must not bleed through the results backdrop — the
       // class shotInfo's CSS already keys every chrome hide off
       document.body.classList.add('cot-si-report');
+      window.addEventListener('keydown', onReportKey, true);
+      takeFocus();
     },
 
     /** Hide + finalize counters (garage entry, battle restart). */
@@ -1606,6 +1634,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       host.classList.remove('show');
       host.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('cot-si-report');
+      window.removeEventListener('keydown', onReportKey, true);
     },
   };
   return api;
