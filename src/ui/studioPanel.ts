@@ -377,6 +377,14 @@ const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
 ] as const);
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
+/** A labelled segmented choice (labelledSegments): its value, its lock while an export runs and its change listeners. */
+interface Segments {
+  value: string;
+  disabled: boolean;
+  readonly element: HTMLElement;
+  has(value: string): boolean;
+  onChange(listener: () => void): void;
+}
 const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1'], ['card', '1.91:1']] as const);
 /** A production format as its ratio reads (16:9, 9:16, 1:1, 1.91:1). */
 const formatRatio = (format: ProductionFormat): string => FILM_FORMATS.find(([id]) => id === format)?.[1] ?? '16:9';
@@ -1567,42 +1575,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const secCap = section('output', t('studio.film.heading'), 'deploy');
   // --- film: deterministic offline export (studioFilm*.ts) ----------------------
   const filmSizeRow = el('div', 'grid');
-  const filmSize = labelledSelect(t('studio.film.size'));
-  for (const resolution of FILM_RESOLUTIONS) {
-    const option = document.createElement('option');
-    option.value = String(resolution);
-    option.textContent = `${resolution}p`;
-    filmSize.select.appendChild(option);
-  }
-  const filmFps = labelledSelect(t('studio.film.rate'));
-  for (const fps of [24, 30, 60]) {
-    const option = document.createElement('option');
-    option.value = String(fps);
-    option.textContent = t('studio.film.fpsOption', { fps });
-    filmFps.select.appendChild(option);
-  }
+  // the export settings are a few each (five or fewer): the kit's segmented controls, every choice in view (the
+  // interaction census: raw selects)
+  const filmSize = labelledSegments(t('studio.film.size'),
+    FILM_RESOLUTIONS.map((resolution) => [String(resolution), `${resolution}p`] as const), String(FILM_RESOLUTIONS[0]));
+  const filmFps = labelledSegments(t('studio.film.rate'), [24, 30, 60].map((fps) => [String(fps), t('studio.film.fpsOption', { fps })] as const), '30');
   filmSizeRow.append(filmSize.row, filmFps.row);
   secCap.appendChild(filmSizeRow);
   const filmBlurRow = el('div', 'grid');
-  const filmBlur = labelledSelect(t('studio.film.blur'));
-  for (const [key, samples] of [['studio.film.blurOff', 1], ['studio.film.blurDraft', 4], ['studio.film.blurGood', 8],
-    ['studio.film.blurBest', 16], ['studio.film.blurMaster', 32]] as const) {
-    const option = document.createElement('option');
-    option.value = String(samples);
-    option.textContent = t(key);
-    filmBlur.select.appendChild(option);
-  }
-  filmBlur.select.value = '8';
-  filmFps.select.value = '30';
-  const filmShake = labelledSelect(t('studio.film.shake'));
-  for (const [key, shake] of [['studio.film.shakeFull', 1], ['studio.film.shakeHalf', 0.5],
-    ['studio.film.shakeQuarter', 0.25], ['studio.film.shakeOff', 0]] as const) {
-    const option = document.createElement('option');
-    option.value = String(shake);
-    option.textContent = t(key);
-    filmShake.select.appendChild(option);
-  }
-  filmShake.select.dataset.tip = t('studio.film.shakeTitle');
+  const filmBlur = labelledSegments(t('studio.film.blur'), ([['studio.film.blurOff', 1], ['studio.film.blurDraft', 4],
+    ['studio.film.blurGood', 8], ['studio.film.blurBest', 16], ['studio.film.blurMaster', 32]] as const)
+    .map(([key, samples]) => [String(samples), t(key)] as const), '8');
+  const filmShake = labelledSegments(t('studio.film.shake'), ([['studio.film.shakeFull', 1], ['studio.film.shakeHalf', 0.5],
+    ['studio.film.shakeQuarter', 0.25], ['studio.film.shakeOff', 0]] as const).map(([key, shake]) => [String(shake), t(key)] as const), '1');
+  filmShake.seg.element.dataset.tip = t('studio.film.shakeTitle');
   filmBlurRow.append(filmBlur.row, filmShake.row);
   filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
@@ -1611,15 +1597,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the export settings run from the header's Export film, the workspace's one primary (the s13 critic: two accent
   // Export film buttons in view at once)
   // Authoring the export settings records them in the scene's `film` block.
-  for (const control of [filmFps.select, filmBlur.select, filmShake.select]) {
-    control.addEventListener('change', () => {
+  for (const control of [filmFps.seg, filmBlur.seg, filmShake.seg]) {
+    control.onChange(() => {
       try {
-        S.setFilm({ fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value), shake: Number(filmShake.select.value) });
+        S.setFilm({ fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value), shake: Number(filmShake.seg.value) });
       } catch { /* exporting */ }
       updateFilmSummary();
     });
   }
-  filmSize.select.addEventListener('change', () => updateFilmSummary());
+  filmSize.seg.onChange(() => updateFilmSummary());
   // Export veil: blocks the canvas and panel while frames render; live preview at the native aspect.
   const filmVeil = el('div', 'filmVeil');
   filmVeil.setAttribute('role', 'dialog');
@@ -1694,10 +1680,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function startFilmExport(): void {
     if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
     renderFilm({
-      resolution: Number(filmSize.select.value),
-      fps: Number(filmFps.select.value),
-      samples: Number(filmBlur.select.value),
-      shake: Number(filmShake.select.value),
+      resolution: Number(filmSize.seg.value),
+      fps: Number(filmFps.seg.value),
+      samples: Number(filmBlur.seg.value),
+      shake: Number(filmShake.seg.value),
     })
       .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
       .catch((error: RuntimeValue) => flashBusy(aborted(error)
@@ -1711,20 +1697,20 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (signature !== filmSignature) {
       filmSignature = signature;
       if (film) {
-        filmFps.select.value = String(film.fps);
-        if ([...filmBlur.select.options].some((option) => option.value === String(film.samples))) filmBlur.select.value = String(film.samples);
-        if ([...filmShake.select.options].some((option) => option.value === String(film.shake))) filmShake.select.value = String(film.shake);
+        filmFps.seg.value = String(film.fps);
+        if (filmBlur.seg.has(String(film.samples))) filmBlur.seg.value = String(film.samples);
+        if (filmShake.seg.has(String(film.shake))) filmShake.seg.value = String(film.shake);
       }
     }
     const status = S.filmExportStatus();
     const busyOutput = status.active || S.recordingStatus().active;
     exportBtn.disabled = busyOutput || !status.supported;
-    for (const control of [filmSize.select, filmFps.select, filmBlur.select, filmShake.select]) control.disabled = busyOutput;
+    for (const control of [filmSize.seg, filmFps.seg, filmBlur.seg, filmShake.seg]) control.disabled = busyOutput;
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
     try {
       const format = S.productionFormat;
-      const { width, height } = filmOutputSize(format, Number(filmSize.select.value));
-      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value) }), 0, S.durationMs);
+      const { width, height } = filmOutputSize(format, Number(filmSize.seg.value));
+      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value) }), 0, S.durationMs);
       const summary = t('studio.film.summary', {
         ratio: formatRatio(format),
         width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
@@ -1738,13 +1724,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const secLive = el('div', 'sec');
   secLive.dataset.pro = '';
   secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'cameraPath'));
-  const fpsSel = labelledSelect(t('studio.ws.video'));
-  for (const fps of [60, 30]) {
-    const option = document.createElement('option');
-    option.value = String(fps);
-    option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
-    fpsSel.select.appendChild(option);
-  }
+  const fpsSel = labelledSegments(t('studio.ws.video'), [60, 30].map((fps) => [String(fps), t('studio.film.fpsBitrate', { fps, mbps: 12 })] as const), '60');
   const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'cameraPath');
   recordBtn.classList.add('cot-c-btn--wide');
   recordBtn.setAttribute('aria-pressed', 'false');
@@ -1753,23 +1733,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       S.stopRecording();
       return;
     }
-    S.recordVideo({ fps: Number(fpsSel.select.value), download: true })
+    S.recordVideo({ fps: Number(fpsSel.seg.value), download: true })
       .then((result) => flashBusy(t('studio.videoSaved', { size: (result.size / 1048576).toFixed(1) })))
       .catch((error: RuntimeValue) => flashBusy(t('studio.recordFailed', { error: errorMessage(error) })));
     api.refreshStoryboard();
   });
   const recStatus = el('div', 'recStatus', t('studio.recordReady'));
-  const capSel = labelledSelect(t('studio.ws.width'));
-  for (const [label, w] of [['2560 px', 2560], ['3200 px', 3200], ['3840 px', 3840], ['5120 px', 5120]] as const) {
-    const o = document.createElement('option');
-    o.value = String(w);
-    o.textContent = label;
-    capSel.select.appendChild(o);
-  }
+  const capSel = labelledSegments(t('studio.ws.width'), [2560, 3200, 3840, 5120].map((w) => [String(w), `${w} px`] as const), '2560');
   const capBtn = kitButton(t('studio.capturePng'), undefined, 'toolPhoto');
   capBtn.classList.add('cot-c-btn--wide');
   capBtn.addEventListener('click', () => {
-    S.capture({ width: parseInt(capSel.select.value, 10), download: true });
+    S.capture({ width: parseInt(capSel.seg.value, 10), download: true });
   });
   secLive.append(fpsSel.row, recordBtn, recStatus, capSel.row, capBtn);
   const secScene2 = el('div', 'sec');
@@ -2096,7 +2070,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     return t('studio.ws.queue.estimate', { time, size: t('studio.ws.queue.megabytes', { n: megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes) }) });
   }
   function estimateFor(preset: QueuePreset): QueueJob['estimate'] {
-    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.select.value), shotRuns(S.getStoryboard().shots, S.durationMs).length);
+    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.seg.value), shotRuns(S.getStoryboard().shots, S.durationMs).length);
   }
   function toggleQueue(open = queuePop.hidden): void {
     queuePop.hidden = !open;
@@ -2184,7 +2158,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (job.preset.kind === 'film') {
       await renderFilm({
         resolution: job.preset.resolution, fps: job.preset.fps,
-        samples: Number(filmBlur.select.value), shake: Number(filmShake.select.value),
+        samples: Number(filmBlur.seg.value), shake: Number(filmShake.seg.value),
         name: queueFileName(map, `${job.preset.resolution}p${job.preset.fps}`, ratio, '').replace(/\.$/, ''),
       }, report);
       return 1;
@@ -2417,11 +2391,47 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       },
     };
   }
-  function labelledSelect(label: string): { row: HTMLLabelElement; select: HTMLSelectElement } {
-    const row = el('label', 'production-lens');
-    const select = document.createElement('select');
-    row.append(label, select);
-    return { row, select };
+  /** A labelled choice of a few: the kit's segmented control in this panel's idiom (wireRovingKeys), its value read and
+   *  set as the select it replaced was. */
+  function labelledSegments(label: string, choices: readonly (readonly [string, string])[], value: string): { row: HTMLElement; seg: Segments } {
+    const row = el('div', 'production-lens');
+    const group = el('div', 'cot-c-seg');
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-label', label);
+    wireRovingKeys(group);
+    let current = value;
+    const listeners: (() => void)[] = [];
+    const buttons = choices.map(([choice, text]) => {
+      const option = el('button', 'cot-c-seg__opt', text);
+      option.type = 'button';
+      option.setAttribute('role', 'radio');
+      option.dataset.value = choice;
+      option.addEventListener('click', () => {
+        if (choice === current) return;
+        seg.value = choice;
+        for (const listener of listeners) listener();
+      });
+      group.appendChild(option);
+      return option;
+    });
+    const seg: Segments = {
+      get value() { return current; },
+      set value(next: string) {
+        current = next;
+        for (const option of buttons) {
+          option.setAttribute('aria-checked', String(option.dataset.value === next));
+          option.tabIndex = option.dataset.value === next ? 0 : -1;
+        }
+      },
+      get disabled() { return buttons.some((option) => option.disabled); },
+      set disabled(off: boolean) { for (const option of buttons) option.disabled = off; },
+      element: group,
+      has: (next) => choices.some(([choice]) => choice === next),
+      onChange: (listener) => { listeners.push(listener); },
+    };
+    seg.value = value;
+    row.append(el('span', null, label), group);
+    return { row, seg };
   }
   function numField(prefix: string, onChange: (value: number) => void): { label: HTMLLabelElement; input: HTMLInputElement } {
     const label = el('label');
