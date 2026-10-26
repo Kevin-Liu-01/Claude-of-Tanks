@@ -591,7 +591,9 @@ body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch :is(.
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive{
   left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:calc(106px * var(--mm-k,1))!important;height:calc(106px * var(--mm-k,1))!important}
+/* (its large step stops 8 px short of the score, left of it: the Horde's wider plate met its grid at 568x320, the layout
+   receipt; battleHudLayout.ts --hud-score-left) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
 /* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
    the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never
    shifts off the line. On a short landscape phone the toolbar's corner plate (158 px, hung from the corner) is that corner:

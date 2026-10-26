@@ -238,6 +238,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
 body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
 /* a Standard battle has no objective beyond the score: its plate is the mission plate in the corner seat only */
 body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
+/* (the Horde's plate, in every seat, is the mode's name alone: its wave and those left are the score plate's, gauntlet r3
+   read them twice; without a corner seat the Horde had no objective at all, Main from the touch receipt) */
+body[data-cot-battle-layout] .cot-mode-status[data-mode='endless_horde'] .mn{display:block}
+body[data-cot-battle-layout] .cot-mode-status[data-mode='endless_horde'] .mv{display:none}
 /* The mission plate (brand-ui H3, the direction's .mission): where battleHudLayout.ts seats it in the top-left corner
    (the mouse layouts the team strip shows on), a right trapezoid hung from the window's corner (owner 2026-10-24: "left
    objective marker should be another right trapezoid attached to left"), the mode's glyph in its well, the mode's name
@@ -255,8 +259,6 @@ body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mn{
   text-transform:uppercase;color:var(--ink-1)}
 /* (the value in the plate seat's face: mono here and the display face under the score read as two kits, gauntlet r3) */
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font:600 var(--battle-fs-12)/1 var(--hud-font);color:var(--ink-3)}
-/* (the Horde's mission plate is its name alone: its wave and those left are the score plate's, gauntlet r3 read them twice) */
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status[data-mode='endless_horde'] .mv{display:none}
 @media (hover:hover) and (pointer:fine){
   body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{display:inline-flex;flex:none;padding:0 6px}
 }
@@ -358,6 +360,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon
   display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(16px,var(--roster-row-height,24px)));align-content:start;
   height:calc(var(--roster-height) - 22px);overflow:hidden;
 }
+/* (a dense roster's, more than ten a side, down to 13 px: fourteen a side fit 1024x600 whole, battleHudLayout.ts ROSTER_ROW_DENSE) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.dense:not(.icon-grid) .cot-ear-rows{grid-template-rows:repeat(var(--roster-count,7),minmax(13px,var(--roster-row-height,24px)))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
 /* (a roster cut to whole rows ends with the count it leaves out, its own 16 px line: battleHudLayout.ts snapRosterHeight) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid)[data-more] .cot-ear-rows{height:calc(var(--roster-height) - 22px - 17px)}
@@ -450,15 +454,30 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
    placeAimWarning) under the rack, the countdown and the ring, as the mouse layout's canvas chip, and the scope's readouts
    start under it; its box is the canvas chip's ink, 24 px tall. A short landscape keeps it in the left lane (below). */
 .cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;display:flex;align-items:center;justify-content:center}
+/* (up to 340 px tall the joystick under the map and the seats beside it leave it no larger step: at 1.5 it ran 15 px onto
+   the stick at 568x256, and at 568x320 it sent the objective under the score and the detection onto the hull panel; on a
+   portrait phone up to 340 px wide it left the systems slot one 88 px column of six over the left FIRE, the layout
+   receipt at 320x568) */
+@media (max-height:340px) and (orientation:landscape), (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:106px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:min(calc(var(--mm-tiny) * var(--mm-k,1)),var(--mm-tiny))!important;height:min(calc(var(--mm-tiny) * var(--mm-k,1)),var(--mm-tiny))!important}
+}
+@media (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:92px}
+}
 @media (max-height:299px) and (orientation:landscape){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:calc(88px * var(--mm-k,1))!important;height:calc(88px * var(--mm-k,1))!important}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:88px}
 }
 
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
   .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s3);white-space:normal}
-  /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7) */
-  .cot-hud .cot-aim-warning{padding:4px var(--s3);min-height:32px;box-sizing:border-box}
+  .cot-hud .cot-aim-warning{padding:4px var(--s3);box-sizing:border-box}
+}
+/* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
+   300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
+@media (max-height:549px) and (min-height:300px) and (orientation:landscape){
+  .cot-hud .cot-aim-warning{min-height:32px}
 }
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
@@ -564,6 +583,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:center}
+/* (the tiniest landscapes, up to 340 px tall, where no place clears both: one 24 px row, the alert on one line in the
+   detection's place while it shows, the detection under it: touchNoticePlan oneRow, the layout receipt at 568x256 and,
+   where the parked chip beside the objective met the alert, 568x320) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}

@@ -3700,10 +3700,11 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusEl.dataset.tip = modeName;
     modeStatusName.textContent = modeName;
     setObjectiveValue(modeStatusValue, copy);
-    // A Standard battle has no objective beyond the score, and the Horde's score plate already reads the wave and those
-    // left (gauntlet r1: "WAVE 3 · 12 HOSTILES" under "WAVE 3 ... 12 LEFT"): either plate shows only in the corner seat,
-    // where it is the mission plate (battleHudLayout.css .quiet), never as a second row under the score
-    modeStatusEl.classList.toggle('quiet', modeState.id === 'standard' || modeState.id === 'endless_horde');
+    // A Standard battle has no objective beyond the score: its plate shows only in the corner seat, where it is the
+    // mission plate (battleHudLayout.css .quiet), never as a second row under the score. The Horde's plate shows in every
+    // seat as the mode's name, its wave and those left being the score plate's (gauntlet r1: "WAVE 3 · 12 HOSTILES" under
+    // "WAVE 3 ... 12 LEFT"; Main 253: hidden outside the corner seat, the Horde had no objective at all)
+    modeStatusEl.classList.toggle('quiet', modeState.id === 'standard');
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }
