@@ -24,6 +24,7 @@
 
 import { landformPathFrame, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export interface LandformGeology {
   /** Plan irregularity, 0 (the authored ellipse or bar) to 0.35. */
   outline?: number;
@@ -192,7 +193,7 @@ function lobe(theta: number, salt: number): number {
   let sum = 0, norm = 0;
   for (let k = 2; k <= 5; k++) {
     const amp = 1 / (k - 1);
-    sum += amp * Math.sin(k * theta + hash2(k, 0, salt) * TAU);
+    sum += amp * detMath.sin(k * theta + hash2(k, 0, salt) * TAU);
     norm += amp;
   }
   return sum / norm;
@@ -370,7 +371,7 @@ function coneProfile(q: number, geology: LandformGeology, height: number): numbe
     return 1 - depth * (1 - (q / rim) ** 2);
   }
   const s = 1 - (q - rim) / (1 - rim);
-  return s * (1 - Math.exp(-6 * s)) / (1 - Math.exp(-6));
+  return s * (1 - detMath.exp(-6 * s)) / (1 - detMath.exp(-6));
 }
 
 /** A sheer jebel's cap falls this share of its height from the centre to the wall's top. */
@@ -394,7 +395,7 @@ export function inselbergSection(q: number, foot: number, apron: number, crown =
     const h = inselbergSection(q, foot, apron, crown, rim, capDrop, tiers, ledge);
     if (h <= apron) return h;
     const u = (h - apron) / (1 - apron), amp = Math.min(0.95, Math.max(0, bandStrength)) / (Math.PI * bands);
-    return apron + (1 - apron) * (u - amp * 0.5 * (1 - Math.cos(2 * Math.PI * bands * u)));
+    return apron + (1 - apron) * (u - amp * 0.5 * (1 - detMath.cos(2 * Math.PI * bands * u)));
   }
   if (rim > 0) {
     const top = foot * rim;
@@ -409,7 +410,7 @@ export function inselbergSection(q: number, foot: number, apron: number, crown =
       }
       return apron + (1 - capDrop - apron) * (1 - t * t * (3 - 2 * t));
     }
-  } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
+  } else if (q <= foot) return 1 - (1 - apron) * detMath.pow(q / foot, crown);
   const t = (1 - q) / (1 - foot);
   return apron * t * t;
 }
@@ -440,7 +441,7 @@ function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [
     } else {
       // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
       const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
-      const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
+      const notch = Math.max(0, detMath.cos(phase * TAU)) ** 2;
       wall -= notch * depth * (1 - rim) * wall;
     }
   }
@@ -461,7 +462,7 @@ function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: numb
   for (let k = 0; k < Math.round(bosses.count); k++) {
     const a = hash2(k, 1, salt + 41) * TAU, r = Math.sqrt(hash2(k, 2, salt + 41)) * top * 0.62;
     const radius = top * (Math.max(0.15, Math.min(0.6, bosses.radius ?? 0.3)) + 0.16 * hash2(k, 3, salt + 41));
-    const d = Math.hypot(nx - Math.cos(a) * r, nz - Math.sin(a) * r) / radius;
+    const d = detMath.hypot(nx - detMath.cos(a) * r, nz - detMath.sin(a) * r) / radius;
     if (d >= 1) continue;
     const dome = (1 - d * d) ** 2 * (0.6 + 0.4 * hash2(k, 4, salt + 41));
     best = Math.max(best, dome);
@@ -520,8 +521,8 @@ function gully(u: number, fall: number, width: number, jitter: number, salt: num
   let cut = 0;
   for (let i = first; i <= first + 1; i++) {
     const key = period > 0 ? ((i % period) + period) % period : i;
-    const meander = 0.14 * Math.sin(fall * 7 + hash2(key, 1, salt) * TAU)
-      + 0.06 * Math.sin(fall * 17 + hash2(key, 2, salt) * TAU);
+    const meander = 0.14 * detMath.sin(fall * 7 + hash2(key, 1, salt) * TAU)
+      + 0.06 * detMath.sin(fall * 17 + hash2(key, 2, salt) * TAU);
     const d = Math.abs(w + meander - i); // 0 on this rill's line
     const half = Math.max(0.05, width * (0.7 + 0.6 * hash2(key, 3, salt)) * 0.5);
     if (d >= half) continue;
@@ -547,7 +548,7 @@ function fan(u: number, q: number, width: number, jitter: number, salt: number, 
   for (let i = first; i <= first + 1; i++) {
     const key = period > 0 ? ((i % period) + period) % period : i;
     // the rill's own line where it leaves the flank (the meander at fall = 1, as gully() draws it)
-    const meander = 0.14 * Math.sin(7 + hash2(key, 1, salt) * TAU) + 0.06 * Math.sin(17 + hash2(key, 2, salt) * TAU);
+    const meander = 0.14 * detMath.sin(7 + hash2(key, 1, salt) * TAU) + 0.06 * detMath.sin(17 + hash2(key, 2, salt) * TAU);
     const d = Math.abs(w + meander - i);
     const half = Math.max(0.05, width * (0.7 + 0.6 * hash2(key, 3, salt)) * 0.5) * (1 + 1.6 * spread);
     if (d >= half) continue;
@@ -599,7 +600,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   const reach = fans ? Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3)) : 0;
   if (q > (1 + outline) * (1 + reach) + 0.01) return 0;
   const salt = formSalt(form);
-  const theta = Math.atan2(nz, nx);
+  const theta = detMath.atan2(nz, nx);
   if (outline > 0) q /= 1 + outline * lobe(theta, salt);
   // an inselberg's wall foot and apron on this bearing (its fans spread from the wall's foot)
   const foot = geology.profile === 'inselberg' ? inselbergFoot(geology, theta, salt) : null;
@@ -607,7 +608,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   const fanHeight = (): number => {
     if (!fans || !geology.gullies) return 0;
     const count = Math.max(1, Math.round(geology.gullies.count));
-    const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+    const jitter = (valueNoise(detMath.cos(theta) * 1.6 + 7, detMath.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
     const metres = fans.heightM ?? geology.gullies.depthM * 0.6;
     return metres * fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach,
       foot ? foot[0] : 0.82);
@@ -628,7 +629,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   const canyon = geology.profile === 'canyon' && height < 0;
   let rampW = 0;
   if (canyon && geology.ramps?.length) {
-    const radius = Math.hypot(Math.cos(theta) * rx, Math.sin(theta) * rz);
+    const radius = detMath.hypot(detMath.cos(theta) * rx, detMath.sin(theta) * rz);
     const [w, ramp] = canyonRamp(geology, theta, q, radius, height);
     rampW = w;
     shape += (Math.min(shape, ramp) - shape) * w;
@@ -642,7 +643,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   }
   if (geology.gullies && height > 0) {
     // the jitter is periodic in the bearing, so the grooves close round the knoll without a seam
-    const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+    const jitter = (valueNoise(detMath.cos(theta) * 1.6 + 7, detMath.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
     const count = Math.max(1, Math.round(geology.gullies.count));
     const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count);
     h -= geology.gullies.depthM * g * gullyFlank(q, geology, foot) * Math.min(1, shape * 3);
@@ -654,7 +655,7 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     // the side canyons bite into the wall and its brow; the beds step the wall, counted up from the floor (the talus keeps
     // its smooth shape, as a butte's toe does); neither crosses a ramp
     if (geology.gullies) {
-      const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+      const jitter = (valueNoise(detMath.cos(theta) * 1.6 + 7, detMath.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
       const count = Math.max(1, Math.round(geology.gullies.count));
       const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count);
       h -= geology.gullies.depthM * g * canyonFlank(q, geology) * (1 - rampW);
@@ -689,9 +690,9 @@ function ridgeNose(form: GeologicForm, lx: number, lz: number, width: number, ou
   const centre = Math.max(0, Math.max(1, (form.length || 100) * 0.5) - width * (1 + outline));
   const into = Math.abs(lx) - centre;
   if (into <= 0 || (noseAt !== 0 && Math.sign(lx) !== noseAt)) return ridgeStation;
-  ridgeStation.across = Math.hypot(lz, into);
+  ridgeStation.across = detMath.hypot(lz, into);
   ridgeStation.at = Math.sign(lx) * centre;
-  ridgeStation.side = 0.5 + Math.atan2(lz, into) / Math.PI;
+  ridgeStation.side = 0.5 + detMath.atan2(lz, into) / Math.PI;
   return ridgeStation;
 }
 
@@ -784,7 +785,7 @@ const frame: LandformPathFrame = { lx: 0, lz: 0 };
 function localFrame(form: GeologicForm, x: number, z: number): boolean {
   if (form._path) return landformPathFrame(form._path, x, z, frame);
   const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
-  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  const c = form._c ?? detMath.cos(yaw), s = form._s ?? detMath.sin(yaw);
   const dx = x - form.x, dz = z - form.z;
   frame.lx = dx * c + dz * s; frame.lz = -dx * s + dz * c;
   return true;
@@ -803,7 +804,7 @@ export function ridgeWidthAt(form: GeologicForm, lx: number): number {
 function ridgeReach(form: GeologicForm, outline: number, edge: number): number {
   const width = Math.max(1, form._widths ? Math.max(...form._widths) : form.width || 45) * (1 + outline) + edge;
   if (form._path) return form._path.halfDiagonal + width;
-  return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + edge, width);
+  return detMath.hypot(Math.max(1, (form.length || 100) * 0.5) + edge, width);
 }
 
 function hasGeologyZones(form: GeologicForm): boolean {
@@ -842,12 +843,12 @@ export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out
   }
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
   const nx = lx / rx, nz = lz / rz;
-  const theta = Math.atan2(nz, nx);
+  const theta = detMath.atan2(nz, nx);
   let q = Math.sqrt(nx * nx + nz * nz);
   if (outline > 0) q /= 1 + outline * lobe(theta, salt);
   if (geology.profile === 'cone') {
     // metres past the lobed base along this bearing: q grows linearly with the distance from the centre
-    const rho = Math.hypot(lx, lz);
+    const rho = detMath.hypot(lx, lz);
     out[1] = q > 1 ? 1 - smoothstep(0, CONE_EDGE_M, (q - 1) * rho / q) : 1;
   }
   const fans = geology.fans && geology.gullies && (form.height || 0) > 0 ? geology.fans : null;
@@ -855,7 +856,7 @@ export function geologyZoneWeights(form: GeologicForm, x: number, z: number, out
     const reach = Math.max(0.05, Math.min(0.6, fans.reach ?? 0.3));
     const count = Math.max(1, Math.round(geology.gullies.count));
     // the fan as knollGeologyHeight draws it: the same jitter, rill coordinate and salt
-    const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
+    const jitter = (valueNoise(detMath.cos(theta) * 1.6 + 7, detMath.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
     const start = geology.profile === 'inselberg' ? inselbergFoot(geology, theta, salt)[0] : 0.82;
     out[2] = fan((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count, reach, start);
   }
@@ -912,14 +913,14 @@ export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [n
     : profile === 'butte' ? (geology.wall ?? BUTTE_WALL)[1] : profile === 'cone' ? 0.72 : profile === 'canyon' ? (geology.wall ?? CANYON_WALL)[0] : 0.6;
   const reach = geology.fans ? Math.max(0.05, Math.min(0.6, geology.fans.reach ?? 0.3)) : 0.15;
   // (a canyon's talus lies inside its wall: the blocks crowd the foot and thin out toward the floor)
-  const q = profile === 'canyon' ? start - CANYON_TALUS * 1.2 * Math.pow(Math.max(0, Math.min(1, v)), 1.6)
-    : start + (1 + reach - start) * Math.pow(Math.max(0, Math.min(1, v)), 1.6);
+  const q = profile === 'canyon' ? start - CANYON_TALUS * 1.2 * detMath.pow(Math.max(0, Math.min(1, v)), 1.6)
+    : start + (1 + reach - start) * detMath.pow(Math.max(0, Math.min(1, v)), 1.6);
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
   const raw = outline > 0 ? q * (1 + outline * lobe(theta, salt)) : q;
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
-  const lx = raw * Math.cos(theta) * rx, lz = raw * Math.sin(theta) * rz;
+  const lx = raw * detMath.cos(theta) * rx, lz = raw * detMath.sin(theta) * rz;
   const yaw = (form.yawDeg ?? 0) * Math.PI / 180;
-  const c = form._c ?? Math.cos(yaw), s = form._s ?? Math.sin(yaw);
+  const c = form._c ?? detMath.cos(yaw), s = form._s ?? detMath.sin(yaw);
   return [form.x + lx * c - lz * s, form.z + lx * s + lz * c];
 }
 
@@ -936,12 +937,12 @@ export const TALUS_DEG = 35;
  */
 export function restsOnTalus(ground: { getHeightAt(x: number, z: number): number }, x: number, z: number, r: number,
   talusDeg: number): boolean {
-  const y = ground.getHeightAt(x, z), slope = Math.tan(talusDeg * Math.PI / 180);
+  const y = ground.getHeightAt(x, z), slope = detMath.tan(talusDeg * Math.PI / 180);
   for (let ring = 1; ring <= 4; ring++) {
     const d = 0.8 * ring * r;
     for (let k = 0; k < 8; k++) {
       const a = k * Math.PI / 4;
-      if (y - ground.getHeightAt(x + Math.cos(a) * d, z + Math.sin(a) * d) > slope * d) return false;
+      if (y - ground.getHeightAt(x + detMath.cos(a) * d, z + detMath.sin(a) * d) > slope * d) return false;
     }
   }
   return true;
@@ -979,8 +980,8 @@ export function geologyRockWeight(form: GeologicForm, x: number, z: number): num
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
   const nx = lx / rx, nz = lz / rz;
   let q = Math.sqrt(nx * nx + nz * nz);
-  if (outline > 0) q /= 1 + outline * lobe(Math.atan2(nz, nx), salt);
-  return q > 1 ? 1 - smoothstep(0, FLOW_EDGE_M, (q - 1) * Math.hypot(lx, lz) / q) : 1;
+  if (outline > 0) q /= 1 + outline * lobe(detMath.atan2(nz, nx), salt);
+  return q > 1 ? 1 - smoothstep(0, FLOW_EDGE_M, (q - 1) * detMath.hypot(lx, lz) / q) : 1;
 }
 
 /** The strongest rock-landform footprint over a map's landforms at (x, z), or null when none is rock. */

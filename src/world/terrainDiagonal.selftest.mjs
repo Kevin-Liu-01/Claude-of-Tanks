@@ -26,6 +26,11 @@ const {
 } = contactSurface;
 import { createDeformedHeightField, createTerrainDeformation } from '../sim/terrainDeformation.ts';
 import { createLatticeGround } from '../fx/latticeGround.ts';
+// The extracted terrain source calls the authority's deterministic math through terrain.ts's module-level import
+// (src/sim/detMath.ts, the 2026-10-25 pinned-math ruling); a receipt that evaluates that text outside the module lends
+// the same import to its scope.
+import * as detMath from '../sim/detMath.ts';
+globalThis.detMath ??= detMath;
 
 // ---- 1. the rule
 assert.equal(TERRAIN_FLIP_STEEP_M, 0.75);

@@ -85,44 +85,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.0906982,
-          0.6143415,
-          -0.6448954
+          -1.346408,
+          0.7482599,
+          -0.6455273
         ],
         "quaternion": [
-          -0.2077428,
-          -0.6730815,
-          -0.2093295,
-          0.6782222
+          -0.3772935,
+          -0.640551,
+          -0.3394476,
+          0.576298
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m48a5_patton",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0003191
+        "maximumSurfaceErrorM": 0.0029365
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.0602593,
-          0.6141647,
-          -0.1069449
+          -1.3640118,
+          0.7480727,
+          -0.1066104
         ],
         "quaternion": [
-          -0.2030405,
-          -0.6999184,
-          -0.1907765,
-          0.6576421
+          -0.3455477,
+          -0.5939057,
+          -0.3653786,
+          0.6279898
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "m48a5_patton",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0067951
+        "maximumSurfaceErrorM": 0.0012362
       }
     ]
   },

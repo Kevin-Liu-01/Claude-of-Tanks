@@ -37,6 +37,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mount as addFitting } from './fittingMount.ts';
 import { sampleArmorFace } from './armorFaceSampling.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { fitsInSkirt, profileSkirtGeometry, skirtBand, skirtBottomAt, skirtSegment, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { ARIETE_PROTO_TURRET_LIFT_M } from '../modern3Specs.ts';
 
@@ -141,6 +142,15 @@ function cupolaRing(
 //     (+0.30..+0.72); mantlet band 1.55-1.86 (+1.7..+2.12).
 // The C2 package regions (cheek armor, glacis add-on, full-run skirts, new
 // sight housings, APU) are photo-class per the round brief.
+// 2026-10-25 (the owner: "update the sideskirts of tanks like the m551a1 tts and challenger 3 ... to not be just
+// rectangles, and instead match the geometries of their upperglacis and hull side profile ... same applies for c2 and c1
+// prototype"): the heavy run is one profile (profileSkirt.ts) its panels are cut from, on the C2's carrier plane. Its
+// top is the fender seat's, 1.42 aft and falling with the forward shelf's glacis line (1.42 at the side wall's front,
+// z 1.67, to 1.26 at 3.09), so no panel stands over the shelf; its bottom is the accepted 0.60 hem, raked up over the
+// idler's approach to the bow (from 2.55) and, on the C2's full run, over the sprocket's departure (aft of -2.60).
+const ARIETE_SKIRT: ProfileSkirt = { inner: 1.725, outer: 1.76, stations: [
+  [-2.92, 0.78, 1.42], [-2.60, 0.60, 1.42], [1.67, 0.60, 1.42], [2.55, 0.60, 1.3208], [3.09, 0.95, 1.26],
+] };
 // ---------------------------------------------------------------------------
 function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const { box, cylY, cylZ, openRackGrid, torus, buildGun, buildRunningGear,
@@ -164,6 +174,10 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     turretBustleCassettes: 0,
     sideSkirtCassettes: 0,
   } : null;
+  // Release 240 (the owner, 2026-10-25: the C1 prototype "should also get the tts and challenger 3 and mbt 70 era
+  // reapplications"): the C1's own visual ERA, its skirt run's cassettes and a field on each raked upper cheek (its glacis
+  // carries none: the main gun's front depression lays the gun 8-13 cm over it).
+  const c1EraReceipt = { sideSkirtCassettes: 0, turretCheekCassettes: 0 };
   // The supplied Arrafi reference carries a 1.06 m running-gear envelope
   // and ~0.60 m shoes. Keep that mechanical course rooted at the terrain,
   // then raise the armored body on its suspension before applying the final
@@ -376,49 +390,59 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const heavySkirtBottomY = 0.60;
   const heavySkirtTopY = 1.42;
   const buildArieteMkHullStage3 = (): void => {
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 1] as const) {
       const buildArieteMkHullCourse1 = (): void => {
         const skirtBucket = s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
         const skirtDarkBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-        P.add(skirtBucket,
-          box(0.03, baseSkirtTopY - baseSkirtBottomY, 5.82),
-          s * 1.665, (baseSkirtTopY + baseSkirtBottomY) / 2, -0.01);              // full-height inboard apron: lower edge held, upper edge buried in the fender seat
+        // full-height inboard apron: lower edge held, upper edge buried in the fender seat (release 240: on the heavy run's
+        // profile, 6 cm under its hem and 4 cm under its top, so it rakes with it at both ends)
+        P.add(skirtBucket, profileSkirtGeometry({ inner: 1.65, outer: 1.68, stations: skirtSegment(ARIETE_SKIRT, -2.92, 2.90).stations
+          .map(([z, bottom, top]) => [z, bottom - (heavySkirtBottomY - baseSkirtBottomY), top - (heavySkirtTopY - baseSkirtTopY)]) }, s));
         // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
         // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
         // marks. 0.50 pitch < the 0.54 station slab (edge-on prism law holds);
         // every new read stays inside the ±1.80 WIDTH GUARD (max 1.799).
         const panels = c2 ? 13 : 7;
         const z0 = 3.09, panelD = (3.09 - skirtRear) / panels;
-        // C2's visual ERA owns the outer 40 mm of the 1.80 m half-width. Pull
-        // its carrier plates inboard so the cassettes finish exactly on the
-        // published width plane instead of floating beyond the side armor.
-        const panelCenterX = c2 ? 1.7425 : 1.780;
-        const panelCarrierX = c2 ? 1.760 : 1.7975;
+        // The visual ERA owns the outer 40 mm of the 1.80 m half-width. Pull
+        // the carrier plates inboard so the cassettes finish exactly on the
+        // published width plane instead of floating beyond the side armor
+        // (release 240: both marks, the C1's run now carrying them too).
+        const panelCenterX = 1.7425;
+        const panelCarrierX = 1.760;
         for (let k = 0; k < panels; k++) {
           const zc = z0 - panelD * (k + 0.5);
-          P.add(skirtBucket,
-            box(0.035, heavySkirtTopY - heavySkirtBottomY, panelD - 0.025),
-            s * panelCenterX, (heavySkirtTopY + heavySkirtBottomY) / 2, zc);       // outer carrier reaches through the fender shelf without lowering its hem
-          P.add(skirtDarkBucket, box(0.012, 0.74, 0.02),
-            s * (panelCarrierX - 0.008), 1.01, zc - panelD / 2 + 0.012);          // panel seams span the newly complete carrier face
-          P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 1.09, zc - panelD * 0.22);
-          P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 0.79, zc + panelD * 0.22);
+          // outer carrier reaches through the fender shelf without lowering its hem: a panel of the profile run
+          P.add(skirtBucket, profileSkirtGeometry(skirtSegment(ARIETE_SKIRT,
+            zc - (panelD - 0.025) / 2, zc + (panelD - 0.025) / 2), s));
+          // panel seams span the carrier face between its lines, bolts where they fall on it
+          const seamZ = zc - panelD / 2 + 0.012, seamLo = skirtBottomAt(ARIETE_SKIRT, seamZ) + 0.04;
+          const seamHi = skirtTopAt(ARIETE_SKIRT, seamZ) - 0.04;
+          P.add(skirtDarkBucket, box(0.012, seamHi - seamLo, 0.02), s * (panelCarrierX - 0.008), (seamLo + seamHi) / 2, seamZ);
+          for (const [y, dz] of [[1.09, -0.22], [0.79, 0.22]] as const) {
+            const z = zc + panelD * dz;
+            if (y > skirtBottomAt(ARIETE_SKIRT, z) + 0.03 && y < skirtTopAt(ARIETE_SKIRT, z) - 0.03)
+              P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), y, z);
+          }
+          const hingeZ = zc + panelD / 2 - 0.0125;
           if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07),
-            s * (panelCenterX + 0.004), 1.35, zc + panelD / 2 - 0.0125);          // hinge straps now bridge the panel crown into the fender seat
-          if (c2) {
-            for (const y of [0.79, 1.09]) {
-              const face = {
-                point: new THREE.Vector3(s * panelCarrierX, y, zc),
-                normal: new THREE.Vector3(s, 0, 0),
-                dv: new THREE.Vector3(0, 0, 1),
-              };
-              faceSeatedArmorCassette(P, 'hull', face, face.dv,
-                0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
-              if (c2EraReceipt) c2EraReceipt.sideSkirtCassettes += 1;
-            }
+            s * (panelCenterX + 0.004), skirtTopAt(ARIETE_SKIRT, hingeZ) - 0.07, hingeZ); // hinge straps bridge the panel crown into the fender seat
+          for (const y of [0.79, 1.09]) {
+            // (release 240: the 0.275 m cassette only where it lies on the profile panel)
+            if (!fitsInSkirt(ARIETE_SKIRT, zc - (panelD - 0.055) / 2, zc + (panelD - 0.055) / 2, y - 0.1375, y + 0.1375)) continue;
+            const face = {
+              point: new THREE.Vector3(s * panelCarrierX, y, zc),
+              normal: new THREE.Vector3(s, 0, 0),
+              dv: new THREE.Vector3(0, 0, 1),
+            };
+            faceSeatedArmorCassette(P, 'hull', face, face.dv,
+              0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
+            if (c2EraReceipt) c2EraReceipt.sideSkirtCassettes += 1;
+            else c1EraReceipt.sideSkirtCassettes += 1;
           }
         }
-        P.add(skirtBucket, box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);        // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
+        // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD): the front panel's profile under its top line
+        P.add(skirtBucket, profileSkirtGeometry(skirtBand(skirtSegment(ARIETE_SKIRT, 2.65, 3.07, 1.755, 1.80), 0.06, 9), s));
         P.add(skirtBucket, box(0.275, 0.06, sideWallFront - skirtSeatRear),
           s * 1.6525, 1.39, (sideWallFront + skirtSeatRear) / 2);                 // aft fender shelf: 20 mm hull overlap, 30+ mm skirt overlap
         P.add(skirtBucket, slab(                                                   // forward shelf follows the glacis instead of hovering over it
@@ -510,9 +534,20 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // plan front extreme byte-held so plan rows and the mantlet band cannot
     // move).
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                      // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-        [s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)],
-        [s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]));
+      const upperCheekBottom: Quad = [[s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)]];
+      const upperCheekTop: Quad = [[s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]];
+      P.add('turret', slab(...upperCheekBottom, ...upperCheekTop));              // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
+      if (!c2) {
+        // Release 240 (C1 ERA, see c1EraReceipt): four columns by two rows of the C2's cheek cassettes seated on the raked
+        // face, clear of the gun slot's side cheeks (x 0.375-0.42) and under the lifting lugs; the C2 lays its field on
+        // its own add-on carrier over this face
+        const face0: Quad = [upperCheekBottom[0], upperCheekBottom[1], upperCheekTop[1], upperCheekTop[0]];
+        for (const u of [0.28, 0.48, 0.68, 0.88]) for (const v of [0.25, 0.66]) {
+          const face = sampleArmorFace(...face0, u, v, [s, 1, 1]);
+          faceSeatedArmorCassette(P, 'turret', face, face.dv, 0.13, 0.055, 0.20, C2_ERA_EMBED_M);
+          c1EraReceipt.turretCheekCassettes++;
+        }
+      }
       P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
         [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
         [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
@@ -857,6 +892,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       maxSupportGapM: 0,
       followsTurretYaw: true,
     });
+    if (!c2) P.hullG.userData.arieteC1EraReceipt = Object.freeze({ ...c1EraReceipt });
     if (c2 && c2EraReceipt) {
       c2EraReceipt.totalTurretCassettes = c2EraReceipt.turretCheekCassettes
         + c2EraReceipt.turretSideCassettes + c2EraReceipt.turretBustleCassettes;

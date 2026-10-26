@@ -7,6 +7,17 @@ type WarmGenerator = Generator<object | void, object | void, void>;
 export interface CombatWarmExecution {
   /** The coordinator switches an in-flight job back to synchronous drain. */
   cooperative: boolean;
+  /**
+   * (battle-spikes-253) A cooperative job behind the entry veil: it yields to the loading screen's frames, yet warms as
+   * a covered load does (its effect volleys rendered into the private target, so the GPU builds their pipelines there),
+   * not as a warm between the revealed battle's frames.
+   */
+  covered?: boolean;
+}
+
+/** How a chunked warm runs: behind the entry veil (covered) or between the revealed battle's frames (the default). */
+export interface CombatWarmChunkOptions {
+  covered?: boolean;
 }
 export const COMBAT_WARM_PROGRAM_CHECKPOINT = Object.freeze({ force: true });
 type WarmFactory = (execution?: CombatWarmExecution) => WarmGenerator;
@@ -26,8 +37,8 @@ export interface CombatWarmCoordinator {
   reset(): void;
   cancelRare(): void;
   drain(): void;
-  warmOpeningChunked(budgetMs?: number, yielder?: WorkYielder | null): Promise<void>;
-  warmRareChunked(budgetMs?: number, yielder?: WorkYielder | null): Promise<void>;
+  warmOpeningChunked(budgetMs?: number, yielder?: WorkYielder | null, options?: CombatWarmChunkOptions): Promise<void>;
+  warmRareChunked(budgetMs?: number, yielder?: WorkYielder | null, options?: CombatWarmChunkOptions): Promise<void>;
 }
 
 /** Own resumable opening/rare warm generators across covered battle transitions. */
@@ -98,11 +109,12 @@ export function createCombatWarmCoordinator({
     factory: WarmFactory,
     budgetMs: number,
     providedYielder: WorkYielder | null,
+    { covered = false }: CombatWarmChunkOptions = {},
   ): Promise<void> => {
     let generator = generatorFor(kind);
     if (isReady(kind) && !generator) return;
     if (!generator) {
-      const execution = { cooperative: true };
+      const execution: CombatWarmExecution = covered ? { cooperative: true, covered: true } : { cooperative: true };
       generator = factory(execution);
       executions.set(generator, execution);
       storeGenerator(kind, generator);
@@ -141,9 +153,9 @@ export function createCombatWarmCoordinator({
       rareGenerator = null;
     },
     drain,
-    warmOpeningChunked: (budgetMs = 8, yielder = null) =>
-      warmChunked('opening', createOpening, budgetMs, yielder),
-    warmRareChunked: (budgetMs = 6, yielder = null) =>
-      warmChunked('rare', createRare, budgetMs, yielder),
+    warmOpeningChunked: (budgetMs = 8, yielder = null, options = {}) =>
+      warmChunked('opening', createOpening, budgetMs, yielder, options),
+    warmRareChunked: (budgetMs = 6, yielder = null, options = {}) =>
+      warmChunked('rare', createRare, budgetMs, yielder, options),
   };
 }

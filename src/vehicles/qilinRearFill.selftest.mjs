@@ -1,30 +1,24 @@
 // Release 227, round 8 (owner 2026-10-19): "the rear of qilinns turret is exposed and nnot filled tho which is why it
-// needs a bunch of extra work there and decoraitons and stuff". The Qilin's cut ZTZ-99A2 bustle, closed and loaded
-// (profiles/chinaDonorTurretKit.ts qilinBustleFloor, qilinRearRack, qilinRackLoad, qilinRearCamera):
-//  1. Nothing of the ring collar's rear half shows from behind: its top, sampled over the 120 degrees astern, is hidden by
-//     the turret's own parts from every rear view (elevations 10-45 degrees, up to 60 degrees off dead astern) save at
-//     most 1 % of the sight lines. Round 9 (critic CN9-06: a floor covering none of the collar failed that by only 0.9
-//     points, the load and the bustle's overhang doing most of the hiding): the bustle floor itself stands over the
-//     collar's whole top across the 90 degrees astern (a ray up from every sample meets the floor first), and without
-//     the rack's load the floor and the turret still hide it from behind. Negative controls: without the bustle floor
-//     and the load (the round-7 rear) a fifth or more of the sight lines see the bare collar; without the floor no ray
-//     up meets it.
+// needs a bunch of extra work there and decoraitons and stuff". 252 (owner: "redesign the qilin around a type 96b inspired
+// Yun like turret"): the Qilin's Type 96B, its rear closed by a welded bustle module behind the 96B's rear cap, carrying
+// the loaded rack (profiles/chinaDonorTurretKit.ts qilinBustle, qilinRearRack, qilinRackLoad, qilinRearCamera):
+//  1. The bustle module closes the rear: its front face stands 50 mm inside the 96B's rear cap, and of the sight lines
+//     from behind and above (10-45 degrees, up to 60 degrees off dead astern) to the 96B's rear cap, none reaches it
+//     past the module, the rack and its load save at most 1 %. Negative control: without the module, the rack and the
+//     load a fifth or more do.
 //  2. The rack carries its load: the net roll, two ammunition cases, the kit bag, the folded tarpaulin and the
 //     spare-parts case, each body resting on the rack's floor bars (its lowest point within 2 mm of their tops, over at
 //     least two of them), together covering 70 % of the rack's floor; of the sight lines from behind and above (25-50
 //     degrees, up to 30 degrees off dead astern) to points over the rack's floor, at least 85 % end on something before
-//     reaching the deck. Negative control: the empty rack lets most of them through.
+//     reaching the deck. Negative control: the empty rack lets at least a fifth more of them through.
 //  3. Round 9 (critic CN9-01, CN9-02): no load item goes into the rack or into another item. Each item (its body and the
 //     straps, bands, latches and handle on it) meets the rack only by resting at most 1.5 mm into the floor bars' flat
 //     tops (exact crossings and depth), keeps 2 mm from every other rack member and from every other item. Negative
-//     controls: the spare-parts case moved 31 mm aft (the rear rails 22 mm inside it) and the tarpaulin moved 12 mm
-//     forward into the net roll fail; so does a case lifted 10 mm off the bars (check 2).
-//  4. Round 9 (critic CN9-03): the bustle floor's top stays 20 mm or more inside the bustle's underside everywhere over its
-//     footprint (10 mm grid; the builder fits it to 25 mm on a 20 x 50 mm grid), not only at its loft stations.
-//  5. The bustle floor's flat underside stands 60 mm or more over every hull surface as the turret turns, the rack and its
-//     load 80 mm or more (round 9, visual critic CN-R7-1: the basket's path crosses the fender stowage's line at 35-60
-//     degrees off the rear), measured against every hull mesh at every degree of yaw; the floor stands 40 mm over the
-//     collar's top. Negative control: the rack and load lowered 60 mm fail. The rear camera's glass looks aft.
+//     controls: the spare-parts case moved 31 mm aft (the rear rails inside it) and the tarpaulin moved 12 mm forward
+//     into the net roll fail; so does a case lifted 10 mm off the bars (check 2).
+//  4. The module keeps 60 mm from every hull surface as the turret turns, the rack and its load 80 mm or more (round 9,
+//     visual critic CN-R7-1), measured against every hull mesh at every degree of yaw. Negative control: the rack and
+//     load lowered 200 mm fail. The rear camera's glass looks aft.
 // The seating of every part is cnAddOns.selftest.mjs's census; the moving-part clearances are cnClearance.selftest.mjs.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -74,43 +68,32 @@ const tank = createTank(ID, null, { proceduralOnly: true, quality: 'high', geome
 try {
   tank.root.updateMatrixWorld(true);
   const turretOwned = parts.filter((p) => p.bucket.startsWith('turret'));
-  const collar = turretOwned.filter((p) => p.bucket === 'turret' && p.box.max.y <= .03);
-  assert.equal(collar.length, 1, `${ID}: its ring collar (one part under y 0.03)`);
-  const collarTop = collar[0].box.max.y, collarR = collar[0].box.max.x;
-  const blockers = turretOwned.filter((p) => p !== collar[0]);
-  const floor = parts.filter((p) => p.role === 'bustle-floor');
-  assert.equal(floor.length, 1, `${ID}: one bustle floor`);
+  const module = parts.filter((p) => p.role === 'bustle-module');
+  assert.equal(module.length, 1, `${ID}: one bustle module`);
+  const blockers = turretOwned;
 
-  // ---- 1. the collar's rear half hidden from behind, and the floor over it
-  const collarSight = (scene) => {
-    let seen = 0, n = 0; const o = new THREE.Vector3(), d = new THREE.Vector3();
-    for (const r of [collarR - .12, collarR - .04]) for (let a = -60; a <= 60; a += 10) {
-      const pt = new THREE.Vector3(r * Math.sin(a * DEG), collarTop + 1e-4, -r * Math.cos(a * DEG));
+  // ---- 1. the module closes the rear: its front inside the 96B's rear cap, the cap hidden from behind
+  const shell = turretOwned.filter((p) => p.bucket === 'turret' && !p.role);
+  const capZ = Math.min(...shell.map((p) => p.box.min.z)), m = module[0].box;
+  assert.ok(Math.abs(m.max.z - (capZ + .05)) < .002, `${ID}: the module's front face stands 50 mm inside the 96B's rear cap (${((m.max.z - capZ) * 1000).toFixed(1)} mm)`);
+  const capSight = (scene) => {
+    let seen = 0, n = 0; const d = new THREE.Vector3();
+    const cap = shell.filter((p) => p.box.min.z < capZ + .01);
+    for (let x = -.80; x <= .80; x += .10) for (const y of [.25, .35, .45, .55]) {
+      const pt = new THREE.Vector3(x, y, capZ - 1e-3);
+      if (!cap.some((p) => firstHit([p], new THREE.Vector3(x, y, capZ - .5), new THREE.Vector3(0, 0, 1), .52).part)) continue;
       for (const e of [10, 20, 30, 45]) for (const az of [-60, -40, -20, 0, 20, 40, 60]) {
         d.set(Math.sin(az * DEG) * Math.cos(e * DEG), Math.sin(e * DEG), -Math.cos(az * DEG) * Math.cos(e * DEG));
-        o.copy(pt); n++;
-        if (firstHit(scene, o, d).part === null) seen++;
+        n++; if (firstHit(scene, pt, d).part === null) seen++;
       }
     }
+    assert.ok(n > 300, `${ID}: the rear cap sampled (${n} sight lines)`);
     return seen / n;
   };
-  const visible = collarSight(blockers);
-  assert.ok(visible <= .01, `${ID}: the ring collar's rear half shows from behind on ${(100 * visible).toFixed(1)} % of the rear sight lines`);
-  const unloaded = collarSight(blockers.filter((p) => !LOAD.includes(p.role)));
-  assert.ok(unloaded <= .01, `${ID}: without the rack's load the collar's rear half shows on ${(100 * unloaded).toFixed(1)} % of the rear sight lines (the floor must hide it)`);
-  const bare = collarSight(blockers.filter((p) => p.role !== 'bustle-floor' && !LOAD.includes(p.role)));
-  assert.ok(bare >= .20, `negative control: without the bustle floor and the load the collar shows (${(100 * bare).toFixed(1)} %)`);
-  // the floor over the collar's top across the 90 degrees astern: a ray up from each sample meets the floor first
-  const roofed = (scene) => {
-    let under = 0, n = 0; const up = new THREE.Vector3(0, 1, 0);
-    for (const r of [collarR - .12, collarR - .08, collarR - .04, collarR - .005]) for (let a = -45; a <= 45; a += 5) {
-      n++; if (firstHit(scene, new THREE.Vector3(r * Math.sin(a * DEG), collarTop + 1e-4, -r * Math.cos(a * DEG)), up, 2).part?.role === 'bustle-floor') under++;
-    }
-    return under / n;
-  };
-  const overCollar = roofed(blockers);
-  assert.equal(overCollar, 1, `${ID}: the bustle floor stands over the collar's top across the 90 degrees astern (${(100 * overCollar).toFixed(0)} % of the samples)`);
-  assert.equal(roofed(blockers.filter((p) => p.role !== 'bustle-floor')), 0, 'negative control: without the floor nothing of it stands over the collar');
+  const visible = capSight(blockers);
+  assert.ok(visible <= .01, `${ID}: the 96B's rear cap shows from behind on ${(100 * visible).toFixed(1)} % of the rear sight lines`);
+  const bare = capSight(blockers.filter((p) => p.role !== 'bustle-module' && !RACK.test(p.role ?? '') && !LOAD.includes(p.role)));
+  assert.ok(bare >= .20, `negative control: without the module, the rack and the load the rear cap shows (${(100 * bare).toFixed(1)} %)`);
 
   // ---- 2. the rack's load
   const bars = parts.filter((p) => p.role === 'cage-floor');
@@ -164,7 +147,8 @@ try {
   const held = intoRack(blockers);
   assert.ok(held >= .85, `${ID}: ${(100 * held).toFixed(0)} % of the sight lines into the rack end before the deck`);
   const empty = intoRack(blockers.filter((p) => !LOAD.includes(p.role)));
-  assert.ok(empty < .5, `negative control: the empty rack holds only ${(100 * empty).toFixed(0)} % of them`);
+  // (252: the rack, raised onto the module's face, screens a share of the low sight lines with its rails alone)
+  assert.ok(held - empty >= .20, `negative control: the empty rack holds ${(100 * empty).toFixed(0)} % of them, the load only ${(100 * (held - empty)).toFixed(0)} points more`);
 
   // ---- 3. no item in the rack or in another item (exact crossings, then depth)
   const loadClash = (all) => {
@@ -190,20 +174,7 @@ try {
   assert.ok(loadClash(shiftItem('spare-case', () => true, -.031)).some((s) => s.startsWith('CROSS') && s.includes('spare-case') && s.includes('cage-rear-rail')), 'negative control: the spare-parts case moved 31 mm aft crosses the rear rails');
   assert.ok(loadClash(shiftItem('tarp-bundle', () => true, .012)).some((s) => s.startsWith('CROSS') && s.includes('tarp-bundle') && s.includes('net-roll')), 'negative control: the tarpaulin moved 12 mm forward crosses the net roll');
 
-  // ---- 4. the floor's top inside the bustle's underside everywhere over its footprint
-  const fb = floor[0].box, stock = turretOwned.filter((p) => (p.bucket === 'turret' || p.bucket === 'turretExternalArmor') && !p.era && p !== floor[0] && p !== collar[0]);
-  let shallow = { d: Infinity };
-  const down = new THREE.Vector3(0, -1, 0), up = new THREE.Vector3(0, 1, 0);
-  for (let x = fb.min.x + .015; x <= fb.max.x - .015 + 1e-9; x += .01) for (let z = fb.min.z + .015; z <= fb.max.z - .015 + 1e-9; z += .01) {
-    const t = firstHit(floor, new THREE.Vector3(x, 1.5, z), down, 2);
-    const u = firstHit(stock, new THREE.Vector3(x, .03, z), up, 1.5);
-    if (!t.part || !u.part) continue;
-    const d = (1.5 - t.s) - (.03 + u.s);
-    if (d < shallow.d) shallow = { d, x, z };
-  }
-  assert.ok(shallow.d >= .020, `${ID}: the bustle floor's top stays 20 mm inside the bustle's underside (${(1000 * shallow.d).toFixed(1)} mm at x ${shallow.x?.toFixed(3)}, z ${shallow.z?.toFixed(3)})`);
-
-  // ---- 5. the floor, the rack and its load over the hull at every yaw; the camera looks aft
+  // ---- 4. the module, the rack and its load over the hull at every yaw; the camera looks aft
   const turret = tank.root.getObjectByName('rig_turret'), hull = turret.parent;
   const hullMeshes = []; hull.traverse((o) => { if (!o.isMesh || /Shadow/.test(o.name)) return; for (let q = o; q; q = q.parent) if (q === turret) return; hullMeshes.push(o); });
   const hInv = new THREE.Matrix4().copy(hull.matrixWorld).invert(), ring = turret.position;
@@ -229,19 +200,18 @@ try {
     return best;
   };
   const mm = (b) => (b.d >= CAP ? `>${CAP * 1000}` : (1000 * b.d).toFixed(1));
-  const floorHull = sweep(floor);
-  assert.ok(floorHull.d >= .060, `${ID}: the bustle floor keeps 60 mm from the hull at every yaw (${mm(floorHull)} mm at yaw ${floorHull.yd})`);
+  const moduleHull = sweep(module);
+  assert.ok(moduleHull.d >= .060, `${ID}: the bustle module keeps 60 mm from the hull at every yaw (${mm(moduleHull)} mm at yaw ${moduleHull.yd})`);
   const carried = parts.filter((p) => RACK.test(p.role ?? '') || LOAD.includes(p.role) || p.role === 'rear-camera');
   const rackHull = sweep(carried);
   assert.ok(rackHull.d >= .080, `${ID}: the rack and its load keep 80 mm from the hull at every yaw (${mm(rackHull)} mm at yaw ${rackHull.yd}, ${rackHull.part && label(rackHull.part)})`);
-  const lowered = sweep(carried.filter((p) => p.box.min.y < .20).map((p) => moved(p, 0, -.06, 0)));
-  assert.ok(lowered.d < .080, `negative control: the rack and load lowered 60 mm come within 80 mm of the hull (${mm(lowered)} mm)`);
-  const f = floor[0].box;
-  assert.ok(f.min.y - collarTop >= .040 - 1e-4, `${ID}: the bustle floor stands ${(1000 * (f.min.y - collarTop)).toFixed(0)} mm over the collar's top`);
+  // (252: the rack stands on the module's face, 0.2 m over the deck; lowered that far it must meet the sweep's limit)
+  const lowered = sweep(carried.map((p) => moved(p, 0, -.20, 0)));
+  assert.ok(lowered.d < .080, `negative control: the rack and load lowered 200 mm come within 80 mm of the hull (${mm(lowered)} mm)`);
   const glass = parts.filter((p) => p.role === 'rear-camera' && /Glass$/.test(p.bucket));
   assert.equal(glass.length, 1, `${ID}: the rear camera's glass`);
   const lens = glass[0].box.getCenter(new THREE.Vector3());
   assert.equal(firstHit(blockers.filter((p) => p.role !== 'rear-camera'), lens.clone().add(new THREE.Vector3(0, 0, -.02)), new THREE.Vector3(0, 0, -1), 4).part, null, `${ID}: the rear camera looks aft unobstructed`);
-  console.log(`${ID}: collar hidden (${(100 * visible).toFixed(1)} % seen; ${(100 * unloaded).toFixed(1)} % without the load; ${(100 * bare).toFixed(0)} % without the floor and load; the floor over all of its top astern), load ${items.length} items on ${(100 * covered / cells).toFixed(0)} % of the floor, ${(100 * held).toFixed(0)} % of the rack's sight lines held (${(100 * empty).toFixed(0)} % empty), no item in the rack or another, floor ${(1000 * shallow.d).toFixed(1)} mm or more inside the underside, over the hull at every yaw: floor ${mm(floorHull)} mm, rack and load ${mm(rackHull)} mm`);
+  console.log(`${ID}: rear cap hidden (${(100 * visible).toFixed(1)} % seen; ${(100 * bare).toFixed(0)} % without the module, rack and load), load ${items.length} items on ${(100 * covered / cells).toFixed(0)} % of the floor, ${(100 * held).toFixed(0)} % of the rack's sight lines held (${(100 * empty).toFixed(0)} % empty), no item in the rack or another, over the hull at every yaw: module ${mm(moduleHull)} mm, rack and load ${mm(rackHull)} mm`);
 } finally { tank.dispose(); }
-console.log('qilinRearFill: the Qilin\'s cut bustle closed underneath and its rear rack loaded PASS');
+console.log('qilinRearFill: the Qilin\'s rear closed by its bustle module and its rear rack loaded PASS');

@@ -1,4 +1,5 @@
 /** Construction-only harvested ground in the existing terrain wear channel. */
+import * as detMath from '../sim/detMath.ts';
 export interface WorkedGroundPatch {
   boundary: readonly (readonly [number, number])[];
   feather: number;
@@ -106,7 +107,7 @@ export function stampYardWearMask(
     if (![yard.x, yard.z, yard.w, yard.l, yard.yawDeg].every(Number.isFinite) || yard.w < 2 || yard.l < 2) {
       throw new Error('Yard wear requires a finite box at least 2 m across');
     }
-    const a = yard.yawDeg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a), hw = yard.w / 2, hl = yard.l / 2;
+    const a = yard.yawDeg * Math.PI / 180, c = detMath.cos(a), sn = detMath.sin(a), hw = yard.w / 2, hl = yard.l / 2;
     const boundary = ([[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]] as const)
       .map(([lx, lz]) => [yard.x + lx * c + lz * sn, yard.z - lx * sn + lz * c] as const);
     const patch = { boundary, feather, strength };

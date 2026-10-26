@@ -78,13 +78,43 @@ function drive(steps, atYield) {
 
 {
   // covered or Garage (not a live battle): the volleys run as before, under a hidden root restored at the end
-  for (const [phase, execution] of [['garage', { cooperative: true }], ['battle', { cooperative: false }], ['battle', undefined]]) {
+  // (battle-spikes-253) and a cooperative job behind the entry veil (covered: a session's first battle), its phase
+  // already 'battle': it yields to the loading screen yet renders the volleys, so the GPU builds their pipelines there
+  for (const [phase, execution] of [['garage', { cooperative: true }], ['battle', { cooperative: false }], ['battle', undefined],
+    ['battle', { cooperative: true, covered: true }]]) {
     const { context, record, group } = stubContext({ phase });
     drive(createCombatOpeningWarmSteps(context, execution), () => {});
     assert.ok(record.spawns > 0, `${phase}/${execution?.cooperative}: the opening volley spawns`);
     assert.equal(record.resets, 1, 'and resets what it spawned');
     assert.equal(group.visible, true, 'the root is restored');
   }
+}
+
+{
+  // (battle-spikes-253) a covered volley's late-layer effects are drawn again through the late pass's own target (its
+  // single-sample, depth-texture attachments: their GPU pipelines), the late layer only; a live warm draws nothing
+  const { context } = stubContext({ phase: 'battle' });
+  const lateDraws = [], selects = [];
+  context.post = { prepareSoftParticles() {}, warmLateFxDraw() { lateDraws.push('late'); } };
+  context.createIsolatedForwardWarmBatches = function* (options) {
+    options.warmRender();
+    selects.push(options.select ?? null);
+    yield { label: 'fx', objects: 1, ms: 0 };
+  };
+  drive(createCombatOpeningWarmSteps(context, { cooperative: true, covered: true }), () => {});
+  assert.equal(lateDraws.length, 1, 'the opening volley\'s late draws');
+  drive(createCombatRareWarmSteps(context, { cooperative: true, covered: true }), () => {});
+  assert.equal(lateDraws.length, 2, 'and the destruction volley\'s');
+  const onLate = new THREE.Mesh(), onScene = new THREE.Mesh();
+  onLate.layers.set(30);
+  const late = selects.filter(Boolean);
+  assert.equal(late.length, 2);
+  assert.ok(late.every((select) => select(onLate) && !select(onScene)), 'the late layer only');
+  const { context: liveContext } = stubContext({ phase: 'battle' });
+  const liveDraws = [];
+  liveContext.post = { prepareSoftParticles() {}, warmLateFxDraw() { liveDraws.push('late'); } };
+  drive(createCombatRareWarmSteps(liveContext, { cooperative: true }), () => {});
+  assert.equal(liveDraws.length, 0, 'a live warm compiles in place and draws nothing');
 }
 
 {

@@ -58,8 +58,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 48 | PROD | `k1e1` | K1E1 | South Korea | VIII | Modern | Production |
 | 49 | PROD | `stb1` | STB-1 | Japan | VII | Cold War | Production |
 | 50 | PROD | `type74` | Type 74 | Japan | VIII | Cold War | Production |
-| 51 | PROD | `type90_kyumaru` | Type 90 Kyū-maru | Japan | IX | Cold War | Production |
-| 52 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
+| 51 | PROD | `type90_kyumaru` | STC-1 | Japan | IX | Cold War | Production |
+| 52 | PROD | `type90a` | STC-2 | Japan | IX | Cold War | Production |
 | 53 | PROD | `type10_tk_x` | Type 10 (TK-X) | Japan | X | Modern | Production |
 | 54 | PROD | `type10_dozer` | Type 10 Kaitaku | Japan | X | Modern | Production |
 | 55 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |

@@ -296,8 +296,14 @@ export interface SnapshotFrame {
 export interface WireEvent {
   /** Event type name (EVENT_KIND_NAMES entry or any other short name). */
   kind: string;
-  /** Plain JSON object payload (<= MAX_EVENT_JSON_BYTES encoded). */
+  /** Plain JSON object payload (<= MAX_EVENT_JSON_BYTES encoded; wire 8 carries it in binary, eventPayload.ts). */
   payload: Record<string, unknown>;
+  /**
+   * The payload already encoded (eventPayload.ts encodeEventPayload; the encoder writes it in place of encoding
+   * `payload`): a host encodes an event once for every viewer that receives it (mp-scale-251). Never decoded: a reader
+   * gets `payload`.
+   */
+  encoded?: Uint8Array;
 }
 
 export interface EventMessage {

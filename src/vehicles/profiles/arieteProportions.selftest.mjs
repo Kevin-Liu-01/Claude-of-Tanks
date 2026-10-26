@@ -193,8 +193,9 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     assert.equal(era.turretSideCassettes, 16, 'C2 carries two complete turret-side courses');
     assert.equal(era.turretBustleCassettes, 12, 'C2 carries paired aft bustle courses');
     assert.equal(era.totalTurretCassettes, 48, 'C2 turret receives substantially denser ERA');
-    assert.equal(era.sideSkirtCassettes, 52, 'C2 skirts carry two rows across all 13 bays per side');
-    assert.equal(era.totalCassettes, 100, 'C2 upgrade contains one hundred seated cassettes');
+    // (release 240: the profile run's raked end bays keep their upper row only: 52 -> 48)
+    assert.equal(era.sideSkirtCassettes, 48, 'C2 skirts carry two rows across the 13 bays, one on the raked end bays');
+    assert.equal(era.totalCassettes, 96, 'C2 upgrade contains ninety-six seated cassettes');
     const hullExternalArmor = hullRig.getObjectByName('hullExternalArmor');
     assert.ok(hullExternalArmor?.geometry, 'C2 skirt ERA uses the hull external-armor mesh');
     hullExternalArmor.geometry.computeBoundingBox();

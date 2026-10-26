@@ -1,5 +1,9 @@
-// One source of truth for vehicle tiers across matchmaking, garage cards,
-// battle loading, HUD target panels, killcam and generated asset manifests.
+// The matchmaking tier: the one table the solo battle's bot balance (game/state.ts), the roster planner's tier targets
+// (game/rosterState.ts, sim/teamNations.ts) and the fleet balance audit read. Owner 2026-10-25 ("that includes the new
+// tier updates tho!"): the tier the game SHOWS is each vehicle's column in its national tree, read from the generated
+// src/techTree/tiers.ts (displayTier, tierNumeral) by every surface; matchmaking stays on this table until the owner moves
+// it. The asset manifest (tankAssets.ts) and the technical diagrams it heads keep this table's numeral until they are
+// re-rendered together.
 
 export const TANK_TIER = Object.freeze({
   tos1a_tagil: 10, griffin_viper: 10,
@@ -103,12 +107,15 @@ export const ROMAN_TIER = Object.freeze([
 const TIER_BY_ID: Readonly<Record<string, number>> = TANK_TIER;
 const NUMERAL_BY_TIER: Readonly<Record<number, string>> = ROMAN_TIER;
 
-/** Numeric tier for gameplay ordering; unknown developer rows default to VI. */
+/** Numeric matchmaking tier; unknown developer rows default to VI. */
 export function tankTier(id: string): number {
   return TIER_BY_ID[id] ?? 6;
 }
 
-/** Roman tier for UI; unknown rows stay blank so missing data is visible. */
-export function tierNumeral(id: string): string {
+/**
+ * The matchmaking tier's numeral, for the asset manifest and its technical diagrams only (blank for an unknown row).
+ * Every surface the player sees shows src/techTree/tiers.ts tierNumeral instead.
+ */
+export function matchTierNumeral(id: string): string {
   return NUMERAL_BY_TIER[TIER_BY_ID[id]] || '';
 }

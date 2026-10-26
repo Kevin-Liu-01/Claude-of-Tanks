@@ -15,10 +15,11 @@
 // viaduct between them keeps its parapets).
 import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 /** A rect's, a piece's and a bed's mirror twin across z = 0. */
 const mirRect = (r: CivicRect): CivicRect => ({ x0: r.x0, x1: r.x1, z0: -r.z1, z1: -r.z0 });
 const mirPiece = (f: CivicFurniture): CivicFurniture => ({ ...f, z: -f.z, yawDeg: (540 - f.yawDeg) % 360 });
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 /** A parterre bed: its rect, a mouth mid each side, its two paths crossing at a glorieta. */
 function parterre(id: string, r: CivicRect): CivicBed {
@@ -48,8 +49,8 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
   // paseo bed's north-west quarter; its south twin's numbers, mirrored for the north)
   // (and, the branch's own battles, the paseo beds' arm-side north quarters' trees, rammed in 3 of 6)
   const HOT: ReadonlyArray<readonly [number, number]> = [[-25.5, -149.5], [-27.25, -145.75], [-11.2, -140.5], [-17.75, -145.75], [17.75, -145.75]];
-  const keep = (x: number, z: number, r: number): boolean => Math.hypot(x, z - cz) > 30 + r
-    && !HOT.some(([hx, hz]) => Math.hypot(hx - x, hz - (mirror ? -z : z)) < 0.05);
+  const keep = (x: number, z: number, r: number): boolean => detMath.hypot(x, z - cz) > 30 + r
+    && !HOT.some(([hx, hz]) => detMath.hypot(hx - x, hz - (mirror ? -z : z)) < 0.05);
   // orange trees in each bed's four quarters, the quarters' middles
   const stations = [...beds.flatMap((b) => {
     const r = b.rect, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;

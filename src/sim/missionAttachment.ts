@@ -5,6 +5,7 @@ import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 // The dock's certified volumes live in a leaf (2026-10-12, the 221 integration: the decor builder's dock keep-out reads
 // them without this module's battle-only seat search); every name stays importable from here.
 import { DRONE_DOCK_VOLUMES, missionAirframeVolumes, missionCradleVolumes } from './missionDockVolumes.ts';
+import * as detMath from './detMath.ts';
 export { DRONE_AIRFRAME_SCALE, DRONE_DOCK_HEIGHT_M, DRONE_DOCK_VOLUMES, missionAirframeVolumes, missionCradleVolumes } from './missionDockVolumes.ts';
 
 // Structural armor input keeps the room rules independent of fleet builders.
@@ -102,7 +103,7 @@ function overlaps(a: Bounds,b: Bounds): boolean {
 }
 function radiusRange(bounds: Bounds, ox=0, oz=0): [number,number] {
   const x0=bounds.min[0]!-ox,x1=bounds.max[0]!-ox,z0=bounds.min[2]!-oz,z1=bounds.max[2]!-oz;
-  return [Math.hypot(Math.max(x0,0,-x1),Math.max(z0,0,-z1)),Math.hypot(Math.max(Math.abs(x0),Math.abs(x1)),Math.max(Math.abs(z0),Math.abs(z1)))];
+  return [detMath.hypot(Math.max(x0,0,-x1),Math.max(z0,0,-z1)),detMath.hypot(Math.max(Math.abs(x0),Math.abs(x1)),Math.max(Math.abs(z0),Math.abs(z1)))];
 }
 function shifted(bounds: Bounds, offset: readonly number[]): Bounds {
   return {min:bounds.min.map((v,i)=>v+offset[i]!),max:bounds.max.map((v,i)=>v+offset[i]!)};
@@ -130,11 +131,11 @@ function rotateQuaternion(point: number[],q: readonly number[]): number[] {
 }
 type RoofGun = NonNullable<ReturnType<typeof auxiliaryCapabilities>>['guns'][number];
 function extendYawCircle(min:number[],max:number[],gun:RoofGun,x:number,y:number,z:number,pitch:number,padding:number):void {
-  const c=Math.cos(pitch),s=Math.sin(pitch),py=(y*c+z*s+gun.pivot[1]!)*gun.scale[1]!;
-  const r=Math.hypot((x+gun.pivot[0]!)*gun.scale[0]!,(-y*s+z*c+gun.pivot[2]!)*gun.scale[2]!);
+  const c=detMath.cos(pitch),s=detMath.sin(pitch),py=(y*c+z*s+gun.pivot[1]!)*gun.scale[1]!;
+  const r=detMath.hypot((x+gun.pivot[0]!)*gun.scale[0]!,(-y*s+z*c+gun.pivot[2]!)*gun.scale[2]!);
   const center=rotateQuaternion([0,py,0],gun.rotation),a=rotateQuaternion([r,0,0],gun.rotation),b=rotateQuaternion([0,0,r],gun.rotation);
   for(let axis=0;axis<3;axis++){
-    const extent=Math.hypot(a[axis]!,b[axis]!)+padding;
+    const extent=detMath.hypot(a[axis]!,b[axis]!)+padding;
     min[axis]=Math.min(min[axis]!,gun.position[axis]!+center[axis]!-extent);
     max[axis]=Math.max(max[axis]!,gun.position[axis]!+center[axis]!+extent);
   }
@@ -145,26 +146,27 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [numbe
   const profile=auxiliaryWeaponProfile(gun.caliberMm,id),policy=rest?{depressionRad:0,elevationRad:0}:profile;
   const range=policy.depressionRad+policy.elevationRad;
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
-  const radial=Math.hypot(...part.min.map((v,i)=>Math.max(Math.abs(v),Math.abs(part.max[i]!))));
-  const steps=Math.max(1,Math.ceil(range/.04)),padding=2*radial*Math.max(...gun.scale.map(Math.abs))*Math.sin(range/steps/4);
+  const reach=part.min.map((v,i)=>Math.max(Math.abs(v),Math.abs(part.max[i]!)));
+  const radial=detMath.hypot(reach[0]!,reach[1]!,reach[2]!);
+  const steps=Math.max(1,Math.ceil(range/.04)),padding=2*radial*Math.max(...gun.scale.map(Math.abs))*detMath.sin(range/steps/4);
   const corners:number[][]=[];
   for(const x of [part.min[0]!,part.max[0]!])for(const y of [part.min[1]!,part.max[1]!])for(const z of [part.min[2]!,part.max[2]!])corners.push([x,y,z]);
   let radius=0,minY=Infinity,maxY=-Infinity,sweepRadius=0;
   for(let i=0;i<=steps;i++){
-    const pitch=-policy.depressionRad+range*i/steps,c=Math.cos(pitch),s=Math.sin(pitch);
+    const pitch=-policy.depressionRad+range*i/steps,c=detMath.cos(pitch),s=detMath.sin(pitch);
     for(const [x,y,z]of corners){
       extendYawCircle(min,max,gun,x!,y!,z!,pitch,padding);
       const py=(y!*c+z!*s+gun.pivot[1]!)*gun.scale[1]!;
-      const r=Math.hypot((x!+gun.pivot[0]!)*gun.scale[0]!,(-y!*s+z!*c+gun.pivot[2]!)*gun.scale[2]!);
+      const r=detMath.hypot((x!+gun.pivot[0]!)*gun.scale[0]!,(-y!*s+z!*c+gun.pivot[2]!)*gun.scale[2]!);
       radius=Math.max(radius,r);minY=Math.min(minY,py);maxY=Math.max(maxY,py);
       const center=rotateQuaternion([0,py,0],gun.rotation);
-      sweepRadius=Math.max(sweepRadius,Math.hypot(gun.position[0]!+center[0]!,gun.position[2]!+center[2]!)+r+padding);
+      sweepRadius=Math.max(sweepRadius,detMath.hypot(gun.position[0]!+center[0]!,gun.position[2]!+center[2]!)+r+padding);
     }
   }
   // Circumscribed yaw cylinder removes empty corners of an axis-aligned
   // square without permitting any actual weapon position through a dock.
   const planes=Array.from({length:16},(_,i)=>{
-    const angle=i*Math.PI/8,normal=rotateQuaternion([Math.cos(angle),0,Math.sin(angle)],gun.rotation);
+    const angle=i*Math.PI/8,normal=rotateQuaternion([detMath.cos(angle),0,detMath.sin(angle)],gun.rotation);
     return {indices:[],normal,constant:-normal.reduce((sum,v,k)=>sum+v*gun.position[k]!,0)-radius-padding};
   });
   for(const sign of[-1,1]){
@@ -180,15 +182,15 @@ function roofPartSweep(gun:RoofGun,part:Bounds,id?:string,yawArc:readonly [numbe
     const arcMin=[Infinity,Infinity,Infinity],arcMax=[-Infinity,-Infinity,-Infinity];
     // and four more faces: the sweep's extent along and across the stretch's middle bearing (station-local), an oriented
     // box round the stretch, so a diagonal barrel's axis-aligned box does not claim the air beside it
-    const mid=(lo+hi)/2,ux=Math.sin(mid),uz=Math.cos(mid),vx=uz,vz=-ux;
+    const mid=(lo+hi)/2,ux=detMath.sin(mid),uz=detMath.cos(mid),vx=uz,vz=-ux;
     const along=[Infinity,-Infinity],across=[Infinity,-Infinity];
     for(let i=0;i<=steps;i++){
-      const pitch=-policy.depressionRad+range*i/steps,c=Math.cos(pitch),s=Math.sin(pitch);
+      const pitch=-policy.depressionRad+range*i/steps,c=detMath.cos(pitch),s=detMath.sin(pitch);
       for(const [x,y,z]of corners){
         const lx=(x!+gun.pivot[0]!)*gun.scale[0]!,ly=(y!*c+z!*s+gun.pivot[1]!)*gun.scale[1]!,lz=(-y!*s+z!*c+gun.pivot[2]!)*gun.scale[2]!;
-        const reach=Math.hypot(lx,lz),half=(hi-lo)/yawSteps/2,chord=reach*(1-Math.cos(half))+reach*Math.sin(half);
+        const reach=detMath.hypot(lx,lz),half=(hi-lo)/yawSteps/2,chord=reach*(1-detMath.cos(half))+reach*detMath.sin(half);
         for(let k=0;k<=yawSteps;k++){
-          const yaw=lo+(hi-lo)*k/yawSteps,cy=Math.cos(yaw),sy=Math.sin(yaw);
+          const yaw=lo+(hi-lo)*k/yawSteps,cy=detMath.cos(yaw),sy=detMath.sin(yaw);
           const sx=lx*cy+lz*sy,sz=-lx*sy+lz*cy,p=rotateQuaternion([sx,ly,sz],gun.rotation);
           const a=sx*ux+sz*uz,b=sx*vx+sz*vz;
           along[0]=Math.min(along[0]!,a-chord);along[1]=Math.max(along[1]!,a+chord);

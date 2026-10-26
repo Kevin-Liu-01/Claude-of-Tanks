@@ -20,12 +20,13 @@
 // kerbs would erase them.
 import type { CivicPlan, CivicRect } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -127, x1: -84, z0: 74, z1: 119.5 } as const;
 // the monument's bed in the south-east quarter, between the coach road south and the north lane east
 // (the monument in its planner cell's north triangle, 5 m off the cell's diagonals: it closes no lattice edge)
 const BED: CivicRect = { x0: -97, x1: -84, z0: 82, z1: 99 };
 const MONUMENT = { x: -87.5, z: 94.6 } as const;
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 export const AUTUMN_CIVIC_PLAN: CivicPlan = {
   mapId: 'autumn',

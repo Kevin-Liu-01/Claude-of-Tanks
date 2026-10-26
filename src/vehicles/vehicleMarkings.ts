@@ -1,5 +1,6 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankSeedId } from './tankIdAliases.ts';
+import * as detMath from '../sim/detMath.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
 export interface VehicleMarkingAnchor {
@@ -471,8 +472,8 @@ function starPath(
   for (let i = 0; i < points * 2; i++) {
     const angle = -Math.PI / 2 + i * Math.PI / points;
     const radius = i % 2 ? inner : outer;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy + Math.sin(angle) * radius;
+    const x = cx + detMath.cos(angle) * radius;
+    const y = cy + detMath.sin(angle) * radius;
     if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
   }
   ctx.closePath();
@@ -565,8 +566,8 @@ function drawIsraelStar({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): voi
     ctx.beginPath();
     for (let index = 0; index < 3; index++) {
       const angle = flip - Math.PI / 2 + index * Math.PI * 2 / 3;
-      const x = cx + Math.cos(angle) * radius * 0.85;
-      const y = cy + Math.sin(angle) * radius * 0.85;
+      const x = cx + detMath.cos(angle) * radius * 0.85;
+      const y = cy + detMath.sin(angle) * radius * 0.85;
       if (index) ctx.lineTo(x, y); else ctx.moveTo(x, y);
     }
     ctx.closePath();

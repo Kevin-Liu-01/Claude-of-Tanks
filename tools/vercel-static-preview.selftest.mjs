@@ -43,8 +43,12 @@ try {
   assert.deepEqual(await stars.json(), { stargazers_count: 128 });
   assert.match(stars.headers.get('cache-control'), /s-maxage=900/, 'the function\'s own Cache-Control');
   assert.equal((await fetch(`${origin}/api/telemetry`, { method: 'POST', body: '{}' })).status, 204);
+  const insights = await get('/_vercel/insights/script.js');
+  assert.deepEqual([insights.status, insights.headers.get('content-type'), await insights.text()],
+    [200, 'application/javascript; charset=utf-8', ''], 'Vercel\'s analytics script: empty, served as script');
+  assert.equal((await fetch(`${origin}/_vercel/insights/view`, { method: 'POST', body: '{}' })).status, 204, 'its views accepted');
 } finally {
   server.close();
   rmSync(dist, { recursive: true, force: true });
 }
-console.log('vercel-static-preview.selftest: vercel.json routes, the deploy\'s cache families, 304 revalidation, brotli and the three function stand-ins');
+console.log('vercel-static-preview.selftest: vercel.json routes, the deploy\'s cache families, 304 revalidation, brotli, the three function stand-ins and Vercel\'s analytics');

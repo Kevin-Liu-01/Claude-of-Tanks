@@ -4,12 +4,12 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import '../src/vehicles/tankFactory.ts';
 import {PRODUCTION_TANK_IDS,TANK_SPECS} from '../src/vehicles/specs.ts';
-import {tankTier} from '../src/vehicles/tier.ts';
+import {displayTier} from '../src/techTree/tiers.ts';
 import {viewRangeOf} from '../src/sim/spotting.ts';
 import {auxiliaryCapabilities} from '../src/vehicles/auxiliaryInventory.ts';
 const data={
   vehicles:PRODUCTION_TANK_IDS.map(id=>{const s=TANK_SPECS[id],a=auxiliaryCapabilities(s);return {
-    id,name:s.name,nation:s.nation,role:s.role,tier:tankTier(id),hp:s.hp,
+    id,name:s.name,nation:s.nation,role:s.role,tier:displayTier(id),hp:s.hp,
     speed:s.topSpeedKmh,reverse:s.reverseSpeedKmh,hull:s.hullTraverseDegS,turret:s.turretTraverseDegS,
     dispersion:s.gun.baseAccuracy,reload:s.gun.reloadS,aim:s.gun.aimTimeS,view:viewRangeOf(s),
     smoke:a?.smoke.length??0,lights:!!a?.lights,roofGun:!!a?.guns.length,

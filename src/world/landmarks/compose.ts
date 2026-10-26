@@ -312,7 +312,7 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
   return out;
 }
 
-/** Place the map's set pieces. A generator: one slice per piece. */
+/** Place the map's set pieces. A generator: a piece's build and its collision a slice each. */
 export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice, LandmarkReceipt, void> {
   const receipt: LandmarkReceipt = { pieces: [], placed: 0, skipped: 0, triangles: 0 };
   const discs = landmarkObjectiveDiscs(ctx.mapId, ctx.spawns);
@@ -403,6 +403,9 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // whose records stand as they were)
     const collisionOf = built.collision?.(parts, finishParts) ?? null;
     const solids = collisionOf?.parts ?? parts;
+    // (battle-spikes-253) the piece's build and its collision in their own slices (a Verdant set piece was one 316 ms task,
+    // two thirds its collision): nothing of it is published before the merge below
+    yield { fine: true, progress: false, stage: 'landmarks' };
     // the collision, derived from the solids at the piece's pose (a bridge's deck is its own movement record); a piece
     // that is all dressing (a square's paths and fence) publishes none
     const baseY = ground.y;

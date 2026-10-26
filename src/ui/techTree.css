@@ -1,0 +1,155 @@
+/* The tech-tree screen (techTree.ts), loaded with its chunk. Premiere graphite plates, one tungsten light for the
+   selection and Select, Chakra Petch for the numerals and names, the kit's buttons, flags, silhouettes and stat rows.
+   Every colour, size, shadow and duration is a token (tools/style-literal-census.mjs). Copyright © 2026 Kevin B. Liu. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+.cot-tt{
+  --tt-detail-art-w:clamp(240px,21vw,420px);
+  position:fixed;inset:0;z-index:var(--z-modal);display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface-page);color:var(--ink-1);
+  font-family:var(--font-ui);font-weight:500;-webkit-font-smoothing:antialiased;
+}
+.cot-tt[hidden]{display:none}
+
+/* Header: the nation is its flag and its name, then the rail of every nation's flag. */
+.cot-tt .tt-head{display:flex;align-items:center;gap:var(--s5);padding:var(--s4) 28px var(--s1)}
+.cot-tt .tt-nation{display:flex;align-items:center;gap:var(--s4);min-width:0}
+.cot-tt .tt-flag{display:inline-flex;line-height:0}
+.cot-tt .tt-flag .cot-c-flag{width:48px;height:36px;border-radius:var(--r1)}
+.cot-tt .tt-title{margin:0;font:700 var(--fs-32)/1 var(--font-display);letter-spacing:var(--track-display);white-space:nowrap}
+.cot-tt .tt-rail{display:flex;align-items:center;gap:var(--s1);min-width:0;overflow-x:auto;scrollbar-width:none;margin-right:auto}
+.cot-tt .tt-rail::-webkit-scrollbar{display:none}
+.cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:38px;height:34px;padding:0;border:0;
+  border-radius:var(--r1);background:transparent;cursor:pointer;opacity:.55;transition:opacity var(--dur-fast),background var(--dur-fast)}
+.cot-tt .tt-rail-flag .cot-c-flag{width:26px;height:19px}
+.cot-tt .tt-rail-flag:hover{opacity:.9;background:var(--surface-hover)}
+.cot-tt .tt-rail-flag:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-tt .tt-rail-flag.is-on{opacity:1}
+.cot-tt .tt-rail-flag.is-on::after{content:'';position:absolute;left:var(--s2);right:var(--s2);bottom:0;height:2px;background:var(--accent)}
+
+/* The board: tier columns, lanes, the special lane under the rule. It scrolls; a drag pans and a pinch zooms. */
+.cot-tt .tt-stage{position:relative;min-height:0}
+.cot-tt .tt-board{position:absolute;inset:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
+  touch-action:none;cursor:grab}
+.cot-tt .tt-board.is-panning,.cot-tt .tt-board.is-panning .tt-node{cursor:grabbing}
+/* A board larger than its space fades at the edges it scrolls toward. */
+.cot-tt .tt-board.is-more-below{-webkit-mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - 36px),transparent);
+  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - 36px),transparent)}
+.cot-tt .tt-board.is-more-right{-webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 36px),transparent);
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 36px),transparent)}
+.cot-tt .tt-board.is-more-below.is-more-right{
+  -webkit-mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - 36px),transparent),linear-gradient(90deg,var(--ink-1) calc(100% - 36px),transparent);
+  mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - 36px),transparent),linear-gradient(90deg,var(--ink-1) calc(100% - 36px),transparent);
+  -webkit-mask-composite:source-in;mask-composite:intersect}
+.cot-tt .tt-grid{position:relative;margin:0 auto}
+.cot-tt .tt-grid::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,var(--fill-faint) 0 var(--tt-pitch),transparent var(--tt-pitch) calc(var(--tt-pitch) * 2));
+  background-position-x:var(--tt-band-x)}
+.cot-tt .tt-tiers{position:absolute;inset:0 0 auto 0;height:40px}
+.cot-tt .tt-numeral{position:absolute;top:0;width:var(--tt-col);text-align:center;font:700 var(--fs-24)/1.25 var(--font-display);
+  letter-spacing:var(--track-label-s);color:var(--ink-3);transition:color var(--dur-fast)}
+.cot-tt .tt-numeral::after{content:'';position:absolute;left:50%;bottom:-4px;width:28px;height:2px;margin-left:-14px;
+  background:var(--accent);transform:scaleX(0);transition:transform var(--dur-fast) var(--ease-enter)}
+.cot-tt .tt-numeral.is-on{color:var(--ink-1)}
+.cot-tt .tt-numeral.is-on::after{transform:scaleX(1)}
+.cot-tt .tt-wires{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.cot-tt .tt-wires path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:butt}
+.cot-tt .tt-wires marker path{stroke:none}
+.cot-tt .tt-wires path.is-base{stroke:var(--ink-4)}
+.cot-tt .tt-wires path.is-sel{stroke:var(--accent);stroke-width:2.5}
+.cot-tt .tt-wires marker.is-base path{fill:var(--ink-4)}
+.cot-tt .tt-wires marker.is-sel path{fill:var(--accent)}
+.cot-tt .tt-rule{position:absolute;left:28px;right:28px;height:1px;background:var(--line-2)}
+.cot-tt .tt-rule[hidden]{display:none}
+
+/* Nodes: the vehicle's own render on a graphite plate, the flag as a chip, the name under it. */
+.cot-tt .tt-node{position:absolute;width:var(--tt-col);height:var(--tt-row);padding:0;border-radius:var(--r2);cursor:pointer;
+  overflow:hidden;background:var(--surface-raised);border:1px solid var(--line-2);text-align:left;color:inherit;font:inherit;
+  transition:border-color var(--dur-fast),transform var(--dur-fast) var(--ease-enter)}
+.cot-tt .tt-node:hover{border-color:var(--line-3);transform:translateY(-1px)}
+.cot-tt .tt-node:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-tt .tt-art{position:absolute;left:0;right:0;top:0;bottom:calc(var(--tt-name-fs) * 1.3 + 6px);overflow:hidden;
+  background:radial-gradient(ellipse 72% 80% at 50% 72%,var(--fill-scale),transparent 100%),
+    linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
+.cot-tt .tt-art .hc-host{--hc-band:4px;--hc-share:.86;--hc-hshare:.9;--hc-cxr:.5}
+.cot-tt .tt-art .hc-flag{display:none}
+.cot-tt .tt-portrait{position:absolute;inset:6% 6% 2%;width:88%;height:92%;object-fit:contain}
+.cot-tt .tt-tag{position:absolute;z-index:var(--z-lift);top:5px;left:5px;display:inline-flex;align-items:center;gap:5px;
+  line-height:0;color:var(--paper-100)}
+.cot-tt .tt-star{filter:var(--sil-shadow)}
+.cot-tt .tt-buildcount{display:inline-grid;place-items:center;min-width:18px;height:15px;padding:0 3px;border-radius:var(--r1);
+  background:var(--glyph-plate);font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-1)}
+.cot-tt .tt-name{position:absolute;left:7px;right:7px;bottom:3px;font-weight:600;font-size:var(--tt-name-fs);line-height:1.3;
+  color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* A node too small for a name shows its render alone; the hover tip names it. */
+.cot-tt .tt-grid.is-compact .tt-art{bottom:0}
+.cot-tt .tt-grid.is-compact .tt-name{display:none}
+.cot-tt .tt-node.is-sel{border:var(--selected-edge) solid var(--accent);outline:4px solid var(--accent-wash);outline-offset:0}
+.cot-tt .tt-node.is-sel .tt-name{color:var(--ink-1);left:6px;bottom:2px}
+.cot-tt .tt-node.is-sel .tt-tag{top:4px;left:4px}
+
+/* Zoom: three icon buttons at the board's corner (the hover tip names them). */
+.cot-tt .tt-zoom{position:absolute;right:var(--s4);bottom:var(--s4);z-index:var(--z-lift);display:flex;gap:2px;padding:2px;
+  border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-2)}
+
+/* Detail: the selected vehicle, its builds, its four numbers on the kit's scale, and Select. */
+.cot-tt .tt-detail{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(260px,320px) auto;align-items:center;gap:40px;
+  padding:14px 28px 18px;background:linear-gradient(180deg,var(--row-plate),var(--surface-raised));border-top:1px solid var(--line-2)}
+.cot-tt .tt-detail-art{position:relative;width:var(--tt-detail-art-w);height:calc(var(--tt-detail-art-w) * .52);border-radius:var(--r2);
+  overflow:hidden;box-shadow:var(--ring-2);
+  background:radial-gradient(ellipse 70% 70% at 50% 60%,var(--fill-scale),transparent 100%),
+    linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
+.cot-tt .tt-detail-art .hc-host{--hc-band:6px;--hc-share:.9;--hc-hshare:.9;--hc-cxr:.5;--hc-flag-opacity:.8}
+.cot-tt .tt-detail-id{display:grid;gap:12px;min-width:0}
+.cot-tt .tt-detail-name{margin:0;font:700 var(--fs-36)/1.05 var(--font-display);letter-spacing:var(--track-display);overflow-wrap:anywhere}
+.cot-tt .tt-detail-meta{display:flex;align-items:center;gap:14px;color:var(--ink-2)}
+.cot-tt .tt-detail-tier{display:inline-flex;align-items:baseline;gap:6px;padding:4px 10px;border-radius:var(--r1);
+  background:var(--surface-hover);box-shadow:var(--ring-2);font:600 var(--fs-13)/1.4 var(--font-ui);
+  letter-spacing:var(--track-label-s);color:var(--ink-2)}
+.cot-tt .tt-detail-tier b{font:700 var(--fs-16)/1 var(--font-display);color:var(--ink-1)}
+.cot-tt .tt-detail-special{display:inline-flex;line-height:0;color:var(--paper-100)}
+.cot-tt .tt-detail-special[hidden]{display:none}
+.cot-tt .tt-builds{display:flex;flex-wrap:wrap;gap:6px}
+.cot-tt .tt-builds[hidden]{display:none}
+.cot-tt .tt-build{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 6px;border-radius:var(--r1);
+  cursor:pointer;background:var(--surface-raised);border:1px solid var(--line-2);color:var(--ink-3);font:600 var(--fs-12)/1 var(--font-ui)}
+.cot-tt .tt-build .cot-c-sil{width:40px;height:16px}
+.cot-tt .tt-build[aria-checked='true']{border-color:var(--accent);color:var(--ink-1)}
+.cot-tt .tt-build:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-tt .tt-stats{display:grid;gap:10px;min-width:0}
+.cot-tt .tt-select{min-width:180px}
+
+@media (min-width:1700px){
+  .cot-tt .tt-title{font-size:var(--fs-40)}
+  .cot-tt .tt-numeral{font-size:var(--fs-28)}
+  .cot-tt .tt-detail-name{font-size:var(--fs-44)}
+}
+/* The rail takes its own row when the header cannot hold it; the detail folds the stats under the name. */
+@media (max-width:1100px){
+  .cot-tt .tt-head{flex-wrap:wrap;row-gap:6px;padding:14px 20px 6px}
+  .cot-tt .tt-nation{margin-right:auto}
+  .cot-tt .tt-rail{order:1;flex-basis:100%;margin-right:0}
+  .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'art id act' 'art stats stats';
+    gap:12px 24px;padding:14px 20px 16px}
+  .cot-tt .tt-detail-art{grid-area:art}
+  .cot-tt .tt-detail-id{grid-area:id}
+  .cot-tt .tt-stats{grid-area:stats;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+  .cot-tt .tt-act{grid-area:act}
+}
+/* Phones: close beside the nation, the rail under them, the render beside the name and Select across the foot. */
+@media (max-width:600px){
+  .cot-tt{--tt-detail-art-w:128px}
+  .cot-tt .tt-head{gap:8px 10px;padding:12px 16px 6px}
+  .cot-tt .tt-nation{order:-2;gap:10px}
+  .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
+  .cot-tt .tt-title{font-size:var(--fs-24)}
+  .cot-tt .tt-close{order:-1}
+  .cot-tt .tt-detail{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'id art' 'stats stats' 'act act';padding:12px 16px 14px}
+  .cot-tt .tt-detail-name{font-size:var(--fs-24)}
+  .cot-tt .tt-act .tt-select{width:100%}
+  .cot-tt .tt-zoom{right:var(--s2);bottom:var(--s2)}
+}
+@media (prefers-reduced-motion:reduce){
+  .cot-tt .tt-node:hover{transform:none}
+}
+}

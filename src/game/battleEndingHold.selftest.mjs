@@ -26,7 +26,8 @@ assert.match(simStep,
   'past the hold the step returns before the clock advances (the field stands still under the report)');
 assert.match(simStep, /stepBotControllers\(game\);\n\s*silenceGunsAfterVerdict\(game\);\n\s*applyBotSupportActions\(game, bus\);/,
   'the verdict silences every trigger after the AI writes input and before weapons resolve');
-assert.match(simStep, /stepShells\(game, bus, world\);\n\s*stepFireDamage\(game, bus\);/,
+// (battle-spikes-253: a frame-stage mark, game/frameStages.ts, may name the damage stage between them)
+assert.match(simStep, /stepShells\(game, bus, world\);\n(\s*stages\?\.stage\(FRAME_STAGE\.damage\);\n)?\s*stepFireDamage\(game, bus\);/,
   'shells in flight and fires keep resolving through the hold');
 assert.match(state, /function silenceGunsAfterVerdict\(game: SoloGameState\): void \{\n\s*if \(game\.result === null\) return;\n\s*for \(const entity of game\.tanks\) entity\.input\.fire = false;/,
   'the silence is the trigger only — steering, movement and repairs stay live');

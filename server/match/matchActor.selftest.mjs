@@ -6,6 +6,7 @@ import {
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { quantizeAimDistance, quantizeAngle } from '../../src/mp/wire/quantize.ts';
 import { createLoopbackLink } from './link.ts';
+import { KEYFRAME_INTERVAL_TICKS, keyframeSlotFor } from './publisher.ts';
 import { ENTRY_BACKPRESSURE_GRACE_MS, ENTRY_BACKPRESSURE_SUSTAINED_MS, SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
 import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 
@@ -152,12 +153,16 @@ for (const client of [p1, p2, p3, p4, s1]) {
   assert.equal(client.packets[0].keyframe, true, 'the first snapshot is a keyframe');
 }
 const keyframes = p1.packets.filter((packet) => packet.keyframe).length;
-// every snapshot before the first (100 ms late) acknowledgement is a keyframe, then one every two seconds
-const settledKeyframes = p1.packets.slice(8).filter((packet) => packet.keyframe).length;
-assert.ok(keyframes >= 2 && keyframes <= 6, `keyframes until the first ack, then every two seconds (${keyframes} in 3 s)`);
-assert.ok(settledKeyframes >= 1 && settledKeyframes <= 2, `after the first ack, keyframes come every two seconds (${settledKeyframes})`);
+// every snapshot before the first (100 ms late) acknowledgement is a keyframe; after it, keyframes fall on the viewer's
+// own slot of the cycle and nowhere else (publisher.ts keyframeSlotFor, mp-scale-251; a snapshot every 2 ticks at 30 Hz)
+const onSlot = (seat, tick) => (tick + KEYFRAME_INTERVAL_TICKS - keyframeSlotFor(seat)) % KEYFRAME_INTERVAL_TICKS < 2;
+const settled = p1.packets.slice(8);
+assert.ok(keyframes >= 1 && keyframes <= 6, `keyframes until the first ack (${keyframes} in 3 s)`);
+assert.equal(settled.filter((packet) => packet.keyframe).length, settled.filter((packet) => onSlot(0, packet.tick)).length,
+  'after the first ack, keyframes come on the viewer\'s slot alone');
 assert.ok(p1.packets.filter((packet) => !packet.keyframe).length >= 80, 'the rest are deltas against the acknowledged baseline');
-assert.equal(p2.packets.filter((packet) => packet.keyframe).length, 2, 'an immediately acknowledging client sees exactly the two-second keyframes');
+assert.equal(p2.packets.filter((packet) => packet.keyframe).length, 1 + p2.packets.slice(1).filter((packet) => onSlot(1, packet.tick)).length,
+  'an immediately acknowledging client sees its first keyframe, then its slot\'s');
 const latest = p1.frames.at(-1);
 assert.ok(latest.ackedInputTick !== NO_TICK && latest.ackedInputTick >= actor.tick - 4, `input acknowledged (${latest.ackedInputTick} vs ${actor.tick})`);
 assert.ok(latest.inputMarginTicks >= 0 && latest.inputMarginTicks <= 3, `input margin reported (${latest.inputMarginTicks})`);

@@ -30,6 +30,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
@@ -72,7 +73,7 @@ function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: reado
  * middle slices as one 880 m lane through them) — the runs' gaps where a field track crosses kept in every row.
  */
 function barayevBelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
-  const len = Math.hypot(x1 - x0, z1 - z0) || 1, px = -(z1 - z0) / len, pz = (x1 - x0) / len;
+  const len = detMath.hypot(x1 - x0, z1 - z0) || 1, px = -(z1 - z0) / len, pz = (x1 - x0) / len;
   const rows = [];
   for (const [k, off] of [[0, -3], [1, 0], [2, 3]] as const) {
     for (const row of shelterbelt(x0 + px * off, z0 + pz * off, x1 + px * off, z1 + pz * off, runs)) {
@@ -91,7 +92,7 @@ function barayevBelt(x0: number, z0: number, x1: number, z1: number, runs: reado
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
 // one gap on the south side, radius r around (cx, cz).
 function kurganKerb(cx: number, cz: number, r: number): readonly [number, number, number, number, number][] {
-  const p = (k: number): [number, number] => [cx + r * Math.cos((k * Math.PI) / 3), cz + r * Math.sin((k * Math.PI) / 3)];
+  const p = (k: number): [number, number] => [cx + r * detMath.cos((k * Math.PI) / 3), cz + r * detMath.sin((k * Math.PI) / 3)];
   const ring: [number, number, number, number, number][] = [];
   for (let k = 0; k < 6; k++) {
     if (k === 4) continue; // the entrance gap faces south

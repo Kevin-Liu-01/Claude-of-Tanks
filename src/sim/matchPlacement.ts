@@ -11,6 +11,7 @@ import {
   type DeploymentSlot, type DeploymentSpawns, type DeploymentTeam,
 } from './deployment.ts';
 
+import * as detMath from './detMath.ts';
 export interface PlacementPoint { x: number; z: number }
 interface PlacementSpawn extends PlacementPoint { yaw: number }
 export interface PlacementTerrain {
@@ -77,7 +78,7 @@ export function matchPlacementAnchors(spawns: {
   let x = 0, z = 0;
   for (const point of spawns.enemies) { x += point.x; z += point.z; }
   x /= spawns.enemies.length; z /= spawns.enemies.length;
-  return { alpha, bravo: { x, z, yaw: Math.atan2(alpha.x - x, alpha.z - z) },
+  return { alpha, bravo: { x, z, yaw: detMath.atan2(alpha.x - x, alpha.z - z) },
     deployments: { alpha: [alpha], bravo: spawns.enemies } };
 }
 
@@ -104,7 +105,7 @@ function deploymentSideCheck(frame: DeploymentFrame): (team: DeploymentTeam, poi
 }
 
 function spacedFrom(point: PlacementPoint, held: readonly PlacementPoint[]): boolean {
-  for (const other of held) if (Math.hypot(point.x - other.x, point.z - other.z) < DEPLOYMENT_SLOT_SPACING_M - 1e-6) return false;
+  for (const other of held) if (detMath.hypot(point.x - other.x, point.z - other.z) < DEPLOYMENT_SLOT_SPACING_M - 1e-6) return false;
   return true;
 }
 
@@ -124,7 +125,7 @@ const SLOT_LATTICE: readonly (readonly [number, number])[] = (() => {
 })();
 const SLOT_BOUNDARY: readonly (readonly [number, number])[] = (() => {
   const r = DEPLOYMENT_SLOT_RADIUS_M, count = Math.max(16, Math.ceil(2 * Math.PI * r / 2)), out: [number, number][] = [];
-  for (let i = 0; i < count; i++) { const angle = i / count * Math.PI * 2; out.push([Math.sin(angle) * r, Math.cos(angle) * r]); }
+  for (let i = 0; i < count; i++) { const angle = i / count * Math.PI * 2; out.push([detMath.sin(angle) * r, detMath.cos(angle) * r]); }
   return out;
 })();
 
@@ -148,7 +149,7 @@ function createSlotGround(field: DeploymentGround, pivot: DeploymentPoint): Slot
     if (terrain.getNormalAt) return terrain.getNormalAt(x, z).y >= normalY;
     const dx = (terrain.getHeightAt(x + 1, z) - terrain.getHeightAt(x - 1, z)) * .5;
     const dz = (terrain.getHeightAt(x, z + 1) - terrain.getHeightAt(x, z - 1)) * .5;
-    return 1 / Math.hypot(dx, dz, 1) >= normalY;
+    return 1 / detMath.hypot(dx, dz, 1) >= normalY;
   };
   const levels = { alpha: new Map<number, number>(), bravo: new Map<number, number>() };
   const slopes = { alpha: new Map<number, boolean>(), bravo: new Map<number, boolean>() };
@@ -258,7 +259,7 @@ function safeTerrainPoint(field: PlacementTerrain, x: number, z: number, normalY
   if (field.getNormalAt) return field.getNormalAt(x, z).y >= normalY;
   const dx = (field.getHeightAt(x + 1, z) - field.getHeightAt(x - 1, z)) * .5;
   const dz = (field.getHeightAt(x, z + 1) - field.getHeightAt(x, z - 1)) * .5;
-  return 1 / Math.hypot(dx, dz, 1) >= normalY;
+  return 1 / detMath.hypot(dx, dz, 1) >= normalY;
 }
 
 function footprintProbesSafe(field: PlacementTerrain, point: PlacementPoint, radius: number, normalY: number): boolean {
@@ -295,7 +296,7 @@ export function placementTerrainSafe(field: PlacementTerrain, point: PlacementPo
   }
   const count = Math.max(16, Math.ceil(2 * Math.PI * radius / 2));
   for (let i = 0; i < count; i++) {
-    const angle = i / count * Math.PI * 2, x = point.x + Math.sin(angle) * radius, z = point.z + Math.cos(angle) * radius;
+    const angle = i / count * Math.PI * 2, x = point.x + detMath.sin(angle) * radius, z = point.z + detMath.cos(angle) * radius;
     if (!safeTerrainPoint(field, x, z, normalY)) return false;
     const y = field.getHeightAt(x, z); low = Math.min(low, y); high = Math.max(high, y);
     if (high - low > relief) return false;
@@ -325,7 +326,7 @@ function blockedByWorld(world: PlacementWorld, point: PlacementPoint, footprint:
  */
 function laneOpen(world: PlacementWorld, point: PlacementPoint, fromM: number, toM: number, yaw: number,
   scratch: CollisionRecord[]): boolean {
-  const field = world.heightField, fx = Math.sin(yaw), fz = Math.cos(yaw);
+  const field = world.heightField, fx = detMath.sin(yaw), fz = detMath.cos(yaw);
   let previous = field.getHeightAt(point.x, point.z), previousD = 0;
   for (let d = fromM; d <= toM + 1e-6; d += SPAWN_LANE_STEP_M) {
     const x = point.x + fx * d, z = point.z + fz * d, y = field.getHeightAt(x, z);
@@ -400,7 +401,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   const reservations: Reservation[] = [], scratch: CollisionRecord[] = [];
   const explicitKeys = new Set<string>();
   const axisX = anchors.bravo.x - anchors.alpha.x, axisZ = anchors.bravo.z - anchors.alpha.z;
-  const axisLength = Math.hypot(axisX, axisZ) || 1;
+  const axisLength = detMath.hypot(axisX, axisZ) || 1;
   const ux = axisX / axisLength, uz = axisZ / axisLength;
   const originalMiddle = { x: (anchors.alpha.x + anchors.bravo.x) * .5, z: (anchors.alpha.z + anchors.bravo.z) * .5 };
   const access = mode === 'standard' ? null : createObjectiveAccess(options, anchors);
@@ -412,10 +413,10 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     if (half && along * half < footprint.radius + 16) return false;
     for (const other of reservations) {
-      if (other.key !== key && Math.hypot(point.x - other.x, point.z - other.z) < footprint.radius + other.radius + 3) return false;
+      if (other.key !== key && detMath.hypot(point.x - other.x, point.z - other.z) < footprint.radius + other.radius + 3) return false;
     }
     for (const other of occupied) {
-      if (Math.hypot(point.x - other.x, point.z - other.z) < (other.clearM ?? footprint.radius + other.radius + 1)) return false;
+      if (detMath.hypot(point.x - other.x, point.z - other.z) < (other.clearM ?? footprint.radius + other.radius + 1)) return false;
     }
     if (blockedByWorld(options, point, footprint, scratch) || !placementTerrainSafe(options.heightField, point, footprint)
       || (footprint.solidOnly && access && !access.reachable(point))) return false;
@@ -439,8 +440,8 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
       const steps = Math.max(16, Math.ceil(radius * Math.PI * 2 / 16));
       for (let step = 0; step < steps; step++) {
         const angle = step / steps * Math.PI * 2;
-        point.x = preferred.x + Math.sin(angle) * radius;
-        point.z = preferred.z + Math.cos(angle) * radius;
+        point.x = preferred.x + detMath.sin(angle) * radius;
+        point.z = preferred.z + detMath.cos(angle) * radius;
         if (acceptable(point, footprint, key, half, occupied)) return found(point.x, point.z);
       }
     }
@@ -482,7 +483,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   const objectiveSpan = options.objectiveAxisM ?? null;
   let objectives: MatchPlacement['objectives'] = null;
   if ((mode === 'capture_the_flag' || mode === 'turbo_ball') && objectiveSpan != null) {
-    const bx = centers.bravo.x - centers.alpha.x, bz = centers.bravo.z - centers.alpha.z, span = Math.hypot(bx, bz) || 1;
+    const bx = centers.bravo.x - centers.alpha.x, bz = centers.bravo.z - centers.alpha.z, span = detMath.hypot(bx, bz) || 1;
     if (objectiveSpan < span) {
       const radius = mode === 'turbo_ball' ? 18 : 12;
       const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
@@ -551,7 +552,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     const check: DeploymentCheck = (team, point, held, yaw) => {
       if (!onSide(team, point) || !spacedFrom(point, held)) return false;
       for (const other of objectiveReservations) {
-        if (Math.hypot(point.x - other.x, point.z - other.z) < SLOT_FOOTPRINT.radius + other.radius + 3) return false;
+        if (detMath.hypot(point.x - other.x, point.z - other.z) < SLOT_FOOTPRINT.radius + other.radius + 3) return false;
       }
       return !blockedByWorld(options, point, SLOT_FOOTPRINT, scratch) && stage.ground(team, point)
         && (!access || access.departs(point))

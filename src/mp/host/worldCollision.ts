@@ -8,6 +8,7 @@
 import { createHeadlessCollisionWorld } from '../../world/headlessCollisionWorld.ts';
 import { getMapConfig } from '../../world/maps/index.ts';
 import { createHeightField } from '../../world/terrain.ts';
+import type { WorldKernelModule } from '../../world/wasmWorldKernels.ts';
 import { collisionManifestEntry, readCollisionManifestIndex, validateCollisionManifestCounts } from '../../../server/collisionManifestFormat.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import type { ActorWorldCollision } from '../../../server/match/matchActor.ts';
@@ -35,6 +36,8 @@ interface LoadOptions {
   signal?: AbortSignal;
   /** The mode's battlefield variant (sim/matchRuleset.ts terrainVariantFor): its own manifest and its own field. */
   variant?: string | null;
+  /** The WebAssembly world kernels (?simKernels=wasm): the world answers its contact and grid queries on them. */
+  kernels?: WorldKernelModule | null;
 }
 
 async function sha256Hex(bytes: Uint8Array, digest?: LoadOptions['digest']): Promise<string> {
@@ -74,7 +77,7 @@ export async function loadCollisionWorld(mapId: string, base: string, options: L
   // a variant's field is built from its own config (Frontline's trenches carved), as every client's world builds it
   const config = getMapConfig(mapId);
   const heightField = createHeightField(terrainSeed, options.variant === 'assault-trenches' ? { ...config, assaultTrenches: true } : config);
-  const world = createHeadlessCollisionWorld({ mapId, heightField, manifest });
+  const world = createHeadlessCollisionWorld({ mapId, heightField, manifest, kernels: options.kernels ?? null });
   return Object.assign(world, { release: () => { /* nothing leased: the Worker's world dies with the match */ } });
 }
 

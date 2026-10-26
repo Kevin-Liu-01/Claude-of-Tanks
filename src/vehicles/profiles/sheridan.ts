@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { stockTopFace, upSlopeTurn } from './stockFaceSeat.ts';
+import { fitsInSkirt, profileSkirtGeometry, skirtBottomAt, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = [number, number];
@@ -561,9 +562,18 @@ function sheridanTtsAutocannon(P: SheridanBuilderPort): THREE.Group {
 
 function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   const { box, cylY, xform } = KIT;
-  const skirtPanelZ = [2.35, 1.39, 0.43, -0.53, -1.49, -2.45];
-  const skirtPanelHeights = [0.66, 0.76, 0.82, 0.82, 0.76, 0.68];
-  const skirtCageStations = [2.75, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59, -3.03];
+  // Release 240 (the owner, 2026-10-24: "update the sideskirts of tanks like the m551a1 tts ... to not be just
+  // rectangles, and instead match the geometries of their upperglacis and hull side profile (like the m6 linebacker)"):
+  // one plate a side whose top runs along the hull's side edge (1.47) from the stern's rake to the glacis crest (z 1.50),
+  // comes down the upper glacis with the hull (1.22 at z 2.40) and rakes its nose like the lower glacis; its bottom keeps
+  // the six old panels' drop over the wheels. The seams, hangers, ERA courses and stand-off cage follow it.
+  const skirt: ProfileSkirt = { inner: 1.525, outer: 1.635, stations: [
+    [-2.95, 1.29, 1.30], [-2.70, 0.72, 1.44], [-2.40, 0.70, 1.47], [-1.50, 0.66, 1.47], [0.00, 0.64, 1.47],
+    [1.00, 0.64, 1.47], [1.50, 0.66, 1.47], [2.40, 0.70, 1.22], [2.60, 0.80, 1.20], [2.82, 1.19, 1.20],
+  ] };
+  const skirtSeamZ = [1.86, 0.90, -0.06, -1.02, -1.98];
+  const skirtHangerZ = [1.39, 0.43, -0.53, -1.49, -2.30];
+  const skirtCageStations = [2.55, 1.86, 0.97, 0.08, -0.81, -1.70, -2.59];
   const turretPivot = P.spec.armor.turretPivot;
   const cheekSeats: ReadonlyArray<{
     side: -1 | 1;
@@ -616,6 +626,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   };
   buildTtsPowerpack();
 
+  let skirtEraPerSide = 0;
   const buildTtsSkirts = (): void => {
   // A second glacis course plus deep, full-length modular skirts. Six backing
   // panels per side overlap at their vertical seams and drop over the upper
@@ -626,23 +637,38 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   P.eraCluster('m551a1_tts_glacis_era', (put) => {
     layGlacisEra(P, put, GLACIS_ERA_ROW_ALONG.slice(2), 6, 0.36, [1.24, 1.28, 0.64]);
   });
-  for (const side of [-1, 1]) {
-    for (let index = 0; index < skirtPanelZ.length; index++) {
-      const height = skirtPanelHeights[index];
-      const top = 1.46;
-      P.addExternalArmor('hull', box(0.11, height, 0.91), side * 1.58,
-        top - height * 0.5, skirtPanelZ[index]);
-      // its top hanger laps the hull's 1.496 side (owner 2026-10-19 sweep: the whole TTS skirt, its ERA and cage stood
-      // 29 mm off the hull)
-      P.add('hull', box(0.04, 0.05, 0.85), side * 1.51, top - 0.025, skirtPanelZ[index]);
-      P.add('hullDetail', box(0.020, height * 0.82, 0.055), side * 1.646,
-        top - height * 0.5, skirtPanelZ[index] + 0.43);
+  // a bar of the cage between two points of the hull's side elevation (z, y), at a fixed x
+  const bar = (bucket: string, w: number, h: number, x: number, z0: number, y0: number, z1: number, y1: number): void => {
+    const length = Math.hypot(z1 - z0, y1 - y0);
+    P.add(bucket, box(w, h, length), x, (y0 + y1) * 0.5, (z0 + z1) * 0.5, -Math.atan2(y1 - y0, z1 - z0), 0, 0);
+  };
+  const eraW = 0.28 * 1.44, eraH = 0.13 * 1.90;
+  for (const side of [-1, 1] as const) {
+    P.addExternalArmor('hull', profileSkirtGeometry(skirt, side));
+    // its top hangers lap the hull's 1.496 side along the level run (owner 2026-10-19 sweep: the whole TTS skirt, its ERA
+    // and cage stood 29 mm off the hull)
+    for (const z of skirtHangerZ) P.add('hull', box(0.04, 0.05, 0.85), side * 1.51, skirtTopAt(skirt, z) - 0.025, z);
+    // the old panels' seams, ridges on the plate's face over its height there
+    for (const z of skirtSeamZ) {
+      const bottom = skirtBottomAt(skirt, z), top = skirtTopAt(skirt, z);
+      P.add('hullDetail', box(0.020, (top - bottom) * 0.82, 0.055), side * 1.646, (top + bottom) * 0.5, z);
     }
+    // two ERA courses on the plate's face, every cassette inside its profile: the upper course steps down the glacis
+    // line where the plate has the room over the lower one, and ends where it has not
     P.eraCluster(`m551a1_tts_hull_era_${side > 0 ? 'R' : 'L'}`, (put) => {
-      for (let row = 0; row < 2; row++) {
-        for (let index = 0; index < 12; index++) {
-          put(side * 1.65, 0.86 + row * 0.33, 2.40 - index * 0.48,
-            0, side * Math.PI / 2, 0, 1.44, 1.90, 0.90);
+      for (let index = 0; index < 12; index++) {
+        const z = 2.40 - index * 0.48, z0 = z - eraW / 2, z1 = z + eraW / 2;
+        const lower = 0.86;
+        const lowerFits = fitsInSkirt(skirt, z0, z1, lower - eraH / 2, lower + eraH / 2, 0.012);
+        if (lowerFits) {
+          put(side * 1.65, lower, z, 0, side * Math.PI / 2, 0, 1.44, 1.90, 0.90);
+          if (side > 0) skirtEraPerSide++;
+        }
+        const room = Math.min(skirtTopAt(skirt, z0), skirtTopAt(skirt, z1)) - 0.015 - eraH / 2;
+        const upper = Math.min(1.19, room);
+        if (upper >= lower + eraH + 0.02 && fitsInSkirt(skirt, z0, z1, upper - eraH / 2, upper + eraH / 2, 0.012)) {
+          put(side * 1.65, upper, z, 0, side * Math.PI / 2, 0, 1.44, 1.90, 0.90);
+          if (side > 0) skirtEraPerSide++;
         }
       }
     });
@@ -651,23 +677,25 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     // stand-offs visibly close the load path into the armored skirt.
     // Art fixes 230 (2026-10-21, hero-card critics: "a scaffolding frame", "the TTS truss"): the cage is painted steel
     // in the open-lattice bucket like every fleet slat cage, not bare gunmetal. Finish only: the same members.
-    for (const y of [0.64, 1.47]) {
-      P.add('hullOpenLattice', box(0.045, 0.045, 5.80), side * 1.75, y, -0.14);
+    // (release 240: its rails, uprights and braces follow the plate's profile, its top rail 1 cm over the plate's top)
+    for (let index = 0; index + 1 < skirtCageStations.length; index++) {
+      const za = skirtCageStations[index], zb = skirtCageStations[index + 1];
+      bar('hullOpenLattice', 0.045, 0.045, side * 1.75, za, skirtTopAt(skirt, za) + 0.01, zb, skirtTopAt(skirt, zb) + 0.01);
+      bar('hullOpenLattice', 0.045, 0.045, side * 1.75, za, skirtBottomAt(skirt, za), zb, skirtBottomAt(skirt, zb));
+      // A narrow upper grating bridges the panel lip to the outer rail. It is
+      // edge-on in side elevation, but prevents the stand-offs from outlining
+      // unsupported enclosed cells when the protection is inspected overhead.
+      bar('hullDetail', 0.17, 0.022, side * 1.665, za, skirtTopAt(skirt, za) - 0.005, zb, skirtTopAt(skirt, zb) - 0.005);
+      const up = index % 2 === 0;
+      bar('hullOpenLattice', 0.038, 0.038, side * 1.75,
+        za, up ? skirtBottomAt(skirt, za) + 0.06 : skirtTopAt(skirt, za) - 0.06,
+        zb, up ? skirtTopAt(skirt, zb) - 0.06 : skirtBottomAt(skirt, zb) + 0.06);
     }
-    // A narrow upper grating bridges the panel lip to the outer rail. It is
-    // edge-on in side elevation, but prevents the stand-offs from outlining
-    // unsupported enclosed cells when the protection is inspected overhead.
-    P.add('hullDetail', box(0.17, 0.022, 5.80), side * 1.665, 1.455, -0.14);
-    for (let index = 0; index < skirtCageStations.length; index++) {
-      const z = skirtCageStations[index];
-      P.add('hullOpenLattice', box(0.045, 0.85, 0.045), side * 1.75, 1.055, z);
-      for (const y of [0.73, 1.38]) {
+    for (const z of skirtCageStations) {
+      const bottom = skirtBottomAt(skirt, z), top = skirtTopAt(skirt, z);
+      P.add('hullOpenLattice', box(0.045, top - bottom + 0.03, 0.045), side * 1.75, (top + bottom) * 0.5 + 0.005, z);
+      for (const y of [bottom + 0.09, top - 0.08]) {
         P.add('hullOpenLattice', box(0.26, 0.040, 0.040), side * 1.66, y, z);
-      }
-      if (index < skirtCageStations.length - 1) {
-        const nextZ = skirtCageStations[index + 1];
-        P.add('hullOpenLattice', box(0.038, 0.038, 1.18), side * 1.75, 1.055,
-          (z + nextZ) * 0.5, (index % 2 ? -1 : 1) * 0.72, 0, 0);
       }
     }
   }
@@ -797,10 +825,11 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     remoteAutocannonCaliberMm: 30,
     remoteAutocannonBarrelDiameterM: 0.094,
     largeGunRightSearchlight: true,
-    additionalEraCassettes: 80,
-    skirtArmorPanelsPerSide: skirtPanelZ.length,
+    // (the 80 cassettes of the old rectangular skirts' full courses, less those the profile has no room for)
+    additionalEraCassettes: 80 - 2 * (24 - skirtEraPerSide),
+    skirtArmorPanelsPerSide: skirtSeamZ.length + 1,
     skirtEraRows: 2,
-    skirtEraCassettesPerSide: 24,
+    skirtEraCassettesPerSide: skirtEraPerSide,
     skirtCageStations: skirtCageStations.length,
     turretCheekEraCassettesPerSide: 6,
     turretCheekContactEmbedM: contactEmbedM,

@@ -1,5 +1,5 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.ts';
-import { tankTier, tierNumeral } from '../vehicles/tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import {
   VEHICLE_BATTLE_ROLE_META,
@@ -399,7 +399,7 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
   const powerToWeight = Number(spec.weightTons) > 0
     ? Number(spec.enginePowerHp || 0) / Number(spec.weightTons)
     : 0;
-  const tier = tankTier(spec.id);
+  const tier = displayTier(spec.id);
   const nation = String(spec.nation || t('gallery.nation.unknown'));
   const era = vehicleEraLabelI18n(spec.era, t);
   const facets = vehicleFacetsForId(spec.id);

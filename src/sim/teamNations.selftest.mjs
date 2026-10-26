@@ -80,7 +80,9 @@ for (const country of COUNTRIES.map((c) => c.id)) {
     }
   }
 }
-assert.ok(cases >= 250, `${cases} country x era x shape cases`);
+// 2026-10-25: 248 since next generation holds only the clean-sheet hulls (taxonomy.ts): the UK, Sweden, Italy and Ukraine
+// field no next-generation vehicle now.
+assert.ok(cases >= 248, `${cases} country x era x shape cases`);
 
 // an operation's country is kept; when it is the player's own, the allied BOTS give way to its first ally
 {

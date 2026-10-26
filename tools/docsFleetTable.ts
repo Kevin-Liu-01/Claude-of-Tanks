@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { displayTier, tierNumeral } from '../src/techTree/tiers.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -21,10 +22,12 @@ export interface DocsFleetRow {
 type ManifestRow = Omit<DocsFleetRow, 'shells'> & { readonly gun?: { readonly shells?: DocsFleetRow['shells'] } };
 
 let rows: readonly DocsFleetRow[] | null = null;
-/** Every playable tank's name, nation, tier and shells, in manifest order. */
+/** Every playable tank's name, nation, shown tier (src/techTree/tiers.ts, not the manifest's) and shells, in manifest order. */
 export function docsFleetRows(): readonly DocsFleetRow[] {
   if (rows) return rows;
   const table = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks as Record<string, ManifestRow>;
-  rows = Object.values(table).map(({ id, name, countryCode, nation, tier, tierNumeral, gun }) => ({ id, name, countryCode, nation, tier, tierNumeral, shells: gun?.shells ?? [] }));
+  rows = Object.values(table).map(({ id, name, countryCode, nation, gun }) => ({
+    id, name, countryCode, nation, tier: displayTier(id), tierNumeral: tierNumeral(id), shells: gun?.shells ?? [],
+  }));
   return rows;
 }

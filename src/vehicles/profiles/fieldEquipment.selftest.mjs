@@ -95,7 +95,11 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_o
    for(const anchor of cage.anchors){
     const [x,y,z]=anchor.map(v=>v*(VEHICLE_SIZE_FACTORS[id]??1));
     const side=Math.sign(x),hit=new Raycaster(new Vector3(x+side*.1,y,z),new Vector3(-side,0,0),0,.15).intersectObject(body)[0];
-    assert(hit&&Math.abs(hit.point.x-x)<.002,`${id}: cage bracket meets actual shell`);
+    // 252: the turret seat (turretSeatRace.ts, from the ring receipt) lifts the shell's lower corners, so on the Challenger 2
+    // UA and the Challenger 3 the wall at the low brackets (y 0.29, 0.43) stands 2.0-5.6 mm outboard of its authored line:
+    // a bracket meets the shell or ends at most 6 mm inside it, never off it
+    const into=hit?side*(hit.point.x-x):-Infinity;
+    assert(into>-.002&&into<.006,`${id}: cage bracket meets actual shell (${hit?(into*1000).toFixed(1)+' mm into it':'no shell'})`);
    }
    assert(turret.getObjectByName('turretOpenLattice'),'physical open cage stock exists');
   }

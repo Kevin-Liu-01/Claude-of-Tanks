@@ -106,4 +106,21 @@ assert.equal(coordinator.isRareReady(), false,
   assert.equal(contexts.at(-1), undefined, 'fresh synchronous drain preserves the default factory contract');
 }
 
-console.log('combatWarmCoordinator.selftest: resumable, reset, drain, and cancellation passed');
+// (battle-spikes-253) a chunked warm behind the entry veil: its execution is cooperative and covered (a covered load's
+// volleys while it yields to the loading screen); the default stays cooperative alone
+{
+  const seen = [];
+  const covered = createCombatWarmCoordinator({
+    createOpening: function* (execution) { seen.push(['opening', execution]); yield; },
+    createRare: function* (execution) { seen.push(['rare', execution]); yield; },
+  });
+  await covered.warmOpeningChunked(6, async () => {}, { covered: true });
+  await covered.warmRareChunked(6, async () => {}, { covered: true });
+  assert.deepEqual(seen.map(([kind, execution]) => [kind, execution.cooperative, execution.covered]),
+    [['opening', true, true], ['rare', true, true]], 'the covered option reaches each warm\'s execution');
+  covered.reset();
+  await covered.warmRareChunked(6, async () => {});
+  assert.equal(seen.at(-1)[1].covered, undefined, 'without it a chunked warm is the live battle\'s, as before');
+}
+
+console.log('combatWarmCoordinator.selftest: resumable, reset, drain, and cancellation; the covered chunked warm passed');

@@ -15,8 +15,8 @@
 .cot-c-h2{font:600 var(--fs-28)/1.08 var(--font-display)}
 .cot-c-h3{font:600 var(--fs-20)/1.15 var(--font-display)}
 .cot-c-body{font:400 var(--fs-16)/1.55 var(--font-body);color:var(--ink-2)}
-.cot-c-small{font:400 var(--fs-13)/1.45 var(--font-body);color:var(--ink-3)}
-.cot-c-data{font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-2)}
+.cot-c-small{font:400 max(var(--fs-floor-12),var(--fs-13))/1.45 var(--font-body);color:var(--ink-3)}
+.cot-c-data{font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-data);color:var(--ink-2)}
 .cot-c-muted{color:var(--ink-3)}
 /* ---- buttons (direction .btn, -primary, -secondary, -ghost, -xl/-lg/-sm) ---- */
 .cot-c-btn{--h:var(--btn-h-m);box-sizing:border-box;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;
@@ -46,7 +46,7 @@
 .cot-c-btn .cot-i{flex:none}
 /* ---- key caps (direction .kbd) ---- */
 .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
-  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);letter-spacing:normal;
+  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);letter-spacing:normal;
   text-transform:none;color:var(--ink-2)}
 .cot-c-kbd svg{width:12px;height:12px}
 .cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
@@ -55,14 +55,14 @@ body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
 /* ---- chips and tags (direction .chip, .chip.on, .tag, .tag.new) ---- */
 .cot-c-chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border:0;
   border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);
-  font:500 var(--fs-13)/1 var(--font-body);white-space:nowrap}
+  font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);white-space:nowrap}
 .cot-c-chip svg{width:15px;height:15px}
 button.cot-c-chip{cursor:pointer}
 .cot-c-chip--compact{width:34px;padding:0;justify-content:center}
 .cot-c-chip[aria-pressed=true]{color:var(--ink-1);background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
-.cot-c-chip__count{color:var(--ink-3);font-size:var(--fs-12)}
+.cot-c-chip__count{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
-  box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);
+  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}
@@ -73,7 +73,7 @@ button.cot-c-chip{cursor:pointer}
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-c-seg__opt{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:32px;height:32px;
   padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
-  font:500 var(--fs-13)/1 var(--font-body);cursor:pointer;white-space:nowrap}
+  font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer;white-space:nowrap}
 .cot-c-seg__opt svg{width:16px;height:16px}
 .cot-c-seg__opt[aria-checked=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
 .cot-c-seg__opt:disabled{color:var(--ink-4);cursor:not-allowed}
@@ -84,9 +84,9 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tabs__tab svg{width:16px;height:16px}
 .cot-c-tabs__tab[aria-selected=true]{color:var(--ink-1)}
 .cot-c-tabs__tab[aria-selected=true]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
-.cot-c-tabs__count{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
+.cot-c-tabs__count{color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
 .cot-c-toggle{display:inline-flex;align-items:center;gap:var(--s2);min-height:36px;padding:0;border:0;background:none;color:var(--ink-2);
-  cursor:pointer;font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
+  cursor:pointer;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .cot-c-toggle__track{box-sizing:border-box;position:relative;width:36px;height:20px;border:0;box-shadow:var(--ring-3);
   border-radius:var(--control-radius);background:var(--fill-quiet)}
 .cot-c-toggle__track i{position:absolute;left:3px;top:3px;width:14px;height:14px;background:var(--ink-3);
@@ -121,15 +121,15 @@ button.cot-c-chip{cursor:pointer}
   mask:var(--sil) center/contain no-repeat}
 .cot-c-sil--right{transform:scaleX(-1)}
 .cot-c-veh{display:inline-flex;align-items:center;gap:8px;min-width:0;color:var(--ink-2);white-space:nowrap}
-.cot-c-veh b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--fs-14)/1 var(--font-display);color:var(--ink-1)}
+.cot-c-veh b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
 .cot-c-veh .cot-c-sil{height:13px}
-.cot-c-vs{font:700 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--accent)}
+.cot-c-vs{font:700 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--accent)}
 /* ---- the data voice's inline rules: a glyph and a value per fact (direction .rules) ---- */
-.cot-c-rules{display:flex;flex-wrap:wrap;gap:12px;font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2)}
+.cot-c-rules{display:flex;flex-wrap:wrap;gap:12px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-2)}
 .cot-c-rules>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .cot-c-rules svg{width:14px;height:14px;color:var(--ink-3)}
 /* ---- media caption: honest, small, never over a tank (direction .cap) ---- */
-.cot-c-cap{display:inline-flex;align-items:center;gap:8px;font:500 var(--fs-12)/1.2 var(--font-body);color:var(--ink-2)}
+.cot-c-cap{display:inline-flex;align-items:center;gap:8px;font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2)}
 .cot-c-cap svg{width:14px;height:14px}
 /* ---- plates (direction .plate, .raised, .plate.hud) ---- */
 .cot-c-plate{background:var(--plate-fill);border-radius:var(--plate-radius);box-shadow:var(--plate-shadow)}

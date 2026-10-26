@@ -268,7 +268,8 @@ function read(tank) {
   // slot), so every tray sets them as the stacked and touch trays did since critic r6: the count in the top-right
   // corner, the label alone on the floor, never under 11 px.
   assert.doesNotMatch(hud, /\.cot-shell\.wide \.ty\{/, 'the label keeps its size beside a three-digit count (it no longer shares its row)');
-  assert.match(hud, /\n\.cot-shell \.ty\{position:absolute;bottom:2px;left:4px;right:3px;font-size:var\(--battle-fs-11\);font-weight:700;/,
+  // (its Latin code on the figures' 11 px token, which Chinese leaves at 11: battle-fs-fig-11, gauntlet r1)
+  assert.match(hud, /\n\.cot-shell \.ty\{position:absolute;bottom:2px;left:4px;right:3px;font-size:var\(--battle-fs-fig-11\);font-weight:700;/,
     'the type label sits on the slot\'s floor at the 11 px floor');
   assert.match(hud, /\n\.cot-shell\.wide \.cnt\{right:3px;font-size:var\(--battle-fs-12\);letter-spacing:0;\}/, 'a three-digit count sets a step smaller in its corner');
   // critic r4: the shell gives way to a three-digit count — shrinking and stepping out from under the touch corner count

@@ -372,6 +372,17 @@ type FitBox = [number, number, number, number, number, number];
  * crosses)? */
 function triangleBoxOverlap(T: ArrayLike<number>, o: number, b: FitBox): boolean {
   const cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2, hx = (b[3] - b[0]) / 2, hy = (b[4] - b[1]) / 2, hz = (b[5] - b[2]) / 2;
+  // (2026-10-25, lockdown-251) the box's own axes first, from the corners as the tests below compute them: most of a
+  // gun's triangles miss a cradle part's box there, and leave without the arrays the full test makes (the cradle fit
+  // runs this over every gun triangle for every box it tries; it was a tank switch's and a battle load's long task)
+  {
+    let a = T[o]! - cx, c = T[o + 3]! - cx, d = T[o + 6]! - cx;
+    if (Math.min(a, c, d) > hx || Math.max(a, c, d) < -hx) return false;
+    a = T[o + 1]! - cy; c = T[o + 4]! - cy; d = T[o + 7]! - cy;
+    if (Math.min(a, c, d) > hy || Math.max(a, c, d) < -hy) return false;
+    a = T[o + 2]! - cz; c = T[o + 5]! - cz; d = T[o + 8]! - cz;
+    if (Math.min(a, c, d) > hz || Math.max(a, c, d) < -hz) return false;
+  }
   const v = [T[o]! - cx, T[o + 1]! - cy, T[o + 2]! - cz, T[o + 3]! - cx, T[o + 4]! - cy, T[o + 5]! - cz, T[o + 6]! - cx, T[o + 7]! - cy, T[o + 8]! - cz];
   for (let k = 0; k < 3; k++) {
     const h = [hx, hy, hz][k]!, a = v[k]!, c = v[3 + k]!, d = v[6 + k]!;
@@ -427,6 +438,10 @@ function longestStretch(z0: number, z1: number, anchor: number, spans: readonly 
 
 /** Triangle `o` of `T` cut to the slab u0 <= u <= u1 (u = side * x), as its section in the pitch plane (y, z pairs). */
 function sectionInSlab(T: ArrayLike<number>, o: number, side: number, u0: number, u1: number): number[] {
+  // (lockdown-251) wholly on one side of the slab: the clips below keep nothing (the first drops every corner, or keeps
+  // them all for the second to drop), so no polygon is made
+  const ua = side * T[o]!, ub = side * T[o + 3]!, uc = side * T[o + 6]!;
+  if (u0 <= u1 && ((ua - u0 < 0 && ub - u0 < 0 && uc - u0 < 0) || (ua - u1 > 0 && ub - u1 > 0 && uc - u1 > 0))) return [];
   let poly: number[][] = [[side * T[o]!, T[o + 1]!, T[o + 2]!], [side * T[o + 3]!, T[o + 4]!, T[o + 5]!], [side * T[o + 6]!, T[o + 7]!, T[o + 8]!]];
   for (const [bound, dir] of [[u0, 1], [u1, -1]] as const) {
     const next: number[][] = [];
