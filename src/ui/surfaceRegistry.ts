@@ -69,12 +69,11 @@ const BOOT = 'index.html';
 export const SURFACE_REGISTRY = Object.freeze({
   link: {
     glyph: DATUM_GLYPHS.link,
-    labels: ['hud.net.link', 'hud.net.local', 'hud.net.ms', 'hud.mission.ping'],
+    labels: ['hud.net.link', 'hud.net.local', 'hud.net.ms'],
     readout: '^\\d+\\s*ms$',
     places: [
       { screen: 'battle', owner: NET, surface: '.cot-mp-status.battle .unit.ping', states: ['mp-host', 'mp-client'] },
       { screen: 'battle', owner: HUD, surface: '.cot-net-unit.ping', states: ['metered'], yields: 'body.cot-mp-battle hides it (the strip owns the link)' },
-      { screen: 'battle', owner: HUD, surface: '.cot-net-link', states: ['mp-mounting'], yields: 'body.cot-mp-battle and .metered hide it' },
     ],
   },
   fps: {

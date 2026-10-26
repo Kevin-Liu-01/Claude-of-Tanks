@@ -246,7 +246,7 @@ body[data-cot-battle-layout] .cot-mode-status[data-mode='endless_horde'] .mv{dis
    (the mouse layouts the team strip shows on), a right trapezoid hung from the window's corner (owner 2026-10-24: "left
    objective marker should be another right trapezoid attached to left"), the mode's glyph in its well, the mode's name
    over the objective and the rosters' Tab key; the left roster starts under it. The link's ping is the top-right
-   corner's (hud.ts .cot-net-link). */
+   corner's metered unit (hud.ts .cot-net-unit.ping) or the network strip's. */
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show,
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show.quiet{display:flex}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-mode-status{
@@ -275,7 +275,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   body[data-cot-battle-layout]:not(.cot-touch-layout):not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-hud-gear .cot-c-kbd{display:inline-flex;padding:0 6px}
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-hud-gear){height:20px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net-link{display:none}
 /* (every mode's glyph in the one accent: its shape names the mode; a lilac, a cyan, a mint and a salmon of its own were
    off the palette, gauntlet r3) */
 body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}

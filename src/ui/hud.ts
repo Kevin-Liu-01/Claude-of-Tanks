@@ -19,7 +19,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el, datumAttr, datumGlyph, markDatum } from './dom.ts';
+import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
@@ -1578,24 +1578,21 @@ body.cot-debug-hud .cot-net{display:none!important;}
 /* The top-right corner (hud.ts netEl): the readout's units once measured (.metered), the link's ping in a networked
    battle (the meter's own ping cell carries it while that shows), the settings gear and its key. */
 .cot-net-units{display:flex;align-items:center;}
-.cot-net:not(.metered) .cot-net-units,.cot-net.metered .cot-net-link,.cot-net-link[hidden]{display:none;}
-.cot-net-link{display:flex;align-items:center;gap:6px;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok);text-transform:none;}
-.cot-net-link b{min-width:6ch;font-weight:500;}
-.cot-net-link[data-tone=warn]{color:var(--text-warn);}.cot-net-link[data-tone=bad]{color:var(--text-danger);}
+.cot-net:not(.metered) .cot-net-units{display:none;}
 .cot-hud-gear{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s1);border:0;border-radius:var(--r1);
   background:transparent;color:var(--ink-2);font:inherit;cursor:pointer;pointer-events:auto;}
 .cot-hud-gear:hover{color:var(--ink-1);}
 .cot-hud-gear .cot-c-kbd{display:none;font-size:var(--battle-fs-11);}
-.cot-net:is(.metered,:has(.cot-net-link:not([hidden]))) .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
+.cot-net.metered .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
 /* One link readout (owner 2026-10-25: "the ping or wifi is duplicated in the top right"; Main's ruling): in a networked
    battle the network strip owns the link (multiplayerStatus.ts sets body.cot-mp-battle while it is up: its health, seat and
    roster, and its details panel), so the corner drops its link chip and the meter reads its fps alone. A body class, never
    a body:has() (a whole-page restyle on every write). Solo battles keep the corner as it was. */
-body.cot-mp-battle :is(.cot-net-link,.cot-net-unit.ping){display:none;}
+body.cot-mp-battle .cot-net-unit.ping{display:none;}
 body.cot-mp-battle .cot-net:not(.metered) .cot-hud-gear{padding-left:var(--s1);border-left:0;border-radius:var(--r1);}
 /* touch: the readout keeps its own place (battleHudLayout.css), the gear is the toolbar's (touchControls.ts) */
 body.cot-touch-layout .cot-net:not(.metered){display:none;}
-body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
+body.cot-touch-layout .cot-hud-gear{display:none;}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
 .cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:16px;
@@ -2365,11 +2362,6 @@ export function initHud(bus: EventBus): HudRuntime {
   // (each readout names its datum, UI-LOCKDOWN part B: one visible element a datum, the overlap receipt's duplicate check)
   netUnits.innerHTML = `<span class="cot-net-unit fps"${datumAttr('fps')}><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
     `<span class="cot-net-unit ping"${datumAttr('link')}><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
-  const netLink = el('span', 'cot-net-link', netEl);
-  markDatum(netLink, 'link');
-  netLink.hidden = true;
-  netLink.innerHTML = `${datumGlyph('link', 14)}<b class="num"></b>`;
-  const netLinkValue = requireElement<HTMLElement>(netLink, 'b');
   const gearBtn = el('button', 'cot-hud-gear', netEl);
   gearBtn.type = 'button';
   gearBtn.dataset.uiSound = 'press';
@@ -2385,19 +2377,6 @@ export function initHud(bus: EventBus): HudRuntime {
   const netPingValue = requireElement<HTMLElement>(netPingUnit, '.metric');
   const netPingLabel = requireElement<HTMLElement>(netPingUnit, '.label');
   // the readout's units show once live frames are measured (.metered); the gear always
-  let missionPing = -1, missionPingMs = -Infinity;
-  /** The link's round trip in the corner, at most once a second (its cell holds its width: no relayout). */
-  function updateMissionPing(pingMs: number | undefined): void {
-    const now = performance.now();
-    if (now - missionPingMs < 1000) return;
-    missionPingMs = now;
-    const ping = Math.max(0, Math.min(999, Math.round(Number(pingMs) || 0)));
-    if (ping === missionPing) return;
-    missionPing = ping;
-    netLink.hidden = ping <= 0;
-    netLink.dataset.tone = ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad';
-    netLinkValue.textContent = ping > 0 ? t('hud.mission.ping', { ms: ping }) : '';
-  }
   let netFrames = 0;       // consecutive live frames since last mode switch
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
@@ -8075,7 +8054,6 @@ export function initHud(bus: EventBus): HudRuntime {
     updateSpotting(frame);
     updateTeams(frame);
     updateNetReadout(frame);
-    updateMissionPing(frame.pingMs);
     updateConsumableSuggestions(frame.player?.aerial?.active ? null : frame.player?.combat);
     updateSixthSense(frame.timeS);
     vehicleStatus.update(frame.player?.aerial?.active ? null : frame.player?.combat, frame.spotting?.player);

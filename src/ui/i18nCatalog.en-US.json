@@ -4210,7 +4210,6 @@
   "hud.ribbon.multi.2": "Double",
   "hud.ribbon.multi.3": "Triple",
   "hud.ribbon.multi.4": "Multi",
-  "hud.mission.ping": "{ms} ms",
   "hud.target.range": "{m} m",
   "endScreen.finalBlow.ammorack": "{attacker} detonated {target}’s ammunition rack",
   "endScreen.survivors": "Survivors",
