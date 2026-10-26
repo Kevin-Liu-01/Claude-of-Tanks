@@ -381,7 +381,10 @@ const SI_CSS = `
 .cot-si-badge svg{width:12px;height:12px;flex:0 0 auto;}
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
-@container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
+/* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
+   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis) */
+@container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
+.cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
    gauntlet r7) */
 .cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);

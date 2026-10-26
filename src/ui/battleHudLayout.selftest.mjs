@@ -509,7 +509,8 @@ try {
     assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
-    assert.equal(phone.px('kill-right-height'), 5 * 29 - 3, '390x844: the right kill lane stops above the moved row');
+    // (171 px wide, the global feed stacks its rows, 41 px apart: three of them, gauntlet r8)
+    assert.equal(phone.px('kill-right-height'), 3 * 41 - 3, '390x844: the right kill lane stops above the moved row');
     assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
       'the left lane shows only the rows that fit');
     // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
@@ -526,7 +527,8 @@ try {
     // right lane's moved 3 px down onto the left's row (one pitch: their rows sat 3 px apart, gauntlet r5)
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
-    assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
+    // (191 px wide, the global feed's rows stacked: three in the same floor, gauntlet r8)
+    assert.equal(tall.px('kill-right-height'), 3 * 41 - 3, 'tall: the right kill lane keeps the natural floor');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];

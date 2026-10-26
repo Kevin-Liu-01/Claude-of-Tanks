@@ -200,6 +200,8 @@ interface TouchNoticePlan {
   /** The countdown's top and scale (its top fixed: battleHudLayout.css scales it from there), and its rules panel's top
    *  and scale under the sight (shown false: no place clears it). */
   countdownTop: number; countdownScale: number;
+  /** The dial came down over the resting sight (countdownPlace.ts `overSight`): the idle reticle stands down under it. */
+  dialOverSight: boolean;
   rulesTop: number; rulesScale: number; rulesShown: boolean;
   /** Every element keeps clear of the footprint and the furniture. */
   cleared: boolean;
@@ -250,7 +252,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeTop: input.fallbackTop, alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP,
     alertW: input.alert.w, noticeCompact: false, alertCompact: false,
-    countdownTop: start, countdownScale: 1, rulesTop: height, rulesScale: 1, rulesShown: false,
+    countdownTop: start, countdownScale: 1, dialOverSight: false, rulesTop: height, rulesScale: 1, rulesShown: false,
     cleared: true, bannerTop: start, bannerReady: false, oneRow: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
@@ -268,6 +270,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     const rules = input.countdownRules ?? null;
     const place = placeCountdown(width, height, top, input.countdown, rules, [...input.obstacles, ...input.soft, ...map, ...labels], gap, true);
     plan.countdownTop = place.top; plan.countdownScale = place.scale;
+    plan.dialOverSight = place.top + input.countdown.h * place.scale > height / 2 - SIGHT_CLEAR_PX;
     plan.rulesTop = place.rulesTop; plan.rulesScale = place.rulesScale; plan.rulesShown = place.rulesShown;
     if (!place.cleared) plan.cleared = false;
     placed.push(centred(place.top, scaled(input.countdown, place.scale)));

@@ -43,10 +43,16 @@ const wideTop = (touch: boolean) => !touch && WIDE_TOP_WIDTHS.has(document.body.
   && WIDE_TOP_HEIGHTS.has(document.body.dataset.cotHeight ?? '');
 
 export const MAX_BATTLE_NOTIFICATIONS = 8;
-/** Whole 26px rows, separated by 3px, within the available lane. */
-export function battleNotificationRows(height: number, count = MAX_BATTLE_NOTIFICATIONS): number {
-  return Math.min(MAX_BATTLE_NOTIFICATIONS, Math.max(0, count), Math.max(0, Math.floor((height + 3) / 29)));
+/** Whole 26px rows, separated by 3px, within the available lane (a stacked lane's rows: FEED_STACK_PITCH). */
+export function battleNotificationRows(height: number, count = MAX_BATTLE_NOTIFICATIONS, pitch = 29): number {
+  return Math.min(MAX_BATTLE_NOTIFICATIONS, Math.max(0, count), Math.max(0, Math.floor((height + 3) / pitch)));
 }
+/** A touch global feed narrower than this stacks each kill row, the killer over the cause and the victim
+ *  (battleHudLayout.css [data-stack]): side by side its two callsigns kept under twelve characters, "Command…", gauntlet
+ *  r8 at 390x844. */
+const FEED_STACK_W = 208;
+/** A stacked row (38 px: the killer's line, the cause and the victim's) and the lane's 3 px gap. */
+const FEED_STACK_PITCH = 41;
 
 /** Keep space for kill notices and the side's combat readout. */
 export function battleRosterHeight(viewportHeight: number, available: number, minimum = 48, count = 0, expanded = false): number {
@@ -158,7 +164,9 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
 const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-dp,.cot-drive,.cot-scope-vision,'
   + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
-  + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
+  + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open,'
+  // (Watch's bar where it rides on the floor: watchHud.ts)
+  + '.cot-watch:not([hidden])';
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
@@ -809,7 +817,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const watchBar = watchView ? read('.cot-watch:not([hidden])') : null;
     const watchRail = watchView === 'drone' && touch ? read('.cot-watch-rail') : null;
     let watchBand = 0;
-    if (watchBar) {
+    // (a landscape phone under 300 px tall seats a riding bar on the floor, over the hull panel: watchHud.ts)
+    const watchLow = watchView === 'ride' && touch && width > height && height < 300 ? watchBar : null;
+    if (watchBar && !watchLow) {
       const crosses = (box: DOMRect | null): box is DOMRect => !!box && box.right > watchBar.left && box.left < watchBar.right;
       // A phone- or compact-width window hangs its map (and, on touch in portrait, its toolbar) under the head band
       // (battleHudLayout.css --hud-objective-bottom), so they move under the bar; elsewhere they hold their corners, and
@@ -1069,10 +1079,17 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killRight = root.querySelector('.cot-kill-lane.r');
     // (the gunship lens's zoom and range row under the sight is a floor for a lane it reaches into: 844x390's left lane
     // ran 21 px over it, gauntlet r5's overlap receipt)
-    const lensRow = read('.cot-flight-hud:not([hidden]) .gunship-solution');
+    // (with the weapon's name hung over it: the row's box leaves it out, and at 320x568 both lanes' rows ran into "30 mm
+    // cannon", gauntlet r8)
+    const lensBox = read('.cot-flight-hud:not([hidden]) .gunship-solution');
+    const lensLabel = lensBox ? read('.cot-flight-hud:not([hidden]) .gunship-solution-label') : null;
+    const lensRow = lensBox && {
+      left: Math.min(lensBox.left, lensLabel?.left ?? Infinity), right: Math.max(lensBox.right, lensLabel?.right ?? -Infinity),
+      top: Math.min(lensBox.top, lensLabel?.top ?? Infinity) };
     const leftBottom = Math.min(leftFloor(height, touch),
       systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
-      lensRow && lensRow.left < sideWidth && lensRow.top > leftAnchor ? lensRow.top - 8 : height);
+      lensRow && lensRow.left < sideWidth && lensRow.top > leftAnchor ? lensRow.top - 8 : height,
+      watchLow && watchLow.left < sideWidth ? watchLow.top - 8 : height);
     const earRight = read('.cot-ear.r');
     const networkRight = networkCornerRight(width, touch, telemetry, score);
     const strip = read('.cot-mp-status.battle');
@@ -1122,7 +1139,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane
       // ran 2 px onto it, gauntlet r4's overlap receipt)
       scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height,
-      lensRow && lensRow.right > width - sideWidth && lensRow.top > rightAnchor ? lensRow.top - 8 : height);
+      lensRow && lensRow.right > width - sideWidth && lensRow.top > rightAnchor ? lensRow.top - 8 : height,
+      watchLow && watchLow.right > width - sideWidth ? watchLow.top - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     // (a row is never squeezed under 16 px, a dense roster's under 13: at 12 px the enemy roster's lines touched, gauntlet
@@ -1265,6 +1283,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const wideLeftFeed = wideFeed ? Math.floor(Math.min(besideColumn, KILL_LANE_MAX_W)) : 0;
     // (and the lane and the hit rows at their own width stop there too: the hit rows ran under the consumables)
     setBodyVar('--hud-kill-left-width', wideFeed ? `${wideLeftFeed}px` : touch && width < height && besideColumn < sideWidth ? `${Math.floor(besideColumn)}px` : '');
+    // (the global feed's rows stack in a lane too narrow for their two callsigns; the personal lane's killer is "You")
+    const rightPitch = touch && (wideFeed ? wideFeedWidth : sideWidth) < FEED_STACK_W ? FEED_STACK_PITCH : 29;
+    killRight?.toggleAttribute?.('data-stack', rightPitch !== 29);
     // (a portrait phone's hit rows at the feed's width, min(320 px, the window less 24): battleHudLayout.css)
     setBodyVar('--hud-feed-width', touch && width < height && besideColumn < Math.min(320, width - 24) ? `${Math.floor(besideColumn)}px` : '');
     // (on mouse the plan's countdown band above already keeps the lanes off it)
@@ -1274,7 +1295,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
     const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
-    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killLeft?.childElementCount || 0);
+    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0),
+      killLeft?.childElementCount || 0);
     setRows(killLeft, killRowsLeft);
     const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
     const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
@@ -1287,9 +1309,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightKillBottom = !plan && countdown && countdown.right > width - sideWidth
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
-      battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, killRight?.childElementCount || 0));
+      battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);
-    const killHeightRight = Math.max(0, killRowsRight * 29 - 3);
+    const killHeightRight = Math.max(0, killRowsRight * rightPitch - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
@@ -1373,7 +1395,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       alertTop = touchPlan.alertTop;
     }
     const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
-      touchPlan.oneRow ? 'one-row' : '', touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
+      touchPlan.oneRow ? 'one-row' : '', touchPlan.dialOverSight ? 'dial-over-sight' : '', touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     // (one row: the alert stands in the detection's place while it shows, the detection under it)
     const sixthNode = touch ? root.querySelector<HTMLElement>('.cot-sixth') : null;
     const underAlert = !!touchPlan?.oneRow && !!root.querySelector('.cot-alert.show');

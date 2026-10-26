@@ -124,6 +124,27 @@ html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
  .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}
  .cot-watch .who b{font-size:var(--fs-14)}.cot-watch .wb.seat{min-width:96px}
 }
+/* (the shortest landscape phones, under 300 px tall: one row of its own width, the plate the flag or glyph and the name,
+   so it clears the map and the climb rail; riding, it takes the floor over the hull panel, in the place of the ridden
+   tank's controls row and dial (battleHudLayout.ts keeps the head band and the lanes off it): at 568x256 the full-width
+   bar wrapped onto the sight, the slots, the dial and the drone's rail, gauntlet r8) */
+@media(max-height:299px) and (orientation:landscape){
+ .cot-watch{left:50%;right:auto;transform:translateX(-50%);flex-wrap:nowrap}
+ .cot-watch .who{flex:none;width:160px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
+ .cot-watch .who .cot-c-sil{display:none}
+ .cot-watch .wb{height:34px;min-width:34px;padding:0 var(--s1)}.cot-watch .wb.seat{min-width:44px}
+ html[data-watch=ride] body.cot-touch-layout .cot-watch{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 46px)}
+ html[data-watch=ride] body.cot-touch-layout :is(.cot-vehicle-controls,.cot-drive){display:none}
+}
+/* (a portrait phone's climb rail starts under the touch toolbar that hangs under the bar: centred, its top ran under the
+   toolbar at 320x568, gauntlet r8) */
+body.cot-touch-layout[data-cot-orientation=portrait] .cot-watch-rail{top:max(50%,calc(var(--hud-objective-bottom,64px) + 124px))}
+/* (and up to 340 px wide the ammunition column starts under that toolbar too, and riding keeps the ridden tank's ammunition
+   alone: its consumables, controls row and special stand down, the rows that met the toolbar and the sight at 320x568) */
+@media(max-width:340px) and (orientation:portrait){
+ html[data-watch] body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:max(225px,calc(var(--hud-objective-bottom,64px) + 62px))}
+ html[data-watch=ride] body.cot-touch-layout :is(.cot-vehicle-controls,.cot-cons,.cot-special){display:none}
+}
 @media(prefers-reduced-motion:reduce){.cot-watch .wb{transition:none}}
 `;
 

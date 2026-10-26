@@ -1357,7 +1357,7 @@
   "hud.hitOutcome.no_damage": "NO DAMAGE",
   "hud.hitOutcome.module_hit": "MODULE HIT",
   "hud.aimWarning.selfRight": "PRESS {key} TO FLIP",
-  "hud.alert.magazineReloadStarted": "MAGAZINE RELOAD STARTED",
+  "hud.alert.magazineReloadStarted": "RELOADING MAGAZINE",
   "hud.alert.missilesDepleted": "MISSILES DEPLETED",
   "hud.alert.consumableUsed": "{name} USED",
   "hud.alert.consumableReadyIn": "READY IN {seconds} S",

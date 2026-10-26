@@ -190,6 +190,10 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-view-track .scope-vision-step.active{background:var(--flight-accent);box-shadow:none}
 .cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:4;justify-content:center}
 .cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
+/* (open, on the primary fill: its glyph in the button's ink and its key the kit's cap on the accent, as the Watch bar's
+   seat button: the amber glyph vanished on the amber fill and the pale V cap disagreed with DRIVE's, gauntlet r8) */
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled) .flight-icon{color:inherit}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled) .flight-key{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 /* (the kit's cap in every console: a filled grey cap here and in the gunship's beside the ringed caps elsewhere read as
    three styles, gauntlet r3) */
 .cot-flight-hud[data-kind=drone] .flight-key{min-width:19px;height:20px}
@@ -296,6 +300,10 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::after{inset:3px}
 .gunship-solution{position:absolute;top:50%;left:50%;width:220px;transform:translate(-50%,-50%);color:var(--flight-accent);text-shadow:0 1px 2px var(--surface-scene),0 0 6px var(--surface-scene);pointer-events:none}
 .gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.01em;white-space:nowrap}
+/* (the consoles' control words in the kit's capitals, as their weapon cards, the vision plate and DRIVE: "Return to tank",
+   "Infrared", "Ammo" and a lowercase "30 mm cannon" over the sight mixed three casings in one console, gauntlet r8) */
+:is(.cot-drone-return>span,.flight-view-switch .flight-feed>span:first-child,.flight-supply small,.gunship-solution-label){
+ text-transform:uppercase;letter-spacing:var(--track-label-s)}
 .gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
 .gunship-solution .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1)}
 .gunship-solution .flight-icon{color:inherit}
@@ -313,7 +321,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:16px;height:21px}
  .cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:3px}
  .cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{display:none;font-size:var(--battle-fs-11)}
- .cot-flight-hud[data-kind=gunship] .flight-weapon-copy .flight-weapon-compact{display:block}
+ /* (on one line in its card, its capitals untracked: "152 MM HE" broke onto two lines at 320x568, gauntlet r8) */
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-copy .flight-weapon-compact{display:block;white-space:nowrap;letter-spacing:0}
  .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
  .cot-flight-hud[data-kind=gunship] :is(.flight-key,.flight-hint){display:none}
  .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-template-columns:15px minmax(0,1fr);gap:var(--s1)}
@@ -325,6 +334,10 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=gunship] .gunship-role{font-size:var(--battle-fs-11)}
  .gunship-solution{width:190px}.gunship-solution .flight-instrument{font-size:var(--battle-fs-11)}
  .gunship-solution-label{font-size:var(--battle-fs-11);bottom:calc(100% + 18px)}
+}
+/* (a 320 px phone's cards on the 8 px inset: at 12 px their copy had 50 px, under "152 MM HE" and "READY · ∞") */
+@media(pointer:coarse) and (max-width:340px){
+ .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){padding-inline:var(--s2)}
 }
 @media(pointer:coarse) and (orientation:portrait){
  .cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}

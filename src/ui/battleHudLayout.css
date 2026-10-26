@@ -117,7 +117,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-dp{left:270px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,30vw,150px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,var(--hud-dp-cap,30vw),150px)!important}
+/* (a tight landscape's plate stops 6 px short of AUTO AIM's word, 2 px wider than its 50 px button at right 158 px: the
+   plate's edge met the word at 568x256, gauntlet r8) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-dp{--hud-dp-cap:min(30vw,100vw - 432px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
 /* Spectating has no driving/weapon actions. Keep just navigation and the
    spectator strip at the floor, leaving chat above it. */
@@ -230,7 +233,9 @@ body.cot-spectating .cot-vehicle-controls{display:none!important;}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
   --objective-accent:var(--accent);left:var(--hud-objective-left,50%);top:var(--hud-objective-top,64px);width:var(--hud-objective-width,278px);
   box-sizing:border-box;min-height:30px;padding:var(--s1) 22px 5px;gap:0 var(--s2);align-items:center;
-  grid-template-columns:18px minmax(0,1fr);grid-template-rows:auto;
+  /* (the glyph and its copy one group on the plate's centre, under the score's centred row: packed to the left they
+     left 55 to 130 px empty on the right at 1024x600 and 900x700, gauntlet r8) */
+  grid-template-columns:18px minmax(0,max-content);grid-template-rows:auto;justify-content:center;
   clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,12px 100%);border:0;border-radius:0;padding-top:6px;
   background:var(--hud-plate);box-shadow:none;white-space:normal;
   font:700 var(--battle-fs-11)/13px var(--hud-font,system-ui);letter-spacing:.02em;
@@ -300,7 +305,8 @@ body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-statu
   body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault']{padding-inline:14px}
   /* (and the hostiles stand on the score plate's enemy side, Horde-style, in the enemy's score's place: Main 254) */
   body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .sc.enemy .fe{display:none}
-  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .sc .bar{visibility:hidden}
+  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .sc .bar{display:none}
+  body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline{column-gap:14px}
   body[data-cot-battle-layout].cot-touch-layout .cot-top.frontline .fh{display:flex}
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
@@ -319,6 +325,17 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .si{width:22px}
 /* a phone's lanes (two side by side under 200 px each): the callsigns keep the room, the silhouettes and the crew mark
    give it up (gauntlet r1: 390x844 read "Com..." beside two 22 px silhouettes) */
 body[data-cot-battle-layout][data-cot-width='phone'] .cot-kill-lane .cot-kf :is(.si:not(.src),.relation){display:none}
+/* (any lane too narrow for two twelve-character callsigns beside the silhouettes does the same: 210 px at 568x256 read
+   "Comman…", gauntlet r8) */
+body[data-cot-battle-layout] .cot-kill-lane{container:kill-lane/inline-size}
+@container kill-lane (max-width:259px){body[data-cot-battle-layout] .cot-kill-lane .cot-kf :is(.si:not(.src),.relation){display:none}}
+/* A lane narrower still stacks each row (battleHudLayout.ts FEED_STACK_W): the killer on its own line, the cause and the
+   victim under it, 38 px a row (two lanes side by side at 390x844 read "Command…", gauntlet r8) */
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 100%;text-align:right}
+/* (and a narrow personal lane gives its rows' inner end 4 px, the screen-edge gutter kept: its victims read "Commande…"
+   at 136 px, 320x568) */
+@container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:var(--battle-fs-11);letter-spacing:0}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 
@@ -396,10 +413,15 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .micro-shot-report
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{overflow:visible}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{max-height:100%;min-height:0;display:flex;flex-direction:column;flex-shrink:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-height:0}
+/* (a dock shorter than the card drops whole rows from the foot, never slices one: the rows wrap into a column past the
+   card's edge, clipped, and the plan gives way first; at 1280x720, 1024x600 and 900x700 the card cut the Damage and Pen
+   rows through their figures, gauntlet r8) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-rows{display:flex;flex-flow:column wrap;align-content:flex-start;min-height:0;overflow:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-rows>*{flex:none;width:100%;box-sizing:border-box}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
   box-sizing:border-box;margin:0;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
   --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-blast-space,0px)),90px);
-  min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1;overflow:visible;
+  min-height:0;height:calc(var(--diagram-size) + 10px);flex-shrink:1000;overflow:visible;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-diag{--diagram-size:clamp(0px,calc(var(--hud-right-height) - 60px - var(--cot-si-blast-space,0px)),90px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box{width:min(100%,var(--diagram-size))!important;height:auto!important;aspect-ratio:1;min-width:0;min-height:0;justify-self:center}
@@ -423,6 +445,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.d{left:36px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.l,
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.r{top:33px}
+  /* (the thumb a size down and the arrows on the rim, clear of it: the 56 px thumb on the 88 px base covered all four
+     arrows but their tips, gauntlet r8) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .knob{width:38px;height:38px;margin:-19px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.u{top:5px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.d{bottom:5px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.l{left:5px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .arrow.r{right:5px}
 }
 
 /* The feed borders touch the screen; text stays clear of phone display cutouts. */
@@ -517,8 +546,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout.cot-spectating .cot-net{top:var(--hud-fps-top,8px);bottom:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net{left:var(--hud-network-left,120px);right:auto;top:calc(var(--hud-objective-bottom,64px) + 8px);width:88px;height:20px;min-height:20px;padding:0;justify-content:center;box-sizing:border-box}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net .ping{display:none}
+/* (AUTO AIM and SCOPE one size, 48 px, between the stick and FIRE: AUTO AIM alone at 44 px read as the lesser of the
+   pair, gauntlet r8) */
 @media (max-width:340px) and (orientation:portrait){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .autoaim{width:44px;height:44px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density][data-cot-orientation] .cot-touch .autoaim{right:164px;width:48px;height:48px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .scope{right:110px;width:48px;height:48px}
 }
 
 /* Keep long status copy readable without consuming the control strip below. */
@@ -602,11 +634,20 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (the tiniest landscapes, up to 340 px tall, where no place clears both: one 24 px row, the alert on one line in the
    detection's place while it shows, the detection under it: touchNoticePlan oneRow, the layout receipt at 568x256 and,
    where the parked chip beside the objective met the alert, 568x320) */
+/* (zh's round-button words 2 px lower: its 13 px glyphs fill their em box, and their tops sat 1 px under the rings against
+   en's 3.5, gauntlet r8) */
+:lang(zh-CN) body.cot-touch-layout .cot-touch .round>.lb{translate:0 2px}
+/* (a one-line alert as tall as the detection's 32 px beside it, one notice height on touch: 28 against 32 read as two
+   kits, gauntlet r8) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
+/* (where the dial comes down over the resting sight, the idle reticle and its readouts stand down under it until the
+   roll-out: the reticle drew through the numeral at 568x256 and 320x568, gauntlet r8) */
+body.cot-touch-layout[data-touch-notices~='dial-over-sight'] :is(.cot-ret,.cot-ret-text){visibility:hidden}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle-rules{top:var(--hud-touch-rules-top);transform:translateX(-50%) scale(var(--hud-touch-rules-scale,1))}
 /* (a touch screen's rules in 12 px: the planner may take them to 92 %, the 11 px floor) */
