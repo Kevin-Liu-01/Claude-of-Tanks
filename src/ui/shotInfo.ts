@@ -423,6 +423,8 @@ const SI_CSS = `
   border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
   text-transform:none;vertical-align:middle;line-height:1;font-weight:700;}
 /* (centred in its chip by the box, not the line: the label sat 2 px under its top edge and 5 over its foot, gauntlet r5) */
+/* (zh's chip a line taller: its 13 px glyphs fill their em box and touched the ring, gauntlet r9) */
+:lang(zh-CN) .cot-si-kv b .q{min-height:18px;}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;

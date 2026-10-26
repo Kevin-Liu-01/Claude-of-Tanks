@@ -134,7 +134,9 @@ html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
  .cot-watch .who .cot-c-sil{display:none}
  .cot-watch .wb{height:34px;min-width:34px;padding:0 var(--s1)}.cot-watch .wb.seat{min-width:44px}
  html[data-watch=ride] body.cot-touch-layout .cot-watch{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 46px)}
- html[data-watch=ride] body.cot-touch-layout :is(.cot-vehicle-controls,.cot-drive){display:none}
+ html[data-watch=ride] body.cot-touch-layout .cot-vehicle-controls{display:none}
+ /* (the dial by its visibility: the touch sheet holds its display with an !important, and it stayed under the bar, r9) */
+ html[data-watch=ride] body.cot-touch-layout .cot-drive{visibility:hidden}
 }
 /* (a portrait phone's climb rail starts under the touch toolbar that hangs under the bar: centred, its top ran under the
    toolbar at 320x568, gauntlet r8) */

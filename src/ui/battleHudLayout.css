@@ -26,6 +26,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
+/* (the open log stands at the dock's foot, on the map, as the report's card does: at the dock's head it floated 184 px
+   over a large map at 1440 and up, gauntlet r9) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-si-log{top:calc(var(--hud-right-top) + var(--hud-right-height));transform:translateY(-100%)}
 /* A narrow mouse window (480-640 px; the HUD follow-up of 2026-10-21): the shot report and the open log stop short of the
    sight's widest ring and its range tag (the scope-vision seat's clearance) instead of reaching over the sight. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-si-cardhost,.cot-si-log){
@@ -188,6 +191,9 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
 .cot-vehicle-controls>button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
 .cot-vehicle-controls .si svg{width:var(--hud-tile-icon,13px)!important;height:var(--hud-tile-icon,13px)!important;}
+/* (a mouse tile under 56 px wide sets its icon at its foot, clear of the key cap in its corner: at 900x700's 48 px tiles
+   the caps ran onto the icons, gauntlet r9) */
+body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button{container-type:inline-size}
 /* every HUD key cap is the kit's (components .cot-c-kbd): its ring, no border, the data face, at the battle's 11 px
    (gauntlet r3: three cap styles on one screen) */
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
@@ -204,6 +210,8 @@ body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button
   grid-template-rows:minmax(0,1fr);column-gap:0;padding:3px;border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
   background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .si{grid-column:2;grid-row:1;align-self:center}
+/* (the narrow tile's icon at its foot and a size down, under its corner's cap: battleHudLayout's container query above) */
+@container (max-width:55px){body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .si{align-self:end;--hud-tile-icon:14px}}
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button .sk{grid-column:1;grid-row:1;justify-self:start;align-self:start}
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button :is(.sl[data-count],.system-status){grid-column:3;grid-row:1;
   justify-self:end;align-self:start;font:700 var(--battle-fs-fig-11)/15px var(--font-data);color:var(--ink-1)}
@@ -333,6 +341,10 @@ body[data-cot-battle-layout] .cot-kill-lane{container:kill-lane/inline-size}
    victim under it, 38 px a row (two lanes side by side at 390x844 read "Command…", gauntlet r8) */
 body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
 body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 100%;text-align:right}
+/* (the victim on the cause's line, held to the line less the cause's glyph and gap: a wrapping row breaks an item at its
+   whole callsign's width before it can shrink, and the victim fell to a third line, the row's 38 px spilling under the
+   toolbar, gauntlet r9) */
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:calc(100% - 20px)}
 /* (and a narrow personal lane gives its rows' inner end 4 px, the screen-edge gutter kept: its victims read "Commande…"
    at 136 px, 320x568) */
 @container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}

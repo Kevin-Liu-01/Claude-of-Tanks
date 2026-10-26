@@ -1330,6 +1330,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     setRows(killRight, killRowsRight);
     const killHeightRight = Math.max(0, killRowsRight * rightPitch - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
+    // A portrait phone's personal lane takes the width to the ammunition column where the global feed's room (its rows'
+    // capacity, never the rows it holds, so nothing moves as kills come and go) leaves its band: beside an empty half its
+    // victims read "Commander…" at 320x568, gauntlet r9.
+    const rightRoomRows = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, MAX_BATTLE_NOTIFICATIONS, rightPitch);
+    const rightRoomBottom = rightAnchor + Math.max(0, rightRoomRows * rightPitch - 3);
+    const leftAlone = touch && width < height && !wideFeed && killRowsLeft > 0
+      && (rightRoomRows === 0 || rightRoomBottom <= leftAnchor - 8 || rightAnchor >= leftKillBottom);
+    const leftLaneWidth = wideFeed ? wideLeftFeed : leftAlone ? Math.floor(Math.min(besideColumn, KILL_LANE_MAX_W)) : sideWidth;
+    if (leftAlone) setBodyVar('--hud-kill-left-width', `${leftLaneWidth}px`);
     const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
     let noticeTop: number, alertTop: number;
@@ -1359,7 +1368,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // network button where that stands there. Its place is written before the touch plan measures it (a chip the last pass
     // left elsewhere had the alert set onto its new seat at 568x320, the layout receipt).
     const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : touch && map ? Math.round(map.left) : 8;
-    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
+    // (2 px under the map under 300 px tall, so the 24 px chip keeps 2 px off the stick's crown: at 4 its border met it
+    // at 568x256, gauntlet r9)
+    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + (height < 300 ? 2 : 4) : height * .5 + 48;
     if (side) {
       chipTop = side.top;
       if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
@@ -1397,7 +1408,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
       // (the kill lanes by the places and heights this pass gives them, while they hold a row)
       const soft = boxes(TOUCH_NOTICE_SOFT);
-      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: wideFeed ? wideLeftFeed : sideWidth, y1: leftAnchor + killHeightLeft });
+      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: leftLaneWidth, y1: leftAnchor + killHeightLeft });
       if (killsRight) soft.push({ x0: width - (wideFeed ? wideFeedWidth : sideWidth), y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
       // (the map apart: through the scope a notice that finds no clear place covers it before the sight's readouts)
       touchPlan = planTouchNotices({ width, height, top, obstacles, soft, labels: boxes(TOUCH_NOTICE_LABELS),
