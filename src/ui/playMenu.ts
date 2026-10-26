@@ -8,7 +8,7 @@ import type { IconId } from './icons/icon.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
-import { segmented, setRoving, wireRoving } from './components/components.ts';
+import { segmented, setRoving, setToggle, toggle, wireRoving } from './components/components.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
@@ -291,9 +291,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
-.cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.cot-play .brain-allies input{width:14px;height:14px;min-height:0;margin:0;padding:0;box-shadow:none;accent-color:var(--accent)}
-.cot-play .brain-allies input:disabled+span{opacity:.5}
+.cot-play .brain-allies{display:flex;align-items:center;gap:var(--s3);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
+.cot-play .brain-allies__label{cursor:pointer}
+.cot-play .brain-allies.is-disabled .brain-allies__label{color:var(--ink-4);cursor:default}
 .cot-play .operation-picker{display:grid;gap:var(--s1);margin-top:var(--s2)}
 
 /* the campaign's operations */
@@ -836,7 +836,8 @@ export function createPlayMenu({
       <div class="brain-row">
         ${segmented({ label: t('playMenu.brain.heading'), value: 'classic', className: 'brain-seg', options: [
           { value: 'classic', label: t('playMenu.brain.classic') }, { value: 'jev', label: t('playMenu.brain.jev') }] })}
-        <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
+        <div class="brain-allies"><span class="brain-allies__label" aria-hidden="true">${t('playMenu.brain.allies')}</span>${toggle({
+          label: t('playMenu.brain.allies'), checked: false, onWord: t('settings.on'), offWord: t('settings.off'), attrs: { 'data-brain-allies': '' } })}</div>
       </div>
       <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
     </section>
@@ -1361,25 +1362,29 @@ export function createPlayMenu({
   const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
   // what Jev is, for a pointer, is the option's hover tip; screen readers keep the note
   requiredElement<HTMLElement>(brainSeg, '[data-value="jev"]').dataset.tip = t('playMenu.brain.note');
-  const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
+  const brainAllies = requiredElement<HTMLButtonElement>(brainSection, '[data-brain-allies]');
+  const alliesRow = requiredElement<HTMLElement>(brainSection, '.brain-allies');
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
     // rooms keep the classic brain on the host for now (docs/JEV-COMMANDER.md): the setting is solo-only
     brainSection.hidden = fromLobby;
     const settings = readBrainSettings();
     setRoving(brainSeg, settings.opponent);
-    brainAllies.checked = settings.opponent === 'jev' && settings.allies;
+    setToggle(brainAllies, settings.opponent === 'jev' && settings.allies);
     brainAllies.disabled = settings.opponent !== 'jev';
+    alliesRow.classList.toggle('is-disabled', brainAllies.disabled);
     brainNote.hidden = settings.opponent !== 'jev';
   }
   wireRoving(brainSeg, (opponent) => {
     writeBrainSettings({ opponent });
     renderBrain(!!state);
   });
-  brainAllies.addEventListener('change', () => {
-    writeBrainSettings({ allies: brainAllies.checked });
+  brainAllies.addEventListener('click', () => {
+    writeBrainSettings({ allies: brainAllies.getAttribute('aria-checked') !== 'true' });
     renderBrain(!!state);
   });
+  // the switch's words are its own name: a press on them presses it, as a label's would
+  requiredElement<HTMLElement>(alliesRow, '.brain-allies__label').addEventListener('click', () => brainAllies.click());
 
   /** Choose a battle mode: the room's own change for its host while it waits; the next room's or solo battle's before. */
   function chooseMode(next: string): void {
