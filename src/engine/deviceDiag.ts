@@ -759,6 +759,24 @@ function sceneProbeCopyPass(): SceneProbeCopyPass {
   return sceneProbeCopy;
 }
 
+/**
+ * (battle-spikes-253) The probe's readback copy program compiled ahead, against a render target as the probe draws it (an
+ * RGBA8 target: the same key). nav-perf's program log: the MP watchdog's 1.8 s task made this one program and waited on its
+ * link behind the GPU process's queue. Called with the entry's compile; nothing is drawn.
+ */
+export function warmSceneProbePrograms(renderer: THREE.WebGLRenderer): void {
+  const target = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false });
+  const previous = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  try {
+    const pass = sceneProbeCopyPass();
+    renderer.setRenderTarget(target);
+    renderer.compile(pass.scene, pass.camera);
+  } catch { /* the probe compiles it at its draw */ } finally {
+    try { renderer.setRenderTarget(previous, face, mip); } catch { /* restored by the next frame */ }
+    target.dispose();
+  }
+}
+
 function createSceneProbeTargets(width: number, height: number): SceneProbeTargets {
   let production: THREE.WebGLRenderTarget | null | undefined = null;
   try { production = sceneProbeTargetSource?.(); } catch { production = null; }

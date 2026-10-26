@@ -62,7 +62,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
+  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow, warmSceneProbePrograms,
   battleProbeRadianceScale, setSceneProbeTargetSource, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
@@ -747,6 +747,23 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 // instance before any consumer can emit an effect. The typed owner keeps code
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
+/**
+ * (battle-spikes-253) The scene's visible lights at a named moment (the MP entry's compile, its watchdog): three keys every
+ * program on the counts of visible lights by kind, and nav-perf's program log found the depth programs compiled with 7
+ * point lights and drawn with 8. Read as window.__LIGHT_CENSUS[label]; diagnostics only, a few hundred objects walked.
+ */
+function recordLightCensus(label: string): void {
+  if (typeof window === 'undefined') return;
+  const counts: Record<string, number> = {};
+  const lights: string[] = [];
+  scene.traverseVisible((object) => {
+    const light = object as THREE.Light;
+    if (!light.isLight) return;
+    counts[light.type] = (counts[light.type] ?? 0) + 1;
+    if (lights.length < 40) lights.push(`${light.type}:${light.name || '?'}<${light.parent?.name || light.parent?.type || '-'}`);
+  });
+  (window.__LIGHT_CENSUS ??= {})[label] = { counts, lights };
+}
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
@@ -2869,6 +2886,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // preparation compiles them: patched after (the opening effects' warm), every structure bucket re-keyed and
             // the black watchdog's render linked twelve masked variants synchronously (nav-perf's room entry, 1.4 s)
             fxRuntimeAccess.current?.prepareWorldMaterials();
+            recordLightCensus('compile');
+            // (battle-spikes-253) and the black watchdog's readback copy, linked with the rest rather than at the watchdog
+            warmSceneProbePrograms(renderer);
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
@@ -2910,9 +2930,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             setGarageSpots(active);
             setGarageSunTrim(active);
           },
-          runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
+          runBlackWatchdog: (signal?: AbortSignal) => (recordLightCensus('watchdog'), runSceneBlackWatchdogAsync(
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
-          ),
+          )),
         },
       activation: {
         game,

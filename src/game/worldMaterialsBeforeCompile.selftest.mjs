@@ -16,6 +16,9 @@ assert.ok(compileAt > 0);
 const compileBody = main.slice(compileAt, compileAt + 2400);
 const patchAt = compileBody.indexOf('fxRuntimeAccess.current?.prepareWorldMaterials()');
 assert.ok(patchAt > 0 && patchAt < compileBody.indexOf('forwardProgramWarm.prepareSceneSteps('), 'the MP compile patches the world first');
+// (and the black watchdog's readback copy goes with the compile: its link at the watchdog waited behind the GPU queue)
+const probeAt = compileBody.indexOf('warmSceneProbePrograms(renderer)');
+assert.ok(probeAt > 0 && probeAt < compileBody.indexOf('forwardProgramWarm.prepareSceneSteps('), 'the MP compile warms the probe copy');
 
 // the solo combat warm: before its first compileAll (the tanks', then the world's)
 const warm = read('./battleWarmRuntime.ts');
@@ -24,4 +27,4 @@ const body = warm.slice(hidden, warm.indexOf('\nfunction', hidden + 10));
 const solo = body.indexOf('context.fx.prepareWorldMaterials?.()');
 assert.ok(solo > 0 && solo < body.indexOf('yield* compileAll(entity.visual.root)') && solo < body.indexOf('yield* compileAll(world.group)'),
   'the solo combat warm patches the world before it compiles it');
-console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it');
+console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it; the probe copy warms with the MP compile');
