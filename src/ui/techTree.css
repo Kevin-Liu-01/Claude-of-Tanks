@@ -25,27 +25,24 @@
 .cot-tt .tt-nation{display:flex;align-items:center;gap:var(--s4);min-width:var(--tt-nation-w,0)}
 .cot-tt .tt-flag{display:inline-flex;line-height:0}
 .cot-tt .tt-flag .cot-c-flag{width:calc(48px * var(--tt-ui));height:calc(36px * var(--tt-ui));border-radius:var(--r1)}
-.cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-display);letter-spacing:var(--track-display);
+.cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-ui);letter-spacing:var(--track-display);
   white-space:nowrap}
-/* The nation picker: one slate plate (the kit's single choice, like the zoom plate), the open nation lit on it. Its
-   ring is inset, so the scroll fade below never clips it; the plate stands as tall as the zoom plate's ring. */
-.cot-tt .tt-rail{display:flex;align-items:center;gap:2px;min-width:0;padding:2px;border-radius:var(--r2);
-  background:var(--surface-raised);box-shadow:var(--ring-2);overflow-x:auto;scrollbar-width:none;margin-right:auto}
+/* The nation picker: the kit's single choice, the same raised plate as the zoom plate beside it (its highlight, ring
+   and drop), as wide as its flags: the header's free space stays outside it. A picker wider than its room scrolls, and
+   its flags fade into the plate at the edges they scroll toward (overlays, so the plate's own edge stays whole). */
+.cot-tt .tt-rail{--tt-rail-fade:48px;display:flex;align-items:center;gap:2px;flex:0 1 auto;min-width:0;max-width:100%;padding:2px;
+  margin:0 auto 0 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
+  scrollbar-width:none}
 .cot-tt .tt-rail::-webkit-scrollbar{display:none}
-/* A rail wider than its space fades at the edges it scrolls toward (over one flag's width; half that on phones). */
-.cot-tt .tt-rail{--tt-rail-fade:48px}
-.cot-tt .tt-rail.is-more-right{-webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent)}
-.cot-tt .tt-rail.is-more-left{-webkit-mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
-  mask-image:linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent)}
-.cot-tt .tt-rail.is-more-left.is-more-right{
-  -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent),
-    linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent),
-    linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
-  -webkit-mask-composite:source-in;mask-composite:intersect}
+.cot-tt .tt-rail::before,.cot-tt .tt-rail::after{content:'';position:sticky;z-index:var(--z-lift);flex:none;align-self:stretch;
+  width:var(--tt-rail-fade);pointer-events:none;opacity:0}
+.cot-tt .tt-rail::before{left:0;margin-right:calc(-1 * var(--tt-rail-fade) - 2px);
+  background:linear-gradient(270deg,transparent,var(--surface-raised))}
+.cot-tt .tt-rail::after{right:0;margin-left:calc(-1 * var(--tt-rail-fade) - 2px);
+  background:linear-gradient(90deg,transparent,var(--surface-raised))}
+.cot-tt .tt-rail.is-more-left::before,.cot-tt .tt-rail.is-more-right::after{opacity:1}
 .cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:calc(44px * var(--tt-ui));
-  height:calc(40px * var(--tt-ui) - 4px);padding:0;border:0;border-radius:var(--r1);background:transparent;
+  height:calc(40px * var(--tt-ui) - 6px);padding:0;border:0;border-radius:var(--r1);background:transparent;
   cursor:pointer;opacity:.55;transition:opacity var(--dur-fast),background var(--dur-fast)}
 .cot-tt .tt-rail-flag .cot-c-flag{width:calc(26px * var(--tt-ui));height:calc(19px * var(--tt-ui))}
 .cot-tt .tt-rail-flag:hover{opacity:.9;background:var(--fill-scale)}
@@ -87,12 +84,11 @@
 .cot-tt .tt-numeral{position:absolute;top:var(--s1);width:var(--tt-col);text-align:center;
   font:700 calc(var(--fs-24) * var(--tt-ui))/1.25 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-3);
   transition:color var(--dur-fast)}
-.cot-tt .tt-numeral.is-on{color:var(--ink-1)}
 .cot-tt .tt-wires{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
-.cot-tt .tt-wires path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:butt}
+.cot-tt .tt-wires path{fill:none;stroke-width:calc(2px * var(--tt-ui));stroke-linejoin:round;stroke-linecap:butt}
 .cot-tt .tt-wires marker path{stroke:none}
 .cot-tt .tt-wires path.is-base{stroke:var(--ink-4)}
-.cot-tt .tt-wires path.is-sel{stroke:var(--accent);stroke-width:2.5}
+.cot-tt .tt-wires path.is-sel{stroke:var(--accent);stroke-width:calc(2.5px * var(--tt-ui))}
 .cot-tt .tt-wires marker.is-base path{fill:var(--ink-4)}
 .cot-tt .tt-wires marker.is-sel path{fill:var(--accent)}
 /* The special lane's rule spans the bands, edge to edge: its label opens it, inset like a card's name, and the line
@@ -183,7 +179,7 @@
   .cot-tt{--tt-gutter:var(--s5)}
   .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s2);padding:var(--s3) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{margin-right:auto}
-  .cot-tt .tt-rail{order:1;flex-basis:100%;margin-right:0}
+  .cot-tt .tt-rail{order:1;margin-right:auto}
   /* the name and Select over the two stat columns: Select takes the second column, its top on the render's */
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);grid-template-areas:'art id act' 'art stats stats';
     align-items:start;gap:var(--s3) var(--s5);padding:var(--tt-gutter)}
@@ -203,9 +199,9 @@
     align-items:center;gap:var(--s2) var(--s4);padding:var(--s3) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{grid-area:nation;gap:var(--s3)}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
-  .cot-tt .tt-title{font-size:var(--fs-24)}
+  .cot-tt .tt-title{font-size:var(--fs-20)}
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
-  .cot-tt .tt-rail{grid-area:rail;--tt-rail-fade:24px}
+  .cot-tt .tt-rail{grid-area:rail;justify-self:start;margin:0 1px;--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
     padding:var(--s3) var(--tt-gutter) var(--s4)}
@@ -222,8 +218,9 @@
   .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;padding:var(--s2) var(--tt-gutter)}
   .cot-tt .tt-nation{margin-right:0}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
-  .cot-tt .tt-title{font-size:var(--fs-28)}
-  .cot-tt .tt-rail{order:0;flex:1 1 0;margin-right:0}
+  .cot-tt .tt-title{font-size:var(--fs-24)}
+  .cot-tt .tt-rail{order:0;margin-right:0}
+  .cot-tt .tt-zoom{margin-left:auto}
   /* every nation fits the row beside the title (a touch screen keeps its 44 px flags, below) */
   .cot-tt .tt-rail-flag{width:36px}
   .cot-tt .tt-stage{grid-column:1;grid-row:2}
@@ -234,7 +231,7 @@
   .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{flex:1 0 calc(var(--tt-detail-art-w) * .52);width:100%;height:auto;
     max-height:calc(280px - 2 * var(--tt-gutter))}
-  .cot-tt .tt-detail-name{font-size:var(--fs-20);line-height:1.2}
+  .cot-tt .tt-detail-name{font-size:var(--fs-28);line-height:1.15}
   /* the stats start on the panel's content edge (not the tablet's foot alignment) */
   .cot-tt .tt-stats{align-self:stretch;grid-template-columns:minmax(0,1fr)}
   /* Select stays at the panel's foot while the panel scrolls, on the panel's inset, and the stats it hides fade out
@@ -252,6 +249,8 @@
     grid-template-areas:'art id' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
   .cot-tt .tt-detail-id{grid-area:id;align-self:center;column-gap:var(--s2)}
   .cot-tt .tt-detail-art{grid-area:art;min-height:0;height:calc(var(--tt-detail-art-w) * .32)}
+  .cot-tt .tt-title{font-size:var(--fs-20)}
+  .cot-tt .tt-detail-name{font-size:var(--fs-24)}
   .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
   .cot-tt .tt-act{grid-area:act}
 }
@@ -261,7 +260,7 @@
   /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the room */
   .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
   /* a 44 px button on its 2 px pad, plus the plate's 1 px ring */
-  .cot-tt .tt-rail-flag{width:44px;height:46px}
+  .cot-tt .tt-rail-flag{width:44px;height:44px}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-tt .tt-node:hover{transform:none}
