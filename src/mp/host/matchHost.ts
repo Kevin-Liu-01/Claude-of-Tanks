@@ -89,6 +89,8 @@ export interface MatchHost {
    */
   setPaused(paused: boolean): void;
   readonly paused: boolean;
+  /** Hold or release this host's solo match's countdown (HostBootConfig.holdCountdown): the page releases it at its reveal. */
+  holdCountdown(held: boolean): void;
   stats(): MatchHostStats;
   /** The room removed `playerId` mid-match (kick or leave): drop its peer link and refuse its seat token. */
   revokeSeat(playerId: string): void;
@@ -192,6 +194,8 @@ export function createMatchHost({
         onLog('info', 'host live', { tick: message.tick, entities: message.entities, resumed: message.resumed });
         // what the host's authority steps on; a failed load of the kernels is reported, never silent
         if (message.kernels) reportSimKernels('host', message.kernels);
+        // the boot's timings beside the entry's own trace (window.__NETWORK_LOAD), for the probes
+        if (message.timings) (globalThis as { __HOST_BOOT?: unknown }).__HOST_BOOT = message.timings;
         return;
       case 'boot_failed':
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
@@ -341,6 +345,7 @@ export function createMatchHost({
     pump,
     requestStats: () => post({ type: 'stats' }),
     setPaused: (next) => post({ type: 'pause', paused: next }),
+    holdCountdown: (held) => post({ type: 'countdown', held }),
     get paused() { return paused; },
     revokeSeat(playerId) {
       post({ type: 'seat_revoke', playerId });
