@@ -1290,6 +1290,9 @@ function* warmDestroyedRosterVariantsSteps(
   return undefined;
 }
 
+/** (battle-spikes-253) The slices a cooperative combat warm waits for pending links before its real-scene render. */
+const COOPERATIVE_LINK_SLICES = 150;
+
 function* compileHiddenVariantsSteps(
   context: CombatWarmRuntimeContext,
   detail: Record<string, RuntimeValue> | null = null,
@@ -1410,8 +1413,12 @@ function* compileHiddenVariantsSteps(
   if (world?.group) {
     try { yield* compileAll(world.group); } catch (_) { assertCurrent(); /* warm only */ }
     yield;
-    for (const _ of forwardProgramWarm.linkerBreathingSlices(40)) {
-      yield;
+    // (battle-spikes-253) a cooperative warm gives the links the strict preparation left (its compile retried and deferred
+    // under load) frames to finish in before the real-scene render below would link them synchronously (nav-perf's
+    // profiled room at load 31-34: 991 ms of getProgramParameter in that render); it returns once every program is linked.
+    // Each of its slices a real yield (the checkpoint: a budget yielder would run a poll's worth of slices in one task)
+    for (const _ of forwardProgramWarm.linkerBreathingSlices(execution.cooperative ? COOPERATIVE_LINK_SLICES : 40)) {
+      if (execution.cooperative) yield COMBAT_WARM_PROGRAM_CHECKPOINT; else yield;
       assertCurrent();
     }
   }
