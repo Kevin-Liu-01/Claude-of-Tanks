@@ -151,7 +151,8 @@ for (const gunSide of ['left', 'right']) {
     'the selected card\'s layers load eagerly (a lazy LCP waits for layout); the rest stay lazy until drainHeroCards');
   for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
     const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
-    assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
+    // (the Gallery's grid also loads its class glyphs in the same batch: owner 10-26, b15a149f64)
+    assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)(?:, import\('[^']+'\))*\]\)/, `${surface} loads the card module with its stylesheet`);
     assert.doesNotMatch(source, /^import (?!type )[^;]*heroCard\.ts['"];/m, `${surface} never imports the card module statically (type imports are erased)`);
   }
   assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');

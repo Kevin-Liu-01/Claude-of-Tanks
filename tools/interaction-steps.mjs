@@ -16,6 +16,10 @@
 /** Garage controls (desktop, docked). */
 const DEPLOY = '[data-nav=deploy], .cot-battle-mode';
 const DEPLOY_OPEN = `shown('#cot-battle-menu.open')`;
+/** The every-paint sheet's swatches: the camo picker's options (garage-camo, item/brand-ui-garage-redesign-245), or the
+ *  pre-picker cards until that branch lands here (then the .cot-camo-card halves go). */
+const CAMO = '[data-picker="garage-camo"] .cot-c-picker__opt';
+const CAMO_OLD = '.cot-camo-card';
 
 export const STEP_PATHS = Object.freeze([
   {
@@ -36,10 +40,13 @@ export const STEP_PATHS = Object.freeze([
     id: 'wear-camo',
     doc: 'game',
     steps: [
-      { name: 'every-paint', press: '.cot-lt-paint-all', shown: `shown('.cot-camo-card')` },
-      { name: 'paint', press: '.cot-camo-card:not(.sel)', index: 2, shown: `document.querySelector('[data-click-target]')?.classList.contains('sel')` },
+      { name: 'every-paint', press: '.cot-lt-paint-all', shown: `shown('${CAMO}') || shown('${CAMO_OLD}')` },
+      // a named paint past Auto (the picker's first swatch)
+      { name: 'paint', press: `${CAMO}[aria-selected="false"]:not([aria-disabled="true"]), ${CAMO_OLD}:not(.sel)`, index: 2,
+        shown: `(() => { const el = document.querySelector('[data-click-target]');
+          return !!el && (el.getAttribute('aria-selected') === 'true' || el.classList.contains('sel')); })()` },
     ],
-    done: `!!document.querySelector('.cot-camo-card.sel')`,
+    done: `!!document.querySelector('${CAMO}[aria-selected="true"], ${CAMO_OLD}.sel')`,
     reset: 'escape',
   },
   {

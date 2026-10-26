@@ -58,6 +58,7 @@ export function createCustomCamoStudio({
     size: 'wide',
     onOpen: () => button()?.setAttribute('aria-expanded', 'true'),
     onClose: () => button()?.setAttribute('aria-expanded', 'false'),
+    unsaved: () => JSON.stringify(draft) !== JSON.stringify(savedDraft()),
   });
   const root = document.createElement('div');
   root.className = 'cot-camo-lab';
@@ -346,7 +347,7 @@ export function createCustomCamoStudio({
 
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.className = 'cot-c-btn cot-c-btn--36';
+  cancel.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--secondary';
   cancel.dataset.uiSound = 'back';
   cancel.textContent = t('customCamo.close');
   cancel.addEventListener('click', () => modal.close());
@@ -410,11 +411,15 @@ export function createCustomCamoStudio({
     }
   });
 
-  const syncSelected = () => {
+  /** The selected slot's pattern as the editor opens it (a stored pattern is drawn on from no strokes). */
+  function savedDraft(): CustomCamoDraft {
     const id = selectedId();
-    if (!id) return;
-    draft = normalized(camo.getCustom(id));
-    if (draft.style !== 'drawn') draft = normalized({ ...draft, style: 'drawn', strokes: [] });
+    const saved = normalized(id ? camo.getCustom(id) : undefined);
+    return saved.style === 'drawn' ? saved : normalized({ ...saved, style: 'drawn', strokes: [] });
+  }
+  const syncSelected = () => {
+    if (!selectedId()) return;
+    draft = savedDraft();
     syncControls();
   };
 

@@ -101,6 +101,7 @@ import {
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -1072,9 +1073,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // a free sortie on a local host (soloAuthorityFor) enters through the network composition (mp/session/soloHostEntry.ts):
-  // the intent warms it and prepares the battle's host thread (its world, the player's anatomy, the bots' ground); the
-  // page's own solo stays warm beside it for the battles it keeps
+  // a free sortie on a local host (soloAuthorityFor: only ?soloAuthority=host since 256) enters through the network
+  // composition (mp/session/soloHostEntry.ts): the intent warms it and prepares the battle's host thread (its world, the
+  // player's anatomy, the bots' ground). By default the intent warms the page's own solo alone: no host Worker, no session
   preloadSoloBattle: () => (soloAuthorityFor('standard').authority === 'host'
     ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
@@ -2070,12 +2071,27 @@ bus.on('ui:debugHud', (payload) => {
 const armorAimOverlay = createArmorAimOverlayAccess();
 // transitions-249: wait, between tasks, until the renderer's queued program links are in, so the draw that binds them
 // does not wait inside one task. Bounded: a link still pending at the deadline waits at its draw, as before.
+// (battle-spikes-253) One completion query a poll, and only once the GPU caught up to the previous poll (gpuCatchUp.ts):
+// asking every pending program each poll was a synchronous round trip apiece behind the GPU's queue. Linked programs
+// answer from three's cache; a last full check covers a program the live array dropped under the cursor.
 const awaitRendererProgramLinks = async (yieldForBudget: (force?: boolean) => Promise<void> | undefined): Promise<void> => {
   const deadline = performance.now() + 12_000;
   const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
-  while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
-    await yieldForBudget(true);
-  }
+  if (!programs) return;
+  const gate = createGpuCatchUpGate(renderer.getContext());
+  let cursor = 0;
+  try {
+    while (performance.now() < deadline) {
+      if (gate.caughtUp()) {
+        while (cursor < programs.length && programs[cursor].isReady?.() !== false) cursor++;
+        if (cursor >= programs.length) {
+          if (programs.every((program) => program.isReady?.() !== false)) return;
+          cursor = 0;
+        }
+      }
+      await yieldForBudget(true);
+    }
+  } finally { gate.dispose(); }
 };
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
@@ -2093,6 +2109,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   drawWarm: (root) => {
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
+  // (battle-spikes-253) a stream's deferred draws: sixteen meshes a step, so no one task first-binds a whole tank's buffers
+  drawWarmSteps: (root) => createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: 16 }),
   // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
   // linked between tasks
   awaitProgramLinks: awaitRendererProgramLinks,
@@ -2898,6 +2916,16 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                   casterBatchMs.push(batch.elapsedMs);
                   casterCount += batch.casterCount;
                 },
+                // (battle-spikes-253) the actors this view holds hidden (unspotted): their depth programs warm too, inside
+                // the batches only (shadowPrime.ts hiddenRoots), never in the final maps
+                hiddenRoots: () => {
+                  const roots: THREE.Object3D[] = [];
+                  for (const entity of game.tankById.values()) {
+                    const root = entity.visual?.root;
+                    if (root && !root.visible) roots.push(root);
+                  }
+                  return roots;
+                },
               },
             });
             // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
@@ -2947,6 +2975,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
             // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
             // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            // (battle-spikes-253) and the world's GPU simulations (ocean, ripples, ground pressure), whose passes run only on a
+            // frame that advances time: their links ran in the first live frame (nav-perf's root-u room, 353 ms)
+            try { currentWorld()?.warmSimulationPrograms?.(); } catch { /* the first live pass links them */ }
             try {
               const world = currentWorld();
               if (world?.warmImpostorsAsync) {
@@ -3044,11 +3075,11 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 let lastEntryWatched = false;
 
 /**
- * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5, the default from 255): a free sortie in a versus
- * battle mode plays on a local host, its authority in the browser host's Worker (mp/session/soloHostEntry.ts). The page
- * keeps its own simulation for the campaign, a watched battle, the practice and co-op modes (rooms host neither), the
- * mobile tier (it never hosts, MULTIPLAYER-V2 §13.3), a browser without Workers, and `?soloAuthority=page`;
- * `?soloAuthority=host` forces the host for any free versus sortie (the probes).
+ * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5). Every solo battle is the page's own simulation by
+ * default (2026-10-26, release 256: the owner ruled that a solo game against bots must not create a multiplayer session).
+ * Only `?soloAuthority=host` puts a free sortie in a versus battle mode on a local host, its authority in the browser
+ * host's Worker (mp/session/soloHostEntry.ts), pending the Rust lane's rework; the campaign, a watched battle, the
+ * practice and co-op modes (rooms host neither) and a browser without Workers stay on the page even then.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|page)\b/.exec(location.search)?.[1] ?? null;
 function soloAuthorityFor(
@@ -3062,7 +3093,7 @@ function soloAuthorityFor(
   if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
-  return getDeviceTier() === 'mobile' ? page('mobile') : { authority: 'host', reason: 'default' };
+  return page('default');
 }
 
 /** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
@@ -3137,7 +3168,7 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // a free sortie on a local host by default (soloAuthorityFor)
+  // the page's own simulation by default; a free sortie on a local host only under ?soloAuthority=host (soloAuthorityFor)
   const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
   noteSoloAuthority(authority);
   if (authority.authority === 'host') {
@@ -3994,6 +4025,8 @@ const studioAccess = createStudioAccess({
       const budget = createFrameBudgetYielder(8);
       return deploymentShadowWarm.prime(() => budget(false));
     },
+    // (2026-10-26) the renderer's queued program links, waited for between frames
+    awaitProgramLinks: () => awaitRendererProgramLinks(() => nextFrame()),
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

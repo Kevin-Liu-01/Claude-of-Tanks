@@ -222,13 +222,21 @@ export function createMatchHost({
         entry.link.close(message.reason, message.detail);
         return;
       }
-      case 'report':
+      case 'report': {
         lastReport = message.report;
         reports++;
+        // (battle-spikes-253) Once this seat stopped hosting (a leave, a migration away, a Garage return), the core's
+        // drain still posts the stopped actor's last heartbeat. It reaches the room after the departure the session sent
+        // on the same stop (declineHost, or the host_changed that stopped it), so the room refuses it: host_only where
+        // another seat took the match, invalid_command where it ended. Two warnings on every room leave (nav-perf's
+        // census). Only a report that carries the end is still the room's business after a stop.
+        const draining = state === 'stopped' || state === 'failed';
+        if (draining && message.report.phase !== 'ended') return;
         void Promise.resolve(room.reportMatch(message.report)).catch((error: unknown) => {
-          onLog('warn', 'match report refused', { error: error instanceof Error ? error.message : String(error) });
+          onLog(draining ? 'info' : 'warn', 'match report refused', { error: error instanceof Error ? error.message : String(error) });
         });
         return;
+      }
       case 'stats':
         coreStats = message.stats;
         return;

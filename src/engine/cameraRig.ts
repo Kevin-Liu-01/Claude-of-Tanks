@@ -565,12 +565,13 @@ export function createCameraRig(
 
   const _cineLook = new THREE.Vector3();
 
-  // --- cinematic letterbox (rig-owned DOM) ----------------------------------
-  // The flyby must READ as an authored cinematic, not a camera bug: two black
-  // bars own the frame while cine is active. Created lazily (headless-safe),
-  // torn between by every path that cancels the cinematic. main.ts
-  // additionally veils the battle HUD while rig.cinematicActive (see the
-  // cinematicActive getter note).
+  // --- cinematic grade (rig-owned DOM) --------------------------------------
+  // The flyby must READ as an authored cinematic, not a camera bug: a soft grade
+  // darkens the frame's head and foot while cine is active, the scene to every
+  // edge (owner 2026-10-26, no black bars: two 11vh bands of black had owned the
+  // frame). Created lazily (headless-safe), torn between by every path that
+  // cancels the cinematic. main.ts additionally veils the battle HUD while
+  // rig.cinematicActive (see the cinematicActive getter note).
   let letterboxEl: HTMLDivElement | null = null;
   function setLetterbox(on: boolean): void {
     if (typeof document === 'undefined') return;
@@ -579,13 +580,9 @@ export function createCameraRig(
       letterboxEl = document.createElement('div');
       letterboxEl.className = 'cot-cine-letterbox';
       letterboxEl.style.cssText =
-        'position:fixed;inset:0;z-index:59;pointer-events:none;display:none;';
-      for (const side of ['top:0', 'bottom:0']) {
-        const bar = document.createElement('div');
-        bar.style.cssText =
-          `position:absolute;left:0;right:0;${side};height:11vh;background:#000;`;
-        letterboxEl.appendChild(bar);
-      }
+        'position:fixed;inset:0;z-index:59;pointer-events:none;display:none;'
+        + 'background:linear-gradient(oklch(from var(--surface-scene) l c h / .55),transparent 18vh,'
+        + 'transparent calc(100% - 18vh),oklch(from var(--surface-scene) l c h / .55));';
       document.body.appendChild(letterboxEl);
     }
     letterboxEl.style.display = on ? 'block' : 'none';

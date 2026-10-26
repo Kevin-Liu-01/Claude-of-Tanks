@@ -16,7 +16,7 @@
  * Bot ids stay `bot-<team>-<n>` / `mode-<team>-<n>`, never a vehicle id; duplicate picks are valid.
  */
 import { NATION_INDEX } from '../../sim/nationIndex.generated.ts';
-import { isWaveMode, matchRulesetFor, TEAM_NATIONS_RULES, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
+import { isWaveMode, matchRulesetFor, seatsByRole, TEAM_NATIONS_RULES, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { campaignOperationCountry, ERA_NEIGHBOURS, isCountryId, type CountryId } from '../../sim/countries.ts';
 import { pickNationalSides, type NationNote, type NationRow } from '../../sim/teamNations.ts';
@@ -142,7 +142,7 @@ export function planRoomBots<S extends PlanSeat>(
   const players = seats.filter((seat) => seat.team !== 'spectator');
   bots.length = 0;
   const wave = isWaveMode(mode);
-  const asymmetric = !!(rules.juggernaut || rules.infection || rules.aerial === 'gunship');
+  const asymmetric = seatsByRole(rules);
   // who sits where, and the bot seats per side
   const slots: { team: 'alpha' | 'bravo'; playerId: string; name: string }[] = [];
   if (asymmetric) {

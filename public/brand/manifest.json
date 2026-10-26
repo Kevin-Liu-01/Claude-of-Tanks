@@ -5,7 +5,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
  "generatedBy": "node tools/brand-marks.mjs (src/ui/brandMark.ts, src/ui/brandMarkMotion.ts)",
- "count": 63,
+ "count": 65,
  "items": [
   {
    "file": "mark.svg",
@@ -49,7 +49,15 @@
   },
   {
    "file": "favicon.svg",
-   "use": "browser tab"
+   "use": "browser tab (32 cell master)"
+  },
+  {
+   "file": "favicon-16.svg",
+   "use": "browser tab at 16 px (16 cell master)"
+  },
+  {
+   "file": "favicon-mark.svg",
+   "use": "the mark on the tab tile (48 and 192 px)"
   },
   {
    "file": "app-icon.svg",
@@ -93,7 +101,7 @@
   },
   {
    "file": "favicon-16.png",
-   "from": "favicon.svg",
+   "from": "favicon-16.svg",
    "size": "16x16"
   },
   {
@@ -103,12 +111,12 @@
   },
   {
    "file": "favicon-48.png",
-   "from": "favicon.svg",
+   "from": "favicon-mark.svg",
    "size": "48x48"
   },
   {
    "file": "favicon-192.png",
-   "from": "favicon.svg",
+   "from": "favicon-mark.svg",
    "size": "192x192"
   },
   {

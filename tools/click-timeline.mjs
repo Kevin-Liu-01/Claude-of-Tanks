@@ -402,10 +402,15 @@ const CANVAS_CHECK = `(() => {
     checked++;
     const box = canvas.getBoundingClientRect();
     const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
-    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    // (canvas-ui, 2026-10-25) the store is sized to the element's own layout box (clientWidth/Height, what uiCanvas
+    // measures), never a transform's: a collapsing touch tray scales its slots to .94 while they fade out
+    const layoutW = canvas.clientWidth, layoutH = canvas.clientHeight;
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [layoutW, layoutH], dpr };
     if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
     if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
-    const wantW = box.width * scale, wantH = box.height * scale;
+    // a canvas at opacity 0 is still composited (a fade-in needs its store): neither held nor sized against
+    if (canvas.checkVisibility && !canvas.checkVisibility({ checkOpacity: true })) continue;
+    const wantW = layoutW * scale, wantH = layoutH * scale;
     if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
     else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
   }
@@ -532,7 +537,7 @@ const ACCESS_SURFACES = [
   { id: 'record', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-record-trigger'), ctx);
     await waitFor(page, `shown('#cot-record-modal')`, 20000); } },
   { id: 'paint', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-lt-paint-all'), ctx);
-    await waitFor(page, `shown('.cot-camo-card')`, 15000); } },
+    await waitFor(page, `shown('[data-picker="garage-camo"] .cot-c-picker__opt') || shown('.cot-camo-card')`, 15000); } },
   { id: 'equipment', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.eqslot[data-slot]'), ctx);
     await waitFor(page, `shown('.cot-eqpick .cot-c-picker__opt')`, 15000); } },
   { id: 'rooms', scope: '.cot-play',
@@ -627,7 +632,7 @@ export const PATHS = [
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', 0), ctx).catch(() => {});
       await closeDeploy(page, ctx); } },
   { id: 'deploy-sides', doc: 'game', reps: 4, setup: openDeploy,
-    press: (page, i) => target(page, `#cot-battle-menu .cot-sides-choice[data-sides="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
+    press: (page, i) => target(page, `#cot-battle-menu .cot-battle-sides .cot-c-seg__opt[data-value="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
   { id: 'deploy-time', doc: 'game', reps: 4, setup: openDeploy,
     press: (page, i) => target(page, '#cot-battle-menu .cot-time-choice', Math.floor(i / 2)), teardown: closeDeploy },
   { id: 'deploy-tab', doc: 'game', reps: 4, setup: openDeploy,

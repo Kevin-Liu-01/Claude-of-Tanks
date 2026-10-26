@@ -360,4 +360,53 @@ for (const mode of ['current', 'pooled', 'malformed']) {
   assert.equal(ents[0].visual.root.parent, null, 'a hidden opponent is detached again after its draw');
   assert.equal(ents[1].visual.root.parent, scene, 'a spotted opponent keeps the attachment the battle gave it');
 }
+// (battle-spikes-253) with drawWarmSteps, a stream's deferred draws run a cohort a step with a yield between: a whole
+// tank's first binds in one task made its last upload wait 694 ms (nav-perf's root-v solo entry); a hidden opponent is
+// attached and shown only inside each step, so it stays detached across every yield
+{
+  const scene = new THREE.Scene();
+  const order = [];
+  const ents = ['a', 'b'].map((specId) => ({ specId }));
+  const queue = [...ents];
+  let inStep = false;
+  const streamer = createBattleVisualStreamer({ game: { tanks: ents }, scene,
+    renderer: { initTexture() {} }, anisotropy: 1,
+    async ensureTankBuilders() {},
+    nextStagedBake() { const ent = queue.find((e) => !e.visual); return ent ? { ent, quality: 'ai' } : null; },
+    *ensureStagedVisualsSteps() {
+      const ent = queue.find((e) => !e.visual);
+      yield;
+      const root = new THREE.Group();
+      root.name = ent.specId;
+      scene.add(root);
+      ent.visual = { root, setVisible(visible) { root.visible = visible; }, prewarmBurn() {} };
+      return true;
+    },
+    getSpec() { return {}; }, async prebakeSharedTextures() {},
+    armorAimOverlay: { prime() {}, warm() { return () => {}; } },
+    forwardProgramWarm: { compile() {} },
+    drawWarm() { assert.fail('the stepped draw replaces the whole draw'); },
+    *drawWarmSteps(root) {
+      for (let cohort = 0; cohort < 3; cohort++) {
+        order.push(['step', root.name, cohort, root.parent === scene && root.visible]);
+        yield;
+      }
+    },
+    async awaitProgramLinks(yieldForBudget) { await yieldForBudget(true); },
+  });
+  const attachedAtYield = [];
+  assert.equal(await streamer.stream(null, async () => {
+    order.push(['yield']);
+    for (const ent of ents) if (ent.visual?.root.parent) attachedAtYield.push(ent.specId);
+  }, null, true), 2);
+  const steps = order.filter(([kind]) => kind === 'step');
+  assert.deepEqual(steps.map(([, name, cohort]) => `${name}${cohort}`), ['a0', 'a1', 'a2', 'b0', 'b1', 'b2'], 'every cohort of every root');
+  const at = (name, cohort) => order.findIndex(([kind, n, c]) => kind === 'step' && n === name && c === cohort);
+  for (const [name, cohort] of [['a', 1], ['a', 2], ['b', 1], ['b', 2]]) {
+    assert.ok(order.slice(at(name, cohort - 1), at(name, cohort)).some(([kind]) => kind === 'yield'), `a yield before ${name}${cohort}`);
+  }
+  assert.ok(steps.every(([, , , shown]) => shown), 'each step sees its root attached and shown');
+  assert.deepEqual(attachedAtYield, [], 'no hidden opponent stays attached across a yield between steps');
+  assert.ok(ents.every((ent) => ent.visual.root.parent === null), 'both hidden opponents detached after their draws');
+}
 console.log('battleVisualStreamer.selftest: cooperative construction, exact iterator/non-await/wait receipts, cancellation, default compile, exact uploads, hidden reveal and player deferral passed');

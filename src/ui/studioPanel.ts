@@ -1649,11 +1649,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmVeil.setAttribute('aria-modal', 'true');
   filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
   // (UI-LOCKDOWN A) the frame's preview: a uiCanvas sized by its CSS box (the film's aspect, --fv-aspect), the latest
-  // frame fitted into it at min(DPR, 2)
+  // frame covering it (no bars) at min(DPR, 2)
   const veilSurface = createUiCanvas(null, 'fvPreview', {
     draw: (ctx, width, height, surface) => {
       ctx.clearRect(0, 0, width, height);
-      if (surface.image) drawImageFit(ctx, surface.image, width, height, 'contain');
+      if (surface.image) drawImageFit(ctx, surface.image, width, height, 'cover');
     },
   });
   const veilPreview = veilSurface.canvas;
