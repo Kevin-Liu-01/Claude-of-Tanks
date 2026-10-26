@@ -89,6 +89,21 @@ const PROBE = `(() => {
     new PerformanceObserver((list) => { for (const e of list.getEntries()) rec.longtasks.push({ start: e.startTime, duration: e.duration }); })
       .observe({ type: 'longtask', buffered: true });
   } catch (_) {}
+  // (UI-LOCKDOWN A) each canvas's context type, so the canvas check tells the UI's canvases from the 3D views
+  rec.contextKind = new WeakMap();
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    const context = getContext.call(this, type, ...rest);
+    if (context && !rec.contextKind.has(this)) rec.contextKind.set(this, String(type));
+    return context;
+  };
+  // every animation-callback interval past one refresh and a half (25 ms: at least one dropped frame at 60 Hz); the
+  // census counts the 33 ms ones (two refreshes) and the dropped frames (UI-LOCKDOWN D/E, 2026-10-25)
+  rec.frames = [];
+  let lastFrame = 0;
+  const frameTick = (t) => { if (lastFrame && t - lastFrame > 25) rec.frames.push({ start: lastFrame, duration: t - lastFrame });
+    lastFrame = t; requestAnimationFrame(frameTick); };
+  requestAnimationFrame(frameTick);
 })();`;
 
 const GARAGE = `window.__GAME_READY === true && __click.shown('.cot-garage') && !document.querySelector('.cot-garage.awaiting-boot')
@@ -122,12 +137,34 @@ async function target(page, selector, index = 0) {
 /** Press a control the way the profile does: a mouse click, or a tap on a touch screen. */
 async function press(page, selector, touch) {
   const handle = await page.waitForSelector(selector, { timeout: 15000 });
-  await handle.evaluate((el) => el.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  // the press lands on the target, never on a bar or sheet over it: a phone tap on the Gallery's second dossier tab
+  // went to whatever covered the tab's centre and left the Gallery (canvas-ui's phone run, 2026-10-25). Covered at
+  // `nearest`, the target is centred and checked again; still covered, the press throws instead of pressing that.
+  const cover = (block) => handle.evaluate((el, b) => {
+    el.scrollIntoView({ block: b, inline: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!hit || hit === el || el.contains(hit) || hit.contains(el)) return null;
+    return `${hit.tagName.toLowerCase()}${hit.id ? `#${hit.id}` : ''}${typeof hit.className === 'string' && hit.className ? `.${hit.className.trim().split(/\s+/).join('.')}` : ''}`;
+  }, block);
+  const covered = await cover('nearest') && await cover('center');
+  if (covered) throw new Error(`${selector} is covered by ${covered}`);
   if (touch) await handle.tap();
   else await handle.click();
 }
 
 const expression = (body) => `(() => { const shown = window.__click.shown; const visible = window.__click.visible; return (${body}); })()`;
+// --gate (2026-10-25): the game document loads as a player's does, with its entry gate, which the warm-up presses. Its
+// press opens the audio device (main.ts prepareAudioForEntry), so no measured press pays that (under ?nogate the first
+// press anywhere does: a Settings press read 262 ms of lazyAudio unlockContext).
+if (flag('gate')) {
+  DOCS.game = { url: '/', ready: `window.__GAME_READY === true && !!document.querySelector('#cot-boot-gate.on')`,
+    after: async (page) => {
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(expression(GARAGE), { timeout: 240000, polling: 200 });
+      await new Promise((done) => setTimeout(done, 2000));
+    } };
+}
 
 /** Wait for a page expression (polled), bounded. */
 async function waitFor(page, body, timeout = 120000, polling = 100) {
@@ -148,7 +185,26 @@ async function settle(page, quietMs = 600, maxMs = 6000) {
 }
 
 /** One measured press: INP, processing, input delay, the overlapping LoAF scripts, long tasks, time to shown / done. */
-async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null }) {
+async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null,
+  idleMs = 0, action = null }) {
+  // --census: the JS Self-Profiler samples the whole window (press to settled) so each long task names its code
+  // (the page must be served with Document-Policy: js-profiling: vercel-static-preview --document-policy=js-profiling)
+  const census = flag('census');
+  const consoleFrom = page.__consoleLog?.length ?? 0;
+  // --alloc (with --census): the sampling heap profiler over the same window, the objects minor and major GCs already
+  // collected included, so short-lived garbage is counted
+  const heap = census && flag('alloc') ? await page.createCDPSession().catch(() => null) : null;
+  if (heap) {
+    await heap.send('HeapProfiler.enable').catch(() => {});
+    await heap.send('HeapProfiler.startSampling', { samplingInterval: 8192,
+      includeObjectsCollectedByMinorGC: true, includeObjectsCollectedByMajorGC: true }).catch(() => {});
+  }
+  if (census) {
+    await page.evaluate(() => {
+      try { window.__cotProfiler = new Profiler({ sampleInterval: 10, maxBufferSize: 30000 }); window.__cotProfilerError = null; }
+      catch (error) { window.__cotProfiler = null; window.__cotProfilerError = String(error).slice(0, 160); }
+    }).catch(() => {});
+  }
   // --cpu-profile=<dir>: a sampled V8 profile of the press and its next two frames, for attributing inside one handler
   // (it stalled on the game page's first press in click-perf-248; --layout-trace names the forced layouts instead)
   const profiler = cpuProfile ? await page.createCDPSession() : null;
@@ -159,19 +215,24 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   }
   const t0 = await page.evaluate(() => { window.__click.layoutReads.length = 0; window.__click.layoutArmed = true; return performance.now(); });
   let error = null;
-  if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
+  if (idleMs) await sleep(idleMs);
+  else if (action) await action(page).catch((cause) => { error = firstLine(cause); });
+  else if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
   else await press(page, selector, touch).catch((cause) => { error = firstLine(cause); });
   // the press's task and its next two frames: what the layout tracer (when on) attributes
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
   const layoutReads = await page.evaluate(() => { window.__click.layoutArmed = false; return window.__click.layoutReads.splice(0); }).catch(() => []);
-  if (profiler) {
+  // --cpu-profile-full: the profile runs to the end of the census window (the work that lands after the press too: a
+  // background build's slices the press waited behind), stopped below
+  const stopProfile = async () => {
     const { profile } = await profiler.send('Profiler.stop').catch(() => ({ profile: null }));
     if (profile) {
       mkdirSync(cpuProfile.dir, { recursive: true });
       writeFileSync(join(cpuProfile.dir, `${cpuProfile.name}.cpuprofile`), JSON.stringify(profile));
     }
     await profiler.detach().catch(() => {});
-  }
+  };
+  if (profiler && !flag('cpu-profile-full')) await stopProfile();
   const stamp = () => page.evaluate(() => performance.now());
   let shownAt = null;
   let doneAt = null;
@@ -184,6 +245,10 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       .catch((cause) => { error = `not done: ${firstLine(cause)}`; });
   }
   await settle(page, quietMs);
+  const censusData = census ? await censusWindow(page, t0, consoleFrom) : null;
+  if (profiler && flag('cpu-profile-full')) await stopProfile();
+  if (censusData && flag('canvas')) censusData.canvas = await canvasCheck(page);
+  if (heap && censusData) censusData.alloc = await allocationWindow(heap, censusData.windowMs);
   const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
     const events = rec.events.filter((e) => e.start >= from - 5 && inputs.includes(e.name));
@@ -217,8 +282,172 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   visualLoads: Array.isArray(window.__VISUAL_LOAD_TIMINGS) ? JSON.parse(JSON.stringify(window.__VISUAL_LOAD_TIMINGS.slice(-40))) : null };
   }, t0, INPUT_EVENTS, done && doneAt != null ? doneAt : null);
   return { error, layoutReads, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
-    doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
+    doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data, ...(censusData ? { census: censusData } : {}) };
 }
+
+/** The sampling heap profile of a census window: bytes allocated, per second, and the sites that allocated most. */
+async function allocationWindow(heap, windowMs) {
+  const result = await heap.send('HeapProfiler.stopSampling').catch(() => null);
+  await heap.detach().catch(() => {});
+  if (!result?.profile) return null;
+  const sites = new Map();
+  let total = 0;
+  const walk = (node, appFrame) => {
+    const frame = node.callFrame;
+    const own = /\/assets\//.test(frame.url) ? frame : appFrame;
+    if (node.selfSize) {
+      total += node.selfSize;
+      const site = own ?? frame;
+      const key = `${site.url}|${site.lineNumber}|${site.columnNumber}|${site.functionName}`;
+      sites.set(key, (sites.get(key) || 0) + node.selfSize);
+    }
+    for (const child of node.children || []) walk(child, own);
+  };
+  walk(result.profile.head, null);
+  return { bytes: total, perSecond: windowMs > 0 ? Math.round(total * 1000 / windowMs) : null,
+    sites: [...sites].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([key, bytes]) => {
+      const [url, line, column, name] = key.split('|');
+      // the heap profiler's positions are zero-based: one-based line and column, as the self-profiler's
+      return { url, line: Number(line) + 1, column: Number(column) + 1, name, bytes };
+    }) };
+}
+
+/**
+ * A census window (press to settled): every frame over 33 ms, every long task over 50 ms with the code its profiler
+ * samples name (the leaf-most frames from the page's own scripts, the most sampled first), and the console's errors and
+ * warnings.
+ */
+async function censusWindow(page, t0, consoleFrom) {
+  const window_ = await page.evaluate(async (from) => {
+    const rec = window.__click, end = performance.now();
+    const profiler = window.__cotProfiler;
+    window.__cotProfiler = null;
+    const trace = profiler ? await profiler.stop().catch(() => null) : null;
+    const late = rec.frames.filter((f) => f.start + f.duration >= from && f.start <= end);
+    const frames = late.filter((f) => f.duration > 33);
+    // the refreshes a late interval skipped (60 Hz): 26-41 ms one, 42-58 ms two, and so on
+    const dropped = late.reduce((sum, f) => sum + Math.max(1, Math.round(f.duration / (1000 / 60)) - 1), 0);
+    const seen = new Set();
+    const longs = rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= end && t.duration > 50
+      && !seen.has(t.start) && seen.add(t.start));
+    const loafs = rec.loafs.filter((l) => l.start + l.duration >= from && l.start <= end && l.duration > 50);
+    // each long task's samples: the leaf-most frame from an app script (assets/), else the leaf
+    const attribute = (start, stop) => {
+      if (!trace) return [];
+      const counts = new Map();
+      let total = 0;
+      for (const sample of trace.samples) {
+        if (sample.timestamp < start || sample.timestamp > stop) continue;
+        total++;
+        if (sample.stackId == null) continue;
+        let leaf = null;
+        for (let id = sample.stackId; id != null; id = trace.stacks[id].parentId) {
+          const frame = trace.frames[trace.stacks[id].frameId];
+          const url = frame.resourceId != null ? trace.resources[frame.resourceId] : '';
+          if (!leaf) leaf = { frame, url };
+          if (/\/assets\//.test(url)) { leaf = { frame, url }; break; }
+        }
+        if (!leaf) continue;
+        const key = `${leaf.url}|${leaf.frame.line}|${leaf.frame.column}|${leaf.frame.name}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      // the sampler runs faster than its nominal interval: each site's share of the task's own samples, in the task's ms
+      return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, n]) => {
+        const [url, line, column, name] = key.split('|');
+        return { url, line: Number(line) || null, column: Number(column) || null, name, ms: Math.round((n / total) * (stop - start)) };
+      });
+    };
+    return {
+      windowMs: Math.round(end - from), profiler: !!trace, profilerError: window.__cotProfilerError ?? null,
+      frames33: frames.length, worstFrame: Math.round(Math.max(0, ...late.map((f) => f.duration))), droppedFrames: dropped,
+      frames: frames.sort((a, b) => b.duration - a.duration).slice(0, 6).map((f) => ({ at: Math.round(f.start - from), ms: Math.round(f.duration) })),
+      long50: longs.length, worstLong: Math.round(Math.max(0, ...longs.map((t) => t.duration))),
+      longs: longs.sort((a, b) => b.duration - a.duration).slice(0, 6).map((t) => ({ at: Math.round(t.start - from), ms: Math.round(t.duration),
+        code: attribute(t.start, t.start + t.duration) })),
+      loafScripts: loafs.sort((a, b) => b.duration - a.duration).slice(0, 4).map((l) => ({ ms: Math.round(l.duration),
+        scripts: l.scripts.slice(0, 3).map((x) => ({ invoker: x.invoker, url: x.url, pos: x.pos, fn: x.fn, ms: Math.round(x.duration) })) })),
+    };
+  }, t0).catch((cause) => ({ error: firstLine(cause) }));
+  // Chrome ignores COOP on a plain-http origin and says so; the deployment is https, so that line is the preview's
+  const logged = (page.__consoleLog ?? []).slice(consoleFrom)
+    .filter((m) => !/Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy/.test(m.text));
+  return { ...window_, consoleErrors: logged.filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
+    consoleWarnings: logged.filter((m) => m.type === 'warn').length,
+    consoleWarningTexts: logged.filter((m) => m.type === 'warn').map((m) => m.text).slice(0, 8) };
+}
+
+/** (UI-LOCKDOWN A) The device-pixel cap a UI canvas's backing store may take (src/ui/uiCanvas.ts). */
+const CANVAS_CAP = 2;
+/** Every on-screen UI canvas with a context (not a WebGL view: the 3D renderers own their resolution; not a canvas
+ *  never given a context: it holds no store) against the canvas rule: shown,
+ *  its backing store is its CSS box times min(devicePixelRatio, CANVAS_CAP) within a pixel (larger wastes memory and
+ *  compounds, smaller blurs); hidden, it holds at most one pixel. */
+const CANVAS_CHECK = `(() => {
+  const rec = window.__click, dpr = devicePixelRatio, scale = Math.min(dpr, ${CANVAS_CAP});
+  // the canvas and up to three ancestors (to the first with an id): an id-less canvas still names where it lives
+  const label = (el) => { const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.') : '';
+    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : ''); };
+  const describe = (node) => { const path = [label(node)];
+    for (let el = node.parentElement, n = 0; el && el !== document.body && n < 3 && !path[0].includes('#'); el = el.parentElement, n++) path.unshift(label(el));
+    return path.join(' > '); };
+  // (canvas-ui, 2026-10-25) a primitive's canvas carries data-ui-canvas: a shown 2D canvas without it was made outside it
+  const violations = [], outside = []; let checked = 0;
+  for (const canvas of document.querySelectorAll('canvas')) {
+    const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
+    // a WebGL view owns its resolution; a canvas never given a context allocates no store (a swatch not yet painted)
+    if (!kind || /webgl/i.test(kind)) continue;
+    checked++;
+    const box = canvas.getBoundingClientRect();
+    const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
+    if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
+    const wantW = box.width * scale, wantH = box.height * scale;
+    if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
+    else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
+  }
+  return { checked, violations, outside: [...new Set(outside)] };
+})()`;
+const canvasCheck = (page) => page.evaluate(CANVAS_CHECK).catch((cause) => ({ error: firstLine(cause) }));
+
+/** (UI-LOCKDOWN A) A surface's canvases checked at its start, after each of its interactions, after three resizes and
+ *  their return, and across a device-pixel-ratio flip and back: one recorded sample per check. */
+const CANVAS_RESIZES = { desktop: [[1280, 800], [1024, 768], [1680, 1050]], phone: [[360, 780], [414, 896], [844, 390]] };
+const canvasProbe = async (page, ctx, surface, interactions) => {
+  // a retained canvas releases or redraws within its 0.5 s backstop sweep after it hides or shows (canvas-ui, 253)
+  const record = async (step) => { await sleep(700); await settle(page, 300, 4000);
+    ctx.record(`canvas:${surface}:${step}`, { canvas: await canvasCheck(page) }); };
+  const home = new URL(page.url()).pathname;
+  await record('start');
+  for (let n = 0; n < interactions.length; n++) {
+    try { await interactions[n](); } catch (cause) { ctx.record(`canvas:${surface}:act${n}`, { error: firstLine(cause) }); continue; }
+    // a press that left the surface is recorded and undone: the steps after it check this surface, not another page
+    const now = new URL(page.url()).pathname;
+    if (now !== home) {
+      ctx.record(`canvas:${surface}:act${n}`, { error: `left ${home} for ${now}` });
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+      await sleep(1500);
+      continue;
+    }
+    await record(`act${n}`);
+  }
+  const base = page.viewport();
+  for (const [width, height] of CANVAS_RESIZES[base.isMobile ? 'phone' : 'desktop']) {
+    await page.setViewport({ ...base, width, height });
+    await sleep(800);
+    await record(`resize-${width}x${height}`);
+  }
+  await page.setViewport(base);
+  await sleep(800);
+  await record('resize-back');
+  const flipped = base.deviceScaleFactor >= 2 ? 1 : 2;
+  await page.setViewport({ ...base, deviceScaleFactor: flipped });
+  await sleep(800);
+  await record(`dpr-${flipped}`);
+  await page.setViewport(base);
+  await sleep(800);
+  await record(`dpr-${base.deviceScaleFactor}`);
+};
 
 const pressKey = (page, key) => page.keyboard.press(key);
 const tapOrClick = (page, selector, { touch }) => press(page, selector, touch);
@@ -237,6 +466,27 @@ const leaveStudio = async (page, ctx) => {
   if (await page.evaluate(expression(`shown('.cot-settings.open')`)).catch(() => false)) await closeSettings(page, ctx);
   await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
 };
+// The Garage again after a sweep press: any panel, menu or modal it opened closed (Escape, Settings' close), the
+// transition gone
+const OPEN_OVERLAY = `shown('.cot-settings.open') || shown('#cot-battle-menu.open') || shown('#cot-record-modal')
+  || [...document.querySelectorAll('[aria-modal="true"], [role="dialog"]')].some((el) => __click.visible(el))`;
+const restoreGarage = async (page, ctx) => {
+  for (let tries = 0; tries < 3; tries++) {
+    if (!await page.evaluate(expression(OPEN_OVERLAY)).catch(() => false)) break;
+    if (await page.evaluate(expression(`shown('.cot-settings.open')`)).catch(() => false)) await closeSettings(page, ctx).catch(() => {});
+    else await pressKey(page, 'Escape');
+    await sleep(400);
+  }
+  await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+  await waitFor(page, GARAGE, 30000).catch(() => {});
+};
+// A Garage sweep presses every visible control on the Garage's screen except what leaves the page, starts a battle or
+// a room, or switches the language (those have their own paths)
+const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]', '[data-proving]',
+  '[data-nav=home]', '[data-nav=gallery]', '[data-nav=docs]', '[data-nav=studio]', '[data-nav=github]', '.cot-github',
+  '[data-mobile-nav=home]', '[data-mobile-nav=gallery]', '[data-mobile-nav=docs]', '[data-mobile-nav=studio]',
+  '[data-mobile-nav=locale]', '[data-deploy-room]', '[data-tabbar=gallery]', '.cot-wordmark', 'a[href^="http"]',
+  'a[href^="/"]', '[hreflang]', '[data-locale]', '[data-nav=locale]', '.cot-locale-switcher'].join(', ');
 const openDeploy = async (page, ctx) => {
   if (await page.evaluate(() => window.__click.shown('#cot-battle-menu.open'))) return;
   await tapOrClick(page, await target(page, '[data-nav=deploy], .cot-battle-mode'), ctx);
@@ -252,6 +502,18 @@ const ROSTER_SHOWN = `document.querySelector('[data-click-target].sel, .cot-card
 const ROSTER_DONE = `(() => { const id = document.querySelector('[data-click-target]')?.dataset.specId
   || document.querySelector('.cot-cards .cot-card.sel')?.dataset.specId; const list = window.__GARAGE_SWITCH;
   const last = Array.isArray(list) ? list[list.length - 1] : null; return !!(last && last.id === id && last.revealMs != null); })()`;
+// (UI-LOCKDOWN E) the screens the memory-cycle path opens and closes
+const MEMORY_CYCLES = 20;
+const MEMORY_SCREENS = [
+  { id: 'settings', open: '.cot-settings-slot .cot-gear, [data-nav=settings]', shown: `shown('.cot-settings.open')`, close: closeSettings },
+  { id: 'deploy', open: '[data-nav=deploy], .cot-battle-mode', shown: `shown('#cot-battle-menu.open')`, close: closeDeploy },
+  { id: 'record', open: '.cot-record-trigger', shown: `shown('#cot-record-modal')`,
+    close: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); } },
+];
+// (lockdown-251) roster-pick: the riding-station tanks (the RWS and M2 stations' sweeps), each between tanks far from it
+// in the roster so a neighbour prebuild never builds the next pick ahead
+const PICK_IDS = ['m1a1_abrams_hc', 't90m', 'm60a2', 'leo2a6', 'm1a1_abrams_aim', 'k2_black_panther', 'm551_sheridan', 'type10',
+  'm1a1_abrams_fep'];
 const GARAGE_BACK = `shown('.cot-garage') && window.__GAME_READY === true && (!window.__GARAGE_ENTRY || window.__GARAGE_ENTRY.presentationUnready === false)`;
 
 // Paths, after the 244 Garage (brand-ui Premiere). Doc 'game' runs the Garage, Deploy, settings and Studio presses;
@@ -365,6 +627,171 @@ export const PATHS = [
       await leaveStudio(page, ctx);
       await sleep(1500);
     } },
+  // (lockdown-251) a fixed list of tanks selected by id (the debug surface), the same cold builds on both sides of an A/B
+  { id: 'roster-pick', doc: 'battle', reps: 1,
+    script: async (page, i, run) => {
+      for (const id of PICK_IDS) {
+        await run(`pick:${id}`, async () => null, { action: (tab) => tab.evaluate((spec) => { window.__DEBUG.selectGarageTank(spec); }, id),
+          done: `(() => { const list = window.__GARAGE_SWITCH; const last = Array.isArray(list) ? list[list.length - 1] : null;
+            return !!(last && last.id === ${JSON.stringify(id)} && last.revealMs != null); })()`, doneTimeoutMs: 60000, quietMs: 600 });
+        await sleep(1500);
+      }
+    } },
+  // (UI-LOCKDOWN E) memory flat across 20 open/close cycles of each Garage screen: the JS heap after a forced collection
+  // and the DOM node count (Performance.getMetrics, detached nodes included), after two warm-up cycles and after twenty
+  { id: 'memory-cycle', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const cdp = await page.createCDPSession();
+      await cdp.send('Performance.enable');
+      const measureMemory = async () => {
+        for (let k = 0; k < 2; k++) await cdp.send('HeapProfiler.collectGarbage');
+        const { usedSize } = await cdp.send('Runtime.getHeapUsage');
+        const { metrics } = await cdp.send('Performance.getMetrics');
+        const metric = (name) => metrics.find((m) => m.name === name)?.value ?? null;
+        return { heapBytes: usedSize, nodes: metric('Nodes'), listeners: metric('JSEventListeners') };
+      };
+      for (const screen of MEMORY_SCREENS) {
+        if (!await page.evaluate(expression(`[...document.querySelectorAll(${JSON.stringify(screen.open)})].some((el) => __click.visible(el))`)).catch(() => false)) {
+          ctx.record(`memory:${screen.id}`, { error: 'no control on this layout' });
+          continue;
+        }
+        const cycle = async () => {
+          await tapOrClick(page, await target(page, screen.open), ctx);
+          await waitFor(page, screen.shown, 30000);
+          await settle(page, 300, 4000);
+          await screen.close(page, ctx);
+          await settle(page, 300, 4000);
+        };
+        try {
+          for (let k = 0; k < 2; k++) await cycle();
+          const before = await measureMemory();
+          for (let k = 0; k < MEMORY_CYCLES; k++) await cycle();
+          const after = await measureMemory();
+          const sample = { cycles: MEMORY_CYCLES, before, after, heapDeltaBytes: after.heapBytes - before.heapBytes,
+            nodeDelta: (after.nodes ?? 0) - (before.nodes ?? 0), listenerDelta: (after.listeners ?? 0) - (before.listeners ?? 0) };
+          ctx.record(`memory:${screen.id}`, sample);
+          console.log(`  memory:${screen.id.padEnd(10)} heap ${(sample.heapDeltaBytes / 1048576).toFixed(2)} MB  nodes ${sample.nodeDelta}  listeners ${sample.listenerDelta}`
+            + ` over ${MEMORY_CYCLES} cycles`);
+        } catch (cause) {
+          ctx.record(`memory:${screen.id}`, { error: firstLine(cause) });
+          console.log(`  memory:${screen.id} ERROR ${firstLine(cause)}`);
+          await restoreGarage(page, ctx);
+        }
+      }
+      await cdp.detach().catch(() => {});
+    } },
+  // (UI-LOCKDOWN A) the canvas rule over the Garage and its menus, then the Gallery (canvasProbe)
+  { id: 'canvas-garage', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector) => async () => { await tapOrClick(page, await target(page, selector), ctx); };
+      await canvasProbe(page, ctx, 'garage', [
+        pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'),
+        pressOn('.cot-settings-slot .cot-gear, [data-nav=settings]'), () => closeSettings(page, ctx),
+        () => openDeploy(page, ctx), pressOn('#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice'),
+        () => closeDeploy(page, ctx),
+        pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
+      ]);
+    } },
+  // the battle's HUD canvases (the minimap, the sights, the aerial HUD): a solo battle, its pause menu and live frames
+  { id: 'canvas-battle', doc: 'battle', reps: 1,
+    script: async (page, i, run, ctx) => {
+      await openDeploy(page, ctx);
+      await tapOrClick(page, await target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), ctx);
+      await waitFor(page, `!!window.__BATTLE_REVEAL`, 240000);
+      await settle(page, 800, 8000);
+      const wait = () => sleep(900);
+      const pause = async () => { await pressKey(page, 'Escape'); await waitFor(page, `shown('.cot-settings.open') || shown('.cot-pause')`, 10000).catch(() => {}); };
+      const resume = async () => { await closeSettings(page, ctx).catch(() => pressKey(page, 'Escape')); await sleep(600); };
+      await canvasProbe(page, ctx, 'battle-hud', [wait, wait, pause, resume, wait, wait, pause, resume, wait, wait]);
+      await page.evaluate(() => window.__DEBUG.slayEnemies());
+      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000).catch(() => {});
+      await canvasProbe(page, ctx, 'battle-end', []);
+      await tapOrClick(page, await target(page, '.cot-es.show [data-es-action="garage"]'), ctx).catch(() => {});
+      await waitFor(page, GARAGE_BACK, 120000).catch(() => {});
+    } },
+  { id: 'canvas-gallery', doc: 'gallery', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector, n = 0) => async () => { await tapOrClick(page, await target(page, selector, n), ctx); await sleep(600); };
+      await canvasProbe(page, ctx, 'gallery', [
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 1), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 4),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 7),
+        pressOn('#dossierTabs [role=tab][data-tab]', 1), pressOn('#dossierTabs [role=tab][data-tab]', 2), pressOn('#dossierTabs [role=tab][data-tab]', 0),
+        pressOn('[data-mode="armor"]'), pressOn('[data-mode="appearance"]'),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 10), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 13),
+      ]);
+    } },
+  // the Garage at rest: no frame or task may stall while nobody touches it
+  { id: 'garage-idle', doc: 'game', reps: 1,
+    script: async (page, i, run) => { await run('garage-idle', async () => null, { idleMs: 8000, quietMs: 1 }); } },
+  // (lockdown-251) graceful recovery: the WebGL context lost in the Garage and restored 0.7 s later (the battle document,
+  // for its debug surface's renderer; the Garage is where it opens); the window records
+  // the restoration's frames, tasks and console, and the log says whether the Garage came back (context live, cover gone)
+  { id: 'recover-context', doc: 'battle', reps: 2,
+    script: async (page, i, run) => {
+      await page.evaluate(() => {
+        const lose = window.__DEBUG.renderer.getContext().getExtension('WEBGL_lose_context');
+        window.__ctxLostAt = performance.now();
+        lose.loseContext();
+        setTimeout(() => lose.restoreContext(), 700);
+      });
+      await run('context-restore', async () => null, { idleMs: 7000, quietMs: 1 });
+      // how long the cover took to clear (a 4x phone restores slower than the window), up to 30 s after the loss
+      const state = await page.evaluate(async () => {
+        while (document.getElementById('cot-ctxlost') && performance.now() - window.__ctxLostAt < 30000) {
+          await new Promise((done) => setTimeout(done, 100));
+        }
+        return { lost: window.__DEBUG.renderer.getContext().isContextLost(), cover: !!document.getElementById('cot-ctxlost'),
+          clearedMs: Math.round(performance.now() - window.__ctxLostAt), phase: window.__DEBUG.game?.phase ?? null,
+          notice: document.querySelector('#cot-ctxlost-title')?.textContent ?? null };
+      });
+      console.log(`    context-restore #${i}: context ${state.lost ? 'STILL LOST' : 'live'}, cover ${state.cover
+        ? `STILL SHOWN at ${state.clearedMs} ms (${state.notice})` : `gone ${state.clearedMs} ms after the loss`}, phase ${state.phase}`);
+    } },
+  // (lockdown-251) graceful recovery: the Studio's chunk fails to load (the network refuses it), then the press is retried
+  { id: 'recover-chunk', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const refuse = (request) => (/\/assets\/studio-[^/]*\.js(\?|$)/.test(request.url()) ? request.abort('failed') : request.continue());
+      await page.setRequestInterception(true);
+      page.on('request', refuse);
+      if (!(await page.evaluate(() => [...document.querySelectorAll('[data-nav=studio]')].some((el) => __click.visible(el))))) {
+        page.off('request', refuse);
+        await page.setRequestInterception(false);
+        console.log('    chunk-fail-studio: no Studio control on this layout (desktop probe only)');
+        return;
+      }
+      await run('chunk-fail-studio', () => target(page, '[data-nav=studio]'), { quietMs: 4000 });
+      page.off('request', refuse);
+      await page.setRequestInterception(false);
+      const after = await page.evaluate(() => ({ studio: !!window.__STUDIO && __click.shown('.cot-studio'),
+        garage: __click.shown('.cot-garage'), retry: !!document.querySelector('[data-boot-retry], .cot-boot-retry, #cot-boot-recovery'),
+        toast: document.querySelector('.cot-toast, [role=alert]')?.textContent?.trim()?.slice(0, 80) ?? null }));
+      console.log(`    chunk-fail-studio: ${JSON.stringify(after)}`);
+      await waitFor(page, GARAGE, 120000); // the boot recovery may have reloaded the page
+      await run('chunk-retry-studio', () => target(page, '[data-nav=studio]'), {
+        done: `!!window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000 });
+      await leaveStudio(page, ctx);
+    } },
+  // every visible control on the Garage's screen, pressed once, the Garage restored between presses
+  { id: 'garage-sweep', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const count = await page.evaluate((deny) => {
+        const controls = [...document.querySelectorAll('button, [role=button], [role=tab], [role=switch], [role=option], select, '
+          + 'input[type=checkbox], input[type=radio], a[href^="#"]')]
+          .filter((el) => __click.visible(el) && !el.disabled && !el.matches(deny) && !el.closest(deny));
+        controls.forEach((el, n) => el.setAttribute('data-sweep', String(n)));
+        return controls.length;
+      }, SWEEP_DENY);
+      for (let n = 0; n < count; n++) {
+        const selector = `[data-sweep="${n}"]`;
+        const label = await page.evaluate((sel) => { const el = document.querySelector(sel);
+          if (!el || !__click.visible(el)) return null;
+          const text = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || el.className || el.tagName;
+          return String(text).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 28) || el.tagName.toLowerCase(); }, selector);
+        if (!label) continue;
+        await run(`sweep:${n}:${label}`, async () => selector, { quietMs: 400 });
+        await restoreGarage(page, ctx);
+      }
+    } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
     press: (page, i) => target(page, '.cot-studio .workspace-nav button', i + 1),
@@ -377,6 +804,8 @@ export const PATHS = [
       await run('deploy-launch', () => target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), {
         shown: `shown('.cot-bl.on')`, done: `!!window.__BATTLE_REVEAL`, doneTimeoutMs: 240000 });
       await ctx.programs(`battle-${i}`);
+      // (lockdown-251) eight seconds of the live battle, untouched: its frames, tasks and (--alloc) allocation per second
+      await run('battle-steady', async () => null, { idleMs: 8000, quietMs: 1 });
       await page.evaluate(() => window.__DEBUG.slayEnemies());
       await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
       await settle(page, 800, 8000);
@@ -402,8 +831,11 @@ export const PATHS = [
     shown: `document.querySelector('[data-click-target]')?.getAttribute('aria-selected') === 'true'` },
   { id: 'gallery-mode', doc: 'gallery', reps: 6,
     press: (page, i) => target(page, `[data-mode="${['armor', 'modules', 'crew', 'appearance'][i % 4]}"]`),
-    done: `window.__TANK_GALLERY?.getState?.().mode === document.querySelector('[data-click-target]')?.dataset.mode
-      && (window.__TANK_GALLERY.getState().mode === 'appearance' || window.__TANK_GALLERY.getState().overlayCount > 0)`, doneTimeoutMs: 60000 },
+    // (lockdown-251) every read guarded: after a reload there is no target and no gallery, and an unguarded read threw
+    // inside the page (a pageerror the census counted against the Gallery)
+    done: `!!document.querySelector('[data-click-target]')
+      && window.__TANK_GALLERY?.getState?.().mode === document.querySelector('[data-click-target]')?.dataset.mode
+      && (window.__TANK_GALLERY?.getState?.().mode === 'appearance' || window.__TANK_GALLERY?.getState?.().overlayCount > 0)`, doneTimeoutMs: 60000 },
 ];
 
 // The renderer's live programs (name, use count, key), so a path can diff the sets two states link: a long key keeps
@@ -445,6 +877,8 @@ async function runPath({ page, path, reps, touch, log, profileDir = null, outDir
   const samples = [];
   const ctx = {
     touch,
+    // a sample a script measures itself (the memory cycles), stored beside the presses
+    record: (kind, data, i = 0) => { samples.push({ kind, i, ...data }); },
     programs: async (name) => {
       if (!outDir) return;
       const list = await page.evaluate(PROGRAM_KEYS).catch(() => null);
@@ -463,7 +897,10 @@ async function runPath({ page, path, reps, touch, log, profileDir = null, outDir
     samples.push({ kind, i, ...sample });
     log(`  ${kind.padEnd(18)} #${i} inp ${String(sample.duration == null ? '-' : Math.round(sample.duration)).padStart(5)}`
       + `  proc ${String(sample.processing ?? '-').padStart(4)}  long ${String(sample.longtaskMs).padStart(5)}/${sample.longtasks}`
-      + `  shown ${sample.shownMs ?? '-'}  done ${sample.doneMs ?? '-'}${sample.error ? `  ERROR ${sample.error}` : ''}`);
+      + `  shown ${sample.shownMs ?? '-'}  done ${sample.doneMs ?? '-'}${sample.error ? `  ERROR ${sample.error}` : ''}`
+      + (sample.census ? `  | >33ms ${sample.census.frames33}/${sample.census.worstFrame}  >50ms ${sample.census.long50}/${sample.census.worstLong}`
+        + `  errors ${sample.census.consoleErrors?.length ?? '-'}${sample.census.profiler ? '' : '  (no profiler)'}`
+        + (sample.census.alloc ? `  alloc ${(sample.census.alloc.perSecond / 1048576).toFixed(1)} MB/s` : '') : ''));
     return sample;
   };
   let failures = 0;
@@ -539,7 +976,21 @@ async function main() {
     page.setDefaultTimeout(180000);
     await page.setViewport(profile.viewport);
     if (profile.userAgent) await page.setUserAgent(profile.userAgent);
-    page.on('pageerror', (error) => log(`  [${base.label}:${doc} page error] ${firstLine(error)}`));
+    page.__consoleLog = [];
+    page.on('pageerror', (error) => { log(`  [${base.label}:${doc} page error] ${firstLine(error)}`);
+      // the first frame of the stack names the code that threw
+      const at = String(error?.stack ?? '').split('\n').find((line) => /^\s+at /.test(line))?.trim() ?? '';
+      page.__consoleLog.push({ type: 'error', text: `pageerror: ${firstLine(error)}${at ? ` (${at})` : ''}`.slice(0, 320) }); });
+    page.on('console', (message) => {
+      const type = message.type();
+      if (type === 'error' || type === 'warn' || type === 'warning') {
+        // the script position that logged it (a browser intervention such as Canvas2D's readback notice names its caller
+        // here, not in its text)
+        const frame = message.stackTrace?.()?.[0] ?? message.location?.();
+        const at = frame?.url ? ` @ ${frame.url.replace(/^.*\/assets\//, '')}:${(frame.lineNumber ?? 0) + 1}:${(frame.columnNumber ?? 0) + 1}` : '';
+        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: `${message.text().slice(0, 240)}${at}` });
+      }
+    });
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
     if (flag('layout-trace')) await page.evaluateOnNewDocument('window.__cotLayoutTrace = true;');
     // --busy=<everyMs>:<workMs>: a loaded main thread (a timer burning workMs every everyMs), as a polling probe or a busy
@@ -668,11 +1119,30 @@ async function report(dir) {
     const found = entry.consumer.originalPositionFor({ line, column });
     return found?.source ? `${found.source.replace(/^.*?\/src\//, 'src/')}:${found.line}${found.name ? ` ${found.name}` : ''}` : null;
   };
+  // a profiler frame's position (1-based line and column) in its built file, as a source line
+  const locateLineColumn = (label, url, line, column) => {
+    const dist = dists[label];
+    if (!dist || !url || !line) return null;
+    let file;
+    try { file = new URL(url).pathname; } catch { return null; }
+    const key = `${label}:${file}`;
+    if (!consumers.has(key)) {
+      const js = join(dist, file);
+      const map = `${js}.map`;
+      consumers.set(key, existsSync(js) && existsSync(map)
+        ? { text: readFileSync(js, 'utf8'), consumer: new SourceMapConsumer(JSON.parse(readFileSync(map, 'utf8'))) } : null);
+    }
+    const entry = consumers.get(key);
+    if (!entry) return null;
+    const found = entry.consumer.originalPositionFor({ line, column: Math.max(0, (column ?? 1) - 1) });
+    return found?.source ? `${found.source.replace(/^.*?\/src\//, 'src/').replace(/^.*node_modules\//, '')}:${found.line}${found.name ? ` ${found.name}` : ''}` : null;
+  };
   const kinds = new Map();
   for (const label of labels) {
     if (!existsSync(join(dir, label))) continue;
     for (const file of readdirSync(join(dir, label)).filter((f) => f.endsWith('.json'))) {
       const run = JSON.parse(readFileSync(join(dir, label, file), 'utf8'));
+      if (!Array.isArray(run.samples)) continue;
       for (const sample of run.samples) {
         const key = `${sample.kind}.${run.profile}`;
         if (!kinds.has(key)) kinds.set(key, {});
@@ -719,6 +1189,63 @@ async function report(dir) {
   console.log(`\nWorst by ${labels[0]} INP p95: ${ranked.sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ')}`);
   console.log(`\n| press.profile | build | script (source) | ms per press | forced layout ms |\n|---|---|---|---:|---:|`);
   console.log(culprits.join('\n'));
+  // --census runs: every surface's spikes (frames over 33 ms, long tasks over 50 ms), console errors, and the code its
+  // long tasks sampled, summed over the run
+  const censusRows = [];
+  const code = new Map();
+  const errorsSeen = new Map();
+  for (const [key, byLabel] of [...kinds].sort()) {
+    for (const label of labels) {
+      const samples = (byLabel[label] || []).filter((s) => s.census && !s.census.error);
+      if (!samples.length) continue;
+      const sum = (field) => samples.reduce((total, s) => total + (s.census[field] || 0), 0);
+      const worst = (field) => Math.max(0, ...samples.map((s) => s.census[field] || 0));
+      const errors = samples.flatMap((s) => s.census.consoleErrors || []);
+      for (const text of errors) errorsSeen.set(`${label} | ${text}`, (errorsSeen.get(`${label} | ${text}`) || 0) + 1);
+      censusRows.push({ row: `| ${key} | ${label} | ${samples.length} | ${sum('frames33')} | ${worst('worstFrame')} | ${sum('long50')} | ${worst('worstLong')} | ${errors.length} |`,
+        weight: sum('long50') * 1000 + worst('worstLong') });
+      for (const sample of samples) for (const long of sample.census.longs || []) for (const site of long.code || []) {
+        const where = locateLineColumn(label, site.url, site.line, site.column) || `${(site.url || '').split('/').pop()} ${site.name}`;
+        const entry = code.get(`${label} | ${where}`) || { ms: 0, tasks: 0, paths: new Set() };
+        entry.ms += site.ms; entry.tasks += 1; entry.paths.add(key.split('.')[0].replace(/^sweep:\d+:/, 'sweep:'));
+        code.set(`${label} | ${where}`, entry);
+      }
+    }
+  }
+  if (!censusRows.length) return;
+  console.log(`\n| surface.profile | build | samples | frames >33 ms | worst frame | tasks >50 ms | worst task | console errors |\n|---|---|---:|---:|---:|---:|---:|---:|`);
+  console.log(censusRows.sort((a, b) => b.weight - a.weight).map((r) => r.row).join('\n'));
+  console.log(`\n| build | code in long tasks (source) | sampled ms | tasks | surfaces |\n|---|---|---:|---:|---|`);
+  console.log([...code].sort((a, b) => b[1].ms - a[1].ms).slice(0, 40)
+    .map(([where, e]) => `| ${where} | ${e.ms} | ${e.tasks} | ${[...e.paths].slice(0, 4).join(', ')} |`).join('\n'));
+  const allocRows = [];
+  const allocSites = new Map();
+  for (const [key, byLabel] of [...kinds].sort()) {
+    for (const label of labels) {
+      const samples = (byLabel[label] || []).filter((s) => s.census?.alloc);
+      if (!samples.length) continue;
+      const bytes = samples.reduce((sum, s) => sum + s.census.alloc.bytes, 0);
+      const ms = samples.reduce((sum, s) => sum + (s.census.windowMs || 0), 0);
+      allocRows.push({ row: `| ${key} | ${label} | ${(bytes / 1048576).toFixed(1)} | ${ms ? (bytes / 1048.576 / ms).toFixed(2) : '-'} |`, bytes: ms ? bytes / ms : 0 });
+      for (const sample of samples) for (const site of sample.census.alloc.sites) {
+        const where = locateLineColumn(label, site.url, site.line, site.column) || `${(site.url || '').split('/').pop()} ${site.name}`;
+        const entry = allocSites.get(`${label} | ${where}`) || { bytes: 0, paths: new Set() };
+        entry.bytes += site.bytes; entry.paths.add(key.split('.')[0].replace(/^sweep:\d+:/, 'sweep:'));
+        allocSites.set(`${label} | ${where}`, entry);
+      }
+    }
+  }
+  if (allocRows.length) {
+    console.log(`\n| surface.profile | build | MB allocated | MB/s |\n|---|---|---:|---:|`);
+    console.log(allocRows.sort((a, b) => b.bytes - a.bytes).map((r) => r.row).join('\n'));
+    console.log(`\n| build | allocating code (source) | MB | surfaces |\n|---|---|---:|---|`);
+    console.log([...allocSites].sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 40)
+      .map(([where, e]) => `| ${where} | ${(e.bytes / 1048576).toFixed(2)} | ${[...e.paths].slice(0, 4).join(', ')} |`).join('\n'));
+  }
+  if (errorsSeen.size) {
+    console.log(`\n| build | console error | count |\n|---|---|---:|`);
+    console.log([...errorsSeen].sort((a, b) => b[1] - a[1]).map(([text, n]) => `| ${text.replace(/\|/g, '/')} | ${n} |`).join('\n'));
+  }
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

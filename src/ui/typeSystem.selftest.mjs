@@ -190,9 +190,10 @@ for (const c of ACCENT_CHARS) {
 }
 // Every character a catalog string or a tank name prints is drawn by a shipped face on both voice paths: the Plex path
 // (Plex Sans, then the accents face, then the marks face) and the Chakra Petch path (its cmap or its composition, then
-// the marks face). Chinese and emoji use the system faces by design.
+// the marks face). Chinese and emoji use the system faces by design; the zero-width space the Chinese catalog marks its
+// phrase breaks with (equipment descriptions: never 装/备 at a line end) draws nothing, like the joiner.
 const systemFace = (c) => (c >= 0x2e80 && c <= 0x9fff) || (c >= 0x3000 && c <= 0x303f) || (c >= 0xf900 && c <= 0xfaff)
-  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d;
+  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d || c === 0x200b;
 const chakraDraws = (c) => CHAKRA_CHARS.has(c) || SYMBOL_CHARS.has(c)
   || [...String.fromCodePoint(c).normalize('NFD')].every((ch) => CHAKRA_CHARS.has(ch.codePointAt(0)));
 const printed = new Map();
@@ -515,7 +516,7 @@ assert.equal((tokens.match(/tabular-nums/g) ?? []).length, 1, 'the .num rule is 
 const hud = read('src/ui/hud.ts');
 for (const [path, pattern, what] of [
   ['index.html', /class="cot-boot-pct num"/, 'the boot percentage'],
-  ['src/ui/hud.ts', /<span class="tm num">/, 'the battle clock'],
+  ['src/ui/hud.ts', /<span class="tm num"(?:[ >]|\$\{datumAttr\('clock'\)\}>)/, 'the battle clock'],
   ['src/ui/hud.ts', /class="al num"/, 'the alive tallies'],
   ['src/ui/hud.ts', /<span class="kills num" hidden>/, 'the roster kill tallies'],
   ['src/ui/hud.ts', /<strong class="speed num"/, 'the speedometer'],
@@ -528,12 +529,12 @@ for (const [path, pattern, what] of [
 for (const [path, text] of sources) {
   assert.doesNotMatch(text, /class="[^"]*\bnum\b[^"]*"[^>]*>\$\{t\(/, `${path}: .num holds a readout, never a localized string`);
 }
-assert.match(hud, /<span class="mv"><\/span>/, 'the mode status sentence reads in the shell face (no .num)');
+assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 'the mode status sentence reads in the shell face (no .num)');
 // The team scores are the HUD's display numerals (the data voice: Bold lining figures): Chakra Petch Bold, centred
 // in fixed columns. They change on a kill, never per frame, so proportional figures move nothing beside them.
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');
 assert.match(hud, /<b class="fe">0<\/b>/, 'the enemy score is a display numeral');
-assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe\{font-family:\$\{FONT_COND\};font-size:36px;font-weight:700;/, 'the scores set in the bold display voice (the direction\'s 36 px points)');
+assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
 // The end screen's headline tallies and team scores are display numerals too: they count up once (1.05 s ease-out) and
 // settle, and the settled frame is what reads (Plex Mono's full-cell comma printed "8 , 420"). Live gauges keep .num.
 const endScreen = read('src/ui/endScreen.ts');
@@ -561,8 +562,8 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><svg class="hero__lockup"[^>]*><title id="hero-title-name">Claude of Tanks<\/title>/, 'the landing headline is the outlined lockup (SPEC 3.1)');
-assert.match(read('site/home.html'), /<h2 class="home-h2" id="versus-title"><span class="t-accent">\d+<\/span> <span class="t-hollow" data-i18n="home\.versus\.duels">/, 'the landing\'s section headlines use the shared treatments');
+assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n="home\.hero\.title">/, 'the landing\'s h1 is the hero\'s headline and names the game; the lockup is the nav bar\'s alone (owner 2026-10-25)');
+assert.match(read('site/home.html'), /<h2 class="home-h2 press__title" id="press-title">[^]*?<span class="t-hollow" data-i18n-html="home\.social\.kicker"/, 'the landing\'s section headline uses the shared hollow treatment (2026-10-25: the press band)');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.
 const HOLLOW_DIGITS_ONLY = new Set(['.not-found h1', '.cot-facet-tally>.num:not(b)']);

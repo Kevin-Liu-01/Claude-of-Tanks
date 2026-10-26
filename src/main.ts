@@ -127,7 +127,7 @@ import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
-  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
+  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders, offThreadDecorPlanner,
 } from './vehicles/fleetFactory.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -140,6 +140,8 @@ import {
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
+import './ui/components/figures.css';
+import './ui/components/notices.css';
 import './ui/garage.css';
 import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
@@ -159,12 +161,12 @@ import {
 } from './game/garageVariants.ts';
 import {
   createGarageEnvironmentPresentationRuntime,
-  GARAGE_CAMERA_LOOK_HEIGHT_M,
   type GarageEnvironmentPresentationRuntime,
 } from './game/garageEnvironmentPresentationRuntime.ts';
 import {
   GARAGE_CAMERA_AZIMUTH_RAD,
   GARAGE_CAMERA_PITCH_RAD,
+  GARAGE_PLATFORM_GEOMETRY,
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
@@ -273,7 +275,7 @@ import { createPointerLockFeedbackRuntime } from './game/pointerLockFeedbackRunt
 import { createSniperFillRuntime } from './game/sniperFillRuntime.ts';
 import { createCombatFeedbackRuntime } from './game/combatFeedbackRuntime.ts';
 import { createRosterPresentation } from './game/rosterPresentation.ts';
-import { tankTier, tierNumeral } from './vehicles/tier.ts';
+import { displayTier, tierNumeral } from './techTree/tiers.ts';
 import { createTransition } from './ui/transition.ts';
 import type { DamagePanelController } from './ui/damagePanel.ts';
 import { prepareEntryPanelMasks } from './ui/damagePanelEntryMasks.ts';
@@ -1064,7 +1066,8 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, options),
+  // stage 2b: the pedestal's stepped builds plan their decoration in the decor worker (it awaits the waits)
+  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined }),
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
@@ -1199,11 +1202,6 @@ await bootStage('vehicle', async () => {
 // own fullscreen-pass compiles, which compileAsync(scene, camera) does not
 // cover), and compileAsync carries a known disposal race (camo_spotting r5).
 
-// Canonical hero box (half-extents, metres) the showroom frames INSTEAD of
-// each hull's own measured box — sized to the M1A2 reference (≈3.9 × 2.5 ×
-// 9.9 m). Keeping it constant is the whole point: every vehicle is viewed
-// from the same eye.
-const GARAGE_FRAME_BOX = { hw: 1.95, hh: 1.25, hd: 4.95 };
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
 function prepareBattleWorldServices(next = currentWorld()) {
@@ -1338,7 +1336,7 @@ const playSurface = createPlaySurfaceRuntime({
       maps: garageMaps,
       vehicles: VISIBLE_TANK_IDS.map((id) => {
         const spec = getSpec(id);
-        return { id, name: spec.name, tier: tankTier(id), nation: spec.nation };
+        return { id, name: spec.name, tier: displayTier(id), nation: spec.nation };
       }),
       getSelection: () => ({
         specId: garage.getSelected(),
@@ -1439,6 +1437,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     if (!multiplayerLobby?.prepareLobby()) battleIntent.preload(options);
   },
   onTankIntent: pedestal.preloadIntent,
+  onOverlayChange: () => invalidateGaragePresentation(),
+  actionKeyFor: (binding) => input.labelFor(input.getBinding(binding, 0)),
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
@@ -1645,19 +1645,16 @@ const showroom = createGarageShowroomRuntime({
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
   // Canonical front-right three-quarter camera: glacis toward the viewer,
-  // bow and gun toward screen-left. All dimensions and camera
-  // math remain owned by the existing engine solver; this root supplies only
-  // scene anchors and the canonical vehicle-independent frame.
+  // bow and gun toward screen-left. All dimensions and camera math remain owned by the existing engine solver, which
+  // frames the hero's own box, centred in the Garage's free stage (owner 10-25 via Main: "closer to center and showing
+  // stuff off better"), easing from one hero to the next; this root supplies the scene anchors and a mode preview's
+  // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  fixedFrame: () => ({
-    x: GARAGE_POS.x,
-    y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    z: GARAGE_POS.z,
-    hw: GARAGE_FRAME_BOX.hw,
-    hh: GARAGE_FRAME_BOX.hh + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    hd: GARAGE_FRAME_BOX.hd,
-  }),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
+    r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
+  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();
@@ -1777,6 +1774,12 @@ const battleAmbienceTime = () => battleAtmosphere.current?.weather?.timeOfDay ??
 /** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
 function deferredPanelMasks(specId: string): void {
   console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
+/** (battle-spikes-253) The panel's mask programs start linking when a covered warm starts (tankThumbs warmTopMaskPrograms). */
+function kickPanelMaskPrograms(root: THREE.Object3D | null | undefined): void {
+  if (!root) return;
+  void import('./ui/tankThumbs.ts').then(({ warmTopMaskPrograms }) => { warmTopMaskPrograms(root); })
+    .catch(() => { /* the panel's stage compiles them */ });
 }
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
@@ -2214,6 +2217,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    kickPlayerPanel: () => {
+      if (game.player?.aerial?.kind !== 'gunship') kickPanelMaskPrograms(game.player?.visual?.root);
+    },
     preparePlayerPanel: async () => {
       const player = game.player;
       if (player?.aerial?.kind === 'gunship') return;
@@ -2502,6 +2508,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     openBattle: (seconds: number) => openBattleRound(seconds),
     ensureWatch: () => watchOwner.preload(),
     scheduleDeferredWarm: scheduleDeferredCombatWarm,
+    // (battle-spikes-253) a session's first battle warms its GPU-heavy stages behind the veil; later battles skip it
+    warmFirstBattleCovered: (yieldForBudget, onProgress) => combatWarmComposition.warmFirstBattleCovered(yieldForBudget, onProgress),
     nextFrame,
     createLoadingYielder: createOpaqueLoadingYielder,
   }),
@@ -2762,8 +2770,11 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             yieldForBudget: createFrameBudgetYielder(16),
           }),
           wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks(vehicleWarm(bridge, signal)),
-          // (a solo room's seats after its reveal)
+          // (a solo room's other seats, under the cover after the viewer's warms)
           streamedVehicles: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmStreamedVehicles(vehicleWarm(bridge, signal)),
+          playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
+            kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
+          },
           playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;
@@ -3812,6 +3823,7 @@ const studioAccess = createStudioAccess({
       mapAmbience.setEnabled(true);
     },
     getStudioLight: () => studioLightLive,
+    programWarm: forwardProgramWarm,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
@@ -3919,6 +3931,7 @@ if (diagnosticsRequested) {
       isGarageModePreviewPending: () => garageModePreview.pending,
       isPedestalOnStage: () => pedestal.isOnStage(),
       getSelectedSpecId: () => selectedVehicle.id,
+      getWatchController: () => watchOwner.current?.controller ?? null,
       getPedestalCacheIds: () => [...pedestal.cacheIds],
       getWorldCacheIds: () => [...worldCache.keys()],
       getResidentLimits: () => ({ ...residentLimits }),

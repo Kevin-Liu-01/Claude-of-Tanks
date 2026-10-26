@@ -3,7 +3,7 @@
 // (src/ui/regionTags.ts) and its name in the reader's locale; the random rotation, the gravity worlds, the time-of-day
 // weights (src/engine/battleWeatherPolicy.ts) and the Proving Ground's lanes and plate rack (PROVING_GROUND_RULES) are
 // the game's own. Node only (tools/docs-prerender.mjs).
-import { MAP_IDS, RANDOM_BATTLE_MAP_IDS } from '../../world/maps/mapIds.ts';
+import { MAP_IDS } from '../../world/maps/mapIds.ts';
 import { mapRegionTags, regionTagIcon } from '../../ui/regionTags.ts';
 import { BATTLE_TIMES, TIME_WEIGHTS } from '../../engine/battleWeatherPolicy.ts';
 import { MARS_GRAVITY_OPTIONS, PROVING_GROUND_RULES } from '../../sim/matchRuleset.ts';
@@ -11,6 +11,7 @@ import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { t } from '../../ui/i18n.ts';
 import type { RichSection } from './types.ts';
+import { nameHtml } from '../designations.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -22,20 +23,21 @@ function mapCard(id: string): string {
   const tags = mapRegionTags(id);
   const art = pictureMarkup({ src: `/maps/cards/${id}.webp`, width: 1280, height: 720, alt: '', sizes: '(width < 768px) 50vw, (width < 1440px) 33vw, 22vw',
     rungs: [{ src: `/maps/thumbs/${id}.webp`, width: 512 }, { src: `/maps/cards/${id}.webp`, width: 1280 }] }, false);
-  return `<li class="dm-map" id="map-${id}">${art}<span class="dm-map__name"><b>${esc(t(`map.${id}`))}</b>`
-    + `<span class="dm-map__tags">${tags.map((tag) => `<span title="${esc(t(`camoTag.${tag}`))}">${icon(regionTagIcon(tag) as IconId, { size: 14 })}</span>`).join('')}</span></span></li>`;
+  return `<li class="dm-map" id="map-${id}">${art}<span class="dm-map__name"><b>${nameHtml(t(`map.${id}`))}</b>`
+    + `<span class="dm-map__tags">${tags.map((tag) => `<span role="img" aria-label="${esc(t(`camoTag.${tag}`))}" data-tip="${esc(t(`camoTag.${tag}`))}">${icon(regionTagIcon(tag) as IconId, { size: 18 })}</span>`).join('')}</span></span></li>`;
 }
 
 function landscapes(): string {
   const counts = new Map<ReturnType<typeof mapRegionTags>[number], number>();
   for (const id of MAP_IDS) for (const tag of mapRegionTags(id)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-  return `<ul class="dm-chips dm-chips--icons">${[...counts].sort((a, b) => b[1] - a[1]).map(([tag, n]) => `<li>${icon(regionTagIcon(tag) as IconId, { size: 14 })}`
+  // static labels with a count: the kit's tag (chapters.css .dm-tags), not its chip, which is a multi-select control
+  return `<ul class="dm-tags">${[...counts].sort((a, b) => b[1] - a[1]).map(([tag, n]) => `<li class="cot-c-tag">${icon(regionTagIcon(tag) as IconId, { size: 18 })}`
     + `<span>${esc(t(`camoTag.${tag}`))}</span><b>${n}</b></li>`).join('')}</ul>`;
 }
 
 function timeOfDay(): string {
   const total = BATTLE_TIMES.reduce((sum, time) => sum + TIME_WEIGHTS[time], 0);
-  const bars = BATTLE_TIMES.map((time) => `<li>${icon(TIME_ICONS[time] ?? 'clock', { size: 16 })}<b>${esc(t(`atmosphere.${time}`))}</b>`
+  const bars = BATTLE_TIMES.map((time) => `<li>${icon(TIME_ICONS[time] ?? 'clock', { size: 18 })}<b>${esc(t(`atmosphere.${time}`))}</b>`
     + `<span class="dm-bar" style="--dm-bar:${(TIME_WEIGHTS[time] / Math.max(...BATTLE_TIMES.map((x) => TIME_WEIGHTS[x]))).toFixed(3)}"></span>`
     + `<span class="num">${Math.round((TIME_WEIGHTS[time] / total) * 100)} %</span></li>`).join('');
   const still = pictureMarkup({ src: '/media/site50-r14/home/mechanics/time-of-day.webp', width: 1280, height: 720, alt: t('docs.battlefields.timeAlt'),
@@ -67,8 +69,7 @@ function breaksSection(): string {
 export function battlefieldsSections(): RichSection[] {
   const gravity = Object.entries(MARS_GRAVITY_OPTIONS).map(([id, option]) => `${t(`docs.battlefields.gravity.${id}`)} ${option.gravityScale} g`).join(' · ');
   const sections: Array<[string, string, string]> = [
-    ['maps', t('docs.battlefields.maps'), `<p>${esc(t('docs.battlefields.mapsLede', { maps: String(MAP_IDS.length), random: String(RANDOM_BATTLE_MAP_IDS.length) }))}</p>`
-      + `${landscapes()}<ul class="dm-maps">${MAP_IDS.map(mapCard).join('')}</ul>`],
+    ['maps', t('docs.battlefields.maps'), `${landscapes()}<ul class="dm-maps">${MAP_IDS.map(mapCard).join('')}</ul>`],
     ['breaks', t('docs.battlefields.breaks'), breaksSection()],
     ['gravity', t('docs.battlefields.gravity'), `<p>${esc(t('docs.battlefields.gravityLede', { options: gravity }))}</p>`],
     ['time', t('docs.battlefields.time'), timeOfDay()],

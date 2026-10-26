@@ -85,6 +85,8 @@ interface ShadowDebugOptions {
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
+  /** (battle-spikes-253) Every content change re-renders every cascade (the scoped re-renders' A/B). */
+  noScopedRebuild?: boolean;
 }
 
 declare global {
@@ -428,6 +430,8 @@ function downsampleCoverageMip(previous: ImageData, size: number): ImageData {
   return current;
 }
 
+const COVERAGE_HISTOGRAM = new Uint32Array(256);
+
 function correctMipCoverage(
   image: ImageData,
   targetCoverage: number,
@@ -437,14 +441,18 @@ function correctMipCoverage(
   const data = image.data;
   const currentCoverage = alphaCoverage(data, cutoff);
   if (currentCoverage >= targetCoverage * 0.7 && currentCoverage <= targetCoverage * 1.3) return;
-  const alphas: number[] = [];
-  for (let index = 3; index < data.length; index += 4) alphas.push(data[index]);
-  alphas.sort((a, b) => b - a);
-  const quantileIndex = Math.min(
-    alphas.length - 1,
-    Math.max(0, Math.round(targetCoverage * alphas.length) - 1),
-  );
-  const quantile = Math.max(1, alphas[quantileIndex]);
+  // (2026-10-24, lockdown-251) the alphas' quantile from a 256-bin histogram, the value a descending sort puts at
+  // quantileIndex: the sort of every texel's alpha (a million numbers at 1024²) was a tank switch's longest task
+  const histogram = COVERAGE_HISTOGRAM.fill(0);
+  for (let index = 3; index < data.length; index += 4) histogram[data[index]]++;
+  const count = data.length / 4;
+  const quantileIndex = Math.min(count - 1, Math.max(0, Math.round(targetCoverage * count) - 1));
+  let quantileValue = 0;
+  for (let value = 255, seen = 0; value >= 0; value--) {
+    seen += histogram[value];
+    if (seen > quantileIndex) { quantileValue = value; break; }
+  }
+  const quantile = Math.max(1, quantileValue);
   for (let index = 3; index < data.length; index += 4) {
     const alpha = cutoff + (data[index] - quantile) * 3;
     data[index] = Math.max(0, Math.min(255, alpha));

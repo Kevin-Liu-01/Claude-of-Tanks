@@ -12,10 +12,13 @@
  * the spotting view/camo tables (sim/spotting.ts).
  */
 import {
-  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
+  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS,
   sanitizeLoadout, computeEquipMults, applyEquipmentToCombat,
-  defaultLoadoutFor, AI_DEFAULT_LOADOUTS, equipEligible, equipModifiedStats,
-} from './equipment.ts';
+  defaultLoadoutFor, AI_DEFAULT_LOADOUTS, equipEligible, equipIneligibility, EQUIP_LIMITS,
+} from '../sim/equipmentRules.ts';
+import * as garageEquipment from './equipment.ts';
+const { EQUIP_CATEGORIES, equipModifiedStats, equipmentPicker } = garageEquipment;
+import { matchRulesetFor, rulesetAllowsEquipment, rulesetLoadout } from '../sim/matchRuleset.ts';
 import {
   createCombatState, startReload, tickFire, resolveShellHit,
 } from '../sim/damage.ts';
@@ -68,8 +71,9 @@ console.log('[1] catalog integrity');
     'reload', 'aimTime', 'bloom', 'traverse', 'turret', 'repair',
     'heSplash', 'crewHe', 'engineFire', 'fireTicks', 'extinguish', 'moduleHp',
   ]);
-  assert(EQUIPMENT_CATALOG.length >= 12 && EQUIPMENT_CATALOG.length <= 16,
-    `catalog size in the 12-16 mandate window (${EQUIPMENT_CATALOG.length})`);
+  // the owner's larger catalog (2026-10-24: "make equipment have a lot more options"): 15 to 25 items
+  assert(EQUIPMENT_CATALOG.length >= 15 && EQUIPMENT_CATALOG.length <= 25,
+    `catalog size in the 15-25 mandate window (${EQUIPMENT_CATALOG.length})`);
   for (const it of EQUIPMENT_CATALOG) {
     assert(!ids.has(it.id), `id '${it.id}' unique`);
     ids.add(it.id);
@@ -258,6 +262,101 @@ console.log('[10] garage stat helper');
   near(st.aimTimeS.mod, 2.4 * 0.9, 1e-9, 'modified aim time for the card');
   near(st.traverseDegS.mod, 22 * 1.1, 1e-9, 'modified hull traverse for the card');
   near(st.reloadS.base, 6.5, 1e-9, 'base kept alongside');
+}
+
+// ------------------------------------------- the larger catalog (2026-10-24) --
+{
+  const categories = EQUIP_CATEGORIES.filter((c) => c.id !== 'all').map((c) => c.id);
+  assert(categories.join() === 'fire,mobility,protection,survival,recon',
+    'five categories: firepower, mobility, protection, survivability, scouting');
+  for (const cat of categories) {
+    const count = EQUIPMENT_CATALOG.filter((item) => item.cat === cat).length;
+    assert(count >= 4, `${cat} offers at least four items (${count})`);
+  }
+  // the gates: a hand-loaded gun, an autoloader, a turret, a postwar hull
+  const turretless = { ...modernSpec, armor: { turretless: true } };
+  assert(equipIneligibility('rammer', autoloaderSpec) === 'manualLoader', 'no rammer on an autoloader');
+  assert(equipIneligibility('ready_rack', autoloaderSpec) === 'manualLoader', 'no ready rack on an autoloader');
+  assert(equipIneligibility('loader_kit', modernSpec) === 'autoloader', 'the loader kit needs an autoloader');
+  assert(equipIneligibility('loader_kit', autoloaderSpec) === null, 'and mounts on one');
+  assert(equipIneligibility('turret_drive', turretless) === 'turret', 'no turret drive on a turretless hull');
+  assert(equipIneligibility('ring_guard', turretless) === 'turret', 'no ring guard on a turretless hull');
+  assert(equipIneligibility('thermal_sight', ww2Spec) === 'era', 'no thermal sight on a wartime hull');
+  assert(equipIneligibility('fire_blankets', ww2Spec) === null, 'fire blankets fit every era');
+  assert(equipIneligibility('bogus', modernSpec) === 'unknown', 'an unknown id is refused');
+  assert(equipEligible('vstab') === false && equipEligible('rammer') === true, 'without a spec a modern item stays ineligible, as before');
+  assert(sanitizeLoadout(['loader_kit', 'rammer', 'ring_guard'], turretless).join() === 'rammer',
+    'a hand-loaded turretless hull keeps the rammer and drops the loader kit and the ring guard');
+  // stacked effects stay in their bounds; the bounds leave every bot loadout as it was
+  const stack = computeEquipMults(['rammer', 'ready_rack', 'vents']);
+  near(stack.reload, EQUIP_LIMITS.reload, 1e-12, 'three reload items stop at the reload bound');
+  const raw = (ids, key) => ids.reduce((product, id) => product * (EQUIPMENT_BY_ID.get(id).effects[key] ?? 1), 1);
+  for (const [role, ids] of Object.entries(AI_DEFAULT_LOADOUTS)) {
+    const m = computeEquipMults(ids);
+    for (const key of ['reload', 'aimTime', 'bloom', 'traverse', 'turret', 'repair', 'heSplash', 'crewHe', 'engineFire', 'fireTicks', 'extinguish']) {
+      near(m[key], raw(ids, key), 1e-12, `the ${role} bots' ${key} is untouched by the bounds`);
+    }
+  }
+  near(computeEquipMults(['wet_rack', 'ready_rack']).moduleHp.ammoRack, 1.5 * 0.85, 1e-12, 'a ready rack trades back some of a wet rack');
+  for (const id of ['exhaust_baffles', 'thermal_sight']) assert(!!SPOT_EQUIP[id], `${id}'s vision lives in the spotting table`);
+  near(equipViewMult(['optics', 'binoculars', 'thermal_sight'], false), 1.45, 1e-12, 'stacked view stops at its bound');
+  near(equipViewMult(['optics', 'binoculars', 'vents'], false), 1.1 * 1.25 * 1.025, 1e-12, 'the strongest earlier view stack is unchanged');
+  near(equipCamoBonus(['camo_net', 'vents', 'exhaust_baffles'], false), 0.16, 1e-12, 'stacked concealment stops at its bound');
+}
+
+// ------------------------------------------ the picker's data (2026-10-24) --
+{
+  const groups = equipmentPicker(autoloaderSpec, ['loader_kit', 'optics']);
+  assert(groups.map((g) => g.category.id).join() === 'fire,mobility,protection,survival,recon',
+    'the picker groups every category in catalog order, without "All"');
+  assert(groups.reduce((n, g) => n + g.items.length, 0) === EQUIPMENT_CATALOG.length, 'and lists every item once');
+  const entry = (list, id) => list.flatMap((g) => g.items).find((e) => e.item.id === id);
+  assert(entry(groups, 'loader_kit').fittedSlot === 0 && entry(groups, 'optics').fittedSlot === 1, 'it names the slot each item sits in');
+  assert(entry(groups, 'toolbox').fittedSlot === -1, 'and -1 for an item not fitted');
+  assert(entry(groups, 'rammer').lock === 'manualLoader', 'an autoloader sees the rammer locked by its loader');
+  assert(entry(groups, 'loader_kit').lock === null, 'and its kit open');
+  for (const g of groups) for (const e of g.items) {
+    assert(e.lock === equipIneligibility(e.item, autoloaderSpec), `${e.item.id}: the picker's lock is the gate spawn applies`);
+  }
+  // a mode's rules: AC-130 plays without scouting, so its picker locks the category and spawn drops it
+  const ac130 = matchRulesetFor('ac130');
+  const modeGroups = equipmentPicker(modernSpec, [], (id) => rulesetAllowsEquipment(ac130, id));
+  for (const e of modeGroups.find((g) => g.category.id === 'recon').items) {
+    assert(e.lock === 'mode' || e.lock === 'era', `${e.item.id}: locked by AC-130's rules`);
+  }
+  const open = modeGroups.flatMap((g) => g.items).filter((e) => e.lock === null).map((e) => e.item.id);
+  assert(rulesetLoadout(ac130, open).join() === open.join(), 'every item the AC-130 picker leaves open survives the mode filter');
+  assert(equipmentPicker(modernSpec, []).flatMap((g) => g.items).every((e) => e.lock !== 'mode'), 'no filter, no mode locks');
+}
+
+// ----------------------------- the Garage slot's caption (2026-10-25) --
+// a slot shows the short name under its glyph in about 54 px at 11 px: ten characters in English, five in Chinese
+{
+  const { readFileSync } = await import('node:fs');
+  const catalogs = [['en-US', 10], ['zh-CN', 5]].map(([locale, max]) => [locale, max,
+    JSON.parse(readFileSync(new URL(`../ui/i18nCatalog.${locale}.json`, import.meta.url), 'utf8'))]);
+  for (const item of EQUIPMENT_CATALOG) {
+    assert(item.short.length <= 10, `${item.id}: the catalog's own short "${item.short}" fits the slot`);
+    for (const [locale, max, catalog] of catalogs) {
+      const short = catalog[`equipment.${item.id}.short`] ?? '';
+      assert(short.length > 0 && short.length <= max, `${item.id}: the ${locale} short "${short}" fits the slot`);
+    }
+  }
+}
+
+// ----------------------------- one source of truth (2026-10-25, item 253) --
+// the rules live in the DOM-free slice the rooms Worker's rulesets reach; the Garage module re-exports its objects
+{
+  const { readFileSync } = await import('node:fs');
+  for (const name of ['EQUIPMENT_CATALOG', 'EQUIPMENT_BY_ID', 'EQUIP_SLOTS', 'sanitizeLoadout', 'computeEquipMults',
+    'applyEquipmentToCombat', 'defaultLoadoutFor']) {
+    assert(garageEquipment[name] === { EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, sanitizeLoadout, computeEquipMults,
+      applyEquipmentToCombat, defaultLoadoutFor }[name], `game/equipment.ts re-exports the slice's ${name}`);
+  }
+  const rules = readFileSync(new URL('../sim/equipmentRules.ts', import.meta.url), 'utf8');
+  const imports = [...rules.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+  assert(imports.every((spec) => !/\/(game|vehicles)\//.test(spec) && !spec.startsWith('../')),
+    `sim/equipmentRules.ts imports only sim-local modules (${imports.join(', ')})`);
 }
 
 if (failures) {

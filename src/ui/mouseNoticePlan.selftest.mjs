@@ -128,7 +128,8 @@ const pins = [
   [/const sideX = draw\.cx - draw\.magazineHalfW - 7 - textW - unitW;/, R.besideCountdownPx >= 19 + 7 + 50],
   // the chip: under the marker and the column's marks, or over the sight
   [/const AIM_WARNING_CHIP_ABOVE = 14;/, R.chipAbovePx === 14], [/const AIM_WARNING_CHIP_BELOW = 10;/, R.chipBelowPx === 10],
-  [/draw\.warningW = ctx\.measureText\(warning\.text\)\.width \+ 50;/, R.chipHalfWidthPx === 92],
+  [/draw\.warningW = Math\.ceil\(ctx\.measureText\(warning\.text\)\.width \+ warning\.text\.length \* AIM_WARNING_TRACK_PX\) \+ 62;/,
+    R.chipHalfWidthPx === 122],
   [/let y = Math\.max\(draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\),/, R.chipMinPx === 62 && R.chipRingPx === 24],
   [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
   [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],
@@ -141,7 +142,8 @@ const pins = [
   [new RegExp(String.raw`const SNIPER_ROW_PLACES: readonly \(readonly \[SniperRowMode, boolean, boolean, boolean\]\)\[\] = \[\s+\['stack', false, false, false\], \['zoomBeside', false, false, false\], \['chipBeside', false, false, true\],\s+\['stack', true, false, true\], \['zoomBeside', true, false, true\], \['rowBeside', false, false, false\],\s+\['rowAbove', false, false, false\], \['rowAbove', true, false, true\], \['stack', false, true, false\], \['stack', true, true, true\],\s+\['rowAbove', false, true, false\], \['rowAbove', true, true, true\],\s+\];`), true],
   // the range tag at the 4:30, past a rack, or at the 1:30
   [/const offset = 0\.7071 \* \(draw\.radius \+ 9\);/, true], [/const rackClear = draw\.magazine \? draw\.magazineHalfW \+ 10 - 4 : 0;/, true],
-  [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],
+  [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear, HIT_SHARD_CLEAR\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],
+  [/const HIT_SHARD_CLEAR = Math\.ceil\(0\.7071 \* \(18\.5 \+ 13\) \+ 3\.5\);/, R.rangeShardPx === Math.ceil(0.7071 * (18.5 + 13) + 3.5)],
   [/const y = draw\.cy - offset - 3\.5 - 11\.5 \* 0\.08;/, R.rangeOverPx === 3.5],
 ];
 for (const [pattern, restated] of pins) {
@@ -306,11 +308,15 @@ for (const v of VIEWPORTS) {
     }
     assert.ok(!overlap(det, alert, MOUSE_NOTICE_GAP_PX - .01), `${name}: the detection and the alert stand apart`);
     // the alert raised before the roll-out keeps off the countdown and its rules panel, on the centre line
-    const early = alertBox(plan.countdownAlert), dial = plan.countdown;
+    // (the dial the alert shows with: a step smaller where that leaves the alert a place clear of the whole reticle)
+    const early = alertBox(plan.countdownAlert), dial = plan.countdownUnderAlert;
+    assert.ok(dial.scale <= plan.countdown.scale && (dial === plan.countdown || plan.countdownAlertClearance >= plan.clearance),
+      `${name}: the dial yields to the alert only for a place as clear as the notices' own`);
     assert.ok(centred(early, input.width) && plan.countdownAlert.small === input.smallAlert, `${name}: the countdown's alert sits on the centre line`);
     assert.ok(plan.countdownAlert.h >= alertReserve(plan.countdownAlert.w, plan.countdownAlert.small), `${name}: the countdown's alert slot holds every alert`);
     const onDial = [dial, dial.rules].some((r) => r && overlap(early, r, MOUSE_NOTICE_GAP_PX - .01));
     assert.equal(onDial, ALERT_ON_COUNTDOWN.includes(key), `${name}: the alert ${onDial ? 'meets' : 'keeps off'} the countdown`);
+    assert.ok(!overlap(early, det, MOUSE_NOTICE_GAP_PX - .01), `${name}: the countdown's alert keeps off the detection`);
     if (!overlap(alert, dial, MOUSE_NOTICE_GAP_PX - .01) && !(dial.rules && overlap(alert, dial.rules, MOUSE_NOTICE_GAP_PX - .01))) {
       assert.deepEqual(plan.countdownAlert, plan.alert, `${name}: an alert clear of the countdown keeps its own place`);
     }
@@ -352,9 +358,9 @@ for (const v of VIEWPORTS.filter((x) => x.earL)) for (const rosters of [14, 20])
   // the countdown's alert off the countdown, the revive count off both notices' (the medal card waits: 4c)
   const det = plan.detection, alert = alertBox(plan.alert), gap = MOUSE_NOTICE_GAP_PX - .01;
   for (const label of ['countdown', 'revive', 'medal']) assert.equal(!!plan[label], label !== 'medal' || !NO_MEDAL.includes(vp), `${vp} r${rosters}: the ${label} has a place`);
-  assert.ok((ALERT_ON_COUNTDOWN.includes(vp) || !overlap(plan.countdown, alertBox(plan.countdownAlert), gap)) && !overlap(plan.revive, alert, gap)
+  assert.ok((ALERT_ON_COUNTDOWN.includes(vp) || !overlap(plan.countdownUnderAlert, alertBox(plan.countdownAlert), gap)) && !overlap(plan.revive, alert, gap)
     && !overlap(plan.revive, det, gap), `${vp} r${rosters}: no element takes a place it can show with`);
-  for (const r of [det, alert, alertBox(plan.countdownAlert), plan.countdown, plan.revive, plan.medal]) {
+  for (const r of [det, alert, alertBox(plan.countdownAlert), plan.countdown, plan.countdownUnderAlert, plan.revive, plan.medal]) {
     assert.ok(!r || centred(r, input.width), `${vp} r${rosters}: every element on the centre line`);
   }
 }
@@ -536,7 +542,7 @@ for (const rule of css.split('\n').filter((line) => line.includes('[data-hud-not
 assert.doesNotMatch(css, /:not\(\.cot-touch-layout\):is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) :is\(\.cot-sixth,\.cot-alert\)/,
   'the old side column next to the aim point is gone');
 // the lanes yield only to what is shown, and the held rosters stop short of it
-assert.match(layout, /const alertSlot = countdown \? plan\.countdownAlert : plan\.alert;\s+const shown = \[root\.querySelector\('\.cot-sixth\.on'\) && plan\.detection, root\.querySelector\('\.cot-alert\.show'\) && alertSlot,\s+countdown && plan\.countdown, root\.querySelector\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
+assert.match(layout, /const alertSlot = countdown \? plan\.countdownAlert : plan\.alert;\s+const shown = \[root\.querySelector\('\.cot-sixth\.on'\) && plan\.detection, root\.querySelector\('\.cot-alert\.show'\) && alertSlot,\s+countdown && \(root\.querySelector\('\.cot-alert\.show'\) \? plan\.countdownUnderAlert : plan\.countdown\),\s+root\.querySelector\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
 // every centre notice on the centre line: the layout writes no x of its own, and the sheet centres them all
 assert.doesNotMatch(layout, /--hud-(notice|alert|banner|revive|countdown|touch-notice|touch-alert|touch-banner|touch-countdown)-(x|cx)\b|--hud-alert-shift/, 'no planned x');
 assert.doesNotMatch(css, /--hud-(notice|alert|banner|revive|countdown)-x\b|--hud-touch-[a-z]+-cx|--hud-alert-shift/, 'no planned x in the sheet');

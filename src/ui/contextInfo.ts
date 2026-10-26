@@ -68,12 +68,12 @@ export interface InfoButton extends HTMLButtonElement {
 const CSS = `
 .cot-info-trigger{position:relative;box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;
   max-width:20px;max-height:20px;margin:0;padding:0;display:inline-grid;overflow:visible;line-height:1;place-items:center;
-  flex:0 0 20px;border:1px solid rgba(154,174,189,.3);border-radius:50%;background:rgba(8,12,16,.76);
-  color:#9aabb8;cursor:pointer;text-transform:none;letter-spacing:0;vertical-align:middle;
-  transition:color .14s,border-color .14s,background .14s,transform .12s}
-.cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:50%}.cot-info-trigger__icon{display:block;pointer-events:none}
-.cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
-  background:rgba(240,160,48,.13);outline:none}.cot-info-trigger:active{transform:scale(.94)}
+  flex:0 0 20px;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--ring-2);
+  color:var(--ink-3);cursor:pointer;text-transform:none;letter-spacing:0;vertical-align:middle;
+  transition:color var(--dur-fast),background-color var(--dur-fast)}
+.cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:var(--control-radius)}.cot-info-trigger__icon{display:block;pointer-events:none}
+.cot-info-trigger:hover,.cot-info-trigger[aria-expanded='true']{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--ring-3);outline:none}
+.cot-info-trigger:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring)}
 .cot-info-modal{display:grid;gap:22px}.cot-info-modal__lead{max-width:760px;margin:0;color:#bcc9d2;font-size:15px;line-height:1.68}
 .cot-info-modal__media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:560px}
 .cot-info-modal__media[data-count='1']{grid-template-columns:1fr}.cot-info-modal__media[data-count='3'] figure:first-child{grid-row:span 2}

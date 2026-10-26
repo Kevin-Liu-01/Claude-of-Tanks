@@ -192,6 +192,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/physicalMuzzleBore.selftest.mjs',
     'src/vehicles/carvedMuzzleBore.selftest.mjs',
     'src/vehicles/profiles/lathedWheelStock.selftest.mjs',
+    // 2026-10-25 (the owner's profile skirts): skirts swept on their hull's side and glacis lines, closed on both sides
+    'src/vehicles/profiles/profileSkirt.selftest.mjs',
     'src/vehicles/profiles/kf41LynxWheelStock.selftest.mjs',
     'src/vehicles/nationWheelSets.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
@@ -715,6 +717,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
     'src/vehicles/frontEraPackages.selftest.mjs',
+    'src/vehicles/profiles/eraModuleKit.selftest.mjs',
     // 2026-10-21 (release 230, UA/PL round 11): the three ids' main gun over their own hulls with the shallower mantlet
     // chin and the gun-depression lane's curves (the barrel 25 mm, the mount 20 mm off the hull at every yaw)
     'src/vehicles/nationalGunMantlet.selftest.mjs',
@@ -755,6 +758,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
+    'tools/hot-path-alloc.selftest.mjs',
+    'tools/frontend-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
@@ -786,6 +791,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
+    'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
+    'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
+    'tools/battle-memory-probe.selftest.mjs', // battle-spikes-253: the memory receipt's growth across battles and its judge
+    'tools/heap-retainers.selftest.mjs', // battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot
     'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
@@ -910,6 +920,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // tech-tree view 252 (2026-10-25): the read-only national trees (shape, layout, the fleet once each, no progression)
+    'src/techTree/techTree.selftest.mjs',
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',
@@ -932,6 +944,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
     // 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget.
@@ -969,6 +982,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanelWreckPose.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
+    'src/ui/topMaskEntryKick.selftest.mjs', // battle-spikes-253: the panel's mask programs link from the covered warm's start
     'src/ui/tankThumbs.selftest.mjs',
     'src/ui/topMaskCoverage.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
@@ -983,6 +997,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
     // colour-vision floors from the token values; the legacy names alias the tokens
     'src/ui/tokens/tokens.selftest.mjs',
+    'src/ui/tokens/modeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
@@ -991,6 +1006,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
+    // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)
+    'tools/motion-lint.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
     // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
@@ -1283,6 +1301,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',
+    'src/engine/coverageMipQuantile.selftest.mjs',
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
@@ -1318,6 +1337,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
@@ -1348,6 +1368,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/wire/matchBuild.selftest.mjs',
     'src/mp/wire/destroyedSet.selftest.mjs',
     'src/mp/wire/viewerMask.selftest.mjs', // 2026-10-15 MP stream: wire 7, a delta's movement checkpoint as a changed-value mask
+    'src/mp/wire/eventPayload.selftest.mjs', // mp-scale-251: wire 8, event payloads in binary decode to their JSON
     'src/mp/match/snapshotRate.selftest.mjs',
     'src/mp/match/rtcClientLink.selftest.mjs',
     'src/mp/host/seatTokenWeb.selftest.mjs',
@@ -1378,6 +1399,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/presentation/wreckTurretSync.selftest.mjs',
     'tools/mp-client-soak.selftest.mjs',
     'src/mp/room/roomPolicy.selftest.mjs',
+    'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
@@ -1453,6 +1475,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/matchActor.selftest.mjs',
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
+    'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
+    'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
     'server/match/matchActorPause.selftest.mjs', // step 5: a solo match's pause, its unpaused twin's state
     'server/match/service.selftest.mjs',
@@ -1625,6 +1649,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.underFire.selftest.mjs',
     // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
     'src/game/ai.colliderStop.selftest.mjs',
+    'src/game/ai.gridOrderShared.selftest.mjs', // battle-spikes-253: the bots' grid-order check one walk a list, not one a bot
     // 2026-10-07 (bots lane): an empty rack with no teammate left that can fire runs at a passive target (Polders 41000).
     'src/game/ai.lastRun.selftest.mjs',
     // 2026-10-09 (gameplay lane): a pivot never drives past 4 m/s (botModes Aegis Crossing Turbo Ball, the 896-point fall).
@@ -1653,6 +1678,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
+    // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
+    'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
@@ -1690,6 +1717,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/catalog.selftest.mjs',
     'src/gallery/viewGlyphs.selftest.mjs',
     'src/gallery/cameraFit.selftest.mjs',
+    'src/gallery/trueScale.selftest.mjs',
     'src/gallery/modeDockLayout.selftest.mjs',
     'src/gallery/surfaceMarkup.selftest.mjs',
     'src/vehicles/rosterPolicy.selftest.mjs',
@@ -1914,6 +1942,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/plasterBaseMemo.selftest.mjs', // 2026-10-08: the render families paint one untoned base per build
     'src/world/nearMeshVertexMemo.selftest.mjs', // 2026-10-08: the near mesh's vertex heights asked once per props build
     'src/world/propsScheduling.selftest.mjs',
+    'src/world/worldAssemblySteps.selftest.mjs', // battle-spikes-253: the world's assembly paced in steps, the seal per grass mesh
+    'src/world/worldBuildLazyKits.selftest.mjs', // battle-spikes-253: a page's world build under lazy kits through the prefetch path
+    'src/world/footprintPointIndex.selftest.mjs', // battle-spikes-253: the binned footprint query answers as the scan
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
@@ -2276,7 +2307,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
+    // that fails on any on-screen canvas built outside it
+    'src/ui/uiCanvas.selftest.mjs',
+    'src/ui/uiCanvasCensus.selftest.mjs',
+    // a canvas's words and figures as DOM runs over it (the sight's readouts, the glyphs' letters)
+    'src/ui/canvasText.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
+    // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
+    'src/ui/hudNotices.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
@@ -2316,6 +2355,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
+    // again"): one row a datum, placed only by its owner, its glyph through the registry
+    'src/ui/surfaceRegistry.selftest.mjs',
     // 2026-10-14 (owner, Kestrel: "water spots by spawn even though you can't actually see any water"): the tactical
     // map paints water only where the world draws it — all 33 maps, Kestrel's pads, the liquid maps' wet discs
     'src/ui/minimapLiquidWater.selftest.mjs',
@@ -2362,6 +2404,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
+    'src/vehicles/ridingPartsWire.selftest.mjs',
+    'src/vehicles/decorPlanWire.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',

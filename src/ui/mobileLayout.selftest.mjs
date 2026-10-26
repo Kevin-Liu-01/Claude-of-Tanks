@@ -42,10 +42,11 @@ assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
 assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
   'Garage composition must consume semantic orientation attributes instead of media-query guesses');
-// The laptop bar keeps its destinations labelled and folds GitHub, the locale and Record to glyphs, all through the width
-// band (36af9d7638 kept the labels; the 246 pass moved its sub-1280 fold onto the band itself).
-assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher,\.cot-record-trigger\) \.nav-label\{display:none\}/,
-  'laptop navigation folds GitHub, the locale and Record through the shared width-band contract');
+// The laptop bar keeps its destinations labelled (Record among them: the gauntlet 10-25 found it a lone glyph beside a
+// half-empty bar) and folds GitHub and the locale to glyphs, all through the width band (36af9d7638 kept the labels; the
+// 246 pass moved its sub-1280 fold onto the band itself).
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher\) \.nav-label\{display:none\}/,
+  'laptop navigation folds GitHub and the locale through the shared width-band contract');
 assert.doesNotMatch(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
   'laptop navigation keeps Garage, Deploy, Gallery, Studio and Docs labelled');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
@@ -54,7 +55,7 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:no
 // drawer), and the battle card carries the battlefield (its picture opens the Deploy screen's field); the folded tool
 // cards are gone (the 246 CSS diet).
 assert.match(garageSource,
-  /<div class="cot-lt-band"><div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-paint"/,
+  /<div class="cot-lt-band"><div class="cot-lt-group">[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-group">[\s\S]*?<div class="cot-lt-paint"/,
   'every layout keeps the equipment slots and the paint in view under the name');
 assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
   'the band\'s last swatch opens every paint');
@@ -131,7 +132,7 @@ assert.match(touch,
   /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
   'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
 assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells\{[^}]*width:48px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
+  /body\.cot-touch-layout \.cot-shells\{[^}]*width:52px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
   'mobile ammunition must collapse to one trigger and expand sideways for selection');
 assert.match(hud,
   /const s = el\('button', 'cot-con', conBox\)[\s\S]*bus\.emit\('ui:consumable'[\s\S]*addEventListener\('pointerdown'/,
@@ -158,9 +159,10 @@ assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
 // owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
-// the corner controls leave it, instead of a fixed 294 px set 18 px off centre
+// the corner controls leave it, instead of a fixed 294 px set 18 px off centre; since 2026-10-25 ("less so big and wide")
+// it hugs its scores and clock inside that lane
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;max-width:calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
@@ -202,14 +204,14 @@ assert.match(hud,
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
 assert.match(hud,
-  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, x, y\)[\s\S]*fillText\(label, x, y\)/,
-  'incoming result labels must sit beyond the wedge instead of inside its glow');
+  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx, ctx\.lineWidth\)/,
+  'incoming result labels must sit beyond the wedge instead of inside its glow (DOM over the sight, haloed: UI-LOCKDOWN A)');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
 assert.match(hud,
   /function mergeIncomingHitDirection[\s\S]*existing\.kind !== kind \|\| existing\.mergeKey !== mergeKey[\s\S]*incomingHitFeedbackFor\(hit\)[\s\S]*mergeIncomingHitDirection\([\s\S]*feedback\.mergeKey/,
   'nearby hits may merge only when their canonical outcomes match');
-assert.match(hud, /fillStyle = indicator\.labelColor[\s\S]*fillText\(label, x, y\)/,
+assert.match(hud, /fillStyle = indicator\.labelColor;[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx/,
   'direction labels must retain the canonical damage, splash, and outcome colors');
 assert.match(shotInfo,
   /function recordOutgoingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)[\s\S]*function recordIncomingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)/,
@@ -271,7 +273,7 @@ assert.match(shotInfo,
   /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-card-top,var\(--cot-si-roster-bottom,272px\)\);width:320px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
   'desktop ballistic reports must use the compact centered-lane composition');
 assert.match(shotInfo,
-  /\.cot-si-diag\{display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
+  /\.cot-si-diag\{(?:zoom:var\(--hud-report-zoom,1\);)?display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
   'desktop penetration schematics must fill the available report frame');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='compact'\] \.cot-si-diag\{[\s\S]*grid-template-columns:78px 154px/,
@@ -289,9 +291,10 @@ assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
 assert.match(shotInfo,
   /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
-// (bc8de4d713: the rule is the Premiere plates' line token)
+// (bc8de4d713: the rule is the Premiere plates' line token; gauntlet r3: every row on one rhythm, each over its own
+// hairline, the penetration row included, so no row's gap is a one-off)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
+  /\.cot-si-kv\{[^}]*padding:2px 0;border-top:1px solid var\(--line-1\);/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
@@ -383,8 +386,10 @@ assert.match(perfHud,
   /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,
   'the compact diagnostics header must expose an accessible expand/collapse control');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:1 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
-  'phone Settings tabs size to their labels (never squeezed under them) and share the spare width');
+  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:0 0 auto;padding-inline:4px;font-size:max\(13px,var\(--fs-13\)\)/,
+  'phone Settings tabs size to their labels (never squeezed under them)');
+assert.match(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{gap:0;justify-content:space-between\}/,
+  'phone Settings tabs share the spare width between them, so a short label keeps a short underline (gauntlet 250)');
 assert.doesNotMatch(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{overflow-x:hidden\}/,
   'a tab row wider than the phone scrolls instead of clipping a label');
 assert.match(responsiveSurfaces,
@@ -393,10 +398,12 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-ctxlost h2\{[\s\S]*overflow-wrap:anywhere/,
   'the graphics recovery title must reflow without overflowing small screens');
-assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Gallery feedback toasts must be viewport-bounded');
-assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Docs feedback toasts must be viewport-bounded');
+assert.match(gallery, /\.cot-c-notices\.gallery-notices\{[^}]*width:min\(420px,calc\(100% - 24px\)\)/,
+  'Gallery feedback notices must be viewport-bounded');
+// the Field Manual's notices are the kit's (components/notices.css): a region bounded to the viewport, text that wraps
+assert.match(docs, /@import url\('\.\.\/ui\/components\/notices\.css'\);/, 'the Field Manual loads the kit\'s notices');
+assert.match(await readFile(new URL('./components/notices.css', import.meta.url), 'utf8'),
+  /\.cot-c-notices\{[^}]*width:min\(420px,calc\(100vw - 32px\)\)/, 'notices are viewport-bounded');
 
 for (const [source, pattern, label] of [
   [transition, /\.cot-trans\{position:fixed/, 'state transition'],

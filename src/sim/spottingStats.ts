@@ -90,7 +90,14 @@ export const EQUIPMENT: Readonly<Record<string, EquipmentVisionEffect>> = {
   binoculars: { label: 'Binocular Telescope',  viewStill: 0.25 },
   vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.025 },
   optics:     { label: 'Coated Optics',        view: 0.10 },
+  exhaust_baffles: { label: 'Exhaust Baffles',  camo: 0.04 },
+  thermal_sight:   { label: 'Thermal Sight',    view: 0.15 },
 };
+
+/** The bounds stacked vision equipment stays in (2026-10-24, the larger catalog): every loadout the catalog allowed
+ *  before (at most 1.41 view and 0.14 concealment) sits inside them. */
+const EQUIP_VIEW_MULT_MAX = 1.45;
+const EQUIP_CAMO_BONUS_MAX = 0.16;
 
 /**
  * Own-camo bonus from equipment (additive with base + paint, so it is
@@ -111,7 +118,7 @@ export function equipCamoBonus(
     if (e.camo) b += e.camo;
     if (e.camoStill && !moving) b += e.camoStill;
   }
-  return b;
+  return Math.min(EQUIP_CAMO_BONUS_MAX, b);
 }
 
 /**
@@ -132,5 +139,5 @@ export function equipViewMult(
     if (e.view) m *= 1 + e.view;
     if (e.viewStill && !moving) m *= 1 + e.viewStill;
   }
-  return m;
+  return Math.min(EQUIP_VIEW_MULT_MAX, m);
 }

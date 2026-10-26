@@ -58,6 +58,9 @@ const maintainedStandaloneTools = new Set([
   'tools/world-pole-visual-audit.mjs',
   'tools/world-vehicle-visual-audit.mjs',
   'tools/world-wreck-visual-audit.mjs',
+  'tools/turret-seam-daylight.mjs', // the gun-hull lane's turret-seam daylight census (owner 2026-10-24, see-through turrets; CPU raster, run by hand)
+  'tools/gate-audio-probe.mjs', // UI-LOCKDOWN E: the entry gate's first press and the audio device (headed Chrome, A B B A, run by hand)
+  'tools/mp-room-census.mjs', // UI-LOCKDOWN E: the rooms flow's console census on a built dist (two browsers + a LAN host, run by hand)
 ]);
 // 2026-09-23: the marketing generators are governed too (owner cleanup ruling:
 // a generator stays only while a document or manifest cites it).
@@ -105,6 +108,7 @@ const ownedSkillDocs = new Set([
   'src/game/SKILL.md',
   'src/presentation/SKILL.md',
   'src/sim/SKILL.md',
+  'src/techTree/SKILL.md',
   'src/ui/SKILL.md',
   'src/vehicles/SKILL.md',
   'src/world/SKILL.md',

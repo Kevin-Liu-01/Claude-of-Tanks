@@ -12,7 +12,9 @@ import * as detMath from './detMath.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
-const MAX_ENTITIES = 32;
+// (mp-scale-251) the wire's 64 (was 32: a viewer of a 32v32 test room saw the first 32 hulls it may observe, its own
+// among them only when it came early enough in the roster)
+const MAX_ENTITIES = 64;
 const MAX_SHELLS = 256;
 
 const SNAPSHOT_RELOAD_KINDS = Object.freeze({
@@ -121,7 +123,7 @@ interface QuantizedEntitySnapshot {
   eraSpent?: string[];
 }
 
-interface QuantizedShellSnapshot {
+export interface QuantizedShellSnapshot {
   id: number;
   shooterId: string;
   x: number;
@@ -274,7 +276,7 @@ export function captureEntitySnapshot(
   return snapshot;
 }
 
-function captureShellSnapshot(
+export function captureShellSnapshot(
   shell: SnapshotShellSource | null | undefined,
 ): QuantizedShellSnapshot | null {
   if (!shell || shell.dead || !shell.pos) return null;

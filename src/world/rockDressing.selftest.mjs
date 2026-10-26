@@ -745,7 +745,7 @@ const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision proxy');
 // (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
 // the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const steps = boulderVariantFormSteps(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
 // (item 46, 2026-10-22: painted from the map's own stone, rockBaseToneFor, before its lithology's; its mean tone over the
 // ground summed for the chips its foot sheds before the form is kept)
 assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*\/\/ \(rock round 2\) the stone's mean tone[\s\S]{0,500}?\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);

@@ -38,7 +38,7 @@ const nameOf = (id) => names.get(id) ?? null;
     targetName: 'M1A2', shellName: '152 mm Howitzer', shellType: 'HE' };
   const blow = resolveFinalBlow(lethal, { id: 'e1', killerId: 'me', cause: 'shot', source: 'ac130' }, null, nameOf);
   assert.equal(blow.attacker, 'AC-130');
-  assert.equal(finalBlowLine(blow), 'Final blow — AC-130 destroyed M1A2 with 152 mm Howitzer');
+  assert.equal(finalBlowLine(blow), 'Final blow: AC-130 destroyed M1A2 with 152 mm Howitzer');
   const noLethal = resolveFinalBlow(null, { id: 'e1', killerId: 'me', cause: 'shot', source: 'ac130' }, null, nameOf);
   assert.equal(noLethal.attacker, 'AC-130', 'the destruction alone names the AC-130 too');
   const tankKill = resolveFinalBlow(null, { id: 'e1', killerId: 'me', cause: 'shot' }, null, nameOf);

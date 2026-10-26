@@ -16,18 +16,23 @@ if (searchHost && searchInput) {
     searchInput.focus();
     searchInput.select();
   });
-  const kbd = searchHost.querySelector('kbd');
-  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
+  // one key cap a key: the platform's modifier, then K
+  const keys = searchHost.querySelector('.dm-search__keys');
+  if (keys) keys.innerHTML = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut')
+    .split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('');
 }
 
-let toastTimer = 0;
-function announce(message: string): void {
-  const toast = document.querySelector<HTMLElement>('#docsToast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1600);
+/** The archive failed to load: the kit's error notice, static in the dialog (the top layer hides a page toast), shows
+ *  with a Retry that runs the same load again. Its markup ships with the page, so the notice needs no chunk of its own
+ *  (a load that failed would likely fail that one too). */
+function loadFailed(retry: () => Promise<unknown>): void {
+  const failed = archiveDialog?.querySelector<HTMLElement>('[data-archive-failed]');
+  if (!failed) return;
+  failed.hidden = false;
+  failed.querySelector('button')?.addEventListener('click', () => {
+    failed.hidden = true;
+    void retry().catch(() => loadFailed(retry));
+  }, { once: true });
 }
 
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');
@@ -40,7 +45,7 @@ function stopArchiveMotion(): void {
   archiveDialog?.querySelectorAll<HTMLVideoElement>('video').forEach((video) => video.pause());
 }
 
-function mountArchiveMotionInfo(): void {
+function mountArchiveMotionInfo(): Promise<unknown> {
   archiveMotionPromise ??= Promise.all([
     import('../presentation/captureRecipes.ts'),
     import('../ui/contextInfo.ts'),
@@ -68,28 +73,27 @@ function mountArchiveMotionInfo(): void {
         } : null,
       }));
     });
-  }).catch((error: RuntimeValue) => {
-    archiveMotionPromise = null;
-    announce(error instanceof Error ? error.message : String(error));
   });
+  return archiveMotionPromise.catch((error: RuntimeValue) => { archiveMotionPromise = null; throw error; });
 }
+
+/** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it). */
+function mountArchiveBody(): Promise<unknown> {
+  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
+    .then(([{ mountMediaArchive }]) => mountMediaArchive(
+      document.querySelector('#docsArchiveBody'),
+      { mode: 'wall', limit: 330, filters: false },
+    ));
+  return archiveMountPromise.catch((error: RuntimeValue) => { archiveMountPromise = null; throw error; });
+}
+const loadArchive = (): Promise<unknown> => Promise.all([mountArchiveBody(), mountArchiveMotionInfo()]);
 
 archiveOpen?.addEventListener('click', () => {
   if (!archiveDialog) return;
   // The dialog's loops play under the site's one policy (publicPages.ts mounts them through mediaPlayer.ts): once the
   // dialog shows them, two at most, one transfer at a time, never under reduced motion or data saving.
   archiveDialog.showModal();
-  // the wall's sheet loads with its module (the dialog's frame is docs.css): nothing on the page's first paint waits for it
-  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
-    .then(([{ mountMediaArchive }]) => mountMediaArchive(
-      document.querySelector('#docsArchiveBody'),
-      { mode: 'wall', limit: 330, filters: false },
-    ))
-    .catch((error: RuntimeValue) => {
-      archiveMountPromise = null;
-      announce(error instanceof Error ? error.message : String(error));
-    });
-  mountArchiveMotionInfo();
+  void loadArchive().catch(() => loadFailed(loadArchive));
 });
 archiveClose?.addEventListener('click', () => archiveDialog?.close());
 archiveDialog?.addEventListener('close', stopArchiveMotion);

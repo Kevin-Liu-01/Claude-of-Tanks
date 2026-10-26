@@ -4537,7 +4537,7 @@ function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFold
 export const DECORATION_INDEX_BATCH_LIMIT = 256;
 const DECORATION_WORK_BUDGET_MS = 2;
 interface DecorationWorkSlice {
-  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'material-bucket' | 'publish';
+  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'cargo-route' | 'material-bucket' | 'suit-pass' | 'publish';
   completed: number;
   total: number;
 }
@@ -4610,6 +4610,41 @@ export function* attachTankDecorationsSteps(
   a: DecorationAttachmentArgs,
   work: DecorationWorkOptions = {},
 ): Generator<DecorationWorkSlice, DecorSummary | null, void> {
+  return (yield* decorationSteps(a, work, 'attach')) as DecorSummary | null;
+}
+
+/**
+ * Stage 2b, pass 1 (UI-LOCKDOWN E, 2026-10-25): the decoration's plan alone (every probe, slot, row and family merge,
+ * nothing attached and no material made), for the decor worker (decorPlanWorker.ts) to run over a replica of the tank.
+ */
+export function* planTankDecorationsSteps(
+  a: DecorationAttachmentArgs,
+  work: DecorationWorkOptions = {},
+): Generator<DecorationWorkSlice, DecorPlan | null, void> {
+  return (yield* decorationSteps(a, work, 'plan')) as DecorPlan | null;
+}
+
+/** A plan made elsewhere (the decor worker), attached exactly as the in-line pass attaches its own. */
+export function* attachDecorationPlanSteps(
+  a: DecorationAttachmentArgs,
+  plan: DecorPlan,
+): Generator<DecorationWorkSlice, DecorSummary | null, void> {
+  return (yield* decorationSteps(a, {}, { plan })) as DecorSummary | null;
+}
+
+/** Whether the decoration attaches to this tank now (the pass's own first check): a planner elsewhere is asked only for
+ *  a tank the in-line pass would dress. */
+export function decorationWanted(a: DecorationAttachmentArgs): boolean {
+  if (!a.root || a.root.userData.__decorApplied) return false;
+  if (!resolveDecorMode(a.opts, a.engineCtx)) return false;
+  return !(a.isDestroyed && a.isDestroyed());
+}
+
+function* decorationSteps(
+  a: DecorationAttachmentArgs,
+  work: DecorationWorkOptions,
+  mode: 'attach' | 'plan' | { readonly plan: DecorPlan },
+): Generator<DecorationWorkSlice, DecorSummary | DecorPlan | null, void> {
   const { root, hullG, turretG, spec, engineCtx, disposables = [], opts = {} } = a;
   const resources = createDecorationResourceOwner(root, disposables, engineCtx);
   let mats: DecorMaterials | null = null;
@@ -4619,14 +4654,13 @@ export function* attachTankDecorationsSteps(
     if (parts.coarse) disposePartList(parts.coarse);
   }
   try {
-    function shouldSkipAttachment(): boolean {
-      if (!root || root.userData.__decorApplied) return true;
-      if (!resolveDecorMode(opts, engineCtx)) return true;
-      return !!(a.isDestroyed && a.isDestroyed());
-    }
-    if (shouldSkipAttachment()) return null;
+    if (!decorationWanted(a)) return null;
     root.userData.__decorApplied = true;
     claimed = true;
+    // the plan alone makes no material (a worker has no renderer); a given plan goes straight to its attachment
+    const materials = mode === 'plan' ? null : buildDecorMaterials(spec, engineCtx);
+    mats = materials;
+    if (typeof mode === 'object') return yield* attachDecorPlanSteps(a, mode.plan, materials!, resources);
 
     const decorId = decorIdentityFor(spec.id);
     const rng = mulberry32(fnv1a(`decor:${decorId}`));
@@ -4635,8 +4669,6 @@ export function* attachTankDecorationsSteps(
     // whatever the seating retries, so no geometry change upstream can flip which optional rows dress a tank
     // (griffinViper's tow cable flipped twice in this round).
     let slotRng: Rng = mulberry32(0x51a7e);
-    const materials = buildDecorMaterials(spec, engineCtx);
-    mats = materials;
     const dims = spec.dims;
     const armor = spec.armor;
     const W = dims.widthM, H = dims.heightM;
@@ -5628,8 +5660,9 @@ export function* attachTankDecorationsSteps(
       };
     }
 
-    const SLOTS: Record<string, SlotPlacer> = {
-      fleetCargo(args, parts, name) {
+    /** SLOTS.fleetCargo a station a slice: each station it tries is seated (or turned away) whole, the next one after a
+     *  pause (UI-LOCKDOWN E: a load trying four stations was one 60-80 ms task). */
+    function* fleetCargoSteps(args: DecorSlotArgs, parts: DecorPartList, name: string): Generator<DecorationWorkSlice, boolean, void> {
         // Fleet-wide cargo gets an authored preference followed by a few
         // semantically compatible seats. Different turret/hull layouts can
         // make one preferred station unreachable; silently losing the model
@@ -5648,9 +5681,12 @@ export function* attachTankDecorationsSteps(
           if (m.x !== undefined) m.x = -m.x;
           return [[slotName, m]];
         });
+        let tried = false;
         for (const [slotName, slotArgs] of [...routes, ...(isLoadPiece(name) ? mirrored : [])]) {
           const slot = SLOTS[slotName];
           if (!slot || slot === SLOTS.fleetCargo) continue;
+          if (tried) yield { stage: 'cargo-route', completed: 0, total: 0 };
+          tried = true;
           const candidate = clonePartList(parts);
           if (slot(slotArgs, candidate, name)) {
             disposePartList(parts);
@@ -5658,9 +5694,21 @@ export function* attachTankDecorationsSteps(
           }
         }
         // round 4 follow-up: a soft load or a case with no free deck rides a crate or case already seated (stackLoad)
-        if ((sagsOnSupport(name) || STACKABLE_CASES.has(name)) && stackLoad(parts, name)) return true;
+        if (sagsOnSupport(name) || STACKABLE_CASES.has(name)) {
+          if (tried) yield { stage: 'cargo-route', completed: 0, total: 0 };
+          if (stackLoad(parts, name)) return true;
+        }
         disposePartList(parts);
         return false;
+    }
+
+    const SLOTS: Record<string, SlotPlacer> = {
+      fleetCargo(args, parts, name) {
+        const steps = fleetCargoSteps(args, parts, name);
+        for (;;) {
+          const result = steps.next();
+          if (result.done) return result.value;
+        }
       },
       rearDeck(args, parts, name) {
         const bb = partsBBox(parts);
@@ -6645,18 +6693,20 @@ export function* attachTankDecorationsSteps(
       }
     }
 
-    function placeManifestParts(
+    function* placeManifestParts(
       row: DecorManifestRow,
       slotFn: SlotPlacer,
       parts: DecorPartList,
       jitterSeed: number,
-    ): boolean {
+    ): Generator<DecorationWorkSlice, boolean, void> {
       slotRng = mulberry32((jitterSeed ^ 0x51a7e) >>> 0);
       try {
         const before = summary.skipped.length;
         const pieceName = row.kit === 'cargo'
           ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit;
-        const ok = slotFn(row.slot[1] || {}, parts, pieceName);
+        const ok = slotFn === SLOTS.fleetCargo
+          ? yield* fleetCargoSteps(row.slot[1] || {}, parts, pieceName)
+          : slotFn(row.slot[1] || {}, parts, pieceName);
         // Slots log guard failures themselves; a silent false is a probe miss
         // where no anchor surface answered.
         if (!ok && summary.skipped.length === before) {
@@ -6687,8 +6737,10 @@ export function* attachTankDecorationsSteps(
         const jitterSeed = (smokeRng() * 0x7fffffff) | 0;
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
+        // each early row seated whole in a slice of its own (UI-LOCKDOWN E: together they were one task)
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+        if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
       }
       // Radio whips stand at their mounts before loose cargo fills the rear roof
       // (2026-10-05: the molded cargo's larger footprints otherwise crowded every
@@ -6700,34 +6752,39 @@ export function* attachTankDecorationsSteps(
         if (roll > (row.p ?? 1)) continue;
         const slotFn = SLOTS[row.slot[0]];
         if (!slotFn) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
         const before = summary.skipped.length;
-        if (!parts || placeManifestParts(row, slotFn, parts, jitterSeed)) continue;
+        if (!parts || (yield* placeManifestParts(row, slotFn, parts, jitterSeed))) continue;
         // (2026-10-12, item 2d) a whip the drone dock turned away (2c: its rod enters the dock's certified volumes) stands
         // on the roof's other side instead of leaving the tank without it — the Stb-1 lost its only whip, the M2A2, the
         // Leopard 2A5 and the BMP-3 one each. Same seed, no further draw: every other stream is unchanged.
         const side = (row.slot[1] as { side?: number } | undefined)?.side;
         if ((side !== 1 && side !== -1)
           || !summary.skipped.slice(before).some(([kit, why]) => kit === 'antenna' && why === 'drone-dock')) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
         const mirrored: DecorManifestRow = { ...row, slot: [row.slot[0], { ...row.slot[1], side: -side }] };
         const again = createManifestParts(mirrored, DECOR_KITS.antenna!, jitterSeed);
-        if (again) placeManifestParts(mirrored, slotFn, again, jitterSeed);
+        if (again) yield* placeManifestParts(mirrored, slotFn, again, jitterSeed);
       }
       // Every row's roll and seed off the main stream, drawn in manifest order exactly as before (two draws a row), so
       // an early row (DecorManifestRow.early) seats first with the very draws it would have had in its turn.
       const draws = manifest.map(() => { const roll = rng(); return { roll, jitterSeed: (rng() * 0x7fffffff) | 0 }; });
       const skipRow = (row: DecorManifestRow): boolean => DECOR_RETIRED_KITS.has(row.kit);
-      const seatRow = (row: DecorManifestRow, jitterSeed: number): void => {
+      function* seatRow(row: DecorManifestRow, jitterSeed: number): Generator<DecorationWorkSlice, void, void> {
         const kitFn = DECOR_KITS[row.kit];
         const slotFn = SLOTS[row.slot[0]];
         if (!kitFn || !slotFn) return;
         const parts = createManifestParts(row, kitFn, jitterSeed);
-        if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
-      };
-      manifest.forEach((row, index) => {
-        if (row.early && row.kit !== 'smoke' && row.kit !== 'antenna' && !skipRow(row)
-          && !(draws[index].roll > (row.p ?? 1))) seatRow(row, draws[index].jitterSeed);
-      });
+        if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
+      }
+      for (let index = 0; index < manifest.length; index++) {
+        const row = manifest[index];
+        if (!row.early || row.kit === 'smoke' || row.kit === 'antenna' || skipRow(row) || draws[index].roll > (row.p ?? 1)) continue;
+        yield { stage: 'manifest-row', completed: 0, total: manifest.length };
+        yield* seatRow(row, draws[index].jitterSeed);
+      }
+      yield { stage: 'manifest-row', completed: 0, total: manifest.length };
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const { roll, jitterSeed } = draws[index];
@@ -6739,7 +6796,7 @@ export function* attachTankDecorationsSteps(
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
             const parts = createManifestParts(row, kitFn, jitterSeed);
-            if (parts) placeManifestParts(row, slotFn, parts, jitterSeed);
+            if (parts) yield* placeManifestParts(row, slotFn, parts, jitterSeed);
           }
         }
         yield { stage: 'manifest-row', completed: index + 1, total: manifest.length };
@@ -6747,7 +6804,7 @@ export function* attachTankDecorationsSteps(
     }
     yield* attachManifestRows();
 
-    // ---- merge per family per frame + attach --------------------------------
+    // ---- merge per family per frame (the plan's end) ---------------------------
     /** Merge one material family's committed geometry into a single draw (or null when empty). */
     function mergeFamily(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
       if (!geos.length) return null;
@@ -6763,92 +6820,148 @@ export function* attachTankDecorationsSteps(
       return merged;
     }
 
-    function decorMesh(merged: THREE.BufferGeometry, frame: DecorFrame, matKey: DecorMaterialKey,
-      level: 'near' | 'coarse', functional: boolean): THREE.Mesh {
-      resources.completeGeometry(merged);
-      const mesh = new THREE.Mesh(merged, materials.get(matKey));
-      mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
-      // PERF: the fleet's shadow story is proxy-based (procedural proxies /
-      // GLB buildShadowProxy) with per-mesh casters swept off — decor
-      // follows the same contract. receiveShadow keeps the kit grounded.
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      mesh.userData.__decor = true;
-      mesh.userData.decorLevel = level;
-      // Cosmetic stowage is non-armor dressing that distance detail may drop
-      // (combatVisibility.ts); the smoke banks are working equipment.
-      mesh.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
-      return mesh;
-    }
-
-    // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
-    const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
-    function* mergeDecorationBucket(
+    const planBuckets: DecorBucketPlan[] = [];
+    function* planDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
       coarseMap: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
       functional: boolean,
-    ): Generator<DecorationWorkSlice, number, void> {
+    ): Generator<DecorationWorkSlice, void, void> {
       const keys = [...new Set([...map.keys(), ...coarseMap.keys()])];
-      if (!keys.length) return 0;
-      const parent = frame === 'hull' ? hullG : turretG;
-      const g = new THREE.Group();
-      g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
-      let drawCalls = 0, done = 0;
+      if (!keys.length) return;
+      const families: DecorFamilyPlan[] = [];
+      let done = 0;
       for (const matKey of keys) {
         const geos = map.get(matKey) || [];
         const coarseGeos = coarseMap.get(matKey) || [];
-        const merged = mergeFamily(geos);
+        const near = mergeFamily(geos);
         const socketOwner = new THREE.Object3D();
         registerSmokeSockets(socketOwner, geos);
         for (const geometry of geos) resources.releaseGeometry(geometry);
-        const coarseMerged = mergeFamily(coarseGeos);
+        const coarse = mergeFamily(coarseGeos);
         for (const geometry of coarseGeos) resources.releaseGeometry(geometry);
-        if (!merged && !coarseMerged) continue;
-        const lod = new THREE.LOD();
-        if (merged) {
-          const mesh = decorMesh(merged, frame, matKey, 'near', functional);
-          if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
-          lod.addLevel(mesh, 0);
-          drawCalls++;
-        } else {
-          lod.addLevel(new THREE.Object3D(), 0);
-        }
-        // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
-        if (coarseMerged) lod.addLevel(decorMesh(coarseMerged, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
-        lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
-        g.add(lod);
+        if (!near && !coarse) continue;
+        families.push({ matKey, near, coarse, smokeSockets: (socketOwner.userData.smokeSockets as DecorSmokeSocket[] | undefined) ?? null });
         done++;
         yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
-      resources.addGroup(parent, g);
-      decorGroups[frame].push(g);
-      g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
-      g.userData.decorFunctional = functional;
-      return drawCalls;
+      planBuckets.push({ frame, functional, families });
     }
-
-    let drawCalls = 0;
     for (const frame of ['hull', 'turret'] as const) {
-      drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
-      drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
+      yield* planDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
+      yield* planDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
-    // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
-    // them, never laid through them (ghillieDrape.ts)
-    drapeGhillieOverLoads(hullG, seatedLoads.hull);
-    drapeGhillieOverLoads(turretG, seatedLoads.turret);
-    // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
-    // after the suit): its cloth and garnish in their lines of fire are cut away
-    clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
-    clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
-    yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
-    summary.drawCalls = drawCalls;
-    resources.publish(summary, materials);
-    return summary;
+    const plan: DecorPlan = { buckets: planBuckets, seatedLoads, summary };
+    // a plan alone hands its merged geometry to the caller (the decor worker posts it); the cancel below disposes only
+    // the plan's bookkeeping, never the arrays
+    if (mode === 'plan') return plan;
+    return yield* attachDecorPlanSteps(a, plan, materials!, resources);
   } finally {
     if (claimed) resources.cancel(mats);
   }
+}
+
+type DecorationResources = ReturnType<typeof createDecorationResourceOwner>;
+
+/** A smoke bank's launch line in its family's frame (vehicleAuxiliaryGeometry.ts registerSmokeSockets). */
+interface DecorSmokeSocket { position: number[]; direction: number[] }
+/** One material family of a bucket: its merged near and coarse geometry (one may be null) and its smoke sockets. */
+interface DecorFamilyPlan {
+  readonly matKey: DecorMaterialKey;
+  readonly near: THREE.BufferGeometry | null;
+  readonly coarse: THREE.BufferGeometry | null;
+  readonly smokeSockets: DecorSmokeSocket[] | null;
+}
+/** One frame's cosmetic or functional bucket: a group of one LOD per family (a bucket of rows that all merged empty
+ *  still makes its group, as the in-line pass always has). */
+interface DecorBucketPlan { readonly frame: DecorFrame; readonly functional: boolean; readonly families: DecorFamilyPlan[] }
+/** The decoration's plan: what the attachment builds from, in the in-line pass's order. */
+export interface DecorPlan {
+  readonly buckets: DecorBucketPlan[];
+  /** The loads seated on each frame (placed boxes): the field suit is drawn up over them. */
+  readonly seatedLoads: Record<DecorFrame, THREE.Box3[]>;
+  /** Pieces, skips and near triangles; the attachment adds the draw calls. */
+  readonly summary: DecorSummary;
+}
+
+/**
+ * The decoration's attachment: a group per bucket, one LOD per family (near from 0, coarse from DECOR_COARSE_DIST,
+ * nothing past DECOR_LOD_DIST), the field suit drawn over the seated loads and cut round the smoke banks, then the
+ * publication. It runs on the page in either path: after the in-line plan, or over the decor worker's.
+ */
+function* attachDecorPlanSteps(
+  a: DecorationAttachmentArgs,
+  plan: DecorPlan,
+  materials: DecorMaterials,
+  resources: DecorationResources,
+): Generator<DecorationWorkSlice, DecorSummary, void> {
+  const { hullG, turretG } = a;
+  const { summary, seatedLoads } = plan;
+  function decorMesh(merged: THREE.BufferGeometry, frame: DecorFrame, matKey: DecorMaterialKey,
+    level: 'near' | 'coarse', functional: boolean): THREE.Mesh {
+    resources.completeGeometry(merged);
+    const mesh = new THREE.Mesh(merged, materials.get(matKey));
+    mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
+    // PERF: the fleet's shadow story is proxy-based (procedural proxies /
+    // GLB buildShadowProxy) with per-mesh casters swept off — decor
+    // follows the same contract. receiveShadow keeps the kit grounded.
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.userData.__decor = true;
+    mesh.userData.decorLevel = level;
+    // Cosmetic stowage is non-armor dressing that distance detail may drop
+    // (combatVisibility.ts); the smoke banks are working equipment.
+    mesh.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+    return mesh;
+  }
+
+  // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
+  const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
+  let drawCalls = 0;
+  for (const { frame, functional, families } of plan.buckets) {
+    const parent = frame === 'hull' ? hullG : turretG;
+    const g = new THREE.Group();
+    g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
+    let done = 0;
+    for (const { matKey, near, coarse, smokeSockets } of families) {
+      const lod = new THREE.LOD();
+      if (near) {
+        const mesh = decorMesh(near, frame, matKey, 'near', functional);
+        if (smokeSockets) mesh.userData.smokeSockets = smokeSockets;
+        lod.addLevel(mesh, 0);
+        drawCalls++;
+      } else {
+        lod.addLevel(new THREE.Object3D(), 0);
+      }
+      // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
+      if (coarse) lod.addLevel(decorMesh(coarse, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
+      lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
+      g.add(lod);
+      done++;
+      yield { stage: 'material-bucket', completed: done, total: families.length };
+    }
+    resources.addGroup(parent, g);
+    decorGroups[frame].push(g);
+    g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+    g.userData.decorFunctional = functional;
+  }
+  // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
+  // them, never laid through them (ghillieDrape.ts)
+  // (UI-LOCKDOWN E) each of the four suit passes in a slice of its own
+  drapeGhillieOverLoads(hullG, seatedLoads.hull);
+  yield { stage: 'suit-pass', completed: 1, total: 4 };
+  drapeGhillieOverLoads(turretG, seatedLoads.turret);
+  yield { stage: 'suit-pass', completed: 2, total: 4 };
+  // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
+  // after the suit): its cloth and garnish in their lines of fire are cut away
+  clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
+  yield { stage: 'suit-pass', completed: 3, total: 4 };
+  clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
+  yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
+  summary.drawCalls = drawCalls;
+  resources.publish(summary, materials);
+  return summary;
 }
 
 export { buildDecorMaterials, DECOR_LOD_DIST };

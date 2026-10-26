@@ -5,8 +5,13 @@
 // placement and controller, drawn over its tactical map through the HUD's derivation and glyphs. Standard places no
 // objective: its map shows the two spawns. A mode the bake leaves out shows the bare map.
 import { objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
-import { drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, sideColor, sideFill } from './objectiveGlyphs.ts';
+import {
+  badgeLetter, badgeLetterFont, drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, OBJECTIVE_PALETTE,
+  sideColor, sideFill, type GlyphLetter,
+} from './objectiveGlyphs.ts';
+import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { projectWorldToMinimap } from './minimapOrientation.ts';
+import { uiCanvas } from './uiCanvas.ts';
 
 interface BakedMap { readonly size: number; readonly modes: Readonly<Record<string, ObjectiveStateView>> }
 interface Baked { readonly maps: Readonly<Record<string, BakedMap>> }
@@ -28,23 +33,45 @@ function markersOf(state: ObjectiveStateView): ObjectiveMarker[] {
 
 const _point = [0, 0];
 
-/** Draw `mapId`'s opening objectives for `mode` on `canvas`, sized to its box; cleared when there are none. */
+/** What each objective canvas shows (its drawing redraws from it at every box and ratio). */
+const shown = new WeakMap<HTMLCanvasElement, { map: BakedMap | null; mode: string }>();
+/** Each canvas's zone letters: DOM over it in its parent (UI-LOCKDOWN A: canvasText.ts), placed with every drawing. */
+const letters = new WeakMap<HTMLCanvasElement, CanvasText>();
+const letter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
+const letterStyle: CanvasTextStyle = {
+  font: '', color: '', align: 'center', baseline: 'middle', alpha: 1, haloWidth: 0, halo: OBJECTIVE_PALETTE.keyline,
+};
+
+/** Draw `mapId`'s opening objectives for `mode` on `canvas` (sized to its box by uiCanvas, redrawn when the box or the
+ *  ratio changes and when it shows again); cleared when there are none. */
 export async function drawDeployObjectives(canvas: HTMLCanvasElement, mapId: string, mode: string): Promise<void> {
   const data = await load();
-  const ctx = canvas.getContext('2d');
-  const box = canvas.clientWidth;
-  if (!ctx || !box) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const px = Math.round(box * dpr);
-  if (canvas.width !== px || canvas.height !== px) { canvas.width = px; canvas.height = px; }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, px, px);
-  const map = data?.maps[mapId];
-  const state = map?.modes[mode];
+  shown.set(canvas, { map: data?.maps[mapId] ?? null, mode });
+  uiCanvas(canvas, { draw: paintObjectives }).redraw();
+}
+
+function paintObjectives(ctx: CanvasRenderingContext2D, width: number, height: number, surface: { readonly canvas: HTMLCanvasElement }): void {
+  ctx.clearRect(0, 0, width, height);
+  let layer = letters.get(surface.canvas);
+  if (!layer && surface.canvas.parentElement) {
+    layer = createCanvasText(surface.canvas.parentElement, '');
+    letters.set(surface.canvas, layer);
+  }
+  layer?.begin();
+  paintMarkers(ctx, width, height, surface.canvas, layer);
+  layer?.end();
+}
+
+function paintMarkers(ctx: CanvasRenderingContext2D, width: number, height: number, canvas: HTMLCanvasElement,
+  layer: CanvasText | undefined): void {
+  const entry = shown.get(canvas);
+  const map = entry?.map;
+  const state = entry && map ? map.modes[entry.mode] : undefined;
   if (!map || !state) return;
-  ctx.scale(dpr, dpr);
+  const box = Math.min(width, height);
   // the badges scale with the map, as the direction's (a hex a tenth of its side)
   const r = Math.max(7, box * 0.05);
+  let slot = 0;
   for (const marker of markersOf(state)) {
     projectWorldToMinimap(marker.x, marker.z, map.size, box, _point);
     const x = Math.max(r, Math.min(box - r, _point[0])), y = Math.max(r, Math.min(box - r, _point[1]));
@@ -53,7 +80,14 @@ export async function drawDeployObjectives(canvas: HTMLCanvasElement, mapId: str
       case 'spawn': drawSpawnGlyph(ctx, x, y, r * 0.8, color, fill); break;
       case 'zone':
       case 'sector':
-        drawHexBadge(ctx, x, y, r, { fill, stroke: color, label: marker.label, dashed: marker.status === 'locked' });
+        drawHexBadge(ctx, x, y, r, { fill, stroke: color, dashed: marker.status === 'locked' });
+        if (layer && marker.label) {
+          badgeLetter(x, y, r, OBJECTIVE_PALETTE.chalk, letter);
+          letterStyle.font = badgeLetterFont(Math.max(11, letter.px)); // (the 11 px floor)
+          letterStyle.color = letter.color;
+          letterStyle.haloWidth = letter.halo;
+          layer.place(slot++, marker.label, letter.x, letter.y, letterStyle);
+        }
         break;
       case 'flagBase': drawPennant(ctx, x, y, r * 1.6, color); break;
       case 'goal': drawGoalGlyph(ctx, x, y, r * 0.8, color, fill); break;

@@ -1,0 +1,1269 @@
+{
+  "libraryId": "claude-of-tanks-home-r2",
+  "schemaVersion": 1,
+  "author": "Kevin B. Liu",
+  "copyright": "Copyright © 2026 Kevin B. Liu",
+  "description": "The /home reel and feature slots (tools/home-premiere.mjs): the media lane's curated set (2026-10-25) — the hero reel of moving 1v1 duels and the montages, cut from the deterministic Scene Studio renders on release 246; slots the set does not name keep the lead's picks.",
+  "hero": [
+    {
+      "id": "vs03-reservoir-k2-vt4a1",
+      "map": "reservoir",
+      "mode": "standard",
+      "hour": "golden",
+      "tanks": [
+        "k2_black_panther",
+        "vt4a1"
+      ],
+      "title": {
+        "en": "A K2 Black Panther races a VT-4A1 past a farmhouse on Highland Reservoir at golden hour, both guns firing",
+        "zh": "黄金时刻，一辆 K2 Black Panther 在高地水库的农舍旁与一辆 VT-4A1 并驾齐驱，双方炮火交错"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 59794
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 113482
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 177636
+          },
+          {
+            "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 276192
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.0,
+        "bytes": 3825506
+      },
+      "mobile": {
+        "path": "/media/home-r2/vs03-reservoir-k2-vt4a1-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1235946,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "frontier-leclerc-t90a",
+      "map": "frontier",
+      "tanks": [
+        "leclerc_sxxi",
+        "t90a_2004"
+      ],
+      "mode": "standard",
+      "hour": "dawn",
+      "title": {
+        "en": "A Leclerc SXXI bears down on a low lens across Frontier Basin at dawn, its gun firing at a T-90A",
+        "zh": "黎明时分，一辆 Leclerc SXXI 在边境盆地朝低机位驶来，主炮向一辆 T-90A 开火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/frontier-leclerc-t90a-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 58074
+          },
+          {
+            "path": "/media/home-r2/frontier-leclerc-t90a-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 109998
+          },
+          {
+            "path": "/media/home-r2/frontier-leclerc-t90a-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 175314
+          },
+          {
+            "path": "/media/home-r2/frontier-leclerc-t90a-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 265560
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/frontier-leclerc-t90a.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3736799
+      },
+      "mobile": {
+        "path": "/media/home-r2/frontier-leclerc-t90a-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1195764,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "wadi-abrams-t90m",
+      "map": "desert",
+      "mode": "standard",
+      "hour": "day",
+      "tanks": [
+        "m1a2_abrams_sepv3",
+        "t90m"
+      ],
+      "title": {
+        "en": "An M1A2 Abrams SEPv3 races a T-90M down Sirocco Wadi by day, firing across the sand",
+        "zh": "白天，一辆 M1A2 Abrams SEPv3 在西罗科干谷与一辆 T-90M 并驾齐驱，隔着沙地开火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56632
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 108624
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 167844
+          },
+          {
+            "path": "/media/home-r2/wadi-abrams-t90m-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 254996
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/wadi-abrams-t90m.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.3,
+        "bytes": 3710619
+      },
+      "mobile": {
+        "path": "/media/home-r2/wadi-abrams-t90m-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.3,
+        "bytes": 1212190,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "oasis-leo2a6-t14",
+      "map": "oasis",
+      "tanks": [
+        "leo2a6",
+        "t14_armata"
+      ],
+      "mode": "standard",
+      "hour": "sunset",
+      "title": {
+        "en": "The lens circles a Leopard 2A6 as it knocks out a T-14 Armata at the Sunscar Oasis caravanserai at sunset",
+        "zh": "日落时分，镜头环绕日痕绿洲的商队驿站，一辆 Leopard 2A6 击毁一辆 T-14 Armata"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/oasis-leo2a6-t14-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 111838
+          },
+          {
+            "path": "/media/home-r2/oasis-leo2a6-t14-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 223212
+          },
+          {
+            "path": "/media/home-r2/oasis-leo2a6-t14-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 358488
+          },
+          {
+            "path": "/media/home-r2/oasis-leo2a6-t14-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 556354
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/oasis-leo2a6-t14.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3839200
+      },
+      "mobile": {
+        "path": "/media/home-r2/oasis-leo2a6-t14-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1218408,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "saltmere-type10-ztz99a2",
+      "map": "coastal",
+      "tanks": [
+        "type10",
+        "ztz99a2"
+      ],
+      "mode": "standard",
+      "hour": "morning",
+      "title": {
+        "en": "Tracking alongside a Type 10 as it races a ZTZ-99A2 along Saltmere Bay in the morning, trading fire",
+        "zh": "清晨，镜头在盐沼湾与一辆 Type 10 并行跟拍，它与一辆 ZTZ-99A2 并驾齐驱并交火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 79162
+          },
+          {
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 160892
+          },
+          {
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 261448
+          },
+          {
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 415960
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/saltmere-type10-ztz99a2.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3757191
+      },
+      "mobile": {
+        "path": "/media/home-r2/saltmere-type10-ztz99a2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1215531,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "church-challenger3-t80u",
+      "map": "winter",
+      "tanks": [
+        "challenger3_proto",
+        "t80u"
+      ],
+      "mode": "standard",
+      "hour": "dusk",
+      "title": {
+        "en": "Over a T-80U's shoulder as a Challenger 3 Prototype comes down the snowy village street at dusk and knocks it out",
+        "zh": "黄昏时分，从一辆 T-80U 的肩后望去，一辆 Challenger 3 Prototype 沿积雪的村道驶来并将其击毁"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 42436
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 79490
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 121160
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 190358
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/church-challenger3-t80u.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3736413
+      },
+      "mobile": {
+        "path": "/media/home-r2/church-challenger3-t80u-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1212908,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "steinburg-abramsx-night",
+      "map": "urban",
+      "tanks": [
+        "abramsx",
+        "bmpt_terminator2",
+        "t80b"
+      ],
+      "mode": "standard",
+      "hour": "night",
+      "title": {
+        "en": "An AbramsX fights a BMPT Terminator 2 and a T-80B across a lamplit Steinburg square at night",
+        "zh": "夜晚，一辆 AbramsX 在灯火映照的斯泰因堡广场与一辆 BMPT Terminator 2 和一辆 T-80B 交战"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 103296
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 205652
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 328428
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 491426
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/steinburg-abramsx-night.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.2,
+        "bytes": 3600010
+      },
+      "mobile": {
+        "path": "/media/home-r2/steinburg-abramsx-night-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.2,
+        "bytes": 1165220,
+        "rung": "phone"
+      }
+    }
+  ],
+  "features": {
+    "watch": {
+      "id": "watch-1440",
+      "altKey": "media.homeR2.watch",
+      "title": {
+        "en": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
+        "zh": "观战模式：在翠野原的教堂旁跟随一辆 T-90MS，上方是坦克切换栏"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/watch-1440-640.webp",
+            "width": 640,
+            "height": 400,
+            "bytes": 60966
+          },
+          {
+            "path": "/media/ui-246/watch-1440.webp",
+            "width": 1440,
+            "height": 900,
+            "bytes": 259838
+          }
+        ]
+      }
+    },
+    "killcam": {
+      "id": "killcam-xray",
+      "altKey": "media.homeR2.killcam",
+      "title": {
+        "en": "The X-ray kill cam: the fatal shot's path through the target's armor and modules",
+        "zh": "X 光击杀回放：致命一击穿过目标装甲与模块的弹道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/killcam-xray-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 27242
+          },
+          {
+            "path": "/media/ui-246/killcam-xray.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 212958
+          }
+        ]
+      }
+    },
+    "destruction": {
+      "id": "destruction-steinburg-t90m",
+      "map": "urban",
+      "title": {
+        "en": "A T-90M on a Steinburg street is hit and knocked out, its turret thrown into the air",
+        "zh": "斯泰因堡街道上，一辆 T-90M 中弹被击毁，炮塔被掀上半空"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 39744
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70994
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 99958
+          },
+          {
+            "path": "/media/home-r2/destruction-steinburg-t90m-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 170322
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/destruction-steinburg-t90m.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2789702
+      },
+      "mobile": {
+        "path": "/media/home-r2/destruction-steinburg-t90m-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1219105,
+        "rung": "phone"
+      }
+    },
+    "studio": {
+      "id": "studio-246",
+      "title": {
+        "en": "Scene Studio's Director workspace playing a Frontier Basin scene: a tank firing in the viewport, the shot cards and timeline around it",
+        "zh": "场景工作室的导演工作区正在播放边境盆地的场景：视口中一辆坦克开火，四周是镜头卡片与时间轴"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/studio-246-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41582
+          },
+          {
+            "path": "/media/home-r2/studio-246-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 75474
+          },
+          {
+            "path": "/media/home-r2/studio-246-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 116756
+          },
+          {
+            "path": "/media/home-r2/studio-246-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 210266
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/studio-246.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2615815
+      },
+      "mobile": {
+        "path": "/media/home-r2/studio-246-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1125424,
+        "rung": "phone"
+      }
+    },
+    "multiplayer": {
+      "id": "multiplayer-pair",
+      "altKey": "media.homeR2.multiplayer",
+      "title": {
+        "en": "Two players' live views of one private room, side by side",
+        "zh": "同一私人房间里两名玩家的实时视角并排显示"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/ui-246/multiplayer-pair-640.webp",
+            "width": 640,
+            "height": 187,
+            "bytes": 34136
+          },
+          {
+            "path": "/media/ui-246/multiplayer-pair.webp",
+            "width": 2400,
+            "height": 700,
+            "bytes": 330256
+          }
+        ]
+      }
+    },
+    "garage": {
+      "id": "garage-merkava4-barak",
+      "title": {
+        "en": "A Merkava Mk 4 Barak on the Garage's turntable under the hangar lights, the motor pool's gantries and walkways behind",
+        "zh": "机库灯光下，一辆 Merkava Mk 4 Barak 停在车库的转台上，身后是车场的龙门架与走道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 37422
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 70138
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 107840
+          },
+          {
+            "path": "/media/home-r2/garage-merkava4-barak-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 194418
+          }
+        ]
+      }
+    },
+    "battlefields": {
+      "id": "battlefields-montage",
+      "title": {
+        "en": "Seven battlefields in quick cuts, a duel on each: Frontier Basin, Verdant Fields, Saltmere Bay, Amberford, Tarkhan Steppe, Sunscar Oasis and a Steinburg street",
+        "zh": "七个战场的快速剪辑，每处一场对决：边境盆地、翠野原、盐沼湾、琥珀渡、塔尔汗草原、日痕绿洲与斯泰因堡的街道"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/battlefields-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 28356
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50796
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 74666
+          },
+          {
+            "path": "/media/home-r2/battlefields-montage-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 127340
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/battlefields-montage.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 8.4,
+        "bytes": 3760908
+      },
+      "mobile": {
+        "path": "/media/home-r2/battlefields-montage-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 8.4,
+        "bytes": 1233181,
+        "rung": "phone"
+      }
+    },
+    "fleet": {
+      "id": "fleet-montage",
+      "title": {
+        "en": "Nine vehicles from eight nations in quick cuts, each on its own battlefield: Merkava Mk 4 Trophy, Type 10 (TK-X), Stridsvagn 121, M1A1 Abrams HC, ZTZ-99A2, KV-2, Leclerc S2, CV90 and KF51 EVO",
+        "zh": "八个国家的九辆战车快速剪辑，各在自己的战场上：Merkava Mk 4 Trophy、Type 10 (TK-X)、Stridsvagn 121、M1A1 Abrams HC、ZTZ-99A2、KV-2、Leclerc S2、CV90 与 KF51 EVO"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/fleet-montage-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 30928
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 56464
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 84044
+          },
+          {
+            "path": "/media/home-r2/fleet-montage-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 146822
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/fleet-montage.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 9.9,
+        "bytes": 2814227
+      },
+      "mobile": {
+        "path": "/media/home-r2/fleet-montage-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 9.9,
+        "bytes": 1217691,
+        "rung": "phone"
+      }
+    }
+  },
+  "fleetStrip": [
+    {
+      "specId": "merkava4_trophy",
+      "map": "copper_mesa",
+      "hour": "day",
+      "title": {
+        "en": "The Merkava Mk 4 Trophy on Copper Mesa Mine, day",
+        "zh": "铜台地矿场，白天：Merkava Mk 4 Trophy"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-merkava4_trophy-640.webp",
+          "bytes": 28584
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-merkava4_trophy-1280.webp",
+          "bytes": 85960
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-merkava4_trophy-1920.webp",
+          "bytes": 192170
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-merkava4_trophy-3840.webp",
+          "bytes": 457462
+        }
+      ]
+    },
+    {
+      "specId": "leclerc_s2",
+      "map": "orchard",
+      "hour": "day",
+      "title": {
+        "en": "The Leclerc S2 on Orchard Valley, day",
+        "zh": "果园谷，白天：Leclerc S2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-leclerc_s2-640.webp",
+          "bytes": 40884
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-leclerc_s2-1280.webp",
+          "bytes": 147068
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-leclerc_s2-1920.webp",
+          "bytes": 344692
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-leclerc_s2-3840.webp",
+          "bytes": 832570
+        }
+      ]
+    },
+    {
+      "specId": "m1a1_abrams_hc",
+      "map": "airfield",
+      "hour": "morning",
+      "title": {
+        "en": "The M1A1 Abrams HC on Kestrel Airfield, morning",
+        "zh": "红隼机场，上午：M1A1 Abrams HC"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-640.webp",
+          "bytes": 28958
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-1280.webp",
+          "bytes": 88430
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-1920.webp",
+          "bytes": 189466
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-3840.webp",
+          "bytes": 444828
+        }
+      ]
+    },
+    {
+      "specId": "kv2",
+      "map": "alpine",
+      "hour": "day",
+      "title": {
+        "en": "The KV-2 on Glacier Pass, day",
+        "zh": "冰川关，白天：KV-2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-kv2-640.webp",
+          "bytes": 24578
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-kv2-1280.webp",
+          "bytes": 85606
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-kv2-1920.webp",
+          "bytes": 220278
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-kv2-3840.webp",
+          "bytes": 584594
+        }
+      ]
+    },
+    {
+      "specId": "strv121",
+      "map": "winter",
+      "hour": "morning",
+      "title": {
+        "en": "The Stridsvagn 121 on Frosthollow, morning",
+        "zh": "霜谷，上午：Stridsvagn 121"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-strv121-640.webp",
+          "bytes": 39686
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-strv121-1280.webp",
+          "bytes": 118690
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-strv121-1920.webp",
+          "bytes": 248670
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-strv121-3840.webp",
+          "bytes": 556064
+        }
+      ]
+    },
+    {
+      "specId": "type10_tk_x",
+      "map": "mangrove",
+      "hour": "morning",
+      "title": {
+        "en": "The Type 10 (TK-X) on Mangrove Reach, morning",
+        "zh": "红树林水道，上午：Type 10 (TK-X)"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-type10_tk_x-640.webp",
+          "bytes": 33580
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-type10_tk_x-1280.webp",
+          "bytes": 107618
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-type10_tk_x-1920.webp",
+          "bytes": 246094
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-type10_tk_x-3840.webp",
+          "bytes": 583616
+        }
+      ]
+    },
+    {
+      "specId": "ztz99a2",
+      "map": "monsoon",
+      "hour": "day",
+      "title": {
+        "en": "The ZTZ-99A2 on Monsoon Ridge, day",
+        "zh": "季风雨脊，白天：ZTZ-99A2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-ztz99a2-640.webp",
+          "bytes": 26942
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-ztz99a2-1280.webp",
+          "bytes": 86686
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-ztz99a2-1920.webp",
+          "bytes": 196266
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-ztz99a2-3840.webp",
+          "bytes": 470592
+        }
+      ]
+    },
+    {
+      "specId": "cv90",
+      "map": "fjord",
+      "hour": "sunset",
+      "title": {
+        "en": "The CV90 on Nordhavn Fjord, sunset",
+        "zh": "诺德港峡湾，日落：CV90"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-cv90-640.webp",
+          "bytes": 21522
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-cv90-1280.webp",
+          "bytes": 67694
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-cv90-1920.webp",
+          "bytes": 155664
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-cv90-3840.webp",
+          "bytes": 365302
+        }
+      ]
+    },
+    {
+      "specId": "kf51_evo",
+      "map": "longleaf",
+      "hour": "day",
+      "title": {
+        "en": "The KF51 EVO on Longleaf Crossing, day",
+        "zh": "长叶渡口，白天：KF51 EVO"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-kf51_evo-640.webp",
+          "bytes": 34470
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-kf51_evo-1280.webp",
+          "bytes": 121472
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-kf51_evo-1920.webp",
+          "bytes": 287858
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-kf51_evo-3840.webp",
+          "bytes": 665404
+        }
+      ]
+    }
+  ],
+  "clips": [
+    {
+      "id": "verdant-village-2v2",
+      "map": "verdant",
+      "tanks": [
+        "leo2a6m",
+        "puma_s1",
+        "t90a",
+        "t72b3"
+      ],
+      "mode": "standard",
+      "hour": "day",
+      "title": {
+        "en": "High over Verdant Fields' onion-domed church, a Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 through the village",
+        "zh": "翠野原洋葱顶教堂的上空，一辆 Leopard 2A6M 和一辆 Puma S1 在村中与一辆 T-90A 和一辆 T-72B3 交战"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/verdant-village-2v2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43540
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 86574
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 133676
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 250718
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/verdant-village-2v2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2756145
+      },
+      "mobile": {
+        "path": "/media/home-r2/verdant-village-2v2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1187304,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "tarkhan-topdown",
+      "map": "steppe",
+      "tanks": [
+        "chieftain_mk10",
+        "t64bv1"
+      ],
+      "mode": "standard",
+      "hour": "golden",
+      "title": {
+        "en": "Straight down over Tarkhan Steppe at golden hour: a Chieftain Mk 10 and a T-64BV1 race and trade fire",
+        "zh": "黄金时刻，俯瞰塔尔汗草原：一辆 Chieftain Mk 10 与一辆 T-64BV1 并驾齐驱并交火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/tarkhan-topdown-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 39770
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 80510
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 128478
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 243914
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/tarkhan-topdown.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2933067
+      },
+      "mobile": {
+        "path": "/media/home-r2/tarkhan-topdown-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1212300,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "orchard-2v2",
+      "map": "orchard",
+      "tanks": [
+        "strv122",
+        "cv90_mk4",
+        "t90",
+        "t72b3"
+      ],
+      "mode": "standard",
+      "hour": "morning",
+      "title": {
+        "en": "Over the shoulders of a T-90 and a T-72B3 as a Stridsvagn 122 and a CV90 Mk 4 knock them out below the orchard village in the morning",
+        "zh": "清晨，从一辆 T-90 和一辆 T-72B3 的肩后望去，一辆 Stridsvagn 122 和一辆 CV90 Mk 4 在果园村庄下方将其击毁"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/orchard-2v2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 32912
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 63388
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 98906
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 182472
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/orchard-2v2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2785142
+      },
+      "mobile": {
+        "path": "/media/home-r2/orchard-2v2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1220297,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "glacier-kv2",
+      "map": "alpine",
+      "tanks": [
+        "kv2",
+        "chieftain3",
+        "leo1a5"
+      ],
+      "mode": "standard",
+      "hour": "day",
+      "title": {
+        "en": "A KV-2 comes head-on through a snowy Glacier Pass village, then the lens cranes up over the fight",
+        "zh": "一辆 KV-2 迎面驶过冰川关积雪的村庄，随后镜头升起俯瞰战斗"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/glacier-kv2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 27330
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50040
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 73490
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 127962
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/glacier-kv2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.0,
+        "bytes": 2806988
+      },
+      "mobile": {
+        "path": "/media/home-r2/glacier-kv2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1210772,
+        "rung": "phone"
+      },
+      "seconds": 6.0
+    }
+  ]
+}

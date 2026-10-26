@@ -1,0 +1,286 @@
+/* The tech-tree screen (techTree.ts), loaded with its chunk. Premiere graphite plates, one tungsten light for the
+   selection and Select, Chakra Petch for the numerals and names, the kit's buttons, flags, silhouettes, tags, segmented
+   control and stat rows. Every colour, size, shadow and duration is a token (tools/style-literal-census.mjs); the label
+   sizes keep the kit's floor (max(var(--fs-floor-11),var(--fs-11))). --tt-ui (techTree.ts uiScale) is the screen's one
+   type scale beside the grid, so the header, the detail and the stats grow with the tree on wide screens.
+   Copyright © 2026 Kevin B. Liu. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+.cot-tt{
+  --tt-ui:1;
+  /* vehicle names are Latin in every locale, so they keep the en floor (zh lifts --fs-floor-11 for its own script) */
+  --tt-name-floor:calc(var(--battle-fs-13) * 11 / 13);
+  --tt-detail-art-w:clamp(240px,19vw,360px);
+  /* the page gutter: the header, the tree (techTree.ts reads it) and the detail start and end on it */
+  --tt-gutter:28px;
+  position:fixed;inset:0;z-index:var(--z-modal);display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto;background:var(--surface-page);color:var(--ink-1);
+  font-family:var(--font-ui);font-weight:500;-webkit-font-smoothing:antialiased;
+}
+.cot-tt[hidden]{display:none}
+
+/* Header: the nation (its flag and name), the rail of every nation's flag, the zoom plate, close. */
+/* the header's top sits on the page gutter, like its sides */
+.cot-tt .tt-head{display:flex;align-items:center;gap:var(--s5);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+/* as wide as the widest nation (techTree.ts fitNation), so the rail never slides when the nation changes */
+.cot-tt .tt-nation{display:flex;align-items:center;gap:var(--s4);min-width:var(--tt-nation-w,0)}
+.cot-tt .tt-flag{display:inline-flex;line-height:0}
+.cot-tt .tt-flag .cot-c-flag{width:calc(48px * var(--tt-ui));height:calc(36px * var(--tt-ui));border-radius:var(--r1)}
+.cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-ui);letter-spacing:var(--track-display);
+  white-space:nowrap}
+/* The nation picker: the kit's single choice, the same raised plate as the zoom plate beside it (its highlight, ring
+   and drop), as wide as its flags: the header's free space stays outside it. A picker wider than its room fills it and
+   scrolls, its flags spread so the room's edge cuts one in half (techTree.ts fitRail), and they fade into the plate at
+   the edges they scroll toward (overlays, so the plate's own edge stays whole). */
+.cot-tt .tt-rail{--tt-rail-fade:48px;box-sizing:border-box;display:flex;align-items:center;gap:var(--tt-rail-gap, 2px);
+  flex:0 1 auto;min-width:0;max-width:calc(100% - 2px);padding:2px;margin:1px auto 1px 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
+  scrollbar-width:none}
+.cot-tt .tt-rail::-webkit-scrollbar{display:none}
+.cot-tt .tt-rail::before,.cot-tt .tt-rail::after{content:'';position:sticky;z-index:var(--z-lift);flex:none;align-self:stretch;
+  width:var(--tt-rail-fade);pointer-events:none;opacity:0}
+/* (a sticky box stops at its scroller's padding: the fades run on through the plate's 2 px inset to its edge) */
+.cot-tt .tt-rail::before{left:-2px;margin-right:calc(-1 * var(--tt-rail-fade) - var(--tt-rail-gap, 2px));
+  background:linear-gradient(270deg,transparent,var(--surface-raised))}
+.cot-tt .tt-rail::after{right:-2px;margin-left:calc(-1 * var(--tt-rail-fade) - var(--tt-rail-gap, 2px));
+  background:linear-gradient(90deg,transparent,var(--surface-raised))}
+.cot-tt .tt-rail.is-more-left::before,.cot-tt .tt-rail.is-more-right::after{opacity:1}
+.cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:calc(44px * var(--tt-ui));
+  height:calc(40px * var(--tt-ui) - 6px);padding:0;border:0;border-radius:var(--r1);background:transparent;
+  cursor:pointer;opacity:.55;transition:opacity var(--dur-fast),background var(--dur-fast)}
+.cot-tt .tt-rail-flag .cot-c-flag{width:calc(26px * var(--tt-ui));height:calc(19px * var(--tt-ui))}
+.cot-tt .tt-rail-flag:hover{opacity:.9;background:var(--fill-scale)}
+.cot-tt .tt-rail-flag:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* the open nation: the lit slate with a light edge, at full strength among dimmed flags */
+.cot-tt .tt-rail-flag.is-on{opacity:1;background:linear-gradient(var(--fill-scale),var(--fill-scale)),var(--surface-hover);
+  box-shadow:var(--ring-3)}
+/* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen.
+   Each plate (and the picker) keeps 1 px of margin for its ring, so the header's gaps are the gaps between drawn plates. */
+.cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;margin:1px;border-radius:var(--r2);background:var(--surface-raised);
+  box-shadow:var(--e2)}
+/* the zoom plate shows its current state: fit is lit while the board sits at fit */
+.cot-tt .tt-zoom .cot-c-btn[aria-pressed='true']{background:linear-gradient(var(--fill-scale),var(--fill-scale)),var(--surface-hover);
+  box-shadow:var(--ring-3)}
+/* a plate (2 px inset each side, and its 1 px ring outside its box, which the margin keeps on the header's grid) stands
+   exactly as tall as the rail's flags */
+.cot-tt .tt-plate .cot-c-btn{--h:calc(40px * var(--tt-ui) - 6px)}
+.cot-tt .tt-plate .cot-c-btn svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
+
+/* The board: one band per tier's cells (the gutters stay clear, so a connector in a gutter never runs on a band edge),
+   the tier row pinned while the board scrolls, the special lane under the rule. A drag pans and a pinch zooms. */
+.cot-tt .tt-stage{position:relative;min-height:0}
+.cot-tt .tt-board{position:absolute;inset:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
+  touch-action:none;cursor:grab}
+.cot-tt .tt-board.is-panning,.cot-tt .tt-board.is-panning .tt-node{cursor:grabbing}
+/* A board larger than its space fades into the page at the edges it scrolls toward: the stage's two overlays, so a card
+   at the panel's edge reads as scrolling on, not cut. */
+.cot-tt .tt-stage::before,.cot-tt .tt-stage::after{content:'';position:absolute;z-index:var(--z-lift);pointer-events:none;opacity:0}
+.cot-tt .tt-stage::before{left:0;right:0;bottom:0;height:48px;background:linear-gradient(180deg,transparent,var(--surface-page))}
+.cot-tt .tt-stage::after{top:0;right:0;bottom:0;width:48px;background:linear-gradient(90deg,transparent,var(--surface-page))}
+.cot-tt .tt-stage.is-more-below::before,.cot-tt .tt-stage.is-more-right::after{opacity:1}
+/* and at the edges it has scrolled past: under the pinned tier row (over the bands' 12 px end) and over the left gutter */
+.cot-tt .tt-edges{position:absolute;inset:0;z-index:var(--z-lift);pointer-events:none}
+.cot-tt .tt-edges::before,.cot-tt .tt-edges::after{content:'';position:absolute;opacity:0}
+.cot-tt .tt-edges::before{left:0;right:0;top:var(--tt-head);height:12px;background:linear-gradient(180deg,var(--surface-page),transparent)}
+.cot-tt .tt-edges::after{top:0;bottom:0;left:0;width:var(--tt-gutter);background:linear-gradient(270deg,transparent,var(--surface-page))}
+.cot-tt .tt-stage.is-more-above .tt-edges::before,.cot-tt .tt-stage.is-more-left .tt-edges::after{opacity:1}
+/* pinned to the page gutter: a tree narrower than the board leaves its spare width on the right */
+.cot-tt .tt-grid{position:relative;margin:0}
+.cot-tt .tt-grid::before{content:'';position:absolute;top:var(--tt-head);bottom:var(--tt-end);left:var(--tt-pad);right:var(--tt-pad);pointer-events:none;
+  background:repeating-linear-gradient(90deg,var(--fill-faint) 0 var(--tt-col),transparent var(--tt-col) var(--tt-pitch))}
+.cot-tt .tt-tiers{position:sticky;top:0;z-index:var(--z-lift);height:var(--tt-head);background:var(--surface-page)}
+.cot-tt .tt-numeral{position:absolute;top:var(--s1);width:var(--tt-col);text-align:center;
+  font:700 calc(var(--fs-24) * var(--tt-ui))/1.25 var(--font-display);letter-spacing:0;color:var(--ink-3);
+  transition:color var(--dur-fast)}
+.cot-tt .tt-wires{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.cot-tt .tt-wires path{fill:none;stroke-width:calc(2px * var(--tt-ui));stroke-linejoin:round;stroke-linecap:butt}
+.cot-tt .tt-wires marker path{stroke:none}
+.cot-tt .tt-wires path.is-base{stroke:var(--ink-3);stroke-opacity:.72}
+.cot-tt .tt-wires path.is-sel{stroke:var(--accent);stroke-width:calc(2.5px * var(--tt-ui))}
+.cot-tt .tt-wires marker.is-base path{fill:var(--ink-3);fill-opacity:.72}
+.cot-tt .tt-wires marker.is-sel path{fill:var(--accent)}
+/* The special lane's rule spans the bands, edge to edge: its label opens it, inset like a card's name, and the line
+   runs on from the label (nothing covers a band). */
+.cot-tt .tt-rule{position:absolute;left:var(--tt-pad);right:var(--tt-pad);display:flex;align-items:center;gap:var(--s2);
+  transform:translateY(-50%)}
+.cot-tt .tt-rule::after{content:'';flex:1;height:1px;background:var(--line-2)}
+.cot-tt .tt-rule[hidden]{display:none}
+.cot-tt .tt-rule-label{padding-left:calc(1px + var(--s2));
+  font:600 max(var(--fs-floor-11),calc(var(--fs-11) * var(--tt-ui)))/1 var(--font-ui);letter-spacing:var(--track-label);
+  text-transform:uppercase;color:var(--ink-3)}
+
+/* Nodes: the hero render on the nation's flag, the name under it: one name and one size for the whole tree. */
+/* a node is its own layer: its render never paints over the pinned tier row when the board scrolls it under */
+.cot-tt .tt-node{position:absolute;isolation:isolate;display:flex;flex-direction:column;width:var(--tt-col);height:var(--tt-row);padding:0;
+  border-radius:var(--r2);cursor:pointer;overflow:hidden;background:var(--surface-raised);border:1px solid var(--line-2);
+  text-align:left;color:inherit;font:inherit;transition:border-color var(--dur-fast),transform var(--dur-fast) var(--ease-enter)}
+.cot-tt .tt-node:hover{border-color:var(--line-3);transform:translateY(-1px)}
+.cot-tt .tt-node:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-tt .tt-art{position:relative;flex:1 1 0;min-height:0;overflow:hidden;
+  background:radial-gradient(ellipse 72% 80% at 50% 72%,var(--fill-scale),transparent 100%),
+    linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
+/* the art has no name band under it: the band is the room the near track and its shadow drop below the contact line;
+   the core takes .7 of the height so masts and roof weapons above it stay inside a wide card */
+.cot-tt .tt-art .hc-host{--hc-band:max(8px,12cqh);--hc-share:.86;--hc-hshare:.7;--hc-cxr:.5}
+/* a flag's darkest stripe (Germany's black) still reads against the card's dark plate */
+.cot-tt .tt-art .hc-flag{filter:contrast(.7) brightness(1.2)}
+.cot-tt .tt-portrait{position:absolute;inset:6% 6% 2%;width:88%;height:92%;object-fit:contain}
+.cot-tt .tt-name{flex:none;overflow:hidden;white-space:nowrap;padding:2px var(--s2) var(--s1);font-weight:600;
+  font-size:var(--tt-name-fs);line-height:1.2;color:var(--ink-2)}
+/* techTree.ts nameMetrics measures each name at the floor, unseen */
+.cot-tt .tt-grid .tt-name.is-probe{display:block;position:absolute;visibility:hidden;font-size:var(--tt-name-floor)}
+/* A board zoomed out past its names shows the renders alone; the hover tip names each. */
+.cot-tt .tt-grid.is-compact .tt-name{display:none}
+/* the selected edge grows outward, so the card's content (its name's room) keeps the size of every other card */
+.cot-tt .tt-node.is-sel{--tt-sel-grow:calc(var(--selected-edge) - 1px);border:var(--selected-edge) solid var(--accent);
+  margin:calc(-1 * var(--tt-sel-grow));width:calc(var(--tt-col) + 2 * var(--tt-sel-grow));
+  height:calc(var(--tt-row) + 2 * var(--tt-sel-grow))}
+/* the selected node is the focused one (roving focus): its ring is the selection's, with no second focus ring */
+.cot-tt .tt-node.is-sel:focus-visible{box-shadow:none}
+.cot-tt .tt-node.is-sel .tt-name{color:var(--ink-1)}
+
+/* Detail: the selected vehicle's render; its name, tags and builds over its four numbers on the kit's scale (one
+   column, so the numbers start under the name for every vehicle); Select at the end. The band keeps the page gutter on
+   every side. */
+.cot-tt .tt-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s7);
+  padding:var(--tt-gutter);
+  background:linear-gradient(180deg,var(--row-plate),var(--surface-raised));border-top:1px solid var(--line-2)}
+.cot-tt .tt-detail-info{display:flex;flex-direction:column;gap:var(--s4);min-width:0}
+.cot-tt .tt-detail-art{position:relative;width:calc(var(--tt-detail-art-w) * var(--tt-ui));
+  height:calc(var(--tt-detail-art-w) * var(--tt-ui) * .56);border-radius:var(--r2);overflow:hidden;box-shadow:var(--ring-2);
+  background:radial-gradient(ellipse 70% 70% at 50% 60%,var(--fill-scale),transparent 100%),
+    linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
+.cot-tt .tt-detail-art .hc-host{--hc-band:10cqh;--hc-share:.84;--hc-hshare:.8;--hc-cxr:.5;--hc-flag-opacity:.8}
+.cot-tt .tt-detail-id{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s3) var(--s4);min-width:0}
+/* the vehicle's name in the cards' face (the same hyphen as its card), untracked so it sets one width in en and zh */
+.cot-tt .tt-detail-name{--tt-name-size:calc(var(--fs-36) * var(--tt-ui));margin:0;
+  font:700 calc(var(--tt-name-size) * var(--tt-name-step, 1))/1.05 var(--font-ui);letter-spacing:0;
+  overflow-wrap:anywhere}
+.cot-tt .tt-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
+/* (an indent of the tracking matches the trailing letter's, so the label sits centred; zh's tracking is a bare 0, which
+   no length calc accepts) */
+.cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
+  font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label);text-indent:var(--track-label)}
+.cot-tt .tt-detail-special[hidden]{display:none}
+/* the builds follow the tags on the name's line where the width allows, so a twin node keeps the band's height */
+.cot-tt .tt-builds{flex-wrap:wrap;max-width:100%}
+.cot-tt .tt-builds[hidden]{display:none}
+.cot-tt .tt-builds .cot-c-seg__opt{height:calc(32px * var(--tt-ui));font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))}
+.cot-tt .tt-builds .cot-c-sil{width:40px;height:16px}
+.cot-tt .tt-stats{display:grid;grid-template-columns:repeat(var(--tt-stat-cols,1),minmax(0,1fr));gap:var(--s3) var(--s6);
+  min-width:0}
+/* the kit's stat rows on the screen's scale: the label style for the labels, the floor for the units, and empty cells
+   that read at 3:1 against the panel */
+.cot-tt .tt-stats .cot-c-stat__label{font:600 max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))/1.2 var(--font-ui);
+  letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
+.cot-tt .tt-stats .cot-c-stat__value b{font-size:calc(var(--fs-18) * var(--tt-ui))}
+/* the label and its value share a baseline */
+.cot-tt .tt-stats .cot-c-stat__label,.cot-tt .tt-stats .cot-c-stat__value{align-self:baseline}
+.cot-tt .tt-stats .cot-c-stat__value small{font-size:max(var(--fs-floor-11),calc(var(--fs-11) * var(--tt-ui)))}
+.cot-tt .tt-stats .cot-c-scale{height:calc(8px * var(--tt-ui))}
+.cot-tt .tt-stats .cot-c-stat{grid-template-columns:calc(20px * var(--tt-ui)) minmax(0,1fr) auto}
+.cot-tt .tt-stats .cot-c-stat svg{width:calc(18px * var(--tt-ui));height:calc(18px * var(--tt-ui))}
+.cot-tt .tt-stats .cot-c-scale i{background:var(--ink-4)}
+.cot-tt .tt-stats .cot-c-scale i.f{background:var(--ink-2)}
+/* Select grows with the screen like everything beside it: its plate, and its caps in the label style on the same scale
+   as the stat labels */
+.cot-tt .tt-select{min-width:calc(180px * var(--tt-ui));--h:calc(var(--btn-h-l) * var(--tt-ui));
+  font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
+
+/* Tablets: the rail takes its own row; the detail folds the stats under the name. */
+@media (max-width:1100px){
+  .cot-tt{--tt-gutter:var(--s5)}
+  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-title{font-size:var(--fs-24)}
+  .cot-tt .tt-nation{margin-right:auto}
+  .cot-tt .tt-rail{order:1;margin-right:auto}
+  /* the name and Select over the two stat columns: Select takes the second column, its top on the render's */
+  .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);grid-template-areas:'art id act' 'art stats stats';
+    align-items:start;gap:var(--s3) var(--s5);padding:var(--tt-gutter)}
+  .cot-tt .tt-detail-info{display:contents}
+  /* the render spans the name's row and the stats' row: its top on the name's, its foot on the stats' */
+  .cot-tt .tt-detail-art{grid-area:art;align-self:stretch;height:auto;min-height:calc(var(--tt-detail-art-w) * var(--tt-ui) * .56)}
+  .cot-tt .tt-detail-id{grid-area:id}
+  .cot-tt .tt-stats{grid-area:stats;align-self:end;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--s5)}
+  .cot-tt .tt-act{grid-area:act}
+  .cot-tt .tt-act .tt-select{width:100%}
+}
+/* Phones: close beside the nation; the rail and the zoom plate share the second row; the render leads the detail. */
+@media (max-width:520px){
+  .cot-tt{--tt-detail-art-w:128px;--tt-gutter:var(--s4)}
+  /* two rows whatever the title's length: the nation and close, then the rail and the zoom plate */
+  .cot-tt .tt-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'nation close' 'rail zoom';
+    align-items:center;gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-nation{grid-area:nation;gap:var(--s3)}
+  .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
+  .cot-tt .tt-title{font-size:var(--fs-20)}
+  .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
+  .cot-tt .tt-rail{grid-area:rail;justify-self:start;margin:1px;--tt-rail-fade:24px}
+  .cot-tt .tt-zoom{grid-area:zoom}
+  .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
+    padding:var(--s3) var(--tt-gutter) var(--s4)}
+  .cot-tt .tt-detail-name{--tt-name-size:var(--fs-24)}
+  .cot-tt .tt-detail-id{align-self:center}
+  /* one stat a row: the labels' tracking needs the width */
+  .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr);row-gap:var(--s2)}
+  .cot-tt .tt-act .tt-select{width:100%}
+}
+/* Short landscape screens (a phone on its side, a small laptop window): the detail becomes a side panel and the header
+   one row, so the board keeps the height. */
+@media (max-height:640px) and (orientation:landscape){
+  .cot-tt{--tt-detail-art-w:200px;--tt-gutter:var(--s4);grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr)}
+  .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-nation{margin-right:0}
+  .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
+  .cot-tt .tt-title{font-size:var(--fs-24)}
+  /* (the zoom plate's auto margin drops its ring's 1 px: the picker keeps room for both) */
+  .cot-tt .tt-rail{order:0;margin-right:2px}
+  .cot-tt .tt-zoom{margin-left:auto}
+  /* every nation fits the row beside the title (a touch screen keeps its 44 px flags, below) */
+  .cot-tt .tt-rail-flag{width:36px}
+  .cot-tt .tt-stage{grid-column:1;grid-row:2}
+  /* a column on one inset (the gutter, every side): the render takes the panel's spare height (up to a square), then
+     Select sits at the panel's foot */
+  .cot-tt .tt-detail{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:stretch;gap:var(--s3);overflow-y:auto;
+    padding:var(--tt-gutter);border-top:0;border-left:1px solid var(--line-2)}
+  .cot-tt .tt-detail-info{display:contents}
+  .cot-tt .tt-detail-art{flex:1 0 calc(var(--tt-detail-art-w) * .52);width:100%;height:auto;
+    max-height:calc(280px - 2 * var(--tt-gutter))}
+  .cot-tt .tt-detail-name{--tt-name-size:var(--fs-28);line-height:1.15}
+  /* the stats start on the panel's content edge (not the tablet's foot alignment) */
+  .cot-tt .tt-stats{align-self:stretch;grid-template-columns:minmax(0,1fr)}
+  /* Select stays at the panel's foot while the panel scrolls, on the panel's inset, and the stats it hides fade out
+     over it */
+  .cot-tt .tt-act{position:sticky;bottom:calc(var(--tt-gutter) * -1);margin:auto calc(var(--tt-gutter) * -1) calc(var(--tt-gutter) * -1);
+    padding:var(--s2) var(--tt-gutter) var(--tt-gutter);background:var(--surface-raised)}
+  .cot-tt .tt-detail.is-more-below .tt-act::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--s6);
+    pointer-events:none;background:linear-gradient(180deg,transparent,var(--surface-raised))}
+  .cot-tt .tt-act .tt-select{width:100%}
+}
+/* The shortest of them (a phone on its side): the render beside the name and its tags, so all four numbers fit over
+   Select (a node's builds wrap beside the render; the panel then scrolls under its fade). */
+@media (max-height:420px) and (orientation:landscape){
+  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:auto auto 1fr;
+    grid-template-areas:'art id' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
+  .cot-tt .tt-detail-id{grid-area:id;align-self:center;column-gap:var(--s2)}
+  .cot-tt .tt-detail-art{grid-area:art;min-height:0;height:calc(var(--tt-detail-art-w) * .32)}
+  .cot-tt .tt-title{font-size:var(--fs-20)}
+  .cot-tt .tt-detail-name{--tt-name-size:var(--fs-24)}
+  .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
+  /* each label on its meter, and Select at the kit's middle height, so the four stats clear the fade with the touch
+     header's taller plates (zh rows included) */
+  .cot-tt .tt-stats .cot-c-stat{row-gap:var(--s1)}
+  .cot-tt .tt-select{--h:max(var(--target-min),calc(var(--btn-h-m) * var(--tt-ui)))}
+  .cot-tt .tt-act{grid-area:act}
+}
+/* Touch: every control is at least 44 px. */
+@media (pointer:coarse){
+  .cot-tt .tt-plate .cot-c-btn{--h:44px}
+  /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the room */
+  .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
+  /* a 44 px button on its 2 px pad, plus the plate's 1 px ring */
+  .cot-tt .tt-rail-flag{width:44px;height:44px}
+}
+@media (prefers-reduced-motion:reduce){
+  .cot-tt .tt-node:hover{transform:none}
+}
+}

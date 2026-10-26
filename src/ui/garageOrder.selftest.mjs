@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, GARAGE_LEADING_VEHICLE_IDS, GARAGE_LEADING_VEHICLE_IDS_BY_NATION,
-  horizontalRailState, horizontalRailWheelDelta,
+  horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 
 const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 'utf8')}\n${
@@ -43,7 +43,7 @@ assert.match(garageSource, /loadoutEl\.innerHTML = equipmentSlots\(eqIds\);[\s\S
   'the slots render into the band, and the readout opens with the technical drawing and the overview');
 assert.doesNotMatch(garageSource, /cot-loadout-section/, 'the readout carries no second copy of the equipment slots');
 assert.match(garageSource,
-  /<section class="cot-lower-third"><div class="cot-lt-head"[^`]*`[\s\S]*?<div class="cot-lt-band"><div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-paint"[\s\S]*?<div class="cot-lt-acts">/,
+  /<section class="cot-lower-third"><div class="cot-lt-head"[^`]*`[\s\S]*?<div class="cot-lt-band"><div class="cot-lt-group"><span class="cot-lt-cap"[^>]*>\$\{t\('garage\.band\.equipment'\)\}<\/span>`[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<span class="cot-lt-cap"[^>]*>\$\{t\('garage\.band\.paint'\)\}<\/span>`[\s\S]*?<div class="cot-lt-paint"[\s\S]*?<div class="cot-lt-acts">/,
   'the band under the name holds the slots, then the paint, then the acts');
 assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'gun'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
   'the readout has five stations; the paint left them for the band');
@@ -51,13 +51,27 @@ assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 t
 // the stage's callouts wait for their act (owner 10-24): off by default, the module loads at the first press, and a frame
 // does nothing while they are off
 assert.match(garageSource, /data-lt-callouts aria-pressed="false"/, 'the callouts act starts unpressed');
-assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+// owner 10-24 ("change the vs ... label and show the clips"): the rival waits for a Compare chip, every act and empty
+// slot carries a visible label, and a clip- or salvo-fed gun shows its rounds per clip and their interval
+assert.match(garageSource, /let compareOn = false;[\s\S]*?const rival = compareOn \? rivalFor\(spec\) : null;/,
+  'the rival and its deltas appear only once Compare is on');
+assert.match(garageSource, /class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="\$\{compareOn\}"/,
+  'Compare is a toggle chip');
+const ltActs = garageSource.match(/<div class="cot-lt-acts">[\s\S]*?<\/div><\/div><\/section>/)?.[0] || '';
+assert.equal((ltActs.match(/class="cot-c-btn cot-lt-act"/g) || []).length, 4, 'the band has four acts');
+assert.equal((ltActs.match(/<span>\$\{t\('garage\.(?:act|photo)\.[a-zA-Z]+'\)\}<\/span><\/button>/g) || []).length, 4,
+  'each act carries a visible label');
+assert.match(garageSource, /<span class="plus" aria-hidden="true">\+<\/span><span class="sl">\$\{t\('garage\.equipment\.empty\.name'\)\}<\/span>/,
+  'an empty slot is labelled');
+assert.equal((garageSource.match(/magazineFigures\(spec\.gun, eqM\.reload\)/g) || []).length, 2,
+  'the magazine figures show in the overview and the firepower station');
+assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*noteHeroModel\(model\);\s*if \(!calloutsShown \|\| !hotspots\) return;/,
   'no frame projects the callouts while they are off');
 assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
 assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
-assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
-  'the readout steps through its four densities until the station fits');
+assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 5 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
+  'the readout steps from roomy through its four densities until the station fits');
 assert.match(garageSource, /activateTechnicalTab\(view\);\s*queueReadoutFit\(false, true\);/,
   'a station change refits the readout and returns it to its top in the frame, not in the press');
 assert.match(garageSource, /else queueReadoutFit\(false, vehicleChanged\);\s*requestAnimationFrame\(syncScrollFades\);/,
@@ -80,18 +94,21 @@ assert.match(garageSource, /requestAnimationFrame\(\(\) => \{\s*if \(selectedId 
   'the selected card is revealed in the frame, after the dossier rebuild, not before it');
 assert.match(garageSource, /if \(swatchesFor === selectedId\) return;[\s\S]{0,240}if \(openGaragePanel\(\) !== 'appearance'\) return;\s*repaintTankCamoSwatches\(spec\);/,
   'the paint catalog repaints only while every paint is open');
-assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) refreshCamoSel\(\);/, 'opening every paint repaints the catalog it left');
+assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) \{\s*refreshCamoSel\(\);[^}]*requestAnimationFrame\(\(\) => fitCamoRows\(\)\);\s*\}/, 'opening every paint repaints the catalog it left');
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
-for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
+for (const density of ['roomy', '1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
+assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
-assert.match(garageSource, /const floor = docked \? band : sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
-  'the stage ends at the band docked, at the fleet on a phone on its side and at the name held upright');
+assert.match(garageSource, /const floor = sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
+  'a phone\'s stage ends at the fleet on its side and at the name held upright');
+assert.match(garageSource, /const floor = band && band\.height \? band\.top - 10/, 'the docked free stage ends at the band');
+assert.match(garageSource, /const above = head && head\.height \? stageRect\(x0, y0, x1, head\.top - 12\) : null;/,
+  'the docked hero stands above the name (or beside it), never under it');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"/, 'the battle card carries the battlefield picture');
 assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !== 'random' && selected\.thumb \?/,
   'the battle card draws the battlefield\'s 512 px still, never its 4K hero');
@@ -348,6 +365,11 @@ assert.deepEqual(horizontalRailState(500, 900, 400), {
 assert.deepEqual(horizontalRailState(20, 300, 400), {
   maxScroll: 0, hasLeft: false, hasRight: false,
 }, 'a fitting country rail shows no false edge affordances');
+assert.equal(horizontalRailEndPad(620, [0, 164, 328, 492, 656, 820]), 36,
+  'a rail at its end rests on the next card start, not a sliver of the card before it');
+assert.equal(horizontalRailEndPad(656, [0, 164, 328, 492, 656, 820]), 0,
+  'a rail whose reach already lands on a card start needs no extra end');
+assert.equal(horizontalRailEndPad(0, [0, 164]), 0, 'a fitting rail has no end padding');
 assert.equal(horizontalRailWheelDelta(4, 60), 60,
   'vertical mouse-wheel motion pans the horizontal country rail');
 assert.equal(horizontalRailWheelDelta(-38, 6), -38,
@@ -362,9 +384,10 @@ assert.match(garageSource, /\.cot-country-chips::\-webkit-scrollbar\{display:non
 assert.match(garageSource,
   /\.cot-country-chips\{[^}]*justify-content:safe center;[^}]*width:100%;[^}]*overflow-x:auto;/,
   'the complete country list centers when it fits while retaining honest overflow');
-assert.match(garageSource,
-  /\.cot-country-edge\{position:relative;[^}]*width:26px;height:36px;/,
-  'country overflow arrows use compact balanced gutters instead of looking like nation tiles');
+assert.doesNotMatch(garageSource, /cot-country-edge/,
+  'the nations reach every flag without boxed arrows: the track fades at its ends (owner 10-25 via Main)');
+assert.match(garageSource, /\.cot-country-rail\.has-more-right \.cot-country-chips\{-webkit-mask-image:/,
+  'a nation track with more beyond its end fades there');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
 assert.match(garageSource,
@@ -378,7 +401,7 @@ assert.match(garageSource,
   /card\.scrollIntoView\(\{ block: 'nearest', inline: 'center', behavior: 'auto' \}\);/,
   'vehicle selection reveals distant cards immediately instead of sweeping across the carousel');
 assert.match(garageSource,
-  /\.cot-cards\{[^}]*padding:var\(--s2\) var\(--s2\) 0;[^}]*scroll-padding-inline:8px;/,
+  /\.cot-cards\{[^}]*padding:var\(--s2\) calc\(var\(--s2\) \+ var\(--rail-end,0px\)\) 0 var\(--s2\);[^}]*scroll-padding-inline:var\(--s2\);[^}]*scroll-snap-type:x mandatory;/,
   'vehicle rails keep selected end cards inset from their clipping edges');
 assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');

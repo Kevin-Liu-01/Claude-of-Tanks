@@ -108,7 +108,10 @@ import {
 // createTank (see the seam near the GLB-swap block). Procedural/metrology
 // builds skip it by default so parity boards measure bare silhouettes;
 // presentation callers may explicitly opt in with decor:true.
-import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttachmentArgs } from './decorations.ts';
+import {
+  attachDecorationPlanSteps, attachTankDecorations, attachTankDecorationsSteps, decorationWanted, type DecorationAttachmentArgs,
+  type DecorPlan,
+} from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.ts. Live play is identical (the
@@ -146,7 +149,7 @@ import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel,
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
 import { hangAuthoredMudguards, runningGearTest, type MudguardHangRequest } from './mudguardHangers.ts';
-import { snapFittingsSeated, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
+import { snapFittingsSeatedSteps, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
 
 /** Options for P.snapGroup (fittingSnap.ts). */
 export interface SnapGroupOptions {
@@ -160,7 +163,10 @@ export interface SnapGroupOptions {
   readonly onMove?: (move: readonly [number, number, number]) => void;
 }
 import { spareLinkBlock } from './spareLinkGeometry.ts';
-import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
+import {
+  resetSpareTrackRunSerial, restoreSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunSerial, spareTrackRunTag,
+  type SeatRole,
+} from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -1179,6 +1185,13 @@ function buildRunningGearPublic(builder: object, options: object): RunningGearUn
   return buildRunningGear(builder, options);
 }
 
+/** What a stepped build yields: nothing at a checkpoint, or work it waits on off the main thread (stage 2b), which a
+ *  driver that passed a planner awaits before the next step. */
+export type TankBuildStep = void | PromiseLike<unknown>;
+/** Stage 2b pass 1 (UI-LOCKDOWN E): the decoration's plan made elsewhere (the decor worker: vehiclePassClient.ts),
+ *  null when the tank takes no decoration; a throw or a rejection falls back to the in-line pass. */
+export type DecorPlanner = (args: DecorationAttachmentArgs) => DecorPlan | null | PromiseLike<DecorPlan | null>;
+
 export interface TankFactoryOptions {
   camoSeed?: number;
   camoPattern?: string | null;
@@ -1195,6 +1208,9 @@ export interface TankFactoryOptions {
   solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
+  /** A stepped build's decoration plans here (a driver that awaits the yielded waits passes it); createTank and the
+   *  Node tools plan in-line. */
+  decorPlanner?: DecorPlanner;
   batchStatic?: boolean;
   deferStaticBatch?: boolean;
   battleDetailLod?: boolean;
@@ -7843,7 +7859,7 @@ export function createTankSteps(
   specId: string,
   engineContext: RuntimeValue,
   opts: TankFactoryOptions = {},
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   return createTankOwnedSteps(specId, engineContext, opts, false);
 }
 
@@ -7864,7 +7880,8 @@ export function createTank(
 function* prepareTankDecorationSteps(
   args: DecorationAttachmentArgs,
   legacyDecoration: boolean,
-): Generator<void, void, void> {
+  planner?: DecorPlanner,
+): Generator<TankBuildStep, void, void> {
   const root = args.root;
   let workMs = 0, yieldMs = 0, checkpointCount = 0;
   if (legacyDecoration) {
@@ -7875,7 +7892,38 @@ function* prepareTankDecorationSteps(
     root.userData.decorCheckpointCount = 0;
     return;
   }
-  const steps = attachTankDecorationsSteps(args);
+  // stage 2b pass 1: a planner makes the plan (the decor worker) while the driver waits on it; this thread attaches it
+  let given: { plan: DecorPlan | null } | null = null;
+  if (planner && decorationWanted(args)) {
+    const startedAt = performance.now();
+    let waitMs = 0;
+    try {
+      const planned = planner(args);
+      if (planned && typeof (planned as PromiseLike<unknown>).then === 'function') {
+        let settled: { plan: DecorPlan | null } | null = null, failed = false;
+        const wait = Promise.resolve(planned).then((plan) => { settled = { plan }; }, () => { failed = true; });
+        workMs += performance.now() - startedAt;
+        const waitedAt = performance.now();
+        while (!settled && !failed) yield wait;
+        waitMs = performance.now() - waitedAt;
+        given = settled;
+      } else {
+        given = { plan: planned as DecorPlan | null };
+        workMs += performance.now() - startedAt;
+      }
+    } catch {
+      workMs += performance.now() - startedAt;
+    }
+    root.userData.decorPlanWaitMs = waitMs;
+    root.userData.decorPlanned = !!given;
+    if (given && !given.plan) {
+      root.userData.decorBuildMs = workMs;
+      root.userData.decorYieldMs = 0;
+      root.userData.decorCheckpointCount = 0;
+      return;
+    }
+  }
+  const steps = given?.plan ? attachDecorationPlanSteps(args, given.plan) : attachTankDecorationsSteps(args);
   let complete = false;
   try {
     while (!complete) {
@@ -7923,7 +7971,7 @@ function* createTankOwnedSteps(
   engineContext: RuntimeValue,
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   const owner: TankCoreOwner = { mats: null, disposables: [], handedOff: false };
   try {
     return yield* buildTankCoreSteps(specId, engineContext, opts, legacyDecoration, owner);
@@ -7947,13 +7995,32 @@ function* coreCheckpoint(yielded: { ms: number }): Generator<void, void, void> {
   yielded.ms += performance.now() - pausedAt;
 }
 
+/** A runtime pass written in slices (the fitting snaps, the spare-track seats), each pause a core checkpoint. */
+function* checkpointed<Result>(work: Iterator<void, Result, void>, yielded: { ms: number }): Generator<void, Result, void> {
+  for (;;) {
+    const result = work.next();
+    if (result.done) return result.value;
+    yield* coreCheckpoint(yielded);
+  }
+}
+
+/** A profile's stepped body (tankBuildCooperation.ts withBuildSteps), a stage a slice. Its spare-track run serial is
+ *  the build's own (spareTrackRunTag) and another build may number its runs at the checkpoint, so it is held across. */
+function* stepProfileBuild(build: Iterator<unknown, void, void>, yielded: { ms: number }): Generator<void, void, void> {
+  while (!build.next().done) {
+    const serial = spareTrackRunSerial();
+    yield* coreCheckpoint(yielded);
+    restoreSpareTrackRunSerial(serial);
+  }
+}
+
 function* buildTankCoreSteps(
   specId: string,
   engineContext: RuntimeValue,
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
   owner: TankCoreOwner,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   // The core's stages are stamped on a clock that leaves out its checkpoint waits (coreBuildTiming stays work time).
   const coreYield = { ms: 0 };
   const coreClock = (): number => performance.now() - coreYield.ms;
@@ -8466,6 +8533,7 @@ function* buildTankCoreSteps(
   };
 
   const builder = resolveBuilder(specId, spec);
+  const buildSteps = (builder as { buildSteps?: (port: TankBuilderPort) => Iterator<unknown, void, void> } | null)?.buildSteps;
   resetSpareTrackRunSerial();
   const coreAuthoredStartedAt = coreClock();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
@@ -8479,10 +8547,12 @@ function* buildTankCoreSteps(
     const sourcePort = new Proxy(P, { get(target, key, receiver) {
       return key === 'spec' ? sourceSpec : Reflect.get(target, key, receiver);
     } });
-    if (builder) Reflect.apply(builder, undefined, [sourcePort]);
+    if (buildSteps) yield* stepProfileBuild(buildSteps(sourcePort), coreYield);
+    else if (builder) Reflect.apply(builder, undefined, [sourcePort]);
     else buildCommunityPlaceholder(sourcePort);
     resizeAuthoredVehicle(P, sizeFactor);
-  } else if (builder) Reflect.apply(builder, undefined, [P]);
+  } else if (buildSteps) yield* stepProfileBuild(buildSteps(P), coreYield);
+  else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
   // The profile's run serial is spent (spareTrackRunTag): another build may start at this checkpoint.
   yield* coreCheckpoint(coreYield);
@@ -8556,7 +8626,8 @@ function* buildTankCoreSteps(
       }
       const rig = rigGroupsForSnap().find(([key]) => key === group)?.[1] ?? null;
       // a fitting whose only neighbour is another seated fitting seats on it (snapFittingsSeated's second pass)
-      snapReceipts.push(...snapFittingsSeated(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig));
+      snapReceipts.push(...yield* checkpointed(
+        snapFittingsSeatedSteps(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig), coreYield));
     }
     root.userData.fittingSnaps = snapReceipts;
   }
@@ -8570,15 +8641,15 @@ function* buildTankCoreSteps(
   const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
     .map(({ part }) => part));
   const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
-  const spareTrackStartedAt = performance.now();
+  const spareTrackStartedAt = coreClock();
   try {
-    const spareTrackSeats = seatAuthoredSpareTracks({
+    const spareTrackSeats = yield* checkpointed(seatAuthoredSpareTracks({
       spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart, markings: decals,
       bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
-    });
+    }), coreYield);
     root.userData.spareTrack = spareTrackSeats.runs;
     root.userData.spareTrackRejected = spareTrackSeats.rejected;
-    root.userData.spareTrackMs = performance.now() - spareTrackStartedAt;
+    root.userData.spareTrackMs = coreClock() - spareTrackStartedAt;
   } catch (error) {
     // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
     root.userData.spareTrackError = error instanceof Error ? error.message : String(error);
@@ -8750,9 +8821,41 @@ function* buildTankCoreSteps(
   };
   for (const visualEraPart of visualEraParts) bindVisualEraPart(visualEraPart);
 
+  // Each ERA-bound part's span in the mesh its bucket merged into (mergeBucket): the turret seat lifts that mesh's own
+  // copy of the merged vertices, not the parts, so the receipt below reads each part back from the mesh it is drawn in.
+  const eraPartSpans = new Map<THREE.BufferGeometry, { mesh: THREE.Mesh; start: number; built: THREE.BufferAttribute | THREE.InterleavedBufferAttribute }>();
+  const eraBoundParts = new Set<THREE.BufferGeometry>(eraVisualBindingReceipt ? [...eraBoundPartsByPlate.values()].flat() : []);
+  const drawnEraPartLists = new Map<THREE.BufferGeometry[], THREE.BufferGeometry[]>();
+  const drawnEraPart = (part: THREE.BufferGeometry): THREE.BufferGeometry => {
+    const span = eraPartSpans.get(part);
+    const drawn = span?.mesh.geometry.getAttribute('position');
+    if (!span || !drawn || drawn === span.built) return part;
+    const position = part.getAttribute('position'), index = part.index;
+    const count = index ? index.count : position.count;
+    let copy: THREE.BufferGeometry | null = null;
+    for (let k = 0; k < count; k++) {
+      const v = index ? index.getX(k) : k, d = span.start + k;
+      if (drawn.getX(d) === position.getX(v) && drawn.getY(d) === position.getY(v) && drawn.getZ(d) === position.getZ(v)) continue;
+      copy ??= part.clone();
+      copy.getAttribute('position').setXYZ(v, drawn.getX(d), drawn.getY(d), drawn.getZ(d));
+    }
+    if (!copy) return part;
+    disposables.push(copy);
+    return copy;
+  };
+  const drawnEraParts = (parts: THREE.BufferGeometry[]): THREE.BufferGeometry[] => {
+    let drawn = drawnEraPartLists.get(parts);
+    if (!drawn) {
+      const copies = parts.map(drawnEraPart);
+      drawn = copies.every((copy, i) => copy === parts[i]) ? parts : copies;
+      drawnEraPartLists.set(parts, drawn);
+    }
+    return drawn;
+  };
+
   const wholeEraFitReuse = createInvocationEraWholeReuse();
   const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
-    const parts = eraBoundPartsByPlate.get(plate.name) || [];
+    const parts = drawnEraParts(eraBoundPartsByPlate.get(plate.name) || []);
     if (!parts.length || plate.verts.length < 3) return [];
     const frame = createEraSurfaceFrame(plate);
     if (!frame) return [];
@@ -9101,6 +9204,11 @@ function* buildTankCoreSteps(
     }
     registerVehicleNightLensMesh(mesh, list);
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
+    let spanStart = 0;
+    for (const part of list) {
+      if (eraBoundParts.has(part)) eraPartSpans.set(part, { mesh, start: spanStart, built: merged.getAttribute('position') });
+      spanStart += part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+    }
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);
   };
@@ -9165,9 +9273,32 @@ function* buildTankCoreSteps(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
+    if (typeof P.postAssemble === 'function') {
+      P.postAssemble({ root, hullG, turretG, gunG, recoilG });
+    }
+    // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
+    // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
+    // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret. A seated mesh
+    // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
+    // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back),
+    // and so do the equipment lids' and the weapon stock's damage ranges.
+    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, gunPitchDeg: [spec.gunDepressionDeg, spec.gunElevationDeg], onSeated: (built, seated) => {
+      const was = built.getAttribute('position'), now = seated.getAttribute('position');
+      for (const cluster of destructibleClusters.values()) {
+        for (const range of cluster.ranges) {
+          if (range.position !== was) continue;
+          range.position = now;
+          range.original = now.array.slice(range.start * now.itemSize, (range.start + range.count) * now.itemSize);
+        }
+      }
+      equipmentDamage.follow(built, seated);
+      weaponDamage.follow(built, seated);
+    } });
     // Battles consume checked anatomy and the live clusters above; static
     // wrecks retain baked geometry. Both can omit this authoring-only audit.
     // Preserve the default for workshop, Gallery and anatomy/release callers.
+    // 251: fitted after the seat, against the skin each part is drawn with (drawnEraParts), so the generated anatomy's ERA
+    // faces stand on a seated cassette's lifted edge, not 94 mm under it (the T-90M's turret_era_L/R).
     if (eraVisualBindingReceipt) {
       const receiptPlates = (owner: VehicleOwner) => {
         const exactZones = new Map<string, boolean>();
@@ -9257,24 +9388,6 @@ function* buildTankCoreSteps(
     });
   }
 
-  if (typeof P.postAssemble === 'function') {
-    P.postAssemble({ root, hullG, turretG, gunG, recoilG });
-  }
-  // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
-  // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
-  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret. A seated mesh
-  // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
-  // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back).
-  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
-    const was = built.getAttribute('position'), now = seated.getAttribute('position');
-    for (const cluster of destructibleClusters.values()) {
-      for (const range of cluster.ranges) {
-        if (range.position !== was) continue;
-        range.position = now;
-        range.original = now.array.slice(range.start * now.itemSize, (range.start + range.count) * now.itemSize);
-      }
-    }
-  } });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
@@ -9853,7 +9966,7 @@ export const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
 export function* createTankRuntimeSteps(
   env: TankRuntimeEnv,
   adoption: TankRuntimeAdoption | null = null,
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   const {
     specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
     coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, coreYieldMs = 0, proceduralOnly, geometryQuality,
@@ -11666,7 +11779,7 @@ export function* createTankRuntimeSteps(
       root, hullG, turretG, spec, engineCtx, disposables,
       opts: { proceduralOnly, decor: opts.decor, geometryQuality },
       isDestroyed: () => destroyed,
-    }, legacyDecoration);
+    }, legacyDecoration, opts.decorPlanner);
     const tailDecorFinishedAt = performance.now();
 
     // The ring's race in the seam under the seated turret (seatTurretOverDeck, after the core), from the calibration's

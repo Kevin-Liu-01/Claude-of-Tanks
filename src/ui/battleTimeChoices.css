@@ -18,7 +18,4 @@
 .cot-time-choice input:disabled{cursor:default;}
 .cot-time-choice input:disabled:not(:checked)+.cot-time-content{opacity:.55;}
 .cot-battle-times small{flex-basis:100%;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5;}
-.cot-settings .cot-battle-times{margin:var(--s3) 0 0;padding:var(--s2);}
-.cot-settings .cot-battle-times legend{padding:0 var(--s2);}
-.cot-settings .cot-time-content{padding:var(--s2);}
 }

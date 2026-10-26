@@ -99,10 +99,11 @@ interface GaragePedestalRuntimeOptions {
     specId: string,
     options: PedestalVisualOptions,
   ): GaragePedestalVisual;
+  /** Its steps may yield work it waits on off the main thread (a decoration plan), which the build awaits. */
   createVisualSteps(
     specId: string,
     options: PedestalVisualOptions,
-  ): Generator<void, GaragePedestalVisual, void>;
+  ): Generator<void | PromiseLike<unknown>, GaragePedestalVisual, void>;
   getSpec(specId: string): GaragePedestalSpec;
   ensureTankBuilder(specId: string): Promise<RuntimeValue>;
   ensureTankBuilders(specIds: readonly string[]): Promise<RuntimeValue>;
@@ -543,7 +544,8 @@ export function createGaragePedestalRuntime({
           }
           if (!stillCurrent()) return null;
           const pausedAt = now();
-          await yieldForBudget();
+          if (result.value) await result.value;
+          else await yieldForBudget();
           phases.buildYieldMs += now() - pausedAt;
           phases.buildCheckpointCount += 1;
         }

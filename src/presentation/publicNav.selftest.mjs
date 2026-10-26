@@ -23,7 +23,8 @@ const pages = [
   ['site/docs-multiplayer.html', '/docs'],
   ['site/docs-audio.html', '/docs'],
   ['site/docs-studio.html', '/docs'],
-  ['site/docs-filming.html', '/docs/filming#library'],
+  // every Field Manual chapter marks the manual, the Filming chapter too (Media is its #library section, not a page)
+  ['site/docs-filming.html', '/docs'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
@@ -158,7 +159,7 @@ assert.match(gameHtml,
   /\.cot-boot-links\s*\{[^}]*display: grid; grid-template-columns: repeat\(2, 1fr\); width: max-content;/,
   'boot utility controls must share the widest control\'s intrinsic width');
 assert.match(gameHtml,
-  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 14px;/,
+  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 18px;/,
   'boot utility controls must keep balanced content-driven horizontal padding');
 assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
   'boot utility controls must not return to the fixed width that cramped GitHub');

@@ -217,6 +217,9 @@ const ctx = reticle.getContext('2d');
 const traySlots = created.filter((element) => element.classes.has('cot-shell'));
 const specialButton = created.find((element) => element.classes.has('cot-special'));
 const missileButton = created.find((element) => element.classes.has('cot-auxiliary') && element.innerHTML.includes('>ATGM<'));
+// (owner 2026-10-25, src/game/vehicleActions.ts) the ATGM is its own tile on Q on every launcher, the magazine reload its
+// own on C on every autoloader; the special tile is the suspension alone
+const reloadButton = created.find((element) => element.classes.has('cot-reload-control'));
 assert.equal(traySlots.length, 3);
 hud.setMode('battle');
 
@@ -289,6 +292,19 @@ function readReticle(ops) {
     dryCount: ops.filter((op) => op.op === 'fillText' && op.style === INK.dry).map((op) => op.text.trim()),
   };
 }
+/** (UI-LOCKDOWN A) the sight's words and figures are DOM runs over it (canvasText.ts): a repaint's runs join its ops as the
+ *  fillText ops the canvas drew, each with the box this context gives a fillText at the same anchor (a reused frame
+ *  repainted nothing and adds none). */
+function sightTextOps(ops) {
+  if (!ops.length) return;
+  for (const run of hud.sightText.placed()) {
+    const width = run.text.length * 7;
+    const size = Number(/(\d+(?:\.\d+)?)px/.exec(run.font)?.[1] || 10);
+    const x0 = run.align === 'center' ? run.x - width / 2 : run.align === 'right' || run.align === 'end' ? run.x - width : run.x;
+    ops.push({ op: 'fillText', text: run.text, style: run.color, x: run.x, y: run.y,
+      box: { x0, y0: run.y - size * 0.74, x1: x0 + width, y1: run.y + size * 0.08 } });
+  }
+}
 /** One battle frame: the aim controller composes, the HUD updates and paints. */
 function frame(tank, { advance = 0, mode = 'battle' } = {}) {
   current = tank;
@@ -298,6 +314,7 @@ function frame(tank, { advance = 0, mode = 'battle' } = {}) {
   timeS += DT;
   hud.update({ timeS, mode, player: tank, tanks: [tank], spotting: { isSpotted: () => true }, aim, camera,
     auxiliaryKeyLabels: { missile: 'E' } });
+  sightTextOps(ctx.ops);
   const view = readReticle(ctx.ops);
   view.trayCooldown = traySlots[aim.shellSlot].querySelector('.cool').style.height;
   view.trayEmpty = traySlots[aim.shellSlot].classes.has('empty');
@@ -395,8 +412,8 @@ const DRY_RING = 16;
   assert.deepEqual(view.dryCount, ['0'], 'the chambered count reads 0 in the empty ink');
 }
 
-// 6. An autoloader (M1A3: four-round magazine, a guided round in slot 1): short of stowage, then dry; its guided
-// special control is struck once the last missile is gone.
+// 6. An autoloader (M1A3: four-round magazine, a guided round in slot 1): short of stowage, then dry; its ATGM tile is
+// struck once the last missile is gone.
 {
   const tank = tankOf('m1a3', [2, 4, 0]);
   let view = frame(tank);
@@ -407,14 +424,16 @@ const DRY_RING = 16;
   assert.equal(tank.combat.shellSlot, 1, 'the empty cannon falls back to the guided round');
   assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 0, 4, 0],
     'the guided round is loaded (a live sight) while the cannon rack shows every shell spent');
-  assert.equal(specialButton.classes.has('empty'), false, 'the guided special control is live');
+  assert.equal(missileButton.classes.has('empty'), false, 'the ATGM tile is live');
+  assert.equal([missileButton.hidden, reloadButton.hidden, specialButton.hidden].join(), 'false,false,true',
+    'a launcher on an autoloader shows the ATGM and the reload tiles, and no suspension');
   while (fire(tank));
   view = frame(tank, { advance: 0.5 });
   assert.equal(view.sweep, false);
   assert.equal(view.countdown, null);
   assert.deepEqual([view.readyShells, view.spentShells, view.struck], [0, 4, 1], 'every shell spent, the rack struck');
   assert.equal(view.dryRound, 0, 'a rack is struck itself; no extra single round');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'the spent guided control is struck');
+  assert.equal(missileButton.classes.has('empty') && missileButton.disabled, true, 'the spent ATGM tile is struck');
 }
 
 // 6b. A magazine-reload hull (Type 90: three-round bustle): the reload control is spent once nothing is stowed.
@@ -422,14 +441,14 @@ const DRY_RING = 16;
   const tank = tankOf('type90', [1, 0, 0]);
   let view = frame(tank);
   assert.deepEqual([view.readyShells, view.spentShells], [1, 2], 'one round stowed: one ready shell, two spent slots');
-  assert.equal(specialButton.classes.has('empty'), false, 'a round is stowed: the reload control is live');
+  assert.equal(reloadButton.classes.has('empty'), false, 'a round is stowed: the reload control is live');
   assert.ok(fire(tank));
   view = frame(tank, { advance: 0.5 });
   assert.deepEqual([view.readyShells, view.spentShells, view.struck, view.sweep], [0, 3, 1, false]);
-  const label = specialButton.querySelector('.sl');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true,
+  const label = reloadButton.querySelector('.sl');
+  assert.equal(reloadButton.classes.has('empty') && reloadButton.disabled, true,
     'the magazine-reload control is struck and disabled: nothing stowed to load');
-  assert.equal(label.textContent, label.dataset.short, 'with no countdown');
+  assert.doesNotMatch(label.textContent, /\d/, 'with no countdown');
 }
 
 // 7. A guided salvo rack (ZTZ-100 prototype): nothing stowed while the salvo counter still holds one missile.
@@ -442,18 +461,19 @@ const DRY_RING = 16;
     'the rack never reads a missile that is not there');
 }
 
-// 8. A spent ATGM launcher while the autocannon fires (BWP-1's guided special; MBT-70's extra launcher beside its
-// hydropneumatic special): the control is struck, its count is spoken only, the sight stays live.
+// 8. A spent ATGM launcher while the autocannon fires (BWP-1's launcher; MBT-70's beside its hydropneumatic
+// suspension): the ATGM tile is struck, its count is spoken only, the sight stays live.
 {
   const tank = tankOf('bwp1');
   const slot = tank.spec.gun.shells.findIndex((shell) => shell.guided === true);
   tank.combat.ammo[slot] = 0;
   const view = frame(tank);
   assert.equal(view.ringInk !== INK.dryRing && view.dryRound === 0, true, 'the selected autocannon is loaded');
-  const label = specialButton.querySelector('.sl');
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'the guided special is struck');
-  assert.equal(label.textContent, label.dataset.short, 'no "0/N" text on the control');
-  assert.notEqual(specialButton.getAttribute('aria-label'), specialButton.title, 'the spoken label carries the count');
+  const label = missileButton.querySelector('.sl');
+  assert.equal(missileButton.classes.has('empty') && missileButton.disabled, true, 'the ATGM tile is struck');
+  assert.equal(label.textContent, 'ATGM', 'no "0/N" text on the control');
+  assert.match(missileButton.getAttribute('aria-label'), /^ATGM \S/, 'the spoken label carries the count');
+  assert.equal(specialButton.hidden, true, 'a launcher without suspension shows no suspension tile');
   // the autocannon's three-digit count tightens its slot's bottom row (critic r3: APFSDS180); two digits do not
   assert.ok(tank.combat.ammo[0] >= 100 && traySlots[0].classes.has('wide'), `a ${tank.combat.ammo[0]}-round slot is wide`);
   assert.equal(traySlots[slot].classes.has('wide'), false, 'an empty launcher slot is not');
@@ -513,12 +533,12 @@ const fills = (ops, style) => ops.filter((op) => op.op === 'fillRect' && op.styl
   const tank = tankOf('type90', [0, 0, 0]);
   let view = frame(tank);
   assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 3, 0, 0]);
-  assert.equal(specialButton.classes.has('empty'), false,
+  assert.equal(reloadButton.classes.has('empty'), false,
     'the magazine-reload control is not struck: nothing reads spent under the mark, from the first frame');
   unlimitedRounds = false;
   view = frame(tank);
   assert.deepEqual([view.ringInk, view.readyShells, view.struck], [INK.dryRing, 0, 1]);
-  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'finite and empty: struck');
+  assert.equal(reloadButton.classes.has('empty') && reloadButton.disabled, true, 'finite and empty: struck');
 }
 
 // 13. Between two rounds of a clip the rack shows the cycle itself: the round being chambered (the next to fire, the
@@ -788,16 +808,18 @@ for (const [id, label] of [['m1a1_abrams_hc', 'struck round'], ['m1a3', 'struck 
         const at = `${id}, a ${Math.round(ring.r)} px ring, ${kind}`;
         const warning = aimWarningState(warn);
         assert.equal(warning.kind, kind);
-        const text = ops.find((op) => op.op === 'fillText' && op.text === warning.text);
-        assert.ok(text, `${at}: the canvas paints the warning`);
-        const chip = ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, text.box));
-        assert.ok(chip, `${at}: the warning's chip`);
+        // (the chip is the DOM plate the reticle seats in every layout, its words inside it: gauntlet r3 retired the
+        // mouse layout's canvas hex, so the canvas paints no warning and the plate keeps off the marks)
+        assert.ok(!ops.some((op) => op.op === 'fillText' && op.text === warning.text), `${at}: the canvas paints no warning`);
+        const dom = created.find((element) => element.classes.has('cot-aim-warning'));
+        assert.ok(dom && !dom.hidden && dom.dataset.seat === 'sight', `${at}: the warning's chip is seated by the sight`);
+        const px = (name) => parseFloat(dom.style.getPropertyValue(name));
+        const chip = { box: { x0: px('--hud-aim-warning-x'), y0: px('--hud-aim-warning-y'),
+          x1: px('--hud-aim-warning-x') + px('--hud-aim-warning-w'), y1: px('--hud-aim-warning-y') + 24 } };
         const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
         assert.ok(marks.length && Math.min(...marks.map((op) => op.box.y0)) > ring.y + ring.r, `${at}: the ${label} sits below the ring`);
         for (const mark of marks) {
           const what = mark.lineWidth === 1.5 ? 'strike' : label;
-          assert.ok(apart(text.box, mark.box) >= 3,
-            `${at}: the warning text keeps ${apart(text.box, mark.box).toFixed(2)} px from the ${what}`);
           assert.ok(apart(chip.box, mark.box) > 0, `${at}: the warning chip covers the ${what}`);
         }
       }
@@ -1041,7 +1063,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
   // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape and a
   // portrait phone 340 px wide or less park it in the left lane, with the furniture: r10g)
-  const seated = touch ? seatedChipBox() : null;
+  const seated = seatedChipBox();
   // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
     : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
@@ -1049,13 +1071,13 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550)
     || (touch && windowStub.innerHeight >= windowStub.innerWidth && windowStub.innerWidth <= 340)
     || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
-  assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
+  assert.ok(!warningText, `${at}: the canvas paints no warning (the DOM chip is every layout's, gauntlet r3)`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
   const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
   const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
   const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
   const zoom = ops.find((op) => op.op === 'fillText' && /^×/.test(op.text));
-  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(170,240,178,0.5)');
+  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(126,232,126,0.5)');
   const line = ops.filter((op) => op.op === 'fillText' && op.style !== INK.reload
     && (/^(\d+|∞) $/.test(op.text) || (/^[A-Z]+$/.test(op.text) && op !== warningText)));
   // (the zoom plate is left out only where the screen leaves it no room clear of the furniture)
@@ -1241,6 +1263,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         }
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
+        // (the touch detection's 180 px: the stacked notices are one column, gauntlet r4)
         assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
         if (chip.box.y1 < ring.y - ring.r) over++;
         assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);

@@ -1,77 +1,30 @@
-// src/game/equipment.ts — WoT-style equipment catalog + loadout logic.
-// PURE data/logic module: no three import, no DOM requirement (localStorage
-// is feature-detected), runs under plain node (selftest:
-// src/game/equipment.selftest.mjs).
+// src/game/equipment.ts — the Garage's half of the equipment system: the
+// picker's categories and contents, the saved loadouts and the stat card. The
+// rules — the catalog, the hull gates, the multipliers and the bots' default
+// loadouts — live in the DOM-free slice sim/equipmentRules.ts, which the mode
+// rulesets, the authority and the rooms Worker read; this module re-exports
+// what its readers take from it. PURE data/logic module: no three import, no
+// DOM requirement (localStorage is feature-detected), runs under plain node
+// (selftest: src/game/equipment.selftest.mjs).
 //
-// Every tank carries EQUIP_SLOTS equipment slots, persisted per spec id in
-// localStorage `cot.equip.<specId>` (same key the camo_spotting r1 3-item
-// picker used — old saves stay valid; unknown/era-illegal ids are dropped on
-// load and the array is clamped to the slot count).
-//
-// EFFECT WIRING MAP — which effects are REAL (wired into the live sim):
-//   reload      × on reload time        sim/damage.ts startReload
-//   aimTime     × on aim-settle tau     sim/movement.ts readDebuffs
-//   bloom       × on movement-bloom     sim/movement.ts (dispersion excess
-//                 excess                 while moving/rotating)
-//   traverse    × on hull traverse      sim/movement.ts readDebuffs
-//   turret      × on turret traverse    sim/movement.ts readDebuffs
-//   repair      × on auto-repair RATE   sim/damage.ts tickModuleRepairs
-//   heSplash    × on HE splash dmg IN   sim/damage.ts (non-pen HE burst +
-//                                        blast-sphere splash; full HE pens
-//                                        are NOT reduced — WoT parity)
-//   crewHe      × on HE crew-hit odds   sim/damage.ts rollCrewHit
-//   engineFire  × on fire IGNITE odds   sim/damage.ts applyModuleDamage
-//   fireTicks   × on fire duration      sim/damage.ts applyModuleDamage
-//   extinguish  × on self-extinguish    sim/damage.ts tickFire
-//   moduleHp    × per-module max HP     applyEquipmentToCombat (below)
-//   view/viewStill/camo/camoStill       sim/spotting.ts EQUIPMENT table
-//                                        (same ids — spotting owns vision)
-// Nothing in the catalog is cosmetic-only.
+// Loadouts persist per spec id in localStorage `cot.equip.<specId>` (same key
+// the camo_spotting r1 3-item picker used — old saves stay valid;
+// unknown/era-illegal ids are dropped on load and the array is clamped to the
+// slot count).
 
+import {
+  EQUIPMENT_CATALOG, computeEquipMults, equipIneligibility, sanitizeLoadout,
+  type EquipmentCategoryId, type EquipmentIneligibility, type EquipmentItem, type EquipmentSpecLike,
+} from '../sim/equipmentRules.ts';
 
-import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
-
-type EquipmentEra = 'all' | 'modern';
-type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';
-type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank';
-
-interface EquipmentEffects {
-  reload?: number;
-  aimTime?: number;
-  bloom?: number;
-  traverse?: number;
-  turret?: number;
-  repair?: number;
-  heSplash?: number;
-  crewHe?: number;
-  engineFire?: number;
-  fireTicks?: number;
-  extinguish?: number;
-  moduleHp?: Partial<Record<EquipmentModuleId, number>>;
-}
-
-export interface EquipmentItem {
-  id: string;
-  name: string;
-  short: string;
-  cat: Exclude<EquipmentCategoryId, 'all'>;
-  era: EquipmentEra;
-  desc: string;
-  effects: EquipmentEffects;
-  spot?: boolean;
-}
+export {
+  EQUIP_SLOTS, EQUIPMENT_BY_ID, EQUIPMENT_CATALOG, applyEquipmentToCombat, computeEquipMults, defaultLoadoutFor,
+  sanitizeLoadout, type EquipmentItem,
+} from '../sim/equipmentRules.ts';
 
 interface EquipmentCategory {
   id: EquipmentCategoryId;
   label: string;
-}
-
-interface EquipmentSpecLike {
-  era?: string | null;
-  role?: string;
-  gun?: {
-    autoloader?: object;
-  };
 }
 
 interface EquipmentStatsSpec extends EquipmentSpecLike {
@@ -81,32 +34,6 @@ interface EquipmentStatsSpec extends EquipmentSpecLike {
     aimTimeS: number;
   };
   hullTraverseDegS: number;
-}
-
-interface EquipmentMultipliers {
-  reload: number;
-  aimTime: number;
-  bloom: number;
-  traverse: number;
-  turret: number;
-  repair: number;
-  heSplash: number;
-  crewHe: number;
-  engineFire: number;
-  fireTicks: number;
-  extinguish: number;
-  moduleHp: Partial<Record<EquipmentModuleId, number>>;
-}
-
-export interface EquipmentCombatState {
-  equip?: string[];
-  /** Replaced atomically by applyEquipmentToCombat; callers may carry a
-   * narrower simulation-facing multiplier view before this boundary. */
-  equipMults?: object;
-  modules?: Partial<Record<EquipmentModuleId, {
-    maxHp: number;
-    hp: number;
-  }>>;
 }
 
 interface ModifiedEquipmentStat {
@@ -120,156 +47,51 @@ interface EquipmentModifiedStats {
   traverseDegS: ModifiedEquipmentStat;
 }
 
-/** Equipment slots per vehicle (WoT standard). */
-export const EQUIP_SLOTS = 3;
-
-type ScalarEquipmentMultiplier = Exclude<keyof EquipmentEffects, 'moduleHp'>;
-
-const SCALAR_EQUIPMENT_MULTIPLIERS: readonly ScalarEquipmentMultiplier[] = [
-  'reload', 'aimTime', 'bloom', 'traverse', 'turret', 'repair',
-  'heSplash', 'crewHe', 'engineFire', 'fireTicks', 'extinguish',
-];
-
-/**
- * The catalog. Order = garage picker order (grouped by category).
- * `era`: 'all' | 'modern' — modern-only gear never mounts on WWII tanks.
- * `effects` use the wiring vocabulary above; `spot` marks items whose
- * view/camo numbers live in spotting.ts EQUIPMENT (kept there so the
- * spotting selftest keeps owning its constants).
- */
-export const EQUIPMENT_CATALOG: readonly EquipmentItem[] = [
-  // --- FIREPOWER -----------------------------------------------------------
-  {
-    id: 'rammer', name: 'Gun Rammer', short: 'Rammer', cat: 'fire', era: 'all',
-    desc: '-10% reload time',
-    effects: { reload: 0.90 },
-  },
-  {
-    id: 'vstab', name: 'Vertical Stabilizer', short: 'V-Stab', cat: 'fire', era: 'modern',
-    desc: '-20% dispersion on the move',
-    effects: { bloom: 0.80 },
-  },
-  {
-    id: 'gld', name: 'Gun Laying Drive', short: 'GLD', cat: 'fire', era: 'all',
-    desc: '-10% aim time',
-    effects: { aimTime: 0.90 },
-  },
-  {
-    id: 'vents', name: 'Improved Ventilation', short: 'Vents', cat: 'fire', era: 'all',
-    desc: '+2.5% crew: reload, aim, view, camo',
-    effects: { reload: 0.975, aimTime: 0.975 }, // view/camo via spotting table
-    spot: true,
-  },
-  // --- RECON ---------------------------------------------------------------
-  {
-    id: 'optics', name: 'Coated Optics', short: 'Optics', cat: 'recon', era: 'all',
-    desc: '+10% view range',
-    effects: {}, spot: true,
-  },
-  {
-    id: 'binoculars', name: 'Binocular Telescope', short: 'Binocs', cat: 'recon', era: 'all',
-    desc: '+25% view range while stationary',
-    effects: {}, spot: true,
-  },
-  {
-    id: 'camo_net', name: 'Camouflage Net', short: 'Camo Net', cat: 'recon', era: 'all',
-    desc: '+12% concealment while stationary',
-    effects: {}, spot: true,
-  },
-  // --- MOBILITY ------------------------------------------------------------
-  {
-    id: 'rotation', name: 'Improved Rotation', short: 'Rotation', cat: 'mobility', era: 'all',
-    desc: '+10% hull and turret traverse',
-    effects: { traverse: 1.10, turret: 1.10 },
-  },
-  {
-    id: 'susp', name: 'Enhanced Suspension', short: 'Suspension', cat: 'mobility', era: 'all',
-    desc: '+50% track durability',
-    effects: { moduleHp: { trackL: 1.5, trackR: 1.5 } },
-  },
-  // --- SURVIVABILITY -------------------------------------------------------
-  {
-    id: 'toolbox', name: 'Toolbox', short: 'Toolbox', cat: 'survival', era: 'all',
-    desc: '+25% repair speed',
-    effects: { repair: 1.25 },
-  },
-  {
-    id: 'spall_liner', name: 'Spall Liner', short: 'Spall Liner', cat: 'survival', era: 'all',
-    desc: '-25% HE splash damage, -50% crew hits from splash',
-    effects: { heSplash: 0.75, crewHe: 0.5 },
-  },
-  {
-    id: 'wet_rack', name: 'Wet Ammo Rack', short: 'Wet Rack', cat: 'survival', era: 'all',
-    desc: '+50% ammo rack durability',
-    effects: { moduleHp: { ammoRack: 1.5 } },
-  },
-  {
-    id: 'fuel_safety', name: 'Safety Fuel Tanks', short: 'Safe Fuel', cat: 'survival', era: 'all',
-    desc: '+50% fuel tank durability, -50% engine fire chance',
-    effects: { engineFire: 0.5, moduleHp: { fuelTank: 1.5 } },
-  },
-  {
-    id: 'auto_ext', name: 'Auto Extinguishers', short: 'Auto Ext', cat: 'survival', era: 'modern',
-    desc: 'Fires burn half as long and self-extinguish 2x as often',
-    effects: { fireTicks: 0.5, extinguish: 2.0 },
-  },
-];
-
-/** id -> catalog item. */
-export const EQUIPMENT_BY_ID: ReadonlyMap<string, EquipmentItem> = new Map(
-  EQUIPMENT_CATALOG.map((item) => [item.id, item]),
-);
-
 /** Picker categories in display order. */
 export const EQUIP_CATEGORIES: readonly EquipmentCategory[] = [
   { id: 'all', label: 'All' },
   { id: 'fire', label: 'Firepower' },
-  { id: 'recon', label: 'Recon' },
   { id: 'mobility', label: 'Mobility' },
-  { id: 'survival', label: 'Survival' },
+  { id: 'protection', label: 'Protection' },
+  { id: 'survival', label: 'Survivability' },
+  { id: 'recon', label: 'Scouting' },
 ];
 
-/**
- * Era gate: can this item mount on this spec?
- * @param {object|string} item catalog item or id
- * @param {object} spec TankSpec-like ({ era })
- * @returns {boolean}
- */
-export function equipEligible(
-  item: EquipmentItem | string,
-  spec?: EquipmentSpecLike | null,
-): boolean {
-  const it = typeof item === 'string' ? EQUIPMENT_BY_ID.get(item) : item;
-  if (!it) return false;
-  // Magazine autoloaders cannot mount a gun rammer in the WoT equipment
-  // model. Vents can still improve the full magazine load; the intra-clip
-  // mechanism delay remains fixed.
-  if (it.id === 'rammer' && spec?.gun?.autoloader) return false;
-  if (it.era === 'all') return true;
-  return !!spec && it.era === 'modern' && isPostwarVehicleEra(spec.era);
+/** Why the picker cannot fit an item: the hull's gate (equipIneligibility) or the mode's rules. */
+export type EquipmentLock = EquipmentIneligibility | 'mode';
+
+export interface EquipmentPickerItem {
+  readonly item: EquipmentItem;
+  /** null when the item can be fitted. */
+  readonly lock: EquipmentLock | null;
+  /** The slot it is fitted in, or -1. */
+  readonly fittedSlot: number;
+}
+
+interface EquipmentPickerGroup {
+  readonly category: EquipmentCategory;
+  readonly items: readonly EquipmentPickerItem[];
 }
 
 /**
- * Validate a raw id array against the catalog (+ optional era gate) and the
- * slot cap. Order-preserving, de-duplicated.
- * @param {?Array<string>} ids
- * @param {?object} [spec] when given, era-illegal items are dropped
- * @returns {Array<string>}
+ * The picker's contents for one hull and its loadout: each category in catalog order (the "All" chip is the caller's)
+ * with every item, its lock and the slot it sits in. `allows` is the mode's filter, rulesetAllowsEquipment bound to the
+ * ruleset the loadout will play (matchRuleset.ts); the Garage, which picks for every mode, passes none. The same gates
+ * run at spawn, so a fittable tile here is an item the authority keeps.
  */
-export function sanitizeLoadout(
-  ids: readonly string[] | null | undefined,
-  spec?: EquipmentSpecLike | null,
-): string[] {
-  const out: string[] = [];
-  if (Array.isArray(ids)) {
-    for (const id of ids) {
-      if (!EQUIPMENT_BY_ID.has(id) || out.includes(id)) continue;
-      if (spec && !equipEligible(id, spec)) continue;
-      out.push(id);
-      if (out.length >= EQUIP_SLOTS) break;
-    }
-  }
-  return out;
+export function equipmentPicker(
+  spec: EquipmentSpecLike | null | undefined,
+  loadout: readonly string[],
+  allows?: (id: string) => boolean,
+): EquipmentPickerGroup[] {
+  return EQUIP_CATEGORIES.filter((category) => category.id !== 'all').map((category) => ({
+    category,
+    items: EQUIPMENT_CATALOG.filter((item) => item.cat === category.id).map((item) => ({
+      item,
+      lock: equipIneligibility(item, spec) ?? (allows && !allows(item.id) ? 'mode' : null),
+      fittedSlot: loadout.indexOf(item.id),
+    })),
+  }));
 }
 
 const storageKey = (specId: string): string => `cot.equip.${specId}`;
@@ -312,109 +134,6 @@ export function saveEquipment(
     } catch { /* private mode */ }
   }
   return clean;
-}
-
-function applyScalarEquipmentEffects(
-  multipliers: EquipmentMultipliers,
-  effects: EquipmentEffects,
-): void {
-  for (const key of SCALAR_EQUIPMENT_MULTIPLIERS) {
-    const factor = effects[key];
-    if (factor) multipliers[key] *= factor;
-  }
-}
-
-function applyModuleEquipmentEffects(
-  multipliers: EquipmentMultipliers,
-  effects: EquipmentEffects,
-): void {
-  if (!effects.moduleHp) return;
-  for (const moduleId of Object.keys(effects.moduleHp) as EquipmentModuleId[]) {
-    const factor = effects.moduleHp[moduleId];
-    if (factor === undefined) continue;
-    multipliers.moduleHp[moduleId] = (multipliers.moduleHp[moduleId] || 1) * factor;
-  }
-}
-
-/**
- * Fold a loadout into the combat/movement/repair multiplier record the sim
- * hooks read off CombatState.equipMults. Every field defaults to 1 (or {})
- * so hooks can multiply blindly.
- * @param {?Array<string>} ids equipped item ids
- * @returns {object} equipMults
- */
-export function computeEquipMults(
-  ids: readonly string[] | null | undefined,
-): EquipmentMultipliers {
-  const m: EquipmentMultipliers = {
-    reload: 1, aimTime: 1, bloom: 1, traverse: 1, turret: 1, repair: 1,
-    heSplash: 1, crewHe: 1, engineFire: 1, fireTicks: 1, extinguish: 1,
-    moduleHp: {},
-  };
-  if (!Array.isArray(ids)) return m;
-  for (const id of ids) {
-    const it = EQUIPMENT_BY_ID.get(id);
-    if (!it || !it.effects) continue;
-    applyScalarEquipmentEffects(m, it.effects);
-    applyModuleEquipmentEffects(m, it.effects);
-  }
-  return m;
-}
-
-/**
- * Attach a loadout to a freshly created CombatState: stores the sanitized id
- * list + multiplier record and scales module max HP (wet rack / suspension /
- * safety fuel). Call ONCE per battle, right after createCombatState.
- * @param {object} combat CombatState (mutated)
- * @param {?Array<string>} ids equipped item ids
- * @param {?object} [spec] spec for era validation
- * @returns {Array<string>} the sanitized ids that took effect
- */
-export function applyEquipmentToCombat(
-  combat: EquipmentCombatState,
-  ids: readonly string[] | null | undefined,
-  spec?: EquipmentSpecLike | null,
-): string[] {
-  const clean = sanitizeLoadout(ids, spec);
-  const mults = computeEquipMults(clean);
-  combat.equip = clean;
-  combat.equipMults = mults;
-  for (const mod of Object.keys(mults.moduleHp) as EquipmentModuleId[]) {
-    const factor = mults.moduleHp[mod];
-    if (factor === undefined) continue;
-    const rec = combat.modules && combat.modules[mod];
-    if (!rec) continue;
-    rec.maxHp *= factor;
-    rec.hp *= factor;
-  }
-  return clean;
-}
-
-// ---------------------------------------------------------------------------
-// AI parity — per-role default loadouts so bots fight with the same tools.
-// Era-illegal picks are filtered per spec.
-// ---------------------------------------------------------------------------
-export const AI_DEFAULT_LOADOUTS: Readonly<Record<string, readonly string[]>> = {
-  heavy:  ['rammer', 'spall_liner', 'toolbox'],
-  medium: ['rammer', 'vents', 'gld'],
-  light:  ['optics', 'vents', 'camo_net'],
-  td:     ['rammer', 'camo_net', 'binoculars'],
-  mbt:    ['rammer', 'vstab', 'optics'],
-  ifv:    ['optics', 'vents', 'susp'],
-  spg:    ['gld', 'camo_net', 'toolbox'],
-};
-
-/**
- * Default loadout for an AI tank (mechanical-role table, era-filtered).
- * @param {object} spec TankSpec-like ({ role, era })
- * @returns {Array<string>}
- */
-export function defaultLoadoutFor(spec: EquipmentSpecLike): string[] {
-  if (spec?.gun?.autoloader && spec.role === 'mbt') {
-    return sanitizeLoadout(['vents', 'vstab', 'optics'], spec);
-  }
-  const list = AI_DEFAULT_LOADOUTS[spec.role ?? ''] || AI_DEFAULT_LOADOUTS.medium;
-  return sanitizeLoadout(list, spec);
 }
 
 // ---------------------------------------------------------------------------

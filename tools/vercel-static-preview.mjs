@@ -7,10 +7,13 @@
 // gives each file the Cache-Control the prebuilt deploy writes for it (tools/vercel-output-immutable.mjs; everything
 // else keeps Vercel's default `public, max-age=0, must-revalidate`), answers If-None-Match with 304, compresses text with
 // brotli, and stands in for the three functions: /api/github-stars returns a fixed count after a latency with the
-// function's own Cache-Control, /api/telemetry accepts and drops, /api/jev is unavailable.
+// function's own Cache-Control, /api/telemetry accepts and drops, /api/jev is unavailable; Vercel's analytics script is
+// empty and its posts are accepted.
 //
 //   node tools/vercel-static-preview.mjs [--dist=dist] [--port=4180] [--api-latency-ms=350]
-//        [--vercel-json=<path>] [--cache-tool=<path to a vercel-output-immutable.mjs>]
+//        [--vercel-json=<path>] [--cache-tool=<path to a vercel-output-immutable.mjs>] [--document-policy=js-profiling]
+// --document-policy adds that Document-Policy header to every HTML response (js-profiling: the JS Self-Profiling API a
+// spike census samples stacks with, click-timeline --census).
 // The last two answer an older build with the routes and cache families it shipped with (a before/after recording).
 //
 // The star counter skips loopback hosts (src/ui/githubStars.ts), so a recorder that wants the production behaviour
@@ -62,7 +65,7 @@ function cacheControlTable(dist, cacheRoutePlan) {
 }
 
 export async function createStaticPreview({ dist = join(ROOT, 'dist'), apiLatencyMs = 350, starCount = 128, log = () => {},
-  vercelJson = join(ROOT, 'vercel.json'), cacheTool = join(ROOT, 'tools', 'vercel-output-immutable.mjs') } = {}) {
+  vercelJson = join(ROOT, 'vercel.json'), cacheTool = join(ROOT, 'tools', 'vercel-output-immutable.mjs'), documentPolicy = '' } = {}) {
   const root = resolve(dist);
   if (!existsSync(join(root, 'index.html'))) throw new Error(`${root} has no index.html`);
   const routes = vercelJsonRoutes(JSON.parse(readFileSync(vercelJson, 'utf8')));
@@ -88,6 +91,7 @@ export async function createStaticPreview({ dist = join(ROOT, 'dist'), apiLatenc
     res.setHeader('content-type', TYPES[extname(file)] || 'application/octet-stream');
     res.setHeader('cache-control', headers['cache-control'] || cacheControls.get(file) || DEFAULT_CACHE_CONTROL);
     for (const [name, value] of Object.entries(headers)) if (name !== 'cache-control') res.setHeader(name, value);
+    if (documentPolicy && extname(file) === '.html') res.setHeader('document-policy', documentPolicy);
     res.setHeader('etag', entry.etag);
     res.setHeader('vary', 'Accept-Encoding');
     if (status === 200 && req.headers['if-none-match'] === entry.etag) {
@@ -126,11 +130,27 @@ export async function createStaticPreview({ dist = join(ROOT, 'dist'), apiLatenc
     return 503;
   };
 
+  // The deployment's own analytics (@vercel/analytics loads /_vercel/insights/script.js and posts its views beside it):
+  // an empty script and an accepted post, so a local page's console is the deployed page's (lockdown-251).
+  const insights = (req, res, path) => {
+    res.setHeader('cache-control', 'private, no-store, max-age=0');
+    if (req.method === 'GET' && /\/script\.js$/.test(path)) {
+      res.setHeader('content-type', 'application/javascript; charset=utf-8');
+      res.end('');
+      return 200;
+    }
+    req.resume();
+    res.statusCode = 204;
+    res.end();
+    return 204;
+  };
+
   const server = createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://local');
     const path = decodeURIComponent(url.pathname);
     let status;
     if (path.startsWith('/api/')) status = api(req, res, path);
+    else if (/^\/_vercel\/(speed-)?insights\//.test(path)) status = insights(req, res, path);
     else {
       const outcome = resolveVercelRequest(routes, { path, query: url.search }, files);
       if (outcome.location) {
@@ -162,6 +182,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     apiLatencyMs: Number(option('api-latency-ms', '350')),
     vercelJson: resolve(option('vercel-json', join(ROOT, 'vercel.json'))),
     cacheTool: resolve(option('cache-tool', join(ROOT, 'tools', 'vercel-output-immutable.mjs'))),
+    documentPolicy: option('document-policy', ''),
     log: process.argv.includes('--verbose') ? (line) => console.log(line) : () => {},
   });
   server.listen(port, '127.0.0.1', () => console.log(`vercel-static-preview: http://127.0.0.1:${port}/`));

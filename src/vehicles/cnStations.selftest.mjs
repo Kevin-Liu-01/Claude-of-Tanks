@@ -40,7 +40,8 @@ import { RIDING_CRADLE_RECOIL_M } from './machineGunGeometry.ts';
 import { stationSelfClearance, SurfaceGrid, meshTriangles } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
-  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -84 },
+  // 252: the Qilin's QJC-88 in the Kunlun's rim socket on its own Type 96B cupola turns the full circle at full depression
+  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: false, table: false },
   t72b3m_kunlun: { name: 'Kunlun cupola QJC-88', pintle: true, shield: 'standard', arc: false, table: false },
   t80u_yun: { name: 'Yun faceted station', pintle: false, arc: true, table: false, excluded: 147.5 },
 };
@@ -168,8 +169,7 @@ for (const [id, want] of Object.entries(EXPECT)) {
       sides.dispose();
       // the Type 96B cupola draws its lid's rear hinge (type96bX.ts addType96Cupola: the hinge pins at source z -.107,
       // turret z .043, y .877): its lid (r .276, top .886) swings open to upright past the emplacement, 10 mm clear, at every
-      // yaw with the gun at rest or, where its barrel lies back over the cupola, elevated (the 99A2 cupola draws no hinge:
-      // its lid is held to the foot receipt above)
+      // yaw with the gun at rest or, where its barrel lies back over the cupola, elevated
       if (donor.donor === 'type96b') {
         const hinge = [.043, .877], lidPts = [];
         for (let x = -socket.lidR; x <= socket.lidR; x += .02) for (let z = -socket.lidR; z <= socket.lidR; z += .02) {

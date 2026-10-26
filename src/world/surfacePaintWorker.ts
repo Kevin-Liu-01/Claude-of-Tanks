@@ -4,8 +4,10 @@
 // the main thread while the terrain and the vegetation build there. The same painters, the same arguments (the props
 // noise rebuilt from its seed), the same typed arrays back: the same texels.
 import { SimplexNoise } from '../engine/simplexFast.ts';
+import { paintFieldMudBuffers } from './fieldMudSurface.ts';
 import { paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
 import { paintHayBuffers } from './hayPrint.ts';
+import { paintLimeRender, paintLimewash } from './regionalSurfaces.ts';
 import { paintRockDetailBuffers, type BoulderLithology } from './rockDressing.ts';
 import { paintStructureDetailBuffers } from './structureDetailTile.ts';
 
@@ -13,6 +15,8 @@ import { paintStructureDetailBuffers } from './structureDetailTile.ts';
 export type SurfacePaintRequest =
   | { kind: 'hay'; size: number; seed: number }
   | { kind: 'fieldStone'; size: number; seed: number; lithology?: FieldStoneLithology }
+  | { kind: 'fieldMud'; size: number; seed: number }
+  | { kind: 'limeRender' | 'limewash'; size: number; seed: number }
   | { kind: 'rockDetail'; lithology: BoulderLithology; noiseSeed: number }
   | { kind: 'structureDetail'; detail: 'wood' | 'canvas' | 'steel'; noiseSeed: number };
 
@@ -48,6 +52,11 @@ function paintSurfaceJob(data: SurfacePaintRequest): Record<string, unknown> {
   switch (data.kind) {
     case 'hay': return drain(paintHayBuffers(data.size, data.seed)) as unknown as Record<string, unknown>;
     case 'fieldStone': return drain(paintFieldStoneBuffers(data.size, data.seed, data.lithology)) as unknown as Record<string, unknown>;
+    // (battle-spikes-253) and a mud-walled map's render (fieldMudSurface.ts: a 1.4-3 s print on the main thread)
+    case 'fieldMud': return drain(paintFieldMudBuffers(data.size, data.seed)) as unknown as Record<string, unknown>;
+    // (battle-spikes-253) and a regional kit's render (regionalSurfaces.ts: 150-180 ms a seed on a 4x phone's main thread)
+    case 'limeRender': return paintLimeRender(data.size, data.seed) as unknown as Record<string, unknown>;
+    case 'limewash': return paintLimewash(data.size, data.seed) as unknown as Record<string, unknown>;
     case 'rockDetail': return drain(paintRockDetailBuffers(propsPaintNoise(data.noiseSeed), data.lithology)) as unknown as Record<string, unknown>;
     case 'structureDetail': return paintStructureDetailBuffers(propsPaintNoise(data.noiseSeed), data.detail) as unknown as Record<string, unknown>;
     default: throw new Error(`Unknown surface paint ${(data as { kind?: string }).kind}`);

@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { drainTankBuild, steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 const {
   box, cylX, cylY, cylZ, sph, torus, lathe,
@@ -422,7 +423,7 @@ function loftBandCorridor(
 
 // Generic UK hull: curve-lofted bow wedge + full band + stern wedge (+ rear
 // shelf), fenders, optional skirts, running gear. All values world meters.
-function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
+function* ukHullSteps(P: UKGeometryPort, g: UKHullOptions): TankProfileBuild {
   const bw = g.bodyHalfW;
   const bowZ = g.noseRake[0][0];
   const sternZ = g.tailRake[0][0];
@@ -435,6 +436,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullHullStage1();
   };
   ukHullAssemblyStage1();
+  yield 'ukHullAssemblyStage1';
   // TRACK CONTAINMENT (owner law 2026-08-03, GEOMETRY-GATE.md #4): the bow/
   // stern rake lofts must stay OUT of the track channel — g.rakeHalfW pins
   // the below-deck rake width to the inter-track span where the wrap arcs
@@ -478,6 +480,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullHullStage2();
   };
   ukHullAssemblyStage2();
+  yield 'ukHullAssemblyStage2';
   const tailShelf = g.tailShelf;
   const ukHullHullStage3 = (): void => {
     if (tailShelf) {
@@ -488,6 +491,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullHullStage3();
   };
   ukHullAssemblyStage3();
+  yield 'ukHullAssemblyStage3';
   // Fender plates over the tracks. Outer edge defaults to the track edge;
   // g.fenderHalfW/g.fenderHalfWL pin it (right/left) so the widest full-length
   // plane reads the published width without breaching the width guard.
@@ -539,6 +543,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     for (const side of [-1, 1]) addFenderSide(side, planeZ1, g.fenderY);
   };
   ukHullHullStage4();
+  yield 'ukHullHullStage4';
   // Optional armored skirts (measured plane).
   const ukHullRunningGearStage1 = (): void => {
     if (g.skirt) {
@@ -602,6 +607,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullRunningGearStage1();
   };
   ukHullAssemblyStage4();
+  yield 'ukHullAssemblyStage4';
   const ukHullRunningGearStage2 = (): void => {
     buildRunningGear(P, {
       // g.wheelW is an r4 opt-in (default = the original formula, byte
@@ -640,6 +646,7 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullRunningGearStage2();
   };
   ukHullAssemblyStage5();
+  yield 'ukHullAssemblyStage5';
   // Side number decals. Opt-in overrides (g.numberR/g.numberL/g.numberSize)
   // let a build pin them onto real side planes — the decal quad is mask
   // geometry, so a default position off the body's silhouette band costs
@@ -659,6 +666,9 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
     ukHullMarkingsStage1();
   };
   ukHullMarkingsStage2();
+}
+function ukHull(...args: Parameters<typeof ukHullSteps>): void {
+  drainTankBuild(ukHullSteps(...args));
 }
 
 // ---------------------------------------------------------------------------
@@ -1964,7 +1974,7 @@ const CENTURION_HULL = {
  * already built without it, 2026-10-08); the Strv 81 mounts its one roof gun, the Ksp 58, on its Swedish commander's
  * cupola.
  */
-export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
+function* centurionBuildSteps(P: UKCenturionPort, mk: 3 | 5): TankProfileBuild {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels
@@ -1976,8 +1986,8 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   const g = mk === 5
     ? { ...CENTURION_HULL, skirtHemSplit: { bot: 0.84, keepPanels: [5] } }
     : CENTURION_HULL;
-  const centurionBuildHullStage1 = (): void => {
-    ukHull(P, g);
+  const centurionBuildHullStage1 = function* (): TankProfileBuild {
+    yield* ukHullSteps(P, g);
     // Outer skirt armour strip, r6 retable (90-push station-width read): the
     // ref's 14-station widths ALTERNATE 3.318/3.375 — the strip is a
     // CONTINUOUS plate at x 1.659 with mounting BOSSES at 1.687-1.690 spaced
@@ -2100,7 +2110,8 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       [-1.575, 1.25, -3.64], [1.575, 1.25, -3.64], [1.575, 1.25, -3.585], [-1.575, 1.25, -3.585],
       [-1.575, 1.40, -3.64], [1.575, 1.40, -3.64], [1.575, 1.50, -3.585], [-1.575, 1.50, -3.585]));
   };
-  centurionBuildHullStage1();
+  yield* centurionBuildHullStage1();
+  yield 'centurionBuildHullStage1';
   // r6: flank exhaust-corner stubs — the ref plan rear runs to -3.69 at
   // |x| 1.47..1.575 (center holds the -3.63 line).
   const centurionBuildHullStage2 = (): void => {
@@ -2210,6 +2221,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     P.gunG.position.set(0, 0.125, 0.6);
   };
   centurionBuildHullStage2();
+  yield 'centurionBuildHullStage2';
   const gunHousing = (
     bucket: string,
     geo: THREE.BufferGeometry,
@@ -2245,6 +2257,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       [-0.90, 0.50, 1.04], [0.90, 0.50, 1.04], [0.95, 0.64, 0.50], [-0.95, 0.64, 0.50]));
   };
   centurionBuildTurretStage1();
+  yield 'centurionBuildTurretStage1';
   const cwR = mk === 5 ? 1.10 : 0.98, cwL = mk === 5 ? 1.10 : 0.98;
   const centurionBuildTurretStage2 = (): void => {
     P.add('turret', slab(                       // mid casting: crown leans LEFT
@@ -2360,6 +2373,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     }
   };
   centurionBuildTurretStage2();
+  yield 'centurionBuildTurretStage2';
   // ---- bustle: mark-specific roofline lofts (tables in local coords) ----
   const centurionBuildTurretStage3 = (): void => {
     if (mk === 5) {
@@ -2491,6 +2505,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     }
   };
   centurionBuildTurretStage3();
+  yield 'centurionBuildTurretStage3';
   // Under-ring basket/breech mass + ring collars (r6: basket floor raised
   // to the live 0.666 bottom line — the r5 0.64 read -0.03 on ~10 side
   // turret-bottom columns).
@@ -2499,6 +2514,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     P.add('turret', box(1.3, 0.26, 0.29), 0, -0.155, 1.043);
   };
   centurionBuildTurretStage4();
+  yield 'centurionBuildTurretStage4';
   // Flank stowage shelves (in the print's TURRET mask — they yaw).
   // r6: split into three width-stepped slabs — the live plan columns taper
   // BOTH marks' shelf rears (c5: -0.69 build at the ±1.28 col, -0.60 at
@@ -2601,6 +2617,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     }
   };
   centurionBuildTurretStage5();
+  yield 'centurionBuildTurretStage5';
   // Cupola at the print's own peak (x −0.48, local −0.23; dome 2.848).
   // r5 v2: the ROUND STACK tops at the ref's own 2.85 dome class (its
   // x-wide ring was paying +0.17 on ELEVEN front columns for the p95
@@ -2734,6 +2751,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     liftEye(P, 'turretDetail', 0.82, mk === 5 ? 0.62 : 0.56, -0.70, -2.6);
   };
   centurionBuildTurretStage6();
+  yield 'centurionBuildTurretStage6';
   // Smoke discharger banks, r6 redesign (the r4/r5 seat missed the ref's
   // FORWARD RAKE): the print's banks ride the cheeks raking down-forward —
   // plan front edges 1.714@|x|1.05 / 1.674@1.16 (probe, BOTH marks, turret
@@ -2847,6 +2865,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       [-0.35, 0.295, 1.541], [0.35, 0.295, 1.541], [0.35, 0.295, 1.528], [-0.35, 0.295, 1.528]), 0, 0, 0);
   };
   centurionBuildTurretStage7();
+  yield 'centurionBuildTurretStage7';
   const centurionBuildTurretStage8 = (): void => {
     for (const s of [-1, 1]) {
       gunHousing('turret', box(0.035, 0.295, 0.014), s * 0.405, 0.0975, 1.535);
@@ -2867,6 +2886,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       [0.04, 0.305, 1.5512], [0.35, 0.305, 1.5512], [0.35, 0.305, 1.44], [0.04, 0.305, 1.44]), 0, 0, 0);
   };
   centurionBuildTurretStage8();
+  yield 'centurionBuildTurretStage8';
   const gunLen = 5.15;
   const centurionBuildMarkingsStage1 = (): void => {
     if (mk === 5) {
@@ -3029,6 +3049,9 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
   };
   centurionBuildMarkingsStage1();
 }
+export function centurionBuild(...args: Parameters<typeof centurionBuildSteps>): void {
+  drainTankBuild(centurionBuildSteps(...args));
+}
 
 // ---------------------------------------------------------------------------
 // FV510 Warrior — recovered oracle (repaired: turret purified, mirrors keep
@@ -3095,7 +3118,7 @@ const fvSeg = (a: number, b: number, step = 0.45): number[] => {
   return out;
 };
 
-function fv510PhotoBuild(P: UKBuilderPort): void {
+function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
   const num = P.spec.visual.number || '';
   const upperHullScaleY = 0.765;
   // ---- lower body (inter-track ±0.93 — clear of the 0.945 track channel,
@@ -3220,6 +3243,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     }
   };
   fv510PhotoBuildHullStage1();
+  yield 'fv510PhotoBuildHullStage1';
   // ---- WRAP appliqué strakes: the Warrior's ribbed flanks. Faces at the
   // committed ±1.515 width plane (THE §D anchor), segmented ≤0.46 so every
   // station slice catches end caps; rows never crest the deck line ----
@@ -3321,6 +3345,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('hullDetail', box(0.05, 0.05, 0.28), 0.12, 1.72, -3.025);
   };
   fv510PhotoBuildHullStage2();
+  yield 'fv510PhotoBuildHullStage2';
   const fv510PhotoBuildHullStage3 = (): void => {
     P.add('hullDark', box(0.20, 0.08, 0.012), 0.12, 1.72, -3.164);
     P.add('hullDark', box(0.05, 0.16, 0.014), -0.50, 1.30, -2.891);
@@ -3379,6 +3404,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     }
   };
   fv510PhotoBuildHullStage3();
+  yield 'fv510PhotoBuildHullStage3';
   // tow cable re-draped (photo-parity r2 gap #6: the colinear r1 route read
   // as a straight pipe — x/y weave gives the rope read)
   const tc = FITTINGS.towCable({
@@ -3392,6 +3418,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.snapGroup('fv510-tow-cable', () => P.hullG.add(tc), { reachM: 0.09 });
   };
   fv510PhotoBuildAssemblyStage1();
+  yield 'fv510PhotoBuildAssemblyStage1';
   // Keep the troop-roof and rear flanks mechanically clean. Earlier rounds
   // filled this entire zone with exercise-day jerry cans, bergens and two
   // opaque CES baskets. That optional load visually merged with the WRAP
@@ -3410,6 +3437,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.hullG.add(hw);
   };
   fv510PhotoBuildAssemblyStage2();
+  yield 'fv510PhotoBuildAssemblyStage2';
   const stl = FITTINGS.spareTrackLinks({ mats: P.mats, seed: 6, rotation: [0.539, 0, 0] });
   // Authored before the final 0.765 vertical / 1.10 presentation scaling;
   // this pre-transform seat becomes a 41 mm carrier embed on the glacis.
@@ -3418,6 +3446,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.hullG.add(stl);
   };
   fv510PhotoBuildAssemblyStage3();
+  yield 'fv510PhotoBuildAssemblyStage3';
   // Snapshot authored fitting groups before the native running gear is
   // appended. They receive the same section correction as the bucket-built
   // armor, while the animated wheel/link course keeps its measured diameter
@@ -3535,6 +3564,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('turretDark', cylZ(0.075, 0.13, 16, 0.083), -0.52, 0.45, 0.455, -0.12, 0, 0);
   };
   fv510PhotoBuildRunningGearStage1();
+  yield 'fv510PhotoBuildRunningGearStage1';
   const fv510PhotoBuildTurretStage1 = (): void => {
     P.add('turretGlass', cylZ(0.052, 0.012, 16), -0.52, 0.46, 0.528, -0.12, 0, 0);
     P.add('turretDetail', box(0.20, 0.020, 0.16), -0.52, 0.545, 0.455, -0.12, 0, 0);
@@ -3592,6 +3622,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     }
   };
   fv510PhotoBuildTurretStage1();
+  yield 'fv510PhotoBuildTurretStage1';
   // ---- whip antennas on pots at the bustle corners (2 thin columns of the
   // p95 budget, aligned with the print's own mast spikes) ----
   const wa1 = FITTINGS.antennaWhip({ mats: P.mats, h: 0.70, r: 0.011, rake: 0.05, seed: 2 });
@@ -3600,24 +3631,28 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.turretG.add(wa1);
   };
   fv510PhotoBuildAssemblyStage4();
+  yield 'fv510PhotoBuildAssemblyStage4';
   const wa2 = FITTINGS.antennaWhip({ mats: P.mats, h: 0.55, r: 0.011, rake: -0.04, seed: 3 });
   const fv510PhotoBuildAssemblyStage5 = (): void => {
     wa2.position.set(0.56, 0.462, -0.54);
     P.turretG.add(wa2);
   };
   fv510PhotoBuildAssemblyStage5();
+  yield 'fv510PhotoBuildAssemblyStage5';
   const waRear = FITTINGS.antennaWhip({ mats: P.mats, h: 0.65, r: 0.009, rake: 0.02, seed: 12 });
   const fv510PhotoBuildAssemblyStage6 = (): void => {
     waRear.position.set(-0.51, 0.462, -1.737);   // 2026-10-19 (owner float sweep): its pot stood 85 mm outboard of the narrowing bustle
     P.turretG.add(waRear);
   };
   fv510PhotoBuildAssemblyStage6();
+  yield 'fv510PhotoBuildAssemblyStage6';
   const waShoulder = FITTINGS.antennaWhip({ mats: P.mats, h: 0.65, r: 0.009, rake: -0.02, seed: 13 });
   const fv510PhotoBuildAssemblyStage7 = (): void => {
     waShoulder.position.set(0.56, 0.462, -1.166);
     P.turretG.add(waShoulder);
   };
   fv510PhotoBuildAssemblyStage7();
+  yield 'fv510PhotoBuildAssemblyStage7';
   // VH.14 (coordinator ruling 2026-10-14): the Warrior carries its 30 mm RARDEN and a coaxial L94A1 chain gun and no
   // roof machine gun (roofWeaponPolicy.ts), so the commander's pintle GPMG of the old decoration minimum is gone.
   const fv510PhotoBuildMarkingsStage1 = (): void => {
@@ -3702,6 +3737,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.topY = 0.79;
   };
   fv510PhotoBuildMarkingsStage1();
+}
+function fv510PhotoBuild(...args: Parameters<typeof fv510PhotoBuildSteps>): void {
+  drainTankBuild(fv510PhotoBuildSteps(...args));
 }
 
 // FV510 Warrior MILAN — tier-IX protected support conversion.  The complete
@@ -4351,14 +4389,15 @@ function clearChieftainUpper(P: UKBuilderPort): void {
   }
 }
 
-function buildChieftainUpper2026(
+function* buildChieftainUpper2026Steps(
   P: UKBuilderPort,
   { stillbrew = false }: { readonly stillbrew?: boolean } = {},
-): void {
+): TankProfileBuild {
   const buildChieftainUpper2026AssemblyStage1 = (): void => {
     clearChieftainUpper(P);
   };
   buildChieftainUpper2026AssemblyStage1();
+  yield 'buildChieftainUpper2026AssemblyStage1';
   const seg = P.q ? 24 : 16;
 
   const mirroredPlan = (source: readonly (readonly [number, number])[], side: number) => {
@@ -4380,6 +4419,7 @@ function buildChieftainUpper2026(
     P.gunG.position.set(-0.02, 0.15, 0.66);
   };
   buildChieftainUpper2026AssemblyStage2();
+  yield 'buildChieftainUpper2026AssemblyStage2';
   // Ten deliberately uneven stations create long cheek/side flats and clipped
   // transitions instead of a mathematically perfect oval.  Four vertical
   // rings are enough for the structural core; the removed fifth ring was the
@@ -4439,6 +4479,7 @@ function buildChieftainUpper2026(
     // literal hole between plate and core.
   };
   buildChieftainUpper2026TurretStage1();
+  yield 'buildChieftainUpper2026TurretStage1';
   const mapArmorPanel = (
     panel: ArmorPanel,
     mapPoint: (point: ArmorPanel[number]) => ArmorPanel[number],
@@ -4505,6 +4546,7 @@ function buildChieftainUpper2026(
     }
   };
   buildChieftainUpper2026TurretStage2();
+  yield 'buildChieftainUpper2026TurretStage2';
   const centerBrow: ArmorPanel = [
     [-0.32, 0.40, 0.72], [0.32, 0.40, 0.72],
     [0.45, 0.37, -0.48], [-0.45, 0.37, -0.48],
@@ -4523,6 +4565,7 @@ function buildChieftainUpper2026(
     }
   };
   buildChieftainUpper2026TurretStage3();
+  yield 'buildChieftainUpper2026TurretStage3';
 
   // The turret turns inward beside the L11 rather than ending as two free
   // cheeks.  These returns create the source U-shaped gun aperture in the same
@@ -4671,6 +4714,7 @@ function buildChieftainUpper2026(
     }
   };
   buildChieftainUpper2026TurretStage4();
+  yield 'buildChieftainUpper2026TurretStage4';
 
   // Low asymmetric roof station: No.15 cupola, loader hatch, compact sight
   // heads, periscope ring, and a properly seated L37 GPMG.  These fittings
@@ -4695,6 +4739,7 @@ function buildChieftainUpper2026(
     }
   };
   buildChieftainUpper2026TurretStage5();
+  yield 'buildChieftainUpper2026TurretStage5';
   const saddleSeatY = 0.74;
   const loaderDrop = (0.89 - 0.055 * 0.5) - saddleSeatY;
   const loaderY = (y: number): number => y - loaderDrop;
@@ -4704,6 +4749,7 @@ function buildChieftainUpper2026(
     P.add('turretDark', box(0.28, 0.045, 0.035), 0.43, loaderY(0.96), -0.20);
   };
   buildChieftainUpper2026TurretStage6();
+  yield 'buildChieftainUpper2026TurretStage6';
   const sightDrop = (0.94 - 0.18 * 0.5) - saddleSeatY;
   const sightY = (y: number): number => y - sightDrop;
   const buildChieftainUpper2026TurretStage7 = (): void => {
@@ -4711,6 +4757,7 @@ function buildChieftainUpper2026(
     P.add('turretDark', box(0.16, 0.09, 0.025), -0.18, sightY(0.96), -0.395);
   };
   buildChieftainUpper2026TurretStage7();
+  yield 'buildChieftainUpper2026TurretStage7';
   const periscopeCenterY = saddleSeatY + 0.07 * 0.5;
   const buildChieftainUpper2026TurretStage8 = (): void => {
     periscope(P, 'turretDetail', 0.20, periscopeCenterY, -0.03, 0.08);
@@ -4740,6 +4787,7 @@ function buildChieftainUpper2026(
     }
   };
   buildChieftainUpper2026TurretStage8();
+  yield 'buildChieftainUpper2026TurretStage8';
 
   // Three unequal radio stations reproduce the reference cadence.  Each
   // whip has a visible shoe, collar and short brace embedded in the bustle.
@@ -4806,38 +4854,40 @@ function buildChieftainUpper2026(
   buildChieftainUpper2026MarkingsStage1();
 }
 
-function chieftain5OwnerRebuild2026(P: UKBuilderPort): void {
+function* chieftain5OwnerRebuild2026(P: UKBuilderPort): TankProfileBuild {
   chieftain5Build(P);
-  buildChieftainUpper2026(P, { stillbrew: false });
+  yield 'chieftain5Build';
+  yield* buildChieftainUpper2026Steps(P, { stillbrew: false });
 }
 
-function chieftainMk10OwnerRebuild2026(P: UKBuilderPort): void {
+function* chieftainMk10OwnerRebuild2026(P: UKBuilderPort): TankProfileBuild {
   chieftainMk10Build(P);
-  buildChieftainUpper2026(P, { stillbrew: true });
+  yield 'chieftainMk10Build';
+  yield* buildChieftainUpper2026Steps(P, { stillbrew: true });
 }
 
 export const UK_PROFILES = {
-  chieftain3: { build: chieftain5OwnerRebuild2026 },
+  chieftain3: { build: steppedBuilder(chieftain5OwnerRebuild2026) },
   // BASE-21 scaffold (2026-08-07): first real Mk 10 build — photo-class, no
   // oracle (FALSE-0 law). Overrides the modern3 generic via PROFILED_BUILDERS.
-  chieftain_mk9: { build: chieftainMk10OwnerRebuild2026 },
+  chieftain_mk9: { build: steppedBuilder(chieftainMk10OwnerRebuild2026) },
   vickers_mk1: {
     build: (P: UKBuilderPort) => {
       vickersMk1Build(P);
       applyCompleteVehicleScale(P, 0.95, 'cot-vickers-mk1-compact-r1');
     },
   },
-  centurion3: { build: (P: UKBuilderPort) => centurionBuild(P, 3) },
-  centurion5_2: { build: (P: UKBuilderPort) => centurionBuild(P, 5) },
+  centurion3: { build: steppedBuilder((P: UKBuilderPort) => centurionBuildSteps(P, 3)) },
+  centurion5_2: { build: steppedBuilder((P: UKBuilderPort) => centurionBuildSteps(P, 5)) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows
   // carry the cap until the parked §E warp lands — packet round section).
   fv510: {
-    build: (P: UKBuilderPort) => {
-      fv510PhotoBuild(P);
+    build: steppedBuilder(function* (P: UKBuilderPort): TankProfileBuild {
+      yield* fv510PhotoBuildSteps(P);
       applyCompleteVehicleScale(P, 1.10, 'cot-warrior-enlarged-r1');
-    },
+    }),
   },
   fv510_milan: {
     build: (P: UKBuilderPort) => {

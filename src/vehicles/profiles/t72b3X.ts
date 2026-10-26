@@ -365,7 +365,12 @@ function machineGun(P:TankBuilderPort):void {
 function mainGun(P:TankBuilderPort):void {
   const muzzle=T72B3_X_DATUMS.muzzleZ,floor=4.505949855;
   KIT.buildGun(P,{len:floor-GUN[2],r:.08535,baseR:.122,sleeve:false,collar:false});
-  P.add('gun',boxSections([[.02755-GUN[2],.187, .062,-.255],[.98-GUN[2],.211,.062,-.255],[1.13415-GUN[2],.20,-.03,-.255]]));
+  // 253: the breech's full-depth underside ends 0.2 m behind the trunnion, inside the casting, and is chamfered up to
+  // the trunnion's underside at the casting's front (z 1.10), so the 3.4 cm of breech ahead of the casting no longer
+  // hangs 5 cm under the trunnion in the gun opening, and at +14 deg, in battery or on full recoil, its lower front edge
+  // stays 25 mm over the hull roof (nationalGunClearance). The sides and top keep their measured lines.
+  P.add('gun',boxSections([[.02755-GUN[2],.187, .062,-.255],[.89655-GUN[2],.2089,.062,-.255],[.98-GUN[2],.211,.062,-.23245],
+    [1.10005-GUN[2],.20243,-.00965,-.200],[1.13415-GUN[2],.20,-.03,-.200]]));
   for(const [a,b,r]of [[1.51715,2.087,.1231],[2.087,3.62795,.0959],[3.62795,4.45015,.114]])P.add('gun',cylZ(r,b-a,32),0,0,(a+b)/2-GUN[2]);
   // Source has a large conical hole; the approved physical 125 mm cylinder kept
   // its measured deep end until 2026-09-22, when the tube was closed at the tip

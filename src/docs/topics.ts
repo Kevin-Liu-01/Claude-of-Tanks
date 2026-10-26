@@ -1,8 +1,10 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
+import { icon } from '../ui/icons/icon.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 import type { RichSection } from './chapters/types.ts';
+import { keepDesignations, keepPhrases } from './designations.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -61,7 +63,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.start.title'),
     pageTitle: t('metadata.docsStart.title'),
     lede: t('docs.topic.start.lede'),
-    hero: '/media/site50-r14/loops/s226-church-duel.webm',
+    hero: '/media/docs-hero-r2/frontier-t90m-leo2a6.webm',
     icon: 'manual',
     sectionIcons: [],
     sections: [],
@@ -133,7 +135,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.models.title'),
     pageTitle: t('metadata.docsModels.title'),
     lede: t('docs.topic.models.lede'),
-    hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
+    hero: '/media/docs-hero-r2/verdant-challenger3-t80u.webm',
     icon: 'models',
     sectionIcons: ['research', 'construction', 'rig', 'vehicles', 'anatomy', 'iconPipeline', 'critique'],
     sections: [
@@ -317,7 +319,7 @@ const FIGURE_SIZES_ATTRIBUTE = '(max-width: 900px) 100vw, 760px';
 
 function mediaFigure([src, caption]: TopicMedia): string {
   const [width, height] = TOPIC_FIGURE_SIZES[src] ?? DEFAULT_FIGURE_SIZE;
-  return `<figure class="topic-figure">${pictureMarkup({ src, width, height, alt: caption, sizes: FIGURE_SIZES_ATTRIBUTE })}<figcaption>${caption}</figcaption></figure>`;
+  return `<figure class="topic-figure">${pictureMarkup({ src, width, height, alt: caption, sizes: FIGURE_SIZES_ATTRIBUTE })}<figcaption>${keepDesignations(caption)}</figcaption></figure>`;
 }
 
 /**
@@ -327,12 +329,41 @@ function mediaFigure([src, caption]: TopicMedia): string {
  */
 export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; readonly phone?: true }>> = {
   's05-barn-advance': { r960: true, phone: true },
-  's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
-  's226-church-duel': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
 };
-const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
+
+/** A loop hero's files and its caption's catalog key, by its collection: a site50-r14 take spreads over the loops, the
+ *  stills and web-video-r1 (its rungs in TOPIC_HERO_RUNGS); a docs-hero-r2 take (the media lane's 251 duels) keeps its
+ *  whole ladder beside its loop. Null for a still hero. */
+export interface TopicHeroLadder {
+  readonly take: string;
+  readonly captionKey: string;
+  readonly poster: string;
+  readonly still: string;
+  readonly wide: string;
+  readonly r960: string | null;
+  readonly phone: string | null;
+}
+/** The trail's separator: the sprite's chevron (never a typed ›). */
+const CRUMB = icon('chevronRight', { size: 16 });
+
+export function topicHeroLadder(hero: string): TopicHeroLadder | null {
+  const site50 = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  if (site50) {
+    const loops = '/media/site50-r14/loops', rungs = TOPIC_HERO_RUNGS[site50] ?? {};
+    return { take: site50, captionKey: `media.site50.title.${camelTake(site50)}`, poster: `${loops}/${site50}.jpg`,
+      still: `/media/site50-r14/stills/${site50}-thumb.webp`, wide: hero, r960: rungs.r960 ? `${loops}/${site50}-960.webm` : null,
+      phone: rungs.phone ? `/media/web-video-r1/${site50}-mobile.mp4` : null };
+  }
+  const r2 = /^\/media\/docs-hero-r2\/([\w-]+)\.webm$/.exec(hero)?.[1];
+  if (r2) {
+    const dir = '/media/docs-hero-r2';
+    return { take: r2, captionKey: `media.docsHero.title.${camelTake(r2)}`, poster: `${dir}/${r2}.jpg`, still: `${dir}/${r2}-thumb.webp`,
+      wide: hero, r960: `${dir}/${r2}-960.webm`, phone: `${dir}/${r2}-mobile.mp4` };
+  }
+  return null;
+}
 
 /**
  * A topic header: its take's first frame as the page's LCP picture (a 640 still under data saving, which never plays),
@@ -341,31 +372,30 @@ const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
  * saving. A still header is the picture alone.
  */
 export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSaver()): string {
-  const take = LOOP_HERO.exec(hero)?.[1];
-  if (!take) {
+  const ladder = topicHeroLadder(hero);
+  if (!ladder) {
     const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
     return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
   }
-  const loops = '/media/site50-r14/loops';
   const poster = pictureMarkup({
-    src: `${loops}/${take}.jpg`, rungs: [{ src: `${loops}/${take}.jpg`, width: 1920 }], width: 1920, height: 1080, alt,
+    src: ladder.poster, rungs: [{ src: ladder.poster, width: 1920 }], width: 1920, height: 1080, alt,
     eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
-    saveData: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
-    phone: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
+    saveData: { src: ladder.still, width: 640 },
+    phone: { src: ladder.still, width: 640 },
   }, saving);
-  const rungs = TOPIC_HERO_RUNGS[take] ?? {};
   const sources = [
-    rungs.r960 ? `<source data-src="${loops}/${take}-960.webm" type="video/webm">` : '',
-    `<source data-src="${loops}/${take}.webm" type="video/webm"${rungs.r960 ? ' data-rung="wide"' : ''}>`,
-    rungs.phone ? `<source data-src="/media/web-video-r1/${take}-mobile.mp4" type="video/mp4" data-rung="phone">` : '',
+    ladder.r960 ? `<source data-src="${ladder.r960}" type="video/webm">` : '',
+    `<source data-src="${ladder.wide}" type="video/webm"${ladder.r960 ? ' data-rung="wide"' : ''}>`,
+    ladder.phone ? `<source data-src="${ladder.phone}" type="video/mp4" data-rung="phone">` : '',
   ].join('');
   const label = alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return `${poster}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
 }
 
+/** A text section's paragraph: its `code` spans, its numeric phrases held on one line (src/docs/designations.ts). */
 function formatText(text: string): string {
-  return text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  return keepPhrases(text.replace(/`([^`]+)`/g, '<code>$1</code>'));
 }
 
 export function topicSectionId(index: number): string {
@@ -383,20 +413,63 @@ export const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly
 const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));
 
 /** The title in the direction's two voices (08 h1): its first words solid, its last words in the hollow outline. A
- *  Chinese title has no spaces and stays one solid line (the type package keeps CJK solid, SPEC 4.7). */
-function titleMarkup(title: string): string {
-  const words = title.split(' ');
-  if (words.length < 2) return `<span>${title}</span>`;
-  const cut = Math.ceil(words.length / 2);
-  return `<span>${words.slice(0, cut).join(' ')}</span> <span class="t-hollow">${words.slice(cut).join(' ')}</span>`;
+ *  Chinese title has no spaces and stays solid (the type package keeps CJK solid, SPEC 4.7). */
+const VOICE_TAIL = new Set(['a', 'an', 'the', 'to', 'of', 'for', 'and', 'in', 'on', 'with', 'at', 'by', 'from']);
+const CJK = /[\u3400-\u9fff\uf900-\ufaff]/;
+/**
+ * Each Chinese chapter title (i18nCatalog.zh-CN.json docs.topic.<slug>.title) cut into the phrases a line may break
+ * between: the banner keeps a Chinese word whole (docs.css .dm-phrases), so 构建 never splits as 构/建. A title whose
+ * phrases no longer spell it (the copy changed) is set whole and breaks where the browser breaks; topics.selftest.mjs
+ * holds the two equal.
+ */
+export const ZH_TITLE_PHRASES: Readonly<Record<TopicId, readonly string[]>> = {
+  start: ['从车库', '到胜利'],
+  controls: ['全部按键', '与视角'],
+  modes: ['全部', '作战方式'],
+  tanks: ['车队', '与装备'],
+  combat: ['炮弹', '如何', '造成', '伤害'],
+  battlefields: ['全部', '战场'],
+  multiplayer: ['组队', '作战'],
+  audio: ['像车组一样', '听见战场'],
+  studio: ['拍摄', '你自己的', '战斗'],
+  build: ['通过', '可验证', '循环', '构建的', '浏览器', '游戏'],
+  simulation: ['每一次', '命中', '都有其', '轨迹'],
+  models: ['从参考资料', '到可上场的', '战车'],
+  rendering: ['渲染', '可以', '自适应，', '规则', '却不能变'],
+  ai: ['一个', '机器人', '控制器，', '覆盖', '所有', '战场'],
+  filming: ['五十个', '镜头，', '全部', '在游戏内', '拍摄'],
+};
+/** The title's two voices: split after its first comma, else at the word break nearest its middle (never leaving a short
+ * function word at the end of the first voice); a title with neither stays one voice. A Chinese title splits only after
+ * its punctuation (a comma, a semicolon, a colon), never inside a word, and breaks only between its phrases. */
+function titleMarkup(title: string, phrases: readonly string[] = []): string {
+  if (CJK.test(title)) return cjkTitleMarkup(title, phrases);
+  const comma = title.search(/[,，]/);
+  let cut = comma > 0 ? comma + 1 : -1;
+  if (cut < 0) {
+    const breaks = [...title.matchAll(/ /g)].map((match) => match.index ?? 0)
+      .filter((at) => !VOICE_TAIL.has(title.slice(0, at).split(' ').pop()?.toLowerCase() ?? ''));
+    if (!breaks.length) return `<span>${title}</span>`;
+    cut = breaks.reduce((best, at) => (Math.abs(at - title.length / 2) < Math.abs(best - title.length / 2) ? at : best));
+  }
+  return `<span>${title.slice(0, cut).trim()}</span> <span class="t-hollow">${title.slice(cut).trim()}</span>`;
 }
 
-/** Minutes to read a topic: 200 Latin words, or 400 Chinese characters, a minute. */
-function readMinutes(topic: TopicDefinition, rich: readonly RichSection[] | null): number {
-  const text = [topic.lede, ...(rich ? rich.map((section) => section.text) : topic.sections.flat())].join(' ');
-  const cjk = (text.match(/[㐀-鿿]/g) ?? []).length;
-  const words = text.replace(/[㐀-鿿]/g, ' ').split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200 + cjk / 400));
+function cjkTitleMarkup(title: string, phrases: readonly string[]): string {
+  const marked = phrases.length > 1 && phrases.join('') === title;
+  // the voices split after the title's first punctuation, the one boundary the copy itself marks
+  const voices = (marked ? phrases : [title]).reduce<string[][]>((out, phrase) => {
+    out[out.length - 1].push(phrase);
+    if (out.length === 1 && /[，,；;：:]$/.test(phrase)) out.push([]);
+    return out;
+  }, [[]]).filter((voice) => voice.length);
+  if (!marked) {
+    const cut = title.search(/[，,；;：:]/) + 1;
+    if (cut > 0 && cut < title.length) voices.splice(0, voices.length, [title.slice(0, cut)], [title.slice(cut)]);
+  }
+  const phrase = marked ? ' class="dm-phrases"' : '';
+  const span = (voice: readonly string[], hollow: boolean): string => `<span${hollow ? ` class="t-hollow${marked ? ' dm-phrases' : ''}"` : phrase}>${voice.join('<wbr>')}</span>`;
+  return voices.map((voice, index) => span(voice, index > 0)).join(' ');
 }
 
 function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
@@ -416,8 +489,68 @@ function mountSearchEntry(root: HTMLElement): void {
     input.focus();
     input.select();
   });
-  const kbd = root.querySelector('.dm-search kbd');
-  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
+  // one key cap a key: the platform's modifier, then K
+  const keys = root.querySelector('.dm-search__keys');
+  if (keys) keys.innerHTML = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut')
+    .split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('');
+}
+
+/** A table wider than its column scrolls under a fade at its end (chapters.css .dm-table.is-scrollable). */
+function markScrollableTables(root: HTMLElement): void {
+  if (typeof ResizeObserver !== 'function') return;
+  const observer = new ResizeObserver((entries) => {
+    for (const { target } of entries) target.classList.toggle('is-scrollable', target.scrollWidth > target.clientWidth + 1);
+  });
+  for (const box of root.querySelectorAll<HTMLElement>('.dm-table')) observer.observe(box);
+}
+
+/**
+ * A chart's ticks and units hold the type floor at every width. The SVG scales as a picture (a phone draws the 640-unit
+ * chart at about half size), so where it is drawn smaller than its units its type is set in chart units at the inverse of
+ * the drawn scale: chapters.css sizes `.dm-chart svg` text as the floor times --dm-chart-k, the chart's units per drawn
+ * pixel (never under 1, so a chart drawn at or above its size keeps its type as drawn), measured here.
+ */
+function counterScaleCharts(root: HTMLElement): void {
+  const charts = root.querySelectorAll<SVGSVGElement>('.dm-chart svg');
+  if (!charts.length || typeof ResizeObserver !== 'function') return;
+  const observer = new ResizeObserver((entries) => {
+    for (const { target, contentRect } of entries) {
+      const svg = target as SVGSVGElement;
+      const units = svg.viewBox.baseVal?.width ?? 0;
+      if (units > 0 && contentRect.width > 0) svg.style.setProperty('--dm-chart-k', Math.max(1, units / contentRect.width).toFixed(3));
+    }
+  });
+  for (const svg of charts) observer.observe(svg);
+}
+
+/**
+ * The narrow layout folds the shelf into one scrolling row (docs.css, under 1100 px). It opens with the current chapter
+ * in view and an item's start on the page's gutter (the row's scroll padding), so no item opens cut at the left edge, and
+ * without moving the page; each end fades only while the row scrolls on past it (data-scrolled, data-at-end).
+ */
+function mountShelfRow(shelf: HTMLElement): void {
+  const edges = (): void => {
+    shelf.toggleAttribute('data-scrolled', shelf.scrollLeft > 1);
+    shelf.toggleAttribute('data-at-end', shelf.scrollLeft >= shelf.scrollWidth - shelf.clientWidth - 1);
+  };
+  const current = shelf.querySelector<HTMLElement>(':scope > a[aria-current="page"]');
+  if (current && shelf.scrollWidth > shelf.clientWidth) {
+    const style = getComputedStyle(shelf);
+    const start = parseFloat(style.scrollPaddingLeft) || 0;
+    const end = parseFloat(style.scrollPaddingRight) || 0;
+    const origin = shelf.getBoundingClientRect().left - shelf.scrollLeft;
+    const at = (item: HTMLElement): number => item.getBoundingClientRect().left - origin;
+    // the least scroll that brings the current chapter clear of the row's end fade
+    const need = at(current) + current.offsetWidth + end - shelf.clientWidth;
+    if (need > 0) {
+      // the first item that, set on the gutter, leaves the current chapter in view leads the row
+      const lead = [...shelf.querySelectorAll<HTMLElement>(':scope > a')].find((item) => at(item) - start >= need) ?? current;
+      shelf.scrollLeft = Math.min(at(lead) - start, shelf.scrollWidth - shelf.clientWidth);
+    }
+  }
+  edges();
+  shelf.addEventListener('scroll', edges, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(edges).observe(shelf);
 }
 
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
@@ -437,7 +570,6 @@ function mountTocSpy(root: HTMLElement): void {
   for (const target of targets) observer.observe(target);
 }
 
-const HERO_TAKE = /\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 const camelTake = (take: string): string => take.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly string[]).includes(value);
 
@@ -455,14 +587,16 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   const group = TOPIC_GROUPS.find((shelf) => shelf.topics.includes(slug)) ?? TOPIC_GROUPS[0];
   const order = TOPIC_GROUPS.flatMap((shelf) => shelf.topics);
   const at = order.indexOf(slug);
-  const take = HERO_TAKE.exec(topic.hero)?.[1];
-  const caption = take ? t(`media.site50.title.${camelTake(take)}`) : '';
+  const ladder = topicHeroLadder(topic.hero);
+  const caption = ladder ? t(ladder.captionKey) : '';
   const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
-  const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
-    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`)).join('')
+  // the reader starts at the first section: it is the current one before the spy (mountTocSpy) sees a scroll
+  const current = (index: number): string => (index === 0 ? ' aria-current="location"' : '');
+  const toc = (rich ? rich.map(({ id, title }, index) => `<a href="#${id}"${current(index)}>${title}</a>`)
+    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"${current(index)}>${title}</a>`)).join('')
     + (reference ? `<a href="#reference">${t('docs.reference.vehicles.title')}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
@@ -471,17 +605,17 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">${t('docs.search.shortcutMac')}</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
+    + `<span class="dm-search__keys" aria-hidden="true">${t('docs.search.shortcutMac').split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('')}</span></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
-    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
-    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap" aria-hidden="true"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
-    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}"><p class="dm-lede">${topic.lede}</p>`
-    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span>${groupLabel(group.key)}</span></span>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></span></nav>`
+    + `<h1>${titleMarkup(topic.title, ZH_TITLE_PHRASES[slug])}</h1></div></header>`
+    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
@@ -516,6 +650,8 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
+  markScrollableTables(root);
+  counterScaleCharts(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
@@ -531,12 +667,9 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
     void import('./filming.ts').then(({mountFilming}) => mountFilming(article));
   }
 
-  // the narrow layout folds the shelf into one scrolling row: it opens on the current chapter, without moving the page
+  // the narrow layout folds the shelf into one scrolling row that opens on the current chapter
   const shelf = root.querySelector<HTMLElement>('.dm-side');
-  const current = shelf?.querySelector<HTMLElement>('[aria-current="page"]');
-  if (shelf && current && shelf.scrollWidth > shelf.clientWidth) {
-    shelf.scrollLeft = Math.max(0, current.offsetLeft - (shelf.clientWidth - current.offsetWidth) / 2);
-  }
+  if (shelf) mountShelfRow(shelf);
 }
 
 if (typeof document !== 'undefined') renderTopicPage();

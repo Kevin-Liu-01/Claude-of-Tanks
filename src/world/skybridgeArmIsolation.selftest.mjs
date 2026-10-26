@@ -29,7 +29,7 @@ const BEFORE = {
   ruinspires: 'f8fb31019a15a8f3',
   blackglass: '4aa6c62512d680c1', // 2026-10-25 re-pinned (253), was 021077d976df4f0e: the pinned-math ruling (the terrain's sin/cos/atan2/pow/exp on src/sim/detMath.ts)
   titan_gorge: '485e822b044f058f',
-  polders: 'a487ebeb56d7d8b0', // 2026-10-25 re-pinned (253), was 5f161f4969d0c585: the pinned-math ruling (the terrain's sin/cos/atan2/pow/exp on src/sim/detMath.ts)
+  polders: '58c527805ac01a0d', // 2026-10-25 re-pinned (252 integ), was a487ebeb56d7d8b0 (253's pinned-math ruling) and 580b6176b4fff436 (world-receipts-251 on the old math): both together, the pinned-math terrain under 252's waterline ramp back at 0.12 and the narrow drain's station 0 at 0.21
   copper_mesa: 'c87554e04dfa5e6d', // 2026-10-24 re-pinned (251), was e691d76f1096fc14: the hinterland horizons, merged at f7b257ce67 (horizons-hinterland-240 9bc119439e)
   airfield: '4f534969f5970ae0', // 2026-10-16 re-pinned, was 794c991f91b951fa: MAPS Kestrel Airfield rebuild (integ/226 af8e48d28, item/maps-kestrel 284ef2ffe); the port's merge 074713b3a left it at its pin
   oasis: 'c53e9825cc51eb7a', // 2026-10-24 re-pinned (251), was 156b434394ea66e7: GROUND water banks, merged at 0c4da2c505 (item/ground-water-banks-230 2807b6d767): the banks graded from a lip over the water's top. The 10-21 pins were taken before the lane's last bank change and never held on main: its first parent read the integ/226 values

@@ -199,4 +199,53 @@ displayMaterial.dispose();
   crewA.geometry.dispose(); crewB.geometry.dispose(); paint.dispose();
 }
 
+// (lockdown-251) the shadow budget reads each caster's world scale from one walk of the workshop and its ancestors, not
+// a walk up the parents per caster: the same casters keep their shadow under scaled, mirrored and rotated owners, and
+// under an ancestor moved since its last world update (getWorldScale walked that ancestor first; so does the pass now).
+{
+  const build = () => {
+    let seed = 0x5eed;
+    const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const stage = new THREE.Group();
+    const workshop = new THREE.Group();
+    stage.add(workshop);
+    stage.updateMatrixWorld(true);
+    stage.scale.set(1.3, 0.6, 1.3); // moved after its last world update
+    stage.rotation.y = 0.4;
+    const material = new THREE.MeshStandardMaterial();
+    const meshes = [];
+    let parent = workshop;
+    for (let depth = 0; depth < 6; depth++) {
+      const group = new THREE.Group();
+      group.position.set(random() * 2 - 1, random(), random() * 2 - 1);
+      group.rotation.set(random(), random() * 3, random());
+      group.scale.set(depth === 2 ? -0.7 : 0.5 + random(), 0.5 + random(), 0.5 + random() * 0.4);
+      parent.add(group);
+      for (let k = 0; k < 6; k++) {
+        const size = 0.05 + random() * 0.5;
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.5, size), material);
+        mesh.position.set(random(), random(), random());
+        mesh.scale.set(k === 3 ? -1.4 : 0.4 + random() * 1.6, 0.4 + random(), 0.4 + random() * 1.6);
+        mesh.castShadow = true;
+        group.add(mesh);
+        meshes.push(mesh);
+      }
+      parent = group;
+    }
+    return { workshop, meshes };
+  };
+  const reference = build();
+  const scale = new THREE.Vector3();
+  const expected = reference.meshes.map((mesh) => {
+    mesh.geometry.computeBoundingSphere();
+    mesh.getWorldScale(scale);
+    return mesh.geometry.boundingSphere.radius * Math.max(scale.x, scale.y, scale.z) >= 0.4;
+  });
+  const subject = build();
+  optimizeGarageDressing(subject.workshop);
+  assert.ok(expected.includes(true) && expected.includes(false), 'the case keeps some casters and prunes others');
+  assert.deepEqual(subject.meshes.map((mesh) => mesh.castShadow), expected,
+    'the same casters keep their shadow as by getWorldScale');
+}
+
 console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass');

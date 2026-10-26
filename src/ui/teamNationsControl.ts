@@ -10,7 +10,6 @@ import { ensureStyle } from './styleLayers.ts';
 import { flagIconHTML } from './flags.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { FONT_COND } from './fonts.ts';
 import { countryNation, type CountryId } from '../sim/countries.ts';
 import type { TeamNationsId } from '../sim/matchRuleset.ts';
 
@@ -28,20 +27,13 @@ interface TeamNationsControlOptions {
 
 export function createTeamNationsControl(options: TeamNationsControlOptions): { root: HTMLElement; render(): void } {
   ensureStyle('cot-team-nations-style', `
-.cot-teams{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.cot-teams>b{font:700 11px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;color:#cfd9e0;min-width:54px}
-.cot-teams [role=radiogroup]{display:inline-flex;border:1px solid rgba(255,255,255,.16);border-radius:6px;overflow:hidden}
-.cot-teams button{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:transparent;border:0;
-  color:#aebcc6;font:700 11px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;cursor:pointer;min-height:34px}
-.cot-teams button+button{border-left:1px solid rgba(255,255,255,.16)}
-.cot-teams button[aria-checked=true]{background:rgba(255,255,255,.12);color:#f2f6f8}
-.cot-teams button:disabled{cursor:default;opacity:.62}
-.cot-teams button:focus-visible{outline:2px solid #e8c15a;outline-offset:-2px}
-.cot-teams .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
-.cot-teams .vs{opacity:.55;font-size:11px}
+.cot-teams{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+.cot-teams>b{min-width:54px;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
+.cot-teams .cot-c-seg__opt{padding-inline:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-12))}
+.cot-teams .cot-flag{border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
-@media(max-width:480px){.cot-teams button{padding:7px 9px}}
 `, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-teams';
@@ -50,11 +42,12 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
   label.textContent = t('teams.label');
   const group = document.createElement('div');
   group.setAttribute('role', 'radiogroup');
+  group.className = 'cot-c-seg';
   group.setAttribute('aria-label', t('teams.label'));
   const mono = document.createElement('button');
-  mono.type = 'button'; mono.dataset.teamNations = 'mono'; mono.setAttribute('role', 'radio');
+  mono.type = 'button'; mono.className = 'cot-c-seg__opt'; mono.dataset.teamNations = 'mono'; mono.setAttribute('role', 'radio');
   const random = document.createElement('button');
-  random.type = 'button'; random.dataset.teamNations = 'random'; random.setAttribute('role', 'radio');
+  random.type = 'button'; random.className = 'cot-c-seg__opt'; random.dataset.teamNations = 'random'; random.setAttribute('role', 'radio');
   group.append(mono, random);
   root.append(label, group);
   const globe = (): string => `<span class="globe" aria-hidden="true">${uiIconSVG('globe')}</span>`;

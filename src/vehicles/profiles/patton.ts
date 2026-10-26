@@ -51,6 +51,7 @@ import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../material
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import { drainTankBuild, steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -1525,7 +1526,7 @@ function aaPedestal(
 // ---------------------------------------------------------------------------
 // T26-family cast turret (m26/m45/m46): lofted from the measured side band.
 // ---------------------------------------------------------------------------
-function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
+function* t26CastSteps(P: PattonBuilderPort, T: T26TurretConfig): TankProfileBuild {
   const { box, cylY, sph, liftEye, cupola, tarpRoll } = KIT;
   const rack = T.rack;
   if (!rack) throw new Error('T26 turret configuration requires a bustle rack');
@@ -1551,6 +1552,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   t26CastAssemblyStage2();
+  yield 't26CastAssemblyStage2';
   const paleMesh = (geo: THREE.BufferGeometry, x: number, y: number, z: number): void => {
     if (!mgPale) return;
     const mesh = new THREE.Mesh(geo, mgPale);
@@ -1597,6 +1599,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     bustleRack(P, rack, yl, zl, P.rng);
   };
   t26CastTurretStage1();
+  yield 't26CastTurretStage1';
   // r7 C3 (m46, §H.4): the rack read as a bare pale-floored scaffold — the
   // r5 dark loads vanish against the dark background (the m47 B2/B3 lesson:
   // CLOTH loads read, dark loads drown). m46's OWN era loadout — Korea-kit
@@ -1678,6 +1681,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   t26CastTurretStage2();
+  yield 't26CastTurretStage2';
   // commander cupola (vehicle right = world -x) + loader hatch (left)
   const splitCupolaRing = T.cupola.ring;
   const t26CastModulesStage1 = (): void => {
@@ -1717,6 +1721,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     if (T.vent) P.add('turret', sph(0.09, 12, Math.PI / 2), T.vent.x, yl(T.vent.y), zl(T.vent.z));
   };
   t26CastModulesStage1();
+  yield 't26CastModulesStage1';
   // lifting eyes seated on the casting
   const eyeF = secs[Math.min(4, secs.length - 1)], eyeR = secs[secs.length - 3];
   const t26CastTurretStage3 = (): void => {
@@ -1737,6 +1742,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   t26CastTurretStage3();
+  yield 't26CastTurretStage3';
   const t26CastAssemblyStage3 = (): void => {
     if (T.mg && !T.standardAmericanM2 && T.mg.tone === 'two-tone' && mgPale) {
       // r7 B1 crown strips (MG PHYSICS: >=2px pale top-lit edges over the
@@ -1766,6 +1772,7 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     // spare MG the old census tucked against the casting is gone; the M2 station is the roof gun.
   };
   t26CastAssemblyStage3();
+  yield 't26CastAssemblyStage3';
   // markings on the bustle flanks (decalSec overrides the anchor section —
   // a decal plane on a narrow tail section pokes plan-turret columns)
   const bs = secs[T.decalSec != null ? T.decalSec : secs.length - 2];
@@ -1774,6 +1781,9 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-bs.hw - 0.02, yl((bs.top + bs.bot) / 2), zl(bs.z - 0.1)], -Math.PI / 2);
   };
   t26CastMarkingsStage1();
+}
+function t26Cast(...args: Parameters<typeof t26CastSteps>): void {
+  drainTankBuild(t26CastSteps(...args));
 }
 
 // ---------------------------------------------------------------------------
@@ -2132,7 +2142,7 @@ function smoothBustle(
 // M47 long-nose turret: needle prow -> plateau loft, long squared bustle
 // overhang, rangefinder blister pods, low cupola, roof M2.
 // ---------------------------------------------------------------------------
-function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
+function* m47CastSteps(P: PattonBuilderPort, T: T26TurretConfig): TankProfileBuild {
   const { box, cylY, cylX, cylZ, sph, liftEye, cupola, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const BS = T.bustleSecs;
@@ -2166,6 +2176,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   m47CastAssemblyStage2();
+  yield 'm47CastAssemblyStage2';
   const paleMesh = (geo: THREE.BufferGeometry, x: number, y: number, z: number): void => {
     if (!mgPale) return;
     const mesh = new THREE.Mesh(geo, mgPale);
@@ -2184,6 +2195,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   m47CastTurretStage1();
+  yield 'm47CastTurretStage1';
   const m47CastTurretStage2 = (): void => {
     const addRolledCheekCaps = (C: CheekPodConfig, loop: number[][], ccw: boolean): void => {
       const length = loop.length;
@@ -2262,6 +2274,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     m47CastTurretStage8();
   };
   m47CastTurretStage2();
+  yield 'm47CastTurretStage2';
   // long bustle overhang, r2: ASYMMETRIC section chain (the ref plan pulls
   // its LEFT flank in by z -1.51 while the RIGHT runs 0.86-wide to -1.88 —
   // workorder plan cols ±0.73..0.83); floor climbs 1.86 -> 1.955 (ref
@@ -2281,6 +2294,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   m47CastTurretStage3();
+  yield 'm47CastTurretStage3';
   const B = { z0: BS[0].z, z1: BS[BS.length - 1].z, w0: BS[0].xR, w1: BS[BS.length - 2].xR, top0: BS[0].top, top1: BS[BS.length - 1].top, floor0: BS[0].floor, floor1: BS[BS.length - 1].floor };
   // r8 S2 (render lane): the dome-bottom (1.76) to bustle-floor (1.90-1.94)
   // gap at z -1.46..-1.63 reads as a see-through notch at both 45° quarters
@@ -2338,6 +2352,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     tarpRoll(P, 'turretDark', -0.05, ly(2.638), zl(-1.98), 0.54, 0.075, false, P.q ? 12 : 8);
   };
   m47CastTurretStage4();
+  yield 'm47CastTurretStage4';
   // rear rack frame on the bustle tail (kept INBOARD of the tail face so the
   // bars never leak a silhouette column past the measured bustle end)
   const rw = Math.min(B.w1, 0.62); // bars stay inside the plan taper columns
@@ -2393,6 +2408,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   m47CastTurretStage5();
+  yield 'm47CastTurretStage5';
   // r6 C6 (optional polish, front-view last delta): casting-face texture
   // hint on the needle nose — X-brace weld beads + a scallop bolt row on
   // the prow cap (1-3 mm proud, decal-lane flush class) and one diagonal
@@ -2436,6 +2452,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     else m2Station(P, mgPale && machineGun.tone === 'two-tone' ? { ...machineGun, paleMat: mgPale } : machineGun, yl, zl);
   };
   m47CastTurretStage6();
+  yield 'm47CastTurretStage6';
   const m47CastTurretStage7 = (): void => {
     if (T.pedestal) {
       aaPedestal(P, mgPale && T.pedestal.tone === 'two-tone' ? { ...T.pedestal, paleMat: mgPale } : T.pedestal, yl, zl);
@@ -2487,6 +2504,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
     }
   };
   m47CastTurretStage7();
+  yield 'm47CastTurretStage7';
   // r4 B2/B3 (m47): the rack tray behind the bustle tail read as a closed
   // dark pit — folded-tarp bed + roll + duffel + straps INSIDE the rack
   // walls. Every top <= 2.072 (the warped ref's own rack-floor sliver band
@@ -2523,6 +2541,9 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   };
   m47CastMarkingsStage1();
 }
+function m47Cast(...args: Parameters<typeof m47CastSteps>): void {
+  drainTankBuild(m47CastSteps(...args));
+}
 
 // ---------------------------------------------------------------------------
 // T26-family gun. The tube is built to the PUBLISHED overall length (the
@@ -2531,7 +2552,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
 // mantlet matches the measured shield band (it pitches with the gun).
 // G: { rootZ, axisY, muzzle, r, device, shield:{w,h,dy,zF,d} }
 // ---------------------------------------------------------------------------
-function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
+function* pattonGunSteps(P: PattonBuilderPort, G: PattonGunConfig): TankProfileBuild {
   const { box, cylX, cylZ, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const len = G.muzzle - G.rootZ;
@@ -2567,6 +2588,7 @@ function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
     }
   };
   pattonGunGunStage1();
+  yield 'pattonGunGunStage1';
   const sq = (r: number, l: number, at: number, sy = 1, sx = 1): void => P.add(
     'gun', geometryXform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at,
   );
@@ -2654,6 +2676,7 @@ function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
     }
   };
   pattonGunGunStage2();
+  yield 'pattonGunGunStage2';
   // §B3.1 MUZZLE BORE (owner 2026-08-06; MANDATORY shadow-named mechanism
   // per the leclerc_s2 landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
   // by construction): rim torus + recessed shadow disc on every device's
@@ -2794,11 +2817,12 @@ function originalProfileY(T: T26TurretConfig, y: number): number {
   return L ? L.ringY + (y - L.ringY) * L.scale : y;
 }
 
-function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
+function* buildPershingSteps(P: PattonBuilderPort, cfg: PershingBuildConfig): TankProfileBuild {
   const buildPershingAssemblyStage1 = (): void => {
     applyLowProfileTurret(cfg);
   };
   buildPershingAssemblyStage1();
+  yield 'buildPershingAssemblyStage1';
   const { box, cylX } = KIT;
   const hull = curveHull(P, cfg.hull);
   const buildPershingHullStage1 = (): void => {
@@ -2866,6 +2890,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage1();
+  yield 'buildPershingHullStage1';
   const buildPershingHullStage2 = (): void => {
     if (cfg.bowShelf) {
       // flat fender leading box ahead of the lip (m47: 1.545 over 1.66..1.78)
@@ -2903,6 +2928,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage2();
+  yield 'buildPershingHullStage2';
   const buildPershingHullStage3 = (): void => {
     if (cfg.bumpStops) {
       // lower-hull side masses (bump stops / final-drive housings): the ref
@@ -2933,6 +2959,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage3();
+  yield 'buildPershingHullStage3';
   const buildPershingHullStage4 = (): void => {
     if (cfg.deckShoulder) {
       // rounded deck-edge shoulder (m47 r2): the ref front view rolls the deck
@@ -2964,6 +2991,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage4();
+  yield 'buildPershingHullStage4';
   const buildPershingHullStage5 = (): void => {
     if (cfg.deckRails) {
       // raised fender-edge rails/hanger lines (front-view band reads)
@@ -2982,6 +3010,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage5();
+  yield 'buildPershingHullStage5';
   const buildPershingHullStage6 = (): void => {
     if (cfg.tailTray) {
       // r4 B2 (m47): the rear band under the bustle overhang read a full
@@ -3022,6 +3051,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage6();
+  yield 'buildPershingHullStage6';
   const buildPershingHullStage7 = (): void => {
     if (cfg.bowCasting) {
       // r7 C1 (m46): ribbed transmission-cover/step grammar on the lower bow
@@ -3058,6 +3088,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage7();
+  yield 'buildPershingHullStage7';
   const buildPershingHullStage8 = (): void => {
     if (cfg.deckSlats) {
       // r10 R5 (m46, shaded-parity r7 R5 escalation — orchestrator ruling:
@@ -3139,6 +3170,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage8();
+  yield 'buildPershingHullStage8';
   const buildPershingHullStage9 = (): void => {
     if (cfg.rampBanks) {
       // r4 (m26, graduation-retune order 2 — the same verdict lane as
@@ -3202,6 +3234,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage9();
+  yield 'buildPershingHullStage9';
   const buildPershingHullStage10 = (): void => {
     if (cfg.bowEyes) {
       // towing-eye prongs at the bow tip: the m47 extract's side toe columns
@@ -3266,6 +3299,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage10();
+  yield 'buildPershingHullStage10';
   const buildPershingHullStage11 = (): void => {
     if (cfg.hull.fenderY) {
       // fender-lip doubler + edge rim. With cfg.fenderBumps set (m47 r9), the
@@ -3308,10 +3342,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingHullStage11();
+  yield 'buildPershingHullStage11';
   // outer mud-flap wings: the kit flaps stop at the track edge (x ~1.65) but
   // the reference flap panels run to the fender lip (front-view band 0.80..
   // 1.40 out to +-1.75) — thin closers from the track flap to the hull edge
-  const buildPershingHullStage12 = (): void => {
+  const buildPershingHullStage12 = function* (): TankProfileBuild {
     if (cfg.flapWings) {
       const wx0 = hull.xc + cfg.hull.trackW * 0.46 - 0.03;
       for (const [fz, fy0, fy1] of cfg.flapWings) {
@@ -3328,9 +3363,10 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
     P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
     if (cfg.turret.m47) m47Cast(P, cfg.turret); else t26Cast(P, cfg.turret);
-    pattonGun(P, cfg.gun);
+    yield* pattonGunSteps(P, cfg.gun);
   };
-  buildPershingHullStage12();
+  yield* buildPershingHullStage12();
+  yield 'buildPershingHullStage12';
   const buildPershingGunStage1 = (): void => {
     if (cfg.americanModernization) {
       const buildPershingGunCourse1 = (): void => {
@@ -3381,6 +3417,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingGunStage1();
+  yield 'buildPershingGunStage1';
   // -------------------------------------------------------------------------
   // r4 (m47 TONE round) material work. createTankMaterials is PER-INSTANCE
   // and the gate renders self-lit masks — nothing here moves a curve.
@@ -3501,6 +3538,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingRunningGearStage1();
+  yield 'buildPershingRunningGearStage1';
   const gearShade = cfg.gearShade;
   const buildPershingReceiptStage1 = (): void => {
     if (gearShade) {
@@ -3746,6 +3784,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     }
   };
   buildPershingReceiptStage1();
+  yield 'buildPershingReceiptStage1';
   const buildPershingAssemblyStage2 = (): void => {
     P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
   };
@@ -4726,7 +4765,7 @@ function applyM60CompactScale(
   P.topY = unscaledTopY * vehicleScale;
 }
 
-function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
+function* buildM60Steps(P: PattonBuilderPort, cfg: M60BuildConfig): TankProfileBuild {
   const { box, cylY, cylZ, cylX, xform, liftEye, buildGun, torus, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
@@ -4759,6 +4798,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.mats.spareTrack.color.setHex(0x403c35);
   };
   buildM60AssemblyStage2();
+  yield 'buildM60AssemblyStage2';
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
   // reference front-hull columns read 1.82 at x 0.88, 1.79 by 1.08).
@@ -4783,6 +4823,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     }
   };
   buildM60HullStage1();
+  yield 'buildM60HullStage1';
   // engine-deck louver banks ON the crown (r3 critique: "engine deck without
   // louvers ... deck reads bare" — the usKit grille bays at y 1.84 sit fully
   // BURIED under the 1.85-1.886 crown). Inset treatment, gate-conservative:
@@ -4967,6 +5008,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.add('hullDark', box(1.90, 0.185, 0.03), 0, 1.3555, -3.259);
   };
   buildM60HullStage2();
+  yield 'buildM60HullStage2';
   const buildM60HullStage3 = (): void => {
     {
       // Fleet lane round 1 (2026-10-08; accessories wave 255: "a rear plate that is a blank tan slab with no exhaust
@@ -5009,6 +5051,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     }
   };
   buildM60HullStage3();
+  yield 'buildM60HullStage3';
 
   const py = 1.76, pz = 0.30;
   const buildM60AssemblyStage3 = (): void => {
@@ -5016,6 +5059,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.gunG.position.set(0, 2.087 - py, 1.55 - pz);
   };
   buildM60AssemblyStage3();
+  yield 'buildM60AssemblyStage3';
   const yl = (y: number): number => y - py;
   const zl = (z: number): number => z - pz;
 
@@ -5065,6 +5109,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     }
   };
   buildM60TurretStage1();
+  yield 'buildM60TurretStage1';
 
   // M19 cupola LEFT of the ridge (measured: base ring curve 3.05 @ x -0.88,
   // plateau 3.197 over x -0.43..-0.80 / z +0.09..+0.30). The narrow spine
@@ -5101,6 +5146,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     liftEye(P, 'turretDetail', 0.70, yl(2.66), zl(0.62));
   };
   buildM60TurretStage2();
+  yield 'buildM60TurretStage2';
   // REAL bustle rack + stowage volume (r4 tell 1, gate-in-loop). The r3
   // roofline-flush frame gated at zero but read only from high angles; the
   // critic's rear-identity list = rails + stowage boxes + jerry can + M19
@@ -5205,6 +5251,7 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     }
   };
   buildM60TurretStage3();
+  yield 'buildM60TurretStage3';
   // One shared compact rear basket serves both A1 and A3. The older M60
   // dressing mixed variant-specific gray blocks with differently sized
   // implied racks; this open lattice has a real floor, fence, returns,
@@ -5981,7 +6028,7 @@ function m48RadialRoofSeat(
   return geometry;
 }
 
-function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
+function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, buildGun } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
@@ -6039,8 +6086,10 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // 1.861 plate — side pairs the ref's 1.881 read)
     for (const side of [-1, 1]) {
       // 2026-10-19 (owner float sweep): the 21 mm pod hovered 56 mm over the plate; it now rises from it to the same top
-      // (release 240: 6 mm lower, top 1.876, under the turret's 1.882 detail line as it turns over them)
-      P.add('hullDetail', box(0.30, 0.080, 0.24), side * 0.51, 1.836, 1.86);
+      // (release 240: 6 mm lower, top 1.876, under the turret's 1.882 detail line as it turns over them; and the M48A5's
+      // refit (the owner, 2026-10-24: "redesign and refit the m48a5 turret"), its 55 mm rig lift gone, the turret's seated
+      // underside 1.880 over them: top 1.866)
+      P.add('hullDetail', box(0.30, 0.070, 0.24), side * 0.51, 1.831, 1.86);
     }
     // Low source A5 fender service boxes.  The previous RISE-height pack was
     // an unrelated tall envelope and inflated the hull profile above the
@@ -6110,6 +6159,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48HullStage1();
+  yield 'buildM48HullStage1';
 
   // Turret: measured egg dome + ring cupola + wrap rack (t26Cast grammar).
   // M48 geometry is authored in world-height source coordinates, so keep the
@@ -6119,11 +6169,12 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
   const sourceRingY = cfg.ring[0];
   const turretSeatLiftM = cfg.turretSeatLiftM ?? 0;
   const seatedRingY = sourceRingY + turretSeatLiftM;
-  const buildM48AssemblyStage1 = (): void => {
+  const buildM48AssemblyStage1 = function* (): TankProfileBuild {
     P.turretG.position.set(0, seatedRingY, cfg.ring[1]);
-    t26Cast(P, { ...cfg.turret, ringY: sourceRingY, ringZ: cfg.ring[1] });
+    yield* t26CastSteps(P, { ...cfg.turret, ringY: sourceRingY, ringZ: cfg.ring[1] });
   };
-  buildM48AssemblyStage1();
+  yield* buildM48AssemblyStage1();
+  yield 'buildM48AssemblyStage1';
   const yl = (y: number): number => y - sourceRingY;
   const zl = (z: number): number => z - cfg.ring[1];
   const buildM48ReceiptStage1 = (): void => {
@@ -6136,6 +6187,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48ReceiptStage1();
+  yield 'buildM48ReceiptStage1';
 
   // The source ring and hatch footprints overhang the M48's asymmetric egg
   // dome. Flat-bottom cylinders therefore left their downhill halves visibly
@@ -6143,15 +6195,16 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
   // camouflaged cast skirts follow the measured roof perimeter and overlap
   // each fitting underside by 2 mm, preserving one structural draw bucket.
   const roofSeats = [
+    // (2026-10-25: on the reference-sized dome, its roof 8 mm under each perimeter sample)
     {
-      id: 'loader-hatch', x: -0.541, z: 0.045, r: 0.470, topY: 2.5345,
-      roofYs: [2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492,
-        2.4895, 2.4433, 2.3591, 2.3029, 2.2787, 2.2917, 2.3415, 2.4417],
+      id: 'loader-hatch', x: -0.642, z: 0.112, r: 0.470, topY: 2.6615,
+      roofYs: [2.619, 2.619, 2.619, 2.619, 2.619, 2.619, 2.619, 2.616,
+        2.6149, 2.5801, 2.5141, 2.4754, 2.4691, 2.4916, 2.5373, 2.6124],
     },
     {
-      id: 'commander-cupola', x: 0.570, z: -0.310, r: 0.3468, topY: 2.672,
-      roofYs: [2.4914, 2.4141, 2.3492, 2.3065, 2.2874, 2.2937, 2.322, 2.3763,
-        2.4499, 2.472, 2.4765, 2.4877, 2.492, 2.492, 2.492, 2.492],
+      id: 'commander-cupola', x: 0.670, z: -0.190, r: 0.3468, topY: 2.672,
+      roofYs: [2.619, 2.5861, 2.5267, 2.4794, 2.4518, 2.438, 2.4535, 2.5014,
+        2.5793, 2.6072, 2.6125, 2.616, 2.619, 2.619, 2.619, 2.619],
     },
   ];
   const buildM48TurretStage1 = (): void => {
@@ -6161,14 +6214,16 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage1();
+  yield 'buildM48TurretStage1';
   // The forward gunner hood sits on a doubly-sloped patch. A four-corner
   // plinth follows that local cast surface instead of projecting a generic
   // vertical box through the dome.
+  // (2026-10-25: on the reference-sized dome, under the hood's tilted floor, 8 mm into the roof at each corner)
   const sightSeat = orientedSlab(
-    [0.419, yl(2.336), zl(1.312)], [0.621, yl(2.226), zl(1.312)],
-    [0.621, yl(2.366), zl(1.062)], [0.419, yl(2.433), zl(1.062)],
-    [0.419, yl(2.547), zl(1.312)], [0.621, yl(2.547), zl(1.312)],
-    [0.621, yl(2.522), zl(1.062)], [0.419, yl(2.522), zl(1.062)]);
+    [0.463, yl(2.601), zl(1.33)], [0.713, yl(2.479), zl(1.33)],
+    [0.713, yl(2.572), zl(1.03)], [0.463, yl(2.619), zl(1.03)],
+    [0.463, yl(2.652), zl(1.33)], [0.713, yl(2.652), zl(1.33)],
+    [0.713, yl(2.622), zl(1.03)], [0.463, yl(2.622), zl(1.03)]);
   const buildM48TurretStage2 = (): void => {
     P.add('turret', sightSeat);
     if (P.geometryReceipt) {
@@ -6207,6 +6262,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage2();
+  yield 'buildM48TurretStage2';
   const buildM48TurretStage3 = (): void => {
     if (cfg.turret.searchlight) {
       const S = cfg.turret.searchlight;
@@ -6228,6 +6284,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage3();
+  yield 'buildM48TurretStage3';
   // Unequal canvas and service packs reproduce the busy A5 rear silhouette
   // while staying seated inside the backed bustle rail.
   const buildM48TurretStage4 = (): void => {
@@ -6239,6 +6296,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage4();
+  yield 'buildM48TurretStage4';
   // Open bustle frame reconstructed from the source rail stations.  Four
   // unequal courses, supported posts and crossed stays carry the canvas
   // load; the entire assembly is turret-owned and therefore stays seated
@@ -6288,6 +6346,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage5();
+  yield 'buildM48TurretStage5';
   // The supplied A5 core already carries its rolled lower casting in the
   // measured loft.  No extra skirt shell is layered over it.
   // M2 pale crowns, sized to the COMPACT cluster (MG PHYSICS: sky-backed
@@ -6362,6 +6421,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
   };
   buildM48TurretStage6();
+  yield 'buildM48TurretStage6';
   // Measured M48A5 cheek/rear service fittings.  These are source-semantic
   // primitives reconstructed from component envelopes, not imported mesh:
   // unequal relay boxes, brackets, low sight heads and rear pack cradles.
@@ -6379,6 +6439,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }, { reachM: 0.07 });
   };
   buildM48TurretStage7();
+  yield 'buildM48TurretStage7';
   const buildM48GunStage1 = (): void => {
     for (const R of cfg.turret.sideRails || []) {
       P.add('turretDetail', box(R.w, R.h, R.d), R.x, yl(R.y), zl(R.z), R.rx || 0, R.ry || 0, R.rz || 0);
@@ -6388,8 +6449,9 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
     // gunner's primary sight hood, right cheek forward (M48A5 tell; interior
     // to the crown roll — top 2.62 under the 2.66 loader-dome band line)
-    P.add('turret', box(0.25, 0.14, 0.30), 0.52, yl(2.60), zl(1.18), -0.10, 0, 0);
-    P.add('turretGlass', box(0.16, 0.055, 0.02), 0.52, yl(2.61), zl(1.335), -0.10, 0, 0);
+    // (2026-10-25: on the reference-sized dome's plateau, its floor's rear 1 cm into it)
+    P.add('turret', box(0.25, 0.14, 0.30), 0.588, yl(2.702), zl(1.18), -0.10, 0, 0);
+    P.add('turretGlass', box(0.16, 0.055, 0.02), 0.588, yl(2.712), zl(1.335), -0.10, 0, 0);
 
     // M68 105 mm — the m60a1 recipe verbatim (level axis at the measured
     // trunnion; the print's pitched tube is the certified §E defect)
@@ -6816,7 +6878,7 @@ export const PATTON_PROFILES = {
     // crest band split 2.818 (z -0.50..-0.795, M2-hidden in front) over a
     // 2.75 left-cheek roll, loader-ring band 2.712, M2 station raised to
     // the ref's 3.169 band with the barrel to +1.23 (station i12 carrier).
-    build: (P: PattonBuilderPort) => buildPershing(P, {
+    build: steppedBuilder((P: PattonBuilderPort) => buildPershingSteps(P, {
       hull: M46_HULL, fit: M46_FIT, americanModernization: 'm46',
       ring: [1.56, -0.29], topWorld: 3.18,
       lowTurret: {
@@ -7046,7 +7108,7 @@ export const PATTON_PROFILES = {
       // cols pair the ref's 1.2315/1.0109 bands; the left overhang rides
       // the rotor-cheek pod above).
       gun: { rootZ: 1.21, axisY: 2.0355, muzzle: 4.246, r: 0.116, device: 'm3a1', evacZ0: 3.065, evacZ1: 3.80, drumL: 0.39, drumR: 0.25, drumSy: 0.70, baffleSlot: true, shield: { w: 0.56, h: 0.48, dy: 0.0, zF: 1.228, d: 0.52, chinRise: 0.13, rotorR: 0.12, wings: { w: 1.32, h: 0.42, dy: 0.046, zF: 0.99, d: 0.34 } } },
-    }),
+    })),
   },
   m47_patton: {
     // VERTEX-ROUND r1: extract-frame re-author (batch-8 seat: ring (0,
@@ -7057,7 +7119,7 @@ export const PATTON_PROFILES = {
     // tube ends at 4.103 but the muzzle is authored at the PUBLISHED
     // -4.135+8.51 = 4.375 station (dims sovereign; ~2 proc-only columns
     // pending the batch z-warp that stretches the oracle tube to 8.51).
-    build: (P: PattonBuilderPort) => buildPershing(P, {
+    build: steppedBuilder((P: PattonBuilderPort) => buildPershingSteps(P, {
       hull: M47_HULL, fit: M47_FIT, americanModernization: 'm47',
       ring: [1.676, -0.318], topWorld: 3.37,
       lowTurret: {
@@ -7308,7 +7370,7 @@ export const PATTON_PROFILES = {
         // r4 D2: collar-seam rings (world z; all >= 0.16 clear of the 3.10
         // evac anchor, sub-cm proud of the r 0.115 tube)
         rings: [[2.50, 0.121, 0.035], [2.72, 0.1205, 0.028], [2.94, 0.121, 0.035]] },
-    }),
+    })),
   },
   m48a5_patton: {
     // NEW BUILD r1 (§5.45 queue, 2026-08-08): M48A5 authored 1:1 from the
@@ -7323,38 +7385,43 @@ export const PATTON_PROFILES = {
     // p95 (m26/m45 over-mounted-MG convention; the print mounts NO roof
     // gun and its low-cupola crown is 2.718 — the per-column cost is the
     // packet's configuration-datum cert, ASK-OWNER row flag banked).
-    build: (P: PattonBuilderPort) => buildM48(P, {
+    build: steppedBuilder((P: PattonBuilderPort) => buildM48Steps(P, {
       hull: M48_HULL, fit: M48_FIT,
-      ring: [1.595, 0.563], turretSeatLiftM: 0.055, topWorld: 3.62,
+      ring: [1.595, 0.563], turretSeatLiftM: 0, topWorld: 3.62,
       turret: {
         // Preserve the source ring as the casting datum. A measured 55 mm
         // rig-level reseat clears the central deck without repeating the prior
         // 0.18 m mask-score lift that clipped away the M48's low pear shoulder.
-        loft: { wall: 0.35, mid: 0.73, midW: 0.82, crownW: 0.50, shiftX: -0.04, smooth: true },
+        // 2026-10-25 (the owner: "redesign and refit the m48a5 turret"): the dome at its reference packet's size
+        // (docs/references/tanks/m48.md, TURRET; z = z' - 0.116, y + 0.017): the 1.481 wall at z 0.27 (it stood at the
+        // 1.207 shoulder's width, 1.22), shoulder 0.815 and crown 0.53 of it, the 2.627 roof plateau (2.50), the
+        // underside 1.80-1.84 and the bustle floor 1.72, the tail at -1.21 (-1.49); the nose blends to the old tip, so the
+        // gun shield stays proud of it. Every roof and wall fitting moves with the dome at its own size (the cupola ring
+        // and both guns keep their heights); the rear-left drum is gone (the A5's searchlight rides the mantlet).
+        loft: { wall: 0.54, mid: 0.73, midW: 0.815, crownW: 0.53, shiftX: -0.04, smooth: true },
         sections: [
-          { z: 1.836, hw: 0.415, top: 2.03, bot: 1.593 },
-          { z: 1.60, hw: 0.607, top: 2.18, bot: 1.593 },
-          { z: 1.40, hw: 0.929, top: 2.30, bot: 1.593 },
-          { z: 1.20, hw: 1.051, top: 2.40, bot: 1.593 },
-          { z: 1.00, hw: 1.140, top: 2.46, bot: 1.593 },
-          { z: 0.80, hw: 1.195, top: 2.48, bot: 1.593 },
-          { z: 0.60, hw: 1.213, top: 2.50, bot: 1.593 },
-          { z: 0.40, hw: 1.195, top: 2.50, bot: 1.593 },
-          { z: 0.20, hw: 1.209, top: 2.50, bot: 1.643 },
-          { z: 0.00, hw: 1.220, top: 2.50, bot: 1.653 },
-          { z: -0.20, hw: 1.220, top: 2.50, bot: 1.663 },
-          { z: -0.40, hw: 1.191, top: 2.50, bot: 1.688 },
-          { z: -0.60, hw: 1.158, top: 2.48, bot: 1.702 },
-          { z: -0.80, hw: 1.108, top: 2.48, bot: 1.718 },
-          { z: -1.00, hw: 1.034, top: 2.46, bot: 1.734 },
-          { z: -1.20, hw: 0.878, top: 2.42, bot: 1.763 },
-          { z: -1.40, hw: 0.643, top: 1.98, bot: 1.783 },
-          { z: -1.486, hw: 0.44, top: 1.92, bot: 1.80 },
+          { z: 1.836, hw: 0.415, top: 2.03, bot: 1.80 },
+          { z: 1.75, hw: 0.52, top: 2.20, bot: 1.80 },
+          { z: 1.62, hw: 0.80, top: 2.42, bot: 1.80 },
+          { z: 1.522, hw: 0.952, top: 2.55, bot: 1.80 },
+          { z: 1.272, hw: 1.134, top: 2.627, bot: 1.80 },
+          { z: 1.022, hw: 1.282, top: 2.627, bot: 1.80 },
+          { z: 0.772, hw: 1.391, top: 2.627, bot: 1.80 },
+          { z: 0.522, hw: 1.458, top: 2.627, bot: 1.82 },
+          { z: 0.272, hw: 1.481, top: 2.627, bot: 1.84 },
+          { z: 0.022, hw: 1.458, top: 2.627, bot: 1.84 },
+          { z: -0.228, hw: 1.391, top: 2.627, bot: 1.84 },
+          { z: -0.45, hw: 1.31, top: 2.62, bot: 1.76 },
+          { z: -0.70, hw: 1.18, top: 2.60, bot: 1.72 },
+          { z: -0.95, hw: 0.95, top: 2.55, bot: 1.72 },
+          { z: -1.12, hw: 0.62, top: 2.45, bot: 1.72 },
+          { z: -1.206, hw: 0.30, top: 2.30, bot: 1.74 },
         ],
-        rack: { z0: -0.38, z1: -1.74, zC: -1.28, halfW: 1.30, floorY: 1.72, railY: 2.05, railW: 0.035, loadTop: 2.08, loadBucket: 'turretCloth' },
-        cupola: { x: 0.57, z: -0.31, r: 0.22, base: 2.55, h: 0.12,
+        // (the reference's wrap rack: side rails over z -0.41..-1.45, floor 1.72, rail 2.10, wide of the dome)
+        rack: { z0: -0.41, z1: -1.45, zC: -1.30, halfW: 1.55, floorY: 1.72, railY: 2.10, railW: 0.035, loadTop: 2.08, loadBucket: 'turretCloth' },
+        cupola: { x: 0.67, z: -0.19, r: 0.22, base: 2.65, h: 0.12,
           ring: { r: 0.34, h: 0.15, top: 2.82, lidHalfW: 0.17, lidH: 0.05, lidD: 0.31 } },
-        loader: { x: -0.54, y: 2.68, z: 0.04 },
+        loader: { x: -0.642, y: 2.807, z: 0.112 },
         mg: null,
         // Two complete first-party M2 fittings reproduce the supplied
         // A5's unequal commander/loader stations.  Each fitting owns a
@@ -7364,55 +7431,56 @@ export const PATTON_PROFILES = {
         fittingMgs: [
           // 2026-10-19 (owner float sweep): the commander M2's foot stood 48 mm ahead of the cupola ring wall (and its
           // can web with it); both move 50 mm aft onto the ring
-          { x: 0.58, z: 0.07, baseY: 2.73, scale: 0.90, elev: 0.035 },
+          { x: 0.68, z: 0.19, baseY: 2.73, scale: 0.90, elev: 0.035 },
           // VH.14 (calibre-true): the loader's gun is the 7.62 mm M60D, not a second M2
-          { x: -0.98, z: 0.135, baseY: 2.84, scale: 0.95, elev: 0.055, cls: 'mag' },
+          { x: -1.082, z: 0.207, baseY: 2.84, scale: 0.95, elev: 0.055, cls: 'mag' },
         ],
         radioStations: [
-          { x: 0.691, y: 2.461, z: -0.467, h: 1.016 },
-          { x: -0.304, y: 2.461, z: -1.005, h: 1.016 },
+          { x: 0.80, y: 2.603, z: -0.326, h: 1.016 },
+          { x: -0.321, y: 2.584, z: -0.79, h: 1.016 },
         ],
-        searchlight: { x: -1.16, y: 2.286, z: -1.15, r: 0.36, len: 0.68, rx: 0.08, ry: -3.06 },
         rearPacks: [
-          { x: -0.03, y: 2.30, z: -1.258, s: [0.97, 0.38, 0.39], rz: -0.04 },
-          { x: 0.277, y: 2.16, z: -1.562, s: [0.49, 0.38, 0.30], rz: 0.08 },
-          { x: -0.155, y: 2.21, z: -1.58, s: [0.443, 0.388, 0.284], rz: -0.10 },
-          { x: 0.66, y: 2.48, z: -0.979, s: [0.534, 0.306, 0.534], rz: -0.18 },
+          { x: -0.03, y: 2.30, z: -1.33, s: [0.97, 0.38, 0.39], rz: -0.04 },
+          { x: 0.277, y: 2.16, z: -1.40, s: [0.49, 0.38, 0.30], rz: 0.08 },
+          { x: -0.155, y: 2.21, z: -1.40, s: [0.443, 0.388, 0.284], rz: -0.10 },
+          { x: 0.711, y: 2.594, z: -0.768, s: [0.534, 0.306, 0.534], rz: -0.18 },
         ],
         rearRack: {
-          x: -0.25, z: -1.205, w: 1.56, y0: 2.02, y1: 2.37,
+          x: -0.25, z: -1.30, w: 1.56, y0: 2.02, y1: 2.37,
           railsY: [2.024, 2.055, 2.198, 2.365],
           postsX: [0.52, 0.05, -0.43, -0.91],
           strapsX: [0.28, -0.17, -0.67],
         },
         sideCans: [
-          { x: 1.259, y: 2.042, z: 0.250, w: 0.356, h: 0.329, d: 0.447, rz: -0.08 },
-          { x: -1.349, y: 2.004, z: 0.359, w: 0.311, h: 0.370, d: 0.452, rz: 0.08 },
-          { x: 1.129, y: 1.943, z: -0.728, w: 0.347, h: 0.184, d: 0.422, rz: -0.12 },
+          { x: 1.554, y: 2.042, z: 0.293, w: 0.356, h: 0.329, d: 0.447, rz: -0.08 },
+          { x: -1.647, y: 2.004, z: 0.387, w: 0.311, h: 0.370, d: 0.452, rz: 0.08 },
+          { x: 1.265, y: 1.943, z: -0.551, w: 0.347, h: 0.184, d: 0.422, rz: -0.12 },
         ],
         serviceFixtures: [
-          { x: 1.293, y: 1.998, z: -0.175, w: 0.214, h: 0.222, d: 0.217 },
-          { x: 1.092, y: 2.120, z: -0.387, w: 0.215, h: 0.203, d: 0.223, rz: -0.10 },
-          { x: 0.998, y: 2.283, z: -0.673, w: 0.191, h: 0.111, d: 0.267 },
-          { x: -0.917, y: 2.187, z: -0.904, w: 0.150, h: 0.267, d: 0.208 },
-          { x: -0.669, y: 2.493, z: -1.385, w: 0.265, h: 0.094, d: 0.234 },
-          { x: 0.925, y: 1.971, z: -1.064, w: 0.203, h: 0.120, d: 0.292 },
-          { x: -1.148, y: 1.901, z: -0.506, w: 0.104, h: 0.117, d: 0.328 },
-          { x: -1.115, y: 2.003, z: -0.533, w: 0.096, h: 0.108, d: 0.328 },
-          { x: 0.618, y: 2.127, z: -1.403, w: 0.114, h: 0.371, d: 0.117 },
-          { x: 0.927, y: 2.364, z: 0.384, w: 0.204, h: 0.198, d: 0.198, face: 'front' },
-          { x: 0.617, y: 2.284, z: -1.337, w: 0.134, h: 0.191, d: 0.190 },
-          { x: 0.003, y: 2.474, z: 1.171, w: 0.112, h: 0.245, d: 0.303, face: 'front' },
+          { x: 1.525, y: 1.998, z: -0.074, w: 0.214, h: 0.222, d: 0.217 },
+          { x: 1.27, y: 2.363, z: -0.257, w: 0.215, h: 0.203, d: 0.223, rz: -0.10 },
+          { x: 1.128, y: 2.457, z: -0.504, w: 0.191, h: 0.111, d: 0.267 },
+          { x: -1.161, y: 2.187, z: -0.703, w: 0.150, h: 0.267, d: 0.208 },
+          { x: -0.60, y: 2.538, z: -0.95, w: 0.265, h: 0.094, d: 0.234 },
+          { x: 0.991, y: 1.971, z: -0.841, w: 0.203, h: 0.120, d: 0.292 },
+          { x: -1.317, y: 1.901, z: -0.36, w: 0.104, h: 0.117, d: 0.328 },
+          { x: -1.301, y: 2.003, z: -0.383, w: 0.096, h: 0.108, d: 0.328 },
+          { x: 0.618, y: 2.127, z: -1.42, w: 0.114, h: 0.371, d: 0.117 },
+          { x: 1.147, y: 2.516, z: 0.409, w: 0.204, h: 0.198, d: 0.198, face: 'front' },
+          { x: 0.617, y: 2.284, z: -1.36, w: 0.134, h: 0.191, d: 0.190 },
+          { x: 0.008, y: 2.692, z: 1.171, w: 0.112, h: 0.245, d: 0.303, face: 'front' },
         ],
         sideRails: [
-          { x: -1.062, y: 2.102, z: 0.501, w: 0.440, h: 0.060, d: 1.573 },
-          { x: 0.963, y: 2.104, z: 0.599, w: 0.341, h: 0.055, d: 1.635 },
+          { x: -1.438, y: 2.102, z: 0.509, w: 0.440, h: 0.060, d: 1.573 },
+          { x: 1.31, y: 2.104, z: 0.599, w: 0.341, h: 0.055, d: 1.635 },
         ],
-        antenna: { x: -0.93, y: 2.58, z: -0.76 },
+        antenna: { x: -1.03, y: 2.681, z: -0.579 },
         decalSec: 6,
       },
-      gun: { rootZ: 1.514, axisY: 1.875, len: 4.19 },
-    }),
+      // (2026-10-25: the gun keeps its 1.93 world axis, toward the packet's 2.017, now in the turret, which sits 55 mm
+      // lower on its ring: at 1.875 the seated dome's side underside, 1.88, left the axis behind the trunnion in sight)
+      gun: { rootZ: 1.514, axisY: 1.93, len: 4.19 },
+    })),
   },
   m60a2: {
     // FIRST BUILD (r2): the triage 'easiest single win' — A1-family hull
@@ -7427,9 +7495,9 @@ export const PATTON_PROFILES = {
       hull: M60A2_HULL, fit: M60A2_FIT, sections: M60A2_SECTIONS, muzzle: 3.712,
     }),
   },
-  m60a1: { build: (P: PattonBuilderPort) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 }) },
+  m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60Steps(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 })) },
   // A3 TTS: the supplied A3 oracle resolves the correct variant package —
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
-  m60a3: { build: (P: PattonBuilderPort) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 }) },
+  m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60Steps(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 })) },
 } satisfies VehicleProfileRecord;

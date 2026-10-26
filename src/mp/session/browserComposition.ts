@@ -237,6 +237,8 @@ export interface BrowserWarmPorts {
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
+  /** (battle-spikes-253) Start linking the player panel's programs at the warm's start (no wait): the panel stage below. */
+  playerPanelPrograms?(view: BrowserWarmView, viewerId: string): void;
   compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
   openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
@@ -1454,6 +1456,11 @@ export function createBrowserComposition({
       }
     }).catch(() => { /* the guard is optional */ });
     try {
+      // (battle-spikes-253) the panel's mask programs link through the stages before it (a guest's link outlasted the
+      // mask wait when it began at the panel stage)
+      if (!active.spectator && battlePresentation.ownActor) {
+        try { warm.playerPanelPrograms?.(view, active.viewerId); } catch { /* the panel stage compiles them */ }
+      }
       if (!active.lit) {
         activation.setGarageLighting(false);
         await warm.atmosphere?.({ meta: { weatherSeed: active.welcome?.seed } });

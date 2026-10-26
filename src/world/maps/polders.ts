@@ -182,8 +182,12 @@ export default {
       // Narrow north/south field drain; unequal ends avoid a capsule outline.
       // The narrow drain needs a wider dry apron around its angular bends;
       // its wet contour stays fixed and the roads retain their own support.
+      // (252) its east side a metre wider at its narrowest station (0.20): the graded banks (230) climbed its 0.33 m
+      // waterline in half a metre there, 0.756 against the 75 % shore law (liquidMarshSurface); now 0.68. A wider
+      // waterline ramp (251's seaRamp 0.06) graded the oxbow lane's bridge foot past its causeways' 0.90
+      // (authoredChannels)
       { x: -204, z: -281, r: 102, level: 1.4, bankBand: 4,
-        radii: [0.20, 0.23, 0.30, 0.49, 1.00, 0.44, 0.26, 0.21,
+        radii: [0.21, 0.23, 0.30, 0.49, 1.00, 0.44, 0.26, 0.21,
           0.24, 0.26, 0.34, 0.48, 0.78, 0.42, 0.31, 0.24] },
       // Broad retention bay with a sheltered southwest inlet.
       { x: 117, z: -257, r: 70, level: -2.6,
@@ -256,9 +260,7 @@ export default {
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
   splat: { sourcedPalette: 'polders', // (ground lane, wave 248: the polders' own clay, not Verdant's black earth)
-    // (251) the waterline's ramp starts further out (was 0.12; its full water as it was): the graded banks (230) climbed
-    // a narrow inlet's 0.33 m in half a metre, 0.756 against the 75 % shore law (liquidMarshSurface); now 0.60
-    fieldPatch: 1.25, seaLake: true, seaFoam: 0.02, seaRamp: [0.06, 0.48], shoreDirt: true, iceDrift: 0.02,
+    fieldPatch: 1.25, seaLake: true, seaFoam: 0.02, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
     // (step 3, gauntlet wave 205: "turquoise kidney-shaped ponds", "thin neon-blue ditch lines") the polder's water dark
     // and still under a grey North Sea sky (was [0.30, 0.42, 0.43]), the water tone less saturated and darker, no foam
     // (the soil's clay is the ground lane's own palette row, wave 248: the stale step 3's soil tint and plough lift over

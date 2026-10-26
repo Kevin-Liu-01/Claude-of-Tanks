@@ -21,7 +21,7 @@ import {
 } from '../vehicles/vehicleFacetSearch.ts';
 import type { VehicleFacetSearchEntry } from '../vehicles/vehicleFacetSearch.ts';
 import { VEHICLE_ERA_ORDER, vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
-import { tankTier } from '../vehicles/tier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 
 export interface GarageFacetSpec {
   readonly id: string;
@@ -81,7 +81,7 @@ export function createGarageFacetIndex(specs: readonly GarageFacetSpec[], transl
       ...nationTerms, era, era ? vehicleEraLabelI18n(era, translate) : '',
       vehicleFacetSearchWords(facets, translate),
     ].filter(Boolean).join(' ').toLocaleLowerCase('en-US');
-    return Object.freeze({ id: spec.id, facets, era, nationTerms, tier: tankTier(spec.id), searchText });
+    return Object.freeze({ id: spec.id, facets, era, nationTerms, tier: displayTier(spec.id), searchText });
   });
   return Object.freeze({ entries: Object.freeze(entries) });
 }

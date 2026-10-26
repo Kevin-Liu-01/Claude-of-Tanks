@@ -54,12 +54,16 @@ const SYSTEM_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
 const ROLE_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner', loader: 'crewLoader', driver: 'crewDriver', radio: 'radio',
 });
-/** Callout geometry in px: the first leader, each deeper step, and the label box the separation pass keeps apart. */
-const CALLOUT_LEADER_PX = 56;
-const CALLOUT_STEP_PX = 22;
-const CALLOUT_MIN_PX = 14;
-const CALLOUT_WIDTH_PX = 150;
+/** Callout geometry in px: the plates stand in a row above the tank's silhouette and one under it, this far from it,
+ *  the stack gap (the --s2 step) apart, and this far from the stage's controls and its edge (the --s3 step). */
+const CALLOUT_ROW_GAP_PX = 24;
+const CALLOUT_STACK_GAP_PX = 8;
+const CALLOUT_GAP_PX = 12;
+const CALLOUT_EDGE_PX = 16;
 const CALLOUT_HEIGHT_PX = 28;
+/** The parts whose boxes trace the vehicle's silhouette for the callout rows (the largest, by their boxes' diagonals). */
+const SILHOUETTE_PARTS = 64;
+const byAnchorX = (a: { ax: number }, b: { ax: number }): number => a.ax - b.ax;
 
 export interface AnatomyVehicle {
   id: string;
@@ -89,43 +93,59 @@ export interface AnatomyHost {
 const STYLE = `
 .subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
 .subs[hidden]{display:none}
-.subs .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
-.subs .cot-c-seg{padding:2px;background:var(--hud-plate)}
-.subs .cot-c-seg__opt{height:24px;padding:0 10px;font-size:var(--fs-12)}
+/* one toggle look across the page (the flags, the list's row, these chips): a pressed one takes the accent ring and its
+   wash, over the plate here; a single choice (a segment, the layer dock, the camera rail) takes the grey fill */
+.subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate);box-shadow:var(--ring-2)}
+.subs .cot-c-chip[aria-pressed=true]{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);box-shadow:var(--ring-accent);color:var(--ink-1)}
+.subs .cot-c-seg{align-items:stretch;padding:2px;background:var(--hud-plate)}
+/* the segments fill their frame when a touch row stretches it to the chips' height */
+.subs .cot-c-seg__opt{height:auto;min-height:24px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-12))}
 #viewport .legend.anatomy-legend{gap:6px}
 #viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(160px,260px);align-items:center;gap:8px}
-#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+/* a stacked stage is a third of the window's height: the ramp keeps to the size of a chip row so it stays off the model */
+@media (width < 1100px){#viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(96px,140px)}}
+#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:8px;box-shadow:var(--ring-1)}
 #viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:4px}
-#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);
   white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
-#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
+/* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
+#viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
+#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
+/* a short stage sets the legend's keys in one row under the ramp, so the plate stays low, every key shows and the keys
+   never split across the ramp's line (ERA beside the ramp left Spaced alone under it at 844x390) */
+@media (height < 520px){#viewport .legend.anatomy-legend{flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:var(--s3)}
+  #viewport .anatomy-legend .anatomy-ramp{flex:1 0 100%}}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
 .co,.co-crew{position:absolute;left:0;top:0;padding:0;border:0;pointer-events:auto;will-change:transform}
+/* a plate in the row above the tank stands with its foot's middle on its point, one in the row under it with its top's;
+   its leader runs from there to the pin on its part (--co-len at --co-ang, the pin --co-dx/--co-dy off) */
 .co{display:flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e1);
-  color:var(--ink-1);font:600 var(--fs-12)/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
+  color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display);white-space:nowrap;translate:-50% -100%}
 .co svg{width:15px;height:15px;color:var(--co-tone)}
-.co::before{content:'';position:absolute;left:50%;top:100%;width:1px;height:var(--co-len);background:var(--ink-3)}
-.co::after{content:'';position:absolute;left:50%;top:calc(100% + var(--co-len));width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
-  background:var(--ink-1);box-shadow:var(--gallery-dot-ring)}
-.co.co--down{translate:-50% var(--co-len)}
-.co.co--down::before{top:auto;bottom:100%}
-.co.co--down::after{top:auto;bottom:calc(100% + var(--co-len));margin:0 0 -5px -5px}
+.co::before{content:'';position:absolute;left:50%;top:100%;width:var(--co-len);height:1px;background:var(--ink-3);
+  transform-origin:0 50%;rotate:var(--co-ang)}
+.co::after{content:'';position:absolute;left:50%;top:100%;width:10px;height:10px;border-radius:50%;
+  translate:calc(var(--co-dx) - 5px) calc(var(--co-dy) - 5px);background:var(--ink-1);box-shadow:var(--gallery-dot-ring)}
+.co.co--b{translate:-50% 0}
+.co.co--b::before,.co.co--b::after{top:0}
 .co[aria-pressed="true"]{background:var(--gallery-callout-on);box-shadow:var(--ring-accent)}
 .co[aria-pressed="true"]::after{background:var(--accent)}
 .co-crew{display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--co-tone);border-radius:50%;
-  background:var(--hud-plate);color:var(--co-tone);font:500 var(--fs-11)/1 var(--font-data)}
+  background:var(--hud-plate);color:var(--co-tone);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .co-crew[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-hi);color:var(--ink-on-accent)}
+/* a seat's Chinese mark (长 炮 装 驾 通) fills a full em: its ring opens a step so the glyph clears it */
+:lang(zh-CN) .co-crew{width:30px;height:30px;margin:-15px 0 0 -15px}
 .co.is-off,.co-crew.is-off{display:none}
-@media (pointer:coarse){.subs .cot-c-chip{height:40px}.co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
+@media (pointer:coarse){.subs .cot-c-chip{height:40px}:root .co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
 @media (width < 768px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}
   #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);width:100%}
-  #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}}
+}
 `;
 
 // Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
@@ -268,9 +288,22 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   let hoverPending: { x: number; y: number } | null = null;
   let visiblePickables: THREE.Object3D[] = [];
   const hidden = new Map<THREE.Object3D, { mask: number; visible: boolean }>();
-  // `length` is the callout's leader in px as last written (0: not yet), so a frame only writes the ones that move
-  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number }> = [];
-  const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
+  // `leader` is the callout's leader as last written ('': not yet), so a frame only writes the ones that move
+  // `width` is the plate's measured width (0 until it first shows), read once, never in a frame's layout
+  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; leader: string; width: number }> = [];
+  // the stage's toolbar foot (the layer chips) and the controls standing in it (the camera rail, the legend, the scale
+  // inset, the turntable and photo buttons), read again only when the stage changes size or the legend is redrawn
+  let toolbarFoot = 0, footFor = '', stageFoot = Infinity;
+  const obstacles: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+  // the vehicle's silhouette points in its own frame (ensureScene): the corners of its largest parts' boxes, whose places
+  // on screen set where the two label rows stand (one box round the whole vehicle, seen from above at three quarters,
+  // stood the rows a third of the stage off the tank)
+  const heroPoints = new Float32Array(SILHOUETTE_PARTS * 24);
+  let heroPointCount = 0;
+  const corner = new THREE.Vector3();
+  const placed: Array<{ item: typeof badgeItems[number]; ax: number; ay: number; row: number; x: number; y: number }> = [];
+  // the row above the silhouette and the row under it: the plates' middle line, the run they may use, the width taken
+  const rows = [{ y: 0, x0: 0, x1: 0, used: 0 }, { y: 0, x0: 0, x1: 0, used: 0 }];
 
   function hideExterior(root: THREE.Object3D): void {
     root.traverse((object) => {
@@ -300,6 +333,83 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
 
   function current(): ViewToggles { return toggles[mode || 'armor']; }
 
+  /** The vehicle's silhouette points in its own frame: the box corners of its largest exterior parts (the visible state
+   *  does not matter: the anatomy hides them), once per vehicle state. */
+  function measureHeroPoints(root: THREE.Object3D): void {
+    root.updateMatrixWorld(true);
+    const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const part = new THREE.Box3(), toPart = new THREE.Matrix4(), size = new THREE.Vector3();
+    const parts: Array<{ box: THREE.Box3; reach: number }> = [];
+    root.traverse((object) => {
+      if (!(object instanceof THREE.Mesh) || !object.geometry || object.userData.shadowOnly) return;
+      if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
+      if (object instanceof THREE.InstancedMesh) {
+        if (!object.count) return;
+        object.computeBoundingBox();
+        if (!object.boundingBox) return;
+        part.copy(object.boundingBox);
+      } else {
+        if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+        if (!object.geometry.boundingBox) return;
+        part.copy(object.geometry.boundingBox);
+      }
+      if (part.isEmpty()) return;
+      part.applyMatrix4(toPart.multiplyMatrices(toRoot, object.matrixWorld));
+      parts.push({ box: part.clone(), reach: part.getSize(size).length() });
+    });
+    parts.sort((a, b) => b.reach - a.reach);
+    heroPointCount = 0;
+    for (const { box } of parts.slice(0, SILHOUETTE_PARTS)) {
+      for (let i = 0; i < 8; i++, heroPointCount++) {
+        heroPoints[heroPointCount * 3] = i & 1 ? box.max.x : box.min.x;
+        heroPoints[heroPointCount * 3 + 1] = i & 2 ? box.max.y : box.min.y;
+        heroPoints[heroPointCount * 3 + 2] = i & 4 ? box.max.z : box.min.z;
+      }
+    }
+  }
+
+  /** Whether a row's run still holds a plate this wide (its stack gap included). */
+  const rowFits = (k: number, take: number): boolean => rows[k].used + take <= rows[k].x1 - rows[k].x0 + CALLOUT_STACK_GAP_PX;
+
+  /** One row of callouts, in its parts' order left to right: each plate over (or under) its part where it can be, the
+   *  stack gap apart, within the row's run; a run that reaches past the row's end closes up from the end. */
+  function packRow(index: number): void {
+    const row = rows[index];
+    let reach = row.x0 - CALLOUT_STACK_GAP_PX;
+    for (const entry of placed) {
+      if (entry.row !== index) continue;
+      const half = entry.item.width / 2;
+      entry.x = Math.max(Math.min(entry.ax, row.x1 - half), row.x0 + half, reach + CALLOUT_STACK_GAP_PX + half);
+      entry.y = row.y;
+      reach = entry.x + half;
+    }
+    for (let i = placed.length - 1, limit = row.x1; i >= 0; i--) {
+      const entry = placed[i];
+      if (entry.row !== index) continue;
+      const half = entry.item.width / 2;
+      if (entry.x + half <= limit) break;
+      entry.x = limit - half;
+      limit = entry.x - half - CALLOUT_STACK_GAP_PX;
+    }
+  }
+
+  /** A plate's place on screen and its leader to the pin on its part (written only when they move). */
+  function writeCallout(entry: typeof placed[number]): void {
+    const { item, ax, ay, x, y } = entry;
+    const below = entry.row === 1;
+    const footY = below ? y - CALLOUT_HEIGHT_PX / 2 : y + CALLOUT_HEIGHT_PX / 2;
+    item.element.style.transform = `translate(${x.toFixed(1)}px, ${footY.toFixed(1)}px)`;
+    item.element.classList.toggle('co--b', below);
+    const dx = Math.round(ax - x), dy = Math.round(ay - footY);
+    const leader = `${dx},${dy}`;
+    if (leader === item.leader) return;
+    item.leader = leader;
+    item.element.style.setProperty('--co-len', `${Math.round(Math.hypot(dx, dy))}px`);
+    item.element.style.setProperty('--co-ang', `${Math.atan2(dy, dx).toFixed(3)}rad`);
+    item.element.style.setProperty('--co-dx', `${dx}px`);
+    item.element.style.setProperty('--co-dy', `${dy}px`);
+  }
+
   /** The vehicle's anatomy scene, built once per vehicle state (its key) and kept off screen until a layer shows it. */
   function ensureScene(nextVehicle: AnatomyVehicle): void {
     if (anatomy && vehicle?.key === nextVehicle.key) return;
@@ -312,6 +422,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     anatomy.frames.root.matrixAutoUpdate = false;
     anatomy.frames.root.visible = false;
     host.scene.add(anatomy.frames.root);
+    measureHeroPoints(nextVehicle.root);
     buildBadges();
     selected = findPick(keep);
   }
@@ -417,6 +528,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
 
   function renderLegend(): void {
     if (!mode) return;
+    footFor = '';
     const view = current();
     host.legend.classList.add('anatomy-legend');
     const entries: HTMLElement[] = [];
@@ -439,14 +551,15 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       barElement.style.background = `linear-gradient(90deg, ${armorRampGradient()})`;
       const ticks = document.createElement('div');
       ticks.className = 'anatomy-ramp-ticks';
-      // the last tick sits right-aligned at the bar's end; a tick within 9 % of it would print into it (900 under 2,000+)
+      // the major ticks alone (the UI gauntlet: 650, 900 and 1,200+ printed into each other on a 260 px bar); the last
+      // sits right-aligned at the bar's end, and a tick within 12 % of it would print into it
       const lastAt = armorRampPosition(ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1]);
       for (const mm of ARMOR_RAMP_TICKS) {
-        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.09) continue;
+        if (![0, 100, 300, 650, 1200].includes(mm)) continue;
+        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.12) continue;
         const tick = document.createElement('span');
         tick.style.left = `${(armorRampPosition(mm) * 100).toFixed(1)}%`;
         tick.textContent = mm >= 1200 ? `${formatNumber(mm)}+` : formatNumber(mm);
-        if (![0, 100, 300, 650, 1200].includes(mm)) tick.dataset.minor = '';
         ticks.append(tick);
       }
       scale.append(barElement, ticks);
@@ -506,17 +619,21 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         // A second crew member in one role (assistant loader, second weapon operator) reads L2, G2.
         const count = (roleCount.get(pick.station.role) || 0) + 1;
         roleCount.set(pick.station.role, count);
-        element.textContent = `${CREW_ROLE_LETTERS[pick.station.role]}${count > 1 ? count : ''}`;
+        // the seat's mark in the page's language (zh: 长 炮 装 驾 通), the letter where a catalog has none
+        const mark = t(`gallery.crew.mark.${pick.station.role}`);
+        element.textContent = `${mark.startsWith('gallery.') ? CREW_ROLE_LETTERS[pick.station.role] : mark}${count > 1 ? count : ''}`;
         element.setAttribute('aria-label', crewName(pick.station.crew));
         element.title = crewName(pick.station.crew);
       }
       badges.append(element);
-      badgeItems.push({ element, anchor, kind: pick.kind, length: 0 });
+      badgeItems.push({ element, anchor, kind: pick.kind, leader: '', width: 0 });
     }
   }
 
   function setSelected(pick: AnatomyPick | null, announce = true): void {
     selected = pick;
+    // the part's readout stands in the stage's top left: the callout columns measure the controls again
+    footFor = '';
     anatomy?.select(pick);
     const key = pickKey(pick);
     for (const item of badgeItems) item.element.setAttribute('aria-pressed', String(item.element.dataset.anatomyPart === key));
@@ -657,8 +774,21 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       }
       if (badges.hidden) return;
       const width = host.renderer.domElement.clientWidth, height = host.renderer.domElement.clientHeight;
+      if (footFor !== `${width}x${height}`) {
+        footFor = `${width}x${height}`;
+        toolbarFoot = bar.offsetHeight ? bar.offsetTop + bar.offsetHeight + CALLOUT_GAP_PX : 0;
+        const canvas = host.renderer.domElement.getBoundingClientRect();
+        obstacles.length = 0;
+        for (const control of host.viewport.querySelectorAll<HTMLElement>('.views, .tools, .inset, .readout, .legend')) {
+          if (!control.offsetHeight) continue;
+          const box = control.getBoundingClientRect();
+          obstacles.push({ left: box.left - canvas.left - CALLOUT_GAP_PX, top: box.top - canvas.top - CALLOUT_GAP_PX,
+            right: box.right - canvas.left + CALLOUT_GAP_PX, bottom: box.bottom - canvas.top + CALLOUT_GAP_PX });
+        }
+        stageFoot = height - CALLOUT_GAP_PX / 2;
+        for (const item of badgeItems) item.width = 0;
+      }
       placed.length = 0;
-      let callout = 0;
       for (const item of badgeItems) {
         if (item.element.classList.contains('is-off')) continue;
         scratch.copy(item.anchor.local).applyMatrix4(item.anchor.object.matrixWorld).project(host.camera);
@@ -666,29 +796,61 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         item.element.style.visibility = visible ? '' : 'hidden';
         if (!visible) continue;
         const x = (scratch.x + 1) / 2 * width, y = (1 - scratch.y) / 2 * height;
-        item.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-        if (item.kind !== 'module') continue;
-        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep
-        const up = callout % 2 === 0;
-        placed.push({ item, x, y, up, length: CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX });
-        callout++;
+        if (item.kind !== 'module') { item.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`; continue; }
+        if (!item.width) item.width = item.element.offsetWidth;
+        placed.push({ item, ax: x, ay: y, row: -1, x: 0, y: 0 });
       }
-      // and its greedy separation, top to bottom: a label that would overlap one placed above it moves down (a label above
-      // its anchor shortens its leader, one below lengthens it)
-      const labelY = (entry: typeof placed[number]): number => entry.y + (entry.up ? -1 : 1) * (entry.length + CALLOUT_HEIGHT_PX / 2);
-      placed.sort((a, b) => labelY(a) - labelY(b));
-      for (let i = 0; i < placed.length; i++) {
-        for (let j = 0; j < i; j++) {
-          const dy = labelY(placed[i]) - labelY(placed[j]);
-          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= CALLOUT_HEIGHT_PX + 6) continue;
-          const push = CALLOUT_HEIGHT_PX + 6 - dy;
-          placed[i].length = placed[i].up ? Math.max(CALLOUT_MIN_PX, placed[i].length - push) : placed[i].length + push;
+      if (!placed.length) return;
+      // the callouts stand beside the tank, never on it (the g10 critic: plates stacked over the turret hid their parts and
+      // each other's leaders): a row of plates above the silhouette and one under it, the parts taken left to right and
+      // dealt to the two rows in turn, so each plate keeps over or under its own part and no two leaders cross
+      let top = Infinity, bottom = -Infinity;
+      for (let i = 0; i < heroPointCount; i++) {
+        corner.fromArray(heroPoints, i * 3).applyMatrix4(root.matrixWorld).project(host.camera);
+        const sy = (1 - corner.y) / 2 * height;
+        top = Math.min(top, sy);
+        bottom = Math.max(bottom, sy);
+      }
+      if (!(bottom > top)) for (const entry of placed) { top = Math.min(top, entry.ay); bottom = Math.max(bottom, entry.ay); }
+      const half = CALLOUT_HEIGHT_PX / 2;
+      for (let k = 0; k < 2; k++) {
+        // a row stands its gap off the silhouette, held between the layer chips and the stage's foot (a short stage lays
+        // it over the silhouette's edge rather than drop it) and off a control across the band's middle third (the
+        // turntable buttons: the row under the tank stands above them); its run is the stage's width less the controls
+        // standing at the band's ends
+        const row = rows[k];
+        row.y = k ? Math.min(bottom + CALLOUT_ROW_GAP_PX + half, stageFoot - half)
+          : Math.max(top - CALLOUT_ROW_GAP_PX - half, toolbarFoot + half);
+        for (const box of obstacles) {
+          const middle = (box.left + box.right) / 2;
+          if (middle < width / 3 || middle > width * 2 / 3 || box.bottom <= row.y - half || box.top >= row.y + half) continue;
+          row.y = k ? box.top - half : box.bottom + half;
         }
-        const { item, up, length } = placed[i];
-        const rounded = Math.round(length);
-        if (rounded !== item.length) { item.length = rounded; item.element.style.setProperty('--co-len', `${rounded}px`); }
-        item.element.classList.toggle('co--down', !up);
+        row.x0 = CALLOUT_EDGE_PX;
+        row.x1 = width - CALLOUT_EDGE_PX;
+        row.used = 0;
+        for (const box of obstacles) {
+          if (box.bottom <= row.y - half || box.top >= row.y + half) continue;
+          const middle = (box.left + box.right) / 2;
+          if (middle < width / 3) row.x0 = Math.max(row.x0, box.right);
+          else if (middle > width * 2 / 3) row.x1 = Math.min(row.x1, box.left);
+        }
+        // a row pushed off the stage, or the lower one pushed onto the upper, takes no plates
+        const open = row.y - half >= toolbarFoot && row.y + half <= stageFoot && (!k || row.y - rows[0].y >= CALLOUT_HEIGHT_PX + CALLOUT_STACK_GAP_PX);
+        if (!open) row.x1 = row.x0 - CALLOUT_STACK_GAP_PX;
       }
+      placed.sort(byAnchorX);
+      for (let i = 0; i < placed.length; i++) {
+        // in turn above and under; a row that is closed or full passes the plate to the other one, and one that fits
+        // neither is left out this frame (a small stage shows fewer callouts)
+        const entry = placed[i], take = entry.item.width + CALLOUT_STACK_GAP_PX, first = i % 2;
+        entry.row = rowFits(first, take) ? first : rowFits(1 - first, take) ? 1 - first : -1;
+        if (entry.row >= 0) rows[entry.row].used += take;
+        else entry.item.element.style.visibility = 'hidden';
+      }
+      packRow(0);
+      packRow(1);
+      for (const entry of placed) if (entry.row >= 0) writeCallout(entry);
     },
     pickAt(clientX, clientY) {
       if (!mode) return false;

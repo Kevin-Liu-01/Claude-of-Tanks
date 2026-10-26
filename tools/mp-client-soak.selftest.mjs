@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { runClientSoak } from './mp-client-soak.mjs';
+import { TICK_HZ } from '../src/mp/wire/constants.ts';
+import { KEYFRAME_INTERVAL_TICKS } from '../server/match/publisher.ts';
 
 // Four headless clients against the real MatchActor for 20 s of virtual time at the charter's
 // link (100 ms RTT ± 30 ms, 3 % loss on replaceable frames): every client gate on the real
@@ -9,7 +11,8 @@ for (const row of report.rows) {
   assert.deepEqual(row.failures, [], `${row.player}: ${row.failures.join('; ')}`);
   assert.equal(row.phase, 'live');
   assert.ok(row.snapshots > 20 * row.snapshotHz * 0.75, `${row.player}: ${row.snapshots} snapshots assembled in 20 s at ${row.snapshotHz} Hz`);
-  assert.ok(row.keyframes >= 8, `${row.player}: keyframes every 2 s (${row.keyframes})`);
+  // the publisher's periodic keyframe on each viewer's slot (KEYFRAME_INTERVAL_TICKS, six seconds since mp-scale-251)
+  assert.ok(row.keyframes >= Math.floor((20 * TICK_HZ) / KEYFRAME_INTERVAL_TICKS), `${row.player}: a keyframe every cycle (${row.keyframes})`);
   assert.equal(row.hardSnaps, 0);
   assert.ok(row.maxRemoteStepM <= 0.5 && row.maxOwnStepM <= 0.5, `${row.player}: pose steps ${row.maxRemoteStepM} / ${row.maxOwnStepM}`);
   assert.ok(row.maxCorrectionStepM <= 0.25, `${row.player}: release ${row.maxCorrectionStepM}`);

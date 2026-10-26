@@ -96,7 +96,7 @@ const CSS = `
   width:min(288px,var(--hud-side-width,288px));max-height:calc(var(--hud-left-height,60vh) - var(--hud-toast-height,0px) - 8px);
   overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:none;flex-direction:column;gap:6px;
   padding:9px 10px 10px;color:#e8f0f5;background:linear-gradient(180deg,rgba(10,15,19,.95),rgba(7,11,14,.93));
-  border:1px solid rgba(176,194,208,.2);border-top:2px solid ${AMBER};box-shadow:0 8px 22px rgba(0,0,0,.4);
+  border:1px solid rgba(176,194,208,.2);box-shadow:0 8px 22px rgba(0,0,0,.4);
   font:600 11px ${PROVING_DISPLAY};pointer-events:auto;}
 .cot-range-card.show{display:flex}
 .cot-range-card .rc-head{display:flex;align-items:center;gap:8px}
@@ -107,11 +107,11 @@ const CSS = `
 .cot-range-card .rc-rng[hidden]{display:none}
 .cot-range-card .rc-rng svg{width:14px;height:14px;color:#7f909c}
 .cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:-3px}
-.cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
-  border-left:3px solid var(--rc-tone,#9aa7b0)}
+.cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;
+  background:color-mix(in srgb,var(--rc-tone,#9aa7b0) 10%,transparent)}
 .cot-range-card .rc-shot.on{display:flex}
 /* a last shot some seconds old steps back: it is history, not what the gun is laid on now */
-.cot-range-card .rc-shot.stale{opacity:.5;transition:opacity .4s}
+.cot-range-card .rc-shot.stale{opacity:.5;transition:opacity var(--dur-screen)}
 .cot-range-card .rc-verdict{display:flex;align-items:baseline;gap:8px}
 .cot-range-card .rc-verdict b{font:700 19px ${PROVING_DISPLAY};letter-spacing:.04em;text-transform:uppercase;color:var(--rc-tone,#e8f0f5)}
 .cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;
@@ -131,8 +131,8 @@ const CSS = `
 .cot-range-card .rc-tgt:empty{display:none}
 .cot-range-card .rc-lanes{display:flex;flex-direction:column;gap:1px}
 .cot-range-card .rc-lane{display:grid;grid-template-columns:44px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
-  padding:3px 5px;border-left:2px solid transparent}
-.cot-range-card .rc-lane.laid{background:rgba(240,160,48,.13);border-left-color:${AMBER}}
+  padding:3px 5px}
+.cot-range-card .rc-lane.laid{background:rgba(240,160,48,.13)}
 .cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;text-align:right;white-space:nowrap}
 .cot-range-card .rc-r small{font-size:11px;color:#7f909c;margin-left:1px}
 .cot-range-card .rc-a svg{display:block;width:20px;height:20px}
@@ -158,9 +158,10 @@ const CSS = `
 .cot-range-card .rc-sw{position:relative;flex:0 0 auto;width:22px;height:12px;border:1px solid rgba(176,194,208,.55);
   border-radius:6px;background:rgba(0,0,0,.25)}
 .cot-range-card .rc-sw::after{content:'';position:absolute;top:2px;left:2px;width:6px;height:6px;border-radius:50%;background:#9fb0bb;
-  transition:left .15s,background .15s}
+  transition:transform var(--dur-fast)}
 .cot-range-card [aria-checked='true'] .rc-sw{border-color:${AMBER};background:rgba(240,160,48,.3)}
-.cot-range-card [aria-checked='true'] .rc-sw::after{left:12px;background:#ffd27a}
+.cot-range-card [aria-checked='true'] .rc-sw::after{transform:translateX(10px);background:#ffd27a}
+@media (prefers-reduced-motion:reduce){.cot-range-card .rc-sw::after,.cot-range-card .rc-shot.stale{transition:none}}
 .cot-range-card .rc-foot button{min-height:32px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;
   color:#e8f0f5;background:rgba(126,148,164,.12);border:1px solid rgba(176,194,208,.26);
   font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
@@ -193,8 +194,8 @@ body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px
    round controls under the card */
 body.cot-touch-layout .cot-range-card .rc-shot{position:fixed;left:auto;top:calc(env(safe-area-inset-top,0px) + 58px);
   right:calc(env(safe-area-inset-right,0px) + 12px);width:max-content;max-width:min(300px,36vw);flex-wrap:wrap;
-  flex-direction:row;align-items:center;gap:8px;padding:6px 9px;background:rgba(7,11,14,.86);border:1px solid rgba(176,194,208,.2);
-  border-left:3px solid var(--rc-tone,#9aa7b0)}
+  flex-direction:row;align-items:center;gap:8px;padding:6px 9px;border:1px solid rgba(176,194,208,.2);
+  background:linear-gradient(color-mix(in srgb,var(--rc-tone,#9aa7b0) 12%,transparent),color-mix(in srgb,var(--rc-tone,#9aa7b0) 12%,transparent)),rgba(7,11,14,.86)}
 body.cot-touch-layout .cot-range-card .rc-shot .rc-gauge,body.cot-touch-layout .cot-range-card .rc-shot .rc-tgt,
 body.cot-touch-layout .cot-range-card .rc-shot .rc-at,body.cot-touch-layout .cot-range-card .rc-shot .rc-pen small{display:none}
 body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:15px}

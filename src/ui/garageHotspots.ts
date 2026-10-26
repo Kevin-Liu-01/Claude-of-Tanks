@@ -10,7 +10,7 @@
 // running gear) or beside it that clears the hull's, the turret's and the gun's projected boxes, the panels standing in
 // the stage and the other plates. A plate keeps last frame's place while that stays clear, so an orbit moves it smoothly;
 // a frame projects 28 points and writes twelve transforms.
-import { Box3, Matrix4, Vector3, type Mesh, type Object3D, type PerspectiveCamera } from 'three';
+import { Box3, Matrix4, Vector3, type LOD, type Mesh, type Object3D, type PerspectiveCamera } from 'three';
 import { uiIconSVG } from './uiIcons.ts';
 
 export type HotspotId = 'gun' | 'turret' | 'engine' | 'tracks';
@@ -43,6 +43,7 @@ const GAP = 18;
 const ROW = PLATE_H + 8;
 const SLIDE = 36;
 const TRIES = 16;
+const AVOID_PAD = 10;
 /** The ways a plate searches from its anchor, in order: upward, downward, or sideways (away from the hull first). */
 type Side = 'above' | 'below' | 'beside';
 const SIDES: Readonly<Record<HotspotId, readonly Side[]>> = {
@@ -53,21 +54,40 @@ const SIDES: Readonly<Record<HotspotId, readonly Side[]>> = {
 const _box = new Box3();
 const _geomBox = new Box3();
 const _geomPart = new Box3();
+const _gear = new Box3();
+const _turretBody = new Box3();
 const _inverse = new Matrix4();
 const _toRoot = new Matrix4();
 const _point = new Vector3();
 const _camera = new Vector3();
 const _placed = new Float64Array(ORDER.length * 4);
+// each placed plate's leader, anchor to numeral (ax, ay, bx, by): a later plate keeps off it, and its own leader off the plates
+const _leads = new Float64Array(ORDER.length * 4);
+const LEAD_SAMPLES = 12;
+
+/** Whether the segment (ax, ay)-(bx, by) passes through the box x0..x1, y0..y1 (sampled: the leaders are short). */
+function segmentHits(ax: number, ay: number, bx: number, by: number, x0: number, y0: number, x1: number, y1: number): boolean {
+  for (let s = 1; s < LEAD_SAMPLES; s++) {
+    const f = s / LEAD_SAMPLES, x = ax + (bx - ax) * f, y = ay + (by - ay) * f;
+    if (x > x0 && x < x1 && y > y0 && y < y1) return true;
+  }
+  return false;
+}
 const _parts = new Float64Array(3 * 4);
 const _try = new Float64Array(3);
 
 /** `frame`'s bounds in its own space (each mesh's geometry box carried into it), leaving out the `skip` subtree. */
-function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null): Box3 {
+/**
+ * A frame's mesh bounds in its own space. `bodyOnly` leaves out the LOD detail groups: their merged dark-parts mesh
+ * carries the whip antennas, metres above the roof, which lifted the turret's and the engine's anchors into the air
+ * above the tank (the gauntlet 10-25).
+ */
+function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null, bodyOnly = false): Box3 {
   out.makeEmpty();
   frame.updateWorldMatrix(true, true);
   _inverse.copy(frame.matrixWorld).invert();
   const visit = (node: Object3D): void => {
-    if (node === skip) return;
+    if (node === skip || (bodyOnly && (node as LOD).isLOD)) return;
     const mesh = node as Mesh;
     if (mesh.isMesh && mesh.visible && mesh.geometry) {
       if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
@@ -82,11 +102,36 @@ function localBounds(frame: Object3D, out: Box3, skip: Object3D | null = null): 
   return out;
 }
 
+/**
+ * A part's body in `frame`'s space: the meshes of the first name (or name prefix, with `prefix`) that the frame holds,
+ * else every mesh outside the detail groups, else every mesh.
+ */
+function bodyBounds(frame: Object3D, out: Box3, names: readonly string[], skip: Object3D | null, prefix = false): Box3 {
+  for (const name of names) {
+    out.makeEmpty();
+    frame.updateWorldMatrix(true, true);
+    _inverse.copy(frame.matrixWorld).invert();
+    frame.traverse((node) => {
+      const mesh = node as Mesh;
+      if (!mesh.isMesh || !mesh.geometry || !(prefix ? mesh.name.startsWith(name) : mesh.name === name)) return;
+      for (let up: Object3D | null = node; up && up !== frame; up = up.parent) if (up === skip) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      if (!mesh.geometry.boundingBox) return;
+      _toRoot.multiplyMatrices(_inverse, mesh.matrixWorld);
+      out.union(_geomBox.copy(mesh.geometry.boundingBox).applyMatrix4(_toRoot));
+    });
+    if (!out.isEmpty()) return out;
+  }
+  if (prefix) return out;
+  if (!localBounds(frame, out, skip, true).isEmpty()) return out;
+  return localBounds(frame, out, skip);
+}
+
 interface Spot {
   readonly el: HTMLElement; readonly dot: HTMLElement; readonly lead: HTMLElement;
-  readonly value: HTMLElement; readonly more: HTMLElement;
-  /** The plate's measured width; whether it reads leftward from its numeral; last frame's place (-1: none). */
-  width: number; left: boolean; place: number;
+  readonly value: HTMLElement; readonly more: HTMLElement; readonly num: HTMLElement;
+  /** The plate's measured width; whether it reads leftward from its numeral; last frame's place (-1: none); its numeral. */
+  width: number; left: boolean; place: number; shownAs: number;
 }
 
 /** `room` says where plates may stand (read again when the stage resizes or the values change); without it, anywhere.
@@ -107,7 +152,7 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     el.dataset.hotspot = id;
     el.innerHTML = `<span class="n">${index + 1}</span><span class="v">${uiIconSVG(ICONS[id], 16)}<b></b><small class="num"></small></span>`;
     return { el, dot, lead, value: el.querySelector('b') as HTMLElement, more: el.querySelector('small') as HTMLElement,
-      width: PLATE_PX, left: false, place: -1 };
+      num: el.querySelector('.n') as HTMLElement, width: PLATE_PX, left: false, place: -1, shownAs: index + 1 };
   });
   // the hairlines and dots under every plate
   for (const spot of spots) layer.append(spot.lead, spot.dot);
@@ -133,30 +178,31 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
 
   function measure(model: Object3D): void {
     measured = model;
-    const box = localBounds(model, _box);
-    if (box.isEmpty()) { measured = null; return; }
-    for (const spot of spots) spot.place = -1;
-    const { min, max } = box;
-    const h = max.y - min.y, l = max.z - min.z;
-    const cz = (min.z + max.z) / 2;
-    sideX = (max.x - min.x) / 2;
-    for (const id of ORDER) anchors[id].node = model;
-    anchors.gun.local.set(0, min.y + h * 0.74, max.z - l * 0.2);
-    anchors.turret.local.set(0, max.y - h * 0.06, cz - l * 0.06);
-    anchors.engine.local.set(0, min.y + h * 0.6, min.z + l * 0.16);
-    anchors.tracks.local.set(sideX, min.y + h * 0.16, cz + l * 0.12);
-    // the gun's on its barrel a third back from the muzzle (the direction's 1), in its own frame (the barrel runs +Z)
+    const turret = model.getObjectByName('rig_turret');
     const gun = model.getObjectByName('rig_gun');
+    // the bodies the anchors stand on: each part's shadow proxy (its armour body without the antennas, weapon stations
+    // and fittings that stand metres above the roof), else its body mesh, else every mesh outside the detail groups
+    const hull = bodyBounds(model, _box, ['procShadow_hull', 'hull'], turret ?? null);
+    if (hull.isEmpty()) { measured = null; return; }
+    const gear = bodyBounds(model, _gear, ['gearTrackBand', 'gearRoadWheel'], turret ?? null, true);
+    if (gear.isEmpty()) gear.copy(hull);
+    for (const spot of spots) spot.place = -1;
+    const h = hull.max.y - hull.min.y, l = hull.max.z - hull.min.z;
+    sideX = Math.max(gear.max.x, -gear.min.x);
+    for (const id of ORDER) anchors[id].node = model;
+    anchors.gun.local.set(0, hull.max.y, hull.max.z - l * 0.2);
+    anchors.turret.local.set(0, hull.max.y, (hull.min.z + hull.max.z) / 2);
+    anchors.engine.local.set(0, hull.min.y + h * 0.9, hull.min.z + l * 0.16);
+    anchors.tracks.local.set(sideX, gear.min.y + (gear.max.y - gear.min.y) * 0.35, (gear.min.z + gear.max.z) / 2 + l * 0.12);
+    // the gun's on its barrel a third back from the muzzle (the direction's 1), in its own frame (the barrel runs +Z)
     const gunBox = gun ? localBounds(gun, _geomPart) : null;
     if (gun && gunBox && !gunBox.isEmpty()) {
       anchors.gun.node = gun;
       anchors.gun.local.set((gunBox.min.x + gunBox.max.x) / 2, (gunBox.min.y + gunBox.max.y) / 2,
         gunBox.max.z - (gunBox.max.z - gunBox.min.z) * 0.33);
     }
-    // the turret's on its body behind the trunnion: a little over half its height, since a roof weapon station or a
-    // sight mast stands well above the roof
-    const turret = model.getObjectByName('rig_turret');
-    const turretBox = turret ? localBounds(turret, _geomPart) : null;
+    // the turret's on its body behind the trunnion, a little over half its height
+    const turretBox = turret ? bodyBounds(turret, _turretBody, ['procShadow_turret', 'turret'], gun && gun !== turret ? gun : null) : null;
     if (turret && turretBox && !turretBox.isEmpty()) {
       anchors.turret.node = turret;
       anchors.turret.local.set((turretBox.min.x + turretBox.max.x) / 2, turretBox.min.y + (turretBox.max.y - turretBox.min.y) * 0.55,
@@ -164,9 +210,9 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     }
     // the boxes the plates keep off: one box round a whole tank would stand far wider than its silhouette
     parts[0].node = model;
-    localBounds(model, parts[0].box, turret ?? null);
+    parts[0].box.copy(hull).union(gear);
     parts[1].node = turret ?? null;
-    if (turret) localBounds(turret, parts[1].box, gun && gun !== turret ? gun : null);
+    if (turretBox) parts[1].box.copy(turretBox);
     parts[2].node = gun ?? null;
     if (gun) localBounds(gun, parts[2].box);
   }
@@ -218,7 +264,8 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     for (let at = 0; at < _parts.length; at += 4) {
       if (x1 > _parts[at] && x0 < _parts[at + 2] && y1 > _parts[at + 1] && y0 < _parts[at + 3]) return false;
     }
-    for (const r of avoid) if (x1 > r.x && x0 < r.x + r.w && y1 > r.y && y0 < r.y + r.h) return false;
+    // the name, its meta row and the band keep a gutter round them (a plate 8 px over the name read as crowding it)
+    for (const r of avoid) if (x1 > r.x - AVOID_PAD && x0 < r.x + r.w + AVOID_PAD && y1 > r.y - AVOID_PAD && y0 < r.y + r.h + AVOID_PAD) return false;
     for (let i = 0; i < count; i++) {
       const at = i * 4;
       if (x1 + 8 > _placed[at] && x0 - 8 < _placed[at + 2] && y1 + 4 > _placed[at + 1] && y0 - 4 < _placed[at + 3]) return false;
@@ -239,6 +286,13 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
     else return false;
     const x0 = left ? bx - width + BADGE : bx - BADGE;
     if (!clear(x0, by - PLATE_H / 2, x0 + width, by + PLATE_H / 2, count)) return false;
+    // no leader crosses another callout's plate: this plate keeps off the leaders placed before it, and its leader off
+    // their plates (the gauntlet 10-25: callout 3's line ran through callout 2's plate)
+    for (let i = 0; i < count; i++) {
+      const at = i * 4;
+      if (segmentHits(_leads[at], _leads[at + 1], _leads[at + 2], _leads[at + 3], x0 - 2, by - PLATE_H / 2 - 2, x0 + width + 2, by + PLATE_H / 2 + 2)) return false;
+      if (segmentHits(ax, ay, bx, by, _placed[at] - 2, _placed[at + 1] - 2, _placed[at + 2] + 2, _placed[at + 3] + 2)) return false;
+    }
     _try[0] = bx;
     _try[1] = by;
     _try[2] = code;
@@ -291,11 +345,17 @@ export function createGarageHotspots(host: HTMLElement, room?: HotspotRoom, befo
         spot.place = _try[2];
         const left = (spot.place & 1) === 1;
         const x0 = left ? bx - spot.width + BADGE : bx - BADGE;
+        // the plates that show count 1, 2, 3 in order, never with a gap where one found no room
+        if (spot.shownAs !== count + 1) { spot.shownAs = count + 1; spot.num.textContent = String(count + 1); }
         const at = count++ * 4;
         _placed[at] = x0;
         _placed[at + 1] = by - PLATE_H / 2;
         _placed[at + 2] = x0 + spot.width;
         _placed[at + 3] = by + PLATE_H / 2;
+        _leads[at] = ax;
+        _leads[at + 1] = ay;
+        _leads[at + 2] = bx;
+        _leads[at + 3] = by;
         if (left !== spot.left) { spot.left = left; spot.el.classList.toggle('l', left); }
         spot.el.style.transform = `translate3d(${bx.toFixed(1)}px,${by.toFixed(1)}px,0)`;
         spot.dot.style.transform = `translate3d(${ax.toFixed(1)}px,${ay.toFixed(1)}px,0)`;

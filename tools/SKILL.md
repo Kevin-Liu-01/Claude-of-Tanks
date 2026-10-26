@@ -15,6 +15,12 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`battle-hud-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the battle HUD's cheap overlap pass.
+It stages every state the layout fixture knows (the corners, hints, notices, reports, the scope, spectate, Watch
+ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI gauntlet's eight sizes (2560x1440,
+1920x1080, 1440x900, 1280x720, 1024x600, 900x700, 390x844 and 844x390 touch). It fails on any two visible instruments that intersect, unless the pair is in its ALLOWED list with a
+reason. A new HUD instrument joins its INSTRUMENTS list and a new HUD state the fixture's `state()`. The full
+Playwright regression (`battle-hud-layout.browser.mjs`) covers more windows and locales.
 `water-palette-probe.mjs` compares a proposed water color, opacity and roughness
 against the live material from fixed supplied poses. Its required `--url`,
 `--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments
@@ -34,6 +40,12 @@ selftest proves each literal is the same stylesheet under Lightning CSS).
 `style-literal-census.mjs` is the style-literal ratchet (colour, font-size,
 letter-spacing, z-index, shadow, duration, `!important` outside the token
 package; `style-literal-baseline.json` may only fall, `--write` lowers it).
+`motion-lint.mjs` is the static motion lint (UI-LOCKDOWN part D): per file it
+counts transitions, `@keyframes` and `animate()` on layout or paint properties,
+time literals instead of `--dur-*`, moving or looping motion without a
+reduced-motion path, rAF loops that write styles and raster UI chrome;
+`motion-lint-baseline.json` may only fall, `motion-allowlist.json` holds the
+measured exceptions and `--report` lists every finding by file and line.
 `public-first-paint.browser.mjs` opens each public page with JavaScript off and
 on and fails when the first-paint layout differs (`--compare` diffs two runs).
 

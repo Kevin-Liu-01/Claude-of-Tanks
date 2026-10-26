@@ -201,7 +201,7 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       buildTerrainMeshesAsync: async () => { clock += 20; return { userData: {} }; },
       createVegetationAsync: async () => { clock += 30; return {}; },
       createPropsAsync: async () => { events.push('props'); clock += 5; return props; },
-      assembleWorld: () => { events.push('assemble'); return world; },
+      assembleWorldPaced: async () => { events.push('assemble'); return world; },
       // (2026-10-07, the time-to-battle lane) the wrapper starts the planned wreck bakes and the fixed-input prints beside
       // the terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts); none here, so the props build bakes and paints itself
       startPlannedWreckBakes: () => null,
@@ -472,8 +472,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     boxClearOfPoints, sharpBends: [],
     // the wreck's collision pose reads the support quaternion (identity on the fixture's level ground)
     // (2026-10-07, the hitbox lane: the wreck's shell record is its own slabs, placeWreckShellCollision)
-    THREE, placeWreckCollision, placeWreckShellCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
-    _posv: { set() { return this; } },
+    // (battle-spikes-253: the commit makes its own quaternion from the support's normal, a step between its transforms)
+    THREE, placeWreckCollision, placeWreckShellCollision, _upAxis: new THREE.Vector3(0, 1, 0), _posv: new THREE.Vector3(),
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
     // (2026-10-08) a hulk refuses a seat that meets a tall solid or a tree (props.ts hulkMeetsTallSolid): the fixture's
     // ground holds neither
@@ -591,14 +591,15 @@ const groundCandidate = source.slice(groundStart, groundEnd);
 const groundOriginal = groundCandidate
   .replace('function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void>',
     'function placeGroundBlendDecals(): void')
-  .replace(/function\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals)(\([\s\S]*?\)): Generator<PropsBuildSlice, void, void>/g,
+  .replace(/function\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals|placeBattleScars)(\([\s\S]*?\)): Generator<PropsBuildSlice, void, void>/g,
     'function $1$2: void')
-  .replace(/yield\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals)\(/g, '$1(')
+  .replace(/yield\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals|placeBattleScars)\(/g, '$1(')
   .replace(/\n        yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/g, '')
   .replace(/      let collected = false;\n      try \{\n([\s\S]*?)        collected = true;\n      } finally \{[\s\S]*?^      }\n/m,
     (_owner, collection) => collection.replace(/^  /gm, ''))
   .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Foundation inputs above stay private until collection completes\./, '')
-  .replace(/\n    yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
+  // (battle-spikes-253) and the scars' slice a scar inside their loop
+  .replace(/\n +yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
 // 2026-10-01 (frozen pins retired): the synchronous control above is derived from the live body by removing only the
 // scheduling yields; the sha256 pin of that derived body froze every decal formula and is gone. Formula changes are
 // owned by the decal receipts, scheduling by the comparisons below.
@@ -740,7 +741,15 @@ for (const [streetRows, foundry, options] of [
         `${mesh.userData.terrainDecalKind}: ${contact ? 'the contact darkening' : 'a lit decal'}`);
     }
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
-    assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
+    // (battle-spikes-253) a slice a scar, its discs private till the pass ends: no scar decal is published mid-pass
+    let scarStep = iterator.next(), scarSlices = 0;
+    while (!after.kinds().includes('scorch')) {
+      assert.deepEqual(scarStep, { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
+      scarSlices++;
+      scarStep = iterator.next();
+    }
+    assert.deepEqual(scarStep, { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
+    assert.equal(scarSlices > 0, after.craterSites.length > 0, 'the scars yield a slice each');
     // (DST-04) a crater is a site now, its bowl laid by world/mapCraters.ts: no flat decal of its own
     assert.equal(after.kinds().includes('crater'), false);
     assert.equal(after.craterSites.length > 0, !options.rejectCourtyards, 'the scars laid their crater sites');
@@ -772,8 +781,11 @@ for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
     }, true);
     if (cancelAt === null) {
       await pending;
+      // (battle-spikes-253) and a slice a scar before the scars' boundary
+      const scarSlices = f.events.filter(([, value]) => value?.stage === 'ground-scars').length - 1;
+      assert.ok(scarSlices > 0, 'the scars yield a slice each');
       assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 180]),
-        [0, 180], [0, 180], [1, 180]]);
+        [0, 180], ...Array.from({ length: scarSlices }, () => [0, 180]), [0, 180], [1, 180]]);
       assert.ok(h.kinds().includes('churn'));
     } else {
       await assert.rejects(pending, error => error === failure);
@@ -859,14 +871,15 @@ function streetFixture(code = streetCandidate) {
   const complete = family => { completed.push(family); randoms.push(random()); };
   const operations = {
     beginWaterworksRubbleCapture() { return packets; },
-    placeStreetRubble() { complete('rubble'); },
-    placeStreetCurbs() { complete('curbs'); },
+    // (battle-spikes-253) the rubble and the kerbs are generators now (a slice a pile, a street): yield* takes them
+    *placeStreetRubble() { complete('rubble'); },
+    *placeStreetCurbs() { complete('curbs'); },
     placeCentralMonument() { complete('monument'); },
   };
   // Replace only the operation declarations with completed-operation spies;
   // retain the actual caller/yield scheduling text.
   for (const name of Object.keys(operations)) {
-    const declaration = new RegExp(`^  function ${name}\\([^\\n]*\\n[\\s\\S]*?^  }\\n`, 'm');
+    const declaration = new RegExp(`^  function\\*? ${name}\\([^\\n]*\\n[\\s\\S]*?^  }\\n`, 'm');
     assert.ok(declaration.test(code), name);
     code = code.replace(declaration, '');
   }
@@ -919,8 +932,8 @@ for (const cancelAt of [0, 1, null]) {
 // no geometry formula, RNG draw or source-acquisition order is rewritten.
 for (const [operation, stage, next] of [
   ['yield* placeTankWrecks();', 'wrecks-finalized', 'function beginWaterworksRubbleCapture'],
-  ['placeStreetRubble();', 'street-rubble', 'function placeStreetCurbs'],
-  ['placeStreetCurbs();', 'street-curbs', 'function placeCentralMonument'],
+  ['yield* placeStreetRubble();', 'street-rubble', 'function* placeStreetCurbs'],
+  ['yield* placeStreetCurbs();', 'street-curbs', 'function placeCentralMonument'],
   ['placeCentralMonument();', 'street-details', 'function* placeGroundBlendDecals'],
   ['yield* placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
   ['placeBattleScars(corridors);', 'ground-scars', 'placeTrackTears(corridors);'],

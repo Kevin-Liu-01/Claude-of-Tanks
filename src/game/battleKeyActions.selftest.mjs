@@ -67,4 +67,12 @@ assert.match(touch, /jumpButton\.addEventListener\('pointerdown', \(e\) => \{\n\
 assert.match(touch, /\.cot-touch \.jump\{right:134px;bottom:124px;width:84px;height:84px;/, 'the rocket button is as big as the fire button family, above the scope');
 const sprite = read('../ui/icons/sprite.svg');
 assert.match(sprite, /<symbol id="i-rocket"><path d="M12 2\.5/, 'the shared icon set has a rocket glyph');
-console.log('battleKeyActions.selftest: T auto-aim and H armour overlay bindings, desktop auto-aim runtime, rocket jump keycap and touch button');
+// The vehicle-action table (owner 2026-10-25, src/game/vehicleActions.ts; its own receipt proves the table): each row
+// tile's keycap is its own binding's, never a shell digit or the old shared E.
+assert.equal(DEFAULT_BINDINGS.atgm, 'KeyQ', 'Q is the ATGM on every launcher');
+assert.match(input, /\{ id: 'atgm', label: 'systems\.atgm', group: 'settings\.group\.vehicle' \}/, 'the ATGM is a rebindable vehicle action');
+for (const [tile, action, fallback] of [['missileKey', 'atgm', 'Q'], ['reloadKey', 'reloadMagazine', 'C'], ['specialKey', 'specialAction', 'E']]) {
+  assert.match(hud, new RegExp(`setText\\(${tile},frame\\.auxiliaryKeyLabels\\.${action} \\|\\| '${fallback}'\\);`), `${tile} names the ${action} binding`);
+}
+assert.doesNotMatch(read('./battleHudFrameRuntime.ts'), /keys\.missile =/, 'the ATGM no longer takes its shell slot\'s digit');
+console.log('battleKeyActions.selftest: T auto-aim and H armour overlay bindings, desktop auto-aim runtime, rocket jump keycap and touch button, and the row tiles\' table keys (Q ATGM, C reload, E suspension)');

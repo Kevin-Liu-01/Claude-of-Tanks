@@ -18,16 +18,18 @@ const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&
   .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
 const p = (key: string, values: Record<string, string> = {}): string => `<p>${esc(t(key, values))}</p>`;
 
-/** What the crew says for a call, every take, in the reader's language (the captions carry en-US and zh-CN). */
+/** What the crew says for a call, every take, in the reader's language (the captions carry en-US and zh-CN). A Chinese
+ *  take drops its closing 。 inside the quotes: the full-width stop left a blank half-em before the closing mark. */
 function quotes(call: string): string {
   const script = CAPTION_SCRIPT[call];
   if (!script) throw new Error(`docs: the caption script has no ${call}`);
-  return (getLocale() === 'zh-CN' ? script['zh-CN'] : script['en-US']).map((take) => `<q>${esc(take)}</q>`).join('');
+  const zh = getLocale() === 'zh-CN';
+  return (zh ? script['zh-CN'] : script['en-US']).map((take) => `<q>${esc(zh ? take.replace(/。$/u, '') : take)}</q>`).join('');
 }
 
 /** A table of calls: the glyph, what the crew says, and what it means. */
 function callTable(rows: ReadonlyArray<readonly [string, IconId]>, aria: string): string {
-  const body = rows.map(([call, glyph]) => `<tr><th scope="row"><span class="dm-cell dm-cell--quotes">${icon(glyph, { size: 16 })}<span>${quotes(call)}</span></span></th>`
+  const body = rows.map(([call, glyph]) => `<tr><th scope="row"><span class="dm-cell dm-cell--quotes">${icon(glyph, { size: 18 })}<span>${quotes(call)}</span></span></th>`
     + `<td>${esc(t(`docs.audio.call.${call}`))}</td></tr>`).join('');
   return `<div class="dm-table dm-table--wrap" tabindex="0" role="region" aria-label="${esc(aria)}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.audio.col.says'))}</th><th scope="col">${esc(t('docs.audio.col.means'))}</th></tr></thead><tbody>${body}</tbody></table></div>`;

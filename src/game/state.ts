@@ -157,6 +157,7 @@ import {
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
   ensureTankVisual,
@@ -352,7 +353,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
   auxiliarySmokeScreens?: SmokeScreen[];
-  openingRouteJobs: Array<() => void>;
+  /** Each bot's opening route, a leg a step (planOpeningRouteSteps; prepareNextOpeningRoute advances the oldest). */
+  openingRouteJobs: Array<Iterator<void, void, void>>;
   mapId: string;
   killcam?: KillcamRecorder | null;
   /** The next mode route push per side (retargetObjectiveBots; the doctrine's routeRefreshS). */
@@ -1107,7 +1109,12 @@ function buildOpeningWaypoints(
   ));
 }
 
-function planOpeningRoute(
+/**
+ * A bot's opening route, one leg a step (battle-spikes-253): the deferred warm advances it a leg at a time, where a bot's
+ * whole route was one job (the countdown's 30-290 ms bursts). The legs run in the same order on the same seeded stream,
+ * so every route is the one it was; the waypoints are set once the route is whole, as before.
+ */
+function* planOpeningRouteSteps(
   context: BattleSpawnContext,
   entity: SoloEntity,
   spawn: SpawnPoint,
@@ -1115,7 +1122,7 @@ function planOpeningRoute(
   role: OpeningRole,
   doctrineWaypoints: Waypoint[],
   routeRng: RandomSource,
-): void {
+): Generator<void, void, void> {
   const terrainWaypoints: Waypoint[] = [];
   let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
   for (const [x, z] of doctrineWaypoints) {
@@ -1135,6 +1142,7 @@ function planOpeningRoute(
     const end = leg[leg.length - 1];
     routeStart = context.botNavigation.navigationWaterPolicy === 'avoid-liquid'
       ? { x: end[0], z: end[1] } : { x, z };
+    yield;
   }
   controller.setWaypoints(terrainWaypoints, { loop: false });
   entity._openingRoute = terrainWaypoints;
@@ -1199,11 +1207,11 @@ function createBattleBot(
   const lane = selectOpeningLane(context, entity);
   const doctrineWaypoints = buildOpeningWaypoints(context, entity, spawn, lane);
   const routeRng = mulberry32(17000 + entityIndex);
-  const prepare = (): void => planOpeningRoute(
+  const prepare = planOpeningRouteSteps(
     context, entity, spawn, controller, lane.role, doctrineWaypoints, routeRng,
   );
   if (context.options.deferOpeningRoutes) context.game.openingRouteJobs.push(prepare);
-  else prepare();
+  else for (const _leg of prepare) { /* eager: every leg now */ }
 }
 
 /** A proving-ground target hull: no AI (it never fires); it holds its mark, or shuttles about it with moving targets on. */
@@ -1582,15 +1590,16 @@ export function setupBattle(
 }
 
 /**
- * Prepare one deterministic solo-bot opening route. Player battle entry calls
+ * Prepare one leg of the oldest deterministic solo-bot opening route. Player battle entry calls
  * this behind the frozen deployment countdown; synchronous tests/captures keep
  * setupBattle's original eager behavior by omitting deferOpeningRoutes.
- * @returns {boolean} true when a job was consumed
+ * @returns {boolean} true when a job step was consumed
  */
 export function prepareNextOpeningRoute(game: SoloGameState): boolean {
-  const job = game.openingRouteJobs.shift();
+  // one leg of the oldest route (battle-spikes-253): a bot's route is finished before the next bot's is begun
+  const job = game.openingRouteJobs[0];
   if (!job) return false;
-  job();
+  if (job.next().done) game.openingRouteJobs.shift();
   return true;
 }
 
@@ -3349,19 +3358,26 @@ export function simStep(
   // Past the ruleset's post-verdict hold the field stands still under the report (matchRuleset.endingHoldS).
   if (endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS)) return;
   game.timeS += SIM_DT;
+  // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
+  const stages = frameStages;
+  stages?.stage(FRAME_STAGE.spotting);
   stepSpotting(game, bus);
   retargetObjectiveBots(game);
+  stages?.stage(FRAME_STAGE.bots);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
   if (game.jev && game._jevView) game.jev.step(game._jevView);
   stepBotControllers(game);
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
+  stages?.stage(FRAME_STAGE.aerial);
   const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.
   _aerialWorldGame = game; _aerialWorldSource = world;
   for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);
   _aerialWorldGame = null; _aerialWorldSource = null;
+  stages?.stage(FRAME_STAGE.movement);
   stepTankMovement(game, bus, world, rig, collider);
+  stages?.stage(FRAME_STAGE.contacts);
   resolveTankBodyContacts(game.tanks, SIM_DT,
     (upper, lower, closing, nx, nz) =>
       collider.queueRam(upper, lower, closing, nx, nz));
@@ -3370,13 +3386,18 @@ export function simStep(
   stepRolloverRecovery(game, bus);
   // the hulls have moved: the turret bodies meet them where they stand now, before any shell this step is traced
   game._wreckTurrets?.step(game.tanks);
+  stages?.stage(FRAME_STAGE.fire);
   stepReloadAndFire(game, bus, rig);
   stepAuxiliarySystems(game, world, bus);
   game.killcam?.recordSimStep(game);
+  stages?.stage(FRAME_STAGE.shells);
   stepShells(game, bus, world);
+  stages?.stage(FRAME_STAGE.damage);
   stepFireDamage(game, bus);
   tickRepairs(game, bus, SIM_DT);
+  stages?.stage(FRAME_STAGE.destruction);
   stepDestruction(game, bus, world);
+  stages?.stage(FRAME_STAGE.mode);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
 }
 

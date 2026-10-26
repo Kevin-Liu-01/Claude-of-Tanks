@@ -47,6 +47,7 @@ const { captureChieftain10Collision } = await import('./chieftain10-collision.mj
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
 const { authoredCombatAnatomy, finalizeCombatAnatomy } = await import('../src/vehicles/combatAnatomy.ts');
+const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
 const { fitCrewSeats } = await import('./crew-seat-fit.mjs');
 
@@ -193,19 +194,44 @@ function uniquePointCloud(points) {
   return [...unique.values()];
 }
 
-function supportPointCloud(cloud) {
+/** Points within this of a direction's support tie with it (a seated underside's plane, float noise). */
+const SUPPORT_TIE_M = 1e-5;
+
+/**
+ * One extreme point per support direction. `seatedUnderside`: a seated turret's slice (turretSeatRace.ts lays its
+ * underside on one plane), where the downward directions keep every corner of a tied face.
+ */
+function supportPointCloud(cloud, seatedUnderside = false) {
   if (cloud.length <= SUPPORT_DIRECTIONS.length) return cloud;
   const supported = new Map();
+  const project = (point, direction) => point.x * direction[0] + point.y * direction[1] + point.z * direction[2];
   for (const direction of SUPPORT_DIRECTIONS) {
     let best = null;
     let bestProjection = -Infinity;
     for (const point of cloud) {
-      const projection = point.x * direction[0] + point.y * direction[1] + point.z * direction[2];
+      const projection = project(point, direction);
       if (projection <= bestProjection) continue;
       bestProjection = projection;
       best = point;
     }
-    if (best) supported.set(quantizedPointKey(best.toArray()), best);
+    if (!best) continue;
+    // 251: the seat ties a seated underside's points at the downward supports; the first of them alone dropped the
+    // face's other corners, so a seated slice lost a whole bottom edge (pt91a_twardy: its turret floor rose from 0.17 to
+    // 0.50 m over the crew, who no longer fit). Every corner of the tied face stays. Elsewhere (box faces tie too) one
+    // point a direction is kept, as the fleet's rows were measured.
+    const tied = seatedUnderside && direction[1] < 0
+      ? cloud.filter((point) => project(point, direction) >= bestProjection - SUPPORT_TIE_M) : [best];
+    if (tied.length === 1) { supported.set(quantizedPointKey(best.toArray()), best); continue; }
+    for (const across of SUPPORT_DIRECTIONS) {
+      let corner = null, cornerProjection = -Infinity;
+      for (const point of tied) {
+        const projection = project(point, across);
+        if (projection <= cornerProjection) continue;
+        cornerProjection = projection;
+        corner = point;
+      }
+      supported.set(quantizedPointKey(corner.toArray()), corner);
+    }
   }
   return [...supported.values()];
 }
@@ -254,7 +280,7 @@ function pointBounds(points) {
   return { min: min.map(round), max: max.map(round) };
 }
 
-function convexCell(points) {
+function convexCell(points, seatedUnderside = false) {
   let cloud = uniquePointCloud(points);
   if (cloud.length < 4) return null;
 
@@ -262,7 +288,7 @@ function convexCell(points) {
   // silhouette noise that would turn a combat slice into hundreds of tiny
   // planes. A deterministic 26-direction support hull keeps the real outer
   // extents and slopes while bounding every cell to a few dozen faces.
-  cloud = supportPointCloud(cloud);
+  cloud = supportPointCloud(cloud, seatedUnderside);
   const hull = convexHullFromCloud(cloud);
   if (!hull || !hull.faces.length) return null;
   const { vertices, faces } = indexedHullFaces(hull);
@@ -329,7 +355,8 @@ const HULL_LATERAL_CUTS = Object.freeze({
   t72b3_zubr_ii: [-1.104, 1.104],
 });
 
-function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false) {
+function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null, plateFit = false,
+  seatedUnderside = false) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
@@ -370,7 +397,7 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, 
 
   const cells = [];
   for (const slices of pointsByBand) for (const points of slices) {
-    const cell = plateFit ? plateFittedCell(uniquePointCloud(points)) : convexCell(points);
+    const cell = plateFit ? plateFittedCell(uniquePointCloud(points)) : convexCell(points, seatedUnderside);
     if (cell) cells.push(bands ? { ...cell, lateralBand: true } : cell);
   }
   return cells;
@@ -611,6 +638,9 @@ function receiptFor(id) {
     const ring = armor?.turretless ? null
       : measureTurretRing(hullRig, turretRig, turretRingRadius(armor), { exterior: true, rimCap: TURRET_RING_SIDE_CAPS[id] });
     const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
+    // the build seated its turret over the deck from the ring receipt of the row it read (turretSeatRace.ts's own test)
+    const seatReceipt = combatAnatomyCalibration(id)?.turretRing;
+    const seatedTurret = !!seatReceipt && seatReceipt.rimR > 0.3 && Number.isFinite(seatReceipt.deckY);
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
     rigidHullFrame(tank, id);
     rigidTurretFrame(tank);
@@ -643,6 +673,7 @@ function receiptFor(id) {
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
         tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES, null, PLATE_FIT_IDS.has(id),
+        seatedTurret,
       ) : []),
       hullStructures,
       turretStructures,

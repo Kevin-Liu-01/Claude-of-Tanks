@@ -10,9 +10,13 @@ import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchMode
 import { createProvingRangeDressing, type ProvingRangeDressing } from './provingRangeDressing.ts';
 import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
 import {
-  drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
-  sideColor, sideFill, type ObjectiveSide,
+  badgeLetter, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
+  laneLetter, OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter, type ObjectiveSide,
 } from '../ui/objectiveGlyphs.ts';
+import { drawGlyphLetter } from '../ui/objectiveGlyphLetters.ts';
+
+/** The sprite letters' placement (one scratch: a sprite's texture paints at once). */
+const spriteLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
 
 const ALLY = 0x6fe887;
 const ENEMY = 0xf26a62;
@@ -892,9 +896,10 @@ export function createMatchModeWorldPresentation(
       const status = mark.status ?? '';
       setIcon(marker.userData.icon, `${mark.kind}:${mark.side}:${label}:${status}`, (ctx, c) => {
         drawHexBadge(ctx, c, c, 46, {
-          fill: sideFill(mark.side), stroke: sideColor(mark.side), label, ringWidth: 9,
-          dashed: mark.side === 'contested' || status === 'locked', font: "700 48px 'Cot UI', sans-serif",
+          fill: sideFill(mark.side), stroke: sideColor(mark.side), ringWidth: 9,
+          dashed: mark.side === 'contested' || status === 'locked',
         });
+        drawGlyphLetter(ctx, label, badgeLetter(c, c, 46, OBJECTIVE_PALETTE.chalk, spriteLetter), "700 48px 'Cot UI', sans-serif");
         if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor(mark.side));
       });
       fadeByViewer(marker);
@@ -991,7 +996,10 @@ export function createMatchModeWorldPresentation(
       // over the field the lane's board reads its range (the minimap's smaller board keeps the lane's number)
       const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
       const size = label.length > 2 ? 36 : 46;
-      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => drawLaneGlyph(ctx, c, c, 44, label, `700 ${size}px system-ui, sans-serif`));
+      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => {
+        drawLaneGlyph(ctx, c, c, 44);
+        drawGlyphLetter(ctx, label, laneLetter(c, c, 44, spriteLetter), `700 ${size}px system-ui, sans-serif`);
+      });
       fadeByViewer(marker, LANE_MAX_GROWTH);
       const icon = marker.userData.icon;
       if (icon) icon.position.y = LANE_BOARD_FOOT_M + icon.scale.y / 2;

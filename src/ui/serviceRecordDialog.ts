@@ -1,26 +1,24 @@
 import { battleMapArt } from './battleReportMedia.ts';
 import { createModal } from './modal.ts';
 import { t } from './i18n.ts';
-import { uiIconSVG } from './uiIcons.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { getServiceRecord, markServiceRecordSeen } from '../game/serviceRecord.ts';
 import { awardDetails } from './awardDetails.ts';
 import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type RecordTab, type RecordViewNames } from './serviceRecordView.ts';
 
-const TAB_ICONS = { overview: 'battleRecord', medals: 'gold', achievements: 'stamp', history: 'clock' } as const;
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
   const modal = createModal({ title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
-  modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog');
+  modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog'); modal.panel.tabIndex = -1;
   // The header carries the last battle as a plate (its map behind, its tank beside the result); the X closes, so
   // the dialog keeps no footer.
   const plate = document.createElement('div'); plate.className = 'cot-record-plate-host';
   modal.header.insertBefore(plate, modal.closeButton);
   const tabs = document.createElement('div'); tabs.className = 'cot-record-tabs'; tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label',t('garage.record.tabsAria'));
-  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-record-tab" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel">${uiIconSVG(TAB_ICONS[tab],18)}<span>${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
+  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-record-tab" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel"><span>${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
   const body = document.createElement('div'); body.className = 'cot-record-body'; body.id='cot-record-panel';
   body.setAttribute('role','tabpanel'); body.tabIndex=0;
   modal.body.append(tabs,body);
@@ -30,6 +28,7 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
     const view={...getServiceRecord(),unseen}, totals=recordSummary(names,view);plate.innerHTML=totals.plate;
     const art=battleMapArt(view.history[0]?.mapId);
     modal.root.style.setProperty('--record-map',art?`url("${art}")`:'none');
+    modal.root.classList.toggle('no-map',!art);
     for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){
       const tab=button.dataset.recordTab as RecordTab, active=tab===selected;
       const prefix=tab==='medals'?'medal:':tab==='achievements'?'achievement:':null;
@@ -46,7 +45,9 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   modal.panel.addEventListener('keydown',event=>event.stopPropagation());
   return {
     isOpen:modal.isOpen,
-    open(trigger:HTMLElement){unseen=getServiceRecord().unseen;markServiceRecordSeen();render();modal.open({trigger});},
+    // the dialog itself takes focus on open (no ring lands on the X); Tab moves on to the X and the tabs
+    open(trigger:HTMLElement){unseen=getServiceRecord().unseen;markServiceRecordSeen();render();modal.open({trigger});
+      requestAnimationFrame(()=>{if(modal.isOpen())modal.panel.focus({preventScroll:true});});},
     close:modal.close,
     refresh(){if(modal.isOpen())render();},
     dispose(){tooltip.dispose();modal.dispose();},

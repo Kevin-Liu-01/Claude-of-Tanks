@@ -46,8 +46,8 @@ export function spectatorSwitcherMarkup(): string {
       '</button>' +
       `<b class="idx" aria-label="${t('spectator.idxAria')}" hidden></b>` +
       '<button type="button" class="cycle next" data-tip aria-keyshortcuts="D" aria-label="' + t('spectator.cycleNextAria') + '">' +
-        '<kbd aria-hidden="true">D</kbd>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
+        '<kbd aria-hidden="true">D</kbd>' +
       '</button>' +
     '</div>' +
     `<button type="button" class="gar" aria-label="${t('spectator.garageAria')}">` +
@@ -58,59 +58,69 @@ export function spectatorSwitcherMarkup(): string {
 
 /**
  * The Premiere direction's plates (the Watch bar's language, watchHud.ts): the watched tank's own 3/4 render on the HUD
- * plate on its side's ink edge, its commander in the display face and its vehicle under it; the cycle pair and the
+ * plate ringed all round (no edge stripe, owner 2026-10-25), its commander in the display face and its vehicle under it; the cycle pair and the
  * garage as the kit's square plates with their key caps. The SPECTATING line stays for assistive technology only (no
  * eyebrow over a name, owner UI rules), the scope glyph says it.
  */
 export const spectatorSwitcherStyles = `
 .cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,12px);
- display:none;grid-template-columns:minmax(0,1fr) 144px 88px;align-items:center;gap:var(--s2);
+ display:none;grid-template-columns:minmax(0,1fr) auto 88px;align-items:stretch;gap:var(--s2);
  width:min(620px,calc(100vw - 32px));min-width:0;padding:0;border:0;background:none;box-shadow:none;
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
 .cot-spec.show{display:grid}.cot-spec.in{opacity:1;transform:translate(-50%,0)}
 .cot-spec .subject{position:relative;display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--s3);
  min-width:0;height:64px;padding:0 var(--s4) 0 var(--s2);pointer-events:auto;background:var(--hud-plate);border-radius:var(--r1);
- border-left:3px solid var(--team-own);box-shadow:var(--ring-1);}
+ box-shadow:var(--ring-1);}
 .cot-spec .portrait{display:grid;place-items:center;width:66px;height:52px;border:0;background:none;}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;}
 .cot-spec .identity{position:relative;display:flex;flex-direction:column;justify-content:center;gap:var(--s1);min-width:0;padding:0}
 .cot-spec .spec-status{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-spec .who{display:flex;flex-direction:column;gap:var(--s1);min-width:0;width:100%}
-.cot-spec .nick{font:600 var(--fs-18)/1.1 var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cot-spec .nick{font:700 var(--fs-18)/1.1 var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .veh{color:var(--ink-3);font:500 var(--battle-fs-12)/1.2 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .cursor-hint{color:var(--ink-3);font:500 var(--battle-fs-11)/1.3 var(--font-ui)}
 .cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}
-.cot-spec .switch{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
-.cot-spec .idx{font:500 var(--battle-fs-12)/1.5 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap;text-shadow:var(--battle-text-halo)}
+/* (the cycle and garage buttons stand as tall as the plate beside them: 48 px keys under a 64 px plate read as two kits,
+   gauntlet r3) */
+.cot-spec .switch{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
+/* (the count on a plate of its own between the cycle pair, the kit's stat: bare on the battlefield it read as a leftover,
+   gauntlet r6) */
+.cot-spec .idx{align-self:stretch;display:grid;place-items:center;padding:0 var(--s2);border-radius:var(--r1);background:var(--hud-plate);
+ box-shadow:var(--ring-1);font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap}
 .cot-spec :is(.cycle,.gar){position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;margin:0;
  padding:var(--s1) var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);color:var(--ink-1);
- font:inherit;cursor:pointer;pointer-events:auto;transition:box-shadow var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
-.cot-spec .cycle{flex-direction:column;gap:var(--s1)}
+ font:inherit;cursor:pointer;pointer-events:auto;transition:transform var(--dur-fast) var(--ease-enter);}
+/* (the chevron and its key cap side by side, the Watch bar's cycle pair's form and its 20 px cap: stacked under the
+   chevron here and beside it there read as two kits, gauntlet r5) */
+.cot-spec .cycle{flex-direction:row;gap:var(--s2);min-width:44px;padding-inline:var(--s3)}
 .cot-spec .cycle-icon{display:flex;color:var(--accent-hi)}.cot-spec .cycle-icon svg{width:14px;height:14px;display:block}
-.cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:16px;padding:0 var(--s1);border:0;
- border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-11)/1 var(--font-data)}
-.cot-spec .gar{flex-direction:column;gap:var(--s1);color:var(--accent-hi);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
- letter-spacing:var(--track-label-s);box-shadow:var(--ring-accent)}
+.cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border:0;
+ border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-fig-11)/1 var(--font-data)}
+/* (the way out is the bar's primary action, the Watch bar's seat button's fill: an accent outline read as a selected tile,
+   gauntlet r6) */
+.cot-spec .gar{flex-direction:column;gap:var(--s1);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
+ letter-spacing:var(--track-label-s);background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:20px;height:20px}
 .cot-spec :is(.cycle,.gar):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-spec :is(.cycle,.gar):active{transform:translateY(var(--btn-press-drop))}
 .cot-spec .cycle:disabled{opacity:.35;cursor:default;transform:none}
-@media(hover:hover){.cot-spec :is(.cycle,.gar):hover:not(:disabled){box-shadow:var(--ring-3)}.cot-spec .gar:hover{background:var(--accent-wash)}}
+@media(hover:hover){.cot-spec :is(.cycle,.gar):hover:not(:disabled){box-shadow:var(--ring-3)}.cot-spec .gar:hover{background:var(--btn-primary-hover)}}
 @keyframes cotSpecSw{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
 @media(max-width:900px){
- .cot-spec{grid-template-columns:minmax(0,1fr) 144px 64px;gap:8px}
+ .cot-spec{grid-template-columns:minmax(0,1fr) auto 64px;gap:8px}
  .cot-spec .subject{grid-template-columns:48px minmax(0,1fr);gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}
  .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:var(--battle-fs-15)}
  .cot-spec .gar{letter-spacing:0}
 }
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
 body.cot-touch-layout .cot-spec .cursor-hint{display:none}
-@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) 144px 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
+@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) auto 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
  .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
- .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:144px;justify-self:center}
+ /* (the cycle group fills its column from the plate's edge: centred in it, it stood on nothing, gauntlet r3) */
+ .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:auto;justify-self:stretch}
  .cot-spec .gar>span:last-child{display:block}
 }
 @media(prefers-reduced-motion:reduce){.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{animation:none;transition:none}}

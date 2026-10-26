@@ -36,7 +36,7 @@ interface SettingsAccess {
 const TRIGGER_CSS = `
 .cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;background:rgba(11,15,20,.8);
-  border:1px solid rgba(146,164,180,.3);transition:border-color .12s,color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
+  border:1px solid rgba(146,164,180,.3);transition:border-color var(--dur-fast),color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
 .cot-gear:hover{border-color:rgba(240,176,74,.6);color:#f0b04a;}
 `;
 

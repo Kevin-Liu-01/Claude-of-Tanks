@@ -15,20 +15,22 @@
 .cot-c-h2{font:600 var(--fs-28)/1.08 var(--font-display)}
 .cot-c-h3{font:600 var(--fs-20)/1.15 var(--font-display)}
 .cot-c-body{font:400 var(--fs-16)/1.55 var(--font-body);color:var(--ink-2)}
-.cot-c-small{font:400 var(--fs-13)/1.45 var(--font-body);color:var(--ink-3)}
-.cot-c-data{font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-2)}
+.cot-c-small{font:400 max(var(--fs-floor-12),var(--fs-13))/1.45 var(--font-body);color:var(--ink-3)}
+.cot-c-data{font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-data);color:var(--ink-2)}
 .cot-c-muted{color:var(--ink-3)}
 /* ---- buttons (direction .btn, -primary, -secondary, -ghost, -xl/-lg/-sm) ---- */
 .cot-c-btn{--h:var(--btn-h-m);box-sizing:border-box;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;
   height:var(--h);min-width:var(--h);padding:0 22px;border:0;border-radius:var(--control-radius);
   background:var(--btn-media-fill);box-shadow:var(--ring-3);color:var(--ink-1);cursor:pointer;text-decoration:none;
-  font:600 var(--fs-15)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;
+  font:600 max(var(--fs-floor-12),var(--fs-15))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;
   transition:background-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter),transform var(--dur-instant) var(--ease-enter)}
 .cot-c-btn svg{width:18px;height:18px}
-.cot-c-btn--36{--h:var(--btn-h-s);padding:0 14px;font-size:var(--fs-13)}
+.cot-c-btn--36{--h:var(--btn-h-s);padding:0 14px;font-size:max(var(--fs-floor-12),var(--fs-13))}
 .cot-c-btn--56{--h:var(--btn-h-l);padding:0 26px;font-size:var(--fs-16)}
 .cot-c-btn--64{--h:var(--btn-h-xl);padding:0 30px;font-size:var(--fs-18)}
 .cot-c-btn--icon{padding:0;width:var(--h)}
+/* a secondary on a plate sits a step above it (the default's media fill is for buttons over art and footage) */
+.cot-c-btn--secondary{background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring)}
 .cot-c-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
 .cot-c-btn--ghost,.cot-c-btn--quiet{background:transparent;box-shadow:none;color:var(--ink-2)}
 .cot-c-btn--quiet{color:var(--ink-3);text-transform:none;letter-spacing:normal;font-family:var(--font-ui)}
@@ -46,22 +48,24 @@
 .cot-c-btn .cot-i{flex:none}
 /* ---- key caps (direction .kbd) ---- */
 .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
-  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);letter-spacing:normal;
+  border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);letter-spacing:normal;
   text-transform:none;color:var(--ink-2)}
+.cot-c-kbd svg{width:12px;height:12px;margin-inline:-1px}
+/* a glyph cap is as wide as a letter cap (22 px): the glyph gives back the 2 px it has over a capital */
 .cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
 @media (hover:none),(pointer:coarse){.cot-c-kbd{display:none}}
 /* ---- chips and tags (direction .chip, .chip.on, .tag, .tag.new) ---- */
 .cot-c-chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border:0;
   border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);
-  font:500 var(--fs-13)/1 var(--font-body);white-space:nowrap}
+  font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);white-space:nowrap}
 .cot-c-chip svg{width:15px;height:15px}
 button.cot-c-chip{cursor:pointer}
 .cot-c-chip--compact{width:34px;padding:0;justify-content:center}
 .cot-c-chip[aria-pressed=true]{color:var(--ink-1);background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
-.cot-c-chip__count{color:var(--ink-3);font-size:var(--fs-12)}
+.cot-c-chip__count{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-c-tag{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 7px;border:0;border-radius:var(--control-radius);
-  box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);
+  box-shadow:var(--ring-2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);
   text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
 .cot-c-tag--accent{color:var(--btn-primary-ink);background:var(--accent);box-shadow:none}
 .cot-c-tag--ok{color:var(--text-ok);box-shadow:var(--ring-ok)}
@@ -72,7 +76,7 @@ button.cot-c-chip{cursor:pointer}
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-c-seg__opt{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:32px;height:32px;
   padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
-  font:500 var(--fs-13)/1 var(--font-body);cursor:pointer;white-space:nowrap}
+  font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer;white-space:nowrap}
 .cot-c-seg__opt svg{width:16px;height:16px}
 .cot-c-seg__opt[aria-checked=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
 .cot-c-seg__opt:disabled{color:var(--ink-4);cursor:not-allowed}
@@ -83,9 +87,9 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tabs__tab svg{width:16px;height:16px}
 .cot-c-tabs__tab[aria-selected=true]{color:var(--ink-1)}
 .cot-c-tabs__tab[aria-selected=true]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
-.cot-c-tabs__count{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
+.cot-c-tabs__count{color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data)}
 .cot-c-toggle{display:inline-flex;align-items:center;gap:var(--s2);min-height:36px;padding:0;border:0;background:none;color:var(--ink-2);
-  cursor:pointer;font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
+  cursor:pointer;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .cot-c-toggle__track{box-sizing:border-box;position:relative;width:36px;height:20px;border:0;box-shadow:var(--ring-3);
   border-radius:var(--control-radius);background:var(--fill-quiet)}
 .cot-c-toggle__track i{position:absolute;left:3px;top:3px;width:14px;height:14px;background:var(--ink-3);
@@ -102,11 +106,12 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-stat{display:grid;grid-template-columns:20px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:var(--s3);row-gap:var(--s2);
   align-items:center}
 .cot-c-stat>.cot-i,.cot-c-stat>span:first-child{grid-row:span 2;color:var(--ink-3)}
-.cot-c-stat__label{min-width:0;font:500 var(--fs-13)/1.1 var(--font-ui);color:var(--ink-2)}
+.cot-c-stat--compact{row-gap:var(--s1)}
+.cot-c-stat__label{min-width:0;font:500 max(var(--fs-floor-11),var(--fs-13))/1.1 var(--font-ui);color:var(--ink-2)}
 .cot-c-stat__value{display:inline-flex;align-items:baseline;gap:var(--s1);white-space:nowrap}
 .cot-c-stat__value b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
-.cot-c-stat__value small{font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
-.cot-c-stat__delta{margin-left:var(--s2);font:500 var(--fs-11)/1 var(--font-data);font-style:normal}
+.cot-c-stat__value small{font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3)}
+.cot-c-stat__delta{margin-left:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);font-style:normal}
 .cot-c-stat__delta.is-better{color:var(--text-ok)}
 .cot-c-stat__delta.is-worse{color:var(--text-danger)}
 .cot-c-stat .cot-c-scale{grid-column:2/span 2}
@@ -119,15 +124,15 @@ button.cot-c-chip{cursor:pointer}
   mask:var(--sil) center/contain no-repeat}
 .cot-c-sil--right{transform:scaleX(-1)}
 .cot-c-veh{display:inline-flex;align-items:center;gap:8px;min-width:0;color:var(--ink-2);white-space:nowrap}
-.cot-c-veh b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 var(--fs-14)/1 var(--font-display);color:var(--ink-1)}
+.cot-c-veh b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
 .cot-c-veh .cot-c-sil{height:13px}
-.cot-c-vs{font:700 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--accent)}
+.cot-c-vs{font:700 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--accent)}
 /* ---- the data voice's inline rules: a glyph and a value per fact (direction .rules) ---- */
-.cot-c-rules{display:flex;flex-wrap:wrap;gap:12px;font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2)}
+.cot-c-rules{display:flex;flex-wrap:wrap;gap:12px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-2)}
 .cot-c-rules>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .cot-c-rules svg{width:14px;height:14px;color:var(--ink-3)}
 /* ---- media caption: honest, small, never over a tank (direction .cap) ---- */
-.cot-c-cap{display:inline-flex;align-items:center;gap:8px;font:500 var(--fs-12)/1.2 var(--font-body);color:var(--ink-2)}
+.cot-c-cap{display:inline-flex;align-items:center;gap:8px;font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2)}
 .cot-c-cap svg{width:14px;height:14px}
 /* ---- plates (direction .plate, .raised, .plate.hud) ---- */
 .cot-c-plate{background:var(--plate-fill);border-radius:var(--plate-radius);box-shadow:var(--plate-shadow)}
@@ -150,4 +155,13 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tip.is-on{opacity:1}
 .cot-c-tip[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i,.cot-c-tip{transition:none}}
+/* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
+   its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
+[data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}
+[data-mode-tone='zone_control']{--mode-ink:var(--mode-zone-control)}[data-mode-tone='capture_the_flag']{--mode-ink:var(--mode-capture-the-flag)}
+[data-mode-tone='frontline_assault']{--mode-ink:var(--mode-frontline-assault)}[data-mode-tone='turbo_ball']{--mode-ink:var(--mode-turbo-ball)}
+[data-mode-tone='mars']{--mode-ink:var(--mode-mars)}[data-mode-tone='endless_horde']{--mode-ink:var(--mode-endless-horde)}
+[data-mode-tone='gun_game']{--mode-ink:var(--mode-gun-game)}[data-mode-tone='juggernaut']{--mode-ink:var(--mode-juggernaut)}
+[data-mode-tone='infected']{--mode-ink:var(--mode-infected)}[data-mode-tone='realistic']{--mode-ink:var(--mode-realistic)}
+[data-mode-tone='ac130']{--mode-ink:var(--mode-ac130)}[data-mode-tone='proving_ground']{--mode-ink:var(--mode-proving-ground)}
 }

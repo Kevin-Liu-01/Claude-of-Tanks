@@ -18,13 +18,20 @@ export const ROOM_MAX_PLAYERS = 28;
 export const ROOM_MAX_SPECTATORS = 8;
 export const ROOM_MAX_TEAM_SIZE = 14;
 /**
+ * The largest team a bot-filled test room may set (mp-scale-251): 32 a side, the wire's 64 entities. Only the LAN
+ * service's dev override reaches it (COT_ROOM_DEV_MAX_TEAM_SIZE, RoomPolicyGuards.maxTeamSize); a room's state is
+ * well formed up to it, and the modes' own sizes are their room rules (src/sim/matchRuleset.ts roomSizeRulesFor).
+ */
+export const ROOM_DEV_MAX_TEAM_SIZE = 32;
+/**
  * The largest side a solo battle's room in the page seats (room/inPageRoom.ts, RUST-ENGINE-DECISION §7 step 5): the
  * player and the wire's 41 other bots (roomBots.ts's 42 a match). Only a room whose host allows it (the policy guards'
- * `maxTeamSize`) seats more than ROOM_MAX_TEAM_SIZE; a client reads either.
+ * `maxTeamSize`, read as the dev override is) seats more than ROOM_MAX_TEAM_SIZE; a client reads up to ROOM_DEV_MAX_TEAM_SIZE.
  */
 export const ROOM_SOLO_MAX_TEAM_SIZE = 21;
 export const ROOM_MIN_TEAM_SIZE = 1;
 /** Co-op modes (Horde, Frontline) keep the sim's allied cap. */
+/** The co-op modes' commanders (their room rules' maxHumans, src/sim/matchRuleset.ts; roomSizeRules.selftest holds the two equal). */
 export const ROOM_MAX_COOP_PLAYERS = 7;
 export const ROOM_MAX_SEATS = ROOM_MAX_PLAYERS + ROOM_MAX_SPECTATORS;
 
@@ -485,7 +492,7 @@ function isRoomPlayer(value: unknown): value is RoomPlayer {
 function isRoomSettings(value: unknown): value is RoomSettings {
   if (!isRecord(value)) return false;
   return typeof value.gameMode === 'string' && typeof value.mapId === 'string' &&
-    Number.isSafeInteger(value.teamSize) && (value.teamSize as number) >= ROOM_MIN_TEAM_SIZE && (value.teamSize as number) <= ROOM_SOLO_MAX_TEAM_SIZE &&
+    Number.isSafeInteger(value.teamSize) && (value.teamSize as number) >= ROOM_MIN_TEAM_SIZE && (value.teamSize as number) <= ROOM_DEV_MAX_TEAM_SIZE &&
     isSafeUnsigned(value.maxSpectators) && value.maxSpectators <= ROOM_MAX_SPECTATORS &&
     typeof value.botsFill === 'boolean' && typeof value.allowTeamSwitch === 'boolean' && typeof value.locked === 'boolean' &&
     (value.arrangement === null || isRecord(value.arrangement)) &&

@@ -568,6 +568,16 @@ function addChurch(s: Soup, options: BorderFarmsteadOptions, frame: { x: number;
 
 /** The farmsteads' merged mesh, or null when there are none. The caller joins its material to the shadow cascades. */
 export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Mesh | null {
+  const steps = buildBorderFarmsteadsSteps(options);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/** buildBorderFarmsteads a farmstead at a time (battle-spikes-253: the ring's build yields between them; Steinburg's
+ *  regional houses past the edge were one 486 ms task). */
+export function* buildBorderFarmsteadsSteps(options: BorderFarmsteadOptions): Generator<void, THREE.Mesh | null, void> {
   const sites = options.sites ?? selectFarmsteadSites(options);
   if (sites.length === 0) return null;
   const pal = PALETTES[options.style] ?? PALETTES.temperate;
@@ -577,6 +587,7 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
   const kit = roles?.house ? roles : null;
   const arch = kit ? options.architecture! : null;
   for (let i = 0; i < sites.length; i++) {
+    yield;
     const site = sites[i];
     const rng = mulberry32(((options.seed ^ 0x5EED) + i * 7919) >>> 0);
     const cos = Math.cos(site.yaw), sin = Math.sin(site.yaw);
@@ -663,6 +674,7 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
     if (hamlet) frames.push({ x: hamlet.x - 40 * Math.sin(hamlet.yaw), z: hamlet.z + 40 * Math.cos(hamlet.yaw), yaw: hamlet.yaw });
     // (the kit's church when it has one, its nave along the frame's heading; else the generic one)
     for (const frame of frames) {
+      yield;
       if (kit?.church && arch && addKitBuilding(s, options, arch, kit.church, frame.x, frame.z, frame.yaw, true)) continue;
       addChurch(s, options, frame, pal, arch ? { wall: arch.style.surfaces.stone.tint, roof: arch.style.surfaces.roof.tint } : undefined);
     }

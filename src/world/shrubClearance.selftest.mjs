@@ -43,7 +43,7 @@ assert.equal(clearShrubsFromSolids(root, blocked), 0, 'a cleared shrub is not co
 
 // the world: after the ground cover's seal, the same predicate (the props' solids and the scenery's holes)
 const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
-assert.match(map, /vegetation\.setGroundCoverClearance\(groundCoverClearance\(\)\);\n[\s\S]{0,260}group\.userData\.shrubsCleared = clearShrubsFromSolids\(vegetation\.group, groundCoverClearance\(\)\);/,
+assert.match(map, /yield\* timedSteps\(vegetation\.groundCoverSealSteps\(groundCoverClearance\(\)\), groundCoverSeal\);\n[\s\S]{0,320}group\.userData\.shrubsCleared = clearShrubsFromSolids\(vegetation\.group, groundCoverClearance\(\)\);/,
   'the shrubs are cleared right after the ground cover is sealed, from the same footprints');
 // the vegetation tags the meshes the clearance means
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');

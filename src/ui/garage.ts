@@ -1,8 +1,7 @@
 import type { CustomSelectController } from './customSelect.ts';
-import { tankSeedId } from '../vehicles/tankIdAliases.ts';
-import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
-import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
+import { vehicleActionsFor } from './vehicleActionList.ts';
+import type { VehicleActionBinding } from '../game/vehicleActions.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
@@ -27,36 +26,39 @@ import {
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
+import { createRichTooltip } from './richTooltip.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
 // with the battle sim.
 import {
-  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
-  loadEquipment, saveEquipment, equipEligible, computeEquipMults,
+  EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
+  loadEquipment, saveEquipment, equipmentPicker, computeEquipMults,
 } from '../game/equipment.ts';
-import type { EquipmentItem } from '../game/equipment.ts';
-import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
-import { equipIconSVG } from './equipIcons.ts';
+import type { EquipmentItem, EquipmentLock, EquipmentPickerItem } from '../game/equipment.ts';
+import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
-import { shellIconSVG } from './shellIcons.ts';
+import { shellIconId, shellIconSVG } from './shellIcons.ts';
+import { shellTypeLabel } from './shellLabels.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
-  garageTechnicalViews, shellTypeLabel, translateTechnicalView,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup,
+  garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
+import { datumAttr } from './dom.ts';
+import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, facetFilteredCountry, horizontalRailState, horizontalRailWheelDelta,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
-import { tankTier, tierNumeral } from '../vehicles/tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
@@ -72,10 +74,10 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -104,6 +106,7 @@ interface GaragePhotoControl {
 type BattleMode = PlayMode;
 // The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
 type FleetTakesModule = typeof import('./fleetTakes.ts');
+type EquipmentPreviewModule = typeof import('./equipmentPreview.ts');
 type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo' | 'hull' | 'turret' | 'accuracy' | 'bloom';
 type StatRange = Record<StatRangeKey, [number, number]>;
 
@@ -203,6 +206,12 @@ interface GarageOptions {
   readonly onGarageVariantSelect?: (variantId: string) => void;
   readonly camo?: GarageCamoOptions;
   readonly onMapSelect?: (mapId: string) => void;
+  /** The stage's overlay (the callouts) or the stage itself (measureStage) changed while the showroom is still: the
+   *  Garage wakes to place it, and the camera eases onto a moved stage (main.ts: the Garage renders on demand, so a still
+   *  stage draws nothing until asked). */
+  readonly onOverlayChange?: () => void;
+  /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
+  readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
 }
 
 export interface GarageRuntime {
@@ -214,7 +223,7 @@ export interface GarageRuntime {
   hide(): void;
   drainThumbs(): void;
   setDecorativeWorkGate(covered: () => boolean): void;
-  getStageRect(): { x: number; y: number; w: number; h: number };
+  getStageRect(centred?: boolean): { x: number; y: number; w: number; h: number };
   setSelected(specId: string): void;
   getSelected(): string;
   getSelectedGarageVariant(): string;
@@ -244,6 +253,39 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
 /** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.
  *  The paint left the stations for the band under the name, where it is always in view. */
 /** The paints the band offers beside the one the tank wears, in this order (those the catalog carries). */
+/**
+ * A scrolling grid stands a whole number of its rows tall plus two fifths of the next, so a sheet or picker never ends
+ * on a row cut at random (the gauntlet 10-25) and the peek, dimmed under its `can-scroll` fade (--peek), says more waits
+ * below (a 16 px sliver read as a hard cut to the r16 critic). Read on a resize or a redraw, never in a scroll.
+ */
+function fitWholeRows(grid: HTMLElement): void {
+  grid.style.maxHeight = '';
+  grid.style.removeProperty('--peek');
+  const style = getComputedStyle(grid);
+  if (grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
+    // the lowest row foot that shows whole, and the next row (rows may differ in height: a phone's tiles carry one to
+    // four lines)
+    const top = grid.getBoundingClientRect().top + grid.clientTop - grid.scrollTop;
+    const pad = parseFloat(style.paddingBottom) || 0;
+    const room = grid.clientHeight - pad;
+    let foot = 0, nextTop = Infinity, nextHeight = 0;
+    for (const child of grid.children) {
+      const box = child.getBoundingClientRect();
+      if (!(box.height > 0)) continue;
+      if (box.bottom - top <= room + 0.5) foot = Math.max(foot, box.bottom - top);
+      else if (box.top - top < nextTop) { nextTop = box.top - top; nextHeight = box.height; }
+    }
+    if (foot > 0) {
+      const height = Math.min(grid.clientHeight, Number.isFinite(nextTop) ? nextTop + nextHeight * 0.4 : foot + pad);
+      grid.style.maxHeight = `${Math.ceil(height)}px`;
+      grid.style.setProperty('--peek', `${Math.max(Math.round(pad), Math.ceil(height - foot))}px`);
+    }
+  }
+  grid.classList.toggle('can-scroll', grid.scrollHeight > grid.clientHeight + 1);
+}
+
+/** A docked picker tile's least width (showroom.css sets the same floor in its grid). */
+const EQ_TILE_MIN_PX = 84;
 const BAND_PAINT_PICKS: readonly string[] = Object.freeze(['factory', 'auto', 'summer', 'desert', 'winter', 'digital']);
 const GARAGE_STATIONS = Object.freeze([
   ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
@@ -251,13 +293,19 @@ const GARAGE_STATIONS = Object.freeze([
 ] as const);
 type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
-/** A core mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card). */
-const deployCardArt = (id: string): string =>
-  `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`;
+/** The modes public/media/deploy-r1 holds a 640 card picture for (the others have their 480 tile picture). */
+const DEPLOY_CARD_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
+/** A headline mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card): its 640
+ *  card picture, or its tile picture until a card one lands (Drone, 2026-10-25). */
+const deployCardArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
-/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range too). */
-const deployTileArt = (id: string): string =>
-  `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range
+ *  too); a mode that only has a card picture shows that one. */
+const deployTileArt = (id: string): string => DEPLOY_CARD_ART.has(id)
+  ? `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
+  : `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
 /**
  * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
@@ -293,17 +341,16 @@ function escapeHtmlAttribute(value: string): string {
   })[character] || character);
 }
 
-function equipmentAvailabilityCopy(
-  itemId: string,
-  locked: boolean,
-  spec: GarageTankSpec | undefined,
-  openSlot: number,
-): string {
-  if (!locked) return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
-  if (itemId === 'rammer' && spec?.gun?.autoloader) {
-    return t('garage.equipment.unavailable.autoloader');
+/** Why a tile is shut, from equipmentPicker's lock (the gates spawn and the multiplayer authority run too). */
+function equipmentLockCopy(itemId: string, lock: EquipmentLock | null): string {
+  switch (lock) {
+    case 'manualLoader':
+      return t(itemId === 'rammer' ? 'garage.equipment.unavailable.autoloader' : 'garage.equipment.unavailable.manualLoader');
+    case 'autoloader': return t('garage.equipment.unavailable.needsAutoloader');
+    case 'turret': return t('garage.equipment.unavailable.turret');
+    case 'mode': return t('garage.equipment.unavailable.mode');
+    default: return t('garage.equipment.unavailable.modernOnly');
   }
-  return t('garage.equipment.unavailable.modernOnly');
 }
 
 function equipmentMetricIcon(metricId: string): string {
@@ -321,6 +368,13 @@ function equipmentMetricIcon(metricId: string): string {
     crewHe: 'crew',
     ammoRackDurability: 'ammoRack',
     fuelTankDurability: 'fuelTank',
+    engineDurability: 'engine',
+    transmissionDurability: 'transmission',
+    turretRingDurability: 'turretRing',
+    gunMountDurability: 'gunMount',
+    gunDurability: 'gun',
+    opticsDurability: 'optics',
+    autoloaderDurability: 'autoloader',
     engineFire: 'engine',
     fireDuration: 'extinguisher',
     extinguish: 'extinguisher',
@@ -330,7 +384,7 @@ function equipmentMetricIcon(metricId: string): string {
 
 function equipmentCategoryButtons(activeCategory: string): string {
   return EQUIP_CATEGORIES.map((category) => (
-    `<button type="button" class="chip${category.id === activeCategory ? ' sel' : ''}" ` +
+    `<button type="button" class="cot-c-chip chip" aria-pressed="${category.id === activeCategory}" ` +
     `data-cat="${category.id}">${t(`garage.equipment.cat.${category.id}`)}</button>`
   )).join('');
 }
@@ -356,8 +410,8 @@ function equipmentTileClass(locked: boolean, fittedAt: number, openSlot: number)
   return classes;
 }
 
-function equipmentTileTag(item: EquipmentItem, locked: boolean, fittedAt: number, openSlot: number): string {
-  if (locked) return equipmentEraTag(item);
+function equipmentTileTag(item: EquipmentItem, lock: EquipmentLock | null, fittedAt: number, openSlot: number): string {
+  if (lock) return lock === 'era' ? equipmentEraTag(item) : '';
   if (fittedAt === openSlot) return `<span class="tag">${t('garage.equipment.tag.fitted')}</span>`;
   if (fittedAt >= 0) return `<span class="tag">${t('garage.equipment.tag.slot', { slot: fittedAt + 1 })}</span>`;
   return '';
@@ -365,35 +419,29 @@ function equipmentTileTag(item: EquipmentItem, locked: boolean, fittedAt: number
 
 function equipmentTileActionCopy(
   item: EquipmentItem,
-  locked: boolean,
+  lock: EquipmentLock | null,
   fittedAt: number,
   openSlot: number,
-  spec: GarageTankSpec | undefined,
 ): string {
-  if (locked) return equipmentAvailabilityCopy(item.id, true, spec, openSlot);
+  if (lock) return equipmentLockCopy(item.id, lock);
   if (fittedAt === openSlot) return t('garage.equipment.action.fitted');
   if (fittedAt >= 0) return t('garage.equipment.action.fittedIn', { from: fittedAt + 1, to: openSlot + 1 });
   return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
 }
 
-function equipmentTileMarkup(
-  item: EquipmentItem,
-  spec: GarageTankSpec | undefined,
-  currentLoadout: readonly string[],
-  openSlot: number,
-): string {
-  const locked = !equipEligible(item, spec);
-  const fittedAt = currentLoadout.indexOf(item.id);
+function equipmentTileMarkup({ item, lock, fittedSlot: fittedAt }: EquipmentPickerItem, openSlot: number): string {
+  const locked = lock !== null;
   const cls = equipmentTileClass(locked, fittedAt, openSlot);
-  const tag = equipmentTileTag(item, locked, fittedAt, openSlot);
-  const availability = equipmentTileActionCopy(item, locked, fittedAt, openSlot, spec);
+  const tag = equipmentTileTag(item, lock, fittedAt, openSlot);
+  const availability = equipmentTileActionCopy(item, lock, fittedAt, openSlot);
   const name = equipmentLabel(item.id);
   const desc = equipmentDesc(item.id);
   const ariaLabel = escapeHtmlAttribute(`${name}. ${desc}. ${availability}`);
+  // the tile carries the short name (10 characters at most, the slot caption's); the full name reads in its label and tip
   return `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : item.id}" ` +
-    `data-eq-id="${item.id}" data-eq-cat="${item.cat}" aria-label="${ariaLabel}" ` +
+    `data-eq-id="${item.id}" data-eq-cat="${item.cat}"${lock ? ` data-eq-lock="${lock}"` : ''} aria-label="${ariaLabel}" ` +
     `aria-pressed="${fittedAt === openSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
-    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${name}</span>` +
+    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${t(`equipment.${item.id}.short`)}</span>` +
     `<span class="e">${desc}</span></button>`;
 }
 
@@ -410,11 +458,11 @@ function equipmentPickerTiles(
     `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
     `aria-label="${emptyLabel}">` +
     `${uiIconSVG('close', 34)}` +
-    `<span class="n">${t('garage.equipment.empty.name')}</span>` +
-    `<span class="e">${t('garage.equipment.empty.desc')}</span></button>`;
-  const itemTiles = EQUIPMENT_CATALOG
-    .filter((item) => activeCategory === 'all' || item.cat === activeCategory)
-    .map((item) => equipmentTileMarkup(item, spec, currentLoadout, openSlot))
+    `<span class="n">${t('garage.equipment.empty.name')}</span></button>`;
+  // the lead's equipmentPicker (equipment 249): one group per category in catalog order, each tile's lock and fitted slot
+  const itemTiles = equipmentPicker(spec, currentLoadout)
+    .filter((group) => activeCategory === 'all' || group.category.id === activeCategory)
+    .flatMap((group) => group.items.map((entry) => equipmentTileMarkup(entry, openSlot)))
     .join('');
   return emptyTile + itemTiles;
 }
@@ -460,7 +508,7 @@ const NATION_RANK = new Map([
   ['Israel', 12], ['Ukraine', 13],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {
-  return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
+  return compareCountryThenTierThenName(a, b, NATION_RANK, displayTier);
 }
 const countryCodeOf = (spec: GarageTankSpec): string => flagIconCode(spec.nation);
 
@@ -494,36 +542,24 @@ function scheduleCamoSwatchLoad(immediate = false) {
   return camoSwatchAccess.preload({ immediate });
 }
 
-function paintCamoSwatchPlaceholder(
-  canvas: HTMLCanvasElement,
-  spec: GarageTankSpec,
-  pid: string,
-): void {
-  const W = 128;
-  const H = 44;
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  let hash = 2166136261;
-  for (const ch of `${spec?.id ? tankSeedId(spec.id) : 'tank'}:${pid || 'factory'}`) { // schema-1 spelling (SSOT 2.19)
-    hash ^= ch.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  const hue = ((hash >>> 0) % 46) + 72;
-  ctx.fillStyle = `hsl(${hue} 22% 25%)`;
-  ctx.fillRect(0, 0, W, H);
-  ctx.save();
-  ctx.translate((hash >>> 8) % 19, 0);
-  ctx.rotate(-0.34);
-  ctx.fillStyle = 'rgba(18,23,20,.36)';
-  for (let x = -H; x < W + H; x += 30) ctx.fillRect(x, -H, 13, H * 3);
-  ctx.restore();
-  const light = ctx.createLinearGradient(0, 0, 0, H);
-  light.addColorStop(0, 'rgba(255,255,255,.10)');
-  light.addColorStop(1, 'rgba(0,0,0,.18)');
-  ctx.fillStyle = light;
-  ctx.fillRect(0, 0, W, H);
+/**
+ * A swatch still waiting for its real paint shows the kit's skeleton (a flat quiet fill, garage.css), never a stand-in
+ * pattern: the old hued stripes read as a grid of broken thumbnails (the gauntlet 10-25). The painter clears the mark
+ * (camoSwatchPainter.ts blit); the surface stays clear until its tile arrives, so the CSS fill shows through.
+ */
+function markCamoSwatchLoading(canvas: HTMLCanvasElement): void {
+  canvas.dataset.loading = '';
+}
+
+/** (UI-LOCKDOWN A) a picker, band or custom-preview swatch: its exact tile (clear before it, over the skeleton) covers the
+ *  canvas's own box at min(DPR, 2), as the CSS's object-fit did over the fixed 128 x 44 store it replaces. */
+const paintCamoSwatchSurface: UiCanvasDraw = (ctx, width, height, surface) => {
+  ctx.clearRect(0, 0, width, height);
+  if (surface.image) drawImageFit(ctx, surface.image, width, height, 'cover');
+};
+
+function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
+  return uiCanvas(canvas, { draw: paintCamoSwatchSurface });
 }
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
@@ -541,7 +577,8 @@ function queueExactCamoSwatch(
 ): void {
   const version = (camoSwatchPaintVersion.get(canvas) || 0) + 1;
   camoSwatchPaintVersion.set(canvas, version);
-  paintCamoSwatchPlaceholder(canvas, spec, auto ? 'auto' : pid);
+  markCamoSwatchLoading(canvas);
+  camoSwatchSurface(canvas).setImage(null);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
     if (!swatchGateInstalled) {
@@ -625,19 +662,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-wordmark" data-nav="home" type="button" aria-label="${t('garage.nav.home')}">` +
     `${brandMarkSVG(28)}${BRAND_WORDMARK_HTML}</button>` +
     `<nav class="cot-gbar cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
-    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}" data-tip="${t('garage.nav.garage')} (G)">` +
     `${uiIconSVG('garage', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.garage')}</span>${keycap('G')}</button>` +
-    `<button class="nv cot-nav-desktop" data-nav="deploy" type="button" aria-haspopup="dialog" aria-controls="cot-battle-menu" aria-label="${t('garage.battle')}">` +
+    `<button class="nv cot-nav-desktop" data-nav="deploy" type="button" aria-haspopup="dialog" aria-controls="cot-battle-menu" aria-label="${t('garage.battle')}" data-tip="${t('garage.battle')} (B)">` +
     `${uiIconSVG('deploy', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.battle')}</span>${keycap('B')}</button>` +
-    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}">` +
+    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" data-tip="${t('garage.nav.gallery')} (V)">` +
     `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.gallery')}</span>${keycap('V')}</button>` +
-    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}">` +
+    `<button class="nv cot-nav-desktop cot-techtree-trigger" data-nav="techTree" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="${t('techTree.open')}" data-tip="${t('techTree.open')} (T)">` +
+    `${uiIconSVG('techTree', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('techTree.open')}</span>${keycap('T')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" data-tip="${t('garage.nav.studio')} (F8)">` +
     `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.studio')}</span>${keycap('F8')}</button>` +
-    `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
+    `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" data-tip="${t('garage.nav.record')} (R)" ` +
     `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('record', 16, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.record')}</span>` +
-    `<span class="record-badge" aria-hidden="true">0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
-    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}">` +
+    `<span class="record-badge" aria-hidden="true" hidden${datumAttr('record')}>0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" data-tip="${t('garage.nav.docs')} (F1)">` +
     `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.docs')}</span>${keycap('F1')}</button>` +
     `</nav></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.menu')}">` +
@@ -674,6 +713,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="gallery">` +
     `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.gallery')}</strong></span></button>` +
+    `<button type="button" data-mobile-nav="techTree" aria-haspopup="dialog">` +
+    `${uiIconSVG('techTree', 20)}<span class="cot-mobile-nav-copy">` +
+    `<strong>${t('techTree.open')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
     `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong></span></button>` +
@@ -694,8 +736,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     // the battle card (the 245 redesign): the battlefield it deploys to as a picture, its name, and the mode
     `<span class="sum-pic" data-deploy-pic aria-hidden="true"></span>` +
-    `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="sum-map" data-deploy-map></span></button>` +
+    `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode"${datumAttr('mode-name')}>${t('garage.battle.soloLabel')}</span>` +
+    `<span class="sum-map" data-deploy-map${datumAttr('map-name')}></span></button>` +
     // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
     // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
     // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
@@ -708,7 +750,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
     `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-quick" data-tab="quick" aria-selected="true" aria-controls="cot-deploy-quick">` +
-    `${uiIconSVG('battleBots', 18)}${t('garage.deploy.quick')}</button>` +
+    `${uiIconSVG('play', 18)}${t('garage.deploy.quick')}</button>` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-campaign" data-tab="campaign" aria-selected="false" aria-controls="cot-deploy-campaign" tabindex="-1">` +
     `${uiIconSVG('modeFrontline', 18)}${t('campaign.heading')}<span class="cot-deploy-count num" data-deploy-campaign-count></span></button></div>` +
     `<button type="button" class="cot-deploy-tab" data-deploy-room="private">${uiIconSVG('battlePrivate', 18)}${t('garage.battle.typePrivate')}</button>` +
@@ -721,13 +763,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${deployCardArt('standard')}<span class="choice-icon">${uiIconSVG('modeStandard', 21)}</span>` +
     `<span class="cot-deploy-choice-t"><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
     `<span class="cot-deploy-chips" data-deploy-chips="standard"></span></span></button>` +
-    deployCardsHTML(['zone_control', 'capture_the_flag', 'frontline_assault'], true) +
+    // the presentation order (sim/gameModeCatalog.ts): Standard leads as the solo card above, then the other headline modes
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(1, HEADLINE_MODE_COUNT), true) +
     `</div><div class="cot-deploy-rows">` +
-    deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
+    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
-    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
+    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving_ground">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
+    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span><span class="cot-deploy-chips"></span></span></button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
@@ -736,15 +779,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the campaign tab's plate: the operation in focus (deployScreen.ts brief)
     `<section class="cot-deploy-brief" data-deploy-brief aria-live="polite"></section>` +
     `<div class="cot-battle-details">` +
-    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
-    `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
+    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon is-active" data-setup-icon aria-hidden="true"></span>` +
+    `<h3 id="cot-deploy-mode-title" data-setup-title${datumAttr('mode-name')}></h3>` +
     `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
     `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +
     // the battlefield (the direction's .bfield): its art, name and region over a fade, the tactical map beside it; the
     // card opens the Garage's map picker over the plate
     `<div class="cot-deploy-field"><button type="button" class="cot-deploy-field-card" data-deploy-field aria-expanded="false" ` +
     `aria-controls="cot-deploy-field-pop" aria-label="${t('garage.tools.battlefields')}"><span class="cot-deploy-field-thumb" data-deploy-field-thumb aria-hidden="true"></span>` +
-    `<span class="cot-deploy-field-nm"><span class="cot-deploy-field-name" data-deploy-field-name></span>` +
+    `<span class="cot-deploy-field-nm"><span class="cot-deploy-field-name" data-deploy-field-name${datumAttr('map-name')}></span>` +
     `<span class="cot-deploy-field-tags" data-deploy-field-tags></span></span>` +
     `<span class="cot-c-chip cot-deploy-field-all" data-deploy-field-all aria-hidden="true"></span></button>` +
     `<span class="cot-deploy-field-mm" aria-hidden="true"><img data-deploy-field-mm alt="" width="256" height="256" decoding="async" hidden></span>` +
@@ -792,7 +835,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
-    `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
+    `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}"${datumAttr('room-code')}>` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
     // a phone held upright (the direction's 91 page): the tab bar, under the Garage and the Deploy screen alike
@@ -805,21 +848,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
-    `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="${t('garage.country.scrollLeft')}">${uiIconSVG('chevronLeft', 14)}</button>` +
     `<div class="cot-country-chips" role="group" aria-label="${t('garage.country.filterAria')}"></div>` +
-    `<button class="cot-country-edge next is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="${t('garage.country.scrollRight')}">${uiIconSVG('chevronRight', 14)}</button>` +
     `</div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.prev')}">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
     `<div class="cot-cards" role="listbox" tabindex="0" aria-label="${t('garage.carousel.listAria')}"></div>` +
+    `<div class="cot-cards-empty" role="status" hidden><span>${t('garage.roster.empty')}</span>` +
+    `<button type="button" class="cot-c-chip" data-roster-clear><span class="cot-c-chip__label">${t('garage.roster.clear')}</span></button></div>` +
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol">` +
-    `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>` +
+    `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-garage-variant-control">` +
     `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
     `aria-haspopup="listbox" aria-expanded="false" ` +
@@ -837,17 +878,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
     // The band under the name (the 245 redesign): the three equipment slots, the paint (what the tank wears, three more to
     // try and every paint) and the stage's acts, always in view, so nothing about the tank hides behind a tab.
-    `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
-    `<div class="cot-lt-band"><div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"></div>` +
-    `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div>` +
-    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-callouts aria-pressed="false" ` +
-    `aria-keyshortcuts="I" aria-label="${t('garage.act.callouts')}" data-tip="${t('garage.act.calloutsTip')} (I)">${uiIconSVG('info', 18)}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-anatomy ` +
-    `aria-label="${t('garage.act.anatomy')}" data-tip="${t('garage.act.anatomyTip')}">${uiIconSVG('layerXray', 18)}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-test-drive ` +
-    `aria-label="${t('garage.dossier.testDrive')}" data-tip="${t('garage.act.testDriveTip')}">${uiIconSVG('modeProving', 18)}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-photo hidden aria-keyshortcuts="P" ` +
-    `aria-label="${t('garage.photo.open')}" data-tip="${t('garage.act.photoTip')} (P)">${uiIconSVG('toolPhoto', 18)}</button></div></div></section>` +
+    `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"${datumAttr('tank-name')}></h2><div class="cot-lt-id"></div></div>` +
+    `<div class="cot-lt-band"><div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.equipment')}</span>` +
+    `<div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"${datumAttr('equipment')}></div></div>` +
+    `<div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.paint')}</span>` +
+    `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div></div>` +
+    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-lt-act" data-lt-callouts aria-pressed="false" ` +
+    `aria-keyshortcuts="I" data-tip="${t('garage.act.calloutsTip')} (I)">${uiIconSVG('info', 18)}<span>${t('garage.act.callouts')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-lt-act" data-lt-anatomy ` +
+    `data-tip="${t('garage.act.anatomyTip')}">${uiIconSVG('layerXray', 18)}<span>${t('garage.act.anatomy')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-lt-act" data-lt-test-drive ` +
+    `data-tip="${t('garage.act.testDriveTip')}">${uiIconSVG('modeProving', 18)}<span>${t('garage.act.drive')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-lt-act" data-lt-photo hidden aria-keyshortcuts="P" ` +
+    `data-tip="${t('garage.act.photoTip')} (P)">${uiIconSVG('toolPhoto', 18)}<span>${t('garage.photo.open')}</span></button></div></div></section>` +
     // the readout's station tabs (the 245 redesign): one row of glyphs over the readout, each named under its glyph
     `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="horizontal" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
@@ -872,7 +915,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshServiceRecord() {
     const record = getPlayerRecord();
     const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
-    if (badge) badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches);
+    // the matches played, once there are any (a new player's "0" read as an empty alert)
+    if (badge) { badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches); badge.hidden = record.matches === 0; }
     const fresh = unseenAwardCount();
     const dot = root.querySelector<HTMLElement>('.cot-record-trigger .record-new');
     if (dot) dot.hidden = fresh === 0;
@@ -969,7 +1013,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (take && fleet) {
         if (timer) { clearInterval(timer); timer = 0; }
         player ??= fleet.createFleetTakePlayer(shotEl, () => activated);
-        capEl.textContent = fleet.fleetTakeText(take, 'short');
+        // the band names the tank; its own take carries no second name, its full title in the hover tip (UI-LOCKDOWN G1)
+        capEl.textContent = '';
         shotEl.dataset.tip = fleet.fleetTakeText(take, 'title');
       } else {
         shotEl.removeAttribute('title');
@@ -1050,8 +1095,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const cardsEl = requiredElement<HTMLElement>(root, '.cot-cards');
   const countryRailEl = requiredElement<HTMLElement>(root, '.cot-country-rail');
   const chipsEl = requiredElement<HTMLElement>(root, '.cot-country-chips');
-  const prevCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.prev');
-  const nextCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.next');
   const prevVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.prev');
   const nextVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.next');
   const battleControl = requiredElement<HTMLElement>(root, '.cot-battle-control');
@@ -1087,6 +1130,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function setStation(next: GarageStation, { sound = true } = {}): void {
     station = next;
     root.dataset.station = next;
+    if (calloutsShown) opts.onOverlayChange?.(); // the callouts show on the overview alone
     for (const tab of stationTabs.querySelectorAll<HTMLElement>('[role=tab]')) {
       const on = tab.dataset.station === next;
       tab.setAttribute('aria-selected', String(on));
@@ -1103,16 +1147,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // until it fits. Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it
   // belongs to. The fit runs in the frame's callback, before that frame paints, so a press (a station, a tank) reads no
   // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
-  const READOUT_DENSITY = Object.freeze(['0', '1', '1 2', '1 2 3', '1 2 3 4']);
+  // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the four denser steps
+  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4']);
   const readoutDensities = new Map<string, number>();
   function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
     const key = `${station}|${statsFor}|${window.innerWidth}x${window.innerHeight}`;
     const known = force ? undefined : readoutDensities.get(key);
-    if (known !== undefined) { statsEl.dataset.density = READOUT_DENSITY[known]; return; }
-    let density = 0;
-    statsEl.dataset.density = READOUT_DENSITY[0];
-    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
+    // a remembered density is checked once (the frame lays the readout out to paint it anyway): the same tank's readout
+    // can grow after it was fitted (its actions row, a late key cap), and one that no longer fits steps on from there
+    let density = known ?? 0;
+    statsEl.dataset.density = READOUT_DENSITY[density];
+    // and a remembered density steps back while a looser one fits (it was fitted in a shorter column: a panel open, a late
+    // drawing), so a sparse station keeps its headings rather than a density the column no longer needs
+    while (density > 0) {
+      statsEl.dataset.density = READOUT_DENSITY[density - 1];
+      if (statsEl.scrollHeight > statsEl.clientHeight + 1) { statsEl.dataset.density = READOUT_DENSITY[density]; break; }
+      density--;
+    }
+    while (density < 5 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
     if (readoutDensities.size > 64) readoutDensities.clear();
     readoutDensities.set(key, density);
   }
@@ -1139,6 +1192,38 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   window.addEventListener('resize', () => queueReadoutFit());
   window.addEventListener('cot:layoutchange', () => queueReadoutFit(true));
+
+  // The bar folds by what it measures, not by a width band (release 252: once the tech tree's destination joined, Docs ran
+  // over the language switch at 1440 x 900): the brand rail and the tools keep a 16 px gutter, the bar stepping through
+  // its folds (1 the key caps, 2 the locale and GitHub to glyphs, 3 the secondary destinations to glyphs, 4 every
+  // destination and the wordmark's name) until they do. Each pass starts unfolded, so a wider window unfolds again.
+  const BAR_FIT = Object.freeze(['', '1', '1 2', '1 2 3', '1 2 3 4']);
+  const BAR_GUTTER_PX = 16;
+  const brandRail = requiredElement<HTMLElement>(root, '.cot-brand-rail');
+  const barTools = requiredElement<HTMLElement>(root, '.cot-nav');
+  function fitBar(): void {
+    if (document.body.dataset.cotPanels !== 'persistent') { delete root.dataset.barFit; return; }
+    let step = 0;
+    root.dataset.barFit = BAR_FIT[step];
+    while (step < BAR_FIT.length - 1 && barTools.getBoundingClientRect().left - brandRail.getBoundingClientRect().right < BAR_GUTTER_PX) {
+      root.dataset.barFit = BAR_FIT[++step];
+    }
+  }
+  let barFitQueued = false;
+  const queueBarFit = (): void => {
+    if (barFitQueued) return;
+    barFitQueued = true;
+    requestAnimationFrame(() => { barFitQueued = false; fitBar(); });
+  };
+  window.addEventListener('resize', queueBarFit);
+  window.addEventListener('cot:layoutchange', queueBarFit);
+  void document.fonts?.ready.then(queueBarFit);
+  // a label that changes length (the locale, Record's count, a destination joining) refits it too
+  if (typeof ResizeObserver === 'function') {
+    const barObserver = new ResizeObserver(queueBarFit);
+    barObserver.observe(brandRail);
+    barObserver.observe(barTools);
+  }
   // the technical drawing loads after its station opens: its arrival is measured afresh
   statsEl.addEventListener('load', () => queueReadoutFit(true), true);
   // the display and data faces settle the readout's line heights: what was fitted before they arrived is fitted again
@@ -1147,6 +1232,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // --- OVERVIEW (brand-ui S2): the headline rows against a rival of the same tier and class, both on the tank's own peer
   // scale, so a tick on the 20 cells is the rival and the delta is the gap.
   let rivalChoice: string | null = null;
+  // the comparison is a chip the player turns on (owner 10-24: "change the vs"): off, the readout carries no rival, no
+  // deltas and no rival marks; on, the rival's picker stands beside the chip and each figure shows its gap. Per session.
+  const COMPARE_KEY = 'cot.garage.compare';
+  let compareOn = false;
+  try { compareOn = sessionStorage.getItem(COMPARE_KEY) === '1'; } catch (_) { /* this page only */ }
   const rivalPeers = (spec: GarageTankSpec): GarageTankSpec[] => {
     const group = statGroupOf(spec);
     return specs.filter((other) => other.id !== spec.id && statGroupOf(other) === group)
@@ -1160,7 +1250,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const gap = (other: GarageTankSpec) => Math.abs(other.weightTons - spec.weightTons) / spec.weightTons
       + Math.abs(other.gun.caliberMm - spec.gun.caliberMm) / spec.gun.caliberMm;
     const foreign = peers.filter((other) => other.nation !== spec.nation);
-    return (foreign.length ? foreign : peers).reduce<GarageTankSpec | null>((best, other) => !best || gap(other) < gap(best) ? other : best, null);
+    // ...that differs on most headline rows, better on some and worse on others (the gauntlet 10-25: a sibling on the
+    // same template compared even on every row, and a near-twin showed two red figures and four blank rows)
+    const mine = headlineOf(spec);
+    const contrast = (other: GarageTankSpec): number => {
+      const theirs = headlineOf(other);
+      let better = 0, worse = 0;
+      for (const key of ['dmg', 'reload', 'speed', 'hpt', 'hp', 'turret'] as const) {
+        const d = mine[key] - theirs[key];
+        if (Math.abs(d) <= Math.max(1e-3, Math.abs(mine[key]) * 0.005)) continue;
+        if ((key === 'reload' ? -d : d) > 0) better++; else worse++;
+      }
+      return better && worse ? better + worse : Math.min(better + worse, 2);
+    };
+    const pool = (foreign.length ? foreign : peers).slice().sort((a, b) => gap(a) - gap(b));
+    return pool.find((other) => contrast(other) >= 4) ?? pool.find((other) => contrast(other) >= 3)
+      ?? pool.find((other) => contrast(other) >= 2) ?? pool[0] ?? null;
   };
   const headlineOf = (spec: GarageTankSpec, reloadMult = 1, turretMult = 1) => ({
     dmg: Math.max(0, ...(spec.gun.shells || []).map((shell) => shell.dmg || 0)),
@@ -1171,7 +1276,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function overviewSection(spec: GarageTankSpec, eqM: ReturnType<typeof computeEquipMults>,
     shells: readonly GarageShellSpec[]): string {
     const group = statGroupOf(spec);
-    const rival = rivalFor(spec);
+    const rival = compareOn ? rivalFor(spec) : null;
     const mine = headlineOf(spec, eqM.reload, eqM.turret);
     const theirs = rival ? headlineOf(rival) : null;
     const cells = (key: StatRangeKey, value: number, lowerBetter: boolean) =>
@@ -1180,34 +1285,47 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const value = mine[key];
       const other = theirs?.[key];
       const gap = other == null ? null : Number((value - other).toFixed(digits));
-      const delta = gap == null ? '' : `<em class="num${gap === 0 ? '' : (lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
-        `${gap === 0 ? '±' : gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
-      return `<div class="cot-hrow">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
+      // an even figure carries no gap: only a difference is news
+      const delta = gap == null || gap === 0 ? '' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
+        `${gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
+      return `<div class="cot-hrow" data-stat="${key}">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
         `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}${delta}</span>` +
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
     const peers = rival ? rivalPeers(spec) : [];
-    const picker = rival
-      ? `<label class="cot-rival"><span class="vs" aria-hidden="true">${t('teams.vs')}</span>${flagIconHTML(rival.nation, 22, 16)}` +
+    const picker = `<div class="cot-compare">` + (rival
+      ? `<label class="cot-rival">${flagIconHTML(rival.nation, 22, 16)}` +
         `<select data-rival aria-label="${t('garage.rival.aria')}">${peers.map((other) =>
           `<option value="${other.id}"${other.id === rival.id ? ' selected' : ''}>${escapeHtmlAttribute(other.label?.displayName || other.name)}</option>`).join('')}` +
         `</select>${uiIconSVG('chevronDown', 14)}</label>`
-      : '';
+      : '') +
+      `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="${compareOn}">` +
+      `<span class="cot-c-chip__label">${t('garage.compare')}</span></button></div>`;
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
     return `<section class="cot-stat-section cot-overview-section cot-primary" data-stations="overview">${picker}<div class="cot-headline">` +
       row('damage', t('garage.dossier.stat.damage'), 'dmg', 'hp', 0) +
       row('clock', spec.gun.autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload'), 'reload', 's', 1, true) +
       row('speed', t('garage.dossier.stat.speed'), 'speed', 'km/h', 0) +
       row('engine', t('garage.dossier.stat.hpt'), 'hpt', 'hp/t', 1) +
-      row('shield', t('garage.dossier.stat.hp'), 'hp', '', 0) +
+      row('shield', t('garage.dossier.stat.hp'), 'hp', 'hp', 0) +
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
-      `</div><div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
+      `</div>${magazineFigures(spec.gun, eqM.reload)}${actionsRow(spec)}<div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
-        `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div>` +
+        `<span class="num" data-tip="${t('garage.dossier.stat.damage')}">${shell.dmg}<small>hp</small></span></span></div>`).join('')}</div>` +
       // a folded layout shows three of the rows; this opens the whole dossier
       `<button type="button" class="cot-overview-more" data-garage-panel="equipment" aria-expanded="false" aria-controls="cot-garage-dossier" ` +
       `aria-label="${t('garage.dossier.vehicleDossier')}">${uiIconSVG('chevronRight', 18)}</button></section>`;
   }
+  statsEl.addEventListener('click', (event) => {
+    if (!(event.target as Element | null)?.closest('[data-compare]')) return;
+    compareOn = !compareOn;
+    try { sessionStorage.setItem(COMPARE_KEY, compareOn ? '1' : '0'); } catch (_) { /* this page only */ }
+    emit('ui:click', {});
+    const spec = specById.get(selectedId);
+    if (spec) renderStats(spec);
+    // the chip keeps the focus through the rebuild
+    statsEl.querySelector<HTMLElement>('[data-compare]')?.focus({ preventScroll: true });
+  });
   statsEl.addEventListener('change', (event) => {
     const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
     if (!select) return;
@@ -1396,7 +1514,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
     if (next === 'equipment') renderStaleDossier();
-    if (next === 'appearance' && previous !== next) refreshCamoSel(); // the swatches it left for the drawer
+    if (next === 'appearance' && previous !== next) {
+      refreshCamoSel(); // the swatches it left for the drawer
+      // the sheet's grid stands whole rows tall once it has its room: a fit read on a resize while it was closed sliced
+      // its last row when it opened (the r16 critic at 2560, 1280, 1024 and 900)
+      requestAnimationFrame(() => fitCamoRows());
+    }
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
       [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
@@ -1574,10 +1697,61 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     event.stopImmediatePropagation();
     closeBattleMenu({ restoreFocus: true });
   }, true);
+  // The card strip and the flags snap each stop to an item's start (owner 10-24: no card or flag cut at the left edge).
+  // Their last stop needs the end padding that lands it on one too, measured only when a rail's width or items change.
+  const railEndKeys = new WeakMap<HTMLElement, string>();
+  // The cards take the width that fits a whole number of them in the strip (within a fifth of their own), so a strip at
+  // rest never shows part of a card at either edge (the gauntlet 10-25: a cut card's clipped name under the arrows).
+  const fitCards = (): void => {
+    cardsEl.removeAttribute('data-fit');
+    const card = [...cardsEl.children].find((child): child is HTMLElement => child instanceof HTMLElement && child.offsetWidth > 0);
+    if (!card) return;
+    const cs = getComputedStyle(cardsEl);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const room = cardsEl.clientWidth - 2 * (parseFloat(cs.paddingLeft) || 0); // the right pad's base is the left's
+    const base = card.offsetWidth;
+    // the whole count either side of the natural fit, whichever keeps the cards nearest their own width
+    const exact = (room + gap) / (base + gap);
+    let width = 0;
+    for (const count of [Math.floor(exact), Math.ceil(exact)]) {
+      if (count < 1) continue;
+      const fit = (room - (count - 1) * gap) / count;
+      if (fit > base * 0.8 && fit < base * 1.3 && (!width || Math.abs(fit - base) < Math.abs(width - base))) width = fit;
+    }
+    if (width) {
+      cardsEl.style.setProperty('--card-fit', `${width.toFixed(2)}px`);
+      cardsEl.setAttribute('data-fit', '');
+    }
+  };
+  const settleRailEnd = (rail: HTMLElement): void => {
+    const extra = parseFloat(rail.style.getPropertyValue('--rail-end')) || 0;
+    if (railEndKeys.get(rail) === `${rail.clientWidth}|${rail.scrollWidth - extra}`) return;
+    if (rail === cardsEl) fitCards();
+    const natural = rail.scrollWidth - extra;
+    railEndKeys.set(rail, `${rail.clientWidth}|${natural}`);
+    const line = rail.getBoundingClientRect().left + rail.clientLeft - rail.scrollLeft +
+      (parseFloat(getComputedStyle(rail).scrollPaddingLeft) || 0);
+    const stops: number[] = [];
+    for (const item of rail.children) {
+      const box = item.getBoundingClientRect();
+      if (box.width > 0) stops.push(box.left - line);
+    }
+    const pad = horizontalRailEndPad(natural - rail.clientWidth, stops);
+    if (pad !== extra) rail.style.setProperty('--rail-end', pad ? `${pad}px` : '');
+  };
+  // A rail moved by script (a wheel's vertical pan, a flick's coast) runs free of its snap stops, which would pull each
+  // small step back, and settles on the nearest stop once it rests.
+  const railRest = new WeakMap<HTMLElement, number>();
+  const freeRail = (rail: HTMLElement): void => {
+    rail.classList.add('free');
+    clearTimeout(railRest.get(rail));
+    railRest.set(rail, window.setTimeout(() => rail.classList.remove('free'), 160));
+  };
   // Show an edge affordance only while cards actually remain beyond it.
   // Keep unavailable buttons in layout (visibility:hidden) so the strip does
   // not jump sideways as the user reaches either end.
   const syncCarouselAffordances = () => {
+    settleRailEnd(cardsEl);
     const maxScroll = Math.max(0, cardsEl.scrollWidth - cardsEl.clientWidth);
     const hasLeft = maxScroll > 1 && cardsEl.scrollLeft > 2;
     const hasRight = maxScroll > 1 && cardsEl.scrollLeft < maxScroll - 2;
@@ -1595,29 +1769,32 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const queueCarouselAffordances = () => requestAnimationFrame(syncCarouselAffordances);
   cardsEl.addEventListener('scroll', syncCarouselAffordances, { passive: true });
   window.addEventListener('resize', queueCarouselAffordances);
+  // the strip's own width also settles without a window resize (the bar's fonts, the battle card beside it), and the fit
+  // follows it
+  if (typeof ResizeObserver === 'function') new ResizeObserver(queueCarouselAffordances).observe(cardsEl);
+  // a resize (a phone turned, a window dragged) re-snaps each rail to its first item; the selected tank and its flag
+  // come back into view once it settles
+  let resizeRevealTimer = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeRevealTimer);
+    resizeRevealTimer = window.setTimeout(() => {
+      if (!api.isOpen) return;
+      cardById.get(selectedId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      chipById.get(countryFilter)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, 160);
+  });
 
-  // Country flags use the same honest overflow contract as the vehicle strip:
-  // the edge buttons appear only where hidden content really exists.
+  // The nations fade at the track's ends where more lies beyond them (has-more-left / -right), the vehicle strip's
+  // honest overflow contract; the wheel, a swipe and the arrow keys reach every one of them (no boxed arrows).
   const syncCountryRailAffordances = () => {
+    settleRailEnd(chipsEl);
     const { hasLeft, hasRight } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
     );
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
-    const affordances: Array<[HTMLButtonElement, boolean]> = [
-      [prevCountryBtn, hasLeft], [nextCountryBtn, hasRight],
-    ];
-    for (const [button, available] of affordances) {
-      button.disabled = !available;
-      button.classList.toggle('is-unavailable', !available);
-      button.setAttribute('aria-hidden', String(!available));
-    }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
-  const scrollCountries = (direction: number): void => {
-    const distance = Math.max(180, chipsEl.clientWidth * 0.72);
-    chipsEl.scrollBy({ left: direction * distance, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  };
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
     // ctrl+wheel is a trackpad pinch: the app-wide pinch guard owns it, so the rail never scrolls on one
@@ -1634,17 +1811,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = Math.max(0, Math.min(maxScroll, before + delta));
     if (Math.abs(target - before) < 0.5) return;
     event.preventDefault();
+    freeRail(chipsEl);
     chipsEl.scrollLeft = target;
     syncCountryRailAffordances();
   }, { passive: false });
-  prevCountryBtn.addEventListener('click', () => {
-    emit('ui:click', {});
-    scrollCountries(-1);
-  });
-  nextCountryBtn.addEventListener('click', () => {
-    emit('ui:click', {});
-    scrollCountries(1);
-  });
   window.addEventListener('resize', queueCountryRailAffordances);
 
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
@@ -1812,6 +1982,37 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', syncScrollFades);
   statsEl.addEventListener('scroll', syncScrollFades, { passive: true });
   requestAnimationFrame(syncScrollFades);
+  // A scrolling paint grid stands a whole number of rows tall, so the sheet never ends on a sliced row (the gauntlet
+  // 10-25); the fade on its last row says more waits below. Read when the sheet or the window changes size, and after
+  // the grid is drawn, never in a scroll.
+  // The docked picker sets its tiles in balanced rows (the band's widest count, then as few columns as keep the rows that
+  // many: 27 tiles on 2 rows of 14, a category of six on one row of six), so it is never one long row over a nearly
+  // empty one, nor a tall column with one tile alone at its foot; the readout steps aside only when it reaches it.
+  const fitPickerGrid = (grid: HTMLElement): void => {
+    grid.style.gridTemplateColumns = '';
+    if (document.body.dataset.cotPanels === 'persistent') {
+      const tiles = grid.children.length;
+      // every tile on one row stretches the picker to its widest, which is the room the band gives the grid
+      grid.style.gridTemplateColumns = `repeat(${tiles},${EQ_TILE_MIN_PX}px)`;
+      const room = grid.clientWidth;
+      const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+      const most = Math.max(1, Math.floor((room + gap) / (EQ_TILE_MIN_PX + gap)));
+      const cols = Math.ceil(tiles / Math.ceil(tiles / most));
+      if (Number.isFinite(cols) && cols > 0) grid.style.gridTemplateColumns = `repeat(${cols},minmax(${EQ_TILE_MIN_PX}px,1fr))`;
+      const stats = statsEl.getBoundingClientRect();
+      root.classList.toggle('picker-over-readout', eqpickEl.getBoundingClientRect().right > stats.left - 1);
+    }
+    fitWholeRows(grid);
+  };
+  const fitCamoRows = (): void => {
+    const cg = root.querySelector<HTMLElement>('.cot-camos .cgrid.camo');
+    if (cg) fitWholeRows(cg);
+  };
+  window.addEventListener('resize', fitCamoRows);
+  window.addEventListener('resize', () => {
+    const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .pgrid');
+    if (grid) fitPickerGrid(grid);
+  });
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
   // so window resize alone is insufficient to keep the fade affordance true.
@@ -1832,6 +2033,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   //               localStorage inside opts.camo.set.
   const camoOpts = opts.camo || null;
   const camosEl = requiredElement<HTMLElement>(root, '.cot-camos');
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(fitCamoRows)).observe(camosEl);
   const promoteCamoSwatches = () => {
     scheduleCamoSwatchLoad(true).catch(() => { /* next interaction retries */ });
   };
@@ -1965,8 +2167,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
-        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
+        ? `<div class="sw auto"></div><div class="cl"></div>`
+        : `<div class="sw"></div><div class="cl"></div>`;
+      createUiCanvas(card.querySelector('.sw'), '', { draw: paintCamoSwatchSurface });
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.dataset.tip = (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -2078,56 +2281,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   eqpickEl.setAttribute('aria-label', t('garage.dossier.equipment.heading'));
   eqpickEl.tabIndex = -1;
   root.appendChild(eqpickEl);
-  const eqTooltipEl = document.createElement('div');
-  eqTooltipEl.id = 'cot-equipment-tooltip';
-  eqTooltipEl.className = 'cot-eqtooltip';
-  eqTooltipEl.setAttribute('role', 'tooltip');
-  eqTooltipEl.setAttribute('aria-hidden', 'true');
-  root.appendChild(eqTooltipEl);
+  // a tile's projection: the kit's rich tooltip (richTooltip.ts) on hover and focus, never on a phone
+  const eqTip = createRichTooltip(eqpickEl, '.cot-eqtile', equipmentTip);
   let eqOpenSlot = -1;   // -1 = picker closed
+  // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
+  // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
+  let equipmentPreview: EquipmentPreviewModule | null = null;
+  let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
+  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
+    (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
   let eqCat = 'all';     // active category chip
-  let eqTooltipTimer: ReturnType<typeof setTimeout> | null = null;
-  let eqTooltipAnchor: HTMLElement | null = null;
-  let eqTooltipWarmUntil = 0;
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
 
-  function hideEqTooltip(primeNext = true): void {
-    if (eqTooltipTimer !== null) {
-      clearTimeout(eqTooltipTimer);
-      eqTooltipTimer = null;
-    }
-    if (eqTooltipAnchor) eqTooltipAnchor.removeAttribute('aria-describedby');
-    if (primeNext && eqTooltipEl.classList.contains('show')) {
-      eqTooltipWarmUntil = performance.now() + 900;
-    }
-    eqTooltipAnchor = null;
-    eqTooltipEl.classList.remove('show');
-    eqTooltipEl.setAttribute('aria-hidden', 'true');
-  }
-
-  function positionEqTooltip(anchor: HTMLElement): void {
-    const anchorRect = anchor.getBoundingClientRect();
-    const pickerRect = eqpickEl.getBoundingClientRect();
-    const tipRect = eqTooltipEl.getBoundingClientRect();
-    const gap = 12;
-    const viewportPad = 10;
-    const fitsLeft = pickerRect.left - tipRect.width - gap >= viewportPad;
-    let left = fitsLeft
-      ? pickerRect.left - tipRect.width - gap
-      : pickerRect.right + gap;
-    let top = anchorRect.top + anchorRect.height / 2 - tipRect.height / 2;
-    left = Math.max(viewportPad, Math.min(left, window.innerWidth - tipRect.width - viewportPad));
-    top = Math.max(viewportPad, Math.min(top, window.innerHeight - tipRect.height - viewportPad));
-    eqTooltipEl.dataset.side = fitsLeft ? 'left' : 'right';
-    eqTooltipEl.style.left = `${Math.round(left)}px`;
-    eqTooltipEl.style.top = `${Math.round(top)}px`;
-  }
-
   function populateEquipmentTooltipMetrics(
     metrics: HTMLElement,
-    preview: ReturnType<typeof equipmentHoverPreview>,
+    preview: ReturnType<EquipmentPreviewModule['equipmentHoverPreview']>,
     specName: string,
   ): void {
     if (!preview.metrics.length) return;
@@ -2156,43 +2326,49 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function equipmentTooltipCategory(item: EquipmentItem | null | undefined): string {
     if (!item) return t('garage.equipment.slotAction');
-    return EQUIP_CATEGORIES.find((candidate) => candidate.id === item.cat)?.label || t('garage.equipment.label');
+    return t(`garage.equipment.cat.${item.cat}`);
   }
 
-  function equipmentTooltipState(
-    item: EquipmentItem | null | undefined,
-    locked: boolean,
-    fittedAt: number,
-    spec: GarageTankSpec | undefined,
-  ): string {
+  function equipmentTooltipState(item: EquipmentItem | null | undefined, lock: EquipmentLock | null, fittedAt: number): string {
     if (!item) return t('garage.equipment.clearSlot', { slot: eqOpenSlot + 1 });
-    if (locked) return equipmentAvailabilityCopy(item.id, true, spec, eqOpenSlot);
+    if (lock) return equipmentLockCopy(item.id, lock);
     if (fittedAt === eqOpenSlot) return t('garage.equipment.fittedClickRemove');
     if (fittedAt >= 0) return t('garage.equipment.fittedInClickMove', { slot: fittedAt + 1 });
-    return equipmentAvailabilityCopy(item.id, false, spec, eqOpenSlot);
+    return t('garage.equipment.action.equipIn', { slot: eqOpenSlot + 1 });
   }
 
-  function showEqTooltip(anchor: HTMLElement): void {
-    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return;
+  function equipmentTip(anchor: HTMLElement): HTMLElement | null {
+    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return null;
     const itemId = anchor.dataset.eqId || '';
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
-    const locked = anchor.classList.contains('locked');
+    const lock = (anchor.dataset.eqLock || null) as EquipmentLock | null;
+    const locked = lock !== null;
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
+    // the tooltip shows whole, with its projections: one still loading holds it until they arrive, then it opens on the
+    // anchor the pointer or focus is still on (the rich tooltip's own hover and focus paths; integ 254 over the kit tip)
+    if (spec && !equipmentPreview) {
+      void loadEquipmentPreview().then(() => {
+        if (!anchor.isConnected) return;
+        if (anchor.matches(':hover')) anchor.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+        else if (anchor.matches(':focus-within')) anchor.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      }, () => {});
+      return null;
+    }
     const category = equipmentTooltipCategory(item);
-    const state = equipmentTooltipState(item, locked, fittedAt, spec);
+    const state = equipmentTooltipState(item, lock, fittedAt);
 
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
     eyebrow.textContent = category;
     const name = document.createElement('strong');
-    name.textContent = item?.name || t('garage.equipment.emptySlot');
+    name.textContent = item ? equipmentLabel(item.id) : t('garage.equipment.emptySlot');
     const detail = document.createElement('span');
     detail.className = 'detail';
-    detail.textContent = item?.desc || t('garage.equipment.removeFitted');
-    const preview = spec
-      ? equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
+    detail.textContent = item ? equipmentDesc(item.id) : t('garage.equipment.removeFitted');
+    const preview = spec && equipmentPreview
+      ? equipmentPreview.equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
       : null;
     const summary = document.createElement('span');
     summary.className = 'summary';
@@ -2204,13 +2380,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const action = document.createElement('span');
     action.className = 'action';
     action.textContent = state;
-    eqTooltipEl.replaceChildren(eyebrow, name, detail, summary, metrics, action);
-    eqTooltipEl.dataset.category = item?.cat || 'action';
-    eqTooltipEl.setAttribute('aria-hidden', 'false');
-    eqTooltipEl.classList.add('show');
-    eqTooltipAnchor = anchor;
-    anchor.setAttribute('aria-describedby', eqTooltipEl.id);
-    positionEqTooltip(anchor);
+    const body = document.createElement('div');
+    body.className = 'cot-eqtip';
+    body.dataset.category = item?.cat || 'action';
+    body.append(eyebrow, name, detail, summary, metrics, action);
+    return body;
   }
 
   function equipmentTooltipAllowed(): boolean {
@@ -2218,28 +2392,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
   }
 
-  function queueEqTooltip(anchor: HTMLElement, keyboard = false): void {
-    if (!equipmentTooltipAllowed()) {
-      hideEqTooltip(false);
-      return;
-    }
-    if (eqTooltipAnchor === anchor && eqTooltipEl.classList.contains('show')) return;
-    hideEqTooltip(false);
-    eqTooltipAnchor = anchor;
-    const delay = performance.now() < eqTooltipWarmUntil ? 0 : keyboard ? 160 : 360;
-    eqTooltipTimer = setTimeout(() => {
-      eqTooltipTimer = null;
-      if (eqTooltipAnchor === anchor) showEqTooltip(anchor);
-    }, delay);
-  }
-
   /** Assign/remove an item in the open slot, persist, refresh the card. */
   function eqAssign(itemId: string | null): void {
     if (vehicleLocked || !selectedId || eqOpenSlot < 0) return;
     const spec = specById.get(selectedId);
     if (!spec) return;
+    if (!equipmentPreview) { void loadEquipmentPreview().then(() => eqAssign(itemId), () => {}); return; }
     const cur = curLoadout();
-    const projected = projectEquipmentLoadout(cur, itemId, eqOpenSlot);
+    const projected = equipmentPreview.projectEquipmentLoadout(cur, itemId, eqOpenSlot);
     saveEquipment(selectedId, projected, spec);
     const slot = eqOpenSlot;
     closeEqPicker();
@@ -2249,16 +2409,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function renderEqPicker() {
     if (!selectedId || eqOpenSlot < 0) return;
-    hideEqTooltip(false);
+    eqTip.hide();
     const spec = specById.get(selectedId);
     const cur = curLoadout();
     const chips = equipmentCategoryButtons(eqCat);
     const tiles = equipmentPickerTiles(spec, cur, eqOpenSlot, eqCat);
     eqpickEl.innerHTML =
-      `<div class="ph"><span class="t">${t('garage.equipment.heading', { slot: eqOpenSlot + 1 })}</span>` +
-      `<button type="button" class="x" aria-label="${t('garage.equipment.headingClose')}">&#10005;</button></div>` +
+      `<div class="ph"><span class="t">${t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 })}</span>` +
+      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost x" aria-label="${t('garage.equipment.headingClose')}">` +
+      `${uiIconSVG('close', 18)}</button></div>` +
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
+    // a picker that scrolls ends on a whole row of tiles, never a sliced one
+    requestAnimationFrame(() => { const grid = eqpickEl.querySelector<HTMLElement>('.pgrid'); if (grid) fitPickerGrid(grid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
@@ -2267,8 +2430,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function openEqPicker(slot: number): void {
     if (vehicleLocked) return;
+    void loadEquipmentPreview().catch(() => {});
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
+    root.classList.add('picker-open');
     renderEqPicker();
     eqpickEl.querySelector<HTMLButtonElement>('.ph .x')?.focus({ preventScroll: true });
     document.addEventListener('keydown', eqKeydown);
@@ -2277,9 +2442,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function closeEqPicker() {
     if (eqOpenSlot < 0) return;
     const slot = eqOpenSlot;
-    hideEqTooltip(false);
+    eqTip.hide();
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
+    root.classList.remove('picker-open', 'picker-over-readout');
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);
@@ -2306,38 +2472,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (target?.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
     const tile = target?.closest<HTMLElement>('.cot-eqtile');
     if (!tile || tile.classList.contains('locked')) return;
-    hideEqTooltip(false);
+    eqTip.hide();
     emit('ui:click', {});
     eqAssign(tile.dataset.eq || null);
   });
 
-  eqpickEl.addEventListener('pointerover', (e) => {
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const from = e.relatedTarget;
-    if (from instanceof Node && tile.contains(from)) return;
-    queueEqTooltip(tile);
-  });
-  eqpickEl.addEventListener('pointerout', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const to = e.relatedTarget;
-    if (to instanceof Node && tile.contains(to)) return;
-    hideEqTooltip();
-  });
-  eqpickEl.addEventListener('focusin', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (tile) queueEqTooltip(tile, true);
-  });
-  eqpickEl.addEventListener('focusout', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const to = e.relatedTarget;
-    if (to instanceof Node && tile.contains(to)) return;
-    hideEqTooltip();
-  });
-  eqpickEl.addEventListener('scroll', () => hideEqTooltip(false), true);
 
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
@@ -2429,6 +2568,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.dataset.tip = label;
     }
     requestAnimationFrame(syncScrollFades);
+    requestAnimationFrame(fitCamoRows);
   }
 
   function syncCamoCardSelection(selectedPatternId: string): void {
@@ -2472,14 +2612,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.innerHTML = picks.map((patternId, index) => {
       const label = escapeHtmlAttribute(camoPatternLabel(patternId));
       return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
+        `aria-pressed="${index === 0}" aria-label="${label}">` +
         (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
     }).join('') +
       `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
       `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
     paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
-      const canvas = button.querySelector('canvas');
-      if (canvas) paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
+      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
+      button.prepend(canvas);
+      paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
     });
   }
   paintEl.addEventListener('click', (event) => {
@@ -2601,19 +2742,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
-  // A flag less than half inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside
-  // the Filter toggle); a flag cut by the edge but mostly shown stays as the cue that the rail continues.
-  const chipSliverObserver = typeof IntersectionObserver === 'function'
-    ? new IntersectionObserver((entries) => {
-      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.5);
-    }, { root: chipsEl, threshold: [0.5] })
-    : null;
   function initializeCountryChips(): void {
     const all = document.createElement('button');
     all.type = 'button';
     all.className = 'cot-country-chip cot-country-all';
     all.dataset.country = ALL_COUNTRIES;
     all.setAttribute('aria-label', t('garage.country.allAria'));
+    all.dataset.tip = t('garage.country.allAria');
     all.innerHTML = `<span class="lbl">${t('garage.country.all')}</span><span class="ct num">${specs.length}</span>`;
     // every nation keeps the selected tank where it is
     all.addEventListener('click', () => {
@@ -2632,7 +2767,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.dataset.tip = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
       // The flag names the nation (owner UI rule 3); the chip keeps its name for assistive technology and its count.
-      chip.innerHTML = `${flagIconHTML(group.nation, 28, 21)}<span class="ct num">${count}</span>`;
+      chip.innerHTML = `${flagIconHTML(group.nation, 20, 15)}<span class="ct num">${count}</span>`;
       chip.addEventListener('click', () => {
         emit('ui:click', {});
         applyCountryFilter(group.id);
@@ -2647,10 +2782,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
-      chipSliverObserver?.observe(chip);
     }
   }
   initializeCountryChips();
+  // the arrows (and Home and End) move through the nations, the track following the focus; Enter or Space chooses one,
+  // so a pass over the row never re-filters the fleet at every step
+  chipsEl.addEventListener('keydown', (event) => {
+    const chips = [...chipsEl.querySelectorAll<HTMLButtonElement>('.cot-country-chip')];
+    const at = chips.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) return;
+    const to = event.key === 'ArrowRight' ? Math.min(chips.length - 1, at + 1) : event.key === 'ArrowLeft' ? Math.max(0, at - 1)
+      : event.key === 'Home' ? 0 : event.key === 'End' ? chips.length - 1 : -1;
+    if (to < 0) return;
+    event.preventDefault();
+    chips[to].focus({ preventScroll: true });
+    chips[to].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  });
 
   // --- ROSTER FILTER (class, role, era, search) -----------------------------
   // The Filter toggle leads the flag rail in its own slot, outside the scrolling flag track. Its panel and the fleet facet tables load on the first press
@@ -2681,7 +2828,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   rosterSearch.className = 'cot-roster-search';
   rosterSearch.innerHTML = `${uiIconSVG('search', 16)}<input type="search" data-roster-search autocomplete="off" ` +
     `spellcheck="false" enterkeyhint="search" aria-label="${t('garage.search.aria')}" ` +
-    `placeholder="${escapeHtmlAttribute(t('garage.search.placeholder', { count: allSpecs.length }))}">${keycap('/')}`;
+    `placeholder="${escapeHtmlAttribute(t('garage.search.short'))}">${keycap('/')}`;
   countryRailEl.insertBefore(rosterSearch, facetToggle);
   // how many of the fleet the strip shows under the nation, the filter and the search (the direction's "18 of 220")
   const rosterCount = document.createElement('span');
@@ -2715,10 +2862,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderFavourites();
     if (favouritesOnly) setRosterFacetFilter(rosterFacetMatch);
   }
+  // an empty fleet says so and offers the way back (owner 10-25 gauntlet: a search that matches nothing left a blank strip)
+  const rosterEmptyEl = requiredElement<HTMLElement>(root, '.cot-cards-empty');
   const updateRosterCount = (): void => {
     const shown = (specsByCountry.get(countryFilter) || []).filter((spec) => facetVisible(spec.id)).length;
     rosterCount.textContent = t('garage.roster.count', { shown, total: allSpecs.length });
+    // the count stands only while a search, the filter or the favourites narrow the strip: the chosen nation's chip and
+    // All already name the plain figures (one datum, one place)
+    rosterCount.hidden = !(rosterFacetMatch || rosterQuery || favouritesOnly);
+    rosterEmptyEl.hidden = shown > 0;
+    rosterEmptyEl.parentElement?.classList.toggle('is-empty', shown === 0);
   };
+  rosterEmptyEl.querySelector('[data-roster-clear]')?.addEventListener('click', () => {
+    emit('ui:click', {});
+    rosterSearchInput.value = '';
+    rosterQuery = '';
+    favouritesOnly = false;
+    renderFavourites();
+    setRosterFacetFilter(rosterFacetMatch);
+    void facetPanel?.then((panel) => panel.clear(), () => {});
+  });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
     rosterQuery = rosterSearchInput.value.trim().toLowerCase();
@@ -2767,6 +2930,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         specs,
         setFilter: setRosterFacetFilter,
         click: () => emit('ui:click', {}),
+        onOpenChange: (open) => root.classList.toggle('facets-open', open),
       }));
     facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
   });
@@ -2778,6 +2942,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     updateRosterCount();
     if (previousCountry !== countryId) chipById.get(previousCountry || '')?.classList.remove('sel');
     chipById.get(countryId)?.classList.add('sel');
+    // the nations are one tab stop, the chosen one; the arrows move within them
+    for (const [id, chip] of chipById) {
+      chip.tabIndex = id === countryId ? 0 : -1;
+      chip.setAttribute('aria-pressed', String(id === countryId));
+    }
     // Programmatic tank selection can cross national groups. Keep the active
     // flag fully visible rather than leaving its highlight under an edge fade.
     const activeChip = chipById.get(countryId);
@@ -2895,7 +3064,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || t('garage.card.devTag')}</span>` : '') +
         `<div class="nm"><span class="nmt"></span></div><span class="cot-fav" aria-hidden="true">${uiIconSVG('star', 14)}</span>`;
-      requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
+      // a model number keeps its hyphen's halves on one line (a narrow card broke "Type 96-" / "72 Lóng")
+      requiredElement<HTMLElement>(card, '.nmt').textContent = shortName.replace(/-(?=\S)/g, '-\u2060');
       cardsEl.appendChild(card);
       cardById.set(spec.id, card);
       const countryCards = cardsByCountry.get(cardCountry) || [];
@@ -2959,6 +3129,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
+  /** A figure without a scale on the station's own plate (statBar's markup): the armament and the armour fronts read as
+   *  the plates beside them (the gauntlet 10-25: an icon gutter and an indent set them apart from Hit points). */
+  function figurePlate(icon: string, label: string, valueHtml: string): string {
+    return `<div class="srow"><span class="sicon">${uiIconSVG(icon, 16)}</span><div class="lr"><span>${label}</span>` +
+      `<b class="num">${valueHtml}</b></div></div>`;
+  }
+
   function statBar(
     label: string,
     valueText: string,
@@ -2973,7 +3150,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The fixed 20-cell scale (brand-ui SPEC 6.2): the raw value above, the peer-normalised rating as lit cells.
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b>${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
+      `<b class="num">${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
   }
 
   function activateTechnicalTab(tab: HTMLButtonElement): void {
@@ -3000,6 +3177,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   let statsFor: string | null = null; // last spec rendered — gates the swap micro-fade
+  let readoutModuleCount = -1; // the systems the readout last listed (the anatomy can finish after the first draw)
+  let heroModel: unknown = null;
+  /** The hero's model arrives after its readout: a readout drawn from the spec before its anatomy was finished (fewer
+   *  systems, in authored order) is drawn once more (the gauntlet 10-25: 9 systems at first view, 12 after). */
+  const noteHeroModel = (model: unknown): void => {
+    if (model === heroModel) return;
+    heroModel = model;
+    const spec = selectedId ? specById.get(selectedId) : null;
+    if (spec && statsFor === spec.id && garageModuleRows(spec).length !== readoutModuleCount) renderStats(spec);
+  };
 
   function animateStatsSwap(vehicleChanged: boolean): void {
     const shouldAnimate = vehicleChanged
@@ -3021,15 +3208,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         : `${shell.pen100Mm} / ${shell.pen1000Mm}`;
       const hasOwnReload = !!shell.reloadS && Math.abs(shell.reloadS - baseReloadS) > 0.01;
       const reload = hasOwnReload
-        ? `${shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0)} s reload`
+        ? t('garage.hotspot.reload', { value: shell.reloadS?.toFixed((shell.reloadS || 0) < 10 ? 1 : 0) ?? '' })
         : '';
       const inventory = t('garage.dossier.shell.carried', { n: shellAmmunitionCapacity(shell) });
       const detail = [inventory, reload].filter(Boolean).join(' &middot; ');
       return `<div class="shellrow" style="--shell-color:${color}">` +
-        `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shell.type}</span></span>` +
+        `<span class="shellkind">${shellIconSVG(shell.type, 24)}<span class="ty">${shellTypeLabel(shell.type)}</span></span>` +
         `<span class="nm">${shell.name}<small>${detail}</small></span>` +
-        `<span class="shellmetric"><b>${penetration}</b>mm</span>` +
-        `<span class="shellmetric"><b>${shell.dmg}</b>hp</span></div>`;
+        `<span class="shellmetric"><b class="num">${penetration}</b>mm</span>` +
+        `<span class="shellmetric"><b class="num">${shell.dmg}</b>hp</span></div>`;
     }).join('');
   }
 
@@ -3047,41 +3234,134 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(tooltip)}">` +
-          `<span class="plus">+</span></button>`);
+          `<span class="plus" aria-hidden="true">+</span><span class="sl">${t('garage.equipment.empty.name')}</span></button>`);
     }
     return slots.join('');
   }
 
-  function specialSystemSection(spec: GarageTankSpec, reloadS: number): string {
-    const special = garageSpecialSystem(spec, reloadS);
-    const [smokeLaunchers = 0, drivingLights = 0, roofGuns = 0] = GARAGE_AUXILIARY_SUMMARY[spec.id] ?? [];
-    const controls: {label:string;icon:string;detail:string}[] = [];
-    if(special) controls.push({label:special.shortLabel,icon:special.icon,detail:special.detail});
-    if(guidedMissileSlot(spec)>=0&&specialActionKind(spec)!==SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&spec.gun.shells.some(shell=>!shell.guided))controls.push({label:'ATGM',icon:'missileRack',detail:t('systems.atgm.help')});
-    if(smokeLaunchers) controls.push({label:t('systems.smoke'),icon:'smoke',detail:t('systems.smoke.help')});
-    if(drivingLights) controls.push({label:t('systems.lights'),icon:'lightbulb',detail:t('systems.lights.help')});
-    if(roofGuns) controls.push({label:t('systems.roofGun'),icon:'roofGun',detail:t('systems.roofGun.help')});
-    if(!controls.length)return '';
-    return `<section class="cot-stat-section cot-special-section">` +
-      statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +
-      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" data-guide="${control.icon==='smoke'?'smoke':'special'}" data-tip="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
+  /**
+   * The selected vehicle's actions (owner 10-25: "be able to see the actions u can do with tank"): the battle's
+   * vehicle-action table read for it (vehicleActionsFor), each with its glyph, name and key in the table's order, its
+   * use in the hover tip. The chips wrap, never truncate.
+   */
+  function actionsRow(spec: GarageTankSpec): string {
+    const keyFor = (binding: VehicleActionBinding): string | null | undefined => {
+      try { return opts.actionKeyFor?.(binding); } catch (_) { return null; } // the input layer boots after the Garage
+    };
+    const actions = vehicleActionsFor(spec, {}, keyFor);
+    if (!actions.length) return '';
+    return `<div class="cot-actions" role="list" aria-label="${t('garage.actions.heading')}">` + actions.map((action) =>
+      `<span class="cot-c-chip cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
+      `${uiIconSVG(action.glyph, 15)}<span>${action.label}</span><kbd class="cot-c-kbd">${action.key}</kbd></span>`).join('') +
+      `</div>`;
   }
 
-  function magazineDescription(gun: FleetGunSpec, reloadS: number, reloadMultiplier: number): string {
-    const {autoloader, launcherSalvo: salvo} = gun;
-    return autoloader
-      ? `<div class="magazine-spec"><span>${t('garage.stat.magazineAutoloader')}</span>` +
-        `<b>${autoloader.magazineSize} ${t('garage.stat.rounds')} &middot; ${autoloader.intraClipS.toFixed(1)} ${t('garage.stat.cycle')} &middot; ` +
-        `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>`
-      : salvo ? `<div class="magazine-spec"><span>${t('garage.stat.missileSalvo')}</span><b>` +
-        `${salvo.rounds} ${t('garage.stat.rounds')} &middot; ${(salvo.intervalS * reloadMultiplier).toFixed(2)} ${t('garage.stat.cycle')} &middot; ` +
-        `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>` : '';
+  /**
+   * A clip- or salvo-fed gun's magazine (owner 10-24: "show the clips somewhere properly"): the rounds a clip holds and
+   * the interval between them, beside the reload row that already carries the whole clip's reload. Timed as a battle
+   * times them (damage.ts): an autoloader's interval runs at the gun's own pace; a salvo's takes the loadout and the
+   * battle card's mode (its ruleset's reload scale).
+   */
+  function magazineFigures(gun: FleetGunSpec, loadoutReload: number): string {
+    const { autoloader, launcherSalvo: salvo } = gun;
+    if (!autoloader && !salvo) return '';
+    const rounds = autoloader ? autoloader.magazineSize : salvo!.rounds;
+    const between = autoloader ? autoloader.intraClipS : salvo!.intervalS * loadoutReload *
+      rulesetReloadMultiplier(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
+    // the station's own plate (statBar's markup without its scale), so the two cells and the plates under them share one
+    // layout at every density and one unit style
+    const cell = (glyph: string, value: string, unit: string, label: string): string =>
+      `<div class="srow cot-mag-cell"><span class="sicon">${uiIconSVG(glyph, 16)}</span><div class="lr"><span>${label}</span>` +
+      `<b class="num">${value}${unit ? ` ${unit}` : ''}</b></div></div>`;
+    return `<div class="cot-mag" role="group" aria-label="${t('garage.mag.heading')}">` +
+      cell('ammoRack', String(rounds), '', t(autoloader ? 'garage.mag.perClip' : 'garage.mag.perSalvo')) +
+      cell('reload', between.toFixed(between < 1 ? 2 : 1), 's', t('garage.mag.between')) + `</div>`;
   }
 
   const ERA_GLYPH: Readonly<Record<string, string>> = Object.freeze({
     'next-generation': 'eraNextGeneration', modern: 'eraModern', 'cold-war': 'eraColdWar', ww2: 'eraWorldWarII', interwar: 'eraInterwar',
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
+  // --- THE STAGE: where the showroom frames the hero (owner 10-25 via Main: "tanks are too far to the top left here instead
+  // of closer to center and showing stuff off better"). The free stage is the window less the bar, the readout's column
+  // and the dock under the tank (its name, identity row, band and fleet), measured from the live layout and cached: a
+  // ResizeObserver and the layout events re-measure it (no layout read per frame), and a change wakes the still Garage so
+  // the camera eases onto it. The camera frames the canonical box (main.ts GARAGE_FRAME_BOX, the M1A2 reference) in the
+  // hero rect: centred in the free stage, a little below its middle so the turntable reads as ground, at about 62 % of
+  // its width, or as tall as the stage allows.
+  interface StageRect { x: number; y: number; w: number; h: number }
+  const HERO_SPAN_OF_FREE = 0.62;   // the hero's share of the free width (Main 10-25: 60-65 %)
+  const SOLVER_FILL = 0.86;         // engine/cameraRig.ts SHOW_HERO_FILL: the share of the rect the camera fills
+  const HERO_LOW = 0.04;            // the hero's centre sits this share of the stage height below the stage's middle
+  const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
+  let stageFree: StageRect | null = null;
+  let stageHero: StageRect | null = null;
+  // the callouts' room: the free stage a step clear of the bar and ending above the name, so no plate reads as part of
+  // the title or tucks under the bar (the r16 critic at 1280 and 1440)
+  let stageCallouts: StageRect | null = null;
+  const stageRect = (x0: number, y0: number, x1: number, y1: number): StageRect =>
+    ({ x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) });
+  /** The free stage and the hero's rect (CSS px), from the live layout; a hidden Garage keeps the last ones. */
+  function measureStage(): void {
+    const rr = root.getBoundingClientRect();
+    if (!(rr.width > 0 && rr.height > 0)) return;
+    const stats = statsEl.getBoundingClientRect();
+    const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
+    const band = lowerThird.querySelector('.cot-lt-band')?.getBoundingClientRect();
+    const head = lowerThird.querySelector('.cot-lt-head')?.getBoundingClientRect();
+    const docked = !isOverlayPanelLayout();
+    if (!docked) {
+      // a phone held upright frames the tank over its name; one on its side, between the left edge and the column, over the fleet
+      const sideways = document.body.dataset.cotOrientation === 'landscape';
+      const column = sideways ? lowerThird.getBoundingClientRect() : null;
+      // on its side, the stage's act buttons stand at its right edge, beside the tank: the stage ends before them
+      const acts = sideways ? lowerThird.querySelector('.cot-lt-acts')?.getBoundingClientRect() : null;
+      const x1 = Math.min(column && column.width ? column.left - 14 : rr.right - 18, acts && acts.width ? acts.left - 12 : Infinity);
+      const floor = sideways ? countryRailEl.getBoundingClientRect() : head;
+      const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
+        : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
+      stageFree = stageHero = stageCallouts = stageRect(rr.left + 18, rr.top + 66, x1, y1);
+      return;
+    }
+    const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
+    const x0 = rr.left + 18;
+    const x1 = stats.width ? stats.left - 14 : rr.right - 18;
+    const y0 = Math.max(rr.top + 66, bar && bar.height ? bar.bottom + 8 : rr.top + 78);
+    const floor = band && band.height ? band.top - 10 : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190;
+    stageFree = stageRect(x0, y0, x1, Math.min(rr.bottom, floor));
+    stageCallouts = stageRect(x0, y0 + 8, x1, head && head.height ? head.top - 12 : Math.min(rr.bottom, floor));
+    // the hero stands above the name (the full width) or beside it (down to the band), whichever shows it larger: the
+    // name never covers the hull
+    const above = head && head.height ? stageRect(x0, y0, x1, head.top - 12) : null;
+    const beside = head && head.height ? stageRect(Math.max(x0, head.right + 24), y0, x1, floor) : stageFree;
+    const reach = (r: StageRect): number => Math.min(HERO_SPAN_OF_FREE * r.w, SOLVER_FILL * r.h / BOX_ASPECT);
+    const free = above && reach(above) >= reach(beside) ? above : beside;
+    const w = free.w * HERO_SPAN_OF_FREE / SOLVER_FILL;
+    const cy = free.y + free.h * (0.5 + HERO_LOW);
+    stageHero = { x: free.x + (free.w - w) / 2, y: cy - free.h / 2, w, h: free.h };
+  }
+  let stageQueued = false;
+  const queueStageMeasure = (): void => {
+    if (stageQueued) return;
+    stageQueued = true;
+    requestAnimationFrame(() => {
+      stageQueued = false;
+      const before = stageHero;
+      measureStage();
+      const after = stageHero;
+      if (after && (!before || Math.abs(after.x - before.x) + Math.abs(after.y - before.y)
+        + Math.abs(after.w - before.w) + Math.abs(after.h - before.h) > 0.5)) opts.onOverlayChange?.();
+    });
+  };
+  window.addEventListener('resize', queueStageMeasure);
+  window.addEventListener('cot:layoutchange', queueStageMeasure);
+  void document.fonts?.ready.then(queueStageMeasure);
+  if (typeof ResizeObserver === 'function') {
+    const stageObserver = new ResizeObserver(queueStageMeasure);
+    for (const el of [root, statsEl, lowerThird, countryRailEl, ...lowerThird.querySelectorAll('.cot-lt-head, .cot-lt-band')]) {
+      stageObserver.observe(el);
+    }
+  }
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
   // running gear, each with its real values, a dot on its part and a plate off the tank. They wait for their act (owner
   // 10-24: "dont show all the little info boxes over tanks until we press a certain button"), and the choice lasts the
@@ -3092,10 +3372,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let hotspots: GarageHotspots | null = null;
   let hotspotsLoading = false;
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
-  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(),
+  const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
-  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; if (calloutsShown) hotspots?.setFacts(facts); };
+  const setHotspotFacts = (facts: HotspotFacts | null): void => {
+    hotspotFacts = facts;
+    if (calloutsShown && hotspots) { hotspots.setFacts(facts); opts.onOverlayChange?.(); }
+  };
   const loadHotspots = (): void => {
     if (hotspots || hotspotsLoading) return;
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
@@ -3105,6 +3388,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(calloutsShown ? hotspotFacts : null);
+      opts.onOverlayChange?.();
     }, () => { hotspotsLoading = false; });
   };
   const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
@@ -3115,6 +3399,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!on) hotspots?.setFacts(null);
     else if (hotspots) hotspots.setFacts(hotspotFacts);
     else loadHotspots();
+    opts.onOverlayChange?.();
   }
   calloutsButton.addEventListener('click', () => { emit('ui:click', {}); setCallouts(!calloutsShown); });
   if (calloutsShown) setCallouts(true);
@@ -3136,9 +3421,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     lowerName.classList.toggle('is-long', name.length > 16);
     const tier = tierNumeral(spec.id) || '';
     lowerId.innerHTML =
-      `<span class="lt-nation">${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
+      `<span class="lt-nation"${datumAttr('nation')}>${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
       `<span>${uiIconSVG(ERA_GLYPH[spec.era] || 'eraModern', 18)}<span>${vehicleEraLabelI18n(spec.era, t)}</span></span>` +
-      (tier ? `<span class="lt-tier">${tierChipHTML(tier)}</span>` : '') +
+      (tier ? `<span class="lt-tier"${datumAttr('tier')}>${tierChipHTML(tier)}</span>` : '') +
       `<span data-tip="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
       `<span class="lt-class" hidden></span>`;
     // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
@@ -3193,14 +3478,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const stockReloadS = autoloader?.fullReloadS || spec.gun.reloadS;
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
-    const magazineSpec = magazineDescription(spec.gun, reloadS, eqM.reload);
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
-    const head = headlineOf(spec, eqM.reload, eqM.turret);
     setHotspotFacts({
-      gun: { lead: `${spec.gun.caliberMm} mm`, more: t('garage.hotspot.reload', { value: head.reload.toFixed(1) }) },
-      turret: { lead: `${head.turret.toFixed(0)}°/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
-      engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
-      tracks: { lead: `${Math.round(spec.topSpeedKmh)} km/h`, more: `${spec.weightTons.toFixed(0)} t` },
+      // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
+      // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there
+      // (UI-LOCKDOWN G3)
+      gun: { lead: `${spec.gun.caliberMm} mm`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
+      turret: { lead: turMm ? `${turMm} mm` : '', more: '' },
+      engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: '' },
+      tracks: { lead: `${spec.weightTons.toFixed(0)} t`, more: '' },
     });
     // Small equipment bonuses should not round into a misleading 1.4 > 1.4.
     const aimPrecision = eqM.aimTime !== 1 ? 2 : 1;
@@ -3216,7 +3502,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const eqTitle = (base: string): string => `Stock ${base} &middot; ${eqNames}`;
     const movingDispersion = (coefficient: number, rate: number) => spec.gun.baseAccuracy *
       movementDispersionFactor(coefficient, 0, 0, rate, 0, 0, eqM.bloom);
-    const specialCard = specialSystemSection(spec, reloadS);
     const initialTechnicalView = technicalViews[0];
     const initialTechnicalViewLabel = translateTechnicalView(initialTechnicalView).label;
     const initialTechnicalViewCaption = translateTechnicalView(initialTechnicalView).caption;
@@ -3232,13 +3517,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const dossierHeader =
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
-      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
+      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) ? t('garage.tierPlate', { tier: tierNumeral(spec.id) }) : '&mdash;'}</span><h3></h3></div>` +
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${tNation(spec.nation)} &middot; ${vehicleEraLabelI18n(spec.era, t)}</span></div>` +
       `<button class="cot-compact-equipment-trigger" type="button" data-garage-panel="equipment" ` +
       `aria-label="${t('garage.dossier.vehicleDossier')}" ` +
       `aria-expanded="${openGaragePanel() === 'equipment'}" aria-controls="cot-garage-dossier">` +
       `${uiIconSVG('performance', 20)}<span>${t('garage.dossier.vehicleDossier')}</span></button>` +
-      `<button class="cot-compact-equipment-trigger cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>`;
+      `<button class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>`;
     const technicalSection =
       `<section class="cot-stat-section cot-technical-section">` +
       dossierHeader +
@@ -3250,7 +3535,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-label="${t('garage.dossier.expand.aria', { name: spec.label?.displayName || spec.name, view: initialTechnicalViewLabel })}">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
       `data-technical-image draggable="false" loading="lazy" decoding="async" fetchpriority="low">` +
-      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}</span></button>` +
+      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}<span>${t('garage.dossier.drawing')}</span></span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalViewCaption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
@@ -3262,6 +3547,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `${uiIconSVG('modeProving', 15)}<span>${t('garage.dossier.testDrive')}</span>` +
       `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
+    readoutModuleCount = moduleRows.length;
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
       `<div class="cot-module-chip" data-tip="${t('garage.module.tooltip', { name: row.label })}">` +
@@ -3283,7 +3569,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     statsEl.innerHTML =
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       overviewSection(spec, eqM, shells) +
-      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), '', 'Performance')}` +
+      magazineFigures(spec.gun, eqM.reload) +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
         { icon: 'clock', mod: eqM.reload !== 1, stock: stockReloadS.toFixed(1), title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
@@ -3299,15 +3586,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         1 / (1 + movingDispersion(spec.gun.bloom.turret, 20)), { icon: 'turretRing', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') })) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       `</div></section>` +
-      specialCard.replace('<section class="cot-stat-section', '<section data-stations="firepower" class="cot-stat-section') +
-      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
-      magazineSpec +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), t('garage.dossier.ammunition.types', { count: shells.length }), 'Ammunition')}` +
       `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
-      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      figurePlate('gun', t('garage.dossier.armament.gun'), `${spec.gun.caliberMm} mm`) +
+      figurePlate('scope', t('garage.dossier.armament.arc'), `&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;`) + `</div></section>` +
       `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
@@ -3327,17 +3612,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
-      statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
+      // hp as the overview column writes it (its unit is the game's own, in both languages)
+      statBar(t('garage.dossier.stat.hp'), `${spec.hp} hp`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
-      `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
-      `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
-      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
+      figurePlate('shield', t('garage.dossier.protection.hull'), hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;') +
+      figurePlate('turretRing', t('garage.dossier.protection.turret'), turMm != null ? `${Math.round(turMm)} mm` : '&mdash;') + `</div>` +
+      `<button class="cot-gallery-link cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 16)}<span>${t('garage.dossier.protection.inspect')}</span><span class="go">&#8250;</span></button></section>` +
+      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), t('garage.dossier.modulesCount', { count: moduleRows.length }), 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
-      `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
-      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
+      `<button class="cot-gallery-link cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 16)}<span>${t('garage.dossier.modules.open')}</span><span class="go">&#8250;</span></button></section>` +
+      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
@@ -3367,12 +3653,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
         guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
-    });
-    statsEl.querySelectorAll<HTMLButtonElement>('.cot-system-preview button').forEach(button=>{
-      const info=createInfoButton({title:button.textContent||'',text:button.dataset.tip||'',guide:button.dataset.guide==='smoke'?'smoke':'special',
-        vehicle:{id:spec.id,name:spec.label?.displayName||spec.name},className:'cot-system-control'});
-      info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
-      button.replaceWith(info);
     });
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
     else queueReadoutFit(false, vehicleChanged);
@@ -3537,14 +3817,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     pop.append(mapsEl);
+    // the open picker's one close, beside its (i); it leaves with the picker
+    mapsEl.querySelector('.mtitle')?.insertAdjacentHTML('beforeend', `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" ` +
+      `data-deploy-field-close aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>`);
     pop.hidden = false;
+    pop.closest('.cot-battle-details')?.classList.add('is-picking');
+    // the picker opens where the battlefield and the rules stood (deploy.css gives it their room), so nothing scrolls
+    battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
-    mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
+    // the selected battlefield scrolls into view within the list only (its column keeps its place)
+    const list = mapsEl.querySelector<HTMLElement>('.cot-map-scroll');
+    const sel = mapsEl.querySelector<HTMLElement>('.cot-map-card.sel');
+    if (list && sel) {
+      const at = sel.getBoundingClientRect(), box = list.getBoundingClientRect();
+      if (at.top < box.top || at.bottom > box.bottom) list.scrollTop += at.top - box.top;
+    }
   }
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
     pop.hidden = true;
+    pop.closest('.cot-battle-details')?.classList.remove('is-picking');
+    mapsEl.querySelector('[data-deploy-field-close]')?.remove();
     camosEl.before(mapsEl);
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
@@ -3847,7 +4141,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const deployCampaignCount = requiredElement<HTMLElement>(battleMenu, '[data-deploy-campaign-count]');
   const deployTabs = requiredElement<HTMLElement>(battleMenu, '.cot-deploy-tablist');
   const deployPanels = [...battleMenu.querySelectorAll<HTMLElement>('[data-deploy-panel]')];
-  const clockText = (seconds: number | null): string => seconds == null ? '∞'
+  const clockText = (seconds: number | null): string => seconds == null ? t('garage.deploy.none')
     : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
   function deployFacts(mode: GameModeId) {
     const ruleset = matchRulesetFor(mode, null, readTeamArrangement(mode));
@@ -3860,8 +4154,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
       victory: target == null ? null : String(target),
       gravity: ruleset.gravityScale === 1 ? null : `${Math.round(ruleset.gravityScale * 100) / 100} g`,
-      speed: ruleset.speedMultiplier === 1 ? null : `×${Math.round(ruleset.speedMultiplier * 100) / 100}`,
-      boss: ruleset.juggernaut ? `×${ruleset.juggernaut.hpScale}` : null,
+      speed: ruleset.speedMultiplier === 1 ? null : t('garage.deploy.times', { value: String(Math.round(ruleset.speedMultiplier * 100) / 100) }),
+      boss: ruleset.juggernaut ? t('garage.deploy.times', { value: String(ruleset.juggernaut.hpScale) }) : null,
       equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
       ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
     };
@@ -3875,12 +4169,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
       const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
       const shown = (['gravity', 'speed', 'boss', 'respawn', 'victory', 'teams', 'clock'] as const).filter((key) => facts[key] != null).slice(0, 2);
-      row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
+      row.innerHTML = rules(shown.map((key) => [DEPLOY_FACT_ICON[key], String(facts[key])] as const));
     }
   }
   function renderDeployRules(): void {
     const facts: DeployFacts = deployFacts(battleGameMode);
-    deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
+    // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
+    const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
+    const keys = ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
+    deployRules.dataset.count = String(keys.length);
+    deployRules.innerHTML = keys.map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
       `<dd${key === 'clock' ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
@@ -3907,19 +4205,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
   }
-  // the tank you deploy with (the direction's .tank): its hero card, its name over its flag, its rounds and fittings,
-  // and the control that returns to the roster to change it
+  // the tank you deploy with (the direction's .tank): its hero card; its name over its flag and its readiness; its rounds
+  // (type and penetration at 100 m, the kit's stat chips) and its fittings (glyph chips named by their tips); and the
+  // control that returns to the roster to change it (its name is its hover tip)
   function renderDeployTank(): void {
     const spec = selectedId ? specById.get(selectedId) : null;
     const copy = selectedId ? heroCopy(selectedId) : null;
     if (!copy || !spec) { deployTank.replaceChildren(); return; }
     deployTank.replaceChildren(copy);
-    const shells = (spec.gun.shells || []).map((shell) =>
-      `<span class="sh">${shellIconSVG(shell.type, 24)}${shell.count == null ? '' : `<span class="num">${shell.count}</span>`}</span>`).join('');
-    const fittings = loadEquipment(spec.id, spec).map((id) => `<span class="eq">${equipIconSVG(id, 15)}</span>`).join('');
-    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><b>${flagIconHTML(spec.nation, 22, 16)}` +
-      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b><div class="load">${shells}${fittings}` +
-      `${vehicleLocked ? '' : `<span class="ok">${uiIconSVG('check', 14)}${t('garage.deploy.ready')}</span>`}</div></div>` +
+    const mm = t('garage.unit.mm');
+    const rounds = (spec.gun.shells || []).map((shell) => {
+      const type = shellTypeLabel(shell.type);
+      const pen = String(Math.round(shell.pen100Mm));
+      return statChip({ icon: shellIconId(shell.type), label: type, value: pen, unit: mm,
+        tip: t('garage.deploy.roundTip', { name: shell.name || type, pen }) });
+    }).join('');
+    const fittings = loadEquipment(spec.id, spec).map((id) => {
+      const glyph = equipIconId(id);
+      return glyph ? statChip({ icon: glyph, tip: equipmentLabel(id) }) : '';
+    }).join('');
+    deployTank.insertAdjacentHTML('beforeend', `<div class="info"><div class="head"><b${datumAttr('tank-name')}>${flagIconHTML(spec.nation, 22, 16)}` +
+      `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b>` +
+      `${vehicleLocked ? '' : tag(t('garage.deploy.ready'), 'ok')}</div><div class="load">${rounds}${fittings}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
       `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }
@@ -3933,11 +4240,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const { operation, status } = next;
       const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
       parts.push(`<article class="cot-deploy-camp">${thumb ? `<img src="${escapeHtmlAttribute(thumb)}" alt="" decoding="async">` : ''}` +
-        `<div class="t"><div class="op" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars: ladder.filter((step) => step.status === 'cleared').length, max: ladder.length }))}">${
-          ladder.map((step) => `<i class="${step.status === 'cleared' ? 'd' : step === next ? 'c' : ''}"></i>`).join('')}</div>` +
+        `<div class="t">` +
         `<b>${t(`campaign.op.${operation.id}.title`)}</b>${rules([['map', t(`map.${operation.mapId}`)]])}` +
         `<button type="button" class="cot-c-btn cot-c-btn--36" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}"` +
-        `${status === 'locked' ? ' disabled' : ''}>${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}${uiIconSVG('chevronRight', 16)}</button></div></article>`);
+        `${status === 'locked' ? ' disabled' : ''}>${uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button></div></article>`);
     }
     deployLower.innerHTML = parts.join('');
     for (const battle of getRecentBattles()) {
@@ -3959,7 +4265,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const action = status === 'locked'
         ? `<span class="cot-deploy-op-lock" data-tip="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
         : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
-          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+          uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
       // the operation's battlefield, as the Garage's map cards show it
       const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
       return `<article class="cot-deploy-op ${status}" role="listitem" aria-label="${escapeHtmlAttribute(title)}">` +
@@ -3978,6 +4284,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function showDeployTab(id: string): void {
     battleMenu.dataset.deployTab = id;
     for (const panel of deployPanels) panel.hidden = panel.dataset.deployPanel !== id;
+    // a tab opens at its top (a phone's page scroll would otherwise carry the last tab's place into this one)
+    battleMenuScroll.scrollTo({ top: 0 });
     if (id === 'campaign') { renderDeployCampaign(); deployScreen?.brief(); }
   }
   wireRoving(deployTabs, (id) => { emit('ui:click', {}); showDeployTab(id); });
@@ -3988,12 +4296,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     if (requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').hidden) openDeployField(); else closeDeployField();
   });
+  requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').addEventListener('click', (event) => {
+    if (!(event.target as Element | null)?.closest('[data-deploy-field-close]')) return;
+    emit('ui:click', {});
+    closeDeployField();
+    requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').focus();
+  });
   for (const host of [deployOps, deployLower, requiredElement<HTMLElement>(battleMenu, '[data-deploy-brief]')]) host.addEventListener('click', (event) => {
     const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
     if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
   });
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
+    battleMenu.dataset.modeTone = battleGameMode;
     renderArrangementPanel();
     loadMarsDropdowns();
     renderSides();
@@ -4003,6 +4318,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
     setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    setupIcon.dataset.modeTone = battleGameMode;
     // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
     setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
       : solo ? `playMenu.matchMode.${battleGameMode}.desc`
@@ -4073,6 +4389,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       let prev = performance.now();
       const frame = (now: number): void => {
         coastRaf = 0;
+        freeRail(cardsEl);
         const dt = Math.min(0.05, Math.max(0.001, (now - prev) / 1000));
         prev = now;
         const before = cardsEl.scrollLeft;
@@ -4120,10 +4437,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!engaged) return;
       engaged = false;
       suppressClick = true;
+      // a pointer that rested before release has a stale flick — don't coast
+      const flick = performance.now() - lastT < 90 && Math.abs(vel) > COAST_MIN;
+      if (flick) freeRail(cardsEl);
       cardsEl.classList.remove('dragging');
       try { cardsEl.releasePointerCapture(e.pointerId); } catch (_) { /* released */ }
-      // a pointer that rested before release has a stale flick — don't coast
-      if (performance.now() - lastT < 90 && Math.abs(vel) > COAST_MIN) coast();
+      if (flick) coast();
     };
     cardsEl.addEventListener('pointerup', endStripDrag);
     cardsEl.addEventListener('pointercancel', endStripDrag);
@@ -4141,6 +4460,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // ctrl+wheel is a trackpad pinch (the app-wide pinch guard owns it), never a sideways pan
       if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       stopCoast();
+      freeRail(cardsEl);
       cardsEl.scrollLeft += e.deltaY;
       e.preventDefault();
     }, { passive: false });
@@ -4224,6 +4544,40 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     studioIntent.addEventListener('focusin', signalStudioIntent);
     studioIntent.addEventListener('touchstart', signalStudioIntent, { passive: true });
   }
+  // The tech tree (252): every national tree over the Garage, read-only. The screen, its sheet, its strings and the tree
+  // data load on the first open (no boot cost); Select takes the node's build into the Garage.
+  const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
+  let techTreeOpening = false;
+  const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
+    if (techTreeOpening) return;
+    emit('ui:click', {});
+    techTreeOpening = true;
+    closeMobileNavigation();
+    setGaragePanel('');
+    try {
+      const [{ createTechTreeScreen }] = await Promise.all([
+        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
+      ]);
+      const screen = createTechTreeScreen({
+        vehicles: specById,
+        selectedId,
+        onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
+        onClose: () => {
+          techTreeTrigger.setAttribute('aria-expanded', 'false');
+          screen.dispose();
+        },
+      });
+      screen.open(opener);
+      techTreeTrigger.setAttribute('aria-expanded', 'true');
+    } catch (err) {
+      // a failed chunk fetch: the next press retries
+      console.error('[garage] tech tree failed to open:', err);
+    } finally {
+      techTreeOpening = false;
+    }
+  };
+  techTreeTrigger.addEventListener('click', () => { void openTechTree(techTreeTrigger); });
   for (const item of root.querySelectorAll<HTMLElement>('[data-mobile-nav]')) {
     item.addEventListener('click', () => {
       const destination = item.dataset.mobileNav;
@@ -4232,6 +4586,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else if (destination === 'garage') emit('ui:click', {});
       else if (destination === 'studio') openStudio();
       else if (destination === 'gallery') openSelectedInGallery();
+      else if (destination === 'techTree') void openTechTree(mobileNavTrigger);
       else if (destination === 'docs') openDocs();
       else if (destination === 'locale') switchLocale();
       else if (destination === 'record') {
@@ -4266,6 +4621,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return;
     }
     if (e.code === 'Escape' && battleMenu.classList.contains('open')) {
+      // an open battlefield picker takes the first Escape
+      const fieldPop = battleMenu.querySelector<HTMLElement>('[data-deploy-field-pop]');
+      if (fieldPop && !fieldPop.hidden) {
+        closeDeployField();
+        battleMenu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.focus();
+        e.preventDefault();
+        return;
+      }
       closeBattleMenu({ restoreFocus: true });
       e.preventDefault();
       return;
@@ -4283,6 +4646,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
       if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {
@@ -4320,6 +4684,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     isOpen: false,
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
     frameHotspots(camera, model) {
+      noteHeroModel(model);
       if (!calloutsShown || !hotspots) return;
       hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
@@ -4330,6 +4695,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
      * @param {string} [selectedId] - initially highlighted tank id.
      */
     show(selected = selectedId) {
+      queueBarFit();
+      queueStageMeasure();
       // The full play menu also owns mode selection; reconcile it on return.
       try {
         const remembered = localStorage.getItem('cot.game.mode.v1');
@@ -4395,28 +4762,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
-    /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
-    getStageRect() {
+    /** The rect the showroom frames the hero in (CSS pixels, measureStage); `centred: false` is the whole free stage (the
+     *  callouts' room). The cached rect itself (the camera reads it every frame): callers never write to it. */
+    getStageRect(centred = true) {
       // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
       if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
-      // The stage (the 245 redesign): the docked layout frames the tank between the left edge and the readout's column,
-      // over the band's controls (the name may stand on the floor in front of it); a phone held upright frames it over its
-      // name, and one on its side between the left edge and the column, over the fleet.
-      const rr = root.getBoundingClientRect();
-      const stats = statsEl.getBoundingClientRect();
-      const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
-      const band = lowerThird.querySelector('.cot-lt-band')?.getBoundingClientRect();
-      const head = lowerThird.querySelector('.cot-lt-head')?.getBoundingClientRect();
-      const docked = !isOverlayPanelLayout();
-      const sideways = !docked && document.body.dataset.cotOrientation === 'landscape';
-      const column = sideways ? lowerThird.getBoundingClientRect() : null;
-      const x0 = rr.left + 18;
-      const x1 = docked && stats.width ? stats.left - 14 : column && column.width ? column.left - 14 : rr.right - 18;
-      const y0 = rr.top + (docked ? 78 : 66);
-      const floor = docked ? band : sideways ? countryRailEl.getBoundingClientRect() : head;
-      const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
-        : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
-      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+      if (!stageHero || !stageFree) measureStage();
+      return (centred ? stageHero : stageFree) ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
     },
 
     /**
