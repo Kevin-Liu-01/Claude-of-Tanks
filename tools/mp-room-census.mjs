@@ -14,6 +14,7 @@
 // any console error.
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
+//     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -40,6 +41,19 @@ const vercelJson = option('vercel-json', '');
 // --transport=p2p: the match runs in the host commander's browser (its Worker, as production's rooms do) instead of the
 // LAN helper's in-process service, so the host's kernels and their CSP show
 const transport = option('transport', 'service');
+// --cpu-profile: a CPU profile of the host commander's room entry, from the start press to the battle's settle (page A's
+// main thread, and each worker A starts in it, the match host's among them), with each long task's heaviest functions
+const cpuProfile = argv.includes('--cpu-profile');
+// --no-convolver: the reverb's convolver a pass-through gain, so the V8 sampler's signal cannot land in its FFT and wedge
+// the renderer (the perf lane's finding, 2026-10-25); the mix is wrong, the main thread's work is the same
+const noConvolver = argv.includes('--no-convolver');
+const profiling = { armed: false, live: [], workers: [] };
+const profileWorker = async (url, session) => {
+  await session.send('Profiler.enable');
+  await session.send('Profiler.setSamplingInterval', { interval: 500 });
+  await session.send('Profiler.start');
+  profiling.workers.push({ url, session });
+};
 const CSP_TEXT = /Content Security Policy|Content-Security-Policy|\[Report Only\]|Refused to (compile|evaluate|load|execute)/i;
 const root = new URL('..', import.meta.url).pathname;
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
@@ -65,14 +79,22 @@ function portFree(port) {
 function observe(page, name, log) {
   // (Main 2026-10-25) a CSP report is counted on its own, from the page console, the page's securitypolicyviolation
   // events and each worker's Log domain (a report-only refusal in the match host's Worker never reaches the page)
-  page.evaluateOnNewDocument(() => {
-    // each page's long tasks (the entry's longest is the perf lane's question), read and cleared per stage
+  page.evaluateOnNewDocument((passThroughConvolver) => {
+    // each page's long tasks (the entry's longest is the perf lane's question), read and cleared per stage; their spans
+    // place them in a CPU profile
     window.__censusLongTasks = [];
-    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__censusLongTasks.push(Math.round(e.duration)); })
+    window.__censusLongSpans = [];
+    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) { window.__censusLongTasks.push(Math.round(e.duration)); window.__censusLongSpans.push([e.startTime, e.duration]); } })
       .observe({ type: 'longtask', buffered: true }); } catch { /* no long task timing */ }
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.disposition} ${e.effectiveDirective} ${e.blockedURI}`));
-  }).catch(() => {});
+    if (passThroughConvolver) {
+      for (const proto of [window.BaseAudioContext?.prototype, window.AudioContext?.prototype, window.OfflineAudioContext?.prototype]) {
+        if (proto && 'createConvolver' in proto) proto.createConvolver = function () { return this.createGain(); };
+      }
+      if (window.ConvolverNode) window.ConvolverNode = function ConvolverNode(context) { return context.createGain(); };
+    }
+  }, noConvolver).catch(() => {});
   page.on('workercreated', async (worker) => {
     try {
       const session = worker.client;
@@ -81,6 +103,10 @@ function observe(page, name, log) {
       session.on('Network.requestWillBeSent', ({ request }) => { if (/\.wasm(\?|$)/.test(request.url)) log.wasm.push(`${name} worker: ${request.url.split('/').pop()}`); });
       await session.send('Log.enable');
       await session.send('Network.enable').catch(() => {});
+      if (name === 'A') {
+        profiling.live.push({ url: worker.url(), session });
+        if (profiling.armed) await profileWorker(worker.url(), session);
+      }
     } catch { /* a worker that ended at once */ }
   });
   page.on('console', async (m) => {
@@ -102,6 +128,38 @@ function observe(page, name, log) {
     if (r.status() >= 400) log.errors.push(`${name}: ${r.status()} ${r.url()}`);
     // the world kernels' module (the page's and the match host Worker's fetch): the kernels ran where it was fetched
     if (/\.wasm(\?|$)/.test(r.url())) log.wasm.push(`${name}: ${r.url().split('/').pop()}`);
+  });
+}
+
+/** Each window's heaviest functions in a CPU profile: self and inclusive time, on a clock `origin` ms behind the profile's. */
+function attribute(profile, windows, origin) {
+  const nodes = new Map(profile.nodes.map((n) => [n.id, n]));
+  const parent = new Map();
+  for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+  const label = (n) => `${n.callFrame.functionName || '(anon)'} ${String(n.callFrame.url).split('/').pop()}:${n.callFrame.lineNumber + 1}`;
+  let t = profile.startTime;
+  const samples = profile.samples.map((id, i) => { t += profile.timeDeltas[i]; return { id, ms: t / 1000 - origin }; });
+  return windows.map(([start, ms]) => {
+    const self = new Map(), total = new Map();
+    let n = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const s = samples[i];
+      if (s.ms < start || s.ms > start + ms) continue;
+      const node = nodes.get(s.id);
+      if (node.callFrame.functionName === '(idle)') continue;
+      const dt = i + 1 < samples.length ? samples[i + 1].ms - s.ms : 0.5;
+      n++;
+      self.set(label(node), (self.get(label(node)) ?? 0) + dt);
+      const seen = new Set();
+      for (let cur = s.id; cur != null; cur = parent.get(cur)) {
+        const l = label(nodes.get(cur));
+        if (seen.has(l)) continue;
+        seen.add(l);
+        total.set(l, (total.get(l) ?? 0) + dt);
+      }
+    }
+    const top = (map, k) => [...map].sort((a, b) => b[1] - a[1]).slice(0, k).map(([l, v]) => `${v.toFixed(0).padStart(6)} ms  ${l}`);
+    return { startMs: Math.round(start), ms: Math.round(ms), samples: n, self: top(self, 15), total: top(total, 30) };
   });
 }
 
@@ -229,10 +287,42 @@ try {
   await stage('ready', at);
 
   at = performance.now();
+  let cdpA = null, profiledFrom = 0;
+  if (cpuProfile) {
+    cdpA = await pageA.createCDPSession();
+    await cdpA.send('Profiler.enable');
+    await cdpA.send('Profiler.setSamplingInterval', { interval: 500 });
+    await pageA.evaluate(() => { window.__censusLongSpans = []; });
+    profiledFrom = await pageA.evaluate(() => performance.now());
+    profiling.armed = true;
+    // A's workers already running (a match host started before the press) are profiled too
+    for (const { url, session } of profiling.live) await profileWorker(url, session).catch(() => {});
+    await cdpA.send('Profiler.start');
+  }
   await pageA.click('.cot-play [data-action="start"]');
   await Promise.all([pageA, pageB].map((page) => page.waitForFunction(inBattle, { timeout: 240_000, polling: 100 })));
   await new Promise((r) => setTimeout(r, 3000));
+  let entryProfile = null;
+  if (cdpA) {
+    profiling.armed = false;
+    const { profile } = await cdpA.send('Profiler.stop');
+    const spans = (await pageA.evaluate(() => window.__censusLongSpans.splice(0))).filter(([start, ms]) => start >= profiledFrom && ms >= 200);
+    mkdirSync(join(out, label), { recursive: true });
+    writeFileSync(join(out, label, 'host-entry.cpuprofile'), JSON.stringify(profile));
+    // the profile's clock is monotonic µs from an arbitrary origin: anchored at its start to the page clock
+    entryProfile = { page: attribute(profile, spans, profile.startTime / 1000 - profiledFrom), workers: [] };
+    for (const [i, { url, session }] of profiling.workers.entries()) {
+      const stopped = await session.send('Profiler.stop').catch(() => null);
+      if (!stopped) continue;
+      writeFileSync(join(out, label, `host-worker-${i}.cpuprofile`), JSON.stringify(stopped.profile));
+      const p = stopped.profile;
+      entryProfile.workers.push({ url: url.split('/').pop(), ...attribute(p, [[0, (p.endTime - p.startTime) / 1000]], p.startTime / 1000)[0] });
+    }
+    for (const task of entryProfile.page) console.log(`host entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 20).join('\n    ')}`);
+    for (const w of entryProfile.workers) console.log(`host worker ${w.url}: ${w.ms} ms profiled, ${w.samples} busy samples\n  self:\n    ${w.self.join('\n    ')}`);
+  }
   await stage('battle', at);
+  if (entryProfile) samples.at(-1).profile = entryProfile;
 
   at = performance.now();
   for (const page of [pageB, pageA]) {
