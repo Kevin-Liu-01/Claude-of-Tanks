@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
-import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -1218,7 +1218,9 @@ const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high
  *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
 async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
   let sliceStartedAt = performance.now();
-  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
+  // the decoration plans in the decor worker (stage 2b): a step that yields its wait is awaited, never polled
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx,
+    { ...GALLERY_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
   try {
     for (;;) {
       const result = steps.next();
@@ -1228,7 +1230,8 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
         result.value.dispose();
         return null;
       }
-      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
       if (!current()) return null;
     }
   } catch (error) {

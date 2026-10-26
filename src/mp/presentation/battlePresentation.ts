@@ -28,10 +28,11 @@ import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/mat
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import {
-  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder,
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner,
 } from '../../vehicles/fleetFactory.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
+import type { DecorPlanner } from '../../vehicles/tankFactoryCore.ts';
 import { prebakeBurntSteps, prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
 import { getSpec } from '../../vehicles/specs.ts';
@@ -193,8 +194,10 @@ type CreateTankVisual = (specId: string, engineCtx: EngineContext, options: Tank
 /** A second visual of a pristine one's vehicle (fleetFactory cloneTankVisual); throws where it needs a build. */
 type CloneTankVisual = (source: TankVisual, engineCtx: EngineContext, options: TankVisualOptions) => TankVisual;
 
-/** A tank's build in steps (fleetFactory createTankSteps): the builder must be loaded. */
-type CreateTankVisualSteps = (specId: string, engineCtx: EngineContext, options: TankVisualOptions) => Generator<void, TankVisual, void>;
+/** A tank's build in steps (fleetFactory createTankSteps): the builder must be loaded. A step may yield work it waits on
+ *  off the main thread (the decoration's plan, stage 2b), which the prebuild awaits. */
+type CreateTankVisualSteps = (specId: string, engineCtx: EngineContext, options: TankVisualOptions & { decorPlanner?: DecorPlanner })
+  => Generator<void | PromiseLike<unknown>, TankVisual, void>;
 
 type PrepareVisualTextures = (
   spec: FleetTankSpec, anisotropy: number, quality: string, tick: () => Promise<void>, camo: string,
@@ -411,11 +414,13 @@ export function prebuildRosterVisuals(
     if (stopped()) return;
     await prepareVisualTextures(getSpec(source.specId), anisotropy, options.quality, () => schedule(), source.camo);
     if (stopped()) return;
-    const steps = createTankVisualSteps(source.specId, engineCtx, options);
+    // the decoration plans in the decor worker (stage 2b); the seat's own options stay as they were (kept for reuse)
+    const steps = createTankVisualSteps(source.specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined });
     let step = steps.next();
     try {
       while (!step.done) {
-        await schedule();
+        if (step.value) await step.value;
+        else await schedule();
         if (stopped()) return;
         step = steps.next();
       }
