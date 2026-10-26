@@ -80,12 +80,35 @@ for (const line of [['t72b3m_2022', 't72bu_1989', 'pt91m'], ['t80', 't80b', 't80
     if (String(rank(a)) === String(rank(b))) assert.ok(displayTier(a) <= displayTier(b), `${a} never shows above ${b}`);
   }));
 }
-const upgrades = [['t72b3', 't72b3m_2016'], ['t72b3m_2016', 't72b3m_2022'], ['t80', 't80b'], ['t80b', 't80bv'], ['t80bv', 't80u'],
-  ['t80u', 't80u_kursk'], ['type90', 'type90a'], ['leopard2_proto', 'leo2a2'], ['leo2a2', 'leo2a3'], ['leo2a3', 'leo2a4'],
-  ['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'],
-  ...['t72b3_sich', 't72b3_zubr', 't72b3_qilin', 't72b3_bastion_m', 't72b3m_hetman', 't72b3m_wilk', 't72b3m_kunlun', 't72b3m_bulat_m']
-    .map((id) => ['t72b3', id]),
-  ...['t80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'].map((id) => ['t80u', id])];
+// 258b (Main 2026-10-26: the Leopard 2A5M stood at VII under its 2A5 at IX): every big family's base -> upgrade steps
+// (gen_trees.py FAMILY_UPGRADES holds the same map), so an upgrade never shows below its base
+const after = (base, ids) => ids.map((id) => [base, id]);
+const FAMILY_UPGRADES = Object.freeze({
+  leopard2: [['leopard2_proto', 'leo2a2'], ['leo2a2', 'leo2a3'], ['leo2a3', 'leo2a4'],
+    ...after('leo2a4', ['leo2a4_v', 'leo2a4_otco', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2_revolution', 'strv121']),
+    ...after('leo2a5', ['leo2a5m', 'leo2a6', 'strv122']), ...after('leo2a6', ['leo2a6m', 'leo2a6_ua', 'leo2a7v'])],
+  m1: [...after('m1a1', ['m1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_sa', 'm1a1_abrams_fep', 'm1a2_abrams']),
+    ['m1a1ha', 'm1a1_abrams_hc'], ['m1a1_abrams_sa', 'ua_m1a1'], ['m1a2_abrams_sepv2', 'm1a2_abrams_sepv3'],
+    ...after('m1a2_abrams', ['m1a2_abrams_sepv2', 'm1a2_abrams_tusk', 'ua_m1a2_abrams'])],
+  t72: [['t72b_1987', 't72b3'], ['t72b3', 't72b3m_2016'], ['t72b3m_2016', 't72b3m_2022'],
+    ...after('t72b3', ['t72b3_sich', 't72b3_zubr', 't72b3_zubr_ii', 't72b3_qilin', 't72b3_bastion_m', 't72b3m_hetman',
+      't72b3m_hetman_ii', 't72b3m_wilk', 't72b3m_kunlun', 't72b3m_bulat_m'])],
+  t80: [['t80', 't80b'], ['t80b', 't80bv'], ['t80bv', 't80u'], ['t80bv', 'ua_t80bv'], ['t84', 't84bm_oplot_m'],
+    ...after('t80u', ['t80u_kursk', 't80uk', 't84', 't80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'])],
+  t90: [['t72bu', 't90_1992'], ['t90_1992', 't90'], ['t90a_2004', 't90a'], ['t90a_2006', 't90a_vladimir'],
+    ['t90ms_2011', 't90ms_tagil'], ['t90sm_2013', 't90sm'], ['t90am', 't90m']],
+  challenger: [['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk3', 'challenger2'],
+    ...after('challenger2', ['challenger2e', 'ua_challenger2', 'challenger3'])],
+  leclerc: [['leclerc_s1', 'leclerc_s2'], ['leclerc_s2', 'leclerc_sxxi'], ['leclerc_sxxi', 'leclerc_xlr']],
+  merkava: [['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'], ['merkava3c', 'merkava3_baz'],
+    ['merkava3_baz', 'merkava3d'], ['merkava3d', 'merkava4'], ...after('merkava4', ['merkava4b', 'merkava4_trophy', 'merkava4_barak'])],
+  other: [['chieftain3', 'chieftain5'], ['chieftain5', 'chieftain_mk9'], ['chieftain_mk9', 'chieftain_mk10'],
+    ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
+    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['type90', 'type90a'],
+    ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
+});
+const upgrades = Object.values(FAMILY_UPGRADES).flat();
+for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
 for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displayTier(base), `${upgrade} never shows below ${base}`);
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
@@ -118,6 +141,7 @@ for (const file of sources) {
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
-// the Japan and Korea rulings.
-assert.equal(digest, 'a3a272cf88fee65a', `tree content changed: re-pin to ${digest} if deliberate`);
+// the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
+// (FAMILY_UPGRADES above).
+assert.equal(digest, '14cae73ceb1ad491', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

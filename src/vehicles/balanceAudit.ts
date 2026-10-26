@@ -40,7 +40,6 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   chieftain_mk10: 'keep the Mk 9 rebuild on its donor\'s slower cycle and hull at IV',
   c2_ariete: 'trim the Tier X armour and hull it brought to VII; the cadence stays over the C1',
   c2_ariete_proto: 'trim the Tier X armour it brought to VII and slow its cycle and aim',
-  leo2a5m: 'trim the Tier X armour it brought to VII and slow its cycle',
   t72b3_sich: 'offset the weaker donor hull front with hull for same-tier fairness at VII',
   t80u_husarz: 'add hull for same-tier fairness at VII',
   t72b3m_wilk: 'add hull for same-tier fairness at VII',
