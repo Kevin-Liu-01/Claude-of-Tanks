@@ -94,6 +94,30 @@ function ladder(clip) {
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
+// what each clip shows (owner 2026-10-25: "also add text here at the left that says stuff about this!"): its two vehicles
+// and its battlefield, and its mode where the clip is a match. The manifest's own tanks and mode lead where the media lane
+// writes them; this table names the vehicles of the duels it delivered without them.
+const SHOT_TANKS = {
+  'vs03-reservoir-k2-vt4a1': ['k2_black_panther', 'vt4a1'],
+  'frosthollow-cv90-bmp3': ['cv90_mk4', 'bmp3'],
+  'wadi-abrams-t90m': ['m1a2_abrams_sepv3', 't90m'],
+  'oasis-night-merkava-t72b3': ['merkava4', 't72b3'],
+  'glacier-strv122-t80bv': ['strv122', 't80bv'],
+};
+/** A clip's caption: the vehicles (their names are the same in every locale), the battlefield and the mode, each the
+ *  catalog's own words, stacked in one cell so the longest sets the box and a turn moves nothing. */
+function shotCaption(clip, on) {
+  const tanks = clip.tanks ?? SHOT_TANKS[clip.id];
+  if (tanks?.length !== 2) throw new Error(`home-premiere: ${clip.id} names no two vehicles (manifest tanks, or SHOT_TANKS)`);
+  const [a, b] = tanks.map((id) => tank(id).name);
+  const where = t(`map.${clip.map}`);
+  const mode = clip.mode ? GAME_MODE_DEFINITIONS[clip.mode] : null;
+  if (clip.mode && !mode) throw new Error(`home-premiere: ${clip.id} plays an unknown mode ${clip.mode}`);
+  const vars = esc(JSON.stringify({ a, b }));
+  return `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">`
+    + `<b data-i18n="home.hero.shot" data-i18n-vars="${vars}">${esc(text('home.hero.shot').replace('{a}', a).replace('{b}', b))}</b>`
+    + `<span class="hero__where">${where}${mode ? `<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}${t(`playMenu.matchMode.${clip.mode}.label`)}</span>` : ''}</span></span>`;
+}
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
 // a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
 const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
@@ -104,11 +128,14 @@ function heroBlock() {
   const first = REEL.hero[0];
   const lead = altOf(first);
   const size = reelPoster().find((rung) => rung.width >= 1440) ?? reelPoster().at(-1);
-  const clips = REEL.hero.filter((clip) => clip.film || clip.mobile || clip.wide).map((clip) => {
+  const moving = REEL.hero.filter((clip) => clip.film || clip.mobile || clip.wide);
+  const clips = moving.map((clip) => {
     const alt = altOf(clip);
-    return `<video class="hero__clip" muted playsinline loop preload="none" aria-hidden="true" data-reel-clip data-seconds="${seconds(clip)}"`
+    return `<video class="hero__clip" muted playsinline loop preload="none" aria-hidden="true" data-reel-clip data-shot="${clip.id}" data-seconds="${seconds(clip)}"`
       + ` data-label="${esc(alt.en)}" data-i18n-label="${alt.key}">${ladder(clip)}</video>`;
   }).join('');
+  // the poster is the first clip's frame, so its caption shows until the reel turns (heroReel.ts)
+  const shots = [first, ...moving.filter((clip) => clip !== first)].map((clip) => shotCaption(clip, clip === first)).join('');
   const trailer = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.webm');
   return `<header class="hero" aria-labelledby="hero-title" data-hero-reel>`
     + `<img class="hero__still" src="${heroDefault()}" alt="${esc(lead.en)}" data-i18n-alt="${lead.key}" width="1920" height="${Math.round(1920 * size.height / size.width)}"`
@@ -116,15 +143,19 @@ function heroBlock() {
     + `<div class="hero__reel">${clips}</div>`
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
-    // duplicate it in hero"); the page's h1 names the game for assistive tech and search
-    + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
+    // duplicate it in hero"); the headline says what the game is, and its h1 names the game for assistive tech and search
+    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${t('home.hero.title')}</h1>`
+    + `${t('home.hero.lede', 'p', 'hero__lede')}`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
     + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}<span>${t('home.hero.trailer')}`
-    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></span></button></div>`
+    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></span></button></div></div>`
+    // the shot on screen and the reel's pause: the captions are the picture's (the poster's alt and the clips' labels name
+    // the shots for assistive tech)
+    + `<div class="hero__reelbar"><p class="hero__shots" aria-hidden="true">${shots}</p>`
     + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
-    + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div>`
+    + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div></div>`
     + `<ul class="hero__stats" data-datum="fleet-counts">`
     + `<li>${iconMarkup('gallery', 18)}<b>{{COT_PRODUCTION_VEHICLES}}</b>${t('home.stats.tanks')}</li>`
     + `<li>${iconMarkup('map', 18)}<b>{{COT_BATTLEFIELDS}}</b>${t('home.stats.battlefields')}</li>`

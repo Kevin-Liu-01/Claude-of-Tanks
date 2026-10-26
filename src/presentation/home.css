@@ -11,7 +11,7 @@
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}}
 @layer surfaces{
-:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
+:root{--home-h1:clamp(var(--fs-44),min(5.4vw,9.5svh),var(--fs-88));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
@@ -40,15 +40,39 @@ img{display:block;max-width:100%}
   min-height:max(540px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
 .hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
-/* the still, the reel and the grade share one layer under the card: their order in the markup stacks them */
-:is(.hero__still,.hero__reel,.hero__grade){z-index:-1}
+/* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
+.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before,.hero__card::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
-/* the reel carries the hero: the actions sit at its foot, the game's name stays in the nav bar (the h1 is for assistive tech) */
-.hero__card{grid-area:card;align-self:end;display:flex;align-items:center;justify-content:space-between;gap:var(--s4);margin-bottom:var(--s6)}
+/* the reel carries the hero: at its foot the headline, its line and the actions on the left, the shot on screen and the
+   reel's pause on the right (owner 2026-10-25: "also add text here at the left that says stuff about this!"); the game's
+   mark and name stay in the nav bar */
+.hero__card{grid-area:card;align-self:end;display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s6);margin-bottom:var(--s6)}
+.hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:calc(var(--home-h1) * 9.4)}
+.hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
+.hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:pretty}
+/* the shot's caption holds the right edge, centred on the actions' row, and the pause comes in on its left when the reel
+   starts; every caption shares one cell, so the longest sets the box and a turn crossfades with its clip without moving
+   anything */
+.hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px}
+.hero__reelbar>.hero__toggle{order:-1}
+/* the words' scrim (owner 2026-10-25: their contrast holds over bright snow): a plate of the scene's ink under the lead and
+   under the caption, feathered at its edges and running off the screen's side, a gradient mask over imagery, never blur */
+.hero__lead::before,.hero__reelbar::before{--feather:var(--s9);content:'';position:absolute;pointer-events:none;background:var(--home-hero-scrim);
+  --plate:linear-gradient(90deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent),linear-gradient(0deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent);
+  -webkit-mask-image:var(--plate);mask-image:var(--plate);-webkit-mask-composite:source-in;mask-composite:intersect}
+.hero__lead::before{inset:calc(-1 * var(--feather) - var(--s5)) calc(-1 * var(--feather) - var(--s6)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--home-gutter))}
+.hero__reelbar::before{inset:calc(-1 * var(--feather) - var(--s2)) calc(-1 * var(--feather) - var(--home-gutter)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--s4))}
+.hero__shots{display:grid;margin:0;text-align:right}
+.hero__shot{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-end;gap:var(--s1);opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
+.hero__shot.is-on{opacity:1}
+.hero__shot b{font:500 var(--fs-15)/1.3 var(--font-body);color:var(--ink-1);white-space:nowrap}
+.hero__where{display:flex;align-items:center;gap:var(--s3);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);white-space:nowrap}
+.hero__mode{display:inline-flex;align-items:center;gap:var(--s1)}
+.hero__mode .cot-i{width:16px;height:16px;color:var(--mode-ink,var(--ink-2))}
 .home-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.hero__ctas{display:flex;align-items:center;gap:var(--s4)}
+.hero__ctas{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s6)}
 .hero__trailer{padding-left:var(--s2);background:var(--surface-raised)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
@@ -118,6 +142,7 @@ img{display:block;max-width:100%}
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-head>.home-h2{text-box:trim-end cap alphabetic}
 :lang(zh-CN) :is(.home-head>.home-h2,.press__title){margin-bottom:.12em}
+:lang(zh-CN) .hero__title{line-height:1.08}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -241,8 +266,18 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the trailer keeps its name on a phone; its picture and length step aside */
   .hero__trailer{--h:58px;padding-inline:var(--s4)}
   .hero__trailer :is(.hero__thumb,.hero__dur){display:none}
-  /* in the picture's lower right, above the counts: the hero's own box ends with them */
-  .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
+  /* the headline and its line over the picture's foot, then the shot on screen beside the reel's pause, above the counts */
+  .hero__card{position:relative;flex-direction:column;align-items:stretch;gap:var(--s4);margin-bottom:var(--s4)}
+  .hero__lead{max-width:none}
+  /* one scrim under the whole block, across the screen, feathered above the headline */
+  .hero__lead::before,.hero__reelbar::before{content:none}
+  .hero__card::before{content:'';position:absolute;-webkit-mask-image:var(--plate);mask-image:var(--plate);inset:calc(-1 * var(--s9) - var(--s4)) calc(-1 * var(--home-gutter)) calc(-1 * var(--s3));pointer-events:none;
+    background:var(--home-hero-scrim);--plate:linear-gradient(0deg,var(--ink-1) calc(100% - var(--s9)),transparent)}
+  .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
+  .hero__reelbar{justify-content:space-between;height:44px}
+  .hero__reelbar>.hero__toggle{order:0}
+  .hero__shots{text-align:left}
+  .hero__shot{align-items:flex-start}
   .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s2);height:auto;margin:0;padding:0;border:0}
   .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
@@ -253,7 +288,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__cap{padding:var(--s4)}
   .feat__link,.feat--wide .feat__link{font-size:var(--fs-24)}
   .feat__link .cot-i{width:20px;height:20px}
-  :root{--home-h2:var(--fs-44)}
+  :root{--home-h1:clamp(var(--fs-32),10vw,var(--fs-44));--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
   /* the closing band keeps the phone's 80 px section rhythm */
   .press{padding-bottom:calc(var(--s7) + var(--s6))}

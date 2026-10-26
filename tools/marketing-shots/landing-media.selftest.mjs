@@ -103,8 +103,18 @@ clips.forEach(([, attrs, body], i) => {
 assert.match(heroMarkup, /<button class="cot-c-btn cot-c-btn--64 hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="[^"]+" alt="" width="84" height="46"/,
   'the trailer button shows a dimensioned thumbnail');
 assert.match(heroMarkup, /data-reel-toggle hidden aria-label="[^"]+" data-i18n-aria-label="publicPages\.reel\.pauseAria"/, 'the reel has its pause control');
+// (owner 2026-10-25: "also add text here at the left that says stuff about this!") the hero says what the game is, and
+// each clip's caption names its vehicles and battlefield: one caption per clip, the poster's on until the reel turns
+assert.match(heroMarkup, /<p class="hero__lede" data-i18n="home\.hero\.lede">[^<]+<\/p><div class="hero__ctas">/, 'the headline\'s line sits above the actions');
+const shotIds = [...heroMarkup.matchAll(/<span class="hero__shot[^"]*" data-reel-shot="([^"]+)">/g)].map((m) => m[1]);
+assert.deepEqual([...shotIds].sort(), reel.hero.map((clip) => clip.id).sort(), 'one caption per clip');
+assert.match(heroMarkup, new RegExp(`<span class="hero__shot is-on" data-reel-shot="${reel.hero[0].id}">`), 'the poster\'s caption shows first');
+assert.equal((heroMarkup.match(/class="hero__shot is-on"/g) || []).length, 1, 'one caption on at a time');
+clips.forEach(([, attrs], i) => assert.ok(attrs.includes(`data-shot="${reel.hero[i].id}"`), `clip ${i + 1} names its caption`));
+assert.match(heroMarkup, /<p class="hero__shots" aria-hidden="true">/, 'the captions are the picture\'s: the poster\'s alt and the clips\' labels name the shots');
 const heroReel = await readFile(resolve(root, 'src/presentation/heroReel.ts'), 'utf8');
 assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return null;/, 'no clip moves under reduced motion or data saving');
+assert.match(heroReel, /shot\.classList\.toggle\('is-on', shot\.dataset\.reelShot === video\.dataset\.shot\)/, 'the caption turns with its clip');
 const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
 assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
 assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) void import\('\.\/homePage\.ts'\);/, 'the landing\'s behaviour loads with the landing alone');
