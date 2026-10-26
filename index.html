@@ -364,7 +364,7 @@
     .cot-boot-tip span { display: inline-block; text-wrap: balance; }
     .cot-boot-tip.fade { opacity: 0; }
     /* Credits and GitHub: the kit's quiet buttons in the foot row, the version at its other end */
-    .cot-boot-links { position: absolute; left: 12px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
+    .cot-boot-links { position: absolute; left: 4px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
@@ -392,6 +392,7 @@
       border-left: 1px solid var(--line-3); color: var(--ink-2);
       letter-spacing: .04em;
     }
+    .cot-boot-links .cot-github-stars { color: inherit; }
     .cot-github-stars svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
     .cot-github-stars [data-github-stars] {
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
@@ -406,7 +407,7 @@
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
     @media (pointer: coarse) { .cot-boot-links > .cot-boot-link { height: 44px; } }
-    @media (width <= 380px) { :root body .cot-boot-links > .cot-boot-link { padding-inline: 8px; } }
+    @media (width <= 380px) { :root body .cot-boot-links { left: 8px; } :root body .cot-boot-links > .cot-boot-link { padding-inline: 8px; } }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
       .cot-boot-gate.on { animation: none; }
@@ -427,9 +428,9 @@
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
-    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot) { visibility: hidden; }
+    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot, .cot-boot-links) { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
-      overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+      overflow:auto;overscroll-behavior:contain}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
     .cot-credits-profile{margin:0;padding:32px;background:var(--surface-page);
       border-right:1px solid var(--line-1);display:flex;flex-direction:column;gap:var(--s5)}
@@ -552,8 +553,9 @@
       .cot-boot-mark { --boot-mark: 128px; }
       .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
-      .cot-boot-retry { justify-self: stretch; }
+      .cot-boot-retry { justify-self: stretch; align-self: start; margin-top: 32px; }
     }
+    @media (pointer: coarse) { .cot-boot-foot { bottom: 26px; } }
     /* a narrow phone: the version stands over the foot row's right end */
     @media (width < 480px) { .cot-boot-foot { bottom: 64px; } }
     @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; } }
