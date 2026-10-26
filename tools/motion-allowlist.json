@@ -48,6 +48,34 @@
       "property": "--mk-loop",
       "reason": "The mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: one loop moves the links four pitches and the wheels two spoke steps, so it closes on itself. Reduced motion stops the loop.",
       "measured": "LOOP_S 1.2 s; TRAVEL 240 degrees of a 5.4-unit wheel = 22.62 units, PITCH = TRAVEL / 4 = 5.655 units, the keyframes' dash offset."
+    },
+    {
+      "rule": "raster",
+      "file": "404.html",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "site/home.html",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "src/presentation/publicShell.ts",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "src/ui/garage.ts",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 30 x 30 CSS px in the Garage language credit (3.2x the box, crisp to DPR 3)."
     }
   ]
 }
