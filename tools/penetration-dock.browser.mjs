@@ -50,9 +50,12 @@ try{
    });
    await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/arrivals');
+   // (Tab holds the rosters while the battle has the cursor, hud.ts: a headless page holds no pointer lock, so one stands in)
+   await page.evaluate(()=>Object.defineProperty(document,'pointerLockElement',{configurable:true,get:()=>document.body}));
    await page.keyboard.down('Tab');await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/tab');
    await page.keyboard.up('Tab');await page.clock.runFor(100);
+   await page.evaluate(()=>{delete document.pointerLockElement;});
    // Keep the report fresh while the production kill-notice timers expire.
    await page.clock.fastForward(4900);
    await page.evaluate(()=>window.__HUD_LAYOUT.hit());await page.clock.runFor(100);

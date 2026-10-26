@@ -2546,9 +2546,12 @@ export function initHud(bus: EventBus): HudRuntime {
   /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
   const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
-  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility).
+  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility),
+  // while the battle has the cursor; with the cursor free (paused, the report up) Tab moves the keyboard's focus, as
+  // everywhere else (INTERACTION-REDESIGN C: captured on the window, no HUD button and no report button was reachable).
   window.addEventListener('keydown', event => {
-    if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
+    if (event.code !== 'Tab' || mode === 'hidden' || !document.pointerLockElement || document.body.classList.contains('cot-si-report')
+        || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
         (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
     event.preventDefault();
     if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
