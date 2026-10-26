@@ -22,22 +22,20 @@ export const POLAND_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // BWP-1, Upiór and Borsuk
-    node({ id: 'bwp1', tier: 4, line: 'bwp', lane: 2, parents: [], slot: 'line' }),
+    node({ id: 'bwp1', tier: 5, line: 'bwp', lane: 0, parents: [], slot: 'line' }),
+    node({ id: 'upior', tier: 7, line: 'bwp', lane: 0, parents: ['bwp1'], slot: 'line' }),
+    node({ id: 'borsuk', tier: 9, line: 'bwp', lane: 1, parents: ['upior'], slot: 'line' }),
     // T-72M1 to Zubr
-    node({ id: 't72m1_jaguar', tier: 5, line: 'pt91', lane: 0, parents: ['bwp1'], slot: 'line' }),
-    // Twardy
-    node({ id: 'pt91a_twardy', tier: 5, line: 'pt91_side', lane: 1, parents: ['t72m1_jaguar'], slot: 'line' }),
-    // T-72M1 to Zubr
-    node({ id: 'pt91m', tier: 6, line: 'pt91', lane: 0, parents: ['t72m1_jaguar', 'pt91a_twardy'], slot: 'line' }),
-    node({ id: 't72_rys', tier: 8, line: 'pt91', lane: 0, parents: ['pt91m'], slot: 'line' }),
+    node({ id: 't72m1_jaguar', tier: 5, line: 'pt91', lane: 1, parents: ['bwp1'], slot: 'line' }),
+    node({ id: 'pt91m', tier: 5, line: 'pt91', lane: 2, parents: ['t72m1_jaguar'], slot: 'line' }),
+    node({ id: 't72_rys', tier: 7, line: 'pt91', lane: 2, parents: ['pt91m'], slot: 'line' }),
     node({
-      id: 't72b3_zubr', tier: 9, line: 'pt91', lane: 0, parents: ['t72_rys'], slot: 'line', builds: ['t72b3_zubr_ii'],
+      id: 't72b3_zubr', tier: 9, line: 'pt91', lane: 2, parents: ['t72_rys'], slot: 'line', builds: ['t72b3_zubr_ii'],
     }),
-    // BWP-1, Upiór and Borsuk
-    node({ id: 'upior', tier: 8, line: 'bwp', lane: 2, parents: ['bwp1'], slot: 'line' }),
-    node({ id: 'borsuk', tier: 9, line: 'bwp', lane: 2, parents: ['upior'], slot: 'line' }),
+    // Twardy
+    node({ id: 'pt91a_twardy', tier: 6, line: 'pt91_side', lane: 1, parents: ['t72m1_jaguar'], slot: 'line' }),
     // PL-01
-    node({ id: 'pl01', tier: 9, line: 'pl01', lane: 3, parents: ['upior'], slot: 'line', builds: ['pl01_105'] }),
+    node({ id: 'pl01', tier: 10, line: 'pl01', lane: 0, parents: ['upior'], slot: 'line', builds: ['pl01_105'] }),
     // Special
     node({ id: 't72b3m_wilk', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
     node({ id: 't80u_husarz', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),

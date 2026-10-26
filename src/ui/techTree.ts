@@ -80,8 +80,10 @@ interface TechTreeScreen {
 }
 
 interface Geometry {
-  /** The tree's first tier and how many tiers it spans (a tree that opens at II has no empty column I). */
-  readonly first: number;
+  /** The tiers the tree holds, in order, one column each (a tier no vehicle of the tree holds takes no column), and each
+   * tier's column. */
+  readonly tiers: readonly number[];
+  readonly column: ReadonlyMap<number, number>;
   readonly count: number;
   /** The tier row's height, which grows with the screen's type scale. */
   readonly head: number;
@@ -127,12 +129,8 @@ function kitButton(label: string, options: { readonly glyph?: IconId; readonly v
 const nameScale = (col: number): number => Math.min(1.65, Math.max(1, col / 123));
 /** The screen's type scale beside the grid (title, detail, stats, rail): 1 to 1440 px, growing to 1.5 at 2400 px. */
 const uiScale = (): number => Math.min(1.5, Math.max(1, (window.innerWidth || 1440) / 1600));
-/** The tiers a tree spans, first to last. */
-const tierSpan = (tree: NationTree): { readonly first: number; readonly count: number } => {
-  const tiers = tree.nodes.map((node) => node.tier);
-  const first = Math.min(...tiers);
-  return { first, count: Math.max(...tiers) - first + 1 };
-};
+/** The tiers a tree holds, lowest first: the columns it draws. */
+const tierColumns = (tree: NationTree): number[] => [...new Set(tree.nodes.map((node) => node.tier))].sort((a, b) => a - b);
 
 export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   ensureFonts();
@@ -214,11 +212,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   const selectButton = root.querySelector<HTMLButtonElement>('.tt-select')!;
   const zoomButtons = root.querySelectorAll<HTMLButtonElement>('[data-zoom]');
 
-  /** The open tree's tier numerals, first to last. */
+  /** The open tree's tier numerals, one per column. */
   function buildTiers(): void {
-    const { first, count } = tierSpan(tree);
     tiersEl.replaceChildren();
-    for (let tier = first; tier < first + count; tier++) {
+    for (const tier of tierColumns(tree)) {
       const numeral = document.createElement('span');
       numeral.className = 'tt-numeral';
       numeral.dataset.tier = String(tier);
@@ -352,7 +349,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
    * name fits, never under the floor; a name longer than that widens the columns. Zoom scales the cells and the names.
    */
   function measure(): Geometry {
-    const { first, count } = tierSpan(tree);
+    const tiers = tierColumns(tree), count = tiers.length;
+    const column = new Map(tiers.map((tier, index) => [tier, index]));
     const head = Math.round(HEAD_H * uiScale());
     const rows = layout.lineLanes + layout.specialLanes;
     const pad = parseFloat(getComputedStyle(root).getPropertyValue('--tt-gutter'));
@@ -374,17 +372,26 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     const compact = m.text * named / m.floor + m.inset + CARD_EDGES > col + 0.5;
     const width = Math.ceil(pad * 2 + count * col + (count - 1) * gapX);
     const height = head + PAD_Y * 2 + END_Y + rows * row + (rows - 1) * GAP_Y + (layout.specialLanes ? SPECIAL_GAP : 0);
-    return { first, count, head, pad, col, row, gapX, label: named, compact, lanes: layout.lineLanes, specialLanes: layout.specialLanes,
+    return { tiers, column, count, head, pad, col, row, gapX, label: named, compact, lanes: layout.lineLanes, specialLanes: layout.specialLanes,
       width, height };
   }
 
-  /** Grid units (layout.ts) to pixels: a cell is one column or row, a gutter one gap. */
+  /**
+   * Grid units (layout.ts) to pixels: a cell is one column or row, a gutter one gap. layout.ts counts columns from tier I;
+   * here only the tiers the tree holds take a column, and a tier it skips folds into the gutter before the next one.
+   */
   const px = (g: Geometry, point: GridPoint): [number, number] => {
-    // the grid starts at the tree's first tier: layout.ts counts columns from tier I
-    const gx = point.x - 2 * (g.first - 1);
-    const ix = Math.floor(gx / 2), rx = gx - 2 * ix;
+    const c = Math.floor(point.x / 2), rx = point.x - 2 * c;
+    const at = g.column.get(c + 1);
+    const pitch = g.col + g.gapX;
+    let x: number;
+    if (at !== undefined) {
+      x = g.pad + at * pitch + (rx <= 1 ? rx * g.col : g.col + (rx - 1) * g.gapX);
+    } else {
+      const next = g.column.get(g.tiers.find((tier) => tier > c + 1) ?? 0) ?? g.count;
+      x = g.pad + next * pitch - g.gapX + (rx <= 1 ? 0 : (rx - 1) * g.gapX);
+    }
     const iy = Math.floor(point.y / 2), ry = point.y - 2 * iy;
-    const x = g.pad + ix * (g.col + g.gapX) + (rx <= 1 ? rx * g.col : g.col + (rx - 1) * g.gapX);
     const y = g.head + PAD_Y + iy * (g.row + GAP_Y) + (iy >= g.lanes ? SPECIAL_GAP : 0) + (ry <= 1 ? ry * g.row : g.row + (ry - 1) * GAP_Y);
     return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
   };
@@ -398,7 +405,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     let down = y - g.head - PAD_Y;
     const lineEnd = g.lanes * (g.row + GAP_Y);
     if (g.specialLanes && down > lineEnd) down -= Math.min(SPECIAL_GAP, down - lineEnd);
-    return { x: axis(x - g.pad, g.col, g.gapX) + 2 * (g.first - 1), y: axis(down, g.row, GAP_Y) };
+    const across = axis(x - g.pad, g.col, g.gapX);
+    const index = Math.min(g.count - 1, Math.max(0, Math.floor(across / 2)));
+    return { x: 2 * (g.tiers[index] - 1) + across - 2 * index, y: axis(down, g.row, GAP_Y) };
   };
 
   /** An SVG path through the route's points, each corner eased by a short quadratic turn. */
