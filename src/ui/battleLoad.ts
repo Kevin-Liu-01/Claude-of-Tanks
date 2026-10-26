@@ -222,7 +222,13 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
 .cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
 .cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
-  border-left-color:var(--accent);box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
+  box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
+/* (the player's ring takes the side's edge too: the side's rule outranked it, and a blue edge sat inside the orange ring,
+   gauntlet r10) */
+.cot-bl .team .row.me{border-left-color:var(--accent);}
+/* (a short window's 14 px rows ring the player's row in the rows' gap: inside it the 13 px CJK floor's "你" met the ring,
+   gauntlet r10) */
+body[data-cot-height='short'] .cot-bl .row.me{outline-offset:0;}
 /* (the player's row ringed by an outline, which paints over the row's own parts: the ring under them let a tall side render
    cover it, and the side's ink sat outside it, gauntlet r6) */
 /* (a side's rows on one plate, their gaps the plate's: the art behind showed through them as stray stripes, gauntlet r6) */
@@ -325,6 +331,9 @@ ${PORTRAIT_ROWS} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT_ROWS} .cot-bl .team.foe .row .sil{grid-column:2;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
 ${PORTRAIT_ROWS} .cot-bl .row .nm{grid-row:1;}${PORTRAIT_ROWS} .cot-bl .row .cs{grid-row:2;margin:0;}
+/* (each line one height in both scripts, so a row's lines stand level with the row's opposite: zh's 13 px "你" set the
+   player's lines 2 px off the foe's, gauntlet r10) */
+${PORTRAIT_ROWS} .cot-bl .row .nm{line-height:16px;}${PORTRAIT_ROWS} .cot-bl .row .cs{line-height:14px;}
 /* (a phone up to 340 px wide gives the render's room to the names: a 138 px side left "M1A2 Abrams" 50 px, r8) */
 ${PORTRAIT_ROWS}[data-cot-width-density='narrow'] .cot-bl .row .sil{display:none;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}

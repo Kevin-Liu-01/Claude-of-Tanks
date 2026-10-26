@@ -304,7 +304,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 }
 @media(min-width:1000px) and (max-height:800px){
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center}
+  /* (on the medals' row's top line, not its centre: centred, its foot reached past the column's fold, which cut its border
+     at 844x390, gauntlet r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:start}
   /* (the wide windows' record column is a block: its grid here, so the medals and the best shot share a row, gauntlet
      r4 at 1280x720 lost the details row under them) */
   body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-content:start}
@@ -319,7 +321,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
   body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-stat-grid,.es-combat-details,.es-blow){grid-column:1/-1}
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center}
+  /* (on the medals' row's top line, not its centre: centred, its foot reached past the column's fold, which cut its border
+     at 844x390, gauntlet r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:start}
   /* (its left edge on the tiles' column line: its own margin set it 16 px in, gauntlet r4 at 1024x600 and 900x700) */
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-left:0}
 }
@@ -332,6 +336,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
   /* (the medals' strip 4 px nearer its tiles: one px over the column, they stood under the cue at 844x390, r9) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:var(--s1) var(--s3)}
+  /* (and the best shot beside them on the strip's own 4 px: at 18 px its foot crossed the fold, r10) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-block:var(--s1)}
   /* (smaller medals, so a short landscape holds them whole under its tiles, gauntlet r4) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{width:48px;height:48px;padding:4px}
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw svg{width:40px;height:40px}
