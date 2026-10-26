@@ -85,6 +85,12 @@ const SITES = [
   ['src/ui/playMenu.ts', '.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}', "Rooms' rule glyphs paint the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
+  ['src/ui/hud.ts', 'modeStatusEl.dataset.modeTone = modeId;', "the battle HUD's objective plate carries its mode"],
+  ['src/ui/battleHudLayout.css', '.cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}', "the objective plate's glyph paints the mode"],
+  ['src/ui/battleLoad.ts', 'modeChip.dataset.modeTone = normalizeGameMode(info.modeId);', "the battle load's mode chip carries its mode"],
+  ['src/ui/battleLoad.ts', '.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}', "the battle load's mode glyph paints the mode"],
+  ['src/ui/endScreen.ts', '<span class="mode" data-mode-tone="${mode.id}"', "the end report's mode chip carries its mode"],
+  ['src/ui/endScreen.ts', '.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}', "the end report's mode glyph paints the mode"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
 const garage = read('src/ui/garage.css');

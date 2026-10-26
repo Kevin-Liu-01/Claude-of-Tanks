@@ -169,7 +169,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
    scale set them 10 px at 900x700, gauntlet r4) */
 .cot-bl .rules .cot-c-chip{font-size:max(var(--battle-fs-12),var(--fs-13));}
 .cot-bl .rules .cot-c-chip :is(.kicker,.sv,.v){font-size:inherit;}
-.cot-bl .rules .gi{display:flex;color:var(--accent);}
+.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
@@ -803,6 +803,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // (the mode's own glyph, as every chip beside it wears one: gauntlet r4)
       const modeGlyph = info.modeId ? GAME_MODE_DEFINITIONS[normalizeGameMode(info.modeId)]?.icon : '';
       modeGlyphEl.innerHTML = modeGlyph ? uiIconSVG(modeGlyph, 16) : '';
+      // (the glyph in the mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+      const modeChip = modeGlyphEl.parentElement;
+      if (modeChip && info.modeId) modeChip.dataset.modeTone = normalizeGameMode(info.modeId);
+      else if (modeChip) delete modeChip.dataset.modeTone;
       // the art a covered entry already staged stays (the loading owner's first show names the same battlefield)
       const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
       if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
