@@ -2859,6 +2859,16 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                   casterBatchMs.push(batch.elapsedMs);
                   casterCount += batch.casterCount;
                 },
+                // (battle-spikes-253) the actors this view holds hidden (unspotted): their depth programs warm too, inside
+                // the batches only (shadowPrime.ts hiddenRoots), never in the final maps
+                hiddenRoots: () => {
+                  const roots: THREE.Object3D[] = [];
+                  for (const entity of game.tankById.values()) {
+                    const root = entity.visual?.root;
+                    if (root && !root.visible) roots.push(root);
+                  }
+                  return roots;
+                },
               },
             });
             // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
