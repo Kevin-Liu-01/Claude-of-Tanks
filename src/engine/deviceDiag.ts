@@ -1146,16 +1146,21 @@ async function awaitProgramLinks(
   receipt.linkPending = pending.length;
   const startedAt = sceneProbeClock();
   const deadline = Number.isFinite(startedAt) ? startedAt + PROBE_LINK_WAIT_MS : Infinity;
+  // (battle-spikes-253) one completion query a poll, the first program still linking: on ANGLE/Metal each query is a
+  // synchronous round trip that waits behind the GPU process's queued links, and asking every pending program in one
+  // poll was one 1.2 s task (nav-perf's profiled room, isReady → getProgramParameter). Linked programs answer from
+  // three's cache, so the cursor passes them without a query.
+  let cursor = 0;
   try {
-    while (pending.length && sceneProbeClock() < deadline) {
+    while (cursor < pending.length && sceneProbeClock() < deadline) {
       await new Promise<void>((resolve) => { setTimeout(resolve, PROBE_LINK_POLL_MS); });
       assertSceneWatchdogOwner(signal, isCurrent);
       if (renderer.getContext?.()?.isContextLost?.()) break;
-      pending = pending.filter((program) => !program.isReady!());
+      while (cursor < pending.length && pending[cursor].isReady!()) cursor++;
     }
   } finally {
     receipt.linkWaitMs = sceneProbeClock() - startedAt;
-    receipt.linkLeft = pending.length;
+    receipt.linkLeft = pending.length - cursor;
   }
 }
 

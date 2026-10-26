@@ -344,6 +344,33 @@ await test('pending program links are awaited between tasks before the probe dra
   f.assertReleased(1);
 });
 
+// (battle-spikes-253) one completion query a poll: on ANGLE/Metal each query is a synchronous round trip behind the GPU
+// process's queued links (nav-perf's profiled room: every pending program asked in one poll, one 1.2 s task)
+await test('the link wait asks one still-linking program a poll', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  const answers = [];
+  const program = (readyOnCall) => {
+    let calls = 0;
+    return { isReady: () => { const ready = ++calls >= readyOnCall; answers.push(ready); return ready; } };
+  };
+  f.renderer.info.programs = [program(3), program(5), program(7)];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ measureTimings: true });
+  let polls = 0;
+  while (!f.names().includes('render') && polls < 20) {
+    const before = answers.length;
+    await clock.resume();
+    polls++;
+    const stillLinking = answers.slice(before).filter((ready) => !ready).length;
+    assert.ok(stillLinking <= 1, `poll ${polls} asked ${stillLinking} programs that were still linking`);
+  }
+  assert.ok(f.names().includes('render'), 'the draw follows once every program linked');
+  await clock.resume();
+  const result = await pending;
+  assert.deepEqual([result.measurements[0].linkPending, result.measurements[0].linkLeft], [3, 0]);
+  f.assertReleased(1);
+});
+
 await test('an owner change while links are awaited rejects before any probe draw', async (clock) => {
   const f = fixture({ asyncSamples: [12] });
   let current = true;
