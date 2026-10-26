@@ -944,7 +944,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const leftTiles = split >= 0 ? tiles.filter((node) => group(node) < 0).length : -1;
     const sided = overSlots && split >= 0 && leftTiles <= shellSlots && tiles.length - leftTiles <= conSlots;
     const firstSlot = overSlots && !sided ? Math.floor((slots.length - tiles.length) / 2) : 0;
-    const slotOf = (at: number) => (!sided ? firstSlot + at : at < leftTiles ? at : shellSlots + at - leftTiles);
+    // (a short group closes up on the divider, the ammunition's ending at it and the equipment's starting from it, so a
+    // missing tile leaves the row's outer end open, not a hole in it: F and Q from the first slot left one between Q and the
+    // divider, gauntlet r13)
+    const slotOf = (at: number) => (!sided ? firstSlot + at : at < leftTiles ? shellSlots - leftTiles + at : shellSlots + at - leftTiles);
     if (overSlots || tilesOverSlots) {
       for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) {
         if (!node.style) continue;
