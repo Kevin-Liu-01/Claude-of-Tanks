@@ -182,24 +182,29 @@
    "owner": "premiere-site"
   },
   "bundle/game/any/brotliBytes": {
-   "value": 1078846,
+   "value": 1078988,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); Main 2026-10-25, release 254: stage 2b pass 1, the decor worker's plan/attach split and planner (+142 B game br, +303 B Gallery br); pinned at e254b (ee32c7bc7a)"
   },
   "bundle/game/any/entryBrotliBytes": {
-   "value": 244017,
+   "value": 243810,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254b (ee32c7bc7a)"
   },
   "bundle/cn/any/brotliBytes": {
-   "value": 1121898,
+   "value": 1122040,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); Main 2026-10-25, release 254: stage 2b pass 1, the decor worker's plan/attach split and planner (+142 B game br, +303 B Gallery br); pinned at e254b (ee32c7bc7a)"
   },
   "bundle/cn/any/entryBrotliBytes": {
-   "value": 244017,
+   "value": 243810,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254b (ee32c7bc7a)"
+  },
+  "bundle/gallery/any/brotliBytes": {
+   "value": 660759,
+   "owner": "integrator",
+   "ruling": "Main 2026-10-25, release 254: stage 2b pass 1, the decor worker's plan/attach split and planner (+142 B game br, +303 B Gallery br); pinned at e254b (ee32c7bc7a)"
   }
  }
 }
