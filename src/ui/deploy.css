@@ -8,6 +8,8 @@
      and the bot tier in one row (the mode's own settings open under it), the tank and its loadout, and one Deploy bar
      with the load estimate;
    - the foot: the keys the screen answers. */
+/* the tokens only this screen reads (the plate's picture grade), apart from tokens.css so no other page loads them */
+@import url('./tokens/surface-deploy.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 /* the Garage sheet's reset (.cot-garage *{margin:0;padding:0}, surfaces) strips the kit's own spacing from key caps, tags,
