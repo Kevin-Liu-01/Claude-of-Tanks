@@ -15,7 +15,7 @@
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
-//     [--program-log] [--profile-leave]
+//     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -57,6 +57,11 @@ const battleEval = option('battle-eval', '');
 const programLog = argv.includes('--program-log');
 // --profile-leave: a CPU profile of both pages through the leave to the Garage, each long task attributed
 const profileLeave = argv.includes('--profile-leave');
+// --leave-first=A|B and --leave-gap-ms=<ms>: who leaves first (B by default) and how long the other waits after that
+// page's Garage is back (0 by default): two pages share the census's GPU process, so a gap keeps one page's Garage
+// restore out of the other's round trips
+const leaveFirst = option('leave-first', 'B') === 'A' ? 'A' : 'B';
+const leaveGapMs = Number(option('leave-gap-ms', '0')) || 0;
 const profiling = { armed: false, live: [], workers: [] };
 const profileWorker = async (url, session) => {
   await session.send('Profiler.enable');
@@ -426,7 +431,8 @@ try {
       leaveCdp.push(cdp);
     }
   }
-  for (const page of [pageB, pageA]) {
+  for (const [i, page] of (leaveFirst === 'A' ? [pageA, pageB] : [pageB, pageA]).entries()) {
+    if (i > 0 && leaveGapMs) await new Promise((r) => setTimeout(r, leaveGapMs));
     await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
     await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'garage', { timeout: 60_000, polling: 100 });
   }
