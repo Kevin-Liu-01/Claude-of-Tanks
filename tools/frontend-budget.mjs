@@ -37,16 +37,22 @@ export const BUDGETS = Object.freeze({
  * nothing; raising one is that same named ruling, here on the line above the number.
  */
 export const BUNDLE_BUDGETS = Object.freeze({
-  // 2026-10-25 (nav-perf, UI-LOCKDOWN E): pinned at the lane's public build of release 252 with the turret seat plane, the
-  // tier table and the deterministic math in one boot chunk and the Garage's equipment preview lazy (against 252 itself:
-  // the game -1 request and -1.1 KB, its entry -1.6 KB, the Gallery -2 requests and -13.8 KB). The integrator re-pins
-  // these at the release build, where the environment's own bytes differ, under that ruling.
-  game: { brotliBytes: 1078528, requests: 129, entryBrotliBytes: 243784 },
-  cn: { brotliBytes: 1121580, requests: 130, entryBrotliBytes: 243784 },
-  gallery: { brotliBytes: 660443, requests: 75 },
-  home: { brotliBytes: 24149, requests: 8 },
-  docs: { brotliBytes: 31588, requests: 12 },
-  notFound: { brotliBytes: 15817, requests: 7 },
+  // 2026-10-25 (nav-perf, UI-LOCKDOWN E): first pinned at the lane's public build of release 252 (the turret seat plane, the
+  // tier table and the deterministic math in one boot chunk, the Garage's equipment preview lazy).
+  // 2026-10-25 (integrator 253, re-pinned at the release build of 253 after its npm ci, under these named rulings):
+  // - Main: "253: riding-parts prebuild trigger, moves into a lazy chunk in 254" (frontend-budgets-252 e297944861 +
+  //   8cc6be8301: +170 B brotli on the game, +259 B on its entry, accepted for 253);
+  // - Main's no-extra-request ruling: canvas-ui's uiCanvas and equipment-rules' vehicleEras ride in the turretSeatPlane
+  //   chunk and equipmentRules with vehicleActions (vite.config.ts), so the game is at 129 requests, cn 130, the Gallery 75;
+  // - home +714 / docs +1,361 / 404 +545 brotli over the lane's pins: the Premiere lead's /home and 404 rounds 17 and 18
+  //   and the mode hues (brand-ui-home-252 024b0c5ff6, c6ebdd8eec), primitives' Field Manual r13/r14 with its mode glyphs
+  //   (brand-ui-primitives-250 2c6c740125), the registry's data-datum markers (surface-registry-253 6837baa487).
+  game: { brotliBytes: 1072654, requests: 129, entryBrotliBytes: 236546 },
+  cn: { brotliBytes: 1115783, requests: 130, entryBrotliBytes: 236546 },
+  gallery: { brotliBytes: 665390, requests: 75 },
+  home: { brotliBytes: 24863, requests: 8 },
+  docs: { brotliBytes: 32949, requests: 12 },
+  notFound: { brotliBytes: 16362, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
