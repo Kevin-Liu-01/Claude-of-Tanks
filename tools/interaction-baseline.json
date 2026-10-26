@@ -10,7 +10,7 @@
     "rooms-brain", "rooms-kind", "rooms-operation",
     "rooms-sides", "scope-vision", "settings-accessibility", "settings-brain",
     "settings-crew-voice", "settings-difficulty", "settings-language", "settings-quality", "settings-right-click",
-    "studio-battlefield", "studio-camo", "studio-commands", "studio-effect", "studio-featured-tank", "studio-fleet-take",
+    "studio-camo", "studio-commands", "studio-effect", "studio-featured-tank", "studio-fleet-take",
     "studio-hour", "studio-picture", "studio-sequence",
     "studio-site-take", "studio-state", "studio-transition", "tech-tree-nation", "tech-tree-node"
   ],

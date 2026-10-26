@@ -21,6 +21,9 @@ import { noticeRegion, notify } from './components/notice.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
+import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
+import { pickerText } from './pickerText.ts';
+import { mapRegionTags } from './regionTags.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
@@ -759,32 +762,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const mapArrow = el('span', 'mar');
   mapArrow.innerHTML = uiIconSVG('chevronDown', 16);
   mapBtn.append(mapHero, mapShade, mapCopy, mapId, mapArrow);
+  // INTERACTION-REDESIGN A: the battlefields are the kit's battlefield picker (battlefieldPicker.ts), built on the first
+  // open: each map's picture, name and biomes, the biome chips, search and favourites. The inspector is narrower than the
+  // picker's own preview needs, so the card above it is the preview: the map under the pointer or the focus shows there,
+  // and leaving puts the scene's map back.
   const mapPop = el('div', 'mapPop');
-  mapPop.setAttribute('role', 'listbox');
-  mapPop.setAttribute('aria-label', t('studioPanel.map.listAria'));
-  const mapGrid = el('div', 'mapGrid');
-  const mapCards = new Map<string, HTMLButtonElement>();
-  const mapImages: HTMLImageElement[] = [];
-  for (const id of S.MAP_IDS) {
-    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
-    const card = el('button', 'mapCard');
-    card.type = 'button';
-    card.dataset.mapId = id;
-    card.setAttribute('role', 'option');
-    card.setAttribute('aria-selected', 'false');
-    card.setAttribute('aria-label', t('studioPanel.map.cardAria', { name: info.name || id }));
-    const thumb = document.createElement('img');
-    thumb.alt = '';
-    thumb.loading = 'lazy';
-    thumb.decoding = 'async';
-    thumb.dataset.src = imageFor(MAP_THUMBS, id) || '';
-    mapImages.push(thumb);
-    card.append(thumb, el('span', 'cn', info.name || id), el('span', 'check', '✓'));
-    card.addEventListener('click', () => chooseMap(id));
-    mapCards.set(id, card);
-    mapGrid.appendChild(card);
-  }
-  mapPop.append(mapGrid);
+  let mapPicker: BattlefieldPicker | null = null;
+  const mapRegions = [...new Set(S.MAP_IDS.flatMap((id) => mapRegionTags(id)))];
+  const mapPickerCards = (): BattlefieldCard[] => S.MAP_IDS.map((id) => {
+    const thumb = imageFor(MAP_THUMBS, id) || '';
+    return { id, name: mapLabel(id), facts: mapRegionTags(id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+      media: { poster: thumb }, hero: imageFor(MAP_HEROES, id) || thumb, tags: [...mapRegionTags(id)] };
+  });
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
   // the times of day: a segmented row (09-studio .seg), the times this map has enabled
@@ -968,30 +957,38 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   lightRow.pick.append(el('span', 'nm', ''));
   sceneRows.append(mapRow.row, lightRow.row);
 
-  let mapPreviewsHydrated = false;
-  function hydrateMapPreviews() {
-    if (mapPreviewsHydrated) return;
-    mapPreviewsHydrated = true;
-    for (const image of mapImages) {
-      if (image.dataset.src) image.src = image.dataset.src;
-    }
+  /** A map's name in the locale (翠野原, not Verdant Fields), its own name where the catalog has none. */
+  function mapLabel(id: string): string {
+    const nameKey = `map.${id}`;
+    return t(nameKey) === nameKey ? (S.getMapInfo ? S.getMapInfo(id).name : '') || id : t(nameKey);
+  }
+  /** The battlefield card shows `id` (the picker's preview), or the scene's own map. */
+  function paintMapCard(id: string | null): void {
+    const shown = id ?? S.mapId;
+    if (!shown) return;
+    mapHero.src = imageFor(MAP_HEROES, shown) || imageFor(MAP_THUMBS, shown) || '';
+    mapName.textContent = mapLabel(shown);
+    mapId.textContent = shown;
   }
   function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
     mapPop.classList.toggle('open', next);
     mapBtn.setAttribute('aria-expanded', String(next));
-    if (next) {
-      hydrateMapPreviews();
-      const currentMapId = S.mapId;
-      if (currentMapId) {
-        requestAnimationFrame(() => mapCards.get(currentMapId)?.focus({ preventScroll: true }));
-      }
+    if (!next) { paintMapCard(null); return; }
+    if (mapPicker) mapPicker.setValue(S.mapId);
+    else {
+      mapPicker = createBattlefieldPicker(mapPop, {
+        id: 'studio-battlefield', label: t('studioPanel.map.listAria'), cards: mapPickerCards(), value: S.mapId, mode: 'studio',
+        text: pickerText(), filters: mapRegions.map((tag) => ({ id: tag, label: t(`camoTag.${tag}`) })),
+        onPreview: (card) => paintMapCard(card ? card.id : null),
+        onChoose: (id) => { chooseMap(id); mapBtn.focus(); },
+      });
     }
+    mapPicker.focus();
   }
   function setMapLoading(loading: boolean): void {
     mapBtn.disabled = loading;
     mapPick.setAttribute('aria-busy', String(loading));
-    for (const card of mapCards.values()) card.disabled = loading;
   }
   function chooseMap(id: string): void {
     toggleMapPick(false);
@@ -2240,8 +2237,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     add('gallery', t('studioPanel.tankGallery'), via(galleryBtn), { keywords: 'tank gallery' });
     add('exit', t('studio.ws.exit'), via(exitBtn), { hint: 'F8', keywords: 'exit close garage' });
     // named only: the battlefields and the fleet
-    for (const [id, card] of mapCards) {
-      add(`map-${id}`, t('studio.ws.cmd.map', { name: S.getMapInfo(id).name }), via(card), { searchOnly: true, keywords: `battlefield map ${id}` });
+    for (const id of S.MAP_IDS) {
+      add(`map-${id}`, t('studio.ws.cmd.map', { name: S.getMapInfo(id).name }), () => chooseMap(id), { searchOnly: true, keywords: `battlefield map ${id}` });
     }
     for (const id of S.TANK_IDS) {
       add(`tank-${id}`, t('studio.ws.cmd.addTank', { name: specInfo(id).name }), () => { setPicked(id); addAtMarker.click(); },
@@ -2945,21 +2942,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const id = S.mapId;
       if (!id) return;
       const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
-      // the map's name in the locale (翠野原, not Verdant Fields), its own name where the catalog has none
-      const nameKey = `map.${id}`;
-      const name = t(nameKey) === nameKey ? info.name || id : t(nameKey);
-      mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
-      mapName.textContent = name;
-      mapId.textContent = id;
+      const name = mapLabel(id);
+      paintMapCard(null);
       projectName.textContent = name;
       mapRowThumb.src = imageFor(MAP_THUMBS, id) || '';
       mapRow.pick.querySelector('.nm')!.textContent = name;
       lightRow.pick.querySelector('.nm')!.textContent = t(`atmosphere.${S.timeOfDay}`);
       if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
-      for (const [cardId, card] of mapCards) {
-        card.setAttribute('aria-selected', String(cardId === id));
-      }
+      mapPicker?.setValue(id);
     },
     refreshPicture() { picturePanel.refresh(); },
     refreshAll() {

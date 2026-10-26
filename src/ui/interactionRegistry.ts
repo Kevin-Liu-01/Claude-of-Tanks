@@ -154,7 +154,7 @@ export const INTERACTION_SITES = Object.freeze({
   // ---- the Studio (premiere-gallery-studio)
   'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], lane: 'premiere-gallery-studio' },
   'studio-controls': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:modeSeg', 'bespoke:dataset.value'], lane: 'premiere-gallery-studio' },
-  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:mapPop', 'bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
+  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-battlefield'], lane: 'premiere-gallery-studio' },
   'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], lane: 'premiere-gallery-studio' },
   'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], lane: 'premiere-gallery-studio' },
   'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], lane: 'premiere-gallery-studio' },
