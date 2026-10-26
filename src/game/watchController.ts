@@ -344,12 +344,10 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     }
     const riding = watchCamera.mode === 'ride';
     switch (code) {
-      case 'Tab':
-        event.preventDefault();
-        ride(cycleFrom(rideTarget(), event.shiftKey ? -1 : 1));
-        break;
-      case 'KeyE': if (riding) ride(cycleFrom(rideTarget(), 1)); break;
-      case 'KeyQ': if (riding) ride(cycleFrom(rideTarget(), -1)); break;
+      // (E and Q step through the field from the drone as from a ride: Tab did it too, a second binding that held the
+      // rosters' key, INTERACTION-REDESIGN C)
+      case 'KeyE': ride(cycleFrom(rideTarget(), 1)); break;
+      case 'KeyQ': ride(cycleFrom(rideTarget(), -1)); break;
       case 'KeyF': ride(tankAt(0, 0)); break;
       case 'KeyV': if (riding) toDrone(true); break;
       case 'Enter': case 'NumpadEnter': event.preventDefault(); take(); break;

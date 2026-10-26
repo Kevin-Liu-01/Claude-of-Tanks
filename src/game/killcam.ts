@@ -6147,8 +6147,9 @@ export function createKillCam(deps: KillcamDeps) {
     }
     function onKey(e: KeyboardEvent): void {
       if (!on || e.repeat) return;
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') cycle(1);
-      else if (e.code === 'ArrowLeft' || e.code === 'KeyA') cycle(-1);
+      // (Q and E step through the allies as they do in Watch; A and D were this view's alone, INTERACTION-REDESIGN C)
+      if (e.code === 'ArrowRight' || e.code === 'KeyE') cycle(1);
+      else if (e.code === 'ArrowLeft' || e.code === 'KeyQ') cycle(-1);
     }
     // FREE CURSOR ORBIT (killcam r2, owner: "when were spectating be able to
     // look around tanks using cursor"): moving the mouse orbits the camera

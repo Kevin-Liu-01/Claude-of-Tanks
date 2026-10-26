@@ -1546,7 +1546,6 @@
   "perfHud.issueMarked": "已标记问题时刻",
   "perfHud.state.live": "运行中",
   "perfHud.state.error": "采集器错误",
-  "spectator.releaseCursor": "按 Esc 释放鼠标",
   "spectator.spectating": "观战中",
   "spectator.garage": "车库",
   "spectator.garageAria": "返回车库",

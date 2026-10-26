@@ -37,17 +37,17 @@ export function spectatorSwitcherMarkup(): string {
         `<span>${t('spectator.spectating')}</span>` +
       '</span>' +
       '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
-      `<span class="cursor-hint" hidden>${t('spectator.releaseCursor')}</span>` +
     '</div></div>' +
     '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
-      '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="A" aria-label="' + t('spectator.cyclePrevAria') + '">' +
+      // (Q and E, Watch's keys: A and D here were a second pair for the same step, INTERACTION-REDESIGN C)
+      '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="Q" aria-label="' + t('spectator.cyclePrevAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
-        '<kbd aria-hidden="true">A</kbd>' +
+        '<kbd aria-hidden="true">Q</kbd>' +
       '</button>' +
       `<b class="idx" aria-label="${t('spectator.idxAria')}" hidden></b>` +
-      '<button type="button" class="cycle next" data-tip aria-keyshortcuts="D" aria-label="' + t('spectator.cycleNextAria') + '">' +
+      '<button type="button" class="cycle next" data-tip aria-keyshortcuts="E" aria-label="' + t('spectator.cycleNextAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
-        '<kbd aria-hidden="true">D</kbd>' +
+        '<kbd aria-hidden="true">E</kbd>' +
       '</button>' +
     '</div>' +
     `<button type="button" class="gar" aria-label="${t('spectator.garageAria')}">` +
@@ -79,8 +79,7 @@ export const spectatorSwitcherStyles = `
 .cot-spec .who{display:flex;flex-direction:column;gap:var(--s1);min-width:0;width:100%}
 .cot-spec .nick{font:700 var(--fs-18)/1.1 var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .veh{color:var(--ink-3);font:500 var(--battle-fs-12)/1.2 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cot-spec .cursor-hint{color:var(--ink-3);font:500 var(--battle-fs-11)/1.3 var(--font-ui)}
-.cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}
+.cot-spec .idx[hidden]{display:none}
 /* (the cycle and garage buttons stand as tall as the plate beside them: 48 px keys under a 64 px plate read as two kits,
    gauntlet r3) */
 .cot-spec .switch{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;align-items:stretch;gap:var(--s1);min-width:0;padding:0;background:none;border:0}
@@ -115,7 +114,6 @@ export const spectatorSwitcherStyles = `
  .cot-spec .gar{letter-spacing:0}
 }
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
-body.cot-touch-layout .cot-spec .cursor-hint{display:none}
 @media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) auto 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
  .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}

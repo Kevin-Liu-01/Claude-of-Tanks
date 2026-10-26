@@ -2576,7 +2576,6 @@ export function initHud(bus: EventBus): HudRuntime {
   specBar.innerHTML = spectatorSwitcherMarkup();
   specBar.setAttribute('role', 'region');
   specBar.setAttribute('aria-label', t('spectator.spectating'));
-  const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
   const specWho = markDatum(requireElement<HTMLElement>(specBar, '.who'), 'watched');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
   const specVeh = requireElement<HTMLElement>(specBar, '.veh');
@@ -8347,8 +8346,6 @@ export function initHud(bus: EventBus): HudRuntime {
       // forceAimDisplay state, or the staged over-target plate hides (the
       // frozen spotting sim never saw the teleported target). Live battles
       // always advance timeS, so real frames still supersede immediately.
-      const cursorReleased = !document.pointerLockElement;
-      if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
       if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); return; }
