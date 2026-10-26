@@ -975,6 +975,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageDossier.selftest.mjs',
     // 253: the technical diagrams' labels as DOM text (en/zh text, rail packing, sidecar parsing)
     'src/ui/technicalDiagramLabels.selftest.mjs',
+    // 258: the technical drawings (the ID-buffer trace; the published plates' resolution, fill, overlays and labels)
+    'tools/technicalDrawingTrace.selftest.mjs',
+    'src/ui/technicalDrawing.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',

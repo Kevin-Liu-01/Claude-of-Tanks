@@ -14,39 +14,40 @@
 .cot-tdl{position:absolute;left:var(--tdl-box-x,0);top:var(--tdl-box-y,0);width:var(--tdl-box-w,100%);height:var(--tdl-box-h,auto);aspect-ratio:2/1;
   pointer-events:none;color:var(--ink-1);--tdl-tone:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data);
   container:tdl/inline-size}
-/* the tones, on the drawing and in its compact key (a sidecar colour no tone has keeps the ink default) */
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-0']{--tdl-tone:var(--diagram-armor-ke-0)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-1']{--tdl-tone:var(--diagram-armor-ke-1)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-2']{--tdl-tone:var(--diagram-armor-ke-2)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-3']{--tdl-tone:var(--diagram-armor-ke-3)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-4']{--tdl-tone:var(--diagram-armor-ke-4)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-era']{--tdl-tone:var(--diagram-armor-era)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-spaced']{--tdl-tone:var(--diagram-armor-spaced)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-external']{--tdl-tone:var(--diagram-armor-external)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-engine']{--tdl-tone:var(--diagram-module-engine)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-fuel-tank']{--tdl-tone:var(--diagram-module-fuel-tank)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-ammo-rack']{--tdl-tone:var(--diagram-module-ammo-rack)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-roof-gun']{--tdl-tone:var(--diagram-module-roof-gun)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-missile-rack']{--tdl-tone:var(--diagram-module-missile-rack)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-autoloader']{--tdl-tone:var(--diagram-module-autoloader)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-feed-system']{--tdl-tone:var(--diagram-module-feed-system)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-turret-ring']{--tdl-tone:var(--diagram-module-turret-ring)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-gun-mount']{--tdl-tone:var(--diagram-module-gun-mount)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-radio']{--tdl-tone:var(--diagram-module-radio)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-optics']{--tdl-tone:var(--diagram-module-optics)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-gun']{--tdl-tone:var(--diagram-module-gun)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-transmission']{--tdl-tone:var(--diagram-module-transmission)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='module-drivetrain']{--tdl-tone:var(--diagram-module-drivetrain)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-driver']{--tdl-tone:var(--diagram-crew-driver)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-gunner']{--tdl-tone:var(--diagram-crew-gunner)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-commander']{--tdl-tone:var(--diagram-crew-commander)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-loader']{--tdl-tone:var(--diagram-crew-loader)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-radio-operator']{--tdl-tone:var(--diagram-crew-radio-operator)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-assistant-driver']{--tdl-tone:var(--diagram-crew-assistant-driver)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-assistant-loader']{--tdl-tone:var(--diagram-crew-assistant-loader)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-weapon-operator-left']{--tdl-tone:var(--diagram-crew-weapon-operator-left)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-weapon-operator-right']{--tdl-tone:var(--diagram-crew-weapon-operator-right)}
-:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-other']{--tdl-tone:var(--diagram-crew-other)}
+/* the tones, on the drawing, in its compact key and in the drawing viewer (technicalDrawing.css; a sidecar colour no
+   tone has keeps the ink default) */
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-ke-0']{--tdl-tone:var(--diagram-armor-ke-0)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-ke-1']{--tdl-tone:var(--diagram-armor-ke-1)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-ke-2']{--tdl-tone:var(--diagram-armor-ke-2)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-ke-3']{--tdl-tone:var(--diagram-armor-ke-3)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-ke-4']{--tdl-tone:var(--diagram-armor-ke-4)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-era']{--tdl-tone:var(--diagram-armor-era)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-spaced']{--tdl-tone:var(--diagram-armor-spaced)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='armor-external']{--tdl-tone:var(--diagram-armor-external)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-engine']{--tdl-tone:var(--diagram-module-engine)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-fuel-tank']{--tdl-tone:var(--diagram-module-fuel-tank)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-ammo-rack']{--tdl-tone:var(--diagram-module-ammo-rack)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-roof-gun']{--tdl-tone:var(--diagram-module-roof-gun)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-missile-rack']{--tdl-tone:var(--diagram-module-missile-rack)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-autoloader']{--tdl-tone:var(--diagram-module-autoloader)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-feed-system']{--tdl-tone:var(--diagram-module-feed-system)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-turret-ring']{--tdl-tone:var(--diagram-module-turret-ring)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-gun-mount']{--tdl-tone:var(--diagram-module-gun-mount)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-radio']{--tdl-tone:var(--diagram-module-radio)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-optics']{--tdl-tone:var(--diagram-module-optics)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-gun']{--tdl-tone:var(--diagram-module-gun)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-transmission']{--tdl-tone:var(--diagram-module-transmission)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='module-drivetrain']{--tdl-tone:var(--diagram-module-drivetrain)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-driver']{--tdl-tone:var(--diagram-crew-driver)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-gunner']{--tdl-tone:var(--diagram-crew-gunner)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-commander']{--tdl-tone:var(--diagram-crew-commander)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-loader']{--tdl-tone:var(--diagram-crew-loader)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-radio-operator']{--tdl-tone:var(--diagram-crew-radio-operator)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-assistant-driver']{--tdl-tone:var(--diagram-crew-assistant-driver)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-assistant-loader']{--tdl-tone:var(--diagram-crew-assistant-loader)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-weapon-operator-left']{--tdl-tone:var(--diagram-crew-weapon-operator-left)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-weapon-operator-right']{--tdl-tone:var(--diagram-crew-weapon-operator-right)}
+:is(.cot-tdl,.cot-tdl-key,.cot-td) [data-tone='crew-other']{--tdl-tone:var(--diagram-crew-other)}
 .cot-tdl-leaders{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .cot-tdl-leader{color:var(--tdl-tone);fill:none;stroke:currentColor;stroke-width:1}
 .cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}
