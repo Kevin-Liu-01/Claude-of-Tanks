@@ -343,8 +343,12 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
     quaternion (another world build may run between the steps). A planned building is three steps: its base build and
     pose, its region's rebuild, its collision and merge. A set piece's collision derives a height band a step
     (structureCollision.ts deriveRuntimeStructureCollisionProfileSteps; Verdant's worst landmark slice was 444 ms in Node).
-    Props output identical in Node on Airfield, Urban, Steinburg (wrecks), Steinburg, Suzhou Creek, Mangrove, Verdant
-    (buildings), Suzhou Creek, Verdant, Orchard and Delta (landmarks, the station below).
+    Props output identical in Node on Airfield and Urban (wrecks); Suzhou Creek, Mangrove, Verdant (buildings); Suzhou
+    Creek, Verdant, Orchard and Delta (landmarks, the station below); and Urban and Airfield again with every world file
+    of these steps against the revision before them (60c2f2f1e2), each structure's damage anatomy hashed too. (Steinburg's
+    map id is `urban`: a run asked for `steinburg` built Verdant, so the earlier "Steinburg" rows were Verdant's.)
+  - The describers read plain position and index arrays where they stand (rawAttributes.ts; the getters were a third of
+    Verdant's church describe); anatomies identical on the same maps.
   - Open: a set piece's damage anatomy (describeStructure: Verdant's church 285 ms in Node, its kit's describe reading
     every triangle) and the church builder itself (261 ms, its openings' dressing); the yards (42 ms) are under budget.
 
