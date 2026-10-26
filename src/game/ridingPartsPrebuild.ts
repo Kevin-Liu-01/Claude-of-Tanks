@@ -4,7 +4,7 @@
 // workshop module builds every option set in the manifest, the given tanks' first, and this seeds each into the cache as
 // it arrives: a later build copies it. A build that needs a key not seeded yet builds it in-line, as before.
 import type { RidingPartsRequest } from './garageWorkshopGeometryWorker.ts';
-import { ridingPartKeys, seedRidingParts, type RidingPartsWire } from '../vehicles/ridingPartsCache.ts';
+import { ridingPartKeys, seedRidingParts, type RidingPartsWire } from '../vehicles/ridingPartsWire.ts';
 
 let started = false;
 

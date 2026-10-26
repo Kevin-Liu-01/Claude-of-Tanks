@@ -16,7 +16,7 @@ import { ABRAMS_PROFILES } from '../vehicles/profiles/abrams.ts';
 import { LEOPARD_PROFILES } from '../vehicles/profiles/leopard.ts';
 import { MODERN3_BUILDERS } from '../vehicles/modern3.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
-import { ridingPartsSource, ridingPartsTransfer, ridingPartsWire, type RidingPartsWire } from '../vehicles/ridingPartsCache.ts';
+import { ridingPartsSource, ridingPartsTransfer, ridingPartsWire, type RidingPartsWire } from '../vehicles/ridingPartsWire.ts';
 import { RIDING_PARTS_BY_SPEC, RIDING_PARTS_KEYS } from './ridingPartsManifest.generated.ts';
 
 // This worker owns only the five Garage exhibit families. Importing the
