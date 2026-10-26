@@ -116,12 +116,38 @@ const PROBE = `(() => {
   // status, then its uniforms: the first of them waits for the link), and every link, so a slow call names its program
   // and says how long before it was linked (a program made in the same task, or one linked earlier and still pending)
   const linkedAt = new WeakMap(), programOf = new WeakMap();
+  // each program's #define lines (both stages), and the last program linked under each name: a slow program made in a
+  // frame says which defines it changed against the one before it (a light count, a shadow, a colour space, a key)
+  const definesOf = new WeakMap(), lastByName = new Map(), changedOf = new WeakMap();
+  const defineLines = (gl, program) => {
+    const lines = [];
+    try {
+      for (const shader of gl.getAttachedShaders(program) || []) {
+        const stage = gl.getShaderParameter(shader, gl.SHADER_TYPE) === gl.VERTEX_SHADER ? 'v' : 'f';
+        for (const line of (gl.getShaderSource(shader) || '').split(String.fromCharCode(10))) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('#define ') && !trimmed.startsWith('#define SHADER_NAME')) lines.push(stage + ':' + trimmed.slice(8));
+        }
+      }
+    } catch {}
+    return lines;
+  };
   for (const proto of [window.WebGL2RenderingContext?.prototype, window.WebGLRenderingContext?.prototype]) {
     if (!proto) continue;
     const link = proto.linkProgram;
     proto.linkProgram = function (program) {
       try { for (const shader of this.getAttachedShaders(program) || []) programOf.set(shader, program); } catch {}
       linkedAt.set(program, performance.now());
+      try {
+        const name = nameOf(this, program), lines = defineLines(this, program), before = lastByName.get(name);
+        definesOf.set(program, lines);
+        if (before) {
+          const now = new Set(lines), was = new Set(before);
+          const added = lines.filter((l) => !was.has(l)), removed = before.filter((l) => !now.has(l));
+          changedOf.set(program, added.length || removed.length ? '+[' + added.slice(0, 6).join(', ') + '] -[' + removed.slice(0, 6).join(', ') + ']' : 'same defines');
+        } else changedOf.set(program, 'first of its name');
+        lastByName.set(name, lines);
+      } catch {}
       return link.call(this, program);
     };
     for (const method of ['getProgramInfoLog', 'getShaderInfoLog', 'getProgramParameter', 'getShaderParameter', 'getActiveUniform',
@@ -136,7 +162,7 @@ const PROBE = `(() => {
         if (method === 'getProgramParameter' && rest[0] === 0x91B1 && value === true && program && !completedAt.has(program)) completedAt.set(program, t1);
         if (t1 - t0 > 20 && census.slowQueries.length < 400) census.slowQueries.push({ t: t0, ms: t1 - t0, pname: method === 'getProgramParameter' || method === 'getShaderParameter' ? rest[0] : 0,
           method, name: program ? nameOf(this, program) : '?', linkedFor: program && linkedAt.has(program) ? Math.round(t0 - linkedAt.get(program)) : null,
-          stack: chunks(), completeFor: program && completedAt.has(program) ? Math.round(t0 - completedAt.get(program)) : null,
+          stack: chunks(), defines: program ? changedOf.get(program) ?? null : null, completeFor: program && completedAt.has(program) ? Math.round(t0 - completedAt.get(program)) : null,
           drawer: drawing ? path(drawing.object) + ' [' + (drawing.material?.name || drawing.material?.type || '?') + ']' : 'none' });
         return value;
       };
@@ -472,7 +498,7 @@ try {
         + (t.ms >= 300 && t.programs?.madeBefore ? `\n    programs made in the 3 s before: ${t.programs.madeBefore}\n      ${t.programs.before.slice(-12).join('\n      ')}` : ''));
       if (analysis.gpuTasks?.length) console.log(`  GPU main thread tasks over ${LONG_MS} ms in the boot window: ${analysis.gpuTasks.length}\n    ${analysis.gpuTasks.slice(0, 24).map((g) => `@${g.atMs} ${g.ms} ms: ${g.self.join(' / ')}${g.pageTask ? ` (page task @${g.pageTask.atMs} ${g.pageTask.ms} ms)` : ''}`).join('\n    ')}`);
       if (analysis.droppedTimeline) console.log(`  dropped frames per 500 ms: ${JSON.stringify(analysis.droppedTimeline)}`);
-      if (analysis.slowQueries?.length) console.log(`  program queries over 20 ms: ${analysis.slowQueries.length}\n    ${analysis.slowQueries.slice(0, 24).map((q) => `@${Math.round(q.t)} ${Math.round(q.ms)} ms ${q.method ?? 'getProgramParameter'}${q.pname ? ' ' + q.pname.toString(16) : ''} ${q.name}, linked ${q.linkedFor === null || q.linkedFor === undefined ? '?' : q.linkedFor + ' ms'} before, complete ${q.completeFor === null ? 'never' : q.completeFor + ' ms before'} — ${q.drawer} — ${q.stack}`).join('\n    ')}`);
+      if (analysis.slowQueries?.length) console.log(`  program queries over 20 ms: ${analysis.slowQueries.length}\n    ${analysis.slowQueries.slice(0, 24).map((q) => `@${Math.round(q.t)} ${Math.round(q.ms)} ms ${q.method ?? 'getProgramParameter'}${q.pname ? ' ' + q.pname.toString(16) : ''} ${q.name}, linked ${q.linkedFor === null || q.linkedFor === undefined ? '?' : q.linkedFor + ' ms'} before, complete ${q.completeFor === null ? 'never' : q.completeFor + ' ms before'} — defines ${q.defines ?? '?'} — ${q.stack}`).join('\n    ')}`);
       if (analysis.bootTimings) console.log(`  boot timings: ${JSON.stringify(Object.fromEntries(Object.entries(analysis.bootTimings).filter(([, v]) => typeof v === 'number'))).slice(0, 1200)}`);
       for (const t of boot) show('boot', t);
       for (const t of analysis.gateToGarage ?? []) show('gate→garage', t);

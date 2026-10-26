@@ -159,6 +159,36 @@ function observe(page, name, log) {
         return true;
       };
       const timer = setInterval(() => { if (install()) clearInterval(timer); }, 50);
+      // (2026-10-26) every texture or buffer upload that holds the main thread 25 ms or more: what it uploaded (its size,
+      // format and source), what was drawing, and from where (a room entry's 1 s texSubImage2D in one warm cohort)
+      window.__censusUploads = [];
+      const sourceOf = (args) => {
+        const source = args.at(-1);
+        const kind = source?.constructor?.name ?? typeof source;
+        if (ArrayBuffer.isView(source)) return `${kind} ${source.byteLength} B`;
+        const w = source?.width ?? source?.videoWidth ?? source?.naturalWidth, h = source?.height ?? source?.videoHeight ?? source?.naturalHeight;
+        return w !== undefined ? `${kind} ${w}x${h}` : kind;
+      };
+      for (const proto of [window.WebGL2RenderingContext?.prototype, window.WebGLRenderingContext?.prototype]) {
+        if (!proto) continue;
+        for (const method of ['texImage2D', 'texSubImage2D', 'texImage3D', 'texSubImage3D', 'compressedTexImage2D', 'compressedTexSubImage2D',
+          'texStorage2D', 'generateMipmap', 'bufferData', 'bufferSubData']) {
+          const call = proto[method];
+          if (typeof call !== 'function') continue;
+          proto[method] = function (...args) {
+            const t0 = performance.now();
+            try { return call.apply(this, args); } finally {
+              const ms = performance.now() - t0;
+              if (ms >= 25 && window.__censusUploads.length < 2000) {
+                const dims = args.filter((a) => typeof a === 'number').slice(0, 8).join(',');
+                window.__censusUploads.push({ t: t0, ms: Math.round(ms), method, dims,
+                  source: method.startsWith('buffer') ? `${ArrayBuffer.isView(args[1]) ? args[1].byteLength : args[1]} B` : sourceOf(args),
+                  drawer: drawer(), stack: chunks() });
+              }
+            }
+          };
+        }
+      }
     }
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.disposition} ${e.effectiveDirective} ${e.blockedURI}`));
@@ -501,6 +531,16 @@ try {
         console.log(`programs ${'AB'[i]}: task at ${task.startMs} ms, ${task.ms} ms: ${task.made} made${task.error ? ` (${task.error})` : ''}`);
         for (const line of task.programs ?? []) console.log(`    ${line}`);
       }
+    }
+  }
+  if (programLog) {
+    const uploads = await Promise.all([pageA, pageB].map((page, index) => page.evaluate((from) => (window.__censusUploads ?? [])
+      .filter((u) => u.t >= from), stageFrom[index]).catch(() => [])));
+    samples.at(-1).uploads = uploads;
+    for (const [i, rows] of uploads.entries()) {
+      if (!rows.length) continue;
+      console.log(`uploads ${'AB'[i]} (25 ms or more) in the entry: ${rows.length}, ${rows.reduce((a, u) => a + u.ms, 0)} ms`);
+      for (const u of [...rows].sort((x, y) => y.ms - x.ms).slice(0, 16)) console.log(`    @${Math.round(u.t)} ${u.ms} ms ${u.method}(${u.dims}) ${u.source}\n        drawn by ${u.drawer}\n        from ${u.stack}`);
     }
   }
   if (evaluated) {
