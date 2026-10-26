@@ -2507,6 +2507,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
   });
 
+  // the row's arrows (and Home and End) move between its paints and the every-paint button, the focus trying each on;
+  // Enter or Space wears one (the interaction census: the arrows stepped the tank from here)
+  paintEl.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const items = [...paintEl.querySelectorAll<HTMLButtonElement>('button')];
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) return;
+    const to = event.key === 'ArrowRight' ? Math.min(items.length - 1, at + 1) : event.key === 'ArrowLeft' ? Math.max(0, at - 1)
+      : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : -1;
+    if (to < 0) return;
+    event.preventDefault();
+    items[to].focus({ preventScroll: true });
+  });
+
   // the try-on (INTERACTION-REDESIGN B): a paint under a mouse or a pen, or under the keyboard's focus, shows on the hero
   // at once (main.ts garageCamoTryOn); leaving the row or the sheet puts the worn paint back. A touch shows nothing
   // until its press wears the paint (a scroll over the sheet left a try-on behind).
@@ -4535,6 +4549,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         return;
       }
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
+      // the Garage's own key (its nav item advertises G): back to the showroom's overview from any station
+      if (e.code === 'KeyG') {
+        if (document.body.dataset.cotPanels === 'persistent' && station !== 'overview') setStation('overview');
+        e.preventDefault();
+        return;
+      }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
       if (e.code === 'KeyT') { void openTechTree(techTreeTrigger); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
