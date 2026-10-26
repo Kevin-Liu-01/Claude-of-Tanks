@@ -9,7 +9,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { getLocale, setLocale } from './i18n.ts';
 import { technicalToneHex, technicalToneOf } from './technicalDiagramLegend.ts';
 import {
-  layoutTechnicalCallouts, parseTechnicalLabels, technicalKindOfView, technicalLabelText, technicalLabelsMarkup, TECHNICAL_LEGENDS,
+  layoutTechnicalCallouts, parseTechnicalLabels, spreadBadges, technicalKindOfView, technicalLabelText, technicalLabelsMarkup,
+  TECHNICAL_COMPACT_BELOW_PX, TECHNICAL_LEGENDS,
 } from './technicalDiagramLabels.ts';
 
 const original = getLocale();
@@ -63,6 +64,40 @@ try {
   assert.equal((markup.match(/class="cot-tdl-chip/g) || []).length, layoutTechnicalCallouts(armor, 'armor', { width: 512, height: 256 }, { rowPx: 18 }).length);
   assert.ok(markup.includes('H01 · 400 mm') && markup.includes('data-tone="armor-ke-0"') && markup.includes('cot-tdl-legend'));
   assert.ok(!/#[0-9a-f]{3,8}\b|rgb\(|--tdl-tone/i.test(markup), 'the static markup writes no colour');
+  // the compact drawing (a phone's box): each rail's four heaviest as numbered pins, keyed in flow under the image in
+  // the same order (left rail, then right), the rest minor; the sheet switches at the constant's width
+  const laid = layoutTechnicalCallouts(armor, 'armor', { width: 512, height: 256 }, { rowPx: 18 });
+  for (const side of ['left', 'right']) {
+    const ranks = laid.filter((r) => r.side === side).map((r) => r.rank).sort((a, b) => a - b);
+    assert.deepEqual(ranks, ranks.map((_, i) => i), `the ${side} rail ranks its labels by weight`);
+    const top = laid.filter((r) => r.side === side && r.rank === 0)[0];
+    assert.ok(laid.filter((r) => r.side === side).every((r) => r.callout.weight <= top.callout.weight), 'rank 0 is the heaviest');
+  }
+  const badges = [...markup.matchAll(/<b class="cot-tdl-n cot-tdl-n--pin"[^>]*--tdl-x:([\d.]+)%;--tdl-y:([\d.]+)%">(\d+)<\/b>/g)];
+  const pinNumbers = badges.map((m) => Number(m[3]));
+  // the badges cover no one another even where callouts share an anchor, at the narrowest compact box the page draws
+  for (const boxWidth of [320, 479]) {
+    const at = badges.map((m) => [Number(m[1]) / 100 * boxWidth, Number(m[2]) / 100 * boxWidth / 2]);
+    for (let i = 0; i < at.length; i++) for (let j = i + 1; j < at.length; j++) {
+      assert.ok(Math.hypot(at[i][0] - at[j][0], at[i][1] - at[j][1]) >= 16, `badges ${i + 1} and ${j + 1} stay apart at ${boxWidth} px`);
+    }
+  }
+  const stacked = spreadBadges([[100, 50], [100, 50], [100, 50], [100, 50]], 17, { width: 340, height: 170 });
+  for (let i = 0; i < stacked.length; i++) for (let j = i + 1; j < stacked.length; j++) assert.ok(Math.hypot(stacked[i][0] - stacked[j][0], stacked[i][1] - stacked[j][1]) >= 17 - 1e-9);
+  assert.deepEqual(stacked[0], [100, 50], 'the first badge stays on its callout');
+  assert.ok(stacked.every(([x, y]) => x >= 8.5 && x <= 331.5 && y >= 8.5 && y <= 161.5), 'badges stay inside the box');
+  const keyItems = [...markup.matchAll(/<li data-rail="(left|right)"><b class="cot-tdl-n"[^>]*>(\d+)<\/b>([^<]*)<\/li>/g)];
+  assert.deepEqual(keyItems.map((m) => Number(m[2])), keyItems.map((_, i) => i + 1), 'the key numbers its labels in order');
+  assert.deepEqual(pinNumbers.sort((a, b) => a - b), keyItems.map((m) => Number(m[2])), 'every numbered pin has its key entry');
+  assert.ok(keyItems.length <= 8 && keyItems.length >= 2, 'four labels a rail at most');
+  assert.ok(keyItems.findIndex((m) => m[1] === 'right') === -1 || keyItems.slice(keyItems.findIndex((m) => m[1] === 'right')).every((m) => m[1] === 'right'),
+    'the left rail\'s labels come first');
+  assert.ok(markup.includes('class="cot-tdl-key cot-tdl-key--auto"'), 'the static key waits for its container');
+  assert.equal(TECHNICAL_COMPACT_BELOW_PX, 480);
+  const css = readFileSync(new URL('./technicalDiagramLabels.css', import.meta.url), 'utf8');
+  for (const name of ['tdl', 'tdl-host']) {
+    assert.ok(css.includes(`@container ${name} (max-width:${TECHNICAL_COMPACT_BELOW_PX - .02}px)`), `the ${name} query switches at the constant`);
+  }
   // its places are percentages of the fluid box, every one inside it
   const places = [...markup.matchAll(/--tdl-[xy]:(-?[\d.]+)%/g)].map((m) => Number(m[1]));
   assert.ok(places.length >= 4 && places.every((v) => v >= 0 && v <= 100), 'static places are percentages inside the box');
@@ -98,4 +133,4 @@ try {
 } finally {
   await setLocale(original);
 }
-console.log('technicalDiagramLabels: en/zh label text from the sidecar values, rails packed inside the band at 360-1920 px, leaders from their callouts, the static markup escaped and colour-free, every tone a token, malformed sidecars refused PASS');
+console.log('technicalDiagramLabels: en/zh label text from the sidecar values, rails packed inside the band at 360-1920 px, leaders from their callouts, the static markup escaped and colour-free, the compact key numbered with its pins, every tone a token, malformed sidecars refused PASS');

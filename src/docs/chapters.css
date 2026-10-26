@@ -181,7 +181,7 @@
 .dm-pair h3:first-child{margin-top:0}
 .dm-pair img{display:block;width:100%;height:auto;border-radius:var(--r1);background:var(--surface-scene)}
 .dm-diagram{margin:0;display:grid;gap:6px}
-.dm-diagram__box{position:relative}
+.dm-diagram__box{position:relative;container:tdl-host/inline-size}
 .dm-diagram img{aspect-ratio:2/1;object-fit:contain;background:var(--surface-scene);box-shadow:var(--ring-1)}
 .dm-diagram figcaption{font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
 .dm-chips--icons li{display:inline-flex;align-items:center;gap:6px}
