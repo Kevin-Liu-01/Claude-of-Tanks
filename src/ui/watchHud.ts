@@ -57,7 +57,7 @@ const KIT = `
 .cot-watch .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
  padding:0 6px;border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);
  letter-spacing:normal;text-transform:none;color:var(--ink-2)}
-.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;object-position:left center;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-watch .cot-c-sil{display:inline-block;flex:none;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;
  mask:var(--sil) center/contain no-repeat}
 .cot-watch .cot-c-sil--right{transform:scaleX(-1)}

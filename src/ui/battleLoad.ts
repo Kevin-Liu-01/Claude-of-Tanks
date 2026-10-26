@@ -305,14 +305,14 @@ ${WIDE} .cot-bl .rules{justify-content:flex-start;}
 ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;}
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${WIDE} .cot-bl .map[hidden]{display:none;}
-${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;box-shadow:var(--ring-3);}
+${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;object-position:center;box-shadow:var(--ring-3);}
 .cot-bl .map .mp{position:relative;display:block;}
 .cot-bl .map .obj{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 ${PORTRAIT} .cot-bl .briefing{grid-template-rows:auto auto minmax(0,1fr) auto;}
 ${PORTRAIT} .cot-bl .side{display:flex;justify-content:center;padding-bottom:clamp(12px,2.5vh,24px);}
 ${PORTRAIT} .cot-bl .map{width:min(58vw,260px);padding:6px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${PORTRAIT} .cot-bl .map[hidden]{display:none;}
-${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
+${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;object-position:center;box-shadow:var(--ring-3);}
 /* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
    would take the name's room) */
 ${PORTRAIT_ROWS} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;--bl-row-min:32px;}
