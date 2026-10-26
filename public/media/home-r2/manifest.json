@@ -1011,5 +1011,248 @@
         }
       ]
     }
+  ],
+  "clips": [
+    {
+      "id": "verdant-village-2v2",
+      "map": "verdant",
+      "tanks": [
+        "leo2a6m",
+        "puma_s1",
+        "t90a",
+        "t72b3"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "High over Verdant Fields' onion-domed church, a Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 through the village",
+        "zh": "翠野原洋葱顶教堂的上空，一辆 Leopard 2A6M 和一辆 Puma S1 在村中与一辆 T-90A 和一辆 T-72B3 交战"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/verdant-village-2v2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43540
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 86574
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 133676
+          },
+          {
+            "path": "/media/home-r2/verdant-village-2v2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 250718
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/verdant-village-2v2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2756145
+      },
+      "mobile": {
+        "path": "/media/home-r2/verdant-village-2v2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1187304,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "tarkhan-topdown",
+      "map": "steppe",
+      "tanks": [
+        "chieftain_mk10",
+        "t64bv1"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "Straight down over Tarkhan Steppe at golden hour: a Chieftain Mk 10 and a T-64BV1 race and trade fire",
+        "zh": "黄金时刻，俯瞰塔尔汗草原：一辆 Chieftain Mk 10 与一辆 T-64BV1 并驾齐驱并交火"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/tarkhan-topdown-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 39770
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 80510
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 128478
+          },
+          {
+            "path": "/media/home-r2/tarkhan-topdown-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 243914
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/tarkhan-topdown.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2933067
+      },
+      "mobile": {
+        "path": "/media/home-r2/tarkhan-topdown-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1212300,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "orchard-2v2",
+      "map": "orchard",
+      "tanks": [
+        "strv122",
+        "cv90_mk4",
+        "t90",
+        "t72b3"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "Over the shoulders of a T-90 and a T-72B3 as a Stridsvagn 122 and a CV90 Mk 4 knock them out below the orchard village in the morning",
+        "zh": "清晨，从一辆 T-90 和一辆 T-72B3 的肩后望去，一辆 Stridsvagn 122 和一辆 CV90 Mk 4 在果园村庄下方将其击毁"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/orchard-2v2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 32912
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 63388
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 98906
+          },
+          {
+            "path": "/media/home-r2/orchard-2v2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 182472
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/orchard-2v2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.6,
+        "bytes": 2785142
+      },
+      "mobile": {
+        "path": "/media/home-r2/orchard-2v2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1220297,
+        "rung": "phone"
+      },
+      "seconds": 6.6
+    },
+    {
+      "id": "glacier-kv2",
+      "map": "alpine",
+      "tanks": [
+        "kv2",
+        "chieftain3",
+        "leo1a5"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "A KV-2 comes head-on through a snowy Glacier Pass village, then the lens cranes up over the fight",
+        "zh": "一辆 KV-2 迎面驶过冰川关积雪的村庄，随后镜头升起俯瞰战斗"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/glacier-kv2-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 27330
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 50040
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 73490
+          },
+          {
+            "path": "/media/home-r2/glacier-kv2-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 127962
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/glacier-kv2.mp4",
+        "type": "video/mp4",
+        "width": 1280,
+        "height": 720,
+        "seconds": 6.0,
+        "bytes": 2806988
+      },
+      "mobile": {
+        "path": "/media/home-r2/glacier-kv2-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1210772,
+        "rung": "phone"
+      },
+      "seconds": 6.0
+    }
   ]
 }
