@@ -15,6 +15,7 @@
 //! The module imports one function, `env.terrain_height(x, z)`: the map's height function, which fills the contact
 //! lattice's vertices and decides its fold splits the first time each is needed.
 
+use cot_sim::clearance;
 use cot_sim::contact::{ContactLattice, Sample};
 use cot_sim::deformation::TerrainDeformation;
 use cot_sim::grid::{ObstacleGrid, PlanBox};
@@ -73,6 +74,12 @@ struct State {
     records: Vec<Record>,
     /// Per record: bit 0 crushed, bit 1 dead (the host writes a hull's candidates' before `support_begin`).
     record_flags: Vec<u8>,
+    /// Per record: a bridge deck (the bots' clearance scans pass over it).
+    bridges: Vec<bool>,
+    /// The clearance walk's candidates (`clearance_begin`), its position in them and the last lane's entry.
+    clearance_candidates: Vec<u32>,
+    clearance_cursor: usize,
+    clearance_entry: f64,
     support_grid: Option<usize>,
     support: SupportField,
 }
@@ -91,6 +98,10 @@ fn state() -> &'static mut State {
             overlay: TerrainDeformation::new(),
             records: Vec::new(),
             record_flags: Vec::new(),
+            bridges: Vec::new(),
+            clearance_candidates: Vec::new(),
+            clearance_cursor: 0,
+            clearance_entry: 0.0,
             support_grid: None,
             support: SupportField::new(),
         })
@@ -443,12 +454,13 @@ fn read_part(v: &[f64], i: &mut usize) -> Option<Part> {
 }
 
 /// Load the obstacle records, in the order the grid `grid` was built over: per record min xyz, max xyz, flags (1
-/// crushable, 2 a wreck), shape (0 none, 1 one part, 2 a compound and its part count), then its parts. Returns the count.
+/// crushable, 2 a wreck, 4 a bridge deck), shape (0 none, 1 one part, 2 a compound and its part count), then its parts. Returns the count.
 #[unsafe(no_mangle)]
 pub extern "C" fn records_load(data: *const f64, len: usize, grid: u32) -> u32 {
     // SAFETY: the host passes len doubles inside this instance's memory.
     let v = unsafe { core::slice::from_raw_parts(data, len) };
     let mut records = Vec::new();
+    let mut bridges = Vec::new();
     let mut i = 0;
     while i < v.len() {
         let min = [v[i], v[i + 1], v[i + 2]];
@@ -466,9 +478,11 @@ pub extern "C" fn records_load(data: *const f64, len: usize, grid: u32) -> u32 {
             }
         };
         records.push(Record::new(min, max, shape, flags & 1 != 0, flags & 2 != 0));
+        bridges.push(flags & 4 != 0);
     }
     let s = state();
     s.record_flags = vec![0; records.len()];
+    s.bridges = bridges;
     s.records = records;
     s.support_grid = Some(grid as usize);
     s.records.len() as u32
@@ -544,6 +558,68 @@ pub extern "C" fn support_record_reads() -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn support_standing() -> u32 {
     state().support.standing_deck() as u32
+}
+
+// ------------------------------------------------------- the bots' clearance scans ----
+
+/// What a clearance scan passes over: bit 0 a crushable, bit 1 a bridge deck (collision.ts CLEARANCE_SKIP_*).
+fn clearance_skips(records: &[Record], bridges: &[bool], index: usize, skip: u32) -> bool {
+    (skip & 1 != 0 && records[index].crushable) || (skip & 2 != 0 && bridges[index])
+}
+
+/// Begin a clearance walk over the support grid's records in the box [min_x, max_x] × [min_z, max_z], in the grid's
+/// order; returns their count. One walk at a time: the next `clearance_begin` starts over.
+#[unsafe(no_mangle)]
+pub extern "C" fn clearance_begin(min_x: f64, min_z: f64, max_x: f64, max_z: f64) -> u32 {
+    let State { grids, clearance_candidates, clearance_cursor, support_grid, .. } = state();
+    let (grid, out) = &mut grids[support_grid.expect("records_load first")];
+    grid.query(min_x, min_z, max_x, max_z, out);
+    clearance_candidates.clear();
+    clearance_candidates.extend_from_slice(out);
+    *clearance_cursor = 0;
+    clearance_candidates.len() as u32
+}
+
+/// The walk's next record that `skip` keeps and whose clearance (the footprint grown by `margin`, clearance.rs
+/// contains_point) holds (x, z), or -1 at the walk's end. Crushed and dead records are kept: their state is the host's,
+/// and the host's loop stops where it always did.
+#[unsafe(no_mangle)]
+pub extern "C" fn clearance_point_next(x: f64, z: f64, margin: f64, skip: u32) -> i32 {
+    let State { records, bridges, clearance_candidates, clearance_cursor, .. } = state();
+    while let Some(&index) = clearance_candidates.get(*clearance_cursor) {
+        *clearance_cursor += 1;
+        let i = index as usize;
+        if !clearance_skips(records, bridges, i, skip) && clearance::contains_point(&records[i], x, z, margin) {
+            return index as i32;
+        }
+    }
+    -1
+}
+
+/// The walk's next record that `skip` keeps and that the lane from (sx, sz) along (dx, dz) enters within `reach`
+/// (clearance.rs ray_entry, the footprint grown by `margin`), or -1 at the walk's end; its entry at `clearance_entry`.
+#[unsafe(no_mangle)]
+#[allow(clippy::too_many_arguments)]
+pub extern "C" fn clearance_lane_next(sx: f64, sz: f64, dx: f64, dz: f64, reach: f64, margin: f64, skip: u32) -> i32 {
+    let State { records, bridges, clearance_candidates, clearance_cursor, clearance_entry, .. } = state();
+    while let Some(&index) = clearance_candidates.get(*clearance_cursor) {
+        *clearance_cursor += 1;
+        let i = index as usize;
+        if clearance_skips(records, bridges, i, skip) {
+            continue;
+        }
+        if let Some(entry) = clearance::ray_entry(&records[i], sx, sz, dx, dz, reach, margin) {
+            *clearance_entry = entry;
+            return index as i32;
+        }
+    }
+    -1
+}
+
+/// The entry of the record `clearance_lane_next` returned last.
+#[unsafe(no_mangle)]
+pub extern "C" fn clearance_entry() -> f64 {
+    state().clearance_entry
 }
 
 // ------------------------------------------------------------- the support fan ----

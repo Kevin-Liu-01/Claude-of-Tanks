@@ -2,6 +2,7 @@ import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
+import { designationHtml } from './designations.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
 // four loop ... along with the process"). The media is public/media/filming-r1, built by
@@ -89,7 +90,7 @@ const takeLabel = (take: FilmingTake): string => t('docs.filming.viewer.take', {
 
 function viewerMarkup(): string {
   const stageButtons = FILMING_STAGES.map((stage, index) => `<button type="button" class="filming-stage-button" data-filming-stage="${stage}" aria-pressed="false"><b>${pad(index + 1)}</b><span>${STAGE_TEXT[stage].label}</span></button>`).join('');
-  const takeCards = FILMING_TAKES.map((take, index) => `<button type="button" class="filming-take-card" data-filming-take="${index}" aria-pressed="false"><img src="${filmingThumb(take)}" alt="" width="384" height="216" loading="lazy" decoding="async"><span><b>${pad(take.n)}</b><strong>${take.title}</strong><small>${take.place} · ${take.time}</small></span></button>`).join('');
+  const takeCards = FILMING_TAKES.map((take, index) => `<button type="button" class="filming-take-card" data-filming-take="${index}" aria-pressed="false"><img src="${filmingThumb(take)}" alt="" width="384" height="216" loading="lazy" decoding="async"><span><b>${pad(take.n)}</b><strong>${designationHtml(take.title)}</strong><small>${take.place} · ${take.time}</small></span></button>`).join('');
   return `<div class="filming-viewer" data-filming-viewer role="region" aria-label="${t('docs.filming.viewer.aria')}">
     <figure class="filming-screen"><video data-filming-video muted loop playsinline controls preload="none"></video>
       <figcaption><span><strong data-filming-stage-label></strong><small data-filming-stage-detail></small></span><b data-filming-take-label></b></figcaption></figure>
@@ -184,7 +185,7 @@ export function mountFilming(article: HTMLElement): void {
 
   const showTake = (): void => {
     takeButtons.forEach((button) => button.setAttribute('aria-pressed', String(FILMING_TAKES[Number(button.dataset.filmingTake)] === take)));
-    field('take-title').textContent = take.title;
+    field('take-title').innerHTML = designationHtml(take.title);
     field('take-meta').textContent = `${takeLabel(take)} · ${take.place} · ${take.time}`;
     field('take-story').textContent = take.story;
     field('studio').setAttribute('href', filmingStudioLink(take));

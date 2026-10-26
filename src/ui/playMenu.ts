@@ -44,6 +44,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { datumAttr } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
@@ -197,7 +198,7 @@ const CSS = `
 /* the panel hangs under the Garage's bar (y 16 to 60 at every size), never across it, and grows downward; the game
    document declares the weight-voiced 'Cot UI' family, so the reading voice is that family too */
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:flex-start;justify-content:center;
-  padding:max(72px,8vh) var(--s5) var(--s5);background:var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
+  padding:max(72px,8vh) var(--s5) var(--s5);background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim);--font-body:var(--font-ui);font-family:var(--font-body);color:var(--ink-1);}
 .cot-play.show{display:flex;animation:cotPlayVeil var(--dur-base) var(--ease-enter)}
 .cot-play.show .panel{animation:cotPlayPanel var(--dur-screen) var(--ease-enter) backwards}
 @keyframes cotPlayVeil{from{opacity:0}}
@@ -206,22 +207,46 @@ const CSS = `
 /* one plate, no glass (the Premiere direction): the plate laid on the opaque scene colour, so neither the Garage behind the
    panel nor the roster scrolling under its sticky head and foot shows through */
 .cot-play{--play-plate:linear-gradient(var(--surface-plate),var(--surface-plate)) var(--surface-scene)}
-.cot-play .panel{position:relative;display:flex;flex-direction:column;width:min(calc(860px * max(1, var(--cot-ui-scale, 1))),96vw);max-height:100%;overflow:auto;
+.cot-play .panel{position:relative;display:flex;flex-direction:column;width:min(calc(860px * max(1, var(--cot-ui-scale, 1))),100%);max-height:100%;overflow:auto;
   padding:var(--s5);border-radius:var(--r2);background:var(--play-plate);box-shadow:var(--e4);
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;color-scheme:dark;overscroll-behavior:contain;
   scroll-padding-top:calc(var(--s5) + var(--play-close) + var(--s4))}
 .cot-play .panel:focus-visible{outline:none}
 .cot-play .panel::-webkit-scrollbar{width:6px}
 .cot-play .panel::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:var(--r1)}
+/* the cue that the panel runs on past an edge: the edge fades while more lies beyond it (scroll-driven; a panel that does not
+   scroll has no timeline and shows no fade; a browser without scroll timelines shows none). Like the sticky head, each sits on the panel's padding edge; the sticky head
+   and foot cover their own edge. */
+@supports (animation-timeline:scroll()){
+.cot-play .panel::before,.cot-play .panel::after{content:'';position:sticky;z-index:var(--z-lift);flex:0 0 var(--s6);background:var(--play-plate);
+  pointer-events:none;opacity:0;animation-timeline:scroll(nearest)}
+.cot-play .panel::before{order:-1;top:calc(-1 * var(--s5));margin-bottom:calc(-1 * var(--s6));mask-image:linear-gradient(var(--surface-scene),transparent);
+  animation-name:cotPlayEdge;animation-direction:reverse;animation-fill-mode:both;animation-timing-function:linear;
+  animation-range:var(--s5) calc(var(--s5) + var(--s6))}
+.cot-play .panel::after{order:99;bottom:calc(-1 * var(--s5));margin-top:calc(-1 * var(--s6));mask-image:linear-gradient(transparent,var(--surface-scene));
+  animation-name:cotPlayEdge;animation-fill-mode:both;animation-timing-function:linear;
+  animation-range:calc(100% - var(--s5) - var(--s6)) calc(100% - var(--s5))}
+}
+@keyframes cotPlayEdge{from{opacity:1}to{opacity:0}}
+/* the sticky head and foot: what scrolls under them fades into their plate while they stand stuck (scroll-state queries;
+   a browser without them shows the plain edge) */
+.cot-play :is(.play-head,.lobby.show .controls){container-type:scroll-state}
+.cot-play .play-head h2::after,.cot-play .lobby.show .control-options::before{content:'';position:absolute;left:0;right:0;height:var(--s6);
+  background:var(--play-plate);pointer-events:none;opacity:0}
+.cot-play .play-head h2::after{top:100%;mask-image:linear-gradient(var(--surface-scene),transparent)}
+.cot-play .lobby.show .control-options::before{bottom:100%;mask-image:linear-gradient(transparent,var(--surface-scene))}
+@container scroll-state(stuck: top){.cot-play .play-head h2::after{opacity:1}}
+@container scroll-state(stuck: bottom){.cot-play .lobby.show .control-options::before{opacity:1}}
 .cot-play .play-head{position:sticky;top:calc(-1 * var(--s5));z-index:5;flex-shrink:0;margin:calc(-1 * var(--s5)) calc(-1 * var(--s5)) 0;
-  padding:var(--s5) 64px var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
+  padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
-.cot-play{--play-close:36px}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
-.cot-play .close{--h:var(--play-close);position:absolute;right:var(--s4);top:var(--s5)}
+.cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+.cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-play h2{display:flex;align-items:center;min-height:var(--play-close);margin:0;font:700 var(--fs-28)/1 var(--font-display);
-  letter-spacing:var(--track-title);text-transform:uppercase}
+  letter-spacing:var(--track-title);text-transform:uppercase;text-wrap:balance}
+:lang(zh-CN) .cot-play h2{line-height:1.25}
 .cot-play .lead{margin:var(--s3) 0 var(--s5);color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.5}
 .cot-play .lead:empty{display:none}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:var(--s2)}
@@ -238,7 +263,7 @@ const CSS = `
 .cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
 .cot-play .mode-icon svg{display:block}
 .cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
+  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body)}
 .cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
 
 /* labels: 12 px at the label tracking */
@@ -251,7 +276,7 @@ const CSS = `
 
 /* the game modes behind Room rules */
 .cot-play .rule-heading{display:flex;align-items:end;justify-content:space-between;gap:var(--s3);margin:var(--s4) 0 var(--s2)}
-.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s2)}
+.cot-play .rules{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s3)}
 .cot-play .rule{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:var(--s2);min-height:54px;
   padding:var(--s2) var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);
   color:var(--ink-2);text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),
@@ -259,7 +284,7 @@ const CSS = `
 .cot-play .rule:hover{background:var(--surface-hover);color:var(--ink-1)}
 .cot-play .rule.on{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .cot-play .rule:disabled{cursor:not-allowed}
-.cot-play .rule svg{display:block}
+.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}
 .cot-play .rule-copy{display:grid;min-width:0;gap:2px}
 .cot-play .rule-copy b{overflow:hidden;color:inherit;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-overflow:ellipsis;
   white-space:nowrap;text-transform:uppercase}
@@ -272,14 +297,15 @@ const CSS = `
 .cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 
 /* host arrangement and the opponent brain: plates */
-.cot-play :is(.arrange,.brain){margin:var(--s3) 0 var(--s1);padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-play :is(.arrange,.brain){margin:var(--s5) 0 var(--s1);padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .brain[hidden]{display:none}
 .cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
 .cot-play .arrange-head b{color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-body);letter-spacing:normal;text-transform:none}
-.cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s2);align-items:end}
+.cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s3);align-items:end}
 .cot-play .arrange-fields label[hidden],.cot-play .arrange-cap[hidden],.cot-play .brain-note[hidden],.cot-play .arrange-sides[hidden],
 .cot-play .operation-picker[hidden]{display:none}
-body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .cot-play .arrange-sides{margin-bottom:var(--s2)}
 .cot-play .arrange-sides-label{margin-right:var(--s1)}
@@ -336,6 +362,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
+/* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
+.cot-play :is([data-field='create-size'],[data-control='size']) :is([data-select-value],.menu-select-option),
+.cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
+.cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}
 .cot-play .code-input{font:700 var(--fs-18)/1 var(--font-data);letter-spacing:.16em;text-transform:uppercase}
 .cot-play .menu-select{position:relative;min-width:0}
@@ -381,8 +411,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .menu-select--map .menu-select-option{min-height:58px;padding-left:var(--s2)}
 .cot-play .menu-select--map .menu-select-option .menu-select-thumb{width:76px;height:44px;flex-basis:76px}
 .cot-play .menu-select--vehicle .menu-select-option{min-height:52px;padding-left:var(--s2)}
-.cot-play .menu-select--vehicle .menu-select-thumb{width:56px;height:36px;flex-basis:56px;background-color:var(--surface-page);
-  background-size:contain;box-shadow:none}
+.cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
+  background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
 .cot-play :is(.menu-select-trigger,.menu-select-option,.mode,.rule,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
   outline:none;box-shadow:var(--focus-ring)}
 body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
@@ -393,60 +423,63 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* the kit draws its buttons inline-flex, which outranks the hidden attribute (Rejoin, Retry) */
 .cot-play .action[hidden]{display:none}
 .cot-play button[data-action="ready"]{min-height:44px}
-.cot-play .status{margin-top:var(--s3)}
+.cot-play .status{margin-top:var(--s3);scroll-margin-block:var(--s6)}
 .cot-play .status.is-empty{height:0;min-height:0;margin:0;padding:0;overflow:hidden;background:none;box-shadow:none}
 .cot-play .status-legacy{min-height:18px;margin-top:var(--s3);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .status.err{color:var(--text-danger)}.cot-play .status[hidden]{display:none}
 
 /* the lobby */
 .cot-play .lobby{display:none;margin-top:var(--s4)}.cot-play .lobby.show{display:block}
-.cot-play .roomhead{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s3) var(--s4);
+.cot-play .roomhead{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3) var(--s5);padding:var(--s3) var(--s4);
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .roommeta{margin-bottom:var(--s2)}
 .cot-play .roomhead .seats{margin-left:auto;text-align:right}
-.cot-play .seats-count{color:var(--ink-1);font:700 max(var(--fs-floor-12),var(--fs-20))/1 var(--font-ui)}
+.cot-play .roomhead>.action{align-self:center}
+.cot-play .seats-count{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
-.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);min-height:108px;
+.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));column-gap:var(--s3);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-.cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat;
+.cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat padding-box;
   border-right:1px solid var(--line-1)}
 .cot-play .battlefield-art::after{content:"";position:absolute;inset:0;z-index:1;background:var(--media-fade-soft)}
 .cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-page)}
 .cot-play .battlefield-art.is-random .random-map-mosaic{display:grid}
 .cot-play .battlefield-art .random-map-tile{display:block;min-width:0;background:center/cover no-repeat}
-.cot-play .battlefield-art .random-map-count{position:absolute;z-index:2;right:var(--s3);top:var(--s3);display:grid;min-width:54px;
-  padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);text-align:center}
-.cot-play .battlefield-art .random-map-count b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-data)}
-.cot-play .battlefield-art .random-map-count span{margin-top:2px;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
-  letter-spacing:var(--track-label-s);text-transform:uppercase}
-.cot-play .battlefield-copy{display:grid;align-items:center;gap:var(--s3);padding:var(--s4)}
+.cot-play:where(:has(.control-options>.field[hidden])) .battlefield-card{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
-.cot-play .player{display:grid;grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
+.cot-play .player{--foot-track:calc((100% + 2 * var(--s4) - 2 * var(--s3)) / 3.6);display:grid;
+  grid-template-columns:minmax(120px,1fr) minmax(190px,1.35fr) calc(var(--foot-track) - 7em - var(--s3)) 7em;align-items:center;
   gap:var(--s3);min-height:58px;padding:var(--s2) var(--s4);border-radius:var(--control-radius);background:var(--row-plate);
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
+/* a co-op room has every player on one side: their team words would repeat down the roster, so only a spectator's show */
+.cot-play:where(:has(.control-options>.field[hidden])) .player:not(.spectator) .team{visibility:hidden}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
-.cot-play .player .host{margin-left:var(--s2);vertical-align:1px}
-.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-11),var(--fs-11))}
-.cot-play .player .name{min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
+
+.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12))}
+.cot-play .player .name{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
-.cot-play .vehicle-icon{width:58px;height:42px;flex:0 0 58px;object-fit:contain}.cot-play .vehicle-icon:is(.missing,.placeholder){visibility:hidden}
-.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;line-height:1.3;text-wrap:pretty}
+.cot-play .vehicle-icon{--w:58px;--h:42px;width:var(--w);height:var(--h);flex:0 0 var(--w);object-fit:cover;
+  object-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y))}.cot-play .vehicle-icon:is(.missing,.placeholder){visibility:hidden}
+.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.3;text-wrap:pretty}
 .cot-play .vehicle-copy{display:grid;min-width:0;gap:var(--s1)}
-.cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
+.cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-play .player .team{color:var(--ink-3)}.cot-play .player.alpha .team{color:var(--team-own)}.cot-play .player.bravo .team{color:var(--team-enemy)}
 .cot-play .player.offline .name{color:var(--ink-3)}
-.cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
+.cot-play .player :is(.ready,.wait){white-space:nowrap}.cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
 
 /* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
-.cot-play .lobby.show .controls{position:sticky;bottom:calc(-1 * var(--s5));z-index:4;margin:var(--s3) calc(-1 * var(--s5)) calc(-1 * var(--s5));
-  padding:var(--s4) var(--s5) var(--s5);background:var(--play-plate);border-top:1px solid var(--line-2)}
-.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:var(--s2);align-items:end}
+.cot-play .lobby.show .controls{position:sticky;bottom:calc(-1 * var(--s5));z-index:4;margin:var(--s3) calc(-1 * var(--s5)) 0;
+  padding:var(--s4) var(--s5);background:var(--play-plate);border-top:1px solid var(--line-2)}
+.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:var(--s3);align-items:end}
 .cot-play .control-options .field{width:auto;min-width:0}
+.cot-play .control-options .field[hidden]{display:none}
+.cot-play .control-options:has(>.field[hidden]){grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
 .cot-play .control-actions .leave-room{margin-right:auto}
@@ -459,30 +492,30 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
 .cot-play :is(.room-failure,.version-refusal,.status){flex-wrap:wrap;padding:var(--s3) var(--s4);outline-offset:4px}
-.cot-play .room-failure{margin-top:var(--s4);scroll-margin-block:var(--s4)}
-.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--s5) - 64px) 2px 0}
+.cot-play .room-failure{margin-top:var(--s3);scroll-margin-block:var(--s6)}
+.cot-play .version-refusal{width:auto;margin:var(--s3) calc(var(--play-gutter) - var(--play-head-end)) 0 0}
 .cot-play :is(.room-failure,.version-refusal)[hidden],.cot-play .room-failure [hidden]{display:none}
-.cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/1.3 var(--font-ui)}
-.cot-play :is(.room-failure,.version-refusal,.status) .cot-c-notice__detail{font-size:max(var(--fs-floor-11),var(--fs-12));text-wrap:pretty}
+.cot-play :is(.room-failure,.version-refusal) .cot-c-notice__text{font:600 max(var(--fs-floor-12),var(--fs-15))/calc(var(--s4) + var(--s1)) var(--font-ui)}
+.cot-play :is(.room-failure,.version-refusal,.status) .cot-c-notice__detail{font-size:max(var(--fs-floor-11),var(--fs-12));line-height:18px;text-wrap:pretty}
 .cot-play :is(.room-failure,.version-refusal) .cot-c-notice__acts{flex-basis:100%;padding-left:calc(20px + var(--s3))}
 .cot-play .room-failure button.action{min-height:44px;height:auto;white-space:normal;line-height:1.35}
 .cot-play :is(.version-refusal,.room-failure):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
 /* Room rules: a disclosure under the room */
 .cot-play .room-rules{order:2;margin-top:var(--s4);padding-top:var(--s3);border-top:1px solid var(--line-1)}
+.cot-play.lobby-active .room-rules{margin-top:0}
 .cot-play:not(.multiplayer-entry) .room-rules>summary{display:none}
-.cot-play .room-rules>summary{display:flex;align-items:center;gap:var(--s3);min-height:44px;color:var(--ink-2);
+.cot-play .room-rules>summary{display:flex;align-items:center;gap:var(--s2);min-height:44px;color:var(--ink-2);
   font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);list-style:none;cursor:pointer}
 .cot-play .room-rules>summary::-webkit-details-marker{display:none}
-.cot-play .room-rules>summary::before{content:'';width:8px;height:8px;margin:0 var(--s1);border-right:1.5px solid var(--ink-3);
-  border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform var(--dur-fast) var(--ease-move)}
-.cot-play .room-rules[open]>summary::before{transform:rotate(45deg)}
-.cot-play [data-selected-rule]{margin-left:auto;color:var(--ink-2)}
+.cot-play .room-rules>summary>.cot-i{transition:transform var(--dur-fast) var(--ease-move)}
+.cot-play .room-rules[open]>summary>.cot-i{transform:rotate(90deg)}
+.cot-play [data-selected-rule]{order:2;margin-left:auto;color:var(--ink-2)}
 .cot-play.multiplayer-entry :is(.brain,.campaign){display:none}
 .cot-play.multiplayer-entry .arrange>.arrange-head,.cot-play .room-rules .rule-heading{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* open, the rules show their own selection: the summary's echo of it steps aside */
 .cot-play .room-rules[open] [data-selected-rule]{visibility:hidden}
-.cot-play .teams-host:not(:empty){margin-top:var(--s3)}
+.cot-play .teams-host:not(:empty){margin-top:var(--s5)}
 .cot-play .cot-teams{flex-direction:column;align-items:flex-start;gap:var(--s2)}
 .cot-play .cot-teams .cot-c-seg__opt{height:38px}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
@@ -495,17 +528,19 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none}
 
 /* phone and compact */
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play{--play-gutter:var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .panel{padding:var(--s5) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-head{top:calc(-1 * var(--s5));
-  margin:calc(-1 * var(--s5)) calc(-1 * var(--s4)) 0;padding:var(--s4) 60px var(--s3) var(--s4)}
+  margin:calc(-1 * var(--s5)) calc(-1 * var(--s4)) 0;padding:var(--s4) var(--play-head-end) var(--s3) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .close{top:var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.show .controls{
-  margin:var(--s3) calc(-1 * var(--s4)) calc(-1 * var(--s5));padding:var(--s3) var(--s4) var(--s4)}
+  margin:var(--s3) calc(-1 * var(--s4)) 0;padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options .vehicle-field{grid-column:1/-1}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options:has(>.field[hidden])>.field{grid-column:1/-1}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s3)}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s4)}
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
   .cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;
@@ -805,7 +840,7 @@ export function createPlayMenu({
   // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
   const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
+    `<button class="rule" data-game-mode="${rule.id}" data-mode-tone="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
@@ -843,7 +878,7 @@ export function createPlayMenu({
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt cot-c-btn" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
-    </div><div class="status cot-c-notice is-empty" data-severity="info" role="status" aria-live="polite" aria-atomic="true"><span class="cot-c-notice__glyph" data-status-glyph></span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-status-text></span></span></div>
+    </div><div class="status cot-c-notice is-empty"${datumAttr('notices')} data-severity="info" role="status" aria-live="polite" aria-atomic="true"><span class="cot-c-notice__glyph" data-status-glyph></span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-status-text></span></span></div>
     <section class="room-failure cot-c-notice" data-severity="error" hidden role="alert" aria-atomic="true" tabindex="-1"
       aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail">
       <span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-room-failure-title"></span><span class="cot-c-notice__detail" id="cot-room-failure-detail"></span></span>
@@ -853,8 +888,8 @@ export function createPlayMenu({
         <button class="action alt cot-c-btn" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
-      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"></div></div>
-        <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats></div></div>
+      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"${datumAttr('room-code')}></div></div>
+        <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
@@ -862,7 +897,7 @@ export function createPlayMenu({
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-map-list" aria-labelledby="cot-room-map-label cot-room-map-value">
                 <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
-                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>${t('playMenu.advanced.battlefieldRandom')}</span>
+                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value${datumAttr('map-name')}>${t('playMenu.advanced.battlefieldRandom')}</span>
                   <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
               <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
             </div>
@@ -907,7 +942,7 @@ export function createPlayMenu({
           <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}</button></div>
       </div><div class="note"></div>
     </div></section>
-    <details class="room-rules"><summary>${t('playMenu.roomRules')}<span data-selected-rule></span></summary>
+    <details class="room-rules"><summary>${t('playMenu.roomRules')}${uiIconSVG('chevronRight', 16)}<span data-selected-rule${datumAttr('mode-name')}></span></summary>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
@@ -1064,7 +1099,7 @@ export function createPlayMenu({
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
   const operationDropdown = createCustomSelect(operationSelect);
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
-  battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
+  battlefieldArt.appendChild(createRandomMapMosaic(maps));
   const playersEl = requiredElement<HTMLElement>(root, '.players');
   const codeEl = requiredElement<HTMLElement>(root, '.code');
   const seatsEl = requiredElement<HTMLElement>(root, '[data-seats]');
@@ -1431,6 +1466,7 @@ export function createPlayMenu({
     status.dataset.severity = kind;
     status.classList.toggle('err', !!error);
     status.classList.toggle('is-empty', !statusText.textContent);
+    if (kind !== 'info' && statusText.textContent && root.classList.contains('show')) status.scrollIntoView({ block: 'nearest' });
   }
 
   function clearFailure(): void {
@@ -1680,6 +1716,7 @@ export function createPlayMenu({
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting'
       || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
+    sizeSelect.closest<HTMLElement>('.field')!.hidden = isCoopGameMode(next.gameMode);
     startBtn.style.display = role === 'host' ? '' : 'none';
     rejoinBtn.hidden = !canRejoinBattle(next) || !!versionRefusal;
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
@@ -1741,11 +1778,9 @@ export function createPlayMenu({
     }
     const team = document.createElement('span');
     team.className = 'team';
-    if (player.team !== 'spectator') {
-      const mark = document.createElement('i');
-      mark.className = `team-mark ${player.team}`;
-      team.append(mark);
-    }
+    const mark = document.createElement('i');
+    mark.className = `team-mark ${player.team}`;
+    team.append(mark);
     team.append(lobbyTeamLabel(player.team));
     const ready = document.createElement('span');
     ready.className = player.connected && (player.ready || player.team === 'spectator') ? 'ready' : 'wait';

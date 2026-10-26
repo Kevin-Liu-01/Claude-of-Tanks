@@ -13,6 +13,7 @@ import { createTouchControls } from './touchControls.ts';
 import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { ensureFonts } from './fonts.ts';
+import { createUiCanvas, drawImageFit } from './uiCanvas.ts';
 
 const params = new URLSearchParams(location.search);
 const touch = params.get('profile') !== 'desktop';
@@ -31,21 +32,26 @@ async function healthPanel(parent: HTMLElement): Promise<void> {
   ensureStyle('cot-dp-style', DAMAGE_PANEL_CSS, 'surfaces');
   const panel = document.createElement('div'); panel.className = 'cot-dp'; panel.style.width = '160px';
   panel.innerHTML = '<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">2,750 / 2,750</span></div><div class="hptrack"><div class="hpfill" style="background:var(--ok)"></div></div>';
-  const canvas = document.createElement('canvas'); canvas.width = 284; canvas.height = 276;
-  canvas.style.cssText = 'width:142px;height:138px'; panel.append(canvas); parent.append(panel);
-  const image = await imageAt('/icons/m1a1_abrams_hc_top.webp');
-  const scale = Math.min(264 / image.width, 256 / image.height);
-  canvas.getContext('2d')?.drawImage(image, (284-image.width*scale)/2, (276-image.height*scale)/2, image.width*scale, image.height*scale);
+  // the plan as the damage panel's stage: a uiCanvas in its 142 x 138 box, the top view fitted 5 px inside it
+  const stage = createUiCanvas(panel, '', { box: [142, 138], draw: (ctx, width, height, surface) => {
+    ctx.clearRect(0, 0, width, height);
+    if (!surface.image) return;
+    ctx.translate(5, 5);
+    drawImageFit(ctx, surface.image, width - 10, height - 10, 'contain');
+  } });
+  parent.append(panel);
+  stage.setImage(await imageAt('/icons/m1a1_abrams_hc_top.webp'));
 }
 
 /** Freeze the production DOM, preserving canvases and pseudo-element frames.
- * Old transient timers only own detached nodes; nothing disappears mid-edit. */
+ * Old transient timers only own detached nodes; nothing disappears mid-edit. The canvases themselves move into the
+ * copy (each a uiCanvas: it keeps its drawing, and a retained one redraws at a new box). */
 function freezePresentation(): void {
   for (const source of [...document.body.children]) {
     if (!(source instanceof HTMLElement) || source.tagName === 'SCRIPT') continue;
     const copy = source.cloneNode(true) as HTMLElement;
     const canvases = copy.querySelectorAll('canvas');
-    source.querySelectorAll('canvas').forEach((canvas,index) => canvases[index]?.getContext('2d')?.drawImage(canvas,0,0));
+    source.querySelectorAll('canvas').forEach((canvas,index) => canvases[index]?.replaceWith(canvas));
     source.replaceWith(copy);
   }
 }

@@ -19,6 +19,7 @@ import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { getLocale, t } from '../../ui/i18n.ts';
 import { hrefForLocale } from '../../ui/localeRouting.ts';
 import { fleetTanks, heroCardMarkup } from './fleet.ts';
+import { nameHtml } from '../designations.ts';
 import type { RichSection } from './types.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -48,8 +49,8 @@ function classesSection(): string {
     const lead = flagship(ids);
     const meta = VEHICLE_CLASS_META[cls];
     return `<article class="dm-class">${heroCardMarkup(lead, HC_SIZES)}<div class="dm-class__body">`
-      + `<h3>${icon(CLASS_ICONS[cls] ?? 'vehicle', { size: 18 })}<span>${esc(vehicleFacetLabel(meta, t))}</span><b>${ids.length}</b></h3>`
-      + `<p>${flagMarkup(fleet.get(lead)!.countryCode, 'cot-c-flag cot-c-flag--sm')}<span>${esc(fleet.get(lead)!.name)}</span></p></div></article>`;
+      + `<h3>${icon(CLASS_ICONS[cls] ?? 'vehicle', { size: 18 })}<span>${nameHtml(vehicleFacetLabel(meta, t))}</span><b>${ids.length}</b></h3>`
+      + `<p>${flagMarkup(fleet.get(lead)!.countryCode, 'cot-c-flag cot-c-flag--sm')}<span>${nameHtml(fleet.get(lead)!.name)}</span></p></div></article>`;
   }).join('');
   return `<div class="dm-classes">${cards}</div>`;
 }
@@ -58,7 +59,7 @@ function rolesSection(): string {
   const items = VEHICLE_BATTLE_ROLE_ORDER.map((role) => {
     const meta = VEHICLE_BATTLE_ROLE_META[role];
     const count = vehicleIdsForFacet('role', role).length;
-    return `<li>${icon(ROLE_ICONS[role] ?? 'team', { size: 20 })}<div><b>${esc(vehicleFacetLabel(meta, t))}</b><span>${count}</span>`
+    return `<li>${icon(ROLE_ICONS[role] ?? 'team', { size: 20 })}<div><b>${nameHtml(vehicleFacetLabel(meta, t))}</b><span>${count}</span>`
       + `${meta.hintKey ? `<p>${esc(t(meta.hintKey))}</p>` : ''}</div></li>`;
   }).join('');
   return `<p>${esc(t('docs.tanks.rolesLede'))}</p><ul class="dm-roles">${items}</ul>`;

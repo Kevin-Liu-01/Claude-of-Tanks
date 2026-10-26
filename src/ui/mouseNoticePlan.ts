@@ -112,8 +112,12 @@ export interface MouseNoticePlan {
    *  placed when first read. */
   readonly medal: PlannedMedal | null;
   readonly countdown: PlannedCountdown | null;
-  /** The alert's slot while the countdown shows (its own, or one off the dial and the rules panel; placed when read). */
+  /** The alert's slot while the countdown shows (its own, or one off the dial, the rules panel and the detection; placed
+   *  when read), the keep-out it clears, and the dial while that alert shows (a step smaller where that leaves the alert
+   *  a place clear of the whole reticle). */
   readonly countdownAlert: PlannedAlert;
+  readonly countdownAlertClearance: 2 | 1 | 0 | -1;
+  readonly countdownUnderAlert: PlannedCountdown | null;
   readonly revive: PlannedScaled | null;
 }
 
@@ -1135,11 +1139,11 @@ function fallbackPair(input: MouseNoticeInput, resting: readonly PlanKeepOut[], 
  *  it needs to be in center of screen"; an alert raised before the roll-out takes its own place off them,
  *  `countdownAlert`); a side lane either crosses (a chat: no kill comes before the roll-out) gives way to it while it
  *  shows. */
-function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[]): PlannedCountdown | null {
+function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[], maxScale = 1): PlannedCountdown | null {
   const size = input.countdown, rulesSize = input.countdownRules ?? null;
   if (!size || size.w <= 0 || size.h <= 0) return null;
   const blocks = input.obstacles.map((r) => ({ x0: r.x, y0: r.y, x1: r.x + r.w, y1: r.y + r.h }));
-  const place = placeCountdown(input.width, input.height, input.top, size, rulesSize, blocks, MOUSE_NOTICE_GAP_PX);
+  const place = placeCountdown(input.width, input.height, input.top, size, rulesSize, blocks, MOUSE_NOTICE_GAP_PX, false, maxScale);
   const w = size.w * place.scale, h = size.h * place.scale, cx = noticeCentreX(input.width);
   const dial: PlanRect = { x: cx - w / 2, y: place.top, w, h };
   const rules = place.rulesShown && rulesSize ? { x: cx - rulesSize.w * place.rulesScale / 2, y: place.rulesTop,
@@ -1162,6 +1166,10 @@ function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[])
 }
 
 const TIERS = [2, 1, 0] as const;
+/** The dial's smaller steps while an alert raised before the roll-out shows (the alert off it at the pair's keep-out; at
+ *  1024x600 only the dial's least step leaves the alert a slot between it and the detection). */
+const COUNTDOWN_YIELD_SCALES = [.9, .8, .7, .6, .5, .45, .4] as const;
+
 /** Where the countdown, the revive count and the medal card look for a place, in order: [tier, may share a notice's
  *  place]. A place off the notices at a reduced keep-out beats sharing their place at the full one, and sharing beats
  *  touching the resting sight. */
@@ -1297,26 +1305,43 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   // The alert while the countdown shows (H, R and E raise alerts before the roll-out): its own place where that keeps
   // off the dial and the rules panel, else the cheapest on the centre line off them (the touch plan's order: the
   // countdown first, the alert off it), over the fewest instruments where none clears them, else its own.
-  const countdownAlert = later((): PlannedAlert => {
-    const dial = countdown();
-    if (!dial) return pair.alert;
+  const alertOff = (dial: PlannedCountdown | null): { alert: PlannedAlert; clearance: 2 | 1 | 0 | -1 } => {
+    if (!dial) return { alert: pair.alert, clearance };
     const off: PlanRect[] = dial.rules ? [dial, dial.rules] : [dial];
-    if (!off.some((r) => meets(r, alert))) return pair.alert;
+    if (!off.some((r) => meets(r, alert))) return { alert: pair.alert, clearance };
+    // (and off the detection's place: a detection lit before the roll-out shows with both)
+    const keepOff = [...off, det];
     const small = input.smallAlert, alertMin = small ? 28 : 38;
     const options = (small ? ALERT_WIDTHS_9 : ALERT_WIDTHS_12).map((full) => {
       const w = Math.min(full, input.width - 2 * EDGE_PX), h = alertReserve(w, small);
-      return [w, h, h - alertMin + (520 - full) * .02, off] as const;
+      return [w, h, h - alertMin + (520 - full) * .02, keepOff] as const;
     });
     const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * .12));
-    if (place(() => options, yPref, BATTLE_LANES, false) < 0) {
+    let tier: 2 | 1 | 0 = place(() => options, yPref, BATTLE_LANES, false) as 2 | 1 | 0;
+    if (tier < 0) {
       // (where none clears the instruments, over the fewest of them, clear of the resting sight: the alert is brief)
       chosen = options;
       const open = makeEnv(TIERS.length * 2 + 2, { ...input, obstacles: NONE }, keeps[TIERS.indexOf(0)], hasLanes ? 'yield' : 'block',
         [...keeps[0], ...input.obstacles]);
-      if (!placeOne(open, chosen, yPref, BATTLE_LANES, hasLanes ? both : null, found)) return pair.alert;
+      if (!placeOne(open, chosen, yPref, BATTLE_LANES, hasLanes ? both : null, found)) return { alert: pair.alert, clearance };
+      tier = 0;
     }
     const [w, h] = chosen[found.option];
-    return { x: found.s.x, y: found.s.y, w, h, small, giveWay: giveWayOf(found.s.giveWay, 0) };
+    return { alert: { x: found.s.x, y: found.s.y, w, h, small, giveWay: giveWayOf(found.s.giveWay, 0) }, clearance: tier };
+  };
+  // The dial while an alert raised before the roll-out shows: its own place where that leaves the alert a place clear of
+  // what the notices' own places clear, else a step smaller (COUNTDOWN_YIELD_SCALES; 1366x768 and 1024x600: between the
+  // detection and the dial no slot held the alert, and it went under the sight onto the scope's readouts), else its own.
+  const countdownWithAlert = later(() => {
+    const own = countdown(), first = { dial: own, ...alertOff(own) };
+    if (!own || first.clearance >= clearance) return first;
+    for (const cap of COUNTDOWN_YIELD_SCALES) {
+      if (cap >= own.scale) continue;
+      const dial = centredCountdown(input, notices, cap);
+      const next = { dial, ...alertOff(dial) };
+      if (next.clearance >= clearance) return next;
+    }
+    return first;
   });
   const revive = later(() => scaled(input.revive, .30, BATTLE_LANES));
   return {
@@ -1324,7 +1349,9 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     // The card is optional: where it shares a notice's place it waits while that notice is up (keeping its time).
     get medal() { return medal(); },
     get countdown() { return countdown(); },
-    get countdownAlert() { return countdownAlert(); },
+    get countdownAlert() { return countdownWithAlert().alert; },
+    get countdownAlertClearance() { return countdownWithAlert().clearance; },
+    get countdownUnderAlert() { return countdownWithAlert().dial; },
     get revive() { return revive(); },
   };
 }

@@ -44,11 +44,15 @@ interface GarageFacetHost {
   setFilter(match: ((id: string) => boolean) | null): void;
   /** UI click feedback. */
   click?(): void;
+  /** Hears the panel open and close (the docked Garage clears its band from under the panel). */
+  onOpenChange?(open: boolean): void;
 }
 
 export interface GarageFacetPanel {
   toggle(): void;
   close(options?: { restoreFocus?: boolean }): void;
+  /** Drop every facet (the Garage's empty fleet's Clear filters). */
+  clear(): void;
   readonly isOpen: boolean;
 }
 
@@ -96,6 +100,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   panel.id = 'cot-garage-facets';
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', t('fleet.filter.panelAria'));
+  panel.tabIndex = -1;
   panel.hidden = true;
 
   // Head: the shown count, solid, over the fleet total in the landing's hollow outline; clear; close.
@@ -134,7 +139,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   input.autocomplete = 'off';
   input.spellcheck = false;
   input.enterKeyHint = 'search';
-  input.placeholder = t('fleet.filter.searchPlaceholder');
+  input.placeholder = t('garage.search.short');
   input.dataset.tip = t('fleet.filter.searchHint');
   input.setAttribute('aria-label', t('fleet.filter.search'));
   input.setAttribute('aria-describedby', 'cot-garage-facets-hint');
@@ -252,11 +257,17 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   function fit(): void {
     if (!open) return;
     const top = host.anchor.getBoundingClientRect().top;
-    const fitHeight = Math.round(Math.max(160, Math.min(520, top - 16)));
+    // docked, the header keeps its row (the gauntlet 10-25: at 1024 x 600 the panel rode up over the nav)
+    // and on a phone held upright it stops under the header too (wrapped facet rows made it tall enough to cover the
+    // mark and the settings); only a short landscape phone takes the header's height (below)
+    const short = document.body.dataset.cotHeight === 'short';
+    const ceiling = !short
+      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 8) + 8 : 16;
+    const fitHeight = Math.round(Math.max(160, Math.min(520, top - ceiling)));
     panel.style.maxHeight = `${fitHeight}px`;
     // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a
     // few px under the top and slicing through its letters (critic 236)
-    panel.style.minHeight = document.body.dataset.cotHeight === 'short' ? `${fitHeight}px` : '';
+    panel.style.minHeight = short ? `${fitHeight}px` : '';
     updateCues();
   }
 
@@ -265,10 +276,18 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     open = value;
     panel.hidden = !value;
     host.toggle.setAttribute('aria-expanded', String(value));
+    host.onOpenChange?.(value);
     if (value) {
       fit();
-      // Focus the search on a fine pointer; on touch it would raise the keyboard over the roster.
-      if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) input.focus();
+      // Focus the search on a fine pointer; on touch it would raise the keyboard over the roster. A docked Garage keeps
+      // its search in the strip (the panel's is hidden), so focus lands on the first chip.
+      if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) {
+        if (input.getClientRects().length) input.focus();
+        else panel.querySelector<HTMLElement>('.cot-facet-option')?.focus();
+      } else {
+        // the panel itself holds focus, so no control it covers keeps a focus ring under it
+        panel.focus({ preventScroll: true });
+      }
     } else if (restoreFocus) {
       host.toggle.focus();
     }
@@ -326,6 +345,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   return {
     toggle() { setOpen(!open); },
     close(options = {}) { setOpen(false, options); },
+    clear() { commit(EMPTY_GARAGE_FACET_STATE); },
     get isOpen() { return open; },
   };
 }

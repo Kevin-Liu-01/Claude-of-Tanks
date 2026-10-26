@@ -97,8 +97,8 @@ import {
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
-import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts';
-import type { EquipmentCombatState } from '../game/equipment.ts';
+import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
+import type { EquipmentCombatState } from './equipmentRules.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
 import {

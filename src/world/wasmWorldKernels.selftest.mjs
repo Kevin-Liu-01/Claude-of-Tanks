@@ -2,14 +2,18 @@
 // answer every query bit for bit as the TypeScript does: on two dedicated worlds (Verdant and Titan Gorge's cliffs, folds
 // split both ways) the contact heights and splits of 38,007 points (on and off the square, cell corners and edges,
 // non-finite), 20,000 obstacle queries (records and their order) and 4,000 collider rays (marched along the grid's own
-// order: distance, normal, record), then a whole match on each, whose state digests agree at every check.
+// order: distance, normal, record), the bots' clearance scans, then a whole match on each, whose state digests agree at
+// every check.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
 import '../vehicles/tankFactory.ts';
 import { compileWorldKernels } from './wasmWorldKernels.ts';
-import { createHullFootprint, hullFootprint } from './collision.ts';
+import {
+  CLEARANCE_SKIP_BRIDGE, CLEARANCE_SKIP_CRUSHABLE, collisionClearanceContainsPoint, createHullFootprint, hullFootprint,
+  rayCollisionClearanceEntry2,
+} from './collision.ts';
 import { createStructureSupportField } from '../sim/structureSupport.ts';
 import { createDeformedHeightField, createTerrainDeformation } from '../sim/terrainDeformation.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
@@ -127,6 +131,58 @@ for (const mapId of ['verdant', 'titan_gorge']) {
   assert.equal(fieldWasm.recordReads, fieldTs.recordReads, 'the same reads answered by a top');
   assert.ok(lifted > 500, `the roofs lift the samples (${lifted})`);
   console.log(`wasmWorldKernels.selftest: urban support on the kernel: ${samples} samples x 4 samplers over 240 hulls (${lifted} on a top), through stamps laid before and after the bind, a clock step and a reset, identical`);
+  ts.release?.(); wasm.release?.();
+}
+
+// the bots' clearance walks (ai.ts avoidObstacles, solidWithin, laneMeetsSolid, solidAhead): a box's candidates kept by
+// the skips and the clearance test, in the grid's order, and each lane's entry — on Verdant (the smock mill's needle-
+// cornered plinths: the bevels) and Urban, at the bots' margins, every skip; a walk begun again starts over
+for (const mapId of ['verdant', 'urban']) {
+  const ts = createDedicatedWorldCollision(mapId), wasm = createDedicatedWorldCollision(mapId, { kernels: module });
+  const scan = wasm.queryObstacles.clearance;
+  assert.equal(typeof scan?.point, 'function', `${mapId}: the kernel's obstacle grid carries the clearance walk`);
+  assert.equal(ts.queryObstacles.clearance, undefined, `${mapId}: the TypeScript grid carries none`);
+  const obstaclesTs = ts.getObstacles(), obstaclesWasm = wasm.getObstacles();
+  // a third of the anchors on the outlines with a corner sharper than 60 degrees, where the bevels bound the clearance
+  const sharp = obstaclesTs.filter((r) => [r.shape2, ...(r.shape2?.parts ?? [])].some((p) => p?.kind === 'convex' && p.points.some((_, k) => {
+    if (k % 2) return false;
+    const n = p.points.length, ax = p.points[(k + n - 2) % n] - p.points[k], az = p.points[(k + n - 1) % n] - p.points[k + 1];
+    const bx = p.points[(k + 2) % n] - p.points[k], bz = p.points[(k + 3) % n] - p.points[k + 1];
+    return ax * bx + az * bz > 0.5 * Math.hypot(ax, az) * Math.hypot(bx, bz);
+  })));
+  const keeps = (record, skip) => !((skip & CLEARANCE_SKIP_CRUSHABLE && record.crushable) || (skip & CLEARANCE_SKIP_BRIDGE && record.kind === 'bridge'));
+  const candidates = [];
+  const walk = (next) => { const out = []; for (let r = next(); r; r = next()) out.push(obstaclesWasm.indexOf(r)); return out; };
+  let inside = 0, entered = 0;
+  for (let i = 0; i < 6000; i++) {
+    const pool = i % 3 === 0 && sharp.length ? sharp : obstaclesTs;
+    const anchor = pool[Math.floor(random() * pool.length)];
+    const x = anchor.min[0] - 3 + random() * (anchor.max[0] - anchor.min[0] + 6), z = anchor.min[2] - 3 + random() * (anchor.max[2] - anchor.min[2] + 6);
+    const margin = [0, 0.4, 1.2, 2.95, 4.5][i % 5], skip = i % 4;
+    ts.queryObstacles(x - margin, z - margin, x + margin, z + margin, candidates);
+    const within = candidates.filter((r) => keeps(r, skip) && collisionClearanceContainsPoint(r, x, z, margin)).map((r) => obstaclesTs.indexOf(r));
+    scan.begin(x - margin, z - margin, x + margin, z + margin);
+    if (i % 11 === 0) { scan.point(x, z, margin, skip); scan.begin(x - margin, z - margin, x + margin, z + margin); }
+    assert.deepEqual(walk(() => scan.point(x, z, margin, skip)), within, `${mapId}: clearance point ${i} at (${x}, ${z}) margin ${margin}`);
+    inside += within.length;
+    const angle = random() * Math.PI * 2, reach = 2 + random() * 40, dx = Math.sin(angle) * (i % 7 ? 1 : 2.5), dz = Math.cos(angle) * (i % 7 ? 1 : 2.5);
+    const ex = x + dx * reach, ez = z + dz * reach;
+    const box = [Math.min(x, ex) - margin, Math.min(z, ez) - margin, Math.max(x, ex) + margin, Math.max(z, ez) + margin];
+    ts.queryObstacles(...box, candidates);
+    const lane = [];
+    for (const record of candidates) {
+      if (!keeps(record, skip)) continue;
+      const entry = rayCollisionClearanceEntry2(record, x, z, dx, dz, reach, margin);
+      if (entry != null) lane.push([obstaclesTs.indexOf(record), entry]);
+    }
+    scan.begin(...box);
+    const walked = [];
+    for (let r = scan.lane(x, z, dx, dz, reach, margin, skip); r; r = scan.lane(x, z, dx, dz, reach, margin, skip)) walked.push([obstaclesWasm.indexOf(r), scan.entry]);
+    assert.deepEqual(walked, lane, `${mapId}: clearance lane ${i} from (${x}, ${z})`);
+    entered += lane.length;
+  }
+  assert.ok(sharp.length > 0 && inside > 1000 && entered > 1000, `${mapId}: the scans meet the world (${sharp.length} sharp outlines, ${inside} within, ${entered} entered)`);
+  console.log(`wasmWorldKernels.selftest: ${mapId} clearance walks on the kernel: 6,000 points (${inside} records within) and 6,000 lanes (${entered} entered), ${sharp.length} sharp outlines among the anchors, identical`);
   ts.release?.(); wasm.release?.();
 }
 

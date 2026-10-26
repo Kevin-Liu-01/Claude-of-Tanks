@@ -11,6 +11,7 @@ import { traceTank } from '../sim/armor.ts';
 import { assertArmorTraceBounds, assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { garageStatGroup } from '../ui/garageDossier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 import {
   auditFleetBalance, FLEET_BALANCE_REVISION, sustainedPrimaryDpm,
 } from './balanceAudit.ts';
@@ -28,6 +29,9 @@ const finite = (value) => Number.isFinite(value);
 
 assert.equal(new Set(SAVED_TANK_IDS).size, SAVED_TANK_IDS.length,
   'saved fleet IDs are unique');
+// 252: the Garage groups a vehicle's stat bars by its shown tier (src/techTree/tiers.ts) and era; matchmaking keeps
+// tankTier, which the tier assertions below still pin.
+const shownGroup = (spec) => `${displayTier(spec.id)}/${spec.era}`;
 assert.equal(new Set(PRODUCTION_TANK_IDS).size, PRODUCTION_TANK_IDS.length,
   'production fleet IDs are unique');
 assert.ok(SAVED_TANK_IDS.length >= 150, 'the complete saved fleet is audited');
@@ -116,7 +120,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
   'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
 // 2026-09-23: 54 -> 50 when the m26_pershing / m45_patton / is7 / object279 notes retired with their hulls.
 // 2026-10-13: 50 -> 51 with the Tier X Warrior TES(H) envelope (coordinator ruling on VEH-11).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 51,
+// 2026-10-25: 51 -> 57 as the IFVs relabelled modern fold into their modern peers (KF41 Lynx, CV90 Mk IV and its concept,
+// Type 89, LRMV Lynx, Borsuk; fleetBalancePass applyModernEraFold).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 57,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -156,8 +162,8 @@ assert.deepEqual({
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
 assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
   'Challenger 1 uses its own late-Cold-War kinetic round instead of the Challenger 2 donor round');
-assert.equal(garageStatGroup(challenger1_mk2), '9/cold-war',
-  'garage compares Challenger 1 against its actual Tier IX peers');
+assert.equal(garageStatGroup(challenger1_mk2), shownGroup(challenger1_mk2),
+  'garage compares Challenger 1 against the peers of its shown tier');
 
 const kv2 = TANK_SPECS.kv2;
 assert.equal(tankTier('kv2'), 7, 'KV-2 remains Tier VII');
@@ -188,8 +194,8 @@ assert.deepEqual({
     { name: 'G-530 semi-AP', damage: 760, penetration: [130, 114] },
   ],
 }, 'KV-2 owns a more usable but still deliberate 152 mm Tier VII profile');
-assert.equal(garageStatGroup(kv2), '7/ww2',
-  'garage compares KV-2 against its Tier VII peers');
+assert.equal(garageStatGroup(kv2), shownGroup(kv2),
+  'garage compares KV-2 against the peers of its shown tier');
 
 const missileVelocityByVehicle = new Map([
   ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_wotan', 240],
@@ -295,12 +301,12 @@ assert.equal(localProryv.reload.totalS, 6.1,
   'local reload consumes the exact Proryv gun cycle');
 assert.equal(penAtDistanceMm(proryv.gun.shells[0], 2000), 740,
   'ballistics consumes the exact authored long-range penetration');
-assert.equal(garageStatGroup(proryv), '10/modern',
-  'garage normalizes Proryv against its actual matchmaking peers');
-assert.equal(garageStatGroup(retainedT90M), '9/modern',
-  'garage normalizes the retained T-90M against its new tier-IX peers');
-assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
-  'garage normalizes the 103A against its Cold War tier peers');
+assert.equal(garageStatGroup(proryv), shownGroup(proryv),
+  'garage normalizes Proryv against the peers of its shown tier');
+assert.equal(garageStatGroup(retainedT90M), shownGroup(retainedT90M),
+  'garage normalizes the retained T-90M against the peers of its shown tier');
+assert.equal(garageStatGroup(TANK_SPECS.strv103a), shownGroup(TANK_SPECS.strv103a),
+  'garage normalizes the 103A against its Cold War peers of its shown tier');
 
 const japaneseMbtProgression = [
   ['type90_kyumaru', 9, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
@@ -335,8 +341,8 @@ for (const [
     glacisKe, `${id}: generation-specific glacis protection`);
   assert.equal(spec.armor.turretPlates.find((plate) => plate.name === 'turret_cheek_R').keMm,
     turretKe, `${id}: generation-specific turret protection`);
-  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
-    `${id}: garage compares the tank against its actual tier`);
+  assert.equal(garageStatGroup(spec), shownGroup(spec),
+    `${id}: garage compares the tank against the peers of its shown tier`);
 }
 
 const merkavaProgression = [
@@ -378,8 +384,8 @@ for (const [
   assert.equal(local.reload.totalS, reload, `${id}: local combat consumes canonical reload`);
   assert.equal(penAtDistanceMm(primary, 2000), pen2000,
     `${id}: ballistics consumes canonical long-range penetration`);
-  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
-    `${id}: garage compares the tank against its actual tier`);
+  assert.equal(garageStatGroup(spec), shownGroup(spec),
+    `${id}: garage compares the tank against the peers of its shown tier`);
 }
 
 const pattonProgression = [
@@ -405,8 +411,8 @@ for (const [id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000]
   const dpm = primary.dmg * 60 / reload;
   assert.ok(dpm > previousPattonDpm, `${id}: family firepower progresses within Tier VIII`);
   previousPattonDpm = dpm;
-  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
-    `${id}: garage compares the tank against its Tier VIII peers`);
+  assert.equal(garageStatGroup(spec), shownGroup(spec),
+    `${id}: garage compares the tank against the peers of its shown tier`);
 }
 
 const starship = TANK_SPECS.m60a2;
@@ -423,8 +429,8 @@ assert.deepEqual(
   [720, 875, 3],
   'Starship Shillelagh is the high-penetration independent launcher channel',
 );
-assert.equal(garageStatGroup(starship), '9/cold-war',
-  'garage compares the Starship against its Tier IX peers');
+assert.equal(garageStatGroup(starship), shownGroup(starship),
+  'garage compares the Starship against the peers of its shown tier');
 
 const m3a3 = TANK_SPECS.m3a3_bradley;
 const m3a3Primary = m3a3.gun.shells[0];
@@ -440,8 +446,8 @@ assert.deepEqual([m3a3Missile.dmg, m3a3Missile.pen100Mm, m3a3Missile.reloadS],
   [700, 1050, 2.8], 'M3A3 TOW-2B is its independent Tier X anti-armor channel');
 assert.ok(m3a3.hp < TANK_SPECS.bmpt_t90.hp,
   'M3A3 remains a lighter glass-cannon scout than the Tier X Terminator');
-assert.equal(garageStatGroup(m3a3), '10/modern',
-  'garage compares the M3A3 against its Tier X peers');
+assert.equal(garageStatGroup(m3a3), shownGroup(m3a3),
+  'garage compares the M3A3 against the peers of its shown tier');
 
 const authority = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,

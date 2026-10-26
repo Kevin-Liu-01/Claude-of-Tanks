@@ -175,10 +175,10 @@ const live = (patch = {}) => ({
   assert.ok(body.children.includes(root), 'the root mounts on the body');
   assert.equal(root.className, 'cot-mp-status battle');
   assert.ok(head.find((node) => node.id === 'cot-mp-status-style'), 'the style is injected once');
-  // (one link readout, owner 2026-10-25: the strip holds body.cot-mp-link while it is up, and a second strip's exit leaves it)
-  assert.ok(body.classList.contains('cot-mp-link'), 'a battle strip owns the link readout: the HUD corner drops its own');
+  // (one link readout, owner 2026-10-25: the strip holds body.cot-mp-battle while it is up, and a second strip's exit leaves it)
+  assert.ok(body.classList.contains('cot-mp-battle'), 'a battle strip owns the link readout: the HUD corner drops its own');
   createMultiplayerStatusSurface({ host: 'battle', storage, now: () => at }).dispose();
-  assert.ok(body.classList.contains('cot-mp-link'), 'the class stays while a strip is still up');
+  assert.ok(body.classList.contains('cot-mp-battle'), 'the class stays while a strip is still up');
   assert.equal(head.all((node) => node.id === 'cot-mp-status-style').length, 1);
   const strip = root.children.find((node) => node.className.startsWith('cot-mp-strip'));
   const panel = root.children.find((node) => node.id === 'cot-mp-panel');
@@ -269,7 +269,7 @@ const live = (patch = {}) => ({
   surface.dispose();
   assert.ok(!body.children.includes(root) && !body.children.includes(banner), 'dispose removes the root and the banner');
   assert.equal(surface.pressLeave(), 'ignored');
-  assert.ok(!body.classList.contains('cot-mp-link'), 'the last strip out hands the link back to the HUD corner');
+  assert.ok(!body.classList.contains('cot-mp-battle'), 'the last strip out hands the link back to the HUD corner');
 
   // a remembered panel opens at once; the lobby host is inline, without a leave
   stored.set(MP_STATUS_PANEL_STORAGE_KEY, '1');

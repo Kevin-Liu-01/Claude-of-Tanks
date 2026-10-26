@@ -11,6 +11,11 @@
  * texture px for sprites). Colours arrive from sideColor / sideFill: own and
  * enemy in the team tokens under the player's colour preset (the HUD's blip
  * colours), neutral chalk and contested amber from OBJECTIVE_PALETTE.
+ *
+ * (UI-LOCKDOWN A) The glyphs draw no letters: a badge's or a lane mark's letter is text, so badgeLetter() and
+ * laneLetter() say where it sits and how it is set, and an on-screen canvas places it as DOM over itself (canvasText.ts:
+ * the HUD's map, the team strip's chips, the Deploy maps). A texture or the manual's SVG, which have no DOM over them,
+ * set it with objectiveGlyphLetters.ts.
  */
 
 import { TOKENS, liveToken } from './tokens/tokens.ts';
@@ -82,16 +87,13 @@ function hexPath(ctx: Ctx, x: number, y: number, r: number): void {
 interface BadgeStyle {
   fill: string;
   stroke: string;
-  label?: string;
-  labelColor?: string;
-  font?: string;
   /** dashed ring: a contested or locked badge */
   dashed?: boolean;
   /** stroke weight of the coloured ring (the dark keyline is drawn under it) */
   ringWidth?: number;
 }
 
-/** Hexagonal badge with a dark keyline, coloured ring, translucent fill and an optional letter. */
+/** Hexagonal badge with a dark keyline, coloured ring and translucent fill (its letter: badgeLetter()). */
 export function drawHexBadge(ctx: Ctx, x: number, y: number, r: number, style: BadgeStyle): void {
   const ringWidth = style.ringWidth ?? r * 0.2;
   ctx.save();
@@ -107,17 +109,42 @@ export function drawHexBadge(ctx: Ctx, x: number, y: number, r: number, style: B
   ctx.strokeStyle = style.stroke;
   ctx.stroke();
   ctx.setLineDash([]);
-  if (style.label) {
-    ctx.font = style.font || `700 ${Math.round(r * 1.05)}px 'Cot UI', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = Math.max(1, r * 0.22);
-    ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
-    ctx.strokeText(style.label, x, y + r * 0.06);
-    ctx.fillStyle = style.labelColor || OBJECTIVE_PALETTE.chalk;
-    ctx.fillText(style.label, x, y + r * 0.06);
-  }
   ctx.restore();
+}
+
+/** Where a glyph's letter sits and how it is set: centred (middle baseline) on (x, y), `px` its size in the glyph's
+ *  units, `color` its ink over a halo of `halo` px in OBJECTIVE_PALETTE.keyline. */
+export interface GlyphLetter {
+  x: number;
+  y: number;
+  px: number;
+  color: string;
+  halo: number;
+}
+
+/** A hexagonal badge's letter (drawHexBadge's at (x, y), radius r), in `color` (the neutral chalk by default). */
+export function badgeLetter(x: number, y: number, r: number, color: string, out: GlyphLetter): GlyphLetter {
+  out.x = x;
+  out.y = y + r * 0.06;
+  out.px = Math.round(r * 1.05);
+  out.color = color;
+  out.halo = Math.max(1, r * 0.22);
+  return out;
+}
+
+/** The letter's face where its caller names none: the badges' (the HUD's map sets its own condensed face). */
+export function badgeLetterFont(px: number): string {
+  return `700 ${px}px 'Cot UI', sans-serif`;
+}
+
+/** A lane mark's number (drawLaneGlyph's at (x, y), radius r). */
+export function laneLetter(x: number, y: number, r: number, out: GlyphLetter): GlyphLetter {
+  out.x = x;
+  out.y = y + r * 0.06;
+  out.px = Math.round(r * 0.95);
+  out.color = OBJECTIVE_PALETTE.chalk;
+  out.halo = Math.max(1, r * 0.2);
+  return out;
 }
 
 /** Progress arc around a badge: `fraction` 0..1 clockwise from 12 o'clock. */
@@ -143,17 +170,16 @@ export function drawProgressArc(
 
 interface ChipStyle {
   side: ObjectiveSide;
-  label: string;
   /** capture progress 0..1 toward `progressSide` (the ring's share) */
   progress: number;
   progressSide?: 'own' | 'enemy';
-  font?: string;
 }
 
 /**
  * The HUD's sector chip under the score (brand-ui H3, the direction's 06-battle-hud.html .sectors): the zone's hexagon
- * on a dark well, rimmed and lettered in its side's ink, inside a capture ring whose arc is the progress toward its side.
- * A contested zone's ring is dashed all round in the contested ink. `r` is the hexagon's radius; the ring runs at 1.23 r.
+ * on a dark well, rimmed in its side's ink (its letter in that ink: badgeLetter()), inside a capture ring whose arc is the
+ * progress toward its side. A contested zone's ring is dashed all round in the contested ink. `r` is the hexagon's radius;
+ * the ring runs at 1.23 r.
  */
 export function drawObjectiveChip(ctx: Ctx, x: number, y: number, r: number, chip: ChipStyle): void {
   const ring = r * 1.23;
@@ -176,9 +202,7 @@ export function drawObjectiveChip(ctx: Ctx, x: number, y: number, r: number, chi
     drawProgressArc(ctx, x, y, ring, chip.progress, sideColor(chip.progressSide ?? chip.side), width);
   }
   const color = sideColor(chip.side);
-  drawHexBadge(ctx, x, y, r, {
-    fill: OBJECTIVE_PALETTE.well, stroke: color, label: chip.label, labelColor: color, ringWidth: r * 0.11, font: chip.font,
-  });
+  drawHexBadge(ctx, x, y, r, { fill: OBJECTIVE_PALETTE.well, stroke: color, ringWidth: r * 0.11 });
 }
 
 /** Swallow-tail pennant on a pole; `h` is the pole height, the pennant hangs from its top. */
@@ -379,9 +403,9 @@ export function drawCheck(ctx: Ctx, x: number, y: number, s: number, color: stri
 
 /**
  * The proving ground's lane mark (v2 progression, 2026-10-17): a square target board on a dark keyline, a ring round
- * the aim point and the lane's number, so a lane reads as a range lane on the map and over the field alike.
+ * the aim point and the lane's number (laneLetter()), so a lane reads as a range lane on the map and over the field alike.
  */
-export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number, label: string, font?: string): void {
+export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number): void {
   const half = r * 0.86;
   ctx.save();
   ctx.lineJoin = 'round';
@@ -400,13 +424,5 @@ export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number, label: 
   ctx.lineWidth = Math.max(0.9, r * 0.12);
   ctx.strokeStyle = OBJECTIVE_PALETTE.contested;
   ctx.stroke();
-  ctx.font = font || `700 ${Math.round(r * 0.95)}px system-ui, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.lineWidth = Math.max(1, r * 0.2);
-  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
-  ctx.strokeText(label, x, y + r * 0.06);
-  ctx.fillStyle = OBJECTIVE_PALETTE.chalk;
-  ctx.fillText(label, x, y + r * 0.06);
   ctx.restore();
 }

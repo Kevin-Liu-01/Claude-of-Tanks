@@ -7,15 +7,9 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export const VEHICLE_ERAS = Object.freeze({
-  INTERWAR: 'interwar',
-  WORLD_WAR_II: 'ww2',
-  COLD_WAR: 'cold-war',
-  MODERN: 'modern',
-  NEXT_GENERATION: 'next-generation',
-} as const);
-
-export type VehicleEra = typeof VEHICLE_ERAS[keyof typeof VEHICLE_ERAS];
+// The era ids and the postwar gate live in a DOM-free slice the rooms Worker's rules can reach (sim/vehicleEras.ts).
+import { VEHICLE_ERAS, type VehicleEra } from '../sim/vehicleEras.ts';
+export { VEHICLE_ERAS, isPostwarVehicleEra, type VehicleEra } from '../sim/vehicleEras.ts';
 
 export const VEHICLE_ERA_ORDER: readonly VehicleEra[] = Object.freeze([
   VEHICLE_ERAS.INTERWAR,
@@ -170,13 +164,6 @@ export function vehicleEraLabelI18n(
 
 export function compareVehicleEras(a: VehicleEra, b: VehicleEra): number {
   return VEHICLE_ERA_ORDER.indexOf(a) - VEHICLE_ERA_ORDER.indexOf(b);
-}
-
-/** Postwar vehicle technologies shared by Cold War and newer platforms. */
-export function isPostwarVehicleEra(era: RuntimeValue): boolean {
-  return era === VEHICLE_ERAS.COLD_WAR
-    || era === VEHICLE_ERAS.MODERN
-    || era === VEHICLE_ERAS.NEXT_GENERATION;
 }
 
 /** Modern presentation family used by contemporary and demonstrator designs. */

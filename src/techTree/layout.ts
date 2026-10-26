@@ -4,7 +4,8 @@
 // Grid units: tier column c (0-based) spans x in [2c, 2c + 1] and its right gutter (2c + 1, 2c + 2); drawn row r spans
 // y in [2r, 2r + 1] and the gap under it (2r + 1, 2r + 2). The special lane's rows follow the line lanes' rows.
 // A connector runs along its parent's row and enters its child:
-//   - from the left, straight when they share a row, else turning in the gutter just before the child;
+//   - from the left, straight when they share a row, else turning in the gutter just before the child (back from
+//     the gutter's middle, so the turn stays clear of a sibling's arrowhead);
 //   - from above or below at the child's centre when it is a second parent (another parent already enters from the
 //     left) and the parent's row is clear up to the child's column;
 //   - vertically between rows when parent and child share a tier (a sidegrade stacked under or over its parent).
@@ -75,7 +76,8 @@ export function layoutTree(tree: NationTree): TreeLayout {
           const ex = cx + 0.5;
           points = [{ x: x1, y: y1 }, { x: ex, y: y1 }, { x: ex, y: cr > pr ? 2 * cr : 2 * cr + 1 }];
         } else {
-          const gx = cx - 0.5;
+          // the turn sits back from the gutter's middle, clear of a sibling's arrowhead entering the same column
+          const gx = cx - 0.62;
           points = [{ x: x1, y: y1 }, { x: gx, y: y1 }, { x: gx, y: y2 }, { x: cx, y: y2 }];
         }
       }
