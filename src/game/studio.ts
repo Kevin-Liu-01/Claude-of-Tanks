@@ -250,6 +250,9 @@ interface StudioContext {
   restoreStudioAtmosphere?(): void;
   /** The renderer's forward program warm (main.ts): the first view's programs are prepared with it (prepareFirstViewPrograms). */
   programWarm?: Pick<ForwardProgramWarmOwner, 'prepareSceneSteps'>;
+  /** (2026-10-26) The first view's shadow casters drawn into the cascades a batch at a time under the entry's cover
+   *  (main.ts → deploymentShadowWarm.prime), so their depth programs link before the first frame. */
+  prepareFirstViewShadows?(): Promise<unknown>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -5724,6 +5727,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       try { fx.prepareWorldMaterials?.(); } catch { /* the first fx update patches them as before */ }
       // the programs the first view draws, linked before it
       await prepareFirstViewPrograms(owns);
+      stillOwned();
+      // and its casters' depth programs (12 of a cold entry's first-frame links once the world's materials were patched
+      // first: 0.62 s of its first frame under load)
+      try { await ctx.prepareFirstViewShadows?.(); } catch { /* the first frame links them as before */ }
       stillOwned();
       // Direct-route boot has not started the shared rAF yet. Produce one
       // complete real Studio frame behind the boot veil so readiness means a
