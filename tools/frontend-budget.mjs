@@ -98,7 +98,7 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged. The pins are the final release build's (432767fd9e, after the
   // integ fixes: the Field Manual's Watch keys, the T-90 pair's matchmaking tier, the four hover loops, the try-on's seed
   // form): game -318 B and Gallery -291 B against 97371edb3a's build, 404 +16 B.
-  // 2026-10-26 (integrator 258, re-pinned at the release build of 9526a9f493 after its npm ci; each share is the local build of
+  // 2026-10-26 (integrator 258, re-pinned at the release build of 7d7d15e292 after its npm ci; each share is the local build of
   // its merge commit against the one before, main 257 local within -118 B of its release pin; Main approved the totals):
   // - Main: "owner Garage framing + Overview compare" (brand-ui-garage-redesign-245 5197bfc9c0: the tracks on the name line,
   //   the 14 degree look-down, the Overview readout's compare legend, Studio s17, the tier chip in the kitPicker chunk):
@@ -113,11 +113,14 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   vehicles-m48a5-mantlet-258 +47 B game (+74 B Gallery); vehicles-rear-drums-258 +386 B game (+433 B cn, +159 B entry,
   //   Gallery +172 B); brand-ui-primitives-250 07efeea37c (the 13 Deploy plates): -64 B game, docs +71 B, Gallery -61 B, home
   //   +5 B (approved -157 / +73 / +56 / +16); battle-spikes-253, media-deploy-panels-257 and motion-lint-253 none.
-  // Requests unchanged. Over 257's pins: game +1,521 B (with the 128 B margin), entry +547 B, Gallery +1,237 B, home +334 B,
+  // - Main: "boot-258 last" (nav-perf's boot fix, item/boot-258 2aef1bc70b: isBootCovering for every boot, the link waits
+  //   before the first live frame, the Garage warm uncull'd at the scene's samples, the aux-armor rescans): +282 B game and cn
+  //   (+630 raw; entry +45 B), Gallery +308 B (+502 raw, fleetFactory).
+  // Requests unchanged. Over 257's pins: game +1,803 B (with the 128 B margin), entry +592 B, Gallery +1,545 B, home +334 B,
   // docs +94 B, 404 -18 B.
-  game: { brotliBytes: 1086836, requests: 128, entryBrotliBytes: 240504 },
-  cn: { brotliBytes: 1129094, requests: 129, entryBrotliBytes: 240504 },
-  gallery: { brotliBytes: 675737, requests: 75 },
+  game: { brotliBytes: 1087118, requests: 128, entryBrotliBytes: 240549 },
+  cn: { brotliBytes: 1129376, requests: 129, entryBrotliBytes: 240549 },
+  gallery: { brotliBytes: 676045, requests: 75 },
   home: { brotliBytes: 26542, requests: 8 },
   docs: { brotliBytes: 33107, requests: 12 },
   notFound: { brotliBytes: 16686, requests: 7 },
