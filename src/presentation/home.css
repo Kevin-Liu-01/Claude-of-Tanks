@@ -309,7 +309,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
   /* the caption takes the row beside the pause and wraps at its spaces, so the disc keeps the column's right edge whatever
      the clip's names, battlefield and hour */
-  .hero__reelbar{justify-content:space-between;height:auto;min-height:44px}
+  .hero__reelbar{justify-content:space-between;height:auto;min-height:44px;margin-left:0}
   .hero__shots{flex:1 1 auto;min-width:0;text-align:left}
   .hero__shot{align-items:flex-start}
   .hero__shot b{white-space:normal}
