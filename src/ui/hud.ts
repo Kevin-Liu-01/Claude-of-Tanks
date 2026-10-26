@@ -355,6 +355,8 @@ interface HudHitEvent extends HitEventPresentation {
 }
 
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
+  /** ui:minimapZoom: the map's size step to set (none: M's toggle of the large step). */
+  step?: number;
   destroyed?: boolean;
   id?: string;
   /** tank:spotted: who lit the tank (spotting.ts), when the sim names a spotter. */
@@ -2138,6 +2140,13 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
   font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);white-space:nowrap;}
 .cot-mm-hd .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-mm-hd .cot-c-kbd{flex:none;height:19px;min-width:19px;padding:0 5px;font-size:var(--battle-fs-11);}
+/* (the size control: the map's glyph and its key cap on the header's line, the kit's ring on hover and focus) */
+.cot-mm-size{flex:none;display:inline-flex;align-items:center;gap:var(--s1);height:22px;padding:0 2px 0 var(--s1);border:0;
+  border-radius:var(--control-radius);background:none;color:var(--ink-2);font:inherit;cursor:pointer;pointer-events:auto;}
+.cot-mm-size:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
+.cot-mm-size:focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px;}
+.cot-mm-size[aria-pressed='true']{color:var(--accent-hi);}
+body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 /* Detection is one compact instrument, revealed after the authoritative
    sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
    bulb, keeping motion quiet while the state remains active. */
@@ -3112,9 +3121,13 @@ export function initHud(bus: EventBus): HudRuntime {
   const mmLetters = createCanvasText(mmWrap, 'cot-mm-letters');
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
-  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
+  // (its key cap is the size control's, INTERACTION-REDESIGN C: the large map had a key and no control)
+  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span>`
+    + `<button type="button" class="cot-mm-size" aria-pressed="false" aria-label="${t('hud.map.large')}">`
+    + `${uiIconSVG('zoomIn', 14)}<kbd class="cot-c-kbd" aria-hidden="true">M</kbd></button>`;
   const mmName = requireElement<HTMLElement>(mmHead, '.nm');
   const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
+  const mmSize = requireElement<HTMLButtonElement>(mmHead, '.cot-mm-size');
   // the grid's coordinates, WoT's convention: numbers are the columns (1 west to 0 east, along the top), letters the rows
   // (A north to K south, down the left), in the plate's gutter (the CSS above)
   const mmCols = el('div', 'cot-mm-gx', mmWrap), mmRows = el('div', 'cot-mm-gy', mmWrap);
@@ -7743,13 +7756,39 @@ export function initHud(bus: EventBus): HudRuntime {
   // resolution; CSS scales it, so blips/labels stay proportionate.
   // (the steps scale every layout's own plate size, --mm-k: a fixed 300 px lost to the phones' sizes and the 32vh cap, so
   // gauntlet r3's large map grew 10 px at 1280 and not at all at 1024x600; data-zoom names the step for the probes)
+  // INTERACTION-REDESIGN C (the census's large-map row: a three-size cycle on M alone, forgotten, two presses back from
+  // large): M, the plate's size control and a tap on a touch layout's map toggle the large step and the size the map
+  // rests at; a step named by the event ({ step }) is set as it is (the probes' sizes); the size is remembered.
   const MM_SCALES = [0.75, 1, 1.5];
+  const MM_LARGE = MM_SCALES.length - 1;
+  const MM_SIZE_KEY = 'cot.hud.mapSize';
   let mmSizeIdx = 1;
-  mmWrap.dataset.zoom = String(mmSizeIdx);
-  on('ui:minimapZoom', () => {
-    mmSizeIdx = (mmSizeIdx + 1) % MM_SCALES.length;
-    mmWrap.style.setProperty('--mm-k', String(MM_SCALES[mmSizeIdx]));
-    mmWrap.dataset.zoom = String(mmSizeIdx);
+  try {
+    const saved = Number(localStorage.getItem(MM_SIZE_KEY) ?? NaN);
+    if (Number.isInteger(saved) && saved >= 0 && saved <= MM_LARGE) mmSizeIdx = saved;
+  } catch { /* no storage: the default size */ }
+  let mmRest = mmSizeIdx < MM_LARGE ? mmSizeIdx : 1;
+  const setMapSize = (step: number, remember: boolean): void => {
+    mmSizeIdx = step;
+    if (step < MM_LARGE) mmRest = step;
+    mmWrap.style.setProperty('--mm-k', String(MM_SCALES[step]));
+    mmWrap.dataset.zoom = String(step);
+    mmSize.setAttribute('aria-pressed', step === MM_LARGE ? 'true' : 'false');
+    mmSize.innerHTML = `${uiIconSVG(step === MM_LARGE ? 'zoomOut' : 'zoomIn', 14)}`;
+    mmSize.append(mmKey);
+    if (remember) try { localStorage.setItem(MM_SIZE_KEY, String(step)); } catch { /* no storage */ }
+  };
+  setMapSize(mmSizeIdx, false);
+  on('ui:minimapZoom', (payload) => {
+    const step = typeof payload?.step === 'number' ? Math.max(0, Math.min(MM_LARGE, Math.round(payload.step)))
+      : mmSizeIdx === MM_LARGE ? mmRest : MM_LARGE;
+    setMapSize(step, true);
+  });
+  mmSize.addEventListener('click', () => { bus.emit('ui:minimapZoom', {}); });
+  // (a touch layout's map is its own control: a tap on it toggles the large step; it has no header)
+  mmWrap.addEventListener('click', (event) => {
+    if (!document.body.classList.contains('cot-touch-layout') || (event.target instanceof Element && event.target.closest('.cot-mm-size'))) return;
+    bus.emit('ui:minimapZoom', {});
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;

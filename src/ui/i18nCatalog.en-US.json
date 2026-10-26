@@ -1370,6 +1370,7 @@
   "hud.net.local": "LOCAL",
   "hud.net.link": "LINK",
   "hud.net.ms": "MS",
+  "hud.map.large": "Large map",
   "hud.net.fps": "FPS",
   "hud.drive.hold": "HOLD",
   "hud.drive.kmh": "km/h",
