@@ -9,6 +9,10 @@
 import type { Camera, Object3D, Scene } from 'three';
 import { Matrix4, Vector3 } from 'three';
 import type { ShadowCascadePolicy } from './renderLayers.ts';
+import {
+  attachMergedHullCasters, buildMergedHullCasters, detachMergedHullCasters, disposeMergedHullCasters, mergedHullCastersHold,
+  type MergedHullCasters,
+} from './nearVehicleShadowMerge.ts';
 
 /**
  * Hulls farther than this from the camera keep their convex proxies in every cascade (2026-10-15, SKY shadows r2b: 70 m
@@ -69,7 +73,22 @@ interface NearVehicleShadowPolicyOptions {
    * that crosses a break a hull's own depth does not (a detail / proxy seam inside one shadow at 18-24 m).
    */
   sunDirection?: () => Vector3;
+  /**
+   * (battle-spikes-253) True: a selected hull's opaque detail casts through merged casters, one per owner and shadow
+   * side (nearVehicleShadowMerge.ts). The frame runtime's live battle frames alone (never the Garage, the killcam or a
+   * capture's staging); absent or false: every hull casts its detail mesh by mesh, as before.
+   */
+  merge?: () => boolean;
 }
+
+/** (battle-spikes-253) A hull's merged casters are built at most this many a frame (the others cast mesh by mesh). */
+export const NEAR_SHADOW_MERGE_BUILDS_PER_FRAME = 1;
+/** Merged sets held at once; past it the least recently selected goes. */
+export const NEAR_SHADOW_MERGE_HELD_MAX = 12;
+/** A hull out of the selection this many updates gives its merged set back (about ten seconds). */
+export const NEAR_SHADOW_MERGE_HOLD_UPDATES = 600;
+/** After a source changed under a merged set, the hull casts mesh by mesh this many updates before it is rebuilt. */
+export const NEAR_SHADOW_MERGE_RETRY_UPDATES = 30;
 
 interface NearVehicleSelection {
   readonly root: Object3D;
@@ -83,6 +102,8 @@ export interface NearVehicleShadowPolicy extends ShadowCascadePolicy {
   /** Re-select the near hulls for this frame; cheap (scene children only). */
   update(): void;
   readonly selected: readonly NearVehicleSelection[];
+  /** (battle-spikes-253) The merged sets held now, by hull (null: nothing of its detail merges, or a retry pending). */
+  readonly merged: ReadonlyMap<Object3D, MergedHullCasters | null>;
 }
 
 export function markVehicleShadowDetail(root: Object3D, detail: VehicleShadowDetail): void {
@@ -149,8 +170,67 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
   let reducedNow = false;
   // the flags flipped for the cascade being rendered, restored in afterLight in reverse order
   const flipped: { object: Object3D; castShadow: boolean; visible: boolean }[] = [];
+  // (battle-spikes-253) the merged sets by hull, the update each was last selected at, and the sets attached for the
+  // cascade being rendered
+  const merged = new Map<Object3D, MergedHullCasters | null>();
+  const mergedSeen = new Map<Object3D, number>();
+  const mergedRetryAt = new Map<Object3D, number>();
+  const attached: MergedHullCasters[] = [];
+  let updates = 0;
+  let mergeNow = false;
 
   function update(): void {
+    selectHulls();
+    updateMerged();
+  }
+
+  function dropMerged(root: Object3D): void {
+    const set = merged.get(root);
+    if (set) disposeMergedHullCasters(set);
+    merged.delete(root);
+    mergedSeen.delete(root);
+  }
+
+  /** Build the selected hulls' merged sets (a budget a frame), drop the changed and the long unselected ones. */
+  function updateMerged(): void {
+    updates++;
+    mergeNow = !reducedNow && selected.length > 0 && (options.merge?.() ?? false);
+    if (!(options.merge?.() ?? false)) {
+      for (const root of [...merged.keys()]) dropMerged(root);
+      mergedRetryAt.clear();
+      return;
+    }
+    let builds = 0;
+    for (const entry of selected) {
+      const root = entry.root;
+      mergedSeen.set(root, updates);
+      const set = merged.get(root);
+      if (set && !mergedHullCastersHold(set)) {
+        // a source changed under it (damage, a detached part, a wreck): mesh by mesh until the retry
+        dropMerged(root);
+        mergedRetryAt.set(root, updates + NEAR_SHADOW_MERGE_RETRY_UPDATES);
+        mergedSeen.set(root, updates);
+        continue;
+      }
+      if (merged.has(root) || builds >= NEAR_SHADOW_MERGE_BUILDS_PER_FRAME || !mergeNow) continue;
+      if ((mergedRetryAt.get(root) ?? 0) > updates) continue;
+      const detail = vehicleShadowDetailOf(root);
+      if (!detail) continue;
+      merged.set(root, buildMergedHullCasters(root, detail.detail));
+      mergedRetryAt.delete(root);
+      builds++;
+    }
+    for (const [root, seen] of mergedSeen) {
+      if (updates - seen > NEAR_SHADOW_MERGE_HOLD_UPDATES || root.parent !== options.scene) { dropMerged(root); mergedRetryAt.delete(root); }
+    }
+    while (merged.size > NEAR_SHADOW_MERGE_HELD_MAX) {
+      let oldest: Object3D | null = null;
+      for (const root of merged.keys()) if (!oldest || (mergedSeen.get(root) ?? 0) < (mergedSeen.get(oldest) ?? 0)) oldest = root;
+      dropMerged(oldest!);
+    }
+  }
+
+  function selectHulls(): void {
     held.clear();
     for (const entry of selected) held.add(entry.root);
     selected.length = 0;
@@ -198,7 +278,11 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
       if (!(entry.cascadeMask & bit)) continue;
       const detail = vehicleShadowDetailOf(entry.root);
       if (!detail) continue;
+      // (battle-spikes-253) the merged casters cast the opaque detail they cover; the rest casts mesh by mesh
+      const set = mergeNow ? merged.get(entry.root) ?? null : null;
+      if (set) { attachMergedHullCasters(set); attached.push(set); }
       for (const mesh of detail.detail) {
+        if (set?.covered.has(mesh)) continue;
         if (mesh.castShadow || (reducedNow && !isReducedMesh(mesh))) continue;
         flipped.push({ object: mesh, castShadow: mesh.castShadow, visible: mesh.visible });
         mesh.castShadow = true;
@@ -212,6 +296,8 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
   }
 
   function afterLight(): void {
+    for (const set of attached) detachMergedHullCasters(set);
+    attached.length = 0;
     for (let i = flipped.length - 1; i >= 0; i--) {
       const f = flipped[i];
       f.object.castShadow = f.castShadow;
@@ -220,7 +306,7 @@ export function createNearVehicleShadowPolicy(options: NearVehicleShadowPolicyOp
     flipped.length = 0;
   }
 
-  return { update, beforeLight, afterLight, selected };
+  return { update, beforeLight, afterLight, selected, merged };
 }
 
 /** Names of the armour / running-gear meshes worth casting for a near hull (see tankFactoryCore.collectNearShadowDetail). */

@@ -552,6 +552,39 @@ cascade 0 to 32 m and cascade 1 to 94 m (its 30 / 89 m breaks and the fade's 6 %
   (the owner's 2026-09-20 ask), 22-42 draws for the nearest hull and 10-17 for the others. Those casters write depth
   only, so they could merge per articulation owner across materials; that is the remaining lever here.
 
+### Step 3: the near hulls' merged shadow casters (2026-10-26)
+
+nearVehicleShadowMerge.ts, under the vehicles lane's conditions. A selected hull's real opaque casters merge per owner
+(the detail mesh's parent, a static LOD wrapper skipped: hull, turret, gun mount, recoil, a roof station) and per
+effective shadow side, into the owner's own frame. The merged copy holds positions only, sits on the shadow-only layer,
+and is attached under its owner only while one of its cascades renders. Cut-out casters keep their own cast (alpha test,
+alpha or displacement maps, transparency, field suits, lattice and slat panels), and so do instanced, skinned and morphed
+meshes (the running gear), runtime-written buffers and meshes with their own depth material.
+
+Each source is stamped when merged: geometry, material, position version, visibility, parent and cast flag. A stamp
+that no longer holds (damage, a detached part, a bent gun, a wreck's swap) drops the set, and the hull casts mesh by
+mesh for 30 updates before it is rebuilt. The policy builds one set a frame, holds at most 12 and gives one back after
+600 updates out of the selection. It runs in live battle frames only (`setVehicleShadowMerge(frame.inBattle &&
+!frame.killcamActive)`), never in the reduced tier, and `__SHADOW_DEBUG.noVehicleMerge` turns it off for A/Bs.
+
+Per hull and cascade, high geometry (unique detail meshes; a detail list can name a merged mesh more than once): T-90M
+20 -> 14 shadow draws, Leopard 2A7V 23 -> 15, SEPv3 25 -> 13. The depth triangles per shadow side match the detail's
+(nearVehicleShadowMerge.selftest: count, area, area-weighted centroid and normal).
+
+In the browser (`tools/tmp-253-merge-shadow-ab.mjs`, untracked; one build, merge on and off by `noVehicleMerge`): Urban
+7v7, the bots frozen and moved 400 m off, the player's T-90M with the Leopard 14 m and the SEPv3 24 m ahead, the battle
+held by the settings pause, every cascade rendered each frame.
+
+- Draws: the near hulls' shadow draws 143 -> 109 a frame (cascade 0 55 -> 41, cascade 1 60 -> 40). The whole shadow
+  pass went 175 -> 141 and the main pass held at 451. Off, on, off, on gave the same counts both times.
+- Never cast twice: over 60 frames, 240 hull-cascade checks and 720 merged draws, no merged caster drew in a cascade
+  with a detail mesh it covers.
+- Depth: each hull's shadow depth rendered from cascades 0 and 1 as the policy casts it, into a float target the size
+  of the map, with each caster's own shadow side. Crops of 192 texels about each hull matched merged against mesh by
+  mesh texel for texel: 0 of 3,236-15,175 covered texels differ, max delta 0. Final frames cannot show it: the held
+  scene still animates (clouds, wind, temporal post), and two frames with the merge off already differed on about as
+  many crop pixels as off against on.
+
 ## The HUD's frame cost (UI-LOCKDOWN part E: 0.5 ms a frame)
 
 The Steinburg 14v14 profile: code under the HUD's sources costs 20.8 ms a second (about 1 ms a frame there).
