@@ -1,12 +1,12 @@
 import { createCustomSelect } from './customSelect.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
+import { createPicker, type PickerItem } from './components/picker.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
 import { segmented, setRoving, wireRoving } from './components/components.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
 import {
@@ -14,7 +14,7 @@ import {
   writeTeamNations,
 } from '../game/teamArrangement.ts';
 import { createTeamNationsControl } from './teamNationsControl.ts';
-import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
+import { COUNTRIES, countryNation, countryOfVehicle, type CountryId } from '../sim/countries.ts';
 import {
   BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, modeCopyValues,
   normalizeTeamArrangement, rulesetSides, sidesPresetOf, type TeamArrangement,
@@ -164,16 +164,6 @@ export interface PlayMenuRuntime {
 interface MenuSelectElement extends HTMLDivElement {
   value: string;
   disabled: boolean;
-}
-
-interface MenuSelectController {
-  close(restoreFocus?: boolean): void;
-  positionList(): void;
-}
-
-interface MenuBinding {
-  control: MenuSelectElement;
-  controller: MenuSelectController;
 }
 
 /**
@@ -382,29 +372,16 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);text-align:left;cursor:pointer;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .cot-play .menu-select-trigger:hover{background:var(--surface-hover)}
-.cot-play .menu-select.open .menu-select-trigger{box-shadow:var(--ring-accent)}
+.cot-play .menu-select-trigger[aria-expanded=true]{box-shadow:var(--ring-accent)}
 .cot-play .menu-select-trigger::after{content:"";position:absolute;right:var(--s4);top:50%;width:7px;height:7px;
   border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:translateY(-68%) rotate(45deg);
   transition:transform var(--dur-fast) var(--ease-move)}
-.cot-play .menu-select.open .menu-select-trigger::after,.cot-play .menu-select-trigger[aria-expanded=true]::after{transform:translateY(-30%) rotate(225deg)}
+.cot-play .menu-select-trigger[aria-expanded=true]::after{transform:translateY(-30%) rotate(225deg)}
 .cot-play .menu-select.disabled .menu-select-trigger{cursor:not-allowed;background:transparent;box-shadow:var(--ring-1);color:var(--ink-3)}
 .cot-play .menu-select.disabled .menu-select-trigger::after{opacity:.45}
-.cot-play .menu-select-list{position:fixed;z-index:112;display:none;gap:2px;margin:0;padding:var(--s1);
-  overflow:auto;overscroll-behavior:contain;scrollbar-width:none;border:0;border-radius:var(--r1);background:var(--surface-menu);
-  box-shadow:var(--e3);color:var(--ink-1)}
-.cot-play .menu-select-list::-webkit-scrollbar{display:none}.cot-play .menu-select.open .menu-select-list{display:grid}
-.cot-play .menu-select-option{position:relative;display:flex;align-items:center;gap:var(--s3);min-height:40px;padding:0 34px 0 var(--s3);
-  overflow:hidden;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);
-  font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);text-align:left;cursor:pointer;
-  transition:background-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
-.cot-play .menu-select-option::after{content:"";position:absolute;right:var(--s4);top:50%;width:9px;height:5px;
-  border-left:1.5px solid transparent;border-bottom:1.5px solid transparent;transform:translateY(-65%) rotate(-45deg)}
-.cot-play .menu-select-option:hover{background:var(--surface-hover);color:var(--ink-1)}
-.cot-play .menu-select-option.on{background:var(--accent-wash);color:var(--ink-1)}
-.cot-play .menu-select-option.on::after{border-color:var(--accent)}
-.cot-play .menu-select-option-copy,.cot-play .menu-select-trigger-copy{display:grid;min-width:0;gap:2px}
-.cot-play .menu-select-option-copy b,.cot-play .menu-select-trigger-copy>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
-.cot-play .menu-select-option-copy small,.cot-play .menu-select-trigger-copy small{color:var(--ink-3);
+.cot-play .menu-select-trigger-copy{display:grid;min-width:0;gap:2px}
+.cot-play .menu-select-trigger-copy>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.cot-play .menu-select-trigger-copy small{color:var(--ink-3);
   font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
 /* a seat's team: alpha in the own-team blue and bravo in the enemy red, as the roster draws them */
 .cot-play .team-mark{display:inline-block;width:8px;height:8px;flex:0 0 8px;border:1.5px solid var(--team-neutral);border-radius:50%;background:none}
@@ -415,12 +392,19 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-thumb{position:relative;display:block;width:60px;height:34px;flex:0 0 60px;overflow:hidden;border-radius:2px;
   background:var(--surface-hover) center/cover no-repeat;box-shadow:var(--ring-1)}
 .cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
-.cot-play .menu-select--vehicle .menu-select-option{min-height:52px;padding-left:var(--s2)}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
-.cot-play :is(.menu-select-trigger,.menu-select-option,.mode,.rule,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
+.cot-play :is(.menu-select-trigger,.mode,.rule,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
   outline:none;box-shadow:var(--focus-ring)}
-body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
+/* the vehicle picker opens in the foot above its trigger: the fleet's cards, each tank's own angle render centred on its
+   ink (the render's ink sits --icon-ink-y of its width down a square), two to a phone's row, a short screen's sized to
+   the view */
+.cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
+  padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-play .vehicle-pick[hidden]{display:none}
+.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.cot-play .vehicle-pick .cot-c-picker__media{container-type:inline-size;background:var(--surface-page)}
+.cot-play .vehicle-pick .cot-c-picker__media>img{object-position:50% calc(100cqw * (9 / 32 - var(--icon-ink-y)))}
 
 /* buttons are the kit's (.cot-c-btn); these only place them */
 /* the room's buttons and fields share one 44 px row */
@@ -624,149 +608,6 @@ function playerId(): string {
   return id;
 }
 
-function bindMenuSelect(
-  control: MenuSelectElement,
-  { beforeOpen = null }: {
-    beforeOpen?: ((control: MenuSelectElement) => void) | null;
-  } = {},
-): MenuSelectController {
-  const trigger = requiredElement<HTMLButtonElement>(control, '[data-select-trigger]');
-  const list = requiredElement<HTMLElement>(control, '[role="listbox"]');
-  // Escape scroll/transform containing blocks in the connected room panel.
-  list.popover = 'manual';
-  const valueLabel = requiredElement<HTMLElement>(trigger, '[data-select-value]');
-  const metaLabel = trigger.querySelector<HTMLElement>('[data-select-meta]');
-  const triggerThumb = trigger.querySelector<HTMLElement>('[data-select-thumb]');
-  const options = [...control.querySelectorAll<HTMLButtonElement>('[role="option"]')];
-  let disabled = false;
-
-  function selectedIndex(): number {
-    const index = options.findIndex((option) => option.dataset.value === control.dataset.value);
-    return index < 0 ? 0 : index;
-  }
-
-  function setValue(nextValue: RuntimeValue, emit = false): void {
-    const option = options.find((item) => item.dataset.value === String(nextValue));
-    if (!option) return;
-    control.dataset.value = option.dataset.value;
-    valueLabel.textContent = option.dataset.label || option.textContent.trim();
-    if (metaLabel) metaLabel.textContent = option.dataset.meta || '';
-    if (triggerThumb) {
-      const thumb = option.dataset.thumb || '';
-      triggerThumb.style.backgroundImage = thumb ? `url("${thumb.replace(/"/g, '%22')}")` : '';
-      triggerThumb.classList.toggle('is-random', !thumb);
-    }
-    for (const item of options) {
-      const selected = item === option;
-      item.classList.toggle('on', selected);
-      item.setAttribute('aria-selected', String(selected));
-    }
-    if (emit) control.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  function close(restoreFocus = false): void {
-    if (!control.classList.contains('open')) return;
-    control.classList.remove('open');
-    if (list.matches(':popover-open')) list.hidePopover();
-    trigger.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) trigger.focus();
-  }
-
-  function positionList(): void {
-    const rect = trigger.getBoundingClientRect();
-    const margin = 10;
-    const viewportWidth = document.documentElement.clientWidth;
-    const viewportHeight = document.documentElement.clientHeight;
-    const width = Math.min(Math.max(rect.width, 180), viewportWidth - margin * 2);
-    const left = Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
-    list.style.width = `${Math.round(width)}px`;
-    list.style.maxHeight = 'none';
-    const naturalHeight = list.scrollHeight;
-    const below = viewportHeight - rect.bottom - margin - 6;
-    const above = rect.top - margin - 6;
-    const openBelow = below >= Math.min(naturalHeight, 260) || below >= above;
-    const availableHeight = Math.max(104, openBelow ? below : above);
-    const maxHeight = Math.min(naturalHeight, availableHeight, viewportHeight - margin * 2, 300);
-    const top = openBelow ? rect.bottom + 6 : rect.top - maxHeight - 6;
-    list.style.left = `${Math.round(left)}px`;
-    list.style.top = `${Math.round(Math.max(margin, Math.min(top, viewportHeight - maxHeight - margin)))}px`;
-    list.style.maxHeight = `${Math.round(maxHeight)}px`;
-    control.classList.toggle('drop-up', !openBelow);
-  }
-
-  function open(index = selectedIndex()): void {
-    if (disabled) return;
-    if (beforeOpen) beforeOpen(control);
-    control.classList.add('open');
-    list.showPopover();
-    trigger.setAttribute('aria-expanded', 'true');
-    positionList();
-    const option = options[Math.max(0, Math.min(options.length - 1, index))];
-    if (option) revealMenuSelectOption(list, option);
-  }
-
-  Object.defineProperty(control, 'value', {
-    configurable: true,
-    get: () => control.dataset.value,
-    set: (nextValue: RuntimeValue) => setValue(nextValue),
-  });
-  Object.defineProperty(control, 'disabled', {
-    configurable: true,
-    get: () => disabled,
-    set: (nextDisabled: RuntimeValue) => {
-      disabled = !!nextDisabled;
-      control.classList.toggle('disabled', disabled);
-      control.setAttribute('aria-disabled', String(disabled));
-      trigger.disabled = disabled;
-      if (disabled) close();
-    },
-  });
-  setValue(control.dataset.value);
-
-  trigger.addEventListener('click', () => {
-    if (control.classList.contains('open')) close();
-    else open();
-  });
-  trigger.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close();
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      open();
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      open(event.key === 'Home' ? 0 : options.length - 1);
-    }
-  });
-  options.forEach((option, index) => {
-    option.tabIndex = -1;
-    option.addEventListener('click', () => {
-      setValue(option.dataset.value, true);
-      close(true);
-    });
-    option.addEventListener('keydown', (event) => {
-      let nextIndex = index;
-      if (event.key === 'ArrowDown') nextIndex = (index + 1) % options.length;
-      else if (event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length;
-      else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = options.length - 1;
-      else if (event.key === 'Escape') {
-        event.preventDefault();
-        close(true);
-        return;
-      } else if (event.key === 'Tab') {
-        close();
-        return;
-      } else return;
-      event.preventDefault();
-      revealMenuSelectOption(list, options[nextIndex]);
-    });
-  });
-
-  return { close, positionList };
-}
-
 /** The battle formats a room offers (players a side), as the kit's segmented options. */
 function roomSizeOptions(): { value: string; label: string }[] {
   return ['1', '2', '3', '5', '7'].map((size) => ({ value: size, label: t('playMenu.sizeFormat', { size }) }));
@@ -944,14 +785,14 @@ export function createPlayMenu({
             ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
       <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
       <div class="players"></div><div class="controls">
+        <div class="vehicle-pick" id="cot-room-vehicle-pick" role="group" aria-labelledby="cot-room-vehicle-label" hidden></div>
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
-            <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
-              aria-controls="cot-room-vehicle-list" aria-labelledby="cot-room-vehicle-label cot-room-vehicle-value">
+            <button class="menu-select-trigger" data-select-trigger type="button" aria-expanded="false"
+              aria-controls="cot-room-vehicle-pick" aria-labelledby="cot-room-vehicle-label cot-room-vehicle-value">
               <span class="menu-select-thumb" data-select-thumb aria-hidden="true"></span>
               <span class="menu-select-trigger-copy"><span id="cot-room-vehicle-value" data-select-value>${t('playMenu.advanced.vehicleSelect')}</span>
                 <small data-select-meta>${t('playMenu.advanced.vehicleDesc')}</small></span></button>
-            <div class="menu-select-list" id="cot-room-vehicle-list" role="listbox" aria-labelledby="cot-room-vehicle-label"></div>
           </div></div>
         <div class="field"><span class="field-label">${t('playMenu.deployment')}</span>
           ${segmented({ label: t('playMenu.deployment'), options: (['alpha', 'bravo', 'spectator'] as const).map((team) => ({ value: team, label: lobbyTeamLabel(team) })), value: 'alpha', className: 'room-team', attrs: { 'data-control': 'team', 'data-value': 'alpha' } })}</div></div>
@@ -1026,7 +867,6 @@ export function createPlayMenu({
   const sizeSelect = requiredElement<MenuSelectElement>(root, '[data-control="size"]');
   const mapSelect = requiredElement<MenuSelectElement>(root, '[data-control="map"]');
   const ruleButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
-  const vehicleList = requiredElement<HTMLElement>(vehicleSelect, '[role="listbox"]');
   const mapById = new Map<string, PlayMenuMap>(maps.map((map) => [map.id, map]));
   const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
   const initialSelection = getSelection();
@@ -1036,50 +876,115 @@ export function createPlayMenu({
   }];
   // the lobby names each player's tank from the menu's own roster before the host's lookup
   const selectableVehicleNames = new Map(selectableVehicles.map((vehicle) => [vehicle.id, vehicle.name]));
-  for (const vehicle of selectableVehicles) {
-    const option = document.createElement('button');
-    option.className = 'menu-select-option';
-    option.type = 'button';
-    option.setAttribute('role', 'option');
-    option.setAttribute('aria-selected', 'false');
-    option.dataset.value = vehicle.id;
-    option.dataset.label = vehicle.name;
-    const numeral = tierNumeral(vehicle.id);
-    option.dataset.meta = numeral ? t('garage.card.tier', { tier: numeral }) : t('studioPanel.picker.combatVehicle');
-    option.dataset.thumb = iconUrl(vehicle.id, 'angle');
-    const thumb = document.createElement('img');
-    thumb.className = 'menu-select-thumb';
-    thumb.src = option.dataset.thumb;
-    thumb.alt = '';
-    thumb.loading = 'lazy';
-    thumb.decoding = 'async';
-    thumb.addEventListener('error', markMissingVehicleIcon, { once: true });
-    const copy = document.createElement('span');
-    copy.className = 'menu-select-option-copy';
-    const name = document.createElement('b');
-    name.textContent = vehicle.name;
-    const detail = document.createElement('small');
-    detail.textContent = option.dataset.meta;
-    copy.append(name, detail);
-    option.append(thumb, copy);
-    vehicleList.appendChild(option);
-  }
   vehicleSelect.dataset.value = selectableVehicles.some((vehicle) => vehicle.id === initialSelection.specId)
     ? initialSelection.specId
     : selectableVehicles[0]?.id || '';
-  const menuBindings: MenuBinding[] = [];
-  function closeMenuSelects(except: MenuSelectElement | null = null): void {
-    for (const binding of menuBindings) {
-      if (binding.control !== except) binding.controller.close();
+  // the vehicle picker (INTERACTION-REDESIGN.md line 1): the fleet as cards, with search and the nations' chips, opened from
+  // the foot's vehicle trigger in the foot itself. Pointing at a card shows it on the trigger, one press chooses through
+  // the room's own change, and Esc restores, then closes it with nothing changed.
+  const vehiclePick = requiredElement<HTMLElement>(root, '.vehicle-pick');
+  const vehicleTrigger = requiredElement<HTMLButtonElement>(vehicleSelect, '[data-select-trigger]');
+  const vehicleById = new Map(selectableVehicles.map((vehicle): [string, PlayMenuVehicle] => [vehicle.id, vehicle]));
+  const vehicleMeta = (id: string): string => {
+    const numeral = tierNumeral(id);
+    return numeral ? t('garage.card.tier', { tier: numeral }) : t('studioPanel.picker.combatVehicle');
+  };
+  const vehicleCountry = (vehicle: PlayMenuVehicle): CountryId | null => countryOfVehicle(vehicle.id, vehicle.nation);
+  const nationName = (country: CountryId): string => t(`nation.${countryNation(country)}`);
+  const vehicleCards = (): PickerItem[] => selectableVehicles.map((vehicle) => {
+    const country = vehicleCountry(vehicle);
+    return { id: vehicle.id, name: vehicle.name, facts: [vehicleMeta(vehicle.id), ...(country ? [nationName(country)] : [])],
+      media: { poster: iconUrl(vehicle.id, 'angle') }, tags: country ? [country] : [] };
+  });
+  let vehiclePicker: ReturnType<typeof createPicker> | null = null;
+  /** The vehicle control holds the player's vehicle (its trigger names it) and opens the picker: it has no list. */
+  function bindVehicleControl(): void {
+    const label = requiredElement<HTMLElement>(vehicleTrigger, '[data-select-value]');
+    const meta = requiredElement<HTMLElement>(vehicleTrigger, '[data-select-meta]');
+    const thumb = requiredElement<HTMLElement>(vehicleTrigger, '[data-select-thumb]');
+    let disabled = false;
+    Object.defineProperty(vehicleSelect, 'value', {
+      configurable: true,
+      get: () => vehicleSelect.dataset.value,
+      set: (next: RuntimeValue) => {
+        if (!vehicleById.has(String(next))) return;
+        vehicleSelect.dataset.value = String(next);
+        showVehicle(String(next));
+      },
+    });
+    Object.defineProperty(vehicleSelect, 'disabled', {
+      configurable: true,
+      get: () => disabled,
+      set: (next: RuntimeValue) => {
+        disabled = !!next;
+        vehicleSelect.classList.toggle('disabled', disabled);
+        vehicleSelect.setAttribute('aria-disabled', String(disabled));
+        vehicleTrigger.disabled = disabled;
+        if (disabled) closeVehiclePick();
+      },
+    });
+    /** Name a vehicle on the trigger: the chosen one, or the card a pointer or the focus is on. */
+    function showVehicle(id: string): void {
+      const vehicle = vehicleById.get(id);
+      if (!vehicle) return;
+      label.textContent = vehicle.name;
+      meta.textContent = vehicleMeta(id);
+      thumb.style.backgroundImage = `url("${iconUrl(id, 'angle').replace(/"/g, '%22')}")`;
     }
+    previewVehicle = (id) => showVehicle(id ?? vehicleSelect.dataset.value ?? '');
+    showVehicle(vehicleSelect.dataset.value ?? '');
+    vehicleTrigger.addEventListener('click', () => toggleVehiclePick());
+    vehicleTrigger.addEventListener('keydown', (event) => {
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      if (vehiclePick.hidden) toggleVehiclePick();
+    });
   }
-  function bindRoomMenu(control: MenuSelectElement): MenuSelectController {
-    const controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects });
-    const binding: MenuBinding = { control, controller };
-    menuBindings.push(binding);
-    return controller;
+  let previewVehicle: (id: string | null) => void = () => {};
+  function closeVehiclePick(restoreFocus = false): void {
+    if (vehiclePick.hidden) return;
+    vehiclePick.hidden = true;
+    vehicleTrigger.setAttribute('aria-expanded', 'false');
+    previewVehicle(null);
+    if (restoreFocus) vehicleTrigger.focus();
   }
-  bindRoomMenu(vehicleSelect);
+  function toggleVehiclePick(): void {
+    if (!vehiclePick.hidden) { closeVehiclePick(true); return; }
+    if (vehicleSelect.disabled) return;
+    closeBattlefieldPick();
+    vehiclePick.hidden = false;
+    vehicleTrigger.setAttribute('aria-expanded', 'true');
+    if (vehiclePicker) vehiclePicker.setValue(vehicleSelect.value);
+    else {
+      vehiclePicker = createPicker(vehiclePick, {
+        id: 'rooms-tank', label: t('playMenu.advanced.vehicle'), items: vehicleCards(), value: vehicleSelect.value,
+        layout: 'cards', text: pickerText(), memory: 'vehicle',
+        filters: COUNTRIES.map((country) => country.id).filter((id) => selectableVehicles.some((vehicle) => vehicleCountry(vehicle) === id))
+          .map((id) => ({ id, label: nationName(id) })),
+        onPreview: (item) => previewVehicle(item?.id ?? null),
+        onChoose: (item) => {
+          vehicleSelect.value = item.id;
+          vehicleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          closeVehiclePick(true);
+        },
+      });
+    }
+    // a foot that scrolls with the room (a short screen) brings the picker under the head; a stuck foot already shows it
+    const panel = vehiclePick.closest<HTMLElement>('.panel');
+    const head = panel?.querySelector<HTMLElement>('.play-head');
+    if (panel && head) {
+      const sticky = getComputedStyle(head).position === 'sticky' ? head.offsetHeight : 0;
+      const top = vehiclePick.getBoundingClientRect().top - panel.getBoundingClientRect().top - sticky - 12;
+      if (top < 0 || vehiclePick.getBoundingClientRect().bottom > panel.getBoundingClientRect().bottom) panel.scrollTop += top;
+    }
+    vehiclePicker.focus();
+  }
+  vehiclePick.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    closeVehiclePick(true);
+  });
+  bindVehicleControl();
   for (const setting of [createSizeSelect, teamSelect, sizeSelect]) bindSegmentedSetting(setting);
   // a deployment wears its team's mark, as the roster draws it
   for (const option of teamSelect.querySelectorAll<HTMLElement>('[data-value]')) {
@@ -1148,7 +1053,7 @@ export function createPlayMenu({
   function toggleBattlefieldPick(): void {
     if (!battlefieldPick.hidden) { closeBattlefieldPick(true); return; }
     if (mapSelect.disabled) return;
-    closeMenuSelects();
+    closeVehiclePick();
     battlefieldPick.hidden = false;
     battlefieldCard.classList.add('picking');
     mapTrigger.setAttribute('aria-expanded', 'true');
@@ -1167,6 +1072,11 @@ export function createPlayMenu({
     }
     revealBattlefieldPick();
     battlefieldPicker.focus();
+  }
+  /** One picker is open at a time; a change of the room's kind or the dialog's closing folds both. */
+  function closePicks(): void {
+    closeBattlefieldPick();
+    closeVehiclePick();
   }
   /** The opened picker in the panel's view: the battlefield card at the top under the sticky head, the picker under it
    *  clear of the sticky foot (the grid shows the chosen card itself). A short screen holds the picker alone: it takes
@@ -2026,7 +1936,6 @@ export function createPlayMenu({
     const launch = target?.closest<HTMLButtonElement>('[data-campaign-launch]');
     if (!launch) return;
     event.preventDefault();
-    closeMenuSelects();
     hide();
     showSelectedGameMode('frontline_assault');
     if (onSolo) onSolo({ gameMode: 'frontline_assault', mapId: launch.dataset.mapId, campaignOperationId: launch.dataset.campaignLaunch });
@@ -2035,7 +1944,7 @@ export function createPlayMenu({
   function selectMode(nextMode: PlayMode): void {
     const button = root.querySelector<HTMLButtonElement>(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
-    closeMenuSelects();
+    closePicks();
     if (nextMode === 'solo') {
       closeCurrentSession('mode_changed');
       clearFailure();
@@ -2176,19 +2085,10 @@ export function createPlayMenu({
     containModalTab(event, panel, closeBtn);
     if (event.key === 'Escape') {
       event.preventDefault();
-      if (root.querySelector('.menu-select.open')) closeMenuSelects();
-      else hide();
+      hide();
     }
     event.stopPropagation();
   });
-  root.addEventListener('pointerdown', (event) => {
-    if (!(event.target instanceof Element) || !event.target.closest('.menu-select')) {
-      closeMenuSelects();
-    }
-  });
-  panel.addEventListener('scroll', () => closeMenuSelects(), { passive: true });
-  const closeMenusOnResize = () => closeMenuSelects();
-  window.addEventListener('resize', closeMenusOnResize, { passive: true });
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
   function show(
@@ -2217,7 +2117,7 @@ export function createPlayMenu({
   function hide(closeSession = true): void {
     arrangementDropdowns.forEach(dropdown => dropdown.close());
     operationDropdown.close();
-    closeMenuSelects();
+    closePicks();
     const restoreFocus = !handedOff && root.contains(document.activeElement);
     root.classList.remove('show');
     // Closing the presentation must never mean leaving an established room.
@@ -2238,7 +2138,6 @@ export function createPlayMenu({
     handedOff = false;
     if (activeRoom || session) closeCurrentSession('menu_disposed');
     else hide(false);
-    window.removeEventListener('resize', closeMenusOnResize);
     root.remove();
   }
   function attachActiveRoom(adapter: ActiveRoomAdapter): void {

@@ -339,9 +339,9 @@ assert.match(hud,
   'the shared analog speedometer must expose its live status semantics on every input mode');
 
 assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
-  'live room controls must use the game listbox component instead of browser-native selects');
-assert.match(playMenu, /menu-select menu-select--vehicle[^>]*data-control="vehicle"[\s\S]*cot-room-vehicle-list[^>]*role="listbox"/,
-  'ready-up must expose the production vehicle roster through the shared accessible listbox');
+  "live room controls must use the kit's controls instead of browser-native selects");
+assert.match(playMenu, /menu-select menu-select--vehicle[^>]*data-control="vehicle"[\s\S]*aria-controls="cot-room-vehicle-pick"/,
+  "ready-up's vehicle trigger must control the picker that holds the production vehicle roster");
 assert.match(playMenu, /vehicleSelect\.addEventListener\('change',[\s\S]*type: 'select_vehicle'[\s\S]*type: 'select_equipment'[\s\S]*type: 'select_camo'/,
   'in-lobby tank changes must submit the complete vehicle loadout');
 const showCurrentRoomBody = playMenu.match(
@@ -363,10 +363,10 @@ assert.match(playMenu, /segmented\(\{ label: t\('playMenu\.deployment'\)[^\n]*cl
   "the deployment must be the kit's segmented control");
 assert.match(playMenu, /function bindSegmentedSetting[\s\S]*?for \(const option of options\) option\.disabled = disabled/,
   'a guest or a ready seat must find the segmented settings natively disabled');
-assert.match(playMenu, /menu-select-list\{position:fixed;[^}]*overflow:auto;overscroll-behavior:contain/,
-  "the vehicle list must stay inside a viewport-aware scroll lane");
-assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigger\.disabled = disabled/,
-  'custom room listboxes must preserve native disabled semantics for guests and ready states');
+assert.match(playMenu, /createPicker\(vehiclePick, \{\s*id: 'rooms-tank'/,
+  "the room's vehicle must be the kit's picker, with the fleet's search and nation chips");
+assert.match(playMenu, /Object\.defineProperty\(vehicleSelect, 'disabled',[\s\S]*vehicleTrigger\.disabled = disabled/,
+  "the vehicle trigger must preserve native disabled semantics for guests and ready states");
 assert.match(publicNav, /\.public-nav__tools>\.public-nav__lang,\.public-nav__tools>\.public-nav__icon-link\{display:none\}/,
   'the phone bar keeps the mark, Play and the menu; language and source move into the menu sheet');
 
