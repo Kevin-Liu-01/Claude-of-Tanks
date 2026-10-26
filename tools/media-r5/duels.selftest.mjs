@@ -4,18 +4,19 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COMBAT, DUELS, DUEL_TABLE, FLEET, OWNER_NINE, SHOTS, combatTake, siteScene } from './site50.mjs';
+import { COMBAT, DUEL, DUELS, DUEL_TABLE, FLEET, OWNER_NINE, SHOTS, combatTake, siteScene } from './site50.mjs';
 import { knockouts } from './combat-check.mjs';
 import { sampleActorTrack } from '../../src/game/studioTimeline.ts';
 
 // The duel wall in motion (2026-10-25, the owner on the versus wall: "the tanks arent even moving"; the media audit: the
 // twelve versus films the stillest on the site): takes 234 to 245, each versus pair re-staged as a moving 1v1 duel
-// (site50.mjs DUEL_TABLE), apart from the combat round's nine (combat.selftest.mjs). Every take a race but one, both
-// guns trading rounds, one knockout, and quiet: no dust burst and every explosion small, so both tanks stay in sight.
+// (site50.mjs DUEL_TABLE), apart from the combat round's nine (combat.selftest.mjs); then 246 to 252 on their placements,
+// the occluded races again and the /home hero reel's moves. Every take a race but one, both guns trading rounds, one
+// knockout, and quiet: no dust burst and every explosion small, so both tanks stay in sight.
 
 // --- the takes ------------------------------------------------------------------------------------------------------
-const TAKES = Array.from({ length: 12 }, (_, i) => 234 + i);
-assert.deepEqual(DUELS.map((s) => s[0]), TAKES, 'takes 234 to 245 in order');
+const TAKES = Array.from({ length: 19 }, (_, i) => 234 + i);
+assert.deepEqual(DUELS.map((s) => s[0]), TAKES, 'takes 234 to 252 in order');
 const all = [...SHOTS, ...OWNER_NINE, ...FLEET, ...COMBAT, ...DUELS];
 assert.equal(new Set(all.map((s) => s[0])).size, all.length, 'unique take numbers across every take');
 assert.equal(new Set(all.map((s) => s[1])).size, all.length, 'unique ids across every take');
@@ -26,11 +27,32 @@ assert.deepEqual(RACES, TAKES.filter((n) => n !== 235), 'every take a race but t
 // each re-staged pair stands where its versus scene stood: its set named for the scene, every pair once (234 replaces
 // the versus 03 film on a set of its own, the reservoir village at golden hour)
 const versus = DUEL_TABLE.filter((r) => r[15]?.versus).map((r) => [r[0], r[15].versus, r[3].id]);
-assert.deepEqual(versus.map(([n]) => n), TAKES.slice(1), 'takes 235 to 245 each name their versus scene');
+assert.deepEqual(versus.map(([n]) => n), TAKES.slice(1, 12), 'takes 235 to 245 each name their versus scene');
 assert.equal(new Set(versus.map(([, v]) => v)).size, versus.length, 'every versus pair once');
 for (const [n, v, set] of versus) {
   assert.equal(set, `${v}-set`, `s${n}: its set stands where ${v} stood`);
   assert.ok(existsSync(fileURLToPath(new URL(`./versus/scenes/${v}.json`, import.meta.url))), `s${n}: ${v} is a versus scene`);
+}
+
+// --- the race lenses (keys in the travel frame: +along ahead of the hero, side * k toward its foes) -------------------
+{
+  const keys = (name, k = 1) => DUEL[name](22, k, ['hero', 'foe0']);
+  // raceHigh: raceClose 1.4 m higher at every key, over the steppe's grass and the roadside brush
+  assert.deepEqual(keys('raceHigh').map(({ lift, ...rest }) => [+(lift - 1.4).toFixed(2), rest]),
+    keys('raceClose').map(({ lift, ...rest }) => [lift, rest]), 'raceHigh is raceClose 1.4 m up');
+  for (const k of [1, -1]) {
+    // trackSide: abeam on the hero's far side from its foe, 14-16 m out, low and level, at its pace
+    for (const key of keys('trackSide', k)) assert.ok(key.side * k <= -14 && key.side * k >= -16 && key.lift <= 1.6 && Math.abs(key.along) <= 10, `trackSide k${k}: abeam, low, at ${key.tMs}`);
+    // gunLow: in front, under 0.6 m, 12-20 degrees off the nose, the hero closing on the lens from 16 m to 7 m
+    const low = keys('gunLow', k);
+    for (const key of low) {
+      const off = Math.atan2(Math.abs(key.side), key.along) * 180 / Math.PI;
+      assert.ok(key.lift <= 0.6 && off >= 12 && off <= 20, `gunLow k${k}: low, ${off.toFixed(1)} deg off the nose at ${key.tMs}`);
+    }
+    assert.deepEqual(low.map((key) => key.along), [16, 12, 9, 7], `gunLow k${k}: the hero gaining on the lens`);
+    // topdown: 22-26 m over the race, on its foe's side of the hero
+    for (const key of keys('topdown', k)) assert.ok(key.lift >= 22 && key.side * k > 0, `topdown k${k}: high over the race at ${key.tMs}`);
+  }
 }
 
 const poseAt = (scene, name, tMs) => {
@@ -64,7 +86,7 @@ for (const shot of DUELS) {
     assert.ok(len(h) > 20 && len(f) > 20, `${id}: both hulls drive (${len(h).toFixed(1)} m, ${len(f).toFixed(1)} m by the knockout)`);
     assert.ok((h[0] * f[0] + h[1] * f[1]) / len(h) / len(f) > 0.99, `${id}: abreast, the same way`);
     for (const t of [0, 2000, ko.killMs]) assert.ok(Math.abs(gap(t) - row[8]) < 0.5, `${id}: ${row[8]} m between the lines at ${t} (${gap(t).toFixed(2)})`);
-    assert.ok(scene.meta.combat.lens === 'raceClose', `${id}: the close race lens`);
+    assert.equal(scene.meta.combat.lens, row[10], `${id}: the row's lens`);
   } else {
     assert.ok(len(h) > 10 && len(f) < 0.5, `${id}: the hero drives (${len(h).toFixed(1)} m), its foe holds the street`);
     assert.ok(gap(ko.killMs) < gap(0) - 10, `${id}: the hero closes on its foe (${gap(0).toFixed(1)} to ${gap(ko.killMs).toFixed(1)} m)`);
@@ -88,9 +110,9 @@ try {
   const ids = DUELS.map((s) => `s${s[0]}-${s[1]}`);
   execFileSync(process.execPath, [fileURLToPath(new URL('./site50.mjs', import.meta.url)), join(dir, 'scenes'), ids.join(',')], { stdio: 'pipe' });
   const manifest = JSON.parse(readFileSync(join(dir, 'site50-manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.map((m) => m.id), ids, 'the CLI writes the twelve duels when named');
+  assert.deepEqual(manifest.map((m) => m.id), ids, 'the CLI writes every duel take when named');
   for (const id of ids) assert.equal(JSON.parse(readFileSync(join(dir, 'scenes', `${id}.json`), 'utf8')).meta.id, id, `${id}: written`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
-console.log(`duels selftest: ${DUELS.length} takes (${RACES.length} races abreast, 1 street fight), both guns firing, one knockout each, quiet (${dropped} dust bursts dropped, every blast small), written by the CLI`);
+console.log(`duels selftest: ${DUELS.length} takes (${RACES.length} races abreast, 1 street fight), both guns firing, one knockout each, quiet (${dropped} dust bursts dropped, every blast small), the race lenses shaped, written by the CLI`);

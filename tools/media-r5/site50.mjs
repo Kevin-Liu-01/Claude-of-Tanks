@@ -964,6 +964,30 @@ export const DUEL = {
     K(2300, { side: -6 * k, along: 9.5, lift: 1.7, fov: 38, ...HOLD(hold, 0.62) }),
     K(4300, { side: -7.5 * k, along: 11.5, lift: 2.5, fov: 38, ...HOLD(hold, 0.62) }),
     K('end', { side: -8.5 * k, along: 13, lift: 3.2, fov: 38, ...HOLD(hold, 0.6) })],
+  /** (2026-10-25, takes 246-247) raceClose 1.4 m higher at every key: over the steppe's tall grass and low brush. */
+  raceHigh: (D, k, hold) => [
+    K(0, { side: -4 * k, along: 8, lift: 2.6, fov: 38, ...HOLD(hold, 0.62) }),
+    K(2300, { side: -6 * k, along: 9.5, lift: 3.1, fov: 38, ...HOLD(hold, 0.62) }),
+    K(4300, { side: -7.5 * k, along: 11.5, lift: 3.9, fov: 38, ...HOLD(hold, 0.62) }),
+    K('end', { side: -8.5 * k, along: 13, lift: 4.6, fov: 38, ...HOLD(hold, 0.6) })],
+  /** (2026-10-25, the dynamic reel) Abeam on the hero's far side at its pace, low and level: a tracking shot alongside. */
+  trackSide: (D, k, hold) => [
+    K(0, { side: -16 * k, along: 10, lift: 0.9, fov: 34, ...HOLD(hold, 0.7) }),
+    K(2300, { side: -15 * k, along: 9, lift: 1.1, fov: 34, ...HOLD(hold, 0.7) }),
+    K(4300, { side: -14.5 * k, along: 8, lift: 1.3, fov: 34, ...HOLD(hold, 0.7) }),
+    K('end', { side: -14 * k, along: 7, lift: 1.6, fov: 34, ...HOLD(hold, 0.68) })],
+  /** (2026-10-25, the dynamic reel) Low in front of the hero, 12-20 deg off its nose, the tank gaining on the lens from 16 m
+   *  to 7 m as its gun fires across the frame: a low front angle at a firing gun. */
+  gunLow: (D, k, hold) => [
+    K(0, { side: -3.5 * k, along: 16, lift: 0.45, fov: 30, ...HOLD(hold, 0.62) }),
+    K(2300, { side: -3.2 * k, along: 12, lift: 0.5, fov: 30, ...HOLD(hold, 0.62) }),
+    K(4300, { side: -2.8 * k, along: 9, lift: 0.55, fov: 30, ...HOLD(hold, 0.62) }),
+    K('end', { side: -2.5 * k, along: 7, lift: 0.6, fov: 30, ...HOLD(hold, 0.6) })],
+  /** (2026-10-25, the dynamic reel; the owner 10-19: top-down angles) High over the race, looking down, drifting along it. */
+  topdown: (D, k, hold) => [
+    K(0, { side: 0.3 * D * k, along: -4, lift: 26, fov: 40, ...HOLD(hold, 0.62) }),
+    K(3300, { side: 0.4 * D * k, along: 0, lift: 24, fov: 40, ...HOLD(hold, 0.62) }),
+    K('end', { side: 0.5 * D * k, along: 4, lift: 22, fov: 40, ...HOLD(hold, 0.6) })],
   /** Broadside from the fight's flank, booming down from high to the ground as the knockout lands: every round crosses
    *  the frame. */
   broadside: (D, k, hold) => [
@@ -1007,10 +1031,12 @@ export const COMBAT_TABLE = [
   // 7 m the smoke stood over the CV90 for 1.2 s)
   // (and on HE look v2, review 4, 2026-10-14: by 5.8 s the dead hull sat under the kill fireball's white-hot glow; the
   // coordinator: end earlier, not higher, so the take ends at 5.2 s, the knockout and the hull's landing in)
+  // (2026-10-25, the /home hero reel: s226-s228 run the full 6.6 s again, as filmed for it; s227's hero a Leopard 2A6 and
+  // s228's foes a BMPT Terminator 2 and a T-80B, so no vehicle repeats across the reel)
   [226, 'church-duel', 'A Challenger 3 and a T-80U trade rounds by the onion-domed church in the snow', S.wChurch, 'day', '1v1',
-    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', -1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 }, durMs: 5200 }],
-  [227, 'oasis-duel', 'An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
-    [CAST.sepv3], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
+    [CAST.challenger3], [CAST.t80u], 38, 2, 'reverse', -1, ['foe0', 'hero'], 2.5, [0, 0], { camEnd: { lift: 4.2 }, durMs: 6600 }],
+  [227, 'oasis-duel', 'A Leopard 2A6 knocks out a T-14 Armata at the caravanserai at sunset', S.oCaravan, 'sunset', '1v1',
+    [CAST.leo2a6], [CAST.t14], 34, 2, 'circle', -1, ['hero', 'foe0'], 0, [4, 0]],
   // (from the front, low, down the street since the coordinator's review: the high rear view looked down on the engine
   // deck; then a telephoto from the square at the street's east end, the foes in file in the right lane and the AbramsX
   // in the left, the street 12 m wide from 10 to 62 m along: the AbramsX at 10 % of the frame and more, the near foe 30 %)
@@ -1020,8 +1046,8 @@ export const COMBAT_TABLE = [
   // the square (62-80 m across from 65 to 130 m), the foes side by side there, the lens high behind them dropping as
   // the T-90M dies: the AbramsX head-on, nothing over any tank)
   // (review 4: the same glow over the knocked-out T-90M at 5.8 s; ends at 5.2 s with s226)
-  [228, 'street-1v2', 'An AbramsX takes on a T-90M and a T-72B3 down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
-    ['abramsx'], [CAST.t90m, CAST.t72b3], 24, 5.5, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 0, [0, 62], { foeFormation: 'pair', durMs: 5200 }],
+  [228, 'street-1v2', 'An AbramsX takes on a BMPT Terminator 2 and a T-80B down Steinburg\'s main street at night', S.stMain, 'night', '1v2',
+    ['abramsx'], ['bmpt_terminator2', 't80b'], 24, 5.5, 'overwatch', -1, ['foe0', 'foe1', 'hero'], 0, [0, 62], { foeFormation: 'pair', durMs: 6600 }],
   // (s229 on 224's world, 2026-10-14: the 8 m shift put the 380 kV line across 43 % of the frame's top for 2.6 s; at the
   // set's anchor the race clears 224's ground and the line stays under a third. The village and the line lie the same
   // way: every placement that clears the line, the race turned 45°, puts the village behind the lens)
@@ -1064,7 +1090,8 @@ export const COMBAT_TABLE = [
     [CAST.strv122, CAST.cv90], [CAST.t90, CAST.t72b3], 42, 2, 'reverse', -1, ALL4, 2, [0, 0], { camEnd: { lift: 11 }, camSide: 2 }],
 ];
 /** The duel wall in motion (2026-10-25): takes 234 to 245, the landing's versus pairs re-staged as moving 1v1 duels in
- *  COMBAT_TABLE's row format, built by combatTake. */
+ *  COMBAT_TABLE's row format, built by combatTake; then 246 to 252 on their placements, the occluded races again and the
+ *  /home hero reel's moves (raceHigh, trackSide, gunLow, topdown, high). */
 export const DUEL_TABLE = [
   // (2026-10-25, the owner on the versus wall's K2 v ZTZ-99: "change it to a vt 4a1, and the tanks arent even moving")
   // the versus 03 film's take: the K2 Black Panther and the VT-4A1 race abreast along the lakeside at golden hour
@@ -1095,6 +1122,22 @@ export const DUEL_TABLE = [
     ['strv122_x'], ['t80bv'], 22, 0, 'raceClose', 1, ['hero', 'foe0'], 6, [0, 8], { geo: 'race', turn: 0, quiet: true, versus: 'vs09-alpine-strv122-t80bv-r7' }],
   [245, 'tarkhan-race', 'A Chieftain Mk 10 races a T-64BV1 across Tarkhan Steppe at golden hour, trading broadsides', S.vsTarkhanRace, 'golden', '1v1',
     ['chieftain_mk10_x'], ['t64bv1'], 22, 0, 'raceClose', 1, ['hero', 'foe0'], 6, [0, -8], { geo: 'race', turn: 0, quiet: true, versus: 'vs10-steppe-chieftain-t64-r7' }],
+  // (2026-10-25) the occluded races again: Tarkhan over its grass, Amberford higher or further along its road
+  [246, 'tarkhan-race-high', 'A Chieftain Mk 10 races a T-64BV1 across Tarkhan Steppe at golden hour, trading broadsides', S.vsTarkhanRace, 'golden', '1v1',
+    ['chieftain_mk10_x'], ['t64bv1'], 22, 0, 'raceHigh', 1, ['hero', 'foe0'], 6, [0, -8], { geo: 'race', turn: 0, quiet: true }],
+  [247, 'amberford-race-high', 'A C2 Ariete races a T-62MV-1 through Amberford at golden hour, trading broadsides', S.vsAmberfordRace, 'golden', '1v1',
+    ['ariete_c2_x'], ['t62mv1_x'], 22, 0, 'raceHigh', 1, ['hero', 'foe0'], 6, [8, 0], { geo: 'race', turn: 0, quiet: true }],
+  [248, 'amberford-race-far', 'A C2 Ariete races a T-62MV-1 through Amberford at golden hour, trading broadsides', S.vsAmberfordRace, 'golden', '1v1',
+    ['ariete_c2_x'], ['t62mv1_x'], 22, 0, 'raceClose', 1, ['hero', 'foe0'], 6, [24, 0], { geo: 'race', turn: 0, quiet: true }],
+  // (2026-10-25, the dynamic reel) one move per take on the validated race placements
+  [249, 'saltmere-track', 'A Type 10 races a ZTZ-99A2 along Saltmere Bay in the morning, the lens tracking alongside', S.vsSaltmereRace, 'morning', '1v1',
+    ['type10_x'], ['ztz99a2'], 22, 0, 'trackSide', -1, ['hero'], 6, [17, -17], { geo: 'race', turn: 0, quiet: true }],
+  [250, 'frontier-gunlow', 'A Leclerc XLR bears down on a low lens across Frontier Basin at dawn, its gun firing at a T-90A', S.vsFrontierRace, 'dawn', '1v1',
+    ['leclerc_xlr'], ['t90a'], 22, 0, 'gunLow', -1, ['hero'], 6, [0, 0], { geo: 'race', turn: 90, quiet: true }],
+  [251, 'tarkhan-topdown', 'A Chieftain Mk 10 and a T-64BV1 race across Tarkhan Steppe at golden hour, seen from above', S.vsTarkhanRace, 'golden', '1v1',
+    ['chieftain_mk10_x'], ['t64bv1'], 22, 0, 'topdown', 1, ['hero', 'foe0'], 6, [0, -8], { geo: 'race', turn: 0, quiet: true }],
+  [252, 'amberford-high', 'A C2 Ariete and a T-62MV-1 race through Amberford at golden hour, the lens craning over the fight', S.vsAmberfordRace, 'golden', '1v1',
+    ['ariete_c2_x'], ['t62mv1_x'], 22, 0, 'high', 1, ['hero', 'foe0'], 6, [8, 0], { geo: 'race', turn: 0, quiet: true }],
 ];
 /** (2026-10-25, take 234) `quiet`: no explicit dust bursts and every explosion small, so the line's tanks stay in
  *  sight between the shots (the guns, tracers, hits, the knockout and its fire stay). */
