@@ -615,6 +615,8 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
    the score plate keeps 6 px from it at 568 px wide (240 px), 294 px where it fits (it was biased 18 px left). */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top{
   left:50%;max-width:calc(100vw - 2 * (env(safe-area-inset-right) + 164px));padding:4px 22px 5px;
+  /* (as tall as the toolbar's corner plate beside it, the top row's plates on one foot: 36 against 48, gauntlet r7) */
+  min-height:48px;box-sizing:border-box;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
   top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));

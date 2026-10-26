@@ -16,6 +16,7 @@ import { TECH_TREES, rootOf, vehiclesOf } from '../techTree/trees.ts';
 import { esc, scaleCells, statRow } from './components/components.ts';
 import { flag, silhouette } from './components/identity.ts';
 import { decorateHeroTile } from './heroCard.ts';
+import { datumAttr } from './dom.ts';
 import { iconUrl } from './icons.ts';
 import { icon } from './icons/icon.ts';
 import type { IconId } from './icons/spriteIndex.ts';
@@ -135,7 +136,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   root.setAttribute('aria-modal', 'true');
   root.innerHTML =
     `<header class="tt-head">` +
-    `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"></h1></div>` +
+    `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"${datumAttr('nation')}></h1></div>` +
     `<nav class="tt-rail" aria-label="${t('techTree.nations')}"></nav>` +
     kitButton(t('techTree.close'), { glyph: 'close', variant: 'secondary', size: 48, sound: 'back', className: 'tt-close' }) +
     `</header>` +
@@ -150,8 +151,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `</div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
-    `<div class="tt-detail-id"><h2 class="tt-detail-name"></h2>` +
-    `<div class="tt-detail-meta"><span class="tt-detail-tier"></span>` +
+    `<div class="tt-detail-id"><h2 class="tt-detail-name"${datumAttr('tank-name')}></h2>` +
+    `<div class="tt-detail-meta"><span class="tt-detail-tier"${datumAttr('tier')}></span>` +
     `<span class="tt-detail-special" aria-label="${t('techTree.special')}" hidden>${icon('star', { size: 18 })}</span></div>` +
     `<div class="tt-builds" role="radiogroup" aria-label="${t('techTree.builds')}"></div></div>` +
     `<div class="tt-stats"></div>` +
