@@ -616,7 +616,8 @@ interface CloudHistoryReadback {
   rgba: Uint8Array;
 }
 
-/** The sun's mean share over the battlefield (the skies lane's light-model hook, refreshed about twice a second). */
+/** The sun's mean share over the battlefield (the skies lane's light-model hook, refreshed about twice a second while
+ *  a reader asks for it: VolumetricCloudLayer.watchSunMean). */
 export interface CloudSunMean {
   /** the beam's mean transmittance as the lit materials take it (the deck's pattern and the core's cap applied) */
   mean: number;
@@ -715,6 +716,8 @@ export class VolumetricCloudLayer {
   private sunMeanPixels: Uint8Array | null = null;
   private sunMeanPending = false;
   private sunMeanAge = Infinity;
+  /** The last shown frame (framesShown) a reader still wants the sun mean refreshed through (watchSunMean). */
+  private sunMeanWantedThrough = -Infinity;
   /** The sun's mean share over the playable square (published on scene.userData.cloudSunMean). */
   readonly sunMean: CloudSunMean = { mean: 1, raw: 1, cover: 0 };
   private copyMaterial: THREE.ShaderMaterial | null = null;
@@ -1679,6 +1682,8 @@ export class VolumetricCloudLayer {
    * 32², read back asynchronously every CLOUD_SUN_MEAN_EVERY frames, published on scene.userData.cloudSunMean.
    */
   private updateSunMean(): void {
+    // (battle-spikes-253) only while a reader asks (watchSunMean): the copy is a synchronous GPU round trip
+    if (this.framesShown > this.sunMeanWantedThrough) return;
     if (!this.farShadeValid || this.sunMeanPending || ++this.sunMeanAge < CLOUD_SUN_MEAN_EVERY || (this.frame + CLOUD_SUN_MEAN_PHASE) % 4 !== 0) return;
     const gl = this.context as WebGL2RenderingContext | null;
     if (!gl || gl.isContextLost() || typeof gl.fenceSync !== 'function') return;
@@ -1717,6 +1722,18 @@ export class VolumetricCloudLayer {
       this.sunMean.cover = under / n;
       this.scene.userData.cloudSunMean = this.sunMean;
     }, () => { /* a lost context or a busy driver: the next refresh retries */ }).finally(() => { this.sunMeanPending = false; });
+  }
+
+  /**
+   * The sun mean, refreshed every CLOUD_SUN_MEAN_EVERY frames for the next 2 x CLOUD_SUN_MEAN_EVERY shown frames after
+   * each call: a reader calls it as often as it reads (1 / 1 / 0 until the first copy lands). (battle-spikes-253) Nothing
+   * read the mean since Clouds 2.0, and every refresh cost a synchronous GPU round trip: Chrome's getBufferSubData is
+   * GetBufferSubDataCHROMIUM + WaitForCmd, so after a signalled fence it still waits for every command queued since
+   * (rgba8Readback.ts). nav-perf's room leave: one refresh blocked the main thread 661 ms behind the Garage's first frames.
+   */
+  watchSunMean(): CloudSunMean {
+    this.sunMeanWantedThrough = this.framesShown + 2 * CLOUD_SUN_MEAN_EVERY;
+    return this.sunMean;
   }
 
   /** The shared cloud-shade uniforms while the map is live (the ring's vista samples the same map: horizonCloudShade.ts). */

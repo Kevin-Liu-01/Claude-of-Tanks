@@ -129,7 +129,7 @@ assert.ok(stallNotice && stallWatchdog,
 // 50 % while the bar still moved — the notice must only change the status text).
 const stageLine = { textContent: '' };
 const retryClasses = [];
-const retryButton = { classList: { add: (name) => retryClasses.push(name) }, onclick: null };
+const retryButton = { classList: { add: (name) => retryClasses.push(name) }, onclick: null, focus() {} };
 stalledBoot.document.getElementById = (id) => (id === 'cot-boot-stage' ? stageLine : id === 'cot-boot-retry' ? retryButton : null);
 stallNotice.fn();
 assert.equal(stalledBoot.replacedUrl, null,
@@ -204,7 +204,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   let observerCallback = null;
   let observed = null;
   const stage = { textContent: 'Starting engine' };
-  const retry = { classes: [], classList: { add(name) { retry.classes.push(name); } }, onclick: null };
+  const retry = { classes: [], focused: false, classList: { add(name) { retry.classes.push(name); } }, onclick: null, focus() { retry.focused = true; } };
   const window = { __GAME_READY: false };
   const url = search ? href.replace('?', `?${search}&`) : href;
   const context = {
@@ -291,6 +291,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   h.fire(30000);
   assert.match(h.stage.textContent, /Nothing has downloaded for a while|Loading stalled/, 'a silent 30 s document notice names the silence, not a missing file');
   assert.deepEqual(h.retry.classes, ['on']);
+  assert.equal(h.retry.focused, true, 'the raised Retry takes the focus: the one way forward (interaction census, boot)');
   assert.equal(h.beacons.length, 1, 'the first retry surface beacons once');
   assert.equal(h.beacons[0].endpoint, '/api/telemetry');
   assert.equal(h.beacons[0].body.v, 2, 'telemetry v2 (2026-09-25): the inline watchdog posts one error record');

@@ -127,6 +127,13 @@ function readbackByteLength(width: number, height: number, pixels: Uint8Array): 
  * PBO before returning. The caller owns framebuffer setup and tight/default
  * PACK layout, and must not reuse pixels until this promise settles. No GL
  * binding is retained across a task; concurrent calls need separate pixels.
+ *
+ * The wait keeps the main thread free while the GPU draws; the copy does not.
+ * (battle-spikes-253) Chrome's getBufferSubData is GetBufferSubDataCHROMIUM +
+ * WaitForCmd, a synchronous round trip behind every command queued before it,
+ * the signalled fence notwithstanding: 661 ms on a room leave, behind the
+ * Garage's first frames. Read back under a loading cover or on demand, never
+ * on a standing cadence.
  */
 export async function beginRgba8Readback(
   gl: WebGL2RenderingContext,
@@ -168,9 +175,9 @@ export async function beginRgba8Readback(
     withPackBuffer(gl, buffer, () => {
       // (2026-10-24, perf-245) no size query: in Chrome a getBufferParameter is a full command-buffer round trip, so after
       // the fence it waited for every frame queued since — 66-305 ms on the main thread per cloud sun-mean read whenever
-      // the GPU was behind (a camera jump into a new place, a cold pipeline). The copy after a signalled fence on a
-      // STREAM_READ pack buffer is served from the client's readback shadow without one; an allocation that failed
-      // leaves it an INVALID_VALUE that writes nothing.
+      // the GPU was behind (a camera jump into a new place, a cold pipeline); an allocation that failed leaves the copy
+      // an INVALID_VALUE that writes nothing. The copy itself is the same round trip (battle-spikes-253: Chrome serves
+      // getBufferSubData through GetBufferSubDataCHROMIUM + WaitForCmd, not the readback shadow), so there is one, here.
       assertReadable(gl, deadline, now, measure);
       measure('copy', () => gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pixels, 0, byteLength));
     }, measure);

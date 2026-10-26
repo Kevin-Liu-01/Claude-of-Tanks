@@ -493,6 +493,11 @@ export default defineConfig({
             // apart from hashes. The public pages reach the player with import() beside their first bytes (with the fleet
             // takes' small helpers, about 7 KB brotli, only on pages that show a video).
             { name: 'fleetTakes', test: /[\\/]src[\\/](?:ui[\\/]fleetTakes|presentation[\\/]mediaPlayer)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-site, the interaction redesign's battlefield picker): the picker's facts (ui/battlefieldFacts.ts,
+            // loaded with Deploy's picker) read the landscape tags. As their third importer, with main and the Rooms host's
+            // playMenu, the tags split off the chunk they shared with the random-map mosaic and the play-mode normaliser: one more
+            // game and cn boot request for 1 KB. The three ride together again, exactly these modules.
+            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
             // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
             // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes

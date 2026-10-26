@@ -245,20 +245,37 @@ export function drawPennant(ctx: Ctx, x: number, y: number, h: number, color: st
   ctx.restore();
 }
 
-/** Team spawn / base: a tank inside a return arrow, legible at minimap size. */
+/**
+ * Team spawn / base: a tank inside a return arrow, legible at minimap size. A side reads by shape as well as colour (a
+ * team is never colour alone, the roster's dot and diamond): the player's side stands on a disc, the enemy's on a
+ * diamond edged in its colour, the two of one area. Like the objective hexes, the backing carries a dark keyline that
+ * holds it apart from any terrain. A caller that does not name the side draws the disc.
+ */
 export function drawSpawnGlyph(
-  ctx: Ctx, x: number, y: number, r: number, color: string, fill: string,
+  ctx: Ctx, x: number, y: number, r: number, color: string, fill: string, side: 'own' | 'enemy' = 'own',
 ): void {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // A dark backing separates the symbol from bright terrain and tank clusters.
+  // the diamond's half-diagonal gives it the disc's area (π r² = 2 d²)
+  const d = r * Math.sqrt(Math.PI / 2);
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (side === 'enemy') {
+    ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath();
+  } else ctx.arc(x, y, r, 0, Math.PI * 2);
+  // A dark backing and keyline separate the symbol from bright terrain and tank clusters.
+  ctx.lineWidth = r * 0.34;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
   ctx.fillStyle = OBJECTIVE_PALETTE.keyline;
   ctx.fill();
   ctx.fillStyle = fill;
   ctx.fill();
+  if (side === 'enemy') {
+    ctx.lineWidth = r * 0.16;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+  }
 
   // Clockwise return arrow; leave a gap beside the tank's barrel.
   ctx.beginPath();

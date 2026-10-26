@@ -77,7 +77,8 @@ function paintMarkers(ctx: CanvasRenderingContext2D, width: number, height: numb
     const x = Math.max(r, Math.min(box - r, _point[0])), y = Math.max(r, Math.min(box - r, _point[1]));
     const color = sideColor(marker.side), fill = sideFill(marker.side);
     switch (marker.kind) {
-      case 'spawn': drawSpawnGlyph(ctx, x, y, r * 0.8, color, fill); break;
+      // a spawn at the hexes' size, so its tank reads as a tank and not a fleck
+      case 'spawn': drawSpawnGlyph(ctx, x, y, r, color, fill, marker.side === 'enemy' ? 'enemy' : 'own'); break;
       case 'zone':
       case 'sector':
         drawHexBadge(ctx, x, y, r, { fill, stroke: color, dashed: marker.status === 'locked' });

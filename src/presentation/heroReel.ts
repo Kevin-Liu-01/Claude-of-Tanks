@@ -38,6 +38,9 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   // each clip's caption (tools/home-premiere.mjs): the one on screen names its shot; the poster's shows until the first turn
   const shots = [...hero.querySelectorAll<HTMLElement>('[data-reel-shot]')];
   if (!clips.length || !autoplayAllowed()) return null;
+  // the pause control is the kit's square icon button on its opaque plate, as every loop on the page has
+  // (mediaPlayer.ts MEDIA_TOGGLE_CLASS); the markup holds it hidden until the reel shows it
+  toggle?.classList.add('cot-c-btn', 'cot-c-btn--icon');
 
   let current = -1;
   let timer = 0;

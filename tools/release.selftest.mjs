@@ -4,8 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { ASSET_CARRY_DEFAULTS, cacheControlIsLong, carryForwardReleaseAssets, chunkPaths, createRunner, defaultAssetCacheDir,
-  deployMetadata, displayCommand, githubSlug, parseReleaseArgs, parseVersionStamp, previousProductionDeployment, RELEASE_DEFAULTS,
-  stampNames, stripRedactedPublicEnv, verify, VERCEL_CLI_MAJOR, workerDeployArgs } from './release.mjs';
+  deployMetadata, displayCommand, githubSlug, parseReleaseArgs, parseVersionStamp, previousProductionDeployment, recordReleaseAssets,
+  RELEASE_DEFAULTS, RELEASE_MANIFEST, stampNames, stripRedactedPublicEnv, verify, VERCEL_CLI_MAJOR, workerDeployArgs } from './release.mjs';
 import { REPO_ROOT } from './selftest-cache.mjs';
 
 // Infra P14/P17, hygiene H2d (2026-10-01): tools/release.mjs is the versioned production release.
@@ -24,7 +24,10 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.deepEqual([verifyOptions.sweep, verifyOptions.attempts, verifyOptions.intervalMs, verifyOptions.site], [true, 3, 2000, 'http://127.0.0.1:9']);
   assert.equal(parseReleaseArgs(['rollback', '--to=claude-of-tanks-abc123-kl01s-projects.vercel.app']).to, 'claude-of-tanks-abc123-kl01s-projects.vercel.app');
   assert.equal(parseReleaseArgs(['workers', 'HEAD', '--only=rooms']).only, 'rooms');
-  for (const bad of [[], ['publish'], ['deploy'], ['build', 'HEAD', '--prod'], ['rollback', 'HEAD'], ['verify', 'HEAD', '--keep'],
+  const recordOptions = parseReleaseArgs(['record', 'HEAD', '--no-verify', '--asset-cache=rc', '--dir=out'], {});
+  assert.deepEqual([recordOptions.command, recordOptions.verify, recordOptions.assetCache], ['record', false, join(process.cwd(), 'rc')]);
+  assert.equal(parseReleaseArgs(['deploy', 'HEAD', '--asset-cache=rc'], {}).assetCache, join(process.cwd(), 'rc'), 'deploy records into the named cache');
+  for (const bad of [[], ['publish'], ['deploy'], ['record'], ['record', 'HEAD', '--carry=2'], ['verify', 'HEAD', '--asset-cache=x'], ['build', 'HEAD', '--prod'], ['rollback', 'HEAD'], ['verify', 'HEAD', '--keep'],
     ['build', 'HEAD', '--site=https://cot.kevinliu.studio/path'], ['workers', 'HEAD', '--only=../x'], ['build', 'a b'], ['deploy', 'HEAD', '--to=x'],
     ['build', 'HEAD', '--carry=x'], ['build', 'HEAD', '--carry=51'], ['build', 'HEAD', '--carry-max-mb=0'], ['deploy', 'HEAD', '--carry=2'],
     ['build', 'HEAD', '--asset-cache=']]) {
@@ -41,7 +44,8 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.equal(parseReleaseArgs(['build', 'HEAD', '--carry=0'], {}).carryReleases, 0, '--carry=0 turns the carry-forward off');
 }
 
-// the asset carry-forward on temporary directories: old tabs keep the chunks their page named
+// the asset carry-forward on temporary directories: old tabs keep the chunks their page named. A build only reads the
+// cache; a release is recorded when it is deployed (release 254's trap: measuring builds pushed the live release out).
 {
   const scratch = mkdtempSync(join(tmpdir(), 'cot-release-carry-'));
   try {
@@ -49,6 +53,7 @@ import { REPO_ROOT } from './selftest-cache.mjs';
     const sha = (letter) => letter.repeat(40);
     const files = (staticDir) => readdirSync(join(staticDir, 'assets'), { recursive: true })
       .filter((name) => !name.endsWith('/') && /\.[a-z0-9]+$/.test(name)).map(String).sort();
+    const cached = () => JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8')).releases.map((release) => release.commit);
     let serial = 0;
     /** A fresh build output: `{ name: contents }` under static/assets. */
     const output = (assets) => {
@@ -59,44 +64,67 @@ import { REPO_ROOT } from './selftest-cache.mjs';
       }
       return staticDir;
     };
-    const carry = (staticDir, commit, extra = {}) => carryForwardReleaseAssets({ staticDir, cacheDir, commit,
+    const carry = (staticDir, commit, extra = {}) => carryForwardReleaseAssets({ staticDir, cacheDir, commit, ...extra });
+    const record = (staticDir, commit, own, extra = {}) => recordReleaseAssets({ staticDir, cacheDir, commit, files: own,
       now: () => `2026-10-02T00:00:0${serial}Z`, ...extra });
+    /** build, then deploy: the carry and the record of one release. */
+    const release = (staticDir, commit, extra = {}) => { const carried = carry(staticDir, commit, extra); return { carried, recorded: record(staticDir, commit, carried.ownFiles) }; };
 
-    // release a: nothing cached yet; only hashed names are recorded
+    // release a: nothing cached yet; only hashed names are listed as the build's own
     const a = output({ 'main-aaaaaaa1.js': 'a-main', 'shared-ssssssss.js': 'shared', 'fonts/inter-aaaaaaa2.woff2': 'a-font', 'notes.txt': 'unhashed' });
-    assert.deepEqual(carry(a, sha('a')), { own: 3, carried: 0, carriedBytes: 0, overBudget: 0, missing: 0, pruned: 0, fromReleases: [], cachedReleases: 1 });
+    const ra = release(a, sha('a'));
+    assert.deepEqual({ ...ra.carried, ownFiles: ra.carried.ownFiles.map((file) => file.path) },
+      { own: 3, ownFiles: ['fonts/inter-aaaaaaa2.woff2', 'main-aaaaaaa1.js', 'shared-ssssssss.js'], carried: 0, carriedBytes: 0, overBudget: 0, missing: 0, fromReleases: [] });
+    assert.deepEqual(ra.recorded, { recorded: 3, pruned: 0, releases: [sha('a')] });
     // release b: carries a's files it lacks (nested paths too), never a file it emits itself
     const b = output({ 'main-bbbbbbb1.js': 'b-main', 'shared-ssssssss.js': 'shared' });
-    const rb = carry(b, sha('b'));
-    assert.deepEqual([rb.own, rb.carried, rb.fromReleases], [2, 2, [sha('a')]]);
+    const rb = release(b, sha('b'));
+    assert.deepEqual([rb.carried.own, rb.carried.carried, rb.carried.fromReleases], [2, 2, [sha('a')]]);
     assert.deepEqual(files(b), ['fonts/inter-aaaaaaa2.woff2', 'main-aaaaaaa1.js', 'main-bbbbbbb1.js', 'shared-ssssssss.js']);
     assert.equal(readFileSync(join(b, 'assets', 'main-aaaaaaa1.js'), 'utf8'), 'a-main', 'a carried file keeps its bytes');
     const index = JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8'));
-    assert.deepEqual(index.releases.map((release) => [release.commit, release.files.map((file) => file.path)]),
+    assert.deepEqual(index.releases.map((entry) => [entry.commit, entry.files.map((file) => file.path)]),
       [[sha('a'), ['fonts/inter-aaaaaaa2.woff2', 'main-aaaaaaa1.js', 'shared-ssssssss.js']], [sha('b'), ['main-bbbbbbb1.js', 'shared-ssssssss.js']]],
       'a release records only its own files, so a carried file ages out with the release that emitted it');
+    // local builds that are never deployed leave the cache untouched: the live release stays in the carry
+    const before = readFileSync(join(cacheDir, 'releases.json'), 'utf8');
+    for (const letter of ['5', '6', '7', '8']) carry(output({ [`main-${letter.repeat(7)}1.js`]: letter }), sha(letter));
+    assert.equal(readFileSync(join(cacheDir, 'releases.json'), 'utf8'), before, 'measuring builds record nothing');
+    assert.deepEqual(readdirSync(join(cacheDir, 'assets')).filter((name) => /^main-[5-8]/.test(name)), [], 'nor copy their files into the cache');
+    const afterLocal = output({ 'main-9999999a.js': 'nine' });
+    assert.deepEqual(carry(afterLocal, sha('9')).fromReleases, [sha('b'), sha('a')], 'the next build still carries the deployed releases');
     // releases c, d, e: the last three are carried (newest first); the cache keeps the newest four and prunes the rest
-    carry(output({ 'main-ccccccc1.js': 'c-main' }), sha('c'));
-    carry(output({ 'main-ddddddd1.js': 'd-main' }), sha('d'));
+    release(output({ 'main-ccccccc1.js': 'c-main' }), sha('c'));
+    release(output({ 'main-ddddddd1.js': 'd-main' }), sha('d'));
     const e = output({ 'main-eeeeeee1.js': 'e-main' });
-    const re = carry(e, sha('e'));
-    assert.deepEqual(re.fromReleases, [sha('d'), sha('c'), sha('b')], 'the last three releases, newest first');
+    const re = release(e, sha('e'));
+    assert.deepEqual(re.carried.fromReleases, [sha('d'), sha('c'), sha('b')], 'the last three releases, newest first');
     assert.deepEqual(files(e), ['main-bbbbbbb1.js', 'main-ccccccc1.js', 'main-ddddddd1.js', 'main-eeeeeee1.js', 'shared-ssssssss.js']);
-    assert.equal(re.pruned, 2, 'release a\'s own main chunk and font leave the cache once four newer releases exist');
+    assert.equal(re.recorded.pruned, 2, 'release a\'s own main chunk and font leave the cache once four newer releases exist');
+    assert.deepEqual(re.recorded.releases, [sha('b'), sha('c'), sha('d'), sha('e')]);
     assert.deepEqual(readdirSync(join(cacheDir, 'assets'), { recursive: true }).map(String).filter((name) => name.endsWith('.js')).sort(),
       ['main-bbbbbbb1.js', 'main-ccccccc1.js', 'main-ddddddd1.js', 'main-eeeeeee1.js', 'shared-ssssssss.js']);
     // the byte cap drops the oldest releases first
     const f = output({ 'main-fffffff1.js': 'f-main' });
-    const rf = carry(f, sha('f'), { maxBytes: 12 });
-    assert.deepEqual([rf.carried, rf.carriedBytes, rf.overBudget], [2, 12, 1], 'e and d (6 bytes each) fit, c does not; b (the shared chunk) is four releases back');
+    const rf = release(f, sha('f'), { maxBytes: 12 });
+    assert.deepEqual([rf.carried.carried, rf.carried.carriedBytes, rf.carried.overBudget], [2, 12, 1], 'e and d (6 bytes each) fit, c does not; b (the shared chunk) is four releases back');
     assert.deepEqual(files(f), ['main-ddddddd1.js', 'main-eeeeeee1.js', 'main-fffffff1.js']);
-    // a rebuild of the same commit replaces its entry; --carry=0 copies nothing yet still records the build
+    // a redeploy of the same commit replaces its entry; --carry=0 copies nothing; keep=1 holds only the newest
     const f2 = output({ 'main-fffffff1.js': 'f-main' });
     const rf2 = carry(f2, sha('f'), { releases: 0 });
-    assert.deepEqual([rf2.carried, rf2.fromReleases, rf2.cachedReleases], [0, [], 1]);
-    assert.deepEqual(JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8')).releases.map((release) => release.commit), [sha('f')]);
+    assert.deepEqual([rf2.carried, rf2.fromReleases], [0, []]);
+    assert.deepEqual(record(f2, sha('f'), rf2.ownFiles, { keep: 1 }).releases, [sha('f')]);
+    assert.deepEqual(cached(), [sha('f')]);
+    // the record refuses an output that no longer holds the build's own files, and a list with nothing in it
+    const g = output({ 'main-ggggggg1.js': 'g-main' });
+    const rg = carry(g, sha('1'));
+    writeFileSync(join(g, 'assets', 'main-ggggggg1.js'), 'g-main-edited');
+    assert.throws(() => record(g, sha('1'), rg.ownFiles), /is not the 6-byte file the build emitted/);
+    assert.throws(() => record(g, sha('1'), []), /no own files to record/);
+    assert.deepEqual(cached(), [sha('f')], 'a refused record changes nothing');
+    writeFileSync(join(g, 'assets', 'main-ggggggg1.js'), 'g-main');
+    record(g, sha('1'), rg.ownFiles);
     // a missing cache file or an unsafe recorded path is skipped, never fatal and never written outside the output
-    carry(output({ 'main-ggggggg1.js': 'g-main' }), sha('1'));
     const tampered = JSON.parse(readFileSync(join(cacheDir, 'releases.json'), 'utf8'));
     tampered.releases.at(-1).files.push({ path: '../escape-hhhhhhh1.js', bytes: 1 }, { path: 'gone-iiiiiii1.js', bytes: 1 });
     writeFileSync(join(cacheDir, 'releases.json'), JSON.stringify(tampered));
@@ -104,14 +132,17 @@ import { REPO_ROOT } from './selftest-cache.mjs';
     const rh = carry(h, sha('2'));
     assert.deepEqual([rh.carried, rh.missing], [2, 1], 'f and g carried; the vanished file is counted, the escaping path ignored');
     assert.equal(existsSync(join(h, 'escape-hhhhhhh1.js')), false);
-    // another build holding the cache stops this one; a foreign index is refused
+    // another release step holding the cache stops this one; a foreign index is refused
     mkdirSync(join(cacheDir, '.lock'));
     assert.throws(() => carry(output({ 'main-jjjjjjj1.js': 'j' }), sha('d')), /another release build holds/);
+    assert.throws(() => record(h, sha('2'), rh.ownFiles), /another release build holds/);
     rmSync(join(cacheDir, '.lock'), { recursive: true });
     writeFileSync(join(cacheDir, 'releases.json'), JSON.stringify({ version: 99, releases: [] }));
     assert.throws(() => carry(output({ 'main-kkkkkkk1.js': 'k' }), sha('e')), /not a version-1 release cache index/);
-    assert.equal(existsSync(join(cacheDir, '.lock')), false, 'a failed carry releases its lock');
+    assert.throws(() => record(h, sha('2'), rh.ownFiles), /not a version-1 release cache index/);
+    assert.equal(existsSync(join(cacheDir, '.lock')), false, 'a failed carry or record releases its lock');
     assert.throws(() => carryForwardReleaseAssets({ staticDir: join(scratch, 'none'), cacheDir, commit: sha('a') }), /emitted no hashed assets/);
+    assert.equal(RELEASE_MANIFEST, 'cot-release.json', 'the own-file list sits in .vercel/, beside the uploaded output');
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
@@ -238,7 +269,8 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.ok(build.stdout.indexOf('finally: delete') > build.stdout.indexOf('vercel-output-immutable.mjs --check'), 'the environment files go last');
   assert.equal(existsSync(join(tmpdir(), `cot-release-${head.slice(0, 12)}`)), false, 'a dry run creates no worktree');
   const at = (text) => build.stdout.indexOf(text);
-  assert.match(build.stdout, /carry-forward: copy the hashed \/assets files of the last 3 releases cached in \S+ that this build lacks into \S+\/\.vercel\/output\/static\/assets \(newest first, at most 200 MB\)/);
+  assert.match(build.stdout, /carry-forward: copy the hashed \/assets files of the last 3 deployed releases cached in \S+ that this build lacks into \S+\/\.vercel\/output\/static\/assets \(newest first, at most 200 MB\); the cache is not written/);
+  assert.match(build.stdout, /write this build's own hashed files to \S+\/\.vercel\/cot-release\.json \(recorded in the cache only when deployed\)/);
   assert.ok(at('remove ') < at('vercel-must-not-run build --prod') && at('git checkout -- package-lock.json') < at('carry-forward:')
     && at('carry-forward:') < at('$ node tools/vercel-output-immutable.mjs'), 'a fresh output, then the carry-forward between the build and the immutable routes');
   const noCarry = run('build', 'HEAD', '--carry=0');
@@ -246,9 +278,15 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.match(noCarry.stdout, /carry-forward: off \(--carry=0\)/);
   const deploy = run('deploy', 'HEAD', '--title=deploy 164: gate');
   assert.equal(deploy.status, 0, deploy.stderr);
-  assert.match(deploy.stdout, new RegExp(`vercel-must-not-run deploy --prebuilt --prod --yes --scope kl01s-projects -m githubDeployment=1 -m githubCommitRef=main -m githubCommitSha=${head}`));
+  assert.match(deploy.stdout, new RegExp(`vercel-must-not-run deploy --prebuilt --prod --yes --archive=tgz --scope kl01s-projects -m githubDeployment=1 -m githubCommitRef=main -m githubCommitSha=${head}`));
   assert.match(deploy.stdout, /-m 'title=deploy 164: gate' -m gateHead=/);
   assert.match(deploy.stdout, /GET http:\/\/127\.0\.0\.1:9\/ until its application-version stamp names/);
+  assert.ok(deploy.stdout.indexOf('until its application-version stamp') < deploy.stdout.indexOf(`record ${head.slice(0, 12)}'s own hashed files`)
+    && deploy.stdout.indexOf('as the newest release in') < deploy.stdout.indexOf('git worktree remove'), 'deploy verifies, then records the release, then cleans up');
+  const recorded = run('record', 'HEAD');
+  assert.equal(recorded.status, 0, recorded.stderr);
+  assert.match(recorded.stdout, /until its application-version stamp names[\s\S]*own hashed files \(\S+\/\.vercel\/cot-release\.json\) as the newest release in/);
+  assert.match(run('record', 'HEAD', '--no-verify').stdout, /--no-verify: recording without checking the served stamp/);
   const rollback = run('rollback');
   assert.equal(rollback.status, 0, rollback.stderr);
   assert.match(rollback.stdout, /vercel-must-not-run list claude-of-tanks --environment production --status READY --format json --limit 20 --scope kl01s-projects/);

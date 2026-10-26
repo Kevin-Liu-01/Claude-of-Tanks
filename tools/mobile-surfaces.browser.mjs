@@ -68,7 +68,7 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
   await reachable('.cot-lt-loadout .eqslot');await reachable('.cot-lt-paint-all');
   await tap('.cot-battle-mode');
   for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']){
-    await tap(mode==='standard'?'.cot-battle-regular':`.cot-battle-choice[data-game-mode="${mode}"]`);
+    await page.locator(`[data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`).waitFor();await tap(`[data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`);
     await check(`setup-${mode}`,['.cot-battle-menu','.cot-deploy-head','.cot-battle-menu-foot']);
     for(const field of await page.locator('.cot-battle-details .cot-custom-select-trigger').all()){
       if(!await field.isVisible())continue;
@@ -87,21 +87,19 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
     await page.screenshot({path:resolve(out,`${name}-${panel}.png`)});
     await closeDrawer();
   }
-  // the battlefields: the battle card opens the Deploy screen, whose field holds the map grid
+  // the battlefields: the battle card opens the Deploy screen, whose field holds the battlefield picker
   await tap('.cot-battle-mode');
   await tap('[data-deploy-field]');
   await check('maps',['[data-deploy-field-pop]']);
   {
-    const inspect=page.locator('.cot-map-card').filter({has:page.locator('.mthumb.verdant')}).locator('.cot-map-inspect');
-    assert.equal(await inspect.isDisabled(),true,'unselected map cannot be enlarged');
-    await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
-    assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'first tap only selects the map');
-    assert.equal(await inspect.isEnabled(),true,'selected map can now be enlarged');
+    const verdant='[data-deploy-bf] .cot-c-picker__opt[data-id="verdant"]';
+    await page.locator(verdant).waitFor({state:'visible'});
+    await reachable(verdant);
+    await tap(verdant);
+    assert.equal(await page.locator('[data-deploy-field-pop]').isHidden(),true,'one tap chooses the battlefield and closes the field');
+    assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'choosing opens no modal');
     await tap('[data-deploy-field]');
-    await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
-    await page.locator('.cot-modal-root.is-open .cot-modal').waitFor({state:'visible'});
-    await check('map-preview',['.cot-modal-root.is-open .cot-modal']);
-    await page.locator('.cot-modal-root.is-open .cot-modal__close').tap();
+    assert.equal(await page.locator(verdant).getAttribute('aria-selected'),'true','the field reopens on the chosen battlefield');
   }
   await page.screenshot({path:resolve(out,`${name}-maps.png`)});
   await tap('[data-battle-close]');

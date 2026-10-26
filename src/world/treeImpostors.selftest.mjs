@@ -251,6 +251,35 @@ try {
     assert.ok(world.group.children.some(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor), 'the lobe pools');
     world.dispose(); disposeObject3DResources(world.group);
   }
+  // (battle-spikes-253) the async bake (the network entry's compile): its programs submitted against the atlas with no draw,
+  // their links awaited between tasks, then the same draws; the bake's materials released after; a lazy bake meanwhile
+  // (a frame's update) leaves nothing to draw
+  for (const lazyMeanwhile of [false, true]) {
+    const { world, renderer } = produce('verdant');
+    const library = world._treeImpostors;
+    const compiled = [];
+    renderer.compile = (scene, camera) => {
+      renderer.calls.push(['compile', renderer.state.target?.texture.name ?? null, camera.type]);
+      scene.traverse((object) => { if (object.material) compiled.push(object.material); });
+    };
+    const disposed = new Set();
+    let waited = 0;
+    const baked = await world.warmImpostorsAsync(async () => {
+      waited++;
+      assert.equal(renderer.calls.filter(c => c[0] === 'render').length, 0, 'no draw before the links are awaited');
+      assert.ok(compiled.length > 0 && renderer.state.target === null, 'submitted against the atlas, the target restored');
+      for (const material of new Set(compiled)) material.addEventListener('dispose', () => disposed.add(material));
+      if (lazyMeanwhile) world.update(1 / 60, new THREE.Vector3(0, 6, 0));
+    });
+    assert.equal(baked, true); assert.equal(waited, 1);
+    assert.equal(library.baked, true); assert.equal(library.bakes, 1, 'baked once either way');
+    const compiles = renderer.calls.filter(c => c[0] === 'compile');
+    assert.ok(compiles.length === (library.elevated ? 2 : 1) && compiles.every(c => c[1] === 'treeImpostorAlbedo' && c[2] === 'OrthographicCamera'));
+    assert.equal(renderer.calls.filter(c => c[0] === 'render').length, (library.elevated ? 2 : 1) * 2, 'the albedo and normal passes');
+    assert.equal(disposed.size, new Set(compiled).size, 'the bake materials released');
+    assert.equal(await world.warmImpostorsAsync(async () => assert.fail('a baked atlas waits for nothing')), true);
+    world.dispose(); disposeObject3DResources(world.group);
+  }
   // the mobile tier: the lobe tier even with a renderer
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
   resolveDeviceTier(); assert.equal(getDeviceTier(), 'mobile');

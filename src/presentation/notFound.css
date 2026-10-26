@@ -36,6 +36,7 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 .nf-hits[hidden],.nf-empty[hidden]{display:none}
 .nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:var(--s3);min-height:44px;padding:var(--s3) var(--s2);border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
 .nf-hit:hover,.nf-hit:focus-visible{background:var(--surface-hover);outline:none}
+.nf-hit:focus-visible{box-shadow:var(--focus-ring)}
 .nf-hit .cot-i{width:18px;height:18px;color:var(--ink-2)}
 .nf-hit b{overflow:hidden;font:600 var(--fs-15)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .nf-hit small{font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);white-space:nowrap}

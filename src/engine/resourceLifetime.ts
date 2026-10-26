@@ -24,7 +24,7 @@ interface RetainedObject3DResources {
   textures?: Iterable<Texture>;
 }
 
-interface ResourceDisposalReceipt {
+export interface ResourceDisposalReceipt {
   objects: number;
   geometries: number;
   materials: number;
@@ -278,8 +278,24 @@ export function releaseObject3DGpuResources(
  */
 export function disposeObject3DResources(
   root: Object3D | null | undefined,
-  { preserveRoots = [], onDispose = null }: ResourceDisposalOptions = {},
+  options: ResourceDisposalOptions = {},
 ): ResourceDisposalReceipt {
+  const steps = disposeObject3DResourcesSteps(root, options, Infinity);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/**
+ * (battle-spikes-253) disposeObject3DResources in steps: the root detached and both resource sets collected first, then
+ * `perStep` disposals a step (the dormant battlefield's release disposed a whole world in one task: nav-perf's room leave,
+ * 1.0 s). Drained, the same disposals in the same order.
+ */
+export function* disposeObject3DResourcesSteps(
+  root: Object3D | null | undefined,
+  { preserveRoots = [], onDispose = null }: ResourceDisposalOptions = {},
+  perStep = 48,
+): Generator<void, ResourceDisposalReceipt, void> {
   const keep = createResourceBag();
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
@@ -289,12 +305,14 @@ export function disposeObject3DResources(
   const objects = collectOwnedTreeResources(root, owned, true);
 
   root?.removeFromParent?.();
+  let done = 0;
   let geometries = 0;
   for (const geometry of owned.geometries) {
     if (keep.geometries.has(geometry)) continue;
     onDispose?.('geometry', geometry);
     geometry.dispose?.();
     geometries += 1;
+    if (++done % perStep === 0) yield;
   }
   let materials = 0;
   for (const material of owned.materials) {
@@ -302,6 +320,7 @@ export function disposeObject3DResources(
     onDispose?.('material', material);
     material.dispose?.();
     materials += 1;
+    if (++done % perStep === 0) yield;
   }
   let textures = 0;
   for (const texture of owned.textures) {
@@ -309,6 +328,7 @@ export function disposeObject3DResources(
     onDispose?.('texture', texture);
     texture.dispose?.();
     textures += 1;
+    if (++done % perStep === 0) yield;
   }
   return { objects, geometries, materials, textures };
 }
