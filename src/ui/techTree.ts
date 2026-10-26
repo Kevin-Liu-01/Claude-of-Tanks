@@ -50,7 +50,7 @@ const MAX_COL = 360;
 const GAP_SHARE = 1;
 const MIN_ROW = 60;
 /** A connector's arrowhead, at the screen's scale. */
-const ARROW = 6;
+const ARROW = 8;
 const arrowSize = (): number => Math.round(ARROW * uiScale() * 10) / 10;
 const WIRE_KINDS = ['base', 'sel'] as const;
 /** Zoom bounds (1 fits the tree to the board's width), and one button or key press's step. */
@@ -126,6 +126,8 @@ function kitButton(label: string, options: { readonly glyph?: IconId; readonly v
   return `<button type="button" class="${cls}" data-ui-sound="${options.sound}"${name}${zoom}>${body}</button>`;
 }
 
+/** The type scale's steps above the 11 px floor, as multiples of it: a card name's size is one of them. */
+const NAME_STEPS = [11, 12, 13, 14, 15, 16, 18].map((px) => px / 11);
 /**
  * The card names' size follows the column, as a multiple of the floor (--tt-name-floor, 11 px in every locale, so the
  * Latin names keep one size in en and zh): 1 to a 123 px column, growing to 1.65 at 203 px.
@@ -239,6 +241,18 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     item.innerHTML = flag(entry.flagNation, 'md');
     item.addEventListener('click', () => showTree(entry.id));
     rail.append(item);
+  }
+  /** A rail narrower than its flags ends half way across one: the flag it cuts, fading, says the rail scrolls. */
+  function fitRail(): void {
+    rail.style.maxWidth = '';
+    const style = getComputedStyle(rail);
+    const room = rail.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    if (rail.scrollWidth <= rail.clientWidth + 2) return;
+    const [first, second] = [...rail.children].map((item) => item.getBoundingClientRect());
+    const pitch = second.left - first.left;
+    const lead = first.left + rail.scrollLeft - rail.getBoundingClientRect().left - rail.clientLeft - parseFloat(style.paddingLeft);
+    const whole = Math.floor((room - lead - first.width / 2) / pitch);
+    rail.style.maxWidth = `${Math.max(0, lead + whole * pitch + first.width / 2)}px`;
   }
   /** The rail scrolls on narrow screens: it fades at the edges it scrolls toward. */
   function markRail(): void {
@@ -365,7 +379,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     const fitRow = Math.max(MIN_ROW, Math.round(shapeCol / CARD_ASPECT), Math.min(Math.round(shapeCol * 0.72), heightRow));
     const m = nameMetrics();
     const room = shapeCol - CARD_EDGES - m.inset;
-    const label = Math.max(m.floor, Math.min(m.floor * nameScale(shapeCol), m.floor * room / m.text));
+    const fits = Math.min(nameScale(shapeCol), room / m.text);
+    const label = m.floor * (NAME_STEPS.filter((step) => step <= fits).pop() ?? 1);
     const fitCol = Math.max(shapeCol, Math.ceil(m.text * label / m.floor + m.inset + CARD_EDGES));
     // the gutters take the width the columns leave, so a fitted tree spans the page gutter to gutter
     const spread = Math.max(GAP_X, (span - count * fitCol) / Math.max(1, count - 1));
@@ -488,7 +503,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     rule.style.top = `${px(g, { x: 0, y: 2 * g.lanes })[1] - SPECIAL_GAP / 2}px`;
     paintWires();
     markOverflow();
+    fitRail();
     markRail();
+    fitDetailName();
     fitStats();
     markDetail();
   }
@@ -523,6 +540,15 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     detail.classList.toggle('is-more-below', detail.scrollTop + detail.clientHeight < detail.scrollHeight - 2);
   }
   detail.addEventListener('scroll', markDetail, { passive: true });
+
+  /** The vehicle's name keeps to one line where it can: a step down at a time, to .8 of its layout's size. */
+  function fitDetailName(): void {
+    const name = detail.querySelector<HTMLElement>('.tt-detail-name')!;
+    for (let step = 1; step >= 0.8 - 1e-6; step -= 0.05) {
+      name.style.setProperty('--tt-name-step', step.toFixed(2));
+      if (name.getBoundingClientRect().height < parseFloat(getComputedStyle(name).lineHeight) * 1.5) return;
+    }
+  }
 
   function paintWires(): void {
     const g = geometry;
@@ -579,6 +605,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
         art.append(img);
       });
     }
+    fitDetailName();
     fitStats();
     markDetail();
   }
@@ -643,8 +670,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   function paintZoom(): void {
     for (const item of zoomButtons) {
       const kind = item.dataset.zoom;
-      // fit stays live (it reads as stuck when disabled); in and out stop at their bounds
-      if (kind === 'in' || kind === 'out') item.disabled = kind === 'in' ? zoom >= ZOOM_MAX - 1e-3 : zoom <= ZOOM_MIN + 1e-3;
+      // fit stays live and shows when the board sits at fit; in and out stop at their bounds
+      if (kind === 'fit') item.setAttribute('aria-pressed', String(Math.abs(zoom - 1) < 1e-3));
+      else item.disabled = kind === 'in' ? zoom >= ZOOM_MAX - 1e-3 : zoom <= ZOOM_MIN + 1e-3;
     }
   }
 
@@ -678,8 +706,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   }
 
   /**
-   * Scroll a node into view. A tree opens with its selection centred where the board scrolls, snapped to a column's
-   * and a row's edge, so the first column and row in view open whole, as they do unscrolled.
+   * Scroll a node into view. A tree opens with its selection centred across, snapped to a column's edge, and down on the
+   * first row holding a card in view, so the first column and row open whole, as they do unscrolled.
    */
   function reveal(id: string, centre = false): void {
     const g = geometry, node = nodeById.get(id);
@@ -690,8 +718,20 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     if (centre || left < board.scrollLeft + g.pad || left + g.col > board.scrollLeft + board.clientWidth - g.pad) {
       board.scrollTo({ left: snap(left - board.clientWidth / 2 + g.col / 2, g.col + g.gapX), behavior: 'auto' });
     }
-    if (centre || top < board.scrollTop || top + g.row > board.scrollTop + board.clientHeight) {
-      board.scrollTo({ top: snap(top - board.clientHeight / 2 + g.row / 2, g.row + GAP_Y), behavior: 'auto' });
+    if (centre) {
+      // the tree opens on the first row that holds a card in view (never on empty bands), with the selection in view
+      const pitch = g.row + GAP_Y;
+      const inView = tree.nodes.filter((other) => {
+        const cardLeft = px(g, { x: 2 * (other.tier - 1), y: 0 })[0] + grid.offsetLeft;
+        return cardLeft + g.col > board.scrollLeft && cardLeft < board.scrollLeft + board.clientWidth;
+      });
+      const firstRow = Math.min(...inView.map((other) => layout.rowOf.get(other.id)!));
+      const selectedRow = layout.rowOf.get(id)!;
+      const rowsInView = Math.max(1, Math.floor((board.clientHeight - g.head - PAD_Y) / pitch));
+      const openRow = selectedRow - firstRow < rowsInView ? firstRow : selectedRow - Math.floor(rowsInView / 2);
+      board.scrollTo({ top: Math.max(0, openRow * pitch), behavior: 'auto' });
+    } else if (top < board.scrollTop || top + g.row > board.scrollTop + board.clientHeight) {
+      board.scrollTo({ top: Math.max(0, top - board.clientHeight / 2 + g.row / 2), behavior: 'auto' });
     }
   }
 
