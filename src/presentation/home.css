@@ -19,7 +19,8 @@ html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s
 body{--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
 img{display:block;max-width:100%}
-:focus-visible{outline:2px solid var(--accent-hi);outline-offset:4px}
+/* the page's own focus outline; the kit's controls draw their ring (components.css), so they take no second outline */
+:focus-visible:not([class*='cot-c-']){outline:2px solid var(--accent-hi);outline-offset:4px}
 .home main{overflow:hidden}
 .home h1,.home h2,.home h3{text-wrap:balance}
 .shell,.home-shell{width:min(calc(100% - var(--home-gutter) * 2),var(--shell-max));margin-inline:auto}
@@ -308,9 +309,13 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the words' scrim is the phone grade's lower half (home-phone-grade), across the picture and through the counts */
   .hero__lead::before,.hero__reelbar::before{content:none}
   .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
-  .hero__reelbar{justify-content:space-between;height:44px}
-  .hero__shots{text-align:left}
+  /* the caption takes the row beside the pause and wraps at its spaces, so the disc keeps the column's right edge whatever
+     the clip's names, battlefield and hour */
+  .hero__reelbar{justify-content:space-between;height:auto;min-height:44px;margin-left:0}
+  .hero__shots{flex:1 1 auto;min-width:0;text-align:left}
   .hero__shot{align-items:flex-start}
+  .hero__shot b{white-space:normal}
+  .hero__where{flex-wrap:wrap;row-gap:0;white-space:normal}
   .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s2);height:auto;margin:0;padding:0;border:0}
   .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}

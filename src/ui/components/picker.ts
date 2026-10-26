@@ -234,10 +234,10 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     const second = list.findIndex((element) => element.offsetTop !== top);
     return second < 0 ? list.length : second;
   };
-  const rove = (to: HTMLElement | undefined, focus: boolean): void => {
+  const rove = (to: HTMLElement | undefined, focus: boolean, preventScroll = false): void => {
     if (!to) return;
     for (const element of options$()) element.tabIndex = element === to ? 0 : -1;
-    if (focus) to.focus({ preventScroll: false });
+    if (focus) to.focus({ preventScroll });
   };
   /** Scroll the chosen option into the grid's view when the grid scrolls (a surface that bounds the picker's height). */
   const revealChosen = (): void => {
@@ -369,7 +369,9 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       for (const element of options$()) element.setAttribute('aria-selected', String(element.dataset.id === id));
     },
     focus(): void {
-      rove(options$().find((element) => element.getAttribute('aria-selected') === 'true') ?? options$()[0], true);
+      // the surface places the picker; the grid shows its choice (revealChosen), so focus scrolls nothing else
+      rove(options$().find((element) => element.getAttribute('aria-selected') === 'true') ?? options$()[0], true, true);
+      revealChosen();
     },
     dispose(): void {
       if (frame) cancelAnimationFrame(frame);

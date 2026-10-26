@@ -74,6 +74,8 @@ export const COMMON_PATHS = Object.freeze({
   'equip-item': { from: 'garage', presses: 2 },
   /** Garage: Deploy, Private, Create room. */
   'start-room': { from: 'garage', presses: 3 },
+  /** A room's lobby (the host): the battlefield trigger, a battlefield on the picker. */
+  'rooms-map': { from: 'rooms', presses: 2 },
 } as const satisfies Readonly<Record<string, { readonly from: Screen; readonly presses: number }>>);
 type CommonPathId = keyof typeof COMMON_PATHS;
 
@@ -134,9 +136,8 @@ export const INTERACTION_SITES = Object.freeze({
   // ---- Rooms (the lead)
   'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], lane: 'lead' },
-  'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead' },
+  'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
-  'rooms-battlefield-list': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-map-list'], lane: 'lead' },
   'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },
   'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-vehicle-list'], lane: 'lead' },
   'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-team-list'], lane: 'lead' },
@@ -191,7 +192,6 @@ export const INTERACTION_SITES = Object.freeze({
   'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
-  'home-rail': { chooses: 'view', options: 4, screen: 'site', owner: 'site/home.html', build: 'segmented', marks: ['segmented:~play-title', 'src/presentation/homePage.ts bespoke:other===option'], lane: 'lead' },
   'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'bespoke', marks: ['bespoke:index===0', 'bespoke:buttonIndex===index'], lane: 'premiere-site' },
   'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'bespoke', marks: ['bespoke:own===stage'], lane: 'premiere-site' },
   'docs-archive-filter': { chooses: 'filter', options: 11, screen: 'site', owner: 'src/presentation/mediaArchive.ts', build: 'bespoke', marks: ['bespoke:dataset.feature', 'bespoke:feature===active'], lane: 'premiere-site' },
@@ -211,4 +211,5 @@ export const INTERACTION_EXEMPT: readonly InteractionExempt[] = Object.freeze([
   { owner: 'src/gallery/damageWorkbench.ts', mark: "bespoke:action==='hitboxes'", reason: 'the Hitboxes and Probe tools show their own on state: toggles, not a set' },
   { owner: STUDIO, mark: 'bespoke:light.override?.sunElevationDeg', reason: "the sun elevation's Auto chip shows whether the map's own elevation holds: a toggle" },
   { owner: 'src/presentation/heroReel.ts', mark: 'bespoke:dataset.reelShot', reason: "the hero reel's caption follows the playing shot: a readout, nothing to choose" },
+  { owner: 'src/presentation/homePage.ts', mark: 'bespoke:other===option', reason: "the landing's rail switch: tabs over its panels (role=tab, tabpanel): navigation, not a choice" },
 ]);

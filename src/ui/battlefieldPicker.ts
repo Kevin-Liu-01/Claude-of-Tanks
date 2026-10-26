@@ -11,6 +11,7 @@
 import { createPicker, type PickerFilter, type PickerItem, type PickerText } from './components/picker.ts';
 import { esc } from './components/escape.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 
 /** A battlefield as its cards show it; `hero` is the preview's larger picture (the card's poster when absent). */
 export interface BattlefieldCard extends PickerItem {
@@ -50,13 +51,14 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
   // the preview is the cards' echo, so assistive tech reads the chosen option, not this figure
   host.innerHTML = '<div class="cot-bf__in"><figure class="cot-bf__preview" aria-hidden="true">'
     + '<div class="cot-bf__hero cot-c-media cot-c-media--soft"><img alt="" decoding="async">'
-    + '<div class="cot-bf__map" hidden><img alt="" decoding="async"><canvas></canvas></div></div>'
+    + '<div class="cot-bf__map" hidden><img alt="" decoding="async"></div></div>'
     + '<figcaption class="cot-bf__cap"><b class="cot-bf__name"></b><span class="cot-bf__facts"></span></figcaption></figure>'
     + '<div class="cot-bf__cards"></div></div>';
   const hero = host.querySelector<HTMLImageElement>('.cot-bf__hero>img')!;
   const inset = host.querySelector<HTMLElement>('.cot-bf__map')!;
   const plate = inset.querySelector<HTMLImageElement>('img')!;
-  const canvas = inset.querySelector<HTMLCanvasElement>('canvas')!;
+  // the objectives' canvas is the kit's (uiCanvas: its store follows its box and ratio); deployObjectives.ts draws on it
+  const canvas = createUiCanvas(inset, '').canvas;
   const name = host.querySelector<HTMLElement>('.cot-bf__name')!;
   const facts = host.querySelector<HTMLElement>('.cot-bf__facts')!;
   // the objectives' drawer and its data load with the first battlefield shown (they share the HUD's glyph modules)
