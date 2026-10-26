@@ -24,7 +24,8 @@ const decode = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/
  */
 function sectionText(html: string): string {
   const blocks: string[] = [];
-  const body = html.replace(/<(table|figure)\b[\s\S]*?<\/\1>/g, (block) => {
+  // a region marked <!--nosearch--> is the picture's (a technical diagram's aria-hidden labels and key), not the section's
+  const body = html.replace(/<!--nosearch-->[\s\S]*?<!--\/nosearch-->/g, ' ').replace(/<(table|figure)\b[\s\S]*?<\/\1>/g, (block) => {
     blocks.push(prose(block.split(/<\/(?:td|th|li|figcaption)>/).map((cell) => decode(cell).replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ')));
     return ' ';
   });
