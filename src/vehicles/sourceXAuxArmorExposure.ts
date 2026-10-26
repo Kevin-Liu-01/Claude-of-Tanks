@@ -91,6 +91,9 @@ function mergeFragments(faces:Face[],facts:Contours):Face[] {
   const result=[...faces];
   for(let i=0;i<result.length;i++)for(let j=i+1;j<result.length;j++){
     const a=facts(result[i]),b=facts(result[j]);
+    // (2026-10-26, the boot census) two faces apart by more than a micron can never join: their hull adds area far past
+    // the test's 1e-13, so the hull below is skipped (it ran for every coplanar pair, the fleet chunk's evaluation)
+    if(!overlaps(a.bounds,b.bounds,-1e-6))continue;
     if(!b.face.every(p=>Math.abs(a.unitDepth(p))<1e-11))continue;
     const joined=hull([...result[i],...result[j]]);
     if(Math.abs(area(joined)-a.area-b.area)>1e-13)continue;
