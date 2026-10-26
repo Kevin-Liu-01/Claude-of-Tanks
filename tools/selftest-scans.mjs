@@ -135,6 +135,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-freshness.selftest.mjs': lists('src/**', 'site/*.html', 'public/media/*'),
   // publicPages: the game, the 404 and every page under site/
   'tools/media-page-scan.mjs': lists('site/*.html'),
+  // lintFiles: the sources, the public sheets and the site documents
+  'tools/motion-lint.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   // censusFiles: the sources, the public sheets and the site documents
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
