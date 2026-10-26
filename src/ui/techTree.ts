@@ -153,6 +153,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   let open = false;
   let trigger: HTMLElement | null = null;
   let geometry: Geometry | null = null;
+  /** The cards' far edges on the grid: the board fades only where a card runs past its own edge. */
+  const extent = { right: 0, bottom: 0 };
   let zoom = 1;
 
   // Each stat's fleet range, for the kit's 20-cell scale (reload reads lower as better).
@@ -493,11 +495,14 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       const tier = Number((numeral as HTMLElement).dataset.tier);
       (numeral as HTMLElement).style.left = `${px(g, { x: 2 * (tier - 1), y: 0 })[0]}px`;
     }
+    extent.right = extent.bottom = 0;
     for (const node of tree.nodes) {
       const [x, y] = px(g, { x: 2 * (node.tier - 1), y: 2 * layout.rowOf.get(node.id)! });
       const item = buttons.get(node.id)!;
       item.style.left = `${x}px`;
       item.style.top = `${y}px`;
+      extent.right = Math.max(extent.right, x + g.col);
+      extent.bottom = Math.max(extent.bottom, y + g.row);
     }
     rule.hidden = !g.specialLanes;
     rule.style.top = `${px(g, { x: 0, y: 2 * g.lanes })[1] - SPECIAL_GAP / 2}px`;
@@ -525,11 +530,12 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     }
   }
 
-  /** A board larger than its space fades at every edge it can scroll toward, so nothing reads as cut. */
+  /** A board larger than its space fades at every edge a card runs past, so nothing reads as cut (and a card wholly
+   *  in view never sits under a fade: the bands' foot and the gutter past the last card are not more board). */
   function markOverflow(): void {
     // (a few pixels of rounding past an edge is not more board)
-    stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 4);
-    stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 4);
+    stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < grid.offsetTop + extent.bottom - 2);
+    stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < grid.offsetLeft + extent.right - 2);
     stage.classList.toggle('is-more-above', board.scrollTop > 4);
     stage.classList.toggle('is-more-left', board.scrollLeft > 4);
   }

@@ -153,7 +153,9 @@
   font:700 calc(var(--tt-name-size) * var(--tt-name-step, 1))/1.05 var(--font-ui);letter-spacing:0;
   overflow-wrap:anywhere}
 .cot-tt .tt-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
-.cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
+/* (the trailing letter's tracking comes off the right inset, so the label sits centred) */
+.cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui) - var(--track-label))
+  calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
   font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
 .cot-tt .tt-detail-special[hidden]{display:none}
 /* the builds follow the tags on the name's line where the width allows, so a twin node keeps the band's height */
@@ -182,7 +184,7 @@
 /* Tablets: the rail takes its own row; the detail folds the stats under the name. */
 @media (max-width:1100px){
   .cot-tt{--tt-gutter:var(--s5)}
-  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s2);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-head{flex-wrap:wrap;row-gap:var(--s3);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-title{font-size:var(--fs-24)}
   .cot-tt .tt-nation{margin-right:auto}
   .cot-tt .tt-rail{order:1;margin-right:auto}
@@ -202,7 +204,7 @@
   .cot-tt{--tt-detail-art-w:128px;--tt-gutter:var(--s4)}
   /* two rows whatever the title's length: the nation and close, then the rail and the zoom plate */
   .cot-tt .tt-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'nation close' 'rail zoom';
-    align-items:center;gap:var(--s2) var(--s4);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+    align-items:center;gap:var(--s3) var(--s4);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{grid-area:nation;gap:var(--s3)}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-20)}
@@ -258,6 +260,10 @@
   .cot-tt .tt-title{font-size:var(--fs-20)}
   .cot-tt .tt-detail-name{--tt-name-size:var(--fs-24)}
   .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
+  /* each label on its meter, and Select at the kit's middle height, so the four stats clear the fade with the touch
+     header's taller plates (zh rows included) */
+  .cot-tt .tt-stats .cot-c-stat{row-gap:var(--s1)}
+  .cot-tt .tt-select{--h:max(var(--target-min),calc(var(--btn-h-m) * var(--tt-ui)))}
   .cot-tt .tt-act{grid-area:act}
 }
 /* Touch: every control is at least 44 px. */
