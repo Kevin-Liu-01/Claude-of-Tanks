@@ -442,7 +442,11 @@ export default defineConfig({
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
             // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN B and C): the kit picker and its words (components/picker.ts,
+            // pickerText.ts) load at boot with the Garage's camo and equipment pickers, and the battlefield preview's minimap URL
+            // (minimapAssetUrl.ts, the game's boot and the lazy battlefield picker) with them; every other importer is the game's
+            // lazy screens. On their own they were two more game and cn boot requests (Main's no-extra-request ruling).
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules)|ui[\\/](?:components[\\/]picker|pickerText|minimapAssetUrl))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
