@@ -167,9 +167,11 @@ function engineDeck(P: TankBuilderPort): void {
 function bowFurniture(P: TankBuilderPort): void {
   addChieftain10XBowLights(P);
   P.addHatch('hullDetail', cylY(.36, .36, .035, 28), .03, 1.575, 1.922);
+  // (release 240: the driver's periscope heads 9 cm lower, under the turret's front casting, 1.65, as it turns; they stood
+  // 3.8 cm into it, and the seat had lifted the casting over them)
   for (const x of [-.20, 0, .20]) {
-    P.addEquipment('hullDetail', box(.15, .11, .14), x, 1.650, 2.06, .17);
-    P.addEquipment('hullGlass', box(.115, .033, .008), x, 1.667, 2.132, .17);
+    P.addEquipment('hullDetail', box(.15, .11, .14), x, 1.560, 2.06, .17);
+    P.addEquipment('hullGlass', box(.115, .033, .008), x, 1.577, 2.132, .17);
   }
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', torus(.073, .022, 16, 6), side * .60, 1.140, 3.589, Math.PI / 2);
@@ -387,13 +389,6 @@ function launchers(P: TankBuilderPort): void {
 export function buildChieftainMk10X(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the source turret's lower body (1.636)
-  // sits under the hull's roof (1.697), its shoulders (1.73) and the forward engine-deck covers (1.74) past 1.35 m off
-  // the ring's axis, over a 1.566 ring deck, so its seat (turretSeatRace.ts) may rise past the default 4 cm: whatever of
-  // the turret passes over them stands its seam over them, and its buried bustle stops turning through the covers and the
-  // driver's periscopes.
-  P.turretG.userData.turretSeatRiseM = 0.30;
-  P.turretG.userData.turretSeatReadM = 0.30;
   P.gunG.position.set(...D.trunnion.map((v, i) => v - D.turretPivot[i]) as [number, number, number]);
   P.topY = D.structuralRoofY - D.turretPivot[1];
   hull(P);

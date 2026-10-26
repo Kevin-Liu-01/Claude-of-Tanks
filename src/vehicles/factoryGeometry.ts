@@ -345,6 +345,69 @@ export function polyLoft(
   return geometryFromTriangles(positions);
 }
 
+/**
+ * A cast shell's plan and rings refined for a continuous casting (owner 2026-10-25: "update the type 74 and stb 1 tanks
+ * completely fullly, making these tanks no longer look really outdated"; the 18-station, five-ring lofts rendered as
+ * faceted polygons). Each plan segment gains `planSteps - 1` stations on a uniform Catmull-Rom spline through the
+ * authored stations, which all stay exactly where they were; per-station ring values follow linearly. Between
+ * consecutive rings, `ringSteps - 1` rings follow a Catmull-Rom curve through the rings' heights and insets at each
+ * station, clamped to that ring pair's own range, so the shell rounds its shoulder and crown without ever standing
+ * outside the measured envelope. Function-valued stations are not supported.
+ */
+export function refineCastLoft(
+  plan: readonly Point2[],
+  rings: readonly PolyMultiLoftRing[],
+  { planSteps = 2, ringSteps = 2 }: { readonly planSteps?: number; readonly ringSteps?: number } = {},
+): { plan: Point2[]; rings: PolyMultiLoftRing[] } {
+  const n = plan.length;
+  const spline = (a: number, b: number, c: number, d: number, t: number): number =>
+    0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t);
+  const refinedPlan: Point2[] = [];
+  const source: Array<readonly [number, number]> = [];
+  for (let index = 0; index < n; index++) {
+    const p0 = plan[(index - 1 + n) % n], p1 = plan[index], p2 = plan[(index + 1) % n], p3 = plan[(index + 2) % n];
+    for (let step = 0; step < planSteps; step++) {
+      const t = step / planSteps;
+      refinedPlan.push(t === 0 ? [p1[0], p1[1]]
+        : [spline(p0[0], p1[0], p2[0], p3[0], t), spline(p0[1], p1[1], p2[1], p3[1], t)]);
+      source.push([index, t]);
+    }
+  }
+  const stations = (value: StationValue): number[] => {
+    if (typeof value === 'function') throw new TypeError('refineCastLoft: function-valued stations are not supported');
+    return source.map(([index, t]) => {
+      const a = typeof value === 'number' ? value : value[index];
+      const b = typeof value === 'number' ? value : value[(index + 1) % n];
+      if (a === undefined || b === undefined) throw new RangeError(`Missing loft station ${index}`);
+      return a + (b - a) * t;
+    });
+  };
+  const base = rings.map((ring) => ({ height: stations(ring.height), inset: stations(ring.inset ?? 1), ring }));
+  const refinedRings: PolyMultiLoftRing[] = [];
+  const last = base.length - 1;
+  for (let index = 0; index < last; index++) {
+    const r0 = base[Math.max(0, index - 1)], r1 = base[index], r2 = base[index + 1], r3 = base[Math.min(last, index + 2)];
+    for (let step = 0; step < ringSteps + (index === last - 1 ? 1 : 0); step++) {
+      const t = step / ringSteps;
+      const curve = (key: 'height' | 'inset'): number[] => r1[key].map((value, station) => {
+        const next = r2[key][station];
+        const raw = spline(r0[key][station], value, next, r3[key][station], t);
+        return Math.min(Math.max(raw, Math.min(value, next)), Math.max(value, next));
+      });
+      const ring: PolyMultiLoftRing = {
+        height: curve('height'),
+        inset: curve('inset'),
+        offsetX: (r1.ring.offsetX ?? 0) + ((r2.ring.offsetX ?? 0) - (r1.ring.offsetX ?? 0)) * t,
+        offsetZ: (r1.ring.offsetZ ?? 0) + ((r2.ring.offsetZ ?? 0) - (r1.ring.offsetZ ?? 0)) * t,
+      };
+      if (index === 0 && step === 0 && r1.ring.centerHeight !== undefined) ring.centerHeight = r1.ring.centerHeight;
+      if (index === last - 1 && step === ringSteps && r2.ring.centerHeight !== undefined) ring.centerHeight = r2.ring.centerHeight;
+      refinedRings.push(ring);
+    }
+  }
+  return { plan: refinedPlan, rings: refinedRings };
+}
+
 export function polyMultiLoft(
   plan: readonly Point2[],
   rings: readonly PolyMultiLoftRing[],

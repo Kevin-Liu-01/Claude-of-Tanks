@@ -19,6 +19,7 @@
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { erosionOctave, type MassifSettings } from './horizonMassif.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export type HorizonReliefCharacter = 'polar' | 'alpine' | 'rolling' | 'mesa' | 'volcanic' | 'coastal' | 'martian' | 'karst';
 
 export interface HorizonFarRangeSettings {
@@ -339,7 +340,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     const n = noise.noise(scratch.wx * freq[o] + ox[o], scratch.wz * freq[o] + oz[o]);
     const an = Math.abs(n);
     let r = (1 - an) + (an - (1 - an)) * s.billow;
-    r = Math.pow(clamp(r, 0, 1), sharp);
+    r = detMath.pow(clamp(r, 0, 1), sharp);
     r *= scratch.weight;
     scratch.weight = clamp(r * 2.0, 0, 1);
     return r;
@@ -376,7 +377,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     const rMid = (rIn + rOut) * 0.5;
     ranges.push({
       theta, halfSpan: (Math.PI / s.rangeCount) * (1.05 + rangeRng() * 0.45), phi: theta + Math.PI / 2 + oblique,
-      cx: Math.cos(theta) * rMid, cz: Math.sin(theta) * rMid, rIn, rOut,
+      cx: detMath.cos(theta) * rMid, cz: detMath.sin(theta) * rMid, rIn, rOut,
       height: 0.75 + rangeRng() * 0.55, steepSide: rangeRng() < 0.5 ? -1 : 1, steepness: 1.6 + rangeRng() * 0.6,
       sub: 0.28 + rangeRng() * 0.12,
       lambdaAlong: s.wavelengthM * s.rangeElongation * (0.9 + rangeRng() * 0.3), lambdaAcross: s.wavelengthM * (0.85 + rangeRng() * 0.3),
@@ -385,7 +386,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
   }
   const TAU = Math.PI * 2;
   const rangeField = (x: number, z: number, sharp: number): number => {
-    const ang = Math.atan2(z, x), r = Math.hypot(x, z);
+    const ang = detMath.atan2(z, x), r = detMath.hypot(x, z);
     let sum = 0;
     for (const g of ranges) {
       let d = ang - g.theta; d -= Math.round(d / TAU) * TAU;
@@ -394,7 +395,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const wR = smoothstep(g.rIn - 140, g.rIn, r) * (1 - smoothstep(g.rOut, g.rOut + 140, r));
       const w = wTheta * wR;
       if (w < 1e-3) continue;
-      const cp = Math.cos(g.phi), sp = Math.sin(g.phi);
+      const cp = detMath.cos(g.phi), sp = detMath.sin(g.phi);
       const dx = x - g.cx, dz = z - g.cz;
       const along = dx * cp + dz * sp;
       let across = -dx * sp + dz * cp;
@@ -405,11 +406,11 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const lean = noise.noise(along / (g.lambdaAlong * 1.7) + g.o1 * 0.37 + 53.1, across / (g.lambdaAcross * 2) + g.o2 * 0.61 - 17.4) * g.lambdaAlong * 0.28;
       const alongL = along + lean;
       const n1 = noise.noise(alongL / g.lambdaAlong + g.o1, across / g.lambdaAcross + g.o2);
-      const r1 = Math.pow(1 - Math.abs(n1), sharp);
+      const r1 = detMath.pow(1 - Math.abs(n1), sharp);
       const w1 = clamp(r1 * 2, 0, 1);
       const jitter = noise.noise(alongL / (g.lambdaAlong * 0.6) + g.jitterPhase, 7.7) * g.lambdaAlong * 0.15;
       const n2 = noise.noise((alongL + jitter) / (g.lambdaAlong / 3) + g.o3, across / (g.lambdaAcross / 2) + g.o4);
-      const r2 = Math.pow(1 - Math.abs(n2), sharp) * w1;
+      const r2 = detMath.pow(1 - Math.abs(n2), sharp) * w1;
       // the range's own lift: inside its window the ground stands 0.35 higher whatever the ridges do, so the ranges
       // rise from the gaps between them and the far range shows through the passes
       sum += w * g.height * (r1 * (1 - g.sub) + r2 * g.sub + 0.35);
@@ -426,7 +427,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     let sum = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const theta = (i / N) * TAU, r = 640 + (j / N) * 900;
-      const v = rangeField(Math.cos(theta) * r, Math.sin(theta) * r, midSharp);
+      const v = rangeField(detMath.cos(theta) * r, detMath.sin(theta) * r, midSharp);
       samples[j * N + i] = v; sum += v;
     }
     lowMean = sum / (N * N);
@@ -442,10 +443,10 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     let w = weight, sum = 0;
     for (let o = 0; o < HIGH_OCTAVES; o++) {
       const fq = freq[HIGH_FIRST + o], k = 1000 * fq;
-      const n = noise.noise3d(Math.cos(aFine) * k + hox[o], Math.sin(aFine) * k + hoz[o], rFine * fq + hoz[o] * 0.37);
+      const n = noise.noise3d(detMath.cos(aFine) * k + hox[o], detMath.sin(aFine) * k + hoz[o], rFine * fq + hoz[o] * 0.37);
       const an = Math.abs(n);
       let rr = (1 - an) + (an - (1 - an)) * s.billow;
-      rr = Math.pow(clamp(rr, 0, 1), sharp) * w;
+      rr = detMath.pow(clamp(rr, 0, 1), sharp) * w;
       w = clamp(rr * 2.0, 0, 1);
       sum += rr * highAmp[o];
     }
@@ -456,7 +457,7 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
     let sum = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const theta = (i / N) * Math.PI * 2, r = 700 + (j / N) * 700;
-      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+      const x = detMath.cos(theta) * r, z = detMath.sin(theta) * r;
       warpTo(x, z); scratch.weight = 1;
       for (let o = 0; o < LOW_OCTAVES; o++) octave(o, midSharp);
       const v = fineRaw(theta, r / s.fineElongation, scratch.weight, midSharp);
@@ -483,14 +484,14 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       // the fine octaves run in the ring's own (arc, radius) frame, stretched downslope by the character's elongation
       // (a face's spurs and chutes run down it; a mesa's ledges run along it), the warp offsets carried over as arc
       // and radius shifts; the across-slope coordinate is a circle in noise space so the field closes at every angle
-      const ct = Math.cos(theta), st = Math.sin(theta);
+      const ct = detMath.cos(theta), st = detMath.sin(theta);
       const dArc = -st * dx + ct * dz, dR = ct * dx + st * dz;
       // round 72c (integrator: a faint radial grain on the alpine faces at elongation 1.7): a second warp octave at a
       // third of the warp wavelength whose features run 35° off the radial — the angle is sheared by the radius
       // (theta + r · tan 35° / 1 km) on the circle embedding, so the field closes around the ring and its bands lie
       // oblique to the downslope stretch; the fine crests are bent across it and the comb breaks into chevrons
       const thetaW = theta + (r * 0.001) * WARP2_TAN;
-      const cw = Math.cos(thetaW), sw = Math.sin(thetaW);
+      const cw = detMath.cos(thetaW), sw = detMath.sin(thetaW);
       const wA = noise.noise3d(cw * warp2K + 8.3, sw * warp2K - 21.7, r * warp2Fr + 2.2) * s.warpM * 0.35;
       const wB = noise.noise3d(cw * warp2K - 44.9, sw * warp2K + 13.1, r * warp2Fr - 6.4) * s.warpM * 0.35;
       const aFine = theta + (dArc + wA) / Math.max(1, r);
@@ -508,8 +509,8 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
         + 0.5 * noise.noise3d(ct * 5.7 - 14.2, st * 5.7 + 27.1, r * 0.0068 + 1.9);
       const mAmp = noise.noise3d(ct * 3.1 - 6.1, st * 3.1 + 19.3, r * 0.0022 - 2.7);
       const thetaG = theta + mAng * 0.22;
-      const g = noise.noise3d(Math.cos(thetaG) * gullyK + 7.7, Math.sin(thetaG) * gullyK - 3.3, r * gullyFr + 5.1);
-      const gully = -Math.pow(1 - Math.abs(g), 3) * s.gullyM * (0.25 + 0.75 * steep) * (1 - talus * 0.6) * (0.65 + 0.55 * mAmp);
+      const g = noise.noise3d(detMath.cos(thetaG) * gullyK + 7.7, detMath.sin(thetaG) * gullyK - 3.3, r * gullyFr + 5.1);
+      const gully = -detMath.pow(1 - Math.abs(g), 3) * s.gullyM * (0.25 + 0.75 * steep) * (1 - talus * 0.6) * (0.65 + 0.55 * mAmp);
       if (s.driftM <= 0) return fine + gully;
       // round 72c (integrator: the apron between the playable edge and the first ridge is a flat snow sheet): wind
       // drifts on the gentle faces — sastrugi ridges along one world wind (so they align at every azimuth), 26 m
@@ -521,13 +522,13 @@ export function createHorizonReliefField(seed: number, settings: HorizonReliefSe
       const along = x * DRIFT_C + z * DRIFT_S, across = -x * DRIFT_S + z * DRIFT_C;
       const skew = noise.noise(along / 120 + 3.1, across / 26 + 9.7) * 0.35;
       const d = noise.noise(along / 120 - 17.3, (across + skew * 26) / 26 + 41.9);
-      const drift = Math.pow(1 - Math.abs(d), 2.5) * s.driftM * flat * (0.7 + 0.3 * noise.noise(along / 380 + 5.5, across / 380 - 2.2));
+      const drift = detMath.pow(1 - Math.abs(d), 2.5) * s.driftM * flat * (0.7 + 0.3 * noise.noise(along / 380 + 5.5, across / 380 - 2.2));
       return fine + gully + drift;
     },
     high(x, z, hT, concavity, steep, rIn, thetaIn) {
       const sharp = s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
       this.prepare(x, z, sharp, stage);
-      return this.finish(stage.dx, stage.dz, stage.weight, sharp, concavity, steep, rIn ?? Math.hypot(x, z), thetaIn ?? Math.atan2(z, x));
+      return this.finish(stage.dx, stage.dz, stage.weight, sharp, concavity, steep, rIn ?? detMath.hypot(x, z), thetaIn ?? detMath.atan2(z, x));
     },
   };
 }
@@ -573,8 +574,8 @@ export interface HorizonReliefBake {
 export const HORIZON_RELIEF_BAKE_R0 = 410;
 export const HORIZON_RELIEF_BAKE_R1 = 1560;
 /** Round 72c: the second warp octave's shear (35°) and the drifts' world wind (a fixed bearing: sastrugi align with it at every azimuth). */
-const WARP2_TAN = Math.tan(35 * Math.PI / 180);
-const DRIFT_C = Math.cos(1.05), DRIFT_S = Math.sin(1.05);
+const WARP2_TAN = detMath.tan(35 * Math.PI / 180);
+const DRIFT_C = detMath.cos(1.05), DRIFT_S = detMath.sin(1.05);
 export const HORIZON_RELIEF_GRAD_SCALE = 4.0; // round 72b: the steep-face striations reach a gradient of 2.8 (was 1.5, which saturated them)
 const AO_DIRECTIONS = 8;
 const AO_STEPS_M = [5, 10, 20, 40, 80, 160];
@@ -594,8 +595,8 @@ export const HORIZON_RELIEF_SUN_DEPTH = 0.85;
 /** The occlusion texel whose program factor is `ao`'s times `light` (clamped where the program's range ends). */
 export function encodeCanopyAo(ao: number, light: number): number {
   const k = HORIZON_RELIEF_AO_DEPTH * HORIZON_RELIEF_SHADE;
-  const factor = (1 - (1 - Math.pow(clamp(ao, 0, 1), HORIZON_RELIEF_AO_POWER)) * k) * light;
-  return Math.pow(1 - clamp((1 - factor) / k, 0, 1), 1 / HORIZON_RELIEF_AO_POWER);
+  const factor = (1 - (1 - detMath.pow(clamp(ao, 0, 1), HORIZON_RELIEF_AO_POWER)) * k) * light;
+  return detMath.pow(1 - clamp((1 - factor) / k, 0, 1), 1 / HORIZON_RELIEF_AO_POWER);
 }
 
 /** The sun-visibility texel whose program factor is `sun`'s times `light`. */
@@ -674,7 +675,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
     const im = (i - 1 + W) % W, ip = (i + 1) % W, jm = Math.max(0, j - 1), jp = Math.min(H - 1, j + 1);
     const gθ = (smooth[j * W + ip] - smooth[j * W + im]) / (2 * arc);
     const gr = (smooth[jp * W + i] - smooth[jm * W + i]) / ((jp - jm) * dr);
-    const theta = (i / W) * TAU, ct = Math.cos(theta), st = Math.sin(theta);
+    const theta = (i / W) * TAU, ct = detMath.cos(theta), st = detMath.sin(theta);
     out[0] = gr * ct - gθ * st; out[1] = gr * st + gθ * ct;
   };
   // the couloirs on the half grid: sample q sits at full-resolution index 2q + 0.5 (the bake's half-grid convention)
@@ -686,9 +687,9 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
     const r = r0 + (jq * 2 + 1) * dr;
     for (let iq = 0; iq < Wq; iq++) {
       const theta = ((iq * 2 + 0.5) / W) * TAU;
-      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+      const x = detMath.cos(theta) * r, z = detMath.sin(theta) * r;
       gradAt(iq * 2, jq * 2, g);
-      const slope = Math.hypot(g[0], g[1]);
+      const slope = detMath.hypot(g[0], g[1]);
       // a floor carries none, a face its full depth, a wall (past 0.3) up to 1.4 x: the couloirs deepen with the slope
       const weight = smoothstep(0.03, 0.30, slope) * (0.6 + 0.8 * smoothstep(0.3, 1.0, slope));
       if (weight < 1e-3) { ero[jq * Wq + iq] = 0; continue; }
@@ -743,7 +744,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
     return lo;
   };
   // the parcels' grid: a bearing per map, strips 140–200 m deep, parcels 160–320 m long, the strips offset
-  const bearing = hashCell(7, 11, seed) * Math.PI, cb = Math.cos(bearing), sb = Math.sin(bearing);
+  const bearing = hashCell(7, 11, seed) * Math.PI, cb = detMath.cos(bearing), sb = detMath.sin(bearing);
   const lapM = 60;
   for (let j = 0; j < H; j++) {
     const r = r0 + (j + 0.5) * dr, arc = arcAt(r);
@@ -752,7 +753,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
     const fieldNear = smoothstep(560, 700, r);
     for (let i = 0; i < W; i++) {
       const idx = j * W + i;
-      const theta = (i / W) * TAU, ct = Math.cos(theta), st = Math.sin(theta);
+      const theta = (i / W) * TAU, ct = detMath.cos(theta), st = detMath.sin(theta);
       const x = ct * r, z = st * r;
       // the seam (round 29 / 35 laws, as the round-72 pass): nil at the square's edge, full 60 m out; the sea flat
       const seamW = smoothstep(0, 60, Math.max(Math.abs(x), Math.abs(z)) - 511.5);
@@ -763,7 +764,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
       let v = couloir + grain;
       if (canopyLight && rock) {
         gradAt(i, j, g);
-        const slope = Math.hypot(g[0], g[1]);
+        const slope = detMath.hypot(g[0], g[1]);
         // a wall from about 24 degrees, full by 42: varnish darker down the couloirs (where the water runs), the beds' tones
         // (from about 14 degrees, full by 35: the escarpments' talus and benches carry rock too — Sirocco Wadi's walls
         // read as pale clay with the band at 24-42 degrees)
@@ -781,7 +782,7 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
       }
       if (canopyLight && c) {
         gradAt(i, j, g);
-        const slope = Math.hypot(g[0], g[1]);
+        const slope = detMath.hypot(g[0], g[1]);
         const h0 = smooth[idx];
         const lap = (smooth[j * W + (i + li) % W] + smooth[j * W + (i - li + W) % W] - 2 * h0) / ((li * arc) * (li * arc))
           + (smooth[Math.min(H - 1, j + lj) * W + i] + smooth[Math.max(0, j - lj) * W + i] - 2 * h0) / ((lj * dr) * (lj * dr));
@@ -861,7 +862,7 @@ export function* bakeHorizonReliefSteps(
   for (let row = 0; row < rowCount; row++) {
     for (let k = 0; k < n; k++) {
       const i = row * n + k;
-      colR[k * rowCount + row] = Math.hypot(positions[i * 3], positions[i * 3 + 2]);
+      colR[k * rowCount + row] = detMath.hypot(positions[i * 3], positions[i * 3 + 2]);
       colH[k * rowCount + row] = heights[i];
       colM[k * rowCount + row] = input.marine ? input.marine[i] : 0;
     }
@@ -925,7 +926,7 @@ export function* bakeHorizonReliefSteps(
       const r = r0 + (jq * 2 + 1) * dr;
       for (let iq = 0; iq < Wq; iq++) {
         const theta = ((iq * 2 + 0.5) / W) * TAU;
-        const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+        const x = detMath.cos(theta) * r, z = detMath.sin(theta) * r;
         const h = macro[(jq * 2) * W + iq * 2];
         field.prepare(x, z, sharpAt(h / Math.max(1, maxHeight)), stage);
         const q = jq * Wq + iq;
@@ -954,11 +955,11 @@ export function* bakeHorizonReliefSteps(
         const im = (i - 1 + W) % W, ip = (i + 1) % W;
         const gθ = (macro[j * W + ip] - macro[j * W + im]) / (2 * arc);
         const gr = (macro[Math.min(H - 1, j + 1) * W + i] - macro[Math.max(0, j - 1) * W + i]) / (2 * dr);
-        const steep = smoothstep(0.22, 0.65, Math.hypot(gθ, gr));
+        const steep = smoothstep(0.22, 0.65, detMath.hypot(gθ, gr));
         const theta = (i / W) * TAU;
         // the seam (round 29 / 35 laws): the fine relief is nil at the square's edge and full 90 m out, so the seam row
         // continues the terrain's own edge and the terrain-material bands read the same atlas from there (round 72b)
-        const seamW = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5); // round 72b: 60 m (a 90 m fade read as a smooth belt under the first ridge)
+        const seamW = smoothstep(0, 60, Math.max(Math.abs(detMath.cos(theta) * r), Math.abs(detMath.sin(theta) * r)) - 511.5); // round 72b: 60 m (a 90 m fade read as a smooth belt under the first ridge)
         // round 72b (integrator: "faces read as one flat tone"): the striations and gully shading run at three times
         // their amplitude on the steep faces, so they survive the aerial pass at range
         const land = (1 - marine[idx]) * seamW * (1 + 2.2 * steep);
@@ -980,7 +981,7 @@ export function* bakeHorizonReliefSteps(
   const total = new Float32Array(W * H);
   for (let idx = 0; idx < W * H; idx++) total[idx] = macro[idx] + fine[idx] + (canopyH ? canopyH[idx] : 0);
   const data = new Uint8Array(W * H * 4);
-  const sunHoriz = Math.hypot(sun[0], sun[2]);
+  const sunHoriz = detMath.hypot(sun[0], sun[2]);
   const tanEl = sun[1] / Math.max(1e-3, sunHoriz);
   const sx = sun[0] / Math.max(1e-6, sunHoriz), sz = sun[2] / Math.max(1e-6, sunHoriz);
   const gradScale = HORIZON_RELIEF_GRAD_SCALE;
@@ -990,7 +991,7 @@ export function* bakeHorizonReliefSteps(
   const cosCol = new Float32Array(Wh), sinCol = new Float32Array(Wh), sunA = new Float32Array(Wh), sunB = new Float32Array(Wh);
   for (let i = 0; i < Wh; i++) {
     const theta = ((i + 0.5) / Wh) * TAU;
-    cosCol[i] = Math.cos(theta); sinCol[i] = Math.sin(theta);
+    cosCol[i] = detMath.cos(theta); sinCol[i] = detMath.sin(theta);
     // the sun's world direction in grid units per metre: angle texels (times 1 / r) and radial texels
     sunA[i] = (-sinCol[i] * sx + cosCol[i] * sz) * W / TAU;
     sunB[i] = (cosCol[i] * sx + sinCol[i] * sz) / dr;
@@ -1007,7 +1008,7 @@ export function* bakeHorizonReliefSteps(
     // this row's occlusion offsets (full-resolution texels): a grid direction scaled so the metre length matches the step
     for (let d = 0; d < AO_DIRECTIONS; d++) {
       const [ui, uj] = aoDirs[d];
-      const unitM = Math.hypot(ui * arc, uj * dr);
+      const unitM = detMath.hypot(ui * arc, uj * dr);
       for (let step = 0; step < aoSteps.length; step++) {
         const k = Math.max(1, Math.round(aoSteps[step] / unitM));
         aoDi[d * aoSteps.length + step] = ui * k; aoDj[d * aoSteps.length + step] = uj * k;
@@ -1045,11 +1046,11 @@ export function* bakeHorizonReliefSteps(
         if (bl > block) block = bl;
       }
       const theta0 = ((i + 0.5) / W) * TAU;
-      const seamW0 = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta0) * r), Math.abs(Math.sin(theta0) * r)) - 511.5);
+      const seamW0 = smoothstep(0, 60, Math.max(Math.abs(detMath.cos(theta0) * r), Math.abs(detMath.sin(theta0) * r)) - 511.5);
       const land = (1 - marine[idx]) * seamW0;
       const sunVis = 1 - smoothstep(-s.shadowSoft, s.shadowSoft, block) * land;
       // round 72b: the occlusion deepened (a 1.6 power) so the folds read at 1.5 km through the haze
-      const aoOut = 1 - (1 - Math.pow(ao, 1.6)) * land;
+      const aoOut = 1 - (1 - detMath.pow(ao, 1.6)) * land;
       aoGrid[jh * Wh + ih] = aoOut; sunGrid[jh * Wh + ih] = sunVis;
       aoSum += aoOut; shSum += sunVis;
     }
@@ -1072,13 +1073,13 @@ export function* bakeHorizonReliefSteps(
     for (let i = 0; i < W; i++) {
       const idx = j * W + i;
       const theta = (i / W) * TAU;
-      const ct = Math.cos(theta), st = Math.sin(theta);
+      const ct = detMath.cos(theta), st = detMath.sin(theta);
       // fine gradient (world): dh/dx = dh/dr cos - dh/dθ sin / r ; dh/dz = dh/dr sin + dh/dθ cos / r
       const im = i === 0 ? W - 1 : i - 1, ip = i === W - 1 ? 0 : i + 1;
       const fθ = (fine[j * W + ip] - fine[j * W + im]) / (2 * arc);
       const fr = (fine[Math.min(H - 1, j + 1) * W + i] - fine[Math.max(0, j - 1) * W + i]) / (2 * dr);
       const gx = fr * ct - fθ * st, gz = fr * st + fθ * ct;
-      if ((idx & 1023) === 0) grads.push(Math.hypot(gx, gz));
+      if ((idx & 1023) === 0) grads.push(detMath.hypot(gx, gz));
       data[idx * 4] = clamp(Math.round((gx / gradScale * 0.5 + 0.5) * 255), 0, 255);
       data[idx * 4 + 1] = clamp(Math.round((gz / gradScale * 0.5 + 0.5) * 255), 0, 255);
       let aoOut = half(aoGrid, i, j), sunOut = half(sunGrid, i, j);

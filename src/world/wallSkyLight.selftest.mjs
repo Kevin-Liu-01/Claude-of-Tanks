@@ -48,7 +48,8 @@ assert.ok(source.includes("world-terrain-splat-v54-"), // terrain v3 (2026-10-02
 // 4. The sun direction matches the vista ring's formula (horizon.ts): azimuth from +z toward +x, elevation up.
 const fn = source.match(/function skySunDirection\(sky[^)]*\): THREE\.Vector3 \{([\s\S]*?)\n\}/);
 assert.ok(fn, 'skySunDirection exists');
-assert.ok(fn[1].includes('Math.sin(sunAz) * Math.cos(sunEl), Math.sin(sunEl), Math.cos(sunAz) * Math.cos(sunEl)'),
+// (2026-10-25: terrain.ts computes on detMath, the authority's deterministic math; the formula is the ring's)
+assert.ok(/(det)?Math\.sin\(sunAz\) \* (det)?Math\.cos\(sunEl\), (det)?Math\.sin\(sunEl\), (det)?Math\.cos\(sunAz\) \* (det)?Math\.cos\(sunEl\)/.test(fn[1]),
   'the same (sin az · cos el, sin el, cos az · cos el) vector the horizon ring shades with');
 assert.ok(fn[1].includes('?? 115') && fn[1].includes('?? 32'), 'the horizon defaults (115°, 32°) when a map authors no sun');
 // numeric check of the formula for Caldera's preset (116°, 22°): the vector is unit length and points up-sun

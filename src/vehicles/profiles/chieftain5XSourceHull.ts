@@ -14,8 +14,12 @@ function tub(): ReturnType<typeof sectionSolid> {
   const rows: readonly Row[] = [
     [-3.28771, .64715, 1.68240, .8053, 0],
     [-3.20, .534, 1.6818, .851, 0], [-3.03, .518, 1.6802, .851, 0],
-    [-2.65, .5097, 1.6758, .850, 0], [-1.03, .5030, 1.6619, .846, 0],
-    [-.95, .5028, 1.422, .846, 0], [.45, .4974, 1.412, .846, 0],
+    // Release 240 (the owner: "some turrets faced regressions as a result of lifts: cheiftain mk 5 and mk 10. fix"):
+    // the engine deck's step rises from -0.95 and steps up at -1.33..-1.40, under the turret's lower body (seated at
+    // 1.566, chieftain5X.ts) to 1.7 m off the ring's axis; stepping up at -1.03 it stood 12 cm in the turret, which the
+    // seat had cleared by lifting the casting 30 cm and crushing its lower band.
+    [-2.65, .5097, 1.6758, .850, 0], [-1.40, .5040, 1.6619, .846, 0], [-1.33, .5038, 1.545, .846, 0],
+    [-1.15, .5032, 1.53, .846, 0], [-.95, .5028, 1.422, .846, 0], [.45, .4974, 1.412, .846, 0],
     [1.25, .4943, 1.409, .846, 0], [1.65, .4927, 1.523, .846, .075],
     [2.15, .4908, 1.393, .846, .090], [2.57, .4891, 1.324, .846, .118],
     [2.73, .5027, 1.265, .871, .023], [3.02, .7466, 1.141, .915, .026],
@@ -42,8 +46,9 @@ function deck(rows: readonly DeckRow[], side: number, crossfall = .064): ReturnT
 
 function sponsons(P: TankBuilderPort, side: number): void {
   const rear: readonly DeckRow[] = [
+    // (release 240: the step 9 cm aft, past the turret's lower body seated at 1.566 to 1.7 m off the ring's axis)
     [-3.31, .90, 1.423, 1.235, 1.677], [-2.67, .90, 1.425, 1.235, 1.674],
-    [-1.04, .90, 1.423, 1.241, 1.661], [-.96, .90, 1.423, 1.241, 1.543],
+    [-1.13, .90, 1.423, 1.241, 1.661], [-1.08, .90, 1.423, 1.241, 1.545], [-.96, .90, 1.423, 1.241, 1.543],
     [.27, .90, 1.423, 1.245, 1.536], [.95, .90, 1.344, 1.247, 1.533],
     [1.32, .90, 1.169, 1.249, 1.529],
   ];

@@ -11,6 +11,15 @@ import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from '../game/equipment.ts';
+
+/** A mode's refused equipment (MatchRuleset.equipmentBan). */
+interface EquipmentBan {
+  readonly categories?: readonly Exclude<EquipmentCategoryId, 'all'>[];
+  readonly items?: readonly string[];
+}
+/** Modes where every tank is always visible: scouting equipment would do nothing, so it is refused. */
+const SCOUTING_OFF: EquipmentBan = Object.freeze({ categories: Object.freeze(['recon'] as const) });
 
 // The dock's launch column (a leaf, so the decor keep-out reads it without the ruleset: src/sim/droneDockRules.ts).
 export { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
@@ -1046,6 +1055,9 @@ export interface MatchRuleset {
   readonly ammo: RulesetAmmo;
   /** Equipment slots honoured (0 disables equipment). */
   readonly equipmentSlots: 0 | 1 | 2 | 3;
+  /** Equipment the mode refuses (2026-10-24, the larger catalog): whole categories and single items. The solo battle
+   *  and the authority drop them from every loadout (rulesetLoadout), so a seat cannot carry them in. */
+  readonly equipmentBan?: EquipmentBan;
   readonly consumables: boolean;
   /** Modules, crew and fires take damage. False (owner 2026-09-15, Turbo Ball: "make modules not break since
    * there's no consumables") keeps every critical system intact — hull hit points are the only thing a hit costs. */
@@ -1452,7 +1464,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
   drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, ammo: 'unlimited', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
-  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
+  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
   // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
@@ -1460,7 +1472,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
   // outcome on the range is the outcome in battle.
   proving_ground: Object.freeze({
-    ...STANDARD, mode: 'proving_ground', alwaysVisible: true, ammo: 'unlimited',
+    ...STANDARD, mode: 'proving_ground', alwaysVisible: true, equipmentBan: SCOUTING_OFF, ammo: 'unlimited',
     allies: 0, enemies: PROVING_GROUND_RULES.lanes.length, respawnS: 3, respawnSafeM: null, timeLimitS: null,
     records: false, provingGround: PROVING_GROUND_RULES,
   }),
@@ -2031,8 +2043,18 @@ export function rulesetSeatHullScale(ruleset: Pick<MatchRuleset, 'assault'>, tea
 }
 
 export function rulesetLoadout(ruleset: MatchRuleset, ids: readonly string[] | null | undefined): string[] {
-  const list = Array.isArray(ids) ? ids.slice() : [];
+  const list = (Array.isArray(ids) ? ids : []).filter((id) => rulesetAllowsEquipment(ruleset, id));
   return ruleset.equipmentSlots >= 3 ? list : list.slice(0, ruleset.equipmentSlots);
+}
+
+/** Whether a mode lets a crew carry an item (its equipmentBan: a category or the item itself). */
+export function rulesetAllowsEquipment(ruleset: Pick<MatchRuleset, 'equipmentSlots' | 'equipmentBan'>, id: string): boolean {
+  if (ruleset.equipmentSlots === 0) return false;
+  const ban = ruleset.equipmentBan;
+  if (!ban) return true;
+  if (ban.items?.includes(id)) return false;
+  const category = EQUIPMENT_BY_ID.get(id)?.cat;
+  return !(category && ban.categories?.includes(category));
 }
 
 /**
@@ -2063,4 +2085,29 @@ export function refillUnlimitedAmmunition(
 /** Solo roster caps: allied bots the player gets under a ruleset (null keeps the default split). */
 export function rulesetAllyCap(ruleset: MatchRuleset, defaultCap: number): number {
   return ruleset.allies == null ? defaultCap : Math.max(0, Math.floor(ruleset.allies));
+}
+
+/**
+ * A mode's room (mp-scale-251, docs/MULTIPLAYER-V2.md §13.30): the team sizes a room may set, the size a new room takes,
+ * how many commanders it seats and on which sides. A room's empty slots up to its team size are the room's bots
+ * (src/mp/room/roomBots.ts planRoomBots), so a small group plays a full battle and a large one fills it. The rooms
+ * Worker, the LAN service and the hosting seat all read this table (src/mp/room/roomPolicy.ts).
+ */
+export interface RoomSizeRules {
+  /** 'versus': commanders on both sides, each up to the team size; 'coop': every commander on Alpha against the mode's hostiles. */
+  readonly sides: 'versus' | 'coop';
+  readonly minTeamSize: number;
+  readonly maxTeamSize: number;
+  readonly defaultTeamSize: number;
+  /** Commanders seated at most (null: both sides full). */
+  readonly maxHumans: number | null;
+}
+
+const VERSUS_ROOM: RoomSizeRules = Object.freeze({ sides: 'versus', minTeamSize: 1, maxTeamSize: 14, defaultTeamSize: 7, maxHumans: null });
+// the co-op modes field their own hostiles (Frontline's defenders, the Horde's pool) beside up to seven commanders
+const COOP_ROOM: RoomSizeRules = Object.freeze({ sides: 'coop', minTeamSize: 1, maxTeamSize: 7, defaultTeamSize: 7, maxHumans: 7 });
+
+/** The room rules of a mode (an unknown mode reads as standard). */
+export function roomSizeRulesFor(gameMode: string | null | undefined): RoomSizeRules {
+  return gameMode === 'endless_horde' || gameMode === 'frontline_assault' ? COOP_ROOM : VERSUS_ROOM;
 }

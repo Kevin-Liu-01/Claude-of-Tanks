@@ -86,7 +86,8 @@ assert.match(styles, /\.v5-social-card>a\{[^}]*position:relative;z-index:2;[^}]*
 assert.match(styles, /@media\(hover:hover\) and \(pointer:fine\)\{[^\n]*\.v5-social-card:hover::after\{[^}]*opacity:/, 'card hover polish is fine-pointer-only');
 assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-card::after[^}]*transition:none/, 'card motion honors reduced motion');
 assert.match(styles, /\.press__quotes\{[^}]*grid-template-columns:repeat\(4,/, 'desktop shows the four posts in a row');
-assert.match(styles, /\.press__title em\{[^}]*color:var\(--gold\)/, 'only the Three.js name in the title takes the gold accent');
+// (2026-10-25 gauntlet r4, line 6) the partner's name is ink: the accent is the primary's, the selection's and a display noun's count
+assert.match(styles, /\.press__title em\{[^}]*color:var\(--ink-1\)/, 'the Three.js name in the title is ink, not the accent');
 // (2026-10-25 gauntlet, one accent and no other colour) the metric icons and the platform marks paint in ink
 assert.match(styles, /\.v5-social-metric-icon\{color:var\(--ink-2\);/, 'every metric icon paints in one ink');
 assert.doesNotMatch(styles, /\.v5-social-metric-icon--\w+\{[^}]*color:#/, 'no metric icon keeps a colour of its own');

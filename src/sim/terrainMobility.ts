@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import * as detMath from './detMath.ts';
 /**
  * Shared deterministic terrain-mobility policy.
  *
@@ -124,8 +125,8 @@ export function trackGripMargin(
   if (!(uphillPitchRad > 0)) return 1;
   const pitch = Math.min(uphillPitchRad, Math.PI * 0.5);
   const grip = trackGripCoefficient(spec, groundType) *
-    GRAVITY_MPS2 * Math.max(0, Math.cos(pitch));
-  const gravity = GRAVITY_MPS2 * Math.sin(pitch) * TRACKED_GRAVITY_SHARE;
+    GRAVITY_MPS2 * Math.max(0, detMath.cos(pitch));
+  const gravity = GRAVITY_MPS2 * detMath.sin(pitch) * TRACKED_GRAVITY_SHARE;
   return forceMargin(grip, gravity);
 }
 
@@ -144,9 +145,9 @@ export function uphillDriveMargin(
   const pitch = Math.min(uphillPitchRad, Math.PI * 0.5);
   const engine = engineDriveAcceleration(spec, groundType, powerMult, accelMult);
   const grip = trackGripCoefficient(spec, groundType) *
-    GRAVITY_MPS2 * Math.max(0, Math.cos(pitch));
+    GRAVITY_MPS2 * Math.max(0, detMath.cos(pitch));
   const available = Math.min(engine, grip);
-  const gravity = GRAVITY_MPS2 * Math.sin(pitch) * TRACKED_GRAVITY_SHARE;
+  const gravity = GRAVITY_MPS2 * detMath.sin(pitch) * TRACKED_GRAVITY_SHARE;
   return forceMargin(available, gravity);
 }
 
@@ -160,7 +161,7 @@ export function terrainSlopeMargin(
 ): number {
   if (!Number.isFinite(signedGrade) || signedGrade === 0) return signedGrade === 0 ? 1 : 0;
   if (signedGrade > CLIFF_GRADE) return 0; // a wall, whatever the power-to-weight says
-  const pitch = Math.atan(Math.abs(signedGrade));
+  const pitch = detMath.atan(Math.abs(signedGrade));
   return signedGrade > 0
     ? uphillDriveMargin(spec, groundType, pitch, powerMult, accelMult)
     : trackGripMargin(spec, groundType, pitch);

@@ -54,7 +54,7 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:no
 // drawer), and the battle card carries the battlefield (its picture opens the Deploy screen's field); the folded tool
 // cards are gone (the 246 CSS diet).
 assert.match(garageSource,
-  /<div class="cot-lt-band"><div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-paint"/,
+  /<div class="cot-lt-band"><div class="cot-lt-group">[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-group">[\s\S]*?<div class="cot-lt-paint"/,
   'every layout keeps the equipment slots and the paint in view under the name');
 assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
   'the band\'s last swatch opens every paint');

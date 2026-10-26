@@ -58,3 +58,6 @@ graphify-out/
 *.bak
 .wt-*/
 .codex-worktrees/
+
+# Cargo build output (crates/cot-sim)
+/target/

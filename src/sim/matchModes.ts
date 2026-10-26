@@ -42,6 +42,7 @@ import {
   type GameModeDefinition, type GameModeId, type ObjectiveTeam,
 } from './gameModeCatalog.ts';
 
+import * as detMath from './detMath.ts';
 // The mode ids and definitions live in gameModeCatalog.ts (the boot graph reads them without this controller).
 export { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS, GAME_MODE_IDS, PRACTICE_MODE_IDS, isPracticeMode, normalizeGameMode };
 export type { GameModeId, ObjectiveTeam };
@@ -66,7 +67,7 @@ const BALL_RADIUS_M = 2.2;
 const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
 /** The ball's horizontal coasting time constant: BALL_LINEAR_DRAG per 60 Hz step (2.08 s). */
-const BALL_DRAG_TAU_S = -1 / (60 * Math.log(BALL_LINEAR_DRAG));
+const BALL_DRAG_TAU_S = -1 / (60 * detMath.log(BALL_LINEAR_DRAG));
 const BALL_GRAVITY_MPS2 = 9.81;
 const PICKUP_RADIUS_M = 7;
 /** The Turbo Ball kick-off line-up (ball.kickoffM) and the CTF revive slot (flagPitch.respawnBackM): a team's hulls this far apart across the axis. */
@@ -539,13 +540,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const spawn = spawns.get(entity.id)!;
       x += spawn.x;
       z += spawn.z;
-      yawX += Math.sin(spawn.yaw);
-      yawZ += Math.cos(spawn.yaw);
+      yawX += detMath.sin(spawn.yaw);
+      yawZ += detMath.cos(spawn.yaw);
     }
     centers[team] = {
       x: x / teams[team].length,
       z: z / teams[team].length,
-      yaw: Math.atan2(yawX, yawZ),
+      yaw: detMath.atan2(yawX, yawZ),
     };
   }
   if (placement) {
@@ -556,7 +557,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const midZ = placement?.middle.z ?? (centers.alpha.z + centers.bravo.z) * 0.5;
   let axisX = centers.bravo.x - centers.alpha.x;
   let axisZ = centers.bravo.z - centers.alpha.z;
-  const axisLength = Math.hypot(axisX, axisZ) || 1;
+  const axisLength = detMath.hypot(axisX, axisZ) || 1;
   axisX /= axisLength;
   axisZ /= axisLength;
   const lateralX = axisZ;
@@ -643,10 +644,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const kickoffSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
     const team = teamOf(entity), own = goals.find((goal) => goal.team === team);
     if (!own) return null;
-    const ox = own.x - midX, oz = own.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
+    const ox = own.x - midX, oz = own.z - midZ, olen = detMath.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
     const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
     const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
-    return { x: midX + ux * backM + uz * across, z: midZ + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
+    return { x: midX + ux * backM + uz * across, z: midZ + uz * backM - ux * across, yaw: detMath.atan2(-ux, -uz) };
   };
   // Capture the Flag's revive slot (flagPitch.respawnBackM; round 3, the critic's M5: a revive at the deployment stood
   // 200 m behind its own flag base, so a third of each squad spent its life driving back to the play and the carrier's
@@ -656,10 +657,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const flagRespawnSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
     if (!flagBases) return null;
     const team = teamOf(entity), base = flagBases[team];
-    const ox = base.x - midX, oz = base.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
+    const ox = base.x - midX, oz = base.z - midZ, olen = detMath.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
     const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
     const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
-    return { x: base.x + ux * backM + uz * across, z: base.z + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
+    return { x: base.x + ux * backM + uz * across, z: base.z + uz * backM - ux * across, yaw: detMath.atan2(-ux, -uz) };
   };
   // Turbo Ball's revive slot (ball.respawnBackM; round 3, the critic's M6: a revive at the deployment stood 150 m behind
   // its own goal, out of the play for half a minute): `backM` behind the team's own goal, spread across the axis
@@ -667,10 +668,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const ballRespawnSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
     const team = teamOf(entity), own = goals.find((goal) => goal.team === team);
     if (!own) return null;
-    const ox = own.x - midX, oz = own.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
+    const ox = own.x - midX, oz = own.z - midZ, olen = detMath.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
     const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
     const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
-    return { x: own.x + ux * backM + uz * across, z: own.z + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
+    return { x: own.x + ux * backM + uz * across, z: own.z + uz * backM - ux * across, yaw: detMath.atan2(-ux, -uz) };
   };
   const pickups: PickupState[] = [];
   const hordeEnemies = teams.bravo.filter((entity) => !!entity.bot);
@@ -798,10 +799,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (n) {
           const lead = HUNT_RULES.lead, k = arrivals++;
           const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
-          const reach = Math.hypot(cx / n - safeSpawn.x, cz / n - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
+          const reach = detMath.hypot(cx / n - safeSpawn.x, cz / n - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
           const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
-          anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + Math.sin(heading) * reach));
-          anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + Math.cos(heading) * reach));
+          anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
+          anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
         }
       }
     }
@@ -887,7 +888,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const terrainSees = (from: Entity, x: number, z: number, rules: ArrivalRules): boolean => {
     const fx = from.state.pos.x, fz = from.state.pos.z, fy = from.state.pos.y + rules.sightEyeM;
     const ty = terrainHeight(x, z) + rules.sightHullM;
-    const d = Math.hypot(x - fx, z - fz);
+    const d = detMath.hypot(x - fx, z - fz);
     for (let step = rules.sightStepM; step < d - rules.sightStepM * 0.5; step += rules.sightStepM) {
       const f = step / d;
       // conservative: a crest only hides the hull when it stands sightMarginM above the sight line
@@ -911,7 +912,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // the hidden stretch is a stretch of TIME at the wave's pace (round 3: a quicker wave covered sightLeadM in under
     // 8 s and came over the crest in sight — first contact under 8 s on 6 of the critic's waves): `leadScale` is the
     // wave's speed scale
-    const lead = (rules.sightLeadM ?? 0) * leadScale, run = Math.hypot(towardX - x, towardZ - z);
+    const lead = (rules.sightLeadM ?? 0) * leadScale, run = detMath.hypot(towardX - x, towardZ - z);
     if (lead > 0 && run > 1) { const f = Math.min(1, lead / run); leadX = x + (towardX - x) * f; leadZ = z + (towardZ - z) * f; }
     const checkLead = leadX !== x || leadZ !== z;
     for (const human of teams.alpha) {
@@ -935,7 +936,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     if (!n) return null;
     cx /= n; cz /= n;
-    const base = Math.atan2(centers.bravo.x - cx, centers.bravo.z - cz);
+    const base = detMath.atan2(centers.bravo.x - cx, centers.bravo.z - cz);
     const sectors = Math.max(1, Math.floor(rules.spawnSectors));
     let [ringMin, ringMax] = rules.spawnRingM;
     // the ring pulled in to the hull's own reach at the wave's pace (spawnReachS; round 3): a slow hull arrives nearer,
@@ -958,9 +959,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const centre = sectors === 1 ? 0 : -rules.sectorSpreadDeg + sector * (2 * rules.sectorSpreadDeg / (sectors - 1));
         const angle = base + (centre + (spawnRng() - 0.5) * rules.sectorWidthDeg) * Math.PI / 180;
         const radius = ringMin + spawnRng() * (ringMax - ringMin);
-        const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + Math.sin(angle) * radius));
-        const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + Math.cos(angle) * radius));
-        const yaw = Math.atan2(cx - x, cz - z);
+        const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + detMath.sin(angle) * radius));
+        const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + detMath.cos(angle) * radius));
+        const yaw = detMath.atan2(cx - x, cz - z);
         const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
         if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz, leadScale)) continue;
         spawnSector = (sector + 1) % sectors;
@@ -1144,7 +1145,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     for (let step = 0; ; step++) {
       const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * back + lateralX * across));
       const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * back + lateralZ * across));
-      if (!guard || step >= guard.tries || lineClear(x, z, guard)) return { x, z, yaw: Math.atan2(-axisX, -axisZ) };
+      if (!guard || step >= guard.tries || lineClear(x, z, guard)) return { x, z, yaw: detMath.atan2(-axisX, -axisZ) };
       back += guard.stepBackM;
     }
   }
@@ -1227,7 +1228,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       allyDownAt.delete(ally.id);
       const taken = lineIndex > 0 ? zones[lineIndex - 1] : null;
       reviveAtSpawn(ally, rulesetSeatHullScale(ruleset, 'alpha', true), taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * assaultRules.allyReviveBackM)),
-        z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * assaultRules.allyReviveBackM)), yaw: Math.atan2(axisX, axisZ) } : null);
+        z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * assaultRules.allyReviveBackM)), yaw: detMath.atan2(axisX, axisZ) } : null);
     }
   };
   /** The trickle: while the live sector is contested and its line is short, one defender arrives from the rear. */
@@ -1382,8 +1383,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const slot = holdRanks.get(entity.id);
     if (!slot || slot.of < 2) return;
     // the first slot faces the attack (toward alpha's side), the rest round the ring
-    const angle = Math.atan2(-axisX, -axisZ) + slot.rank * (2 * Math.PI / slot.of);
-    point.x += Math.sin(angle) * spread; point.z += Math.cos(angle) * spread;
+    const angle = detMath.atan2(-axisX, -axisZ) + slot.rank * (2 * Math.PI / slot.of);
+    point.x += detMath.sin(angle) * spread; point.z += detMath.cos(angle) * spread;
   }
 
   const finish = (winner: ObjectiveTeam | 'draw', reason: string): MatchModeResult => {
@@ -1586,13 +1587,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!ball || entity.modeActive === false || entity.combat.destroyed) return;
     const dx = ball.x - entity.state.pos.x;
     const dz = ball.z - entity.state.pos.z;
-    const distance = Math.hypot(dx, dz);
+    const distance = detMath.hypot(dx, dz);
     if (distance > 6.5 || timeS - lastBallTouchS < 0.12) return;
     const inv = distance > 0.01 ? 1 / distance : 1;
-    const nx = distance > 0.01 ? dx * inv : Math.sin(entity.state.yaw);
-    const nz = distance > 0.01 ? dz * inv : Math.cos(entity.state.yaw);
-    const driveX = Math.sin(entity.state.yaw) * entity.state.speed;
-    const driveZ = Math.cos(entity.state.yaw) * entity.state.speed;
+    const nx = distance > 0.01 ? dx * inv : detMath.sin(entity.state.yaw);
+    const nz = distance > 0.01 ? dz * inv : detMath.cos(entity.state.yaw);
+    const driveX = detMath.sin(entity.state.yaw) * entity.state.speed;
+    const driveZ = detMath.cos(entity.state.yaw) * entity.state.speed;
     const closing = Math.max(0, driveX * nx + driveZ * nz);
     ball.vx = ball.vx * 0.42 + driveX * 0.82 + nx * (4 + closing * 0.35);
     ball.vz = ball.vz * 0.42 + driveZ * 0.82 + nz * (4 + closing * 0.35);
@@ -1970,7 +1971,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     assignFlagRoles();
     const job = flagRoles.get(entity.id) ?? { role: 'raid' as FlagRole, rank: 0 };
     const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
-    const length = Math.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;
+    const length = detMath.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;
     const side = job.rank % 2 === 0 ? 1 : -1;
     if (job.role === 'recover') {
       // a carried flag is cut off at the point its carrier reaches interceptLeadS ahead on the line to its home
@@ -1978,7 +1979,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const carrier = ownFlag.status === 'carried' && ownFlag.carrierId ? entityById.get(ownFlag.carrierId) : null;
       if (carrier) {
         const theirHome = flagHome[otherTeam(team)];
-        const hx = theirHome.x - x, hz = theirHome.z - z, run = Math.hypot(hx, hz) || 1;
+        const hx = theirHome.x - x, hz = theirHome.z - z, run = detMath.hypot(hx, hz) || 1;
         const lead = Math.min(run, Math.abs(carrier.state.speed) * flagRules.interceptLeadS);
         x += hx / run * lead; z += hz / run * lead;
       }
@@ -2080,12 +2081,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const speed = Math.max(10, Math.abs(entity.state.speed));
     let t = Math.min(ballRules.leadMaxS, Math.sqrt(squaredDistance(entity, ball!.x, ball!.z)) / speed);
     for (let k = 0; k < ballRules.leadIterations; k++) {
-      const coast = BALL_DRAG_TAU_S * (1 - Math.exp(-t / BALL_DRAG_TAU_S));
+      const coast = BALL_DRAG_TAU_S * (1 - detMath.exp(-t / BALL_DRAG_TAU_S));
       intercept.x = ball!.x + ball!.vx * coast;
       intercept.z = ball!.z + ball!.vz * coast;
       t = Math.min(ballRules.leadMaxS, Math.sqrt(squaredDistance(entity, intercept.x, intercept.z)) / speed);
     }
-    const coast = BALL_DRAG_TAU_S * (1 - Math.exp(-t / BALL_DRAG_TAU_S));
+    const coast = BALL_DRAG_TAU_S * (1 - detMath.exp(-t / BALL_DRAG_TAU_S));
     intercept.x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, ball!.x + ball!.vx * coast));
     intercept.z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, ball!.z + ball!.vz * coast));
     return intercept;
@@ -2132,7 +2133,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const job = ballRoles.get(entity.id) ?? { role: 'wing' as BallRole, rank: 0 };
     const distance = Math.sqrt(squaredDistance(entity, ball.x, ball.z));
     const p = ballInterceptFor(entity);
-    const gx = goal.x - p.x, gz = goal.z - p.z, glen = Math.hypot(gx, gz) || 1;
+    const gx = goal.x - p.x, gz = goal.z - p.z, glen = detMath.hypot(gx, gz) || 1;
     const nx = gx / glen, nz = gz / glen;
     // a shot at the ball (shootBall): in range, past point blank, the ball inside the cone of the line to the opponent
     // goal; every role may take it when the ruleset says so (round 2: the strikers alone moved the ball too rarely)
@@ -2140,8 +2141,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     let shootBall = false;
     if (shot && (shot.everyRole || job.role === 'striker') && distance <= shot.maxRangeM && distance > shot.minRangeM) {
       const dx = ball.x - entity.state.pos.x, dz = ball.z - entity.state.pos.z;
-      const cos = (dx * (goal.x - ball.x) + dz * (goal.z - ball.z)) / (distance * (Math.hypot(goal.x - ball.x, goal.z - ball.z) || 1));
-      shootBall = cos >= Math.cos(shot.coneDeg * Math.PI / 180);
+      const cos = (dx * (goal.x - ball.x) + dz * (goal.z - ball.z)) / (distance * (detMath.hypot(goal.x - ball.x, goal.z - ball.z) || 1));
+      shootBall = cos >= detMath.cos(shot.coneDeg * Math.PI / 180);
     }
     const ballFirst = shootBall && !!shot?.overTanks;
     const striking = job.role === 'striker' || job.role === 'support';
@@ -2164,7 +2165,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
       return { x: p.x + nx * ballRules.throughM, z: p.z + nz * ballRules.throughM, mission: 'striker', ball: live, shootBall, ballFirst };
     }
-    const ox = ball.x - own.x, oz = ball.z - own.z, olen = Math.hypot(ox, oz) || 1;
+    const ox = ball.x - own.x, oz = ball.z - own.z, olen = detMath.hypot(ox, oz) || 1;
     const ux = ox / olen, uz = oz / olen;
     let x: number, z: number, mission: BotMission = 'screen';
     if (job.role === 'keeper') {
@@ -2178,7 +2179,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     // the crowd cap: only the strikers and the first screen close on the ball; the rest stand off it
     const crowded = !(job.role === 'screen' && job.rank === 0 && ballRules.crowdCap > ballRules.strikers);
-    const bx = x - ball.x, bz = z - ball.z, bd = Math.hypot(bx, bz);
+    const bx = x - ball.x, bz = z - ball.z, bd = detMath.hypot(bx, bz);
     const standOff = ballRules.crowdM + ballRules.crowdMarginM;
     if (crowded && bd < standOff) {
       const fx = bd > 0.5 ? bx / bd : -ux, fz = bd > 0.5 ? bz / bd : -uz;
@@ -2272,21 +2273,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           } else if (anchor && ((own && anchor.swept) || (stale && lastContact.set))) {
             const local = HUNT_RULES.localSweep;
             const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - anchor.atS) / HUNT_RULES.sweepEpochS));
-            tx = anchor.x + Math.sin(angle) * ring; tz = anchor.z + Math.cos(angle) * ring;
+            tx = anchor.x + detMath.sin(angle) * ring; tz = anchor.z + detMath.cos(angle) * ring;
           } else {
             const around = lastContact.set ? lastContact : centers[otherTeam(side)];
-            tx = around.x + Math.sin(angle) * HUNT_RULES.sweepRingM; tz = around.z + Math.cos(angle) * HUNT_RULES.sweepRingM;
+            tx = around.x + detMath.sin(angle) * HUNT_RULES.sweepRingM; tz = around.z + detMath.cos(angle) * HUNT_RULES.sweepRingM;
           }
         }
       }
-      const dx = hunter.state.pos.x - tx, dz = hunter.state.pos.z - tz, d = Math.hypot(dx, dz) || 1;
+      const dx = hunter.state.pos.x - tx, dz = hunter.state.pos.z - tz, d = detMath.hypot(dx, dz) || 1;
       if (d > HUNT_RULES.laneUntilM) {
         const flank = (rank % 5 === 1 || rank % 5 === 3) && HUNT_RULES.flankShare > 0;
         const sign = rank % 2 === 0 ? 1 : -1;
         if (flank) {
           // an arc: aim at the point the line to the quarry makes when swung ±flankDeg, halfway out
-          const a = Math.atan2(dx, dz) + sign * HUNT_RULES.flankDeg * Math.PI / 180;
-          tx += Math.sin(a) * d * 0.5; tz += Math.cos(a) * d * 0.5;
+          const a = detMath.atan2(dx, dz) + sign * HUNT_RULES.flankDeg * Math.PI / 180;
+          tx += detMath.sin(a) * d * 0.5; tz += detMath.cos(a) * d * 0.5;
         } else {
           const lane = HUNT_RULES.laneMinM + (HUNT_RULES.laneMaxM - HUNT_RULES.laneMinM) * ((rank * 0.618034) % 1);
           tx += (dz / d) * lane * sign; tz += (-dx / d) * lane * sign;
@@ -2341,7 +2342,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const screen = hordeRules.allyScreenM;
     if (!screen) return null;
     const threat = freshestFor('alpha', cx, cz) ?? centers.bravo;
-    const tx = threat.x - cx, tz = threat.z - cz, tl = Math.hypot(tx, tz) || 1, ux = tx / tl, uz = tz / tl;
+    const tx = threat.x - cx, tz = threat.z - cz, tl = detMath.hypot(tx, tz) || 1, ux = tx / tl, uz = tz / tl;
     let rank = 0, count = 0;
     for (const e of teams.alpha) {
       if (!e.bot || !activeFriend(e, 'alpha')) continue;
@@ -2502,7 +2503,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     tryHitBall(shell) {
       if (!ball || shell.dead || pointSegmentDistanceSq(ball, shell.prevPos, shell.pos)
           > (BALL_RADIUS_M + 0.35) ** 2) return false;
-      const magnitude = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || 1;
+      const magnitude = detMath.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || 1;
       ball.vx = shell.vel.x / magnitude * 34;
       ball.vy = Math.max(5, shell.vel.y / magnitude * 20 + 7);
       ball.vz = shell.vel.z / magnitude * 34;

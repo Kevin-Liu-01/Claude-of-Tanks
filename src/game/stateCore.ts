@@ -9,6 +9,10 @@ import type { WatchSession } from './watchSeat.ts';
  * empty session.
  */
 
+// The frame-stage hook (game/frameStages.ts; battle-spikes-253): re-exported here so the boot's existing shared chunk
+// carries it (its own module became a boot request of its own when the frame and the step both imported it)
+export { FRAME_STAGE, FRAME_STAGE_NAMES, frameStages, setFrameStageSink, type FrameStageSink } from './frameStages.ts';
+
 export type RandomSource = () => number;
 export type EventListener = (payload: RuntimeValue) => void;
 type EventRecorder = (event: string, payload: RuntimeValue) => void;

@@ -47,6 +47,7 @@ import {
   hasAmmunition,
 } from './ammunition.ts';
 
+import * as detMath from './detMath.ts';
 type Rng = () => number;
 type Vec3Tuple = [number, number, number];
 type ShellClass = 'KE' | 'CE' | 'HE';
@@ -436,7 +437,7 @@ const RAM_SPEED_POWER = 1.5;     // extra progression exponent on (c / anchor)
 function ramSpeedGain(closingMps: number): number {
   const c = Math.abs(Number(closingMps));
   if (!(c > 0)) return 0;
-  return Math.pow(c / RAM_SPEED_ANCHOR_MPS, RAM_SPEED_POWER);
+  return detMath.pow(c / RAM_SPEED_ANCHOR_MPS, RAM_SPEED_POWER);
 }
 
 /**
@@ -615,7 +616,7 @@ export function effectiveThickness(
   const effAngleDeg = Math.max(0, impactAngleDeg - norm);
   const clampedDeg = Math.min(effAngleDeg, 89);
   const base = b.kindClass === 'KE' ? plate.keMm : plate.ceMm;
-  const effMm = base / Math.cos(clampedDeg * DEG_TO_RAD) ** b.slopeExp;
+  const effMm = base / detMath.pow(detMath.cos(clampedDeg * DEG_TO_RAD), b.slopeExp);
   return { effMm, effAngleDeg };
 }
 
@@ -2808,5 +2809,5 @@ export function shellBlastRadiusM(spec: {caliberMm:number;blastRadiusM?:number})
 }
 export function blastRadiusM(caliberMm: number): number {
   const caliber = Math.max(0, Number(caliberMm) || 0);
-  return Math.min(8, Math.max(1, 0.66 * Math.pow(caliber / 30, 1.3)));
+  return Math.min(8, Math.max(1, 0.66 * detMath.pow(caliber / 30, 1.3)));
 }

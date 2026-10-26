@@ -1,5 +1,6 @@
 import { roadIntersection, type RoadPoint } from './roadEndpoints.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 type Route = readonly RoadPoint[];
 
 function containsRoadJunction(paths: readonly Route[], route: number,
@@ -30,8 +31,8 @@ export function roundRoadBends(paths: readonly Route[], radius = 24): RoadPoint[
         result.push(b); continue;
       }
       const a = path[i - 1], c = path[i + 1];
-      const incoming = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      const outgoing = Math.hypot(c[0] - b[0], c[1] - b[1]);
+      const incoming = detMath.hypot(b[0] - a[0], b[1] - a[1]);
+      const outgoing = detMath.hypot(c[0] - b[0], c[1] - b[1]);
       if (!incoming || !outgoing) { result.push(b); continue; }
       const ux = (b[0] - a[0]) / incoming, uz = (b[1] - a[1]) / incoming;
       const vx = (c[0] - b[0]) / outgoing, vz = (c[1] - b[1]) / outgoing;

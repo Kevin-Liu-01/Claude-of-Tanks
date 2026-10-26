@@ -1,3 +1,4 @@
+import * as detMath from '../sim/detMath.ts';
 export interface HardstandConfig {
   x: number;
   z: number;
@@ -62,7 +63,7 @@ function prepare(
 ): HardstandPlane[] {
   return strips.map(strip => {
     const angle = (strip.yawDeg ?? 0) * Math.PI / 180;
-    const c = Math.cos(angle), s = Math.sin(angle);
+    const c = detMath.cos(angle), s = detMath.sin(angle);
     const half = strip.length * 0.5;
     const grade = typeof strip.grade === 'number' ? strip.grade : (roadHeight(strip.x + s * half, strip.z + c * half)
       - roadHeight(strip.x - s * half, strip.z - c * half)) / Math.max(1, strip.length);
@@ -76,7 +77,7 @@ function signedDistance(strip: HardstandPlane, x: number, z: number): number {
   const dx = x - strip.x, dz = z - strip.z;
   const across = Math.abs(dx * strip.c - dz * strip.s) - strip.width * 0.5;
   const along = Math.abs(dx * strip.s + dz * strip.c) - strip.length * 0.5;
-  return Math.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along));
+  return detMath.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along));
 }
 
 function bounds(strip: HardstandPlane, step: number, size: number, halfMap: number, margin: number): number[] {
@@ -159,7 +160,7 @@ function roundedDistance(strip: HardstandPlane, x: number, z: number, round: num
   const dx = x - strip.x, dz = z - strip.z;
   const across = Math.abs(dx * strip.c - dz * strip.s) - strip.width * 0.5 + round;
   const along = Math.abs(dx * strip.s + dz * strip.c) - strip.length * 0.5 + round;
-  return Math.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along)) - round;
+  return detMath.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along)) - round;
 }
 
 /** How far the surfacing spills past the edge at (x, z), 0..HARDSTAND_PAINT_SPILL_M: gravel and spoil worked out onto
@@ -213,7 +214,7 @@ export function createHardstandVegetationExclusion(
   const frames = new Float64Array(strips.length * 6);
   for (let i = 0; i < strips.length; i++) {
     const strip = strips[i], angle = (strip.yawDeg ?? 0) * Math.PI / 180;
-    frames.set([strip.x, strip.z, Math.cos(angle), Math.sin(angle),
+    frames.set([strip.x, strip.z, detMath.cos(angle), detMath.sin(angle),
       strip.width * 0.5, strip.length * 0.5], i * 6);
   }
   return (x, z) => {

@@ -1,5 +1,6 @@
 import type { CanyonGround } from './horizonRedrock.ts';
 
+import * as detMath from '../sim/detMath.ts';
 function smoothstep(a: number, b: number, value: number): number {
   const t = Math.max(0, Math.min(1, (value - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -56,6 +57,6 @@ export function sampleHorizonFace(
   const cx = positions[c * 3] - ax, cz = positions[c * 3 + 2] - az, cy = heights[c] - ay;
   out.x = ax + bx * ub + cx * uc; out.y = ay + by * ub + cy * uc; out.z = az + bz * ub + cz * uc;
   const nx = by * cz - bz * cy, ny = bz * cx - bx * cz, nz = bx * cy - by * cx;
-  out.slope = Math.hypot(nx, nz) / Math.max(1e-6, Math.abs(ny));
+  out.slope = detMath.hypot(nx, nz) / Math.max(1e-6, Math.abs(ny));
   return out;
 }

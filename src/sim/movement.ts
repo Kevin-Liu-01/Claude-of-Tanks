@@ -37,6 +37,7 @@ import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
 import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 import { publishedTrackContact } from './trackContact.ts';
 
+import * as detMath from './detMath.ts';
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
@@ -229,7 +230,7 @@ interface GunLaySolution {
   gunPitch: number;
 }
 
-interface SupportSamples {
+export interface SupportSamples {
   halfLength: number;
   centerZ: number;
   lineCount: number;
@@ -449,6 +450,38 @@ export interface MovementHeightField {
   readonly standingDeck?: boolean;
   /** Where a top's outline crosses under the hull's box (structureSupport.ts topEdgeStationsIn; structureBoxSupportY). */
   topEdgeStations?(quad: ArrayLike<number>, out: Float64Array, max: number): number;
+  /** A field on the WebAssembly kernels samples a hull's outer track lines and support fan itself (world/wasmWorldKernels.ts):
+   * the samples sampleOuterTrackLines and sampleSupportFan would take, the same values, written into the job. */
+  sampleSupportLines?(job: SupportLineJob): void;
+}
+
+/** One hull's outer lines and fan for a field that samples them (MovementHeightField.sampleSupportLines): the samples
+ * as resetSupportSamples began them, the contact's track ends, the reach and track-line contexts (beginReachableGround,
+ * beginReachableTrackGround), and the station arrays the fit reads. */
+export interface SupportLineJob {
+  samples: SupportSamples;
+  endRise: MovementContactGeometry['endRise'] | null;
+  halfWidth: number;
+  gearBottomY: number;
+  rigidGear: boolean;
+  refY: number;
+  rootX: number;
+  rootZ: number;
+  lineY: number;
+  risePerM: number;
+  trackSinRoll: number;
+  forwardX: number;
+  forwardZ: number;
+  fitZ: Float64Array;
+  fitX: Float64Array;
+  fitH: Float64Array;
+  fitD: Float64Array;
+  bedX: Float64Array;
+  bedZ: Float64Array;
+  bedD: Float64Array;
+  innerX: Float64Array;
+  innerZ: Float64Array;
+  innerH: Float64Array;
 }
 
 export type MovementCollisionResolver = (
@@ -781,7 +814,7 @@ let _shellRestitution = 0;
 let _shellBounceMin = 0;
 let _shellBounceMaxHeight = Infinity;
 /** The hull's up vector this far from vertical or more (cos 70 degrees): it rests on its shell, not its tracks. */
-const SHELL_UP_Y = Math.cos(70 * Math.PI / 180);
+const SHELL_UP_Y = detMath.cos(70 * Math.PI / 180);
 /** The most the ground lifts a shell out of it in one step (m, 6 m/s): under the pop receipt's 0.12 m, the rest the next
  * steps (a hull rolling over its side edge turns its root up faster than that only for a step or two). */
 const SHELL_LIFT_MAX_M_PER_STEP = 0.1;
@@ -1222,10 +1255,10 @@ let _trackForwardX = 0;
 let _trackForwardZ = 1;
 function beginReachableTrackGround(state: TankState, bottomY: number, pitch: number, roll: number): void {
   _trackLineY = state.pos.y + bottomY;
-  _trackRisePerM = Math.tan(pitch);
-  _trackSinRoll = Math.sin(roll);
-  _trackForwardX = Math.sin(state.yaw);
-  _trackForwardZ = Math.cos(state.yaw);
+  _trackRisePerM = detMath.tan(pitch);
+  _trackSinRoll = detMath.sin(roll);
+  _trackForwardX = detMath.sin(state.yaw);
+  _trackForwardZ = detMath.cos(state.yaw);
 }
 /**
  * The track samples' height sampler (beginReachableGround and beginReachableTrackGround first): the ground the hull can
@@ -1325,7 +1358,7 @@ const SWAY_GAIN = 0.011;
 const SWAY_CLAMP = 0.035;
 // Matches the old 0.12-per-60-Hz response while remaining invariant when
 // local multiplayer prediction advances in shorter render-rate substeps.
-const SWAY_TAU_S = -SIM_DT / Math.log(1 - 0.12);
+const SWAY_TAU_S = -SIM_DT / detMath.log(1 - 0.12);
 // Mirror of tankFactory's visual suspension rock layer (suspP/suspR in
 // syncFromState): the renderer adds a restrained transient spring to the
 // hull rotation on top of visualPitch/visualRoll, so the support solve must
@@ -1400,7 +1433,7 @@ const BLOOM_GROW_TAU = 0.05;     // s — bloom-up is effectively instant
 // controls_gunnery r2: SHRINK tau uses ln6 (grow uses the fixed
 // BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.ts
 // so post-shot re-settle under the fire gate lands ~2.3 s on modern MBTs.
-const LN6 = Math.log(6);
+const LN6 = detMath.log(6);
 // Rapid IFV cannon fire is a stabilized stream, not a sequence of full-size
 // cannon shocks. Keep each 1 s-or-faster belt round to a two-percent bloom
 // nudge; the normal aim decay clears almost all of it before the next round.
@@ -1585,6 +1618,13 @@ const INNER_MAX = 8 * SUPPORT_MAX_N;
 const _innerX = new Float64Array(INNER_MAX);
 const _innerZ = new Float64Array(INNER_MAX);
 const _innerH = new Float64Array(INNER_MAX);
+/** The field's own outer-line and fan sampler for the tank being stepped (updateTank), or null. */
+let _supportLines: MovementHeightField['sampleSupportLines'] | null = null;
+const _supportLineJob: SupportLineJob = {
+  samples: null as unknown as SupportSamples, endRise: null, halfWidth: 0, gearBottomY: 0, rigidGear: false, refY: 0, rootX: 0,
+  rootZ: 0, lineY: 0, risePerM: 0, trackSinRoll: 0, forwardX: 0, forwardZ: 1, fitZ: _fitZ, fitX: _fitX, fitH: _fitH, fitD: _fitD,
+  bedX: _bedX, bedZ: _bedZ, bedD: _bedD, innerX: _innerX, innerZ: _innerZ, innerH: _innerH,
+};
 const _driveStep: DriveStep = {
   grounded: true,
   throttle: 0,
@@ -2005,9 +2045,9 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     throw new Error('movement.createTankState: malformed TankSpec');
   }
   const aim = new Vector3(
-    pos.x + Math.sin(yaw) * 250,
+    pos.x + detMath.sin(yaw) * 250,
     pos.y + gunPivotHeight(spec),
-    pos.z + Math.cos(yaw) * 250,
+    pos.z + detMath.cos(yaw) * 250,
   );
   return {
     pos: pos.clone(),
@@ -2148,7 +2188,7 @@ function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number
     RIDE_SUPPORT_V_CAP,
   );
   _supportRate = rawGroundV;
-  const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
+  const groundAlpha = 1 - detMath.exp(-dt / RIDE_GROUND_V_TAU);
   ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
   ride.supportY = supportY;
 }
@@ -2207,12 +2247,12 @@ function advanceAirborneRide(
   ride.airTime = 0;
   ride.rebound = 0;
   ride.stroke = 0;
-  if (state._body.tumbling || Math.cos(state.visualPitch) * Math.cos(state.visualRoll) <= TUMBLE_ENTER_UP_Y) {
+  if (state._body.tumbling || detMath.cos(state.visualPitch) * detMath.cos(state.visualRoll) <= TUMBLE_ENTER_UP_Y) {
     // A hull coming down on its shell (tumbling, on its side, on its roof) has no springs under it: the armour rebounds
     // at once by the ruleset's restitution, or stops the closing at the contact.
     // (on its shell, past SHELL_UP_Y, the ground it lands on is still: the support's rate under a turning hull is its own
     // turn, which it is not handed as speed — constrainShellRide)
-    const shell = Math.cos(state.visualPitch) * Math.cos(state.visualRoll) < SHELL_UP_Y;
+    const shell = detMath.cos(state.visualPitch) * detMath.cos(state.visualRoll) < SHELL_UP_Y;
     if (rebound > bounceMin) {
       const rest = (1 - fraction) * dt;
       const vOut = (shell ? 0 : ride.groundV) + rebound;
@@ -2604,7 +2644,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       const travelRiseM = (Math.abs(state.speed) + Math.abs(state.yawRate || 0) * SOLVER_LIFT_TURN_LEVER_M) * CLIFF_GRADE * dt;
       const solverRise = supportY - ride.supportY - travelRiseM;
       if (solverRise > 0) ride.solverLift = (ride.solverLift || 0) + solverRise;
-      else if (ride.solverLift > 0 && !(ride.y < floorY)) ride.solverLift *= Math.exp(-dt / SOLVER_LIFT_FORGET_S);
+      else if (ride.solverLift > 0 && !(ride.y < floorY)) ride.solverLift *= detMath.exp(-dt / SOLVER_LIFT_FORGET_S);
       // (physics stream F7a, 2026-10-14; the coordinator: "a step larger than the suspension can absorb is a strike or an
       // edge contact, not a lift") that rise, past SUPPORT_STEP_M in one step, is no moving ground: a step the hull was set
       // onto lifts it by position (the floor, the springs), and its rate is not handed to the ride as the ground's.
@@ -2669,7 +2709,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   // (a record's top under the hull: a rock's tier, a roof; a terrain face — a trench's far wall — lifts as before: easing
   // a low hull's climb out of a Moon trench sank it 0.54 m into the wall)
   _edgeEase = _supportOnRecord;
-  _rideOnShell = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < SHELL_UP_Y;
+  _rideOnShell = detMath.cos(state.visualPitch || 0) * detMath.cos(state.visualRoll || 0) < SHELL_UP_Y;
   _shellLiftM = 0;
   _shellRestitution = drive.restitution;
   _shellBounceMin = drive.bounceMin;
@@ -2677,14 +2717,14 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
-      _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0, state._spring.pitchV)
+      _wholeTrackOnGround ? Math.max(0, -state.speed * detMath.tan(state._terr.pitch)) : 0, state._spring.pitchV)
     : advanceAirborneRide(state, ride, dt, contactY, seatY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin,
       drive.bounceMaxHeight);
   if (_shellLiftM > 0) {
     // (physics stream F5, 2026-10-14) a shell the ground lifts out of it is turning into the ground: the ground holds the
     // turn. An Abrams turning over nose-first on Airfield's 57-degree hangar vault drove its body into the vault every
     // step, was lifted out of it 0.1 m a step, and climbed 7 m up the hangar on its own turn
-    const hold = Math.exp(-dt / SHELL_TURN_HOLD_S);
+    const hold = detMath.exp(-dt / SHELL_TURN_HOLD_S);
     state._spring.pitchV *= hold;
     state._spring.rollV *= hold;
   }
@@ -2727,7 +2767,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
 const FIT_MIN_SPAN_ZZ = 1.5 * 1.5 / 12;
 
 /** The steepest grade the turn reads (a face past it is a wall; cliffAhead and the grade rule own it). */
-const GRADE_PUSH_MAX = Math.tan(60 * Math.PI / 180);
+const GRADE_PUSH_MAX = detMath.tan(60 * Math.PI / 180);
 /** Below this travel the turn is nothing to see, and clipping it at zero would ratchet a crawl up a face. */
 const GRADE_PUSH_MIN_TRAVEL_MPS = 1;
 /** Grades under 14 degrees turn the travel by under 6 % (tan² θ): left alone, so the rolling ground every battle
@@ -2794,8 +2834,8 @@ function facePushGrade(state: TankState): number {
   const groundAt = _reachBaseH;
   if (!groundAt) return 0;
   const dir = state.speed > 0 ? 1 : -1;
-  const fx = Math.sin(state.yaw) * dir;
-  const fz = Math.cos(state.yaw) * dir;
+  const fx = detMath.sin(state.yaw) * dir;
+  const fz = detMath.cos(state.yaw) * dir;
   const x = _supportStation.worldX, z = _supportStation.worldZ;
   const here = groundAt(x, z);
   const ahead = groundAt(x + fx * FACE_PROBE_M, z + fz * FACE_PROBE_M);
@@ -2841,15 +2881,15 @@ function solveGunLay(
   const dx = aim.x - _gunOriginWorld.x;
   const dy = aim.y - _gunOriginWorld.y;
   const dz = aim.z - _gunOriginWorld.z;
-  out.horizontalDistance = Math.hypot(dx, dz);
-  out.worldPitch = Math.atan2(dy, Math.max(out.horizontalDistance, 1e-6));
+  out.horizontalDistance = detMath.hypot(dx, dz);
+  out.worldPitch = detMath.atan2(dy, Math.max(out.horizontalDistance, 1e-6));
   _aimLocal.set(dx, dy, dz).applyQuaternion(_hullQuat.conjugate());
   _hullQuat.conjugate();
-  const localHorizontal = Math.hypot(_aimLocal.x, _aimLocal.z);
+  const localHorizontal = detMath.hypot(_aimLocal.x, _aimLocal.z);
   out.turretYaw = localHorizontal > 1e-6
-    ? Math.atan2(_aimLocal.x, _aimLocal.z)
+    ? detMath.atan2(_aimLocal.x, _aimLocal.z)
     : state.turretYaw;
-  out.gunPitch = Math.atan2(_aimLocal.y, Math.max(localHorizontal, 1e-6));
+  out.gunPitch = detMath.atan2(_aimLocal.y, Math.max(localHorizontal, 1e-6));
   return out;
 }
 
@@ -2885,7 +2925,7 @@ function updateHydraulicGunLay(
   // measure the suspension controller uses. The old hull-space gunPitch read a level sight astern of a
   // nose-up hull as steeply UP and pinned the reticle through every turn-around.
   _turretForwardWorld.set(0, 0, 1).applyQuaternion(_hullQuat);
-  const borePitch = Math.asin(clamp(_turretForwardWorld.y, -1, 1));
+  const borePitch = detMath.asin(clamp(_turretForwardWorld.y, -1, 1));
   const requestedPitch = state.suspensionAimPitch + solution.worldPitch - borePitch;
   const yawPinned = fixedMountYawPinned(state, steer, debuff);
   const pitchPinned = !state.suspensionAim ||
@@ -3013,7 +3053,7 @@ function updateTrackScrollAndBloom(
   const tau = target > state.bloomF
     ? BLOOM_GROW_TAU
     : (spec.gun.aimTimeS * debuff.aimTimeMult) / LN6;
-  state.bloomF += (target - state.bloomF) * (1 - Math.exp(-dt / tau));
+  state.bloomF += (target - state.bloomF) * (1 - detMath.exp(-dt / tau));
   if (debuff.gunYellow && state.bloomF < GUN_YELLOW_BLOOM_FLOOR) {
     state.bloomF = GUN_YELLOW_BLOOM_FLOOR;
   }
@@ -3077,7 +3117,7 @@ function integrateHorizontalMotion(
   state.impactMps = cliffImpact;
   state.pos.x += (forwardX * state.speed + spring.recoilVX) * dt;
   state.pos.z += (forwardZ * state.speed + spring.recoilVZ) * dt;
-  const recoilDecay = Math.exp(-dt / RECOIL_DECAY_TAU);
+  const recoilDecay = detMath.exp(-dt / RECOIL_DECAY_TAU);
   spring.recoilVX *= recoilDecay;
   spring.recoilVZ *= recoilDecay;
   if (!collide) return;
@@ -3088,7 +3128,7 @@ function integrateHorizontalMotion(
   // the push splits into the part that undoes this step's own travel into the obstacle (applied at once: a wall stops a
   // hull) and the rest, an overlap the hull already stood in, which leaves gradually (DEPENETRATION_SHARE)
   const travelX = (forwardX * state.speed + spring.recoilVX) * dt, travelZ = (forwardZ * state.speed + spring.recoilVZ) * dt;
-  const travelLen = Math.hypot(travelX, travelZ);
+  const travelLen = detMath.hypot(travelX, travelZ);
   let cancelX = 0, cancelZ = 0;
   if (travelLen > 1e-9) {
     const along = (_push.x * travelX + _push.z * travelZ) / travelLen;
@@ -3098,13 +3138,13 @@ function integrateHorizontalMotion(
     }
   }
   const restX = _push.x - cancelX, restZ = _push.z - cancelZ;
-  const restLen = Math.hypot(restX, restZ);
+  const restLen = detMath.hypot(restX, restZ);
   const restMax = Math.max(DEPENETRATION_MIN_M, restLen * DEPENETRATION_SHARE);
   const restK = restLen > restMax ? restMax / restLen : 1;
   _push.set(cancelX + restX * restK, 0, cancelZ + restZ * restK);
   // Round 30: a hull found deep inside a primitive (a clip through a wall, a roof it fell through, a spawn inside a
   // footprint) leaves it over a few steps instead of one 7 m teleport — the visible "goes crazy" pop.
-  const pushLen = Math.hypot(_push.x, _push.z);
+  const pushLen = detMath.hypot(_push.x, _push.z);
   if (pushLen > OBSTACLE_PUSH_MAX_M_PER_STEP) _push.multiplyScalar(OBSTACLE_PUSH_MAX_M_PER_STEP / pushLen);
   state.pos.add(_push);
   const pushForward = _push.x * forwardX + _push.z * forwardZ;
@@ -3118,7 +3158,7 @@ function integrateHorizontalMotion(
   if (lostSpeed >= cliffImpact && pushLen > 1e-9) {
     // impact physics: the integration reads the source and the push direction to price a hard contact
     state.impactSource = IMPACT_SOURCE_COLLIDER;
-    const pushNow = Math.hypot(_push.x, _push.z);
+    const pushNow = detMath.hypot(_push.x, _push.z);
     state.impactNx = _push.x / pushNow;
     state.impactNz = _push.z / pushNow;
   }
@@ -3149,8 +3189,8 @@ function wallContactPoints(spec: MovementSpec): readonly number[] {
     for (const grade of WALL_OUTLINE_GRADES) {
       for (let direction = 0; direction < WALL_OUTLINE_DIRECTIONS; direction++) {
         const angle = (2 * Math.PI * direction) / WALL_OUTLINE_DIRECTIONS;
-        const ux = Math.sin(angle);
-        const uz = Math.cos(angle);
+        const ux = detMath.sin(angle);
+        const uz = detMath.cos(angle);
         let best = -1;
         let bestReach = -Infinity;
         for (let index = 0; index + 2 < hull.length; index += 3) {
@@ -3197,12 +3237,12 @@ function pushOffTerrainWalls(
   const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0) - (state._flinch?.p ?? 0);
   const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS +
     (state._flinch?.r ?? 0);
-  const cosYaw = Math.cos(state.yaw);
-  const sinYaw = Math.sin(state.yaw);
-  const cosNegPitch = Math.cos(-pitch);
-  const sinNegPitch = Math.sin(-pitch);
-  const cosRoll = Math.cos(roll);
-  const sinRoll = Math.sin(roll);
+  const cosYaw = detMath.cos(state.yaw);
+  const sinYaw = detMath.sin(state.yaw);
+  const cosNegPitch = detMath.cos(-pitch);
+  const sinNegPitch = detMath.sin(-pitch);
+  const cosRoll = detMath.cos(roll);
+  const sinRoll = detMath.sin(roll);
   let deepest = 0;
   let normalX = 0;
   let normalZ = 0;
@@ -3335,9 +3375,9 @@ function fixedHydraulicPitchRequest(
   const dx = aim.x - _gunOriginWorld.x;
   const dy = aim.y - _gunOriginWorld.y;
   const dz = aim.z - _gunOriginWorld.z;
-  const sightPitch = Math.atan2(dy, Math.max(Math.hypot(dx, dz), 1e-6));
+  const sightPitch = detMath.atan2(dy, Math.max(detMath.hypot(dx, dz), 1e-6));
   _turretForwardWorld.set(0, 0, 1).applyQuaternion(_hullQuat);
-  const borePitch = Math.asin(clamp(_turretForwardWorld.y, -1, 1));
+  const borePitch = detMath.asin(clamp(_turretForwardWorld.y, -1, 1));
   return suspensionPitch + (sightPitch - borePitch) * Math.min(1, dt * 4);
 }
 
@@ -3349,7 +3389,7 @@ function conventionalHydraulicPitchRequest(
   const dx = aim.x - state.pos.x;
   const dz = aim.z - state.pos.z;
   const dy = aim.y - (state.pos.y + gunPivotHeight(spec));
-  return Math.atan2(dy, Math.max(Math.hypot(dx, dz), 1e-6)) - state._terr.pitch;
+  return detMath.atan2(dy, Math.max(detMath.hypot(dx, dz), 1e-6)) - state._terr.pitch;
 }
 
 function updateSuspensionAim(
@@ -3436,14 +3476,14 @@ function updateRigidAttitude(
       spring.rollV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativeRoll -
         2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spring.rollV) * dt;
     } else {
-      spring.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
-      spring.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
-      const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
+      spring.pitchV += -detMath.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
+      spring.rollV += -detMath.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
+      const contactDrag = detMath.exp(-GROUND_TUMBLE_DAMP_S * dt);
       spring.pitchV *= contactDrag;
       spring.rollV *= contactDrag;
     }
   } else {
-    const airDrag = Math.exp(-drive.airAngularDrag * dt);
+    const airDrag = detMath.exp(-drive.airAngularDrag * dt);
     spring.pitchV *= airDrag;
     spring.rollV *= airDrag;
   }
@@ -3454,9 +3494,9 @@ function updateRigidAttitude(
   spring.rollV = clamp(spring.rollV, -angularCap, angularCap);
   spring.pitch = wrapAngle(spring.pitch + spring.pitchV * dt);
   spring.roll = wrapAngle(spring.roll + spring.rollV * dt);
-  const upY = Math.cos(spring.pitch) * Math.cos(spring.roll);
-  const relativeUpY = Math.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
-    Math.cos(wrapAngle(spring.roll - state._terr.roll));
+  const upY = detMath.cos(spring.pitch) * detMath.cos(spring.roll);
+  const relativeUpY = detMath.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
+    detMath.cos(wrapAngle(spring.roll - state._terr.roll));
   if ((!groundedAtStart || landingImpact > 0) && upY < TUMBLE_ENTER_UP_Y) {
     body.tumbling = true;
   }
@@ -3488,7 +3528,7 @@ function updateSupportedAttitude(
   // (contactAwareFit) — no spring pulls it toward ground it is not touching
   const tipPitch = state._terr.tipPitch || 0;
   const tipRoll = state._terr.tipRoll || 0;
-  const edgeDrag = tipPitch !== 0 || tipRoll !== 0 ? Math.exp(-TIP_DAMP_S * dt) : 1;
+  const edgeDrag = tipPitch !== 0 || tipRoll !== 0 ? detMath.exp(-TIP_DAMP_S * dt) : 1;
   // a hull that ends a tip has just come down on its second contact: the spring takes it as it takes a landing,
   // from the soft end of the blend (a full-stiffness spring met a 0.4 rad error at 140 rad/s^2 and threw the hull's
   // nose down off its support — climb-face at Turbo speed)
@@ -3556,7 +3596,7 @@ function updateHullAttitude(
   }
   state.visualPitch = state._spring.pitch;
   state.visualRoll = state._spring.roll;
-  const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+  const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
   state.overturned = state.overturned
     ? upY < OVERTURN_EXIT_UP_Y
     : upY < OVERTURN_ENTER_UP_Y;
@@ -3642,7 +3682,7 @@ function updateHullHold(state: TankState, pitchTarget: number, rollTarget: numbe
   seat.rv += (-SUSP_W * SUSP_W * seat.r - 2 * SUSP_Z * SUSP_W * seat.rv) * dt;
   seat.r += seat.rv * dt;
   if (perch <= 0) return;
-  const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
+  const bleed = detMath.exp(-dt * perch * PERCH_SUSP_BLEED);
   hold.p *= bleed;
   hold.pv *= bleed;
   hold.r *= bleed;
@@ -3700,10 +3740,10 @@ function updateSuspensionRock(
   if (groundedAtStart) {
     const halfLength = SUSP_FIT_LEN * spec.dims.hullLengthM;
     const halfWidth = SUSP_FIT_WID * spec.dims.widthM;
-    const forwardX = Math.sin(state.yaw);
-    const forwardZ = Math.cos(state.yaw);
-    const rightX = Math.cos(state.yaw);
-    const rightZ = -Math.sin(state.yaw);
+    const forwardX = detMath.sin(state.yaw);
+    const forwardZ = detMath.cos(state.yaw);
+    const rightX = detMath.cos(state.yaw);
+    const rightZ = -detMath.sin(state.yaw);
     const x = state.pos.x;
     const z = state.pos.z;
     // Physics lane (2026-10-03): a corner whose ground lies beyond the wheels' reach below the hull (a ramp's lip, a
@@ -3713,7 +3753,7 @@ function updateSuspensionRock(
     // (the root is the hull's seat on its tracks: the dive, which once lifted it, is not part of the support solve, nor is
     // the posture the hull holds over them, state._hold: the rock conforms the seat's attitude, the attitude spring's)
     const seatPitch = state._spring.pitch, seatRoll = state._spring.roll;
-    const sinPitch = Math.sin(seatPitch), sinRoll = Math.sin(seatRoll);
+    const sinPitch = detMath.sin(seatPitch), sinRoll = detMath.sin(seatRoll);
     const y = state.pos.y;
     const frontLeft = reachableCorner(hAt(x + forwardX * halfLength - rightX * halfWidth,
       z + forwardZ * halfLength - rightZ * halfWidth), y + halfLength * sinPitch - halfWidth * sinRoll);
@@ -3723,11 +3763,11 @@ function updateSuspensionRock(
       z - forwardZ * halfLength - rightZ * halfWidth), y - halfLength * sinPitch - halfWidth * sinRoll);
     const rearRight = reachableCorner(hAt(x - forwardX * halfLength + rightX * halfWidth,
       z - forwardZ * halfLength + rightZ * halfWidth), y - halfLength * sinPitch + halfWidth * sinRoll);
-    const terrainPitch = Math.atan2(
+    const terrainPitch = detMath.atan2(
       (frontLeft + frontRight - rearLeft - rearRight) * 0.5,
       2 * halfLength,
     );
-    const terrainRoll = Math.atan2(
+    const terrainRoll = detMath.atan2(
       (frontRight + rearRight - frontLeft - rearLeft) * 0.5,
       2 * halfWidth,
     );
@@ -3789,7 +3829,7 @@ function updateSuspensionRock(
     2 * SUSP_Z * SUSP_W * suspension.rv) * dt;
   suspension.r += suspension.rv * dt;
   if (perch <= 0) return;
-  const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
+  const bleed = detMath.exp(-dt * perch * PERCH_SUSP_BLEED);
   suspension.p *= bleed;
   suspension.pv *= bleed;
   suspension.r *= bleed;
@@ -3823,8 +3863,8 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
   const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
   // the posture held on a grade (physics lane round 5) pitches and rolls the hull over its tracks the same way, about
   // their length and about half the gauge between their centre lines, where the road wheels ride (round 8)
-  const pitchLimit = Math.asin(Math.min(1, travel / lever));
-  const rollLimit = Math.asin(Math.min(1, travel / trackCentreHalfGauge(entity, spec)));
+  const pitchLimit = detMath.asin(Math.min(1, travel / lever));
+  const rollLimit = detMath.asin(Math.min(1, travel / trackCentreHalfGauge(entity, spec)));
   if (hold.p > pitchLimit || hold.p < -pitchLimit) {
     hold.p = clamp(hold.p, -pitchLimit, pitchLimit);
     if (hold.pv * hold.p > 0) hold.pv = 0;
@@ -3850,13 +3890,13 @@ let _guardGroundX = 0;
 let _guardGroundZ = 0;
 /** The ground over (+) or under (−) one end guard's height at an attitude (the reachable ground: beginReachableGround). */
 function guardDepthAt(guards: readonly number[], index: number, state: TankState, pitch: number, roll: number): number {
-  const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
-  const cosNegPitch = Math.cos(-pitch), sinNegPitch = Math.sin(-pitch);
+  const cosRoll = detMath.cos(roll), sinRoll = detMath.sin(roll);
+  const cosNegPitch = detMath.cos(-pitch), sinNegPitch = detMath.sin(-pitch);
   const localX = guards[index], localY = guards[index + 1], localZ = guards[index + 2];
   const rolledX = localX * cosRoll - localY * sinRoll;
   const rolledY = localX * sinRoll + localY * cosRoll;
   const pitchedZ = rolledY * sinNegPitch + localZ * cosNegPitch;
-  const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
+  const cosYaw = detMath.cos(state.yaw), sinYaw = detMath.sin(state.yaw);
   const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
   const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
   _guardGroundX = worldX; _guardGroundZ = worldZ;
@@ -3960,22 +4000,22 @@ function resetSupportSamples(
     Math.max(5, Math.ceil((2 * samples.halfLength) / SUPPORT_SPACING_M) + 1),
   );
   samples.step = (2 * samples.halfLength) / (samples.lineCount - 1);
-  samples.cosYaw = Math.cos(state.yaw);
-  samples.sinYaw = Math.sin(state.yaw);
-  samples.cosNegPitch = Math.cos(-pitch);
-  samples.sinNegPitch = Math.sin(-pitch);
-  samples.cosRoll = Math.cos(roll);
-  samples.sinRoll = Math.sin(roll);
-  samples.sinPitch = Math.sin(pitch);
-  samples.cosPitch = Math.cos(pitch);
+  samples.cosYaw = detMath.cos(state.yaw);
+  samples.sinYaw = detMath.sin(state.yaw);
+  samples.cosNegPitch = detMath.cos(-pitch);
+  samples.sinNegPitch = detMath.sin(-pitch);
+  samples.cosRoll = detMath.cos(roll);
+  samples.sinRoll = detMath.sin(roll);
+  samples.sinPitch = detMath.sin(pitch);
+  samples.cosPitch = detMath.cos(pitch);
   // Impact physics (2026-09-25, "bodies stop cleanly"): the settle residuals are measured against the pure
   // least-squares fit, not against last tick's pitch WITH its settle correction — measured against the latter, a
   // hull parked on a plane read its own previous correction as a residual trend, corrected the other way, and the
   // attitude spring chased a target that flipped ±0.4° at ~1 Hz for good (5 mm of height chatter on a 15° grade).
-  samples.fitSinPitch = Math.sin(state._terr.fitPitch);
-  samples.fitCosPitch = Math.cos(state._terr.fitPitch);
-  samples.fitSinRoll = Math.sin(state._terr.roll);
-  samples.fitCosRoll = Math.cos(state._terr.roll);
+  samples.fitSinPitch = detMath.sin(state._terr.fitPitch);
+  samples.fitCosPitch = detMath.cos(state._terr.fitPitch);
+  samples.fitSinRoll = detMath.sin(state._terr.roll);
+  samples.fitCosRoll = detMath.cos(state._terr.roll);
   samples.worldX = state.pos.x;
   samples.worldZ = state.pos.z;
   samples.worldY = state.pos.y;
@@ -4265,8 +4305,8 @@ function rigidBodySupport(
     samples.sinNegPitch,
     samples.cosRoll,
     samples.sinRoll,
-    Math.cos(turretYaw),
-    Math.sin(turretYaw),
+    detMath.cos(turretYaw),
+    detMath.sin(turretYaw),
     turretPivot?.[0] ?? 0,
     turretPivot?.[1] ?? 0,
     turretPivot?.[2] ?? 0,
@@ -4348,22 +4388,22 @@ const _contactFit = { pitch: 0, roll: 0, tipPitch: 0, tipRoll: 0, edge: false };
  * along that a rolled and pitched station picks up), blended between.
  */
 function planePitch(risePerZ: number, samples: SupportSamples): number {
-  const sine = Math.asin(clamp(risePerZ, -1, 1));
+  const sine = detMath.asin(clamp(risePerZ, -1, 1));
   const w = exactShare(risePerZ);
   if (w === 0) return sine;
   // (a hull turned past 90 degrees reads its rise over a negative cosine: the plane's own grade still)
-  const exact = Math.atan(risePerZ / samples.cosNegPitch);
+  const exact = detMath.atan(risePerZ / samples.cosNegPitch);
   return Number.isFinite(exact) ? sine + w * (exact - sine) : sine;
 }
 function planeRoll(risePerX: number, pitch: number, samples: SupportSamples): number {
-  const cosPitch = Math.cos(pitch);
+  const cosPitch = detMath.cos(pitch);
   const read = risePerX / Math.max(cosPitch, 0.1);
-  const sine = Math.asin(clamp(read, -1, 1));
+  const sine = detMath.asin(clamp(read, -1, 1));
   const w = exactShare(read);
   if (w === 0) return sine;
   // the cross grade: the rise per local metre across less the grade along the heading its station's forward lean picks up
-  const across = (risePerX - Math.tan(pitch) * samples.sinRoll * samples.sinNegPitch) / samples.cosRoll;
-  const exact = Math.atan(across * cosPitch);
+  const across = (risePerX - detMath.tan(pitch) * samples.sinRoll * samples.sinNegPitch) / samples.cosRoll;
+  const exact = detMath.atan(across * cosPitch);
   return Number.isFinite(exact) ? sine + w * (exact - sine) : sine;
 }
 /** The exact plane's share of the fit for a read of `rise` (0 up to FIT_EXACT_FROM, 1 from FIT_EXACT_FULL). */
@@ -4381,10 +4421,10 @@ const FIT_EXACT_FULL = 0.95;
  * likewise, the rise per hull-local metre (`gradeRise`).
  */
 export function feltGrade(pitch: number): number {
-  return 0.5 * (pitch + Math.atan(Math.sin(pitch)));
+  return 0.5 * (pitch + detMath.atan(detMath.sin(pitch)));
 }
 function gradeRise(state: TankState): number {
-  return Math.sin(state._terr.fitPitch);
+  return detMath.sin(state._terr.fitPitch);
 }
 
 /** How far past the end of its tracks a hull looks for the ground coming back up from a drop it drives toward (m), and
@@ -4517,9 +4557,9 @@ function contactAwareFit(
     const leverRear = zMin - comZ;  // behind the rear-most: the tail goes down
     const pitchGyration = (dims.hullLengthM * dims.hullLengthM + dims.heightM * dims.heightM) / 12;
     if (leverFront > TIP_DEADBAND_M && travel >= 0) {
-      tipPitch = -gravity * leverFront * Math.cos(state._spring.pitch) / (pitchGyration + leverFront * leverFront);
+      tipPitch = -gravity * leverFront * detMath.cos(state._spring.pitch) / (pitchGyration + leverFront * leverFront);
     } else if (leverRear > TIP_DEADBAND_M && travel <= 0) {
-      tipPitch = gravity * leverRear * Math.cos(state._spring.pitch) / (pitchGyration + leverRear * leverRear);
+      tipPitch = gravity * leverRear * detMath.cos(state._spring.pitch) / (pitchGyration + leverRear * leverRear);
     }
   }
   // a whole side hanging (its outer line and its wheel-run fan): roll toward it about the innermost loaded line — or
@@ -4529,10 +4569,10 @@ function contactAwareFit(
   const rollGyration = (dims.widthM * dims.widthM + dims.heightM * dims.heightM) / 12;
   if (left === 0 && samples.fanTouchLeftX === Infinity && right > 0) {
     const lever = Math.min(halfWidth, samples.fanTouchRightX, samples.bellyTouchMinX);
-    if (lever > TIP_DEADBAND_M) tipRoll = gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
+    if (lever > TIP_DEADBAND_M) tipRoll = gravity * lever * detMath.cos(state._spring.roll) / (rollGyration + lever * lever);
   } else if (right === 0 && samples.fanTouchRightX === Infinity && left > 0) {
     const lever = Math.min(halfWidth, samples.fanTouchLeftX, -samples.bellyTouchMaxX);
-    if (lever > TIP_DEADBAND_M) tipRoll = -gravity * lever * Math.cos(state._spring.roll) / (rollGyration + lever * lever);
+    if (lever > TIP_DEADBAND_M) tipRoll = -gravity * lever * detMath.cos(state._spring.roll) / (rollGyration + lever * lever);
   }
   _contactFit.tipPitch = tipPitch;
   _contactFit.tipRoll = tipRoll;
@@ -4715,7 +4755,7 @@ function writeSupportCache(
   const hydraulicYield = state.suspensionAim && hydraulicAim && !rigidUndercut
     ? Math.min(
       hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
-      Math.abs(Math.sin(suspensionPitch)) * samples.halfLength,
+      Math.abs(detMath.sin(suspensionPitch)) * samples.halfLength,
     )
     : 0;
   let supportY = Math.max(
@@ -4759,8 +4799,8 @@ function writeSupportCache(
     const onBody = samples.bodyTop > samples.outerMax;
     const contactX = onBody ? _guardHit.localX : samples.outerX;
     const contactZ = onBody ? _guardHit.localZ : samples.outerZ;
-    const lift = (contactX * (samples.sinRoll * samples.cosPitch - Math.sin(cache.roll) * Math.cos(cache.pitch))
-      + contactZ * (samples.sinPitch - Math.sin(cache.pitch)));
+    const lift = (contactX * (samples.sinRoll * samples.cosPitch - detMath.sin(cache.roll) * detMath.cos(cache.pitch))
+      + contactZ * (samples.sinPitch - detMath.sin(cache.pitch)));
     _rotationDrop = lift > 0 ? lift : 0;
   }
   cache.x = state.pos.x;
@@ -4842,8 +4882,17 @@ function solveSupportHeight(
   const groundAt = reachableGroundAt;
   // (the tracks climb no sheer face taller than FACE_CLIMB_MAX_M: reachableTrackGroundAt)
   beginReachableTrackGround(state, gearBottomY, pitch, roll);
-  sampleOuterTrackLines(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY);
-  sampleSupportFan(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY, rigidGear);
+  if (_supportLines) {
+    // (a field on the kernels takes the same samples on its own samplers, the wall rules included: one call a hull)
+    const job = _supportLineJob;
+    job.samples = samples; job.endRise = contact?.endRise ?? null; job.halfWidth = halfWidth; job.gearBottomY = gearBottomY;
+    job.rigidGear = rigidGear; job.refY = _reachRefY; job.rootX = _reachRootX; job.rootZ = _reachRootZ; job.lineY = _trackLineY;
+    job.risePerM = _trackRisePerM; job.trackSinRoll = _trackSinRoll; job.forwardX = _trackForwardX; job.forwardZ = _trackForwardZ;
+    _supportLines(job);
+  } else {
+    sampleOuterTrackLines(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY);
+    sampleSupportFan(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY, rigidGear);
+  }
   const shellSupportY = rigidBodySupport(
     spec,
     state,
@@ -4907,8 +4956,8 @@ function prepareDriveStep(
   // once the hull is aligned with its support plane. In flight the engine can
   // spool freely; updateDriveSpool prevents any airborne traction or braking.
   const tracksAligned = !body.tumbling ||
-    Math.cos(state._spring.pitch - state._terr.pitch) *
-      Math.cos(state._spring.roll - state._terr.roll) >= TUMBLE_EXIT_UP_Y;
+    detMath.cos(state._spring.pitch - state._terr.pitch) *
+      detMath.cos(state._spring.roll - state._terr.roll) >= TUMBLE_EXIT_UP_Y;
   const drivetrainLocked = debuff.immobile ||
     (drive.grounded && (state.overturned || !tracksAligned));
   drive.throttle = drivetrainLocked ? 0 : clamp(input.throttle || 0, -1, 1);
@@ -4920,19 +4969,19 @@ function prepareDriveStep(
   if (drive.grounded) state._groundType = drive.ground;
   drive.resistance = spec.terrainResistance[drive.ground] || spec.terrainResistance.medium;
   drive.hardResistance = spec.terrainResistance.hard;
-  drive.forwardX = Math.sin(state.yaw);
-  drive.forwardZ = Math.cos(state.yaw);
-  drive.rightX = Math.cos(state.yaw);
-  drive.rightZ = -Math.sin(state.yaw);
+  drive.forwardX = detMath.sin(state.yaw);
+  drive.forwardZ = detMath.cos(state.yaw);
+  drive.rightX = detMath.cos(state.yaw);
+  drive.rightZ = -detMath.sin(state.yaw);
   drive.terrainPitch = feltGrade(state._terr.pitch);
-  if (drive.grounded && Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < SHELL_UP_Y) {
+  if (drive.grounded && detMath.cos(state.visualPitch || 0) * detMath.cos(state.visualRoll || 0) < SHELL_UP_Y) {
     // (physics stream F5, 2026-10-14) a hull on its shell slides on the ground's own grade along its heading: the plane fit
     // through its track samples reads its own turned frame (an inverted hull read the grade backwards, and its shell slid
     // up a 60-degree roof at 6 m/s), so the ground under its root is read across the probe instead
     const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
     const ahead = hAt(state.pos.x + drive.forwardX * SHELL_GRADE_PROBE_M, state.pos.z + drive.forwardZ * SHELL_GRADE_PROBE_M);
     const behind = hAt(state.pos.x - drive.forwardX * SHELL_GRADE_PROBE_M, state.pos.z - drive.forwardZ * SHELL_GRADE_PROBE_M);
-    if (Number.isFinite(ahead) && Number.isFinite(behind)) drive.terrainPitch = Math.atan2(ahead - behind, 2 * SHELL_GRADE_PROBE_M);
+    if (Number.isFinite(ahead) && Number.isFinite(behind)) drive.terrainPitch = detMath.atan2(ahead - behind, 2 * SHELL_GRADE_PROBE_M);
   }
   drive.speedMultiplier = clamp(
     Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
@@ -5205,8 +5254,8 @@ function applySlopeForces(
     // Impact physics (owner 2026-09-25: hulls "climbing walls"): a face steeper than the tracks hold is a slide,
     // not a hover — the full slope pull against sliding friction μ·g·cos θ, which opposes the motion and never
     // reverses it; there is no drive and no brake to hang on with, an immobilised hull slides the same.
-    const pull = -gravity * Math.sin(drive.terrainPitch) * dt;
-    const friction = trackSlideCoefficient(spec, drive.ground) * gravity * Math.abs(Math.cos(drive.terrainPitch)) * dt;
+    const pull = -gravity * detMath.sin(drive.terrainPitch) * dt;
+    const friction = trackSlideCoefficient(spec, drive.ground) * gravity * Math.abs(detMath.cos(drive.terrainPitch)) * dt;
     let speed = state.speed + pull;
     speed = speed > 0 ? Math.max(0, speed - friction) : Math.min(0, speed + friction);
     state.speed = speed;
@@ -5219,7 +5268,7 @@ function applySlopeForces(
   const gravityShare = gripBlocked
     ? 1
     : (drive.throttle !== 0 ? 0.3 + 0.7 * slow : 1);
-  const pull = gravity * Math.sin(drive.terrainPitch);
+  const pull = gravity * detMath.sin(drive.terrainPitch);
   state.speed += -pull * dt * gravityShare;
   // static hold: a stopped hull with no throttle stays put when the holding decel (coast, brake or a wreck's
   // locked tracks) matches the grade's pull — no creep, no jitter at rest
@@ -5315,13 +5364,14 @@ export function updateTank(
   const hAt = heightField.getContactHeightAt ?? heightField.getHeightAtFast ?? heightField.getHeightAt;
   const terrainAt = heightField.getTerrainContactHeightAt ?? hAt;
   if (!(dt > 0)) return;
+  _supportLines = heightField.sampleSupportLines ?? null;
   const spec = entity.spec;
   const state = entity.state;
   const debuff = readDebuffs(entity.combat, state._debuff);
   const groundedAtStart = state.grounded !== false;
   const body = state._body;
   body.dynamicSupport = false;
-  const upYAtStart = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0);
+  const upYAtStart = detMath.cos(state.visualPitch || 0) * detMath.cos(state.visualRoll || 0);
   // A grounded tank on extreme authored terrain still belongs to the normal
   // support solver. Enter the rigid tumble phase automatically only after the
   // center of mass has genuinely crossed the side; lesser tilts need a launch
@@ -5376,7 +5426,7 @@ export function updateTank(
   // above ground too.
   const swayTarget = clamp(state.yawRate * state.speed * SWAY_GAIN, -SWAY_CLAMP, SWAY_CLAMP);
   state._swayEst += (swayTarget - state._swayEst) *
-    (1 - Math.exp(-dt / SWAY_TAU_S));
+    (1 - detMath.exp(-dt / SWAY_TAU_S));
 
   // ---- hit-flinch rock: integrate the visual layer's damped oscillator ------
   // (constants in lockstep with tankFactory FLINCH_W/FLINCH_Z; impulses arrive
@@ -5431,7 +5481,7 @@ export function updateTank(
     state._terr.roll,
     drive,
   );
-  const upYAfterAttitude = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
+  const upYAfterAttitude = detMath.cos(state.visualPitch) * detMath.cos(state.visualRoll);
 
   // ---- mirror of tankFactory's visual susp rock layer -----------------------
   // syncFromState (which runs right after this tick) will render the hull at
@@ -5444,7 +5494,7 @@ export function updateTank(
   // suspension aims it with (a UDES 03 laying 9 degrees nose-up on flat ground holds no gravity along it) and a shot's
   // recoil (an IFV firing on a level range held a posture after every shot).
   const heldGravity = groundedAtStart && !drive.gripLost && !body.tumbling ? GRAVITY * drive.gravityScale : 0;
-  holdTransferAngles(entity, spec, heldGravity * Math.sin(state._terr.pitch), heldGravity * Math.sin(state._terr.roll),
+  holdTransferAngles(entity, spec, heldGravity * detMath.sin(state._terr.pitch), heldGravity * detMath.sin(state._terr.roll),
     _holdTransfer);
   // the posture is the hull's attitude over its planted tracks: the spring's attitude plus the hold, one attitude for the
   // armour, the bores and launch mouths, the aim solves, the snapshot and the renderer
@@ -5504,9 +5554,9 @@ export function updateTank(
   // the rise is the sine of the fit's pitch since the fit takes the arcsine, 4549734b3; its tangent read a 46-degree
   // face under a hull pitched 45 degrees as 57, the ground rising 47 % faster under the travel than it does.)
   if (!groundedAtStart) {
-    const cosPitch = Math.cos(pitchEff);
+    const cosPitch = detMath.cos(pitchEff);
     _airGrade = Math.abs(cosPitch) > AIR_GRADE_MIN_COS
-      ? Math.sin(state._terr.fitPitch) / cosPitch
+      ? detMath.sin(state._terr.fitPitch) / cosPitch
       : worldGradeAlong(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   // Loaded suspension follows the support envelope; once the droop limit is
@@ -5658,9 +5708,9 @@ export function applyShellKnock(
   state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number, gravityScale = 1,
 ): void {
   if (!(knockMps > 0)) return;
-  const h = Math.hypot(dirX, dirZ) || 1;
+  const h = detMath.hypot(dirX, dirZ) || 1;
   const kx = dirX / h, kz = dirZ / h;
-  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+  const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
   const along = kx * fx + kz * fz;
   const spr = state._spring;
   // (physics stream F4, 2026-10-13; the coordinator: "static friction") a grounded hull's tracks hold it against a shove
@@ -5697,7 +5747,7 @@ export function fireRecoil(
   // firing forward lifts the nose; firing over the right side rocks the hull
   // left-side-down (= right side UP: positive roll under the renderer's
   // rotation.z = +visualRoll composition — see the roll-sign note up top).
-  const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
+  const ct = detMath.cos(state.turretYaw), st = detMath.sin(state.turretYaw);
   // In flight there is no suspension to rock against: the shot turns the whole hull about its centre of mass, the
   // impulse times the gun's height over the hull's inertia — a tenth of the rock (physics lane, 2026-10-03; at Mars
   // gravity a bot firing through a boost flight pitched over 95 degrees and came down on its back: the ground rock's
@@ -5708,16 +5758,16 @@ export function fireRecoil(
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
   const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;
-  spr.recoilVX -= Math.sin(gunYawWorld) * v;
-  spr.recoilVZ -= Math.cos(gunYawWorld) * v;
+  spr.recoilVX -= detMath.sin(gunYawWorld) * v;
+  spr.recoilVZ -= detMath.cos(gunYawWorld) * v;
   if (launch && launch.scale > 1) {
     // Ruleset launch (Turbo Ball): the recoil becomes a real velocity change opposite the muzzle — fire behind you
     // for a speed boost, fire downward to hop. The part along the hull joins the run speed, the lateral part rides
     // the decaying translation, the vertical part lifts the ride.
     const launchV = v * (launch.scale - 1);
-    const h = Math.hypot(launch.dirX, launch.dirZ) || 1;
+    const h = detMath.hypot(launch.dirX, launch.dirZ) || 1;
     const lx = -launch.dirX / h, lz = -launch.dirZ / h;
-    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
     const along = lx * fx + lz * fz;
     const down = Math.max(0, -launch.dirY);
     const horizontal = launchV * (1 - down);

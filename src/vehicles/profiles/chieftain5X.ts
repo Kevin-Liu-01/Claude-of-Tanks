@@ -31,11 +31,12 @@ const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 export function buildChieftain5X(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the source turret's lower body (1.54) sits
-  // 14 cm into the hull's rear kit (side bins 1.66, engine-deck boxes 1.69, from 1.37 m off the ring's axis) over a ring
-  // deck of 1.41, so its seat (turretSeatRace.ts) may rise past the default 4 cm: whatever of the turret passes over that
-  // kit stands over it, and its buried bustle underside stops coming up through the deck as the turret turns.
-  P.turretG.userData.turretSeatRiseM = 0.30;
+  // Release 240 (the owner: "some turrets faced regressions as a result of lifts: cheiftain mk 5 and mk 10. fix"): the
+  // ring receipt reads the deck at the low centre roof (1.41) while the sponsons flanking the ring stand at 1.536 under
+  // the lower casting, so the seat (turretSeatRace.ts) takes their plane and its 3 cm seam as a floor: the casting comes
+  // up 2.5 cm and keeps its lower band, its ring collar fills the ring under it, and the hull kit the turret turns over
+  // stands under it (chieftain5XSourceHull.ts, chieftain5XSourceHullEquipment.ts). Its seat rose 30 cm before.
+  P.turretG.userData.turretSeatMinY = 1.566;
   P.gunG.position.set(D.trunnion[0] - D.turretPivot[0],
     D.trunnion[1] - D.turretPivot[1], D.trunnion[2] - D.turretPivot[2]);
   P.topY = D.structuralRoofY - D.turretPivot[1];

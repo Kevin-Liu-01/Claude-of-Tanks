@@ -26,6 +26,7 @@ import {
 import { MUNITION_PROFILES, type MunitionClass } from './destructionEvents.ts';
 import type { StructureMaterial } from './structureMaterial.ts';
 
+import * as detMath from './detMath.ts';
 /** A storey's nominal height (m). */
 export const STOREY_M = 3.2;
 /** Storeys a structure splits into at most. */
@@ -143,7 +144,7 @@ export function createStructureSections(source: SectionSource): StructureSection
   }
   maxHp[count - 1] = source.maxHp * share(roofArea);
   return {
-    cx: source.cx, cz: source.cz, fx: Math.sin(source.yaw), fz: Math.cos(source.yaw), hw, hd,
+    cx: source.cx, cz: source.cz, fx: detMath.sin(source.yaw), fz: detMath.cos(source.yaw), hw, hd,
     baseY: source.baseY, eavesY, topY: source.topY, storeys, storeyH, capY: source.topY,
     down: new Uint8Array(count), holeCount: new Uint8Array(count),
     holes: new Float64Array(count * STRUCTURE_HOLES_PER_SECTION * STRUCTURE_HOLE_STRIDE),
@@ -218,7 +219,7 @@ export function sectionCentre(sections: StructureSections, section: number, out:
 export function blastHoleRadiusM(chargeKg: number, munition: MunitionClass): number {
   const factor = MUNITION_PROFILES[munition].structureFactor;
   if (!(chargeKg > 0) || !(factor > 0)) return 0;
-  return BLAST_HOLE_K * Math.cbrt(chargeKg * factor);
+  return BLAST_HOLE_K * detMath.cbrt(chargeKg * factor);
 }
 
 /** A hole's radius in a structure's walls (its material), within the bounds (none past half a storey or 1.6 m). */

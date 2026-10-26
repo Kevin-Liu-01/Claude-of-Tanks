@@ -9,6 +9,7 @@
 // no paddies compiles none and its terrain is byte-identical.
 import type { CanalConfig } from './canals.ts';
 
+import * as detMath from '../sim/detMath.ts';
 /** One paddy as a map authors it: the water's rectangle (its bund stands outside it). */
 export interface PaddyConfig {
   x: number;
@@ -46,7 +47,7 @@ interface PaddyFrame { c: number; s: number; hw: number; hl: number }
 
 function frameOf(p: PaddyConfig): PaddyFrame {
   const yaw = (p.yawDeg ?? 0) * Math.PI / 180;
-  return { c: Math.cos(yaw), s: Math.sin(yaw), hw: p.widthM / 2, hl: p.lengthM / 2 };
+  return { c: detMath.cos(yaw), s: detMath.sin(yaw), hw: p.widthM / 2, hl: p.lengthM / 2 };
 }
 
 /** The signed distance from (x, z) to a paddy's water rectangle (negative inside). */
@@ -54,7 +55,7 @@ function signedDistance(p: PaddyConfig, f: PaddyFrame, x: number, z: number): nu
   const dx = x - p.x, dz = z - p.z;
   const across = Math.abs(dx * f.c - dz * f.s) - f.hw;
   const along = Math.abs(dx * f.s + dz * f.c) - f.hl;
-  return Math.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along));
+  return detMath.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along));
 }
 
 function smooth(a: number, b: number, v: number): number {

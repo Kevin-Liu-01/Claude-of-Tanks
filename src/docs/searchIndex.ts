@@ -15,6 +15,21 @@ export interface ManualRecord {
 const plain = (text: string): string => text.replace(/`/g, '');
 /** A chart's axis ticks (runs of four or more bare numbers) say nothing a snippet can use; prose keeps its figures. */
 const prose = (text: string): string => text.replace(/(?:[\d.,%]+\s+){3,}[\d.,%]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+const decode = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+/**
+ * A data-built section's searchable text: its prose first, then each table or figure on a line of its own, its cells
+ * joined by a middle dot. A table's words still find the section; a snippet keeps to its match's line
+ * (docsSearch.ts snippetOf), so it never runs from a sentence into the cells under it.
+ */
+function sectionText(html: string): string {
+  const blocks: string[] = [];
+  const body = html.replace(/<(table|figure)\b[\s\S]*?<\/\1>/g, (block) => {
+    blocks.push(prose(block.split(/<\/(?:td|th|li|figcaption)>/).map((cell) => decode(cell).replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ')));
+    return ' ';
+  });
+  return [prose(decode(body)), ...blocks].filter(Boolean).join('\n');
+}
 
 export function manualRecords(): ManualRecord[] {
   return TOPIC_ORDER.flatMap((slug) => {
@@ -22,7 +37,7 @@ export function manualRecords(): ManualRecord[] {
     const chapter: ManualRecord = { href: `/docs/${slug}`, title, chapter: label, text: plain(lede) };
     // a chapter built from the game's tables indexes its sections as written (their anchors, headings and text)
     const rich = richSections(slug);
-    if (rich) return [chapter, ...rich.map((section) => ({ href: `/docs/${slug}#${section.id}`, title: section.title, chapter: label, text: prose(section.text) }))];
+    if (rich) return [chapter, ...rich.map((section) => ({ href: `/docs/${slug}#${section.id}`, title: section.title, chapter: label, text: sectionText(section.html) }))];
     return [chapter, ...sections.map(([heading, ...paragraphs], index) => ({
       href: `/docs/${slug}#${topicSectionId(index)}`, title: heading, chapter: label, text: plain(paragraphs.join(' ')),
     }))];

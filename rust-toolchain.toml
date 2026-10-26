@@ -1,0 +1,6 @@
+# Pinned so every agent, the dedicated server and the browser bundle compile
+# with one compiler; bump deliberately with a docs/PORT-BEVY.md note.
+[toolchain]
+channel = "1.98.1"
+targets = ["wasm32-unknown-unknown"]
+components = ["rustfmt", "clippy"]

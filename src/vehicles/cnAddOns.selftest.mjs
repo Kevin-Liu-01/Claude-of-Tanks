@@ -1,15 +1,16 @@
 // Release 227 (owner 2026-10-16): "make the qqilin turret 10% shorter. and make the yun keep all its extra add ons and
 // modifications but altered slightly to be wrapped around the type 96b turret base, and redesign the qilin turret around
 // this principle." The CN track's add-on inventory: every Yun add-on (wrapped round its Type 96B) and every Qilin add-on
-// (wrapped round its cut ZTZ-99A2) is present with its role (userData.chineseModernization.role) and seated on real stock;
-// the Qilin's body is 90 % of the 99A2's length with nothing ahead of the cut band moved; the lamp census is as authored.
+// (252, owner: "redesign the qilin around a type 96b inspired Yun like turret": wrapped round its own Type 96B) is present
+// with its role (userData.chineseModernization.role) and seated on real stock; the Qilin's sleeve steps out into its brow,
+// its bustle module closes the 96B's rear and carries the rack; the lamp census is as authored.
 // Round 2 (critic D5): the seating is the full census of cnTurretGeometry.test-support.mjs seatingCensus (a chain of
 // contacts to permanent stock for every tagged part, never through ERA; burial depth per role, both ways; separate
 // cassettes never crossing; no visible z-fighting; no thin slots between armour pieces), with two negative controls that
 // must fail it: the Yun's antenna lifted 50 mm off its foot, and its sight hood's top plate sunk 60 mm into the gunner's
 // sight. The moving-part clearances are cnClearance.selftest.mjs.
 // M1 (2026-10-17): the sight fields. Each donor sight aperture (the 96B gunner's sight, box sight and the commander's
-// forward periscope; the 99A2 gunner's sight and commander's sight head) looks out through its glass rectangle swept
+// forward periscope) looks out through its glass rectangle swept
 // 3 m forward, widening 8 degrees a side and covering -2..+8 degrees in elevation; no part the CN kit adds (a tagged
 // role) may enter it, and the 226 Kunlun lamp seat (|x| 0.55, z 0.86, ahead of the 96B gunner's sight) must fail it.
 // Every turret lamp's lens (driving lamps and Shtora) shines out unobstructed for 3 m with the gun at rest, fully
@@ -28,9 +29,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { NATIONAL_DONOR_TURRETS, QILIN_BUSTLE_CUT_M } from './nationalDonorTurrets.ts';
-import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z } from './donorBustleCut.ts';
-import { censusPart, seatingCensus, SurfaceGrid, sightField, sightFieldApproach, densePoints, meshTriangles, insideClosed } from './cnTurretGeometry.test-support.mjs';
+import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
+import { censusPart, seatingCensus, sightField, sightFieldApproach, densePoints, meshTriangles, insideClosed } from './cnTurretGeometry.test-support.mjs';
 import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 import { HEADLIGHT_CONE_RAD, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { getSpec } from './specs.ts';
@@ -45,16 +45,16 @@ const INVENTORY = {
     'gun-band': [5, 0], 'muzzle-strip': [1, 0], 'ring-race': [1, 0], 'marking-board': [2, 0], 'met-sensor': [2, 0],
     'dock-bearer': [2, 0], 'dock-landing': [1, 0], 'sight-plinth': [1, 0],
   },
+  // 252: the Qilin's own fit round its Type 96B (chinaDonorTurretKit.ts qilin)
   t72b3_qilin: {
-    'flank-sleeve': [2, 0], 'brow-chevron': [16, 8], 'flank-tile': [12, 6], 'rail-post': [4, 0],
-    'rear-box-seam': [2, 0], 'rear-box-mark': [2, 0], 'bustle-plate': [1, 0], rack: [7, 0], 'flat-eye': [4, 0], 'split-sensor': [3, 0],
-    lamp: [2, 0], camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], roll: [4, 0], carrier: [3, 0], cable: [2, 0],
-    // round 8 (owner 2026-10-19: "the rear of qilinns turret is exposed and nnot filled"): the bustle floor, the full-width
-    // stowage rack and its load, the rear camera; and (critic CN8-08) the feet under the 99A2's two warning heads
-    'bustle-floor': [1, 0], 'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [3, 0],
-    'cage-rear-rail': [3, 0], 'cage-floor': [12, 0], 'net-roll': [3, 0], 'ammo-case': [8, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0],
-    'spare-case': [5, 0], 'rear-camera': [5, 0], 'warning-head-foot': [2, 0],
-    // (round 9's seat under the 99A2 cupola's fixed ring, critic CN-R7-2, is the donor turret's own since round 10: below)
+    'flank-sleeve': [2, 0], 'brow-chevron': [16, 8], 'flank-tile': [12, 6], 'marking-board': [2, 0], 'bustle-module': [1, 0],
+    'rear-box-seam': [2, 0], 'rear-box-mark': [2, 0], rack: [7, 0], roll: [5, 0], 'flat-eye': [4, 0],
+    'split-sensor': [3, 0], lamp: [2, 0], camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], 'smoke-cradle': [2, 0],
+    'smoke-tube': [8, 0], 'sight-plinth': [1, 0],
+    // round 8 (owner 2026-10-19: "the rear of qilinns turret is exposed and nnot filled"): the full-width stowage rack and
+    // its load, the rear camera
+    'cage-root': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [3, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [12, 0],
+    'net-roll': [3, 0], 'ammo-case': [8, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0], 'spare-case': [5, 0], 'rear-camera': [5, 0],
   },
   // round 3 (critic D3): the Kunlun's 226 package on its Type 96B, its lamps now riding the Shtora heads' hoods
   t72b3m_kunlun: {
@@ -78,12 +78,12 @@ const LOAD = new Set(['net-roll', 'ammo-case', 'kit-bag', 'tarp-bundle', 'spare-
 // into the 96B's rear cap); cage roots and floor bars end 30 mm inside the wall plus their own radius; a thin part
 // (cable, post, strip, seam, mark) crosses a face by no more than its own half-thickness and a few millimetres (a gun
 // band's bore is 2 mm inside the barrel's skin); a shaped foot (6 mm into the roof at its corners) swallows the roof's
-// camber under it up to 16 mm, 22 mm where the split sensor's foot welds over the chevron's raised upper root. The
-// Qilin's bustle floor (round 8) runs 25 mm into the shell's underside and the rear armour box's bottom. Round 9 (critic CN9-01: a pair with a cage member was allowed
+// camber under it up to 16 mm, 22 mm where the split sensor's foot welds over the chevron's raised upper root. Round 9
+// (critic CN9-01: a pair with a cage member was allowed
 // 46 mm, so a case driven 22 mm through the rear rails, or a bundle 12 mm into the net roll, passed): a load item and
 // anything it meets, rack or load, is allowed only its 1 mm rest on the bars' flat tops.
-const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module', 'bustle-floor']);
-const THIN = new Set(['cable', 'rail-post', 'rear-band', 'rear-box-seam', 'rear-box-mark', 'marking-board', 'muzzle-strip', 'gun-band']);
+const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module']);
+const THIN = new Set(['cable', 'rear-band', 'rear-box-seam', 'rear-box-mark', 'marking-board', 'muzzle-strip', 'gun-band']);
 const LOAD_REST = .0015;
 function allowance(p, q) {
   if (LOAD.has(p.role) || LOAD.has(q?.role)) return LOAD_REST;
@@ -124,10 +124,6 @@ function apertures(id, parts, gunToTurret) {
   const atRest = (p) => (owner(p) === 'gun' ? { ...p, box: p.box.clone().applyMatrix4(gunToTurret) } : p);
   const glass = parts.filter((p) => /Glass$/.test(p.bucket) && owner(p) !== 'hull' && !p.role && !p.lens).map(atRest);
   const one = (list, what) => { assert.equal(list.length, 1, `${id}: exactly one ${what} (${list.length})`); return list[0]; };
-  if (id === 't72b3_qilin') return {
-    "99A2 gunner's sight": one(glass.filter((p) => width(p) > .15 && midX(p) > 0 && p.box.max.y < 1.1), "99A2 gunner's sight glass"),
-    "99A2 commander's sight head": one(glass.filter((p) => p.box.min.y > 1.1), "99A2 commander's sight head glass"),
-  };
   const periscopes = glass.filter((p) => width(p) < .07 && p.box.min.y > .84 && p.box.max.y < .90);
   assert.equal(periscopes.length, 8, `${id}: the 96B cupola's eight periscopes`);
   return {
@@ -269,7 +265,7 @@ function lampSpill(id, tank, parts, { emitters = null, skip = () => false, near 
 }
 
 /** Each lamp role's parts pair off with their mirror images across the turret's centre plane: in plan within 1.5 mm, in
- * height within 15 mm (each foot follows its own roof; the 99A2's crown is not symmetric under the Qilin's lamps). */
+ * height within 15 mm (each foot follows its own roof). */
 function asymmetricLamps(parts) {
   const out = [];
   for (const role of ['lamp', 'slit-lamp']) {
@@ -283,16 +279,6 @@ function asymmetricLamps(parts) {
 }
 
 for (const quality of ['high', 'low']) {
-  // ---- the fleet ZTZ-99A2's own shell ahead of the cut band
-  const fleet = build('ztz99a2', quality);
-  const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
-  const fleetShell = new Set();
-  // (the 99A2's own ring collar aside: the Qilin's turns in place on its pivot, checked below)
-  const fleetCollar = (x, y, z) => y > -.0805 && y < .0205 && Math.hypot(x, z + .12) > 1.075 && Math.hypot(x, z + .12) < 1.145;
-  for (const p of fleet.parts) if (p.bucket === 'turret') for (let i = 0; i < p.tri.length; i += 3)
-    if (p.tri[i + 2] >= ZTZ99A2_BUSTLE_CUT_FRONT_Z && !fleetCollar(p.tri[i], p.tri[i + 1], p.tri[i + 2])) fleetShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2]));
-  fleet.tank.dispose();
-
   // CN_ADDONS_IDS=<ids> limits a local run (the suite runs all three)
   for (const id of (process.env.CN_ADDONS_IDS ?? Object.keys(INVENTORY).join(',')).split(',')) {
     const { tank, parts } = build(id, quality);
@@ -332,7 +318,7 @@ for (const quality of ['high', 'low']) {
         const apart = apartOf(parts.filter((p) => owner(p) === 'turret' && p.role !== 'sight-plinth'));
         assert.ok(apart.some((p) => Math.abs(p.box.min.y - .729) < .002 && p.bucket === 'turretDetail'), `negative control: the Kunlun's sight housing without its plinth stands apart (${apart.length} parts)`);
       }
-      if (id !== 't72b3_qilin') {
+      {
         const housing = parts.filter((p) => owner(p) === 'turret' && !p.role && p.bucket === 'turretDetail' && Math.abs(p.box.min.y - .729) < .002 && Math.abs(p.box.min.x - .394) < .003 && Math.abs(p.box.max.z - .650) < .003);
         assert.equal(housing.length, 1, `${id}: the Type 96B gunner's sight housing`);
         const [h] = housing, plinth = parts.find((p) => p.role === 'sight-plinth');
@@ -343,10 +329,10 @@ for (const quality of ['high', 'low']) {
       // kit fits on the turret belongs to a registered gameplay ERA plate of its own side (the packages' sector labels:
       // chineseChevronEra.ts names the -X side _L),
       // owned by the turret, its centre within 70 mm of that plate's polygon; each named plate is registered with cassettes
-      // (turret_era_L/R; the Qilin's 99A2 face panels keep turret_chevron_era_L/R).
+      // (turret_era_L/R).
       if (quality === 'high') {
         const rows = tank.root.userData.eraVisualBindingReceipt?.plates?.filter((r) => r.owner === 'turret') ?? [];
-        const named = ['turret_era_L', 'turret_era_R', ...(id === 't72b3_qilin' ? ['turret_chevron_era_L', 'turret_chevron_era_R'] : [])];
+        const named = ['turret_era_L', 'turret_era_R'];
         for (const name of named) {
           const row = rows.find((r) => r.name === name);
           assert.ok(row && row.registered && row.ownerMatches && row.partCount > 0, `${id}: ${name} registered on the turret with its parts (${JSON.stringify(row && { registered: row.registered, ownerMatches: row.ownerMatches, parts: row.partCount })})`);
@@ -419,70 +405,29 @@ for (const quality of ['high', 'low']) {
         for (const c of cradles) assert.equal(tubes.filter((t) => Math.sign(t.box.min.x + t.box.max.x) === Math.sign(c.box.min.x + c.box.max.x)
           && t.box.min.z > c.box.min.z - .05 && t.box.max.z < c.box.max.z + .25).length, 4, 'Yun: four tubes on each cradle');
       }
-      // ---- the Qilin: 10 % shorter, nothing ahead of the band moved, height kept
+      // ---- 252: the Qilin's sleeve, one a side, mirrored, its brow stepping 80 mm out and 80 mm up over the flank housing
+      // in a 10 mm run (z -0.62..-0.61); its bustle module's front 50 mm inside the 96B's rear cap; the rack's roots and
+      // side rails 30 mm into the module's rear face
       if (id === 't72b3_qilin') {
-        const body = new THREE.Box3(), shell = new THREE.Box3(), v = new THREE.Vector3();
-        // the coordinator's ruling R1: the body is the shell and its permanent external armour front to rear, the front ERA
-        // face included (the gun and the roof equipment not); nothing in those buckets is set aside
-        for (const p of parts) {
-          if (!['turret', 'turretExternalArmor'].includes(p.bucket)) continue;
-          for (let i = 0; i < p.tri.length; i += 3) { v.set(p.tri[i], p.tri[i + 1], p.tri[i + 2]); body.expandByPoint(v); if (p.bucket === 'turret') shell.expandByPoint(v); }
-        }
-        const length = body.max.z - body.min.z;
-        assert.ok(Math.abs(length - 3.559) <= .010, `Qilin: body length ${length.toFixed(4)} m (3.559 +- .010)`);
-        assert.ok(Math.abs(length / 3.954 - .90) <= .003, `Qilin: ${(100 * length / 3.954).toFixed(2)} % of the 99A2 body's 3.954 m`);
-        assert.ok(Math.abs(shell.max.y - shell.min.y - .9575) <= .001, `Qilin: shell height ${(shell.max.y - shell.min.y).toFixed(4)} m unchanged`);
-        // every 99A2 shell vertex ahead of the band is a vertex of the Qilin's shell, or lies on its surface (round 2: the
-        // loft's triangles are split at the band's ends before the cut, so the throat clip cuts them where it cuts the fleet's)
-        const qilinShell = new Set(), qilinTris = [];
-        for (const p of parts) if (p.bucket === 'turret') { qilinTris.push(...p.tri); for (let i = 0; i < p.tri.length; i += 3) qilinShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2])); }
-        const surface = new SurfaceGrid(Float64Array.from(qilinTris), { cell: .05, rq: .002 });
-        const moved = [...fleetShell].filter((k) => !qilinShell.has(k)).filter((k) => surface.distance(...k.split(',').map((n) => n / 1e4)) > 2e-4);
-        assert.equal(moved.length, 0, `Qilin: ${moved.length} 99A2 shell points ahead of z ${ZTZ99A2_BUSTLE_CUT_FRONT_Z} moved off its surface: ${moved.slice(0, 8).join(' ; ')}`);
-        // M2: one flank sleeve a side; no face of it parallel to the 99A2 forward side cassette's rear face (z -0.93,
-        // yawed 0.04 rad) within 5 mm of that face's plane (the sleeve's 10 mm step stands 30-40 mm inside the cassette)
-        const sleeves = parts.filter((p) => p.role === 'flank-sleeve');
+        const sleeves = parts.filter((p) => p.role === 'flank-sleeve').sort((a, b) => a.box.min.x - b.box.min.x);
         assert.equal(sleeves.length, 2, 'Qilin: one flank sleeve a side');
-        for (const side of [-1, 1]) {
-          const cassette = parts.find((p) => p.bucket === 'turretExternalArmor' && !p.role && !p.era && p.box.min.z > -.95 && p.box.min.z < -.91
-            && Math.sign(p.box.min.x + p.box.max.x) === side && Math.min(Math.abs(p.box.min.x), Math.abs(p.box.max.x)) > 1.3);
-          assert.ok(cassette, `Qilin: the 99A2 forward side cassette (side ${side})`);
-          let rear = null; const T = cassette.tri;
-          for (let t = 0; t < T.length; t += 9) {
-            const ux = T[t + 3] - T[t], uy = T[t + 4] - T[t + 1], uz = T[t + 5] - T[t + 2], vx = T[t + 6] - T[t], vy = T[t + 7] - T[t + 1], vz = T[t + 8] - T[t + 2];
-            const n = new THREE.Vector3(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (n.length() < 1e-9) continue; n.normalize();
-            if (Math.abs(n.z) > .95 && (T[t + 2] + T[t + 5] + T[t + 8]) / 3 < cassette.box.min.z + .02) { rear = { n, d: n.x * T[t] + n.y * T[t + 1] + n.z * T[t + 2] }; break; }
+        assert.ok(Math.abs(sleeves[0].box.min.x + sleeves[1].box.max.x) < 1e-4 && Math.abs(sleeves[0].box.max.y - sleeves[1].box.max.y) < 1e-4, 'Qilin: the sleeves mirror each other');
+        for (const sleeve of sleeves) {
+          let flank = -Infinity, brow = -Infinity, flankLow = Infinity, browLow = Infinity;
+          for (let i = 0; i < sleeve.tri.length; i += 3) {
+            const x = Math.abs(sleeve.tri[i]), y = sleeve.tri[i + 1], z = sleeve.tri[i + 2];
+            if (Math.abs(z + .62) < 1e-4) { flank = Math.max(flank, x); flankLow = Math.min(flankLow, y); }
+            if (Math.abs(z + .61) < 1e-4) { brow = Math.max(brow, x); browLow = Math.min(browLow, y); }
           }
-          assert.ok(rear, `Qilin: the cassette's rear face (side ${side})`);
-          const sleeve = sleeves.find((p) => Math.sign(p.box.min.x + p.box.max.x) === side), S = sleeve.tri;
-          let closest = Infinity;
-          for (let t = 0; t < S.length; t += 9) {
-            const ux = S[t + 3] - S[t], uy = S[t + 4] - S[t + 1], uz = S[t + 5] - S[t + 2], vx = S[t + 6] - S[t], vy = S[t + 7] - S[t + 1], vz = S[t + 8] - S[t + 2];
-            const n = new THREE.Vector3(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (n.length() < 1e-9) continue; n.normalize();
-            if (Math.abs(n.dot(rear.n)) < .95) continue;
-            for (let k = 0; k < 9; k += 3) closest = Math.min(closest, Math.abs(rear.n.x * S[t + k] + rear.n.y * S[t + k + 1] + rear.n.z * S[t + k + 2] - rear.d));
-          }
-          assert.ok(closest > .005, `Qilin: the sleeve's step faces stand ${(closest * 1000).toFixed(1)} mm from the cassette's rear face plane (side ${side})`);
+          assert.ok(Math.abs(brow - flank - .08) < 1e-3 && Math.abs(browLow - flankLow - .08) < 1e-3,
+            `Qilin: the brow steps ${((brow - flank) * 1000).toFixed(0)} mm out and ${((browLow - flankLow) * 1000).toFixed(0)} mm up over the flank housing`);
         }
-        assert.equal(NATIONAL_DONOR_TURRETS.t72b3_qilin.builderOptions.bustleCutM, QILIN_BUSTLE_CUT_M);
-        assert.ok(Math.abs(bustleCutZ(-2.265, QILIN_BUSTLE_CUT_M) - body.min.z) < .006, 'Qilin: the rear armour assembly moved forward by the cut');
-        // the turret as drawn (the gun aside) is 10 % shorter than the 226 cast Qilin's 4.228 m too: the rear rack (round 8, the
-        // 226 basket grown to the rear box's width) keeps the basket's 0.27 m depth
-        const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
-        const drawn = new THREE.Box3(), inv = new THREE.Matrix4().copy(turret.matrixWorld).invert();
-        turret.traverse((o) => { if (!o.isMesh || /Shadow|^vehicleMarking/.test(o.name)) return; for (let q = o; q; q = q.parent) if (q === gun) return;
-          drawn.union(new THREE.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
-        const drawnLength = drawn.max.z - drawn.min.z;
-        assert.ok(drawnLength <= .905 * 4.228, `Qilin: the drawn turret is ${drawnLength.toFixed(3)} m, ${(100 * drawnLength / 4.228).toFixed(1)} % of the 226 turret's 4.228 m`);
-        // round 10 (the ZTZ-99A2 lead): the seat under the cupola's fixed ring (r .279, y .858-.8745, centred on the cupola) is
-        // the donor's own (china.ts buildZTZ99A2ProductionTurret, so the fleet 99A2 has it too); the kit adds no second one
-        const seats = parts.filter((p) => p.bucket === 'turret' && Math.abs(p.box.min.y - .858) < 1e-4 && Math.abs(p.box.max.y - .8745) < 1e-4);
-        assert.equal(seats.length, 1, `Qilin: one cupola ring seat (${seats.length})`);
-        assert.equal(seats[0].role, null, 'Qilin: the ring seat is the donor turret\'s own');
-        const [cx, cz] = NATIONAL_DONOR_TURRETS.t72b3_qilin.socket.cupola, seat = seats[0].box;
-        assert.ok(Math.abs((seat.min.x + seat.max.x) / 2 - cx) < 2e-3 && Math.abs((seat.min.z + seat.max.z) / 2 - cz) < 2e-3
-          && Math.abs(Math.max(seat.max.x - seat.min.x, seat.max.z - seat.min.z) / 2 - .279) < 1e-3,
-          `Qilin: the ring seat is centred on the cupola, out to the ring's .279 m ([${seat.min.toArray().map((v) => v.toFixed(3))}..${seat.max.toArray().map((v) => v.toFixed(3))}])`);
+        const module = parts.find((p) => p.role === 'bustle-module'), cap = Math.min(...parts.filter((p) => p.bucket === 'turret' && !p.role).map((p) => p.box.min.z));
+        assert.ok(Math.abs(module.box.max.z - cap - .05) < .002, `Qilin: the bustle module's front stands ${((module.box.max.z - cap) * 1000).toFixed(1)} mm inside the 96B's rear cap`);
+        for (const p of parts.filter((q) => q.role === 'cage-root' || q.role === 'cage-side-rail' || q.role === 'cage-floor'))
+          assert.ok(Math.abs(p.box.max.z - (module.box.min.z + .03)) < 1e-3, `Qilin: the rack's ${p.role} ends 30 mm into the module's rear face (${((p.box.max.z - module.box.min.z) * 1000).toFixed(1)} mm)`);
+        // the QJC-88's pintle socket is the Kunlun's, on the same Type 96B cupola
+        assert.deepEqual(NATIONAL_DONOR_TURRETS.t72b3_qilin.socket, NATIONAL_DONOR_TURRETS.t72b3m_kunlun.socket, 'Qilin: the Kunlun\'s rim socket');
       }
       // ---- lamps: real emitters only where authored
       const lights = tank.root.userData.nightLightCoverage;
@@ -540,4 +485,4 @@ for (const quality of ['high', 'low']) {
     } finally { tank.dispose(); }
   }
 }
-console.log('cnAddOns: the Yun and Qilin add-ons wrapped round their base turrets, every CN add-on seated, the Qilin 10 % shorter, the lamps clear of every sight and flooding nothing PASS');
+console.log('cnAddOns: the Yun and Qilin add-ons wrapped round their Type 96B turrets, every CN add-on seated, the Qilin\'s brow stepped and its rear closed, the lamps clear of every sight and flooding nothing PASS');

@@ -35,6 +35,10 @@ export class WeaponDamageVisuals {
     clone.ranges = this.ranges.map((range) => ({ ...range, geometry: copyOf(range.geometry), original: null }));
     return clone;
   }
+  /** The turret seat drew a mesh on its own copy of its geometry (turretSeatRace.ts onSeated): its scorch ranges follow. */
+  follow(built: BufferGeometry, seated: BufferGeometry): void {
+    for (const range of this.ranges) if (range.geometry === built) range.geometry = seated;
+  }
   set(module: string, state: ModuleStateName): void {
     if ((this.states.get(module) ?? 'ok') === state) return;
     this.states.set(module, state);

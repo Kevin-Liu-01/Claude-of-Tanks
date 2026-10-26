@@ -21,6 +21,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { flagIconCode } from '../src/ui/flagCodes.ts';
+import { tierNumeral } from '../src/techTree/tiers.ts';
 import {
   HERO_CAMERA, HERO_ENCODE, HERO_FLAG, HERO_FLAG_FACING, HERO_FRAME, HERO_LIGHTS, HERO_MANIFEST_FILE,
   HERO_POLICY_VERSION, HERO_POSE, HERO_PUBLIC_DIR, HERO_RUNGS,
@@ -47,7 +48,7 @@ export function fleetRecords() {
       shortName: row.label?.shortName || row.label?.displayName || row.name || id,
       nation: row.nation,
       flag: flagIconCode(row.nation),
-      tierNumeral: row.tierNumeral || '',
+      tierNumeral: tierNumeral(id),
       geometryHash: row.geometryHash || '',
       lookSha: String(row.assets?.angle?.sha256 || '').slice(0, 12),
     }));

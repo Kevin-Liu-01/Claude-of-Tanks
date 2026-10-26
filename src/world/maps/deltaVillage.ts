@@ -1,5 +1,6 @@
 // src/world/maps/deltaVillage.ts — Jade River Delta's market village on the char (the maps lane, 2026-10-14), its own
 // module so the map file's other rounds (the paddies, the fabric) merge beside it.
+import * as detMath from '../../sim/detMath.ts';
 
 // The market village on the char (the maps lane, 2026-10-14; the owner: Jade River Delta among the maps to bring up,
 // built the way Verdant was). The char's village stood as a handful of buildings round the square. A Jamuna char's
@@ -17,7 +18,7 @@ const charSite = (structure: string, u: number, v: number, face: readonly [numbe
   const [x, z] = at(u, v), [tx, tz] = at(-u, -v);
   // the front (local +z) toward the point `face` (char coordinates) — the square, a courtyard's middle
   const [fx, fz] = at(face[0], face[1]), [tfx, tfz] = at(-face[0], -face[1]);
-  const yaw = Math.atan2(fx - x, fz - z) * 180 / Math.PI, tyaw = Math.atan2(tfx - tx, tfz - tz) * 180 / Math.PI;
+  const yaw = detMath.atan2(fx - x, fz - z) * 180 / Math.PI, tyaw = detMath.atan2(tfx - tx, tfz - tz) * 180 / Math.PI;
   return [{ structure, x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yaw.toFixed(1), terrace: true },
     { structure: twin, x: +tx.toFixed(2), z: +tz.toFixed(2), yawDeg: +tyaw.toFixed(1), terrace: true, ...(twinVacated ? { vacated: true } : {}) }];
 };

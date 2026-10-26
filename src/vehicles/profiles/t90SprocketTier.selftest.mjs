@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { trackWrapClearanceM } from '../tankFactoryCore.ts';
 import { createTank } from '../tankFactory.ts';
-import { tankTier, tierNumeral } from '../tier.ts';
+import { tankTier } from '../tier.ts';
+import { tierNumeral } from '../../techTree/tiers.ts';
 
 const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({
@@ -86,9 +87,10 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
   }
 }
 
-for (const id of ['t90_1992', 't90a_burlak_proto', 't90ms_2011']) {
+// The UI shows each vehicle's column in its national tree (owner 2026-10-25); matchmaking stays at X.
+for (const [id, shown] of [['t90_1992', 'VI'], ['t90a_burlak_proto', 'VIII'], ['t90ms_2011', 'VII']]) {
   assert.equal(tankTier(id), 10, `${id}: gameplay tier is X`);
-  assert.equal(tierNumeral(id), 'X', `${id}: UI tier is X`);
+  assert.equal(tierNumeral(id), shown, `${id}: UI tier is its tree column, ${shown}`);
 }
 
 console.log('t90SprocketTier.selftest: rear sprockets, track courses and Tier X metadata pass');

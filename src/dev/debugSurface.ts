@@ -14,6 +14,7 @@ import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
 import { inspectNightWorldFixture, type NightWorldFixtureKind } from './nightWorldFixtureInspection.ts';
 import type { ColliderOverlayHandle, ColliderOverlayOptions } from './colliderOverlay.ts';
+import type { FrameStageRecorder } from './frameStageRecorder.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -43,6 +44,8 @@ export interface DebugSurfaceDependencies {
   isGarageModePreviewPending?(): boolean;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
+  /** Watch mode's controller (game/watchController.ts) while a watched battle runs, else null. */
+  getWatchController?(): RuntimeValue;
   getPedestalCacheIds(): readonly string[];
   getWorldCacheIds(): readonly string[];
   getResidentLimits(): Readonly<Record<string, number>>;
@@ -95,7 +98,31 @@ export function installDebugSurface(
 ): RuntimeValue {
   // the world's collider view (the hitbox lane, 2026-10-07): one overlay at a time, its module loaded on first use
   let colliderOverlayHandle: ColliderOverlayHandle | null = null;
+  // the battle spike census's frame-stage recorder (battle-spikes-253): its module loaded on first install
+  let frameStageRecorder: FrameStageRecorder | null = null;
   const surface = {
+    frameStages: {
+      /** `gl`: also time the WebGL program links and uploads (the context's methods wrapped until uninstall). */
+      async install(options: { capacity?: number; gl?: boolean } = {}): Promise<boolean> {
+        const { installFrameStageRecorder } = await import('./frameStageRecorder.ts');
+        frameStageRecorder?.uninstall();
+        const settings = deps.settings as { isOpen?: () => boolean } | null;
+        const killcam = deps.killcam as { isActive?: () => boolean } | null;
+        frameStageRecorder = installFrameStageRecorder({
+          renderer: deps.renderer as Parameters<typeof installFrameStageRecorder>[0]['renderer'],
+          game: deps.game as Parameters<typeof installFrameStageRecorder>[0]['game'],
+          bus: deps.bus as Parameters<typeof installFrameStageRecorder>[0]['bus'],
+          isPaused: () => !!settings?.isOpen?.(),
+          isKillcam: () => !!killcam?.isActive?.(),
+          gl: options.gl ? (deps.renderer as WebGLRenderer).getContext() as WebGL2RenderingContext : null,
+          capacity: options.capacity,
+        });
+        return true;
+      },
+      read: () => frameStageRecorder?.read() ?? null,
+      clear: () => { frameStageRecorder?.clear(); },
+      uninstall: () => { frameStageRecorder?.uninstall(); frameStageRecorder = null; },
+    },
     /** Draw the collision records near (x, z) over the scene (orange movement, cyan shells); null removes it. */
     colliderOverlay: async (options: ColliderOverlayOptions | null) => {
       colliderOverlayHandle?.remove();
@@ -128,6 +155,8 @@ export function installDebugSurface(
     get garageModePreviewPending() { return deps.isGarageModePreviewPending?.() ?? false; },
     get pedestalOnStage() { return deps.isPedestalOnStage(); },
     get selectedSpecId() { return deps.getSelectedSpecId(); },
+    /** A watched battle's controller (rideId, cycle, drone …): the spike census rides the human seat's hull with it. */
+    get watch() { return deps.getWatchController?.() ?? null; },
     get pedestalCacheIds() { return [...deps.getPedestalCacheIds()]; },
     get worldCacheIds() { return [...deps.getWorldCacheIds()]; },
     get residentLimits() { return { ...deps.getResidentLimits() }; },

@@ -25,6 +25,7 @@ import {
   type SimpleCollisionShape,
 } from '../world/collision.ts';
 
+import * as detMath from './detMath.ts';
 const WORLD_MIN = -500;
 const WORLD_MAX = 500;
 const CELL_M = 25;
@@ -548,7 +549,7 @@ function legMeetsSolid(
   ax: number, az: number, ah: number, bx: number, bz: number, bh: number, margin: number,
   touchStart = false, touchEnd = false,
 ): boolean {
-  const dx = bx - ax, dz = bz - az, length = Math.hypot(dx, dz);
+  const dx = bx - ax, dz = bz - az, length = detMath.hypot(dx, dz);
   if (!(length > 1e-3)) return false;
   const ux = dx / length, uz = dz / length;
   for (let i = 0; i < obstacles.length; i++) {
@@ -584,7 +585,7 @@ function bendCrossesLiquid(field: NavigationHeightField | null, ax: number, az: 
   bx: number, bz: number): boolean {
   if (!field) return false;
   for (const [x0, z0, x1, z1] of [[ax, az, vx, vz], [vx, vz, bx, bz]]) {
-    const intervals = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 2.5));
+    const intervals = Math.max(1, Math.ceil(detMath.hypot(x1 - x0, z1 - z0) / 2.5));
     for (let sample = 1; sample <= intervals; sample++) {
       const f = sample / intervals;
       if (navigationSampleIsLiquid(field, x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)) return true;
@@ -615,14 +616,14 @@ function evaluateHullEdge(
     return false;
   };
   if (!meets(ax, az, ah, bx, bz, bh)) return 0;
-  const ex = bx - ax, ez = bz - az, length = Math.hypot(ex, ez), px = -ez / length, pz = ex / length;
+  const ex = bx - ax, ez = bz - az, length = detMath.hypot(ex, ez), px = -ez / length, pz = ex / length;
   const inside = (x: number, z: number) => Math.max(Math.abs(x), Math.abs(z)) <= WORLD_MAX;
   let best = Infinity;
   for (const fraction of NAV_BEND_FRACTIONS) {
     for (const offset of NAV_BEND_OFFSETS_M) {
       for (const side of [-1, 1]) {
         const vx = ax + ex * fraction + px * offset * side, vz = az + ez * fraction + pz * offset * side;
-        const travel = Math.hypot(vx - ax, vz - az) + Math.hypot(bx - vx, bz - vz);
+        const travel = detMath.hypot(vx - ax, vz - az) + detMath.hypot(bx - vx, bz - vz);
         if (travel >= best || !inside(vx, vz)) continue;
         const vh = ah + (bh - ah) * fraction;
         if (meets(ax, az, ah, vx, vz, vh) || meets(vx, vz, vh, bx, bz, bh)
@@ -746,8 +747,8 @@ function createWreckOverlay<T extends NavigationObstacle>(
       stale = false;
       for (let i = 0; !changed && i < count; i++) {
         const a = wrecks[i], b = overlay.footprints[i];
-        changed = Math.hypot(a.x - b.x, a.z - b.z) > WRECK_SYNC_MOVE_M
-          || Math.abs(Math.atan2(Math.sin(a.yaw - b.yaw), Math.cos(a.yaw - b.yaw))) > WRECK_SYNC_TURN_RAD;
+        changed = detMath.hypot(a.x - b.x, a.z - b.z) > WRECK_SYNC_MOVE_M
+          || Math.abs(detMath.atan2(detMath.sin(a.yaw - b.yaw), detMath.cos(a.yaw - b.yaw))) > WRECK_SYNC_TURN_RAD;
       }
       if (!changed) return false;
       for (let i = 0; i < count; i++) {
@@ -883,7 +884,7 @@ export function collectNavigationWrecks(entities: readonly WreckSource[], out: N
     if (!entity.combat.destroyed || entity.modeActive === false) continue;
     const wreck = out[count] ??= { x: 0, z: 0, yaw: 0, halfLength: 0, halfWidth: 0, minY: 0, maxY: 0 };
     const rect = tankContactRect(entity.spec), state = entity.state;
-    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    const fx = detMath.sin(state.yaw), fz = detMath.cos(state.yaw);
     wreck.x = state.pos.x + fz * rect.centerX + fx * rect.centerZ;
     wreck.z = state.pos.z - fx * rect.centerX + fz * rect.centerZ;
     wreck.yaw = state.yaw;
@@ -945,7 +946,7 @@ function edgeSteepness(field: NavigationHeightField, decks: readonly NavigationB
   if (blocked[index] || blocked[next]) return;
   const ax = cellX(positions, index), az = cellZ(positions, index);
   const bx = cellX(positions, next), bz = cellZ(positions, next);
-  const intervals = EDGE_STEEP_SAMPLES + 1, span = Math.hypot(bx - ax, bz - az) / intervals;
+  const intervals = EDGE_STEEP_SAMPLES + 1, span = detMath.hypot(bx - ax, bz - az) / intervals;
   samples[0] = heights[index];
   samples[intervals] = heights[next];
   // the side slope across the edge's line at each interior sample: the terrain's own (a deck's sides are the deck's
@@ -1356,7 +1357,7 @@ function relaxNeighbor(
   costs[nextIndex] = nextCost;
   parents[nextIndex] = node.index;
   const heuristic = search.projectReachableGoal
-    ? 0 : Math.hypot(search.goalX - nx, search.goalZ - nz) * CELL_M;
+    ? 0 : detMath.hypot(search.goalX - nx, search.goalZ - nz) * CELL_M;
   heap.push({ index: nextIndex, ix: nx, iz: nz, score: nextCost + heuristic });
 }
 
@@ -1412,7 +1413,7 @@ function nearbyOpenCells(navigation: BotNavigationGrid, point: Position2): numbe
     const index = cellIndex(ix, iz);
     if (navigation.blocked[index]) continue;
     if (point.y !== undefined && Math.abs(navigation.heights[index] - point.y) > NAV_LEVEL_M) continue;
-    const distance = Math.hypot(cellX(navigation.cellPositions, index) - point.x,
+    const distance = detMath.hypot(cellX(navigation.cellPositions, index) - point.x,
       cellZ(navigation.cellPositions, index) - point.z);
     let slot = count++;
     while (slot > 0 && _startDistances[slot - 1] > distance) {
@@ -1434,7 +1435,7 @@ function findLegVia(clearance: NavigationClearance, ax: number, az: number, ah: 
   for (const radius of NAV_VIA_RINGS_M) {
     for (let k = 0; k < NAV_VIA_BEARINGS; k++) {
       const angle = (k / NAV_VIA_BEARINGS) * Math.PI * 2;
-      const x = cx + Math.sin(angle) * radius, z = cz + Math.cos(angle) * radius;
+      const x = cx + detMath.sin(angle) * radius, z = cz + detMath.cos(angle) * radius;
       if (!clearance.legClear(ax, az, ah, x, z, ch, touchA, false)) continue;
       if (!clearance.legClear(x, z, ch, bx, bz, bh, false, touchB)) continue;
       _legVia.x = x; _legVia.z = z;
@@ -1560,9 +1561,9 @@ function dryStartCell(navigation: BotNavigationGrid, from: Position2, safe: Liqu
   const own = cellIndex(worldCell(from.x), worldCell(from.z));
   const legDrivable = (index: number): boolean => {
     const x = cellX(navigation.cellPositions, index), z = cellZ(navigation.cellPositions, index);
-    const distance = Math.hypot(x - from.x, z - from.z);
+    const distance = detMath.hypot(x - from.x, z - from.z);
     if (distance < 0.5) return true;
-    if (safe && !safe(from.x, from.z, Math.atan2(x - from.x, z - from.z), distance)) return false;
+    if (safe && !safe(from.x, from.z, detMath.atan2(x - from.x, z - from.z), distance)) return false;
     const clearance = navigation.hullClearance, h = navigation.heights[index];
     return !clearance || clearance.legClear(from.x, from.z, from.y ?? h, x, z, h, true, false);
   };
@@ -1632,7 +1633,7 @@ function roleDetourPoint(
 ): Position2 {
   const dx = goal.x - start.x;
   const dz = goal.z - start.z;
-  const distance = Math.hypot(dx, dz) || 1;
+  const distance = detMath.hypot(dx, dz) || 1;
   const offset = roleOffset(role, rng);
   const fraction = role === 'sniper' ? 0.34 + rng() * 0.16 : 0.42 + rng() * 0.2;
   return {
@@ -1653,9 +1654,9 @@ function shouldUseRoleDetour(
 ): boolean {
   if (!first.points.length || !second.points.length) return false;
   if (!direct.points.length) return true;
-  const directDistance = Math.max(Math.hypot(goal.x - start.x, goal.z - start.z), 1);
-  const viaDistance = Math.hypot(via.x - start.x, via.z - start.z)
-    + Math.hypot(goal.x - via.x, goal.z - via.z);
+  const directDistance = Math.max(detMath.hypot(goal.x - start.x, goal.z - start.z), 1);
+  const viaDistance = detMath.hypot(via.x - start.x, via.z - start.z)
+    + detMath.hypot(goal.x - via.x, goal.z - via.z);
   const geometricDetour = Math.max(1, viaDistance / directDistance);
   const terrainBurden = ((first.cost + second.cost) / Math.max(direct.cost, 1)) / geometricDetour;
   return terrainBurden <= 1.25;
@@ -1760,7 +1761,7 @@ function clearRoute(
   const goalH = cellH(last);
   if (!solution.reached) {
     const end = raw[last];
-    if (Math.hypot(goal.x - end[0], goal.z - end[1]) <= 2 * CELL_M
+    if (detMath.hypot(goal.x - end[0], goal.z - end[1]) <= 2 * CELL_M
       && clearance.legClear(end[0], end[1], goalH, goal.x, goal.z, goalH, false, true)) points.push([goal.x, goal.z]);
     return points;
   }
@@ -1814,9 +1815,9 @@ function planDryRoute(
     ? clearRoute({ points: raw, cells: rawCells, cost: 0, reached: true }, start, null, grid, NO_VIA, true)
     : simplifyRoute(raw, effectiveGoal, true);
   const last = points[points.length - 1];
-  const dx = goal.x-last[0], dz=goal.z-last[1], distance=Math.hypot(dx,dz);
+  const dx = goal.x-last[0], dz=goal.z-last[1], distance=detMath.hypot(dx,dz);
   if (safe && distance > 0 && distance < CELL_M && Math.max(Math.abs(goal.x),Math.abs(goal.z)) <= WORLD_MAX
-    && safe(last[0],last[1],Math.atan2(dx,dz),distance)) {
+    && safe(last[0],last[1],detMath.atan2(dx,dz),distance)) {
     let clear = true, previousH = grid.liquidField!.getHeightAt(last[0],last[1]);
     const steps = Math.max(1,Math.ceil(distance/2));
     for (let i=1;i<=steps;i++) {
@@ -1870,7 +1871,7 @@ export function planBotRoute({
     if (!requireGoalLevel || !dry.length || goal.y === undefined) return dry;
     // the dry route ends at the reachable cell nearest the goal: wanted only when that cell is on the goal's level
     const end = dry[dry.length - 1], endCell = cellIndex(worldCell(end[0]), worldCell(end[1]));
-    return Math.hypot(end[0] - goal.x, end[1] - goal.z) <= 2 * CELL_M
+    return detMath.hypot(end[0] - goal.x, end[1] - goal.z) <= 2 * CELL_M
       && Math.abs(grid.heights[endCell] - goal.y) <= NAV_LEVEL_M ? dry : [];
   }
   const direct = solveRoute(start, goal, grid, spec, seed);

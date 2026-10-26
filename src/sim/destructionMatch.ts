@@ -34,6 +34,7 @@ import type { TerrainDeformation } from './terrainDeformation.ts';
 import type { StructureMaterial } from './structureMaterial.ts';
 
 
+import * as detMath from './detMath.ts';
 interface DestructionMatchOptions {
   rules: DestructionRules | null | undefined;
   /** The match world's movement records and shell/sight records (the same objects its grids hold). */
@@ -211,7 +212,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   // on the damage, the log or any state
   const setBlow = (cause: StructureStageEvent['cause'], munition: StructureStageEvent['munition'],
     x: number, y: number, z: number, dirX: number, dirZ: number, holeRadiusM = 0, sourceId: string | null = null) => {
-    const length = Math.hypot(dirX, dirZ);
+    const length = detMath.hypot(dirX, dirZ);
     blow.cause = cause; blow.munition = munition;
     blow.x = x; blow.y = y; blow.z = z;
     blow.dirX = length > 1e-9 ? dirX / length : 0;

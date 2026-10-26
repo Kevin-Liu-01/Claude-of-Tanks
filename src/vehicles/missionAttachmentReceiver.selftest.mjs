@@ -33,6 +33,9 @@ function anchorStock(id,row){
  if(id==='leo2a6_ua')return row.name==='turretDetail'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+1.55)<.0161&&v.y>=.8939&&v.y<=.9261&&v.z>=-2.901&&v.z<=.801);
  return (row.name==='turretOpenLatticeDark'&&[row.tri.a,row.tri.b,row.tri.c].every(v=>Math.abs(v.x+2.01)<.0161&&v.z>=-1.281&&v.z<=.281&&Math.abs(v.y-(1.3+(.28-v.z)*.04/1.56))<.0161))||sideRail(row);
 }
+// 252: the Twardy's welded feet embed (2-35 mm) through its thin roof; the interior fill under that roof (the 248 refresh's
+// seated turret, gen-interior-fills) is part of the host they embed into, hidden inside the turret.
+const hostFill=(id,row)=>id==='pt91a_twardy'&&row.name==='turretInteriorFill';
 function contactCount(id,box,rows){return rows.filter(row=>anchorStock(id,row)&&box.intersectsBox(row.bounds)&&box.intersectsTriangle(row.tri)).length;}
 function nativeTop(rows,x,z){let height=-Infinity;ray.origin.set(x,20,z);for(const row of rows)if(ray.intersectTriangle(row.tri.a,row.tri.b,row.tri.c,false,hit))height=Math.max(height,hit.y);return height;}
 function radial(b,p){const x0=b.min.x-p.x,x1=b.max.x-p.x,z0=b.min.z-p.z,z1=b.max.z-p.z;return[Math.hypot(Math.max(x0,0,-x1),Math.max(z0,0,-z1)),Math.hypot(Math.max(Math.abs(x0),Math.abs(x1)),Math.max(Math.abs(z0),Math.abs(z1)))];}
@@ -42,7 +45,7 @@ function receiverFailures(id,parts,stock,rows){
   const padded=part.clone().expandByScalar(.006);
   for(const row of rows){
    if(row.name==='turretMissionReceiver'||!padded.intersectsBox(row.bounds))continue;
-   if(anchors.includes(i)&&anchorStock(id,row))continue;
+   if(anchors.includes(i)&&(anchorStock(id,row)||hostFill(id,row)))continue;
    if(row.solidBox||padded.intersectsTriangle(row.tri))failures.push({part:i,kind:row.kind??'surface',mesh:row.name,triangle:row.id});
   }
   const range=radial(padded,stock.pivot);

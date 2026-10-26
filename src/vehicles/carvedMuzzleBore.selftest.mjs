@@ -65,3 +65,36 @@ console.log('carved muzzle: real cap subtraction, preserved rim, inward wall, re
   cap.geometry.dispose();stock.geometry.dispose();resources.forEach(g=>g.dispose());material.dispose();
 }
 console.log('carved muzzle: duplicate floors, front caps, missing recesses and missing rims rejected');
+
+// 252 (the owner: "weird squares/triangles at tips of guns around the holes"): weapon steel's crease wear is per triangle
+// (weaponFinish.ts). The cut faces copied their parents' corners, so ring triangles round the bore read as crease and drew
+// a dark square or triangle on the muzzle face. The cut stock carries one barycentric corner per vertex and no crease
+// inside the face's annulus.
+{
+  const { bakeWeaponEdgeWear, WEAPON_EDGE_BARY, WEAPON_EDGE_INVH } = await import('./weaponFinish.ts');
+  const root=new THREE.Group(),frame=new THREE.Group();root.add(frame);
+  const source=new THREE.CylinderGeometry(.104,.104,.4,16).rotateX(Math.PI/2).translate(0,0,-.2).toNonIndexed();
+  bakeWeaponEdgeWear(source);
+  const material=new THREE.MeshBasicMaterial(),resources=[];
+  const mesh=new THREE.Mesh(source,material);root.add(mesh);root.updateMatrixWorld(true);
+  installCarvedMuzzleBore([root],frame,.055,.12,material,resources);
+  const cut=mesh.geometry,position=cut.getAttribute('position'),bary=cut.getAttribute(WEAPON_EDGE_BARY),invH=cut.getAttribute(WEAPON_EDGE_INVH);
+  assert.ok(cut!==source&&bary&&invH,'the carved weapon stock keeps its crease wear');
+  let faceTriangles=0;
+  for(let t=0;t<position.count;t+=3){
+    const corners=[0,1,2].map(k=>[bary.getX(t+k),bary.getY(t+k),bary.getZ(t+k)]);
+    assert.deepEqual(corners.map(c=>c.map(Math.round)).sort(),[[0,0,1],[0,1,0],[1,0,0]],'one barycentric corner per vertex of every cut triangle');
+    const ps=[0,1,2].map(k=>new THREE.Vector3().fromBufferAttribute(position,t+k));
+    if(ps.some(p=>Math.abs(p.z)>1e-6))continue;
+    faceTriangles++;
+    for(let e=0;e<3;e++){
+      const [a,b]=[ps[(e+1)%3],ps[(e+2)%3]],ra=Math.hypot(a.x,a.y),rb=Math.hypot(b.x,b.y);
+      const interior=r=>r>.055+1e-4&&r<.104*Math.cos(Math.PI/16)-1e-4;
+      if(interior(ra)||interior(rb)||(ra>.0551&&rb>.0551&&ra<.1&&rb<.1))
+        assert.equal([invH.getX(t),invH.getY(t),invH.getZ(t)][e],0,'no crease across the muzzle face round the bore');
+    }
+  }
+  assert.ok(faceTriangles>=12,'the muzzle face ring is checked');
+  resources.forEach(g=>g.dispose());source.dispose();material.dispose();
+}
+console.log('carved muzzle: weapon steel keeps per-triangle crease wear round the cut bore');
