@@ -28668,8 +28668,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.4908,
         "overallLength": 6.4908,
@@ -30259,7 +30259,7 @@
         ]
       },
       "geometryHash": "6c6b1185",
-      "metadataHash": "97e86cdb",
+      "metadataHash": "bbbe1601",
       "presentationAnchor": {
         "xM": 0.0018,
         "zM": -0.0014
@@ -84302,8 +84302,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.56,
         "overallLength": 9.83,
@@ -85430,7 +85430,7 @@
         ]
       },
       "geometryHash": "3205d3fa",
-      "metadataHash": "23af2011",
+      "metadataHash": "d456a790",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0229
@@ -85492,15 +85492,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23506,
-          "sha256": "2e51cfc0705efc147b9a1643f25a9e62cd52a29134c45768d88f9cf00e24ee8e",
+          "bytes": 23460,
+          "sha256": "e39cb8bdd93584df6ead29c48ba197801a9a6660e70649386cce14572300df95",
           "thumbnail": {
             "file": "thumbs/centurion5_2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9818,
-            "sha256": "6f9d6f2383e86362d4c57e0fa59cb09190fa08d24b0b96fb2ddbc419b8ae1904"
+            "bytes": 9808,
+            "sha256": "7c59a6a584a68d4807ffaa102720dd16f038f969625027667beb43cfb65bb174"
           }
         },
         "top": {
@@ -85508,16 +85508,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9886,
-          "sha256": "c78b3670b7f8d000ad65a49f9832f192fad50e014e4948f30ac7bbbae64fbdc8"
+          "bytes": 9914,
+          "sha256": "343937f24a18780c646aac8fcd78d23e7e636c04a21d6092a0fddf991a7d50bd"
         },
         "side": {
           "file": "centurion5_2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8562,
-          "sha256": "b7c020724571e5f96c16e41ac8d615559773354061d41ea801fb0e3c63d3f377"
+          "bytes": 8508,
+          "sha256": "ee3e9448a9145fde10d9b6139bc8911333e01c76f2b8d3efa9d8387e3be28fe6"
         },
         "topSilhouette": {
           "file": "centurion5_2_top_silhouette.png",
@@ -85540,24 +85540,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22714,
-          "sha256": "45a1060d62771d9a2911c59f47d7e072c9430a9fe93f9cdc39ac35c5597abac3"
+          "bytes": 22732,
+          "sha256": "60354e4c415d1471f58b4ea623860ffee17778e31455d211f20c6095cc90aeae"
         },
         "modulesSide": {
           "file": "centurion5_2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24662,
-          "sha256": "ac45adc52438ee11b07073f7b68bfd1711bc3e3352e5838206b2aa45211f1412"
+          "bytes": 24634,
+          "sha256": "ae539f79f014cdc76633db73ed263362de4411919c644b5784d1bcac011b5696"
         },
         "crewSide": {
           "file": "centurion5_2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19526,
-          "sha256": "31f4141af2b576732146aa1c9f5c93933f8c46bcb82de2681f8ca19c9ea32bc2"
+          "bytes": 19524,
+          "sha256": "2ab6d2d1b55f16cee5d7019a086cf1ab54fa5cf24f0bfdef5b3be0b216fc94ee"
         },
         "markings": {
           "file": "centurion5_2_markings.png",
@@ -86736,8 +86736,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.0634,
         "overallLength": 10.8297,
@@ -92507,7 +92507,7 @@
         ]
       },
       "geometryHash": "555dcd71",
-      "metadataHash": "88aff265",
+      "metadataHash": "43411f62",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": 0.1457
@@ -92566,39 +92566,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23732,
-          "sha256": "ceab34ab45a80ae7962e53a959c2fbafb15616b6c2f771fb5a05154d6321dece"
+          "bytes": 23714,
+          "sha256": "4a8e641416f326f3b39e5f5c2b8f3f482a6b181850f3f64c04d7a19b00e4c116"
         },
         "modulesSide": {
           "file": "challenger1_mk3_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23542,
-          "sha256": "372f6ef92078fd2d128d95a34341df5bddb4f983ed96aed76bb5cde0bbccdf85"
+          "bytes": 23546,
+          "sha256": "8df4445f3044e50b0d3b89bc2b13e4fdabc690bb0e4380d112cce43472a253b8"
         },
         "crewSide": {
           "file": "challenger1_mk3_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19298,
-          "sha256": "31d4782d1dbacb25e27651bef8e1368e95a8e104441c5cdd39b40c2182171455"
+          "bytes": 19400,
+          "sha256": "9ce51f34bc7353fc80926104eed03d8259a662c007d0b24807745f8a802ae2f4"
         },
         "angle": {
           "file": "challenger1_mk3_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24052,
-          "sha256": "7578c4fdd539d4a66bdbca54f920ee9528ef6791f3826036a51bf71d6467b1ff",
+          "bytes": 24064,
+          "sha256": "c6f82ea81765c833484e67830df31e7d9e8c1af687f57f7ba97def900b5708ce",
           "thumbnail": {
             "file": "thumbs/challenger1_mk3_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10136,
-            "sha256": "abdf8a2b99d371bc11366be1f72158b397de9c9e7c28a2aff669cb7faa1261ab"
+            "bytes": 10144,
+            "sha256": "81f27734c811ca742b322a8b9b03cc9808229f2aef56e0b683354b73806fb9e1"
           }
         },
         "top": {
@@ -92614,8 +92614,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10068,
-          "sha256": "1157c6cce312cf248816ebc406d8a565c452236d80d54f1c8ea760cef8af1c6e"
+          "bytes": 10062,
+          "sha256": "94a85b521a53205075e63d8692ab395b9c2faa71e814d326cdc6ff54c59055ec"
         },
         "topSilhouette": {
           "file": "challenger1_mk3_top_silhouette.png",
@@ -94264,8 +94264,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 8.33,
         "overallLength": 11.5,
@@ -98505,7 +98505,7 @@
         ]
       },
       "geometryHash": "bb5d2f85",
-      "metadataHash": "1d7a57a4",
+      "metadataHash": "9f0747e8",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0837
@@ -98565,15 +98565,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25132,
-          "sha256": "18b46e9179885445564bb3eb73001093f8f6e2d1f441195deeafd96cda4ff699",
+          "bytes": 25114,
+          "sha256": "07e98b4ac00416736ce959c8cd4bd2eb52a050536f33e1290179d47f90b015f1",
           "thumbnail": {
             "file": "thumbs/challenger2e_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10308,
-            "sha256": "297a49937eb070bddee7ce09ed1e6b6b7efe99dd9766732489264b4a4fbcdbc9"
+            "bytes": 10296,
+            "sha256": "d5c3500ca443031886e38b0d7bd6541a59a54fc25944c361d39984d3a755328c"
           }
         },
         "top": {
@@ -98581,16 +98581,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9174,
-          "sha256": "d30485f383311b50c8b9a3099e2d136d773a8a0d07a3d74bc6cb732f9ba7a84c"
+          "bytes": 9190,
+          "sha256": "5e4129e9907f16c859bce2826be8d189d69d037cd131ce4cb4b08ee36c08a943"
         },
         "side": {
           "file": "challenger2e_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8998,
-          "sha256": "79feef666281978537aac5d624dd07905a2f963cf68e1f8b163b974a6c60fdde"
+          "bytes": 9016,
+          "sha256": "bed2e7868f34d9b2a72c365618e9c5a8767e47188ed1dc49cdf9520065f89914"
         },
         "topSilhouette": {
           "file": "challenger2e_top_silhouette.png",
@@ -98613,24 +98613,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22702,
-          "sha256": "fd79d2a172014716b8465e5afd400027643d2012dddc9d8b9d342afe1347e5e5"
+          "bytes": 22140,
+          "sha256": "379f25310df0a0c6a58953faf191038636afce62266968bab5bf3e4bea622606"
         },
         "modulesSide": {
           "file": "challenger2e_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22214,
-          "sha256": "ac93a7c871cfb7325b07bfaa176ddc50d4b565841f3d28bd126d6a7492f2fd45"
+          "bytes": 22062,
+          "sha256": "22ed2acf5a81c9c7d769b13fcb8e86136bd350a9bea1662126ecc47534a537c0"
         },
         "crewSide": {
           "file": "challenger2e_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17542,
-          "sha256": "3ffade8cea93c5747df85033d8c7d6d8eb400beeeb030c59c58fa30271aed436"
+          "bytes": 16792,
+          "sha256": "5778421e75bbbbd426b92de8f28f8ed62cce5788725b257b343f826980163de4"
         },
         "markings": {
           "file": "challenger2e_markings.png",
@@ -98643,8 +98643,8 @@
         "technicalLabels": {
           "file": "challenger2e_technical.json",
           "mime": "application/json",
-          "bytes": 5220,
-          "sha256": "752a25705d99cbf3f5723a712414909e2fc2e2024158f5c772be23bafce7cef4"
+          "bytes": 5236,
+          "sha256": "dca0274529b35ddd9ca742450f71fb4579ee291eb563b78bac32d05c498c9b07"
         }
       }
     },
@@ -105709,8 +105709,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 9.16,
         "overallLength": 12.65,
@@ -106854,7 +106854,7 @@
         ]
       },
       "geometryHash": "62c911b2",
-      "metadataHash": "9e2366b6",
+      "metadataHash": "d78f1977",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0058
@@ -106914,15 +106914,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25690,
-          "sha256": "2a3ebc607c5d04fcc340accad367a7b0489a57de333ee4945f629838ada70104",
+          "bytes": 25658,
+          "sha256": "65e5537f1b025a2f0e28bb54f5cbc3bb1fea4d8e404919e3c0a2a48645460947",
           "thumbnail": {
             "file": "thumbs/challenger3_proto_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11498,
-            "sha256": "90ff56da5bfed01844d512e8cf752cc3f77d29a027c7673a8efc1c7269477b4f"
+            "bytes": 11494,
+            "sha256": "52046c30fb5fa09875f7fddafa490a25cdbe3e2c2b90b196df25cb5ce338d5a4"
           }
         },
         "top": {
@@ -106930,8 +106930,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8466,
-          "sha256": "eadc5580d1bdf7d3ac2af2062f7e5fb92c7af81ffdf9283e0d4c8daa15d0bc60"
+          "bytes": 8496,
+          "sha256": "d4bb834c83c9f938fb0a45cf700701a227789059e32d23d2e28a6d942b294a49"
         },
         "side": {
           "file": "challenger3_proto_side.webp",
@@ -106939,7 +106939,7 @@
           "height": 256,
           "mime": "image/webp",
           "bytes": 8444,
-          "sha256": "e2aa6b1a80685ab16c1e8413ff84a25ff3f74716c8e62d9e24026263a7d889c2"
+          "sha256": "05841b7c5a034469b5004be760c3428fff43000e3858264d59796c3472007473"
         },
         "topSilhouette": {
           "file": "challenger3_proto_top_silhouette.png",
@@ -106962,24 +106962,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20006,
-          "sha256": "897f3f8a954631e45a7349568f5b18b8c963f4fcd6899f546ea0eb7b26e0b067"
+          "bytes": 19974,
+          "sha256": "f97c776c1e113a6803936c61b4f805cc653921a881c8fcaf359bea1e19377dea"
         },
         "modulesSide": {
           "file": "challenger3_proto_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21160,
-          "sha256": "ece0346fb36b7a64e1578aea7456c4947f730987642067ec134d915112ecf447"
+          "bytes": 21308,
+          "sha256": "80ded44b2ec82fe44823c23b3c29a576d2b91c6e7ecd69d6ed783414137edded"
         },
         "crewSide": {
           "file": "challenger3_proto_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17088,
-          "sha256": "12105678de9ab7dec1e0a5879acc3fb4bc372e337744775f042346b29475dc9c"
+          "bytes": 17136,
+          "sha256": "f4f45e4eacd92b5099e202ae77ae74f86905e3b05f3c5a196f6ad5b3a728c6ae"
         },
         "markings": {
           "file": "challenger3_proto_markings.png",
@@ -108069,8 +108069,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.52,
         "overallLength": 10.79,
@@ -108946,7 +108946,7 @@
         ]
       },
       "geometryHash": "c1b5b45d",
-      "metadataHash": "089e474a",
+      "metadataHash": "cb37a590",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.013
@@ -109008,15 +109008,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22172,
-          "sha256": "be8d9fc41b89c2d9d98f2f843ba56eea0c18e1dcb359c49732f93766eb771735",
+          "bytes": 22164,
+          "sha256": "02a6f040c7fabfbf9fed4c5d18f2676155f659271b089450d038b44189d3d362",
           "thumbnail": {
             "file": "thumbs/chieftain_mk9_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9464,
-            "sha256": "4c56b6d0cad620a39875cfa78c8c0a4ae929d4db47627a4f7366ed2012aa38e1"
+            "bytes": 9548,
+            "sha256": "aee7cc232f8951140d4625f297406184ae7d7488cd4713917b6f43fbcd00cc38"
           }
         },
         "top": {
@@ -109024,16 +109024,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8728,
-          "sha256": "2f426decb101318383241cec72a2b7de91bc740274965c8c2370e44e5623a1f9"
+          "bytes": 8730,
+          "sha256": "753282a74235760eda19be29b89be76dc89b2a48a7abbef23008f3abeaf05684"
         },
         "side": {
           "file": "chieftain_mk9_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8092,
-          "sha256": "5c08944ee52f296e39c1a576c930e0c08c3227fe3c0abd05493fd9bd450cf01a"
+          "bytes": 8046,
+          "sha256": "182503bf2fb2f2f25b6a6271d9d2aca69a446f3038f6cf802973040a2d0154c4"
         },
         "topSilhouette": {
           "file": "chieftain_mk9_top_silhouette.png",
@@ -109056,24 +109056,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19212,
-          "sha256": "7c1e7fc2ab0cf85d5d4b6479645fa783ae7efaccd6aa1030b0dd16129afc6d2e"
+          "bytes": 19202,
+          "sha256": "47a76d842947cfa115e8a038f95542b372a2c169401767cf3300454c298e97cb"
         },
         "modulesSide": {
           "file": "chieftain_mk9_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21032,
-          "sha256": "b69080edff05157c704cabd836727f4e546244d988cf615993033af430d27a65"
+          "bytes": 21022,
+          "sha256": "395d4169c074c806f3d0c69328ba756e5a57c65b4de2df3be1d4a78477b649a1"
         },
         "crewSide": {
           "file": "chieftain_mk9_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16688,
-          "sha256": "b6947a6af7fb3a284956951c340e49248819204bdbf490a6e1947ddc87590dfd"
+          "bytes": 16646,
+          "sha256": "b30d9f487e7bbcc2f90c8a01a3610359e7847a2fdbc0ebba56cf6fd17c30ec28"
         },
         "markings": {
           "file": "chieftain_mk9_markings.png",
@@ -110165,8 +110165,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.5754,
         "overallLength": 10.4708,
@@ -111138,7 +111138,7 @@
         ]
       },
       "geometryHash": "e6079fc9",
-      "metadataHash": "922db0dc",
+      "metadataHash": "100a7265",
       "presentationAnchor": {
         "xM": 0.0159,
         "zM": -0.0801
@@ -111197,39 +111197,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19252,
-          "sha256": "56a749bc4a8a71dd0dba8014da21808e026c428296d973fca3e4f41136f05cf6"
+          "bytes": 18892,
+          "sha256": "6d0050527490ce434a0ff7e15d8415649602aa02bd90c395cb37b2603af0e6a6"
         },
         "modulesSide": {
           "file": "chieftain5_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20456,
-          "sha256": "c0bc019a87bb2970068024bb82b056d6e9d3e42f9119c906cfa55226f45753ba"
+          "bytes": 20502,
+          "sha256": "0585d6fcf5a658428f86f1c24c77d39034e1e4ee3c6c1dff3302cc3bbc89aa41"
         },
         "crewSide": {
           "file": "chieftain5_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16828,
-          "sha256": "714c56dd2df2244ddf86a713908daa814e04b0432256867c69d5ff2577f029fb"
+          "bytes": 16472,
+          "sha256": "8d69bf26e47a23dc5f49e4c0157c2896fe33f51a51f35a453cf4665425c33e94"
         },
         "angle": {
           "file": "chieftain5_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22726,
-          "sha256": "5a2049dfedcc87b6402cd6d1c5c8077fcce613bdb77294a6ff09fa50e85098cb",
+          "bytes": 22714,
+          "sha256": "2f73df66bbd73fe17610139b85bf02361cb7f65f4957116f5930714aa90c7cfd",
           "thumbnail": {
             "file": "thumbs/chieftain5_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9576,
-            "sha256": "5e79ebb032135b06c59c31233d2b26de3405c95dd4253354694e7a3fbec8f16e"
+            "bytes": 9574,
+            "sha256": "94682fcd68805d90d5e73d9829e1f363afc12ba16952b8ba799d0d9a9a93a9dd"
           }
         },
         "top": {
@@ -111245,8 +111245,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8462,
-          "sha256": "22ba4a026f16ba926b618ea5375723ebdb6c912c2abf8301cf7d9ad1361e8ea1"
+          "bytes": 8468,
+          "sha256": "e57e6c14a039a671a64c448b9a82bcab30a06c2dce239fc5c63a8b0ae23dbda5"
         },
         "topSilhouette": {
           "file": "chieftain5_top_silhouette.png",
@@ -111275,8 +111275,8 @@
         "technicalLabels": {
           "file": "chieftain5_technical.json",
           "mime": "application/json",
-          "bytes": 4526,
-          "sha256": "e3f476015e69770e8b30fbb39d5b6941e51e4b037a63fb5301124f79c601d9cd"
+          "bytes": 4527,
+          "sha256": "3f3c88dde9f114cc14f3d13ee1083aa72712c1b5fc84fad30fded0f9fd3fb9be"
         }
       }
     },
@@ -124938,8 +124938,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.34,
         "overallLength": 6.34,
@@ -125865,7 +125865,7 @@
         ]
       },
       "geometryHash": "4a8ad463",
-      "metadataHash": "bafb8dc4",
+      "metadataHash": "2565a996",
       "presentationAnchor": {
         "xM": 0.0032,
         "zM": 0.0671
@@ -125924,15 +125924,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25478,
-          "sha256": "a86af8de3f6bd9c930614a3058f47d7dc025e59ab584cac1c83e07aa4eca1b30",
+          "bytes": 25392,
+          "sha256": "c4af75be2a7722adac5cef4e6f6317bed057519960ef484560840b6169b48fbf",
           "thumbnail": {
             "file": "thumbs/fv510_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10298,
-            "sha256": "5a51287724c5d9d5cf4a66b19a7a334b867dd7a0df81c98ceb9e43fb2ef91608"
+            "bytes": 10300,
+            "sha256": "f95fbcf170b8e6fd713a0fbea6df6235c71b0fdd4ee4433775f5823e8ebcae32"
           }
         },
         "top": {
@@ -125940,8 +125940,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17042,
-          "sha256": "64de3eb7ce1ff03169eb159c349c237cc09adbf7c7aa10bd1485a2a0027a51bd"
+          "bytes": 17014,
+          "sha256": "0d3f78b53823de4e1a7a3eea59922ea4436dc69b454e4805851d4e89a747b89e"
         },
         "side": {
           "file": "fv510_side.webp",
@@ -125949,7 +125949,7 @@
           "height": 256,
           "mime": "image/webp",
           "bytes": 16776,
-          "sha256": "9dde5af48a1fe00f8718d2a2e4f6485e41876e91db49493eed0fd62db971bdcc"
+          "sha256": "9327bb561f6017b9187a9c7462bee07d9d47be543f817f9b5371c820910747bf"
         },
         "topSilhouette": {
           "file": "fv510_top_silhouette.png",
@@ -125972,24 +125972,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 44986,
-          "sha256": "046897fa8c73f65e35e4b432bb137f6cd859adfaef9a5e3106591cc44ebee0e6"
+          "bytes": 45104,
+          "sha256": "2d890dd1291523d7287286bc7f24aab5ebd9e7c3dc6be01638373c0a63a1b897"
         },
         "modulesSide": {
           "file": "fv510_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37178,
-          "sha256": "80f8dc3ca1e07490ebc5eba04dfaa413d9f8fbd27c637cef494351ddd0988095"
+          "bytes": 37416,
+          "sha256": "896bd9a8ca3f1b3cd3dc124d2c7bf696be017f77c1170c0f653a8ada99b2d351"
         },
         "crewSide": {
           "file": "fv510_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32036,
-          "sha256": "1b01a255462bbf8880db3274b799791003f414424c3a778409fa8b3b2f72e9e3"
+          "bytes": 32224,
+          "sha256": "1218229d003a1b3a186fdffca55e295ffb8b13576406a260d3c7bd655eaf5702"
         },
         "markings": {
           "file": "fv510_markings.png",
@@ -2156396,8 +2156396,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.92,
         "overallLength": 9.79,
@@ -2157261,7 +2157261,7 @@
         ]
       },
       "geometryHash": "735955d1",
-      "metadataHash": "52d98c7f",
+      "metadataHash": "13b4e9f2",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0629
@@ -2157371,24 +2157371,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26070,
-          "sha256": "a246acdde337dc835bbcbf68ccf191a54403fa6a0f78d2905008e9ef6bb7a18c"
+          "bytes": 26088,
+          "sha256": "7657df98a237aaa043b877270ed55f0ff51d7e5db5f623a8be0f55b193fef86c"
         },
         "modulesSide": {
           "file": "vickers_mk1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25778,
-          "sha256": "61c6191ee710109c77617939f3273b06d77cb47a38dbea6fdca79596e280f886"
+          "bytes": 25832,
+          "sha256": "63be38451221135ec3adc49741966936a97fdf45748d5a2769ec7a53c1ca98c2"
         },
         "crewSide": {
           "file": "vickers_mk1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20282,
-          "sha256": "cb1bab8939a19ddf01437c3dd5fc0d305ebb97832c21d04ba70d873453be89ab"
+          "bytes": 20292,
+          "sha256": "1e84a323da4ab686b61e8b9c9de260899b34d778680333e21f89976132c171e8"
         },
         "markings": {
           "file": "vickers_mk1_markings.png",
