@@ -305,12 +305,13 @@
       .cot-mark--motion .mk-puff{display:none}}
     /* /cot:brand-motion */
     .cot-boot-invite {
-      grid-area: invite; display: none; width: fit-content; max-width: min(560px, 84vw); margin: 20px auto 0;
+      grid-area: invite; display: none; width: fit-content; max-width: min(560px, 84vw); margin: 12px auto 0;
       color: var(--ink-1); font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: .06em; text-transform: uppercase;
       text-wrap: balance;
     }
     .cot-boot-invite.on { display: block; }
-    #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
+    /* the caption sits 12 px under the mark and 24 px above the label's line (the stage reserves 20 px over a one-line label) */
+    #cot-boot.has-invite .cot-boot-load { margin-top: calc(var(--s5) - 20px); }
     /* Entrance motion is scoped to the class present in the inline first
        paint. bootScreen.ts permanently retires that class after this stagger,
        so image decode or later layout work cannot restart the animation. */
@@ -324,7 +325,7 @@
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(8px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { grid-area: load; margin-top: 26px; }
+    .cot-boot-load { grid-area: load; margin-top: 45px; }
     #cot-boot.cot-boot-enter .cot-boot-load {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .14s backwards;
     }
@@ -334,12 +335,14 @@
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      display: flex; flex-direction: column; justify-content: flex-end; min-height: calc(2 * 1.4em);
-      font-size: 14px; font-weight: 500; line-height: 1.4; text-align: left; color: var(--ink-2); text-wrap: pretty;
+      display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px;
+      font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: pretty;
     }
-    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
+    .cot-boot-pct, .cot-boot-stage .num { font-size: 13px; font-weight: 500; color: var(--ink-3); }
+    .cot-boot-stage .num { line-height: 0; }
+    .cot-boot-pct { width: 64px; flex: 0 0 64px; text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .42); }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .37); }
     .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
@@ -352,7 +355,7 @@
 
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
-      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
+      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px auto 0; overflow: hidden;
       font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
@@ -398,12 +401,9 @@
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
     }
     .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before {
-      width: 7px; height: 7px; box-sizing: border-box; border: 1px solid currentColor;
-      border-right-color: transparent; border-radius: 50%; content: '';
-      animation: cot-github-star-spin .7s linear infinite;
+      width: 100%; height: 6px; border-radius: 3px; background: var(--line-2); content: '';
     }
     .cot-github-stars:has([data-github-stars-state='unavailable']) { visibility: hidden; }
-    @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
       transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
       background: var(--surface-hover); box-shadow: var(--e2);
@@ -429,7 +429,6 @@
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
       .cot-boot-link:hover, .cot-boot-link:hover .cot-boot-link-icon,
       .cot-boot-link:active { transform: none; }
-      .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before { animation: none; }
     }
     /* Baseline for visible game scrollbars (the line ramp on the scene). Component rules still own hidden rails. */
     :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
@@ -440,13 +439,13 @@
     :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
     /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
-      box-sizing:border-box;width:min(900px,calc(100vw - 32px));max-width:none;
+      box-sizing:border-box;width:min(900px,calc(100vw - 34px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
       border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-raised);box-shadow:var(--e4);
       font-family:var(--font-ui);
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
-    #cot-boot.credits-open .cot-boot-inner { visibility: hidden; }
+    #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot) { visibility: hidden; }
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
@@ -458,22 +457,22 @@
     .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
     .cot-credits p{max-width:64ch;margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
     /* zh: a line breaks between any two characters, never before closing or after opening punctuation */
-    .cot-credits p:lang(zh-CN){line-break:strict}
+    .cot-credits p:lang(zh-CN){line-break:strict;text-spacing-trim:trim-both}
     .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
     .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-width:0;min-height:44px;border:0;padding:0 18px;
       font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
-    .cot-credits-actions .cot-boot-link:last-child{padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
-    .cot-credits-close{position:absolute;z-index:2;top:20px;right:20px;display:grid;place-items:center;
-      width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
+    .cot-credits-actions .cot-boot-link:last-child{margin-left:auto;padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
+    .cot-credits-close{position:absolute;z-index:2;top:32px;right:32px;display:grid;place-items:center;
+      width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--btn-secondary-ring);color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
     .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
     /* a phone (the responsiveLayout.ts phone and compact bands, < 768 px): the splash's own media query, since the
        credits can open before any module writes body[data-cot-width] */
     @media (width < 768px) {
-      .cot-credits{width:calc(100vw - 32px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
+      .cot-credits{width:calc(100vw - 34px);max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
       .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 34px)}
       .cot-credits-grid{grid-template-columns:1fr}
       .cot-credits-profile{flex-direction:row;align-items:center;padding:24px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
@@ -481,21 +480,22 @@
       .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:32px;margin-bottom:20px}
       .cot-credits-actions{flex-direction:column;align-items:stretch}
-      .cot-credits-close{top:12px;right:12px}
+      .cot-credits-actions .cot-boot-link:last-child{margin-left:0}
+      .cot-credits-close{top:24px;right:24px}
     }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (height < 520px) {
       .cot-credits-grid{grid-template-columns:132px minmax(0,1fr)}
-      .cot-credits-profile{flex-direction:column;padding:20px;border-right:1px solid var(--line-1);border-bottom:0}
+      .cot-credits-profile{flex-direction:column;padding:24px;border-right:1px solid var(--line-1);border-bottom:0}
       .cot-credits-portrait{width:100%}
-      .cot-credits-copy{padding:20px 24px}
+      .cot-credits-copy{padding:24px}
       .cot-credits h2{font-size:28px;margin-bottom:12px}
       .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
       .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
-      .cot-credits-close{top:12px;right:12px}
+      .cot-credits-close{top:24px;right:24px}
     }
     .cot-boot-gate {
-      grid-area: slot; align-self: start; margin-top: 34px; height: 22px;
+      grid-area: slot; align-self: start; margin-top: 24px; height: 22px;
       font-family: var(--font-ui);
       font-size: 14px; font-weight: 500;
       color: var(--ink-2); opacity: 0;
@@ -504,8 +504,8 @@
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
-      grid-area: slot; align-self: start; justify-self: center; display: none;
-      height: 44px; margin: 34px 0 0; padding: 0 18px; white-space: nowrap;
+      grid-area: slot; align-self: center; justify-self: center; display: none;
+      height: 44px; margin: 2px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -518,30 +518,32 @@
     #cot-boot:has(.cot-boot-gate.on) .cot-boot-fill::after { animation: none; opacity: 0; }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-pct { display: none; }
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
     .cot-boot-load { position: relative; }
-    .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 1.4; color: var(--text-danger); }
-    .cot-boot-alert svg { display: inline-block; vertical-align: -5px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; }
-    #cot-boot:is([data-stop='slow'], [data-stop='offline']) .cot-boot-alert { color: var(--text-warn); }
+    .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
+    .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-alert { display: block; align-self: center; }
+    #cot-boot[data-stop='offline'] .cot-boot-alert { color: var(--text-warn); }
+    #cot-boot[data-stop='slow'] .cot-boot-alert { color: var(--ink-2); }
     .cot-boot-meta { position: relative; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { align-items: first baseline; justify-content: flex-start; gap: 12px; padding-inline: 14px; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-meta::before,
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
-      content: ''; position: absolute; inset: -8px 0; z-index: -1; border-radius: var(--plate-radius);
-      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate));
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-pct { margin-left: auto; align-self: center; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta::before {
+      content: ''; position: absolute; inset: -9px 0; z-index: -1; border-radius: var(--plate-radius);
+      background: color-mix(in srgb, var(--text-danger) 9%, var(--surface-plate)); box-shadow: var(--ring-2);
     }
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before { bottom: 0; }
-    #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
-    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before,
-    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-load::before {
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { margin-bottom: 4px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-notice { margin-top: 0; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { padding-bottom: 13px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { justify-content: center; }
+    #cot-boot[data-stop='offline']:has(.cot-boot-retry.on) .cot-boot-meta::before {
       background: color-mix(in srgb, var(--text-warn) 7%, var(--surface-plate));
     }
-    /* each tone has its own glyph: an error the alert, a slow load the clock, an offline one the info mark */
-    .cot-boot-alert svg + svg, .cot-boot-alert svg + svg + svg { display: none; }
-    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(1), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(1) { display: none; }
-    #cot-boot[data-stop='slow'] .cot-boot-alert svg:nth-child(2), #cot-boot[data-stop='offline'] .cot-boot-alert svg:nth-child(3) { display: inline-block; }
+    #cot-boot[data-stop='slow']:has(.cot-boot-retry.on) .cot-boot-meta::before { background: var(--surface-plate); }
+    /* the kit's glyph per severity: an error and an offline warning the alert, a slow load (progress) the clock */
+    .cot-boot-alert svg + svg { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg:first-child { display: none; }
+    #cot-boot[data-stop='slow'] .cot-boot-alert svg + svg { display: inline-block; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage { color: var(--ink-1); }
     #cot-boot:not([data-stop='slow']):has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
@@ -563,18 +565,23 @@
     }
     @media (width < 768px) {
       .cot-boot-mark { width: 164px; }
-      .cot-boot-load { margin-top: 24px; }
+      .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
       .cot-boot-links { width: 100%; }
+      .cot-boot-retry { justify-self: stretch; }
     }
     @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot { zoom: 1.3; } }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
       .cot-boot-mark { width: auto; height: min(34vh, 150px); }
-      .cot-boot-invite { margin-top: 20px; }
-      .cot-boot-load { margin-top: 24px; }
-      .cot-boot-tip { height: 48px; margin-top: 24px; visibility: hidden; }
-      .cot-boot-gate, .cot-boot-retry { margin-top: 24px; }
+      .cot-boot-invite { margin-top: 12px; }
+      #cot-boot.has-invite .cot-boot-mark { height: min(28vh, 120px); }
+      #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
+      .cot-boot-load { margin-top: 33px; }
+      .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
+      .cot-boot-gate { margin-top: 12px; }
+      /* Retry sits under the notice, centred between it and the row: 26 px each side */
+      .cot-boot-retry { align-self: start; margin-top: 14px; }
       .cot-boot-links { margin-top: 24px; }
     }
     }
@@ -935,8 +942,21 @@
       // splash counts the entry graph's files as they land.
       function paintDownloadProgress() {
         if (moduleOwnsStage || surfaceOwned || halted || navigating || !network.expected) return;
+        if (document.querySelector('.cot-boot-gate.on')) return;
         const stage = document.getElementById('cot-boot-stage');
-        if (stage) stage.textContent = `${MESSAGES.downloading} · ${Math.min(network.scripts, network.expected)} / ${network.expected}`;
+        if (!stage) return;
+        const counted = `${Math.min(network.scripts, network.expected)}/${network.expected}`;
+        // the count ticks in place, so it wears the data face (.num); an engine without replaceChildren keeps plain text
+        if (typeof stage.replaceChildren !== 'function' || typeof document.createElement !== 'function') {
+          stage.textContent = `${MESSAGES.downloading} · ${counted}`;
+          return;
+        }
+        const line = document.createElement('span');
+        const count = document.createElement('span');
+        count.className = 'num';
+        count.textContent = counted;
+        line.append(`${MESSAGES.downloading} · `, count);
+        stage.replaceChildren(line);
       }
       function noteNetworkProgress(entries) {
         let bytes = 0;
@@ -1110,12 +1130,12 @@
       <!-- The title card (brand-ui 245): the living commander mark over the stacked wordmark; its body is generated. -->
       <svg class="cot-boot-mark" viewBox="55 -2187 3946 4709" role="img" aria-label="Claude of Tanks" data-i18n-aria-label="aria.claudeoftanks">
       <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->
-<g class="cot-mark--motion"><g transform="translate(-379.06 -2858.20) scale(19.73000)"><g class="mk-run" fill="#f6f3ec"><path fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/><path class="mk-links mk-links--top" d="M50 120.4H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><path class="mk-links mk-links--low" d="M50 136.6H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><g fill="#f6f3ec"><g class="mk-wheel"><circle cx="56" cy="128.5" r="5.4" fill="none"/><circle cx="56" cy="128.5" r="1.7"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 56 128.5)"/></g><g class="mk-wheel"><circle cx="79" cy="128.5" r="5.4" fill="none"/><circle cx="79" cy="128.5" r="1.7"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 79 128.5)"/></g><g class="mk-wheel"><circle cx="102" cy="128.5" r="5.4" fill="none"/><circle cx="102" cy="128.5" r="1.7"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 102 128.5)"/></g><g class="mk-wheel"><circle cx="125" cy="128.5" r="5.4" fill="none"/><circle cx="125" cy="128.5" r="1.7"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 125 128.5)"/></g><g class="mk-wheel"><circle cx="148" cy="128.5" r="5.4" fill="none"/><circle cx="148" cy="128.5" r="1.7"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 148 128.5)"/></g><g class="mk-wheel"><circle cx="171" cy="128.5" r="5.4" fill="none"/><circle cx="171" cy="128.5" r="1.7"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 171 128.5)"/></g></g></g><g class="mk-hull"><g class="mk-exhaust" fill="#f6f3ec"><circle class="mk-puff" style="animation-delay:0.00s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.40s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.80s" cx="37" cy="101" r="1.6"/></g><path fill="#f6f3ec" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/><g class="mk-turret"><g fill="#f6f3ec"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g><g class="mk-antenna"><path d="M64 76 56 41" fill="none" stroke="#f6f3ec" stroke-width="1.6"/><path style="fill:#f0a030" d="M56 38.5 41 43l15 4.5Z"/></g><g class="mk-crew"><g style="fill:#f0a030"><path fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/></g><g fill="#f6f3ec"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="#f6f3ec" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></g><g fill="#f6f3ec"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l3.1 10Z"/></g></g></g></g></g><path fill="#f6f3ec" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM612 1937H403V1822H957V1937H748V2522H612ZM1183 1822H1307L1563 2522H1425L1368 2367H1122L1065 2522H927ZM1338 2255 1245 1989H1243L1153 2255ZM1673 1822H1795L2107 2297H2109V1822H2240V2522H2118L1806 2048H1804V2522H1673ZM2410 1822H2546V2115H2652L2821 1822H2974L2769 2171L2991 2522H2835L2651 2231H2546V2522H2410ZM3061 2414V2314H3195V2373L3228 2406H3435L3469 2372V2256L3436 2223H3171L3063 2115V1930L3171 1822H3487L3595 1930V2031H3461V1971L3428 1938H3230L3197 1971V2074L3230 2107H3495L3603 2215V2412L3493 2522H3169Z"/><path fill="#f0a030" d="M1665.2 1459.8V1212.2L1723.4 1154H1895L1953.2 1212.2V1459.8L1895 1518H1723.4ZM1871.1 1474.3 1903.3 1442.1V1229.9L1871.1 1197.7H1747.3L1715.1 1229.9V1442.1L1747.3 1474.3ZM2109.2 1154H2348.4V1197.7H2159.2V1318.3H2323.5V1362H2159.2V1518H2109.2ZM352 1295h1144v90h-1144ZM2580 1295h1144v90h-1144Z"/>
+<g class="cot-mark--motion"><g transform="translate(-379.06 -2858.20) scale(19.73000)"><g class="mk-run" fill="#f6f3ec"><path fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/><path class="mk-links mk-links--top" d="M50 120.4H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><path class="mk-links mk-links--low" d="M50 136.6H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><g fill="#f6f3ec"><g class="mk-wheel"><circle cx="56" cy="128.5" r="5.4" fill="none"/><circle cx="56" cy="128.5" r="1.7"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 56 128.5)"/></g><g class="mk-wheel"><circle cx="79" cy="128.5" r="5.4" fill="none"/><circle cx="79" cy="128.5" r="1.7"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 79 128.5)"/></g><g class="mk-wheel"><circle cx="102" cy="128.5" r="5.4" fill="none"/><circle cx="102" cy="128.5" r="1.7"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 102 128.5)"/></g><g class="mk-wheel"><circle cx="125" cy="128.5" r="5.4" fill="none"/><circle cx="125" cy="128.5" r="1.7"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 125 128.5)"/></g><g class="mk-wheel"><circle cx="148" cy="128.5" r="5.4" fill="none"/><circle cx="148" cy="128.5" r="1.7"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 148 128.5)"/></g><g class="mk-wheel"><circle cx="171" cy="128.5" r="5.4" fill="none"/><circle cx="171" cy="128.5" r="1.7"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 171 128.5)"/></g></g></g><g class="mk-hull"><g class="mk-exhaust" fill="#f6f3ec"><circle class="mk-puff" style="animation-delay:0.00s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.40s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.80s" cx="37" cy="101" r="1.6"/></g><path fill="#f6f3ec" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/><g class="mk-turret"><g fill="#f6f3ec"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g><g class="mk-antenna"><path d="M64 76 56 41" fill="none" stroke="#f6f3ec" stroke-width="1.6"/><path style="fill:#f0a030" d="M56 38.5 41 43l15 4.5Z"/></g><g class="mk-crew"><g style="fill:#f0a030"><path fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/></g><g fill="#f6f3ec"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="#f6f3ec" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></g><g fill="#f6f3ec"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l3.1 10Z"/></g></g></g></g></g><path fill="#f6f3ec" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM637 1937H428V1822H982V1937H773V2522H637ZM1208 1822H1332L1588 2522H1450L1393 2367H1147L1090 2522H952ZM1363 2255 1270 1989H1268L1178 2255ZM1698 1822H1820L2132 2297H2134V1822H2265V2522H2143L1831 2048H1829V2522H1698ZM2435 1822H2571V2115H2677L2846 1822H2999L2794 2171L3016 2522H2860L2676 2231H2571V2522H2435ZM3086 2414V2314H3220V2373L3253 2406H3460L3494 2372V2256L3461 2223H3196L3088 2115V1930L3196 1822H3512L3620 1930V2031H3486V1971L3453 1938H3255L3222 1971V2074L3255 2107H3520L3628 2215V2412L3518 2522H3194Z"/><path fill="#f0a030" d="M1686.4 1459.8V1212.2L1744.6 1154H1916.2L1974.4 1212.2V1459.8L1916.2 1518H1744.6ZM1892.3 1474.3 1924.5 1442.1V1229.9L1892.3 1197.7H1768.5L1736.3 1229.9V1442.1L1768.5 1474.3ZM2130.4 1154H2369.6V1197.7H2180.4V1318.3H2344.7V1362H2180.4V1518H2130.4ZM384 1295h1144v90h-1144ZM2528 1295h1144v90h-1144Z"/>
       </svg>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite" data-datum="room-code"></div>
       <div class="cot-boot-load" data-datum="load-progress">
         <div class="cot-boot-meta">
-          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 10.75V17M12 7.25v.5"/></svg></span>
+          <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage" data-datum="load-stage">Starting engine</div>
           <div class="cot-boot-pct num" id="cot-boot-pct"></div>
         </div>
@@ -1157,7 +1177,7 @@
       <div class="cot-credits-copy">
         <h2 id="cot-credits-title">Kevin B. Liu</h2>
         <p data-i18n="credits.body1">I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.</p>
-        <p data-i18n="credits.body2">The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
+        <p data-i18n="credits.body2">The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were built end to end in a sustained workflow of many Claude and Codex agents. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
         <div class="cot-credits-actions">
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.github">Kevin on GitHub</span></a>
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer" aria-label="Claude of Tanks source code on GitHub"><svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z"/></svg><span data-i18n="credits.links.source">Source code</span><span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>

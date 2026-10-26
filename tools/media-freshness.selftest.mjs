@@ -20,6 +20,7 @@ const CURRENT = Object.freeze({
   'capture-recipes-r1.json': 'the Studio recipes behind the archive\'s media',
   'versus-r1': 'the versus stills (the GO renders, media/land226)',
   'versus-films-r1': 'the versus films (round 7, 2026-10-22): the landing\'s versus wall',
+  'home-r2': 'the landing\'s curated reel and feature loops (the media lane\'s home r2 set, 252: public/media/home-r2/manifest.json)',
   'home-hero-r1': 'the landing hero\'s responsive rungs of its versus still (243, from the 2560 px master)',
   'docs-r1': 'the Field Manual\'s current screens and its index banner (245, captured on 243: public/media/docs-r1/manifest.json)',
   'docs-hero-r2': 'the Field Manual\'s moving topic heroes (the media lane\'s 251 duels, each with its whole ladder: public/media/docs-hero-r2/manifest.json)',

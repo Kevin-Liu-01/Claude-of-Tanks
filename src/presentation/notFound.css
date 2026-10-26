@@ -19,7 +19,7 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   padding:var(--s8) max(var(--shell-gutter),calc((100% - var(--shell-max)) / 2)) var(--s6);overflow:hidden}
 .not-found__still{position:absolute;inset:0;z-index:-2;width:100%;height:100%;max-width:none;object-fit:cover;object-position:70% 50%}
 .not-found__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-closing-grade)}
-.not-found__content{align-self:center;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s5);width:min(640px,100%)}
+.not-found__content{align-self:center;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s5);width:calc((100% - 4 * var(--s3)) / 5 * 2 + var(--s3))}
 .not-found h1{display:flex;flex-direction:column;gap:var(--s3);margin:0;color:var(--ink-1);text-shadow:var(--home-headline-shadow);text-transform:uppercase}
 .not-found__code{font:700 var(--home-h1)/.8 var(--font-display)}
 .not-found__line{font:700 var(--nf-line)/.94 var(--font-display);text-wrap:balance}
@@ -46,15 +46,16 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 .not-found__report:hover,.not-found__report:focus-visible{color:var(--ink-1);text-decoration:underline;text-underline-offset:3px}
 .not-found__report .cot-i{width:16px;height:16px}
 /* the destinations: Play in the accent, then each page over its own picture */
-.not-found__go{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(4,minmax(0,1fr));gap:var(--s3)}
+.not-found__go{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
 .nf-go{isolation:isolate;display:flex;align-items:flex-end;aspect-ratio:16/9;padding:var(--s4) var(--s4);border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
+.nf-go.cot-c-media{box-shadow:var(--ring-1)}
 .nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .nf-go__nm{display:inline-flex;align-items:center;gap:var(--s3)}
 .nf-go__nm .cot-i{width:18px;height:18px;color:var(--ink-2)}
-.nf-go b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase}
-/* Play: the other tiles' shape and name, on the accent plate; its wider column takes the row's height, not its own 16:9 */
-.nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
-.nf-go--play .cot-i{width:18px;height:18px;fill:currentColor}
+.nf-go b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
+/* Play: the other tiles' shape and name, on the accent plate; it takes the row's height, not its own 16:9 */
+.nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:none}
+.nf-go--play .cot-i{width:18px;height:18px;color:inherit;fill:currentColor}
 .nf-go--play:hover,.nf-go--play:focus-visible{background:var(--accent-hi);box-shadow:var(--e2)}
 :lang(zh-CN) .not-found h1,:lang(zh-CN) .not-found__line{line-height:1.15}
 @media (width < 1100px){
@@ -65,6 +66,7 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--s3);aspect-ratio:auto;min-height:64px}
 }
 @media (width < 768px){
+  .nf-go--play b{font-size:var(--fs-20)}
   /* the still is a banner over the words: the tank keeps the top of the screen, the code and the search sit under it */
   .not-found{grid-template-rows:auto auto;align-content:start;gap:var(--s6);padding-block:calc(260px + var(--s5)) var(--s5)}
   .not-found__still,.not-found__grade{bottom:auto;height:260px}
@@ -74,6 +76,6 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   .not-found__line{font-size:var(--fs-28)}
   .not-found__go{gap:var(--s2)}
   .nf-go{padding:var(--s3) var(--s3)}
-  .nf-go b{font-size:var(--fs-14)}
+  .nf-go b{font-size:var(--fs-20)}
 }
 }

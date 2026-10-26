@@ -682,8 +682,8 @@ export function createSurfaceMarkup({
       ? nextOperation as MarkupOperation : 'inspect';
     operationButtons.forEach((button) => {
       const isActive = button.dataset.markupOperation === operation;
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-pressed', String(isActive));
+      button.setAttribute('aria-checked', String(isActive));
+      button.tabIndex = isActive ? 0 : -1;
     });
     $('#markupReshapeFields').hidden = operation !== 'reshape';
     $('#markupAddFields').hidden = operation !== 'add';
@@ -785,8 +785,19 @@ export function createSurfaceMarkup({
     updateExport();
   }
 
-  operationButtons.forEach((button) => button.addEventListener('click', () =>
-    setOperation(button.dataset.markupOperation, true)));
+  // the kit's segmented control (components.ts wireRoving, which this Node-loaded module cannot import): a click or an
+  // arrow key selects, and only the checked option takes the tab stop
+  operationButtons.forEach((button, at) => {
+    button.addEventListener('click', () => setOperation(button.dataset.markupOperation, true));
+    button.addEventListener('keydown', (event) => {
+      const step = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 } as Readonly<Record<string, number>>)[event.key];
+      if (!step) return;
+      event.preventDefault();
+      const next = operationButtons[(at + step + operationButtons.length) % operationButtons.length];
+      setOperation(next.dataset.markupOperation, true);
+      next.focus();
+    });
+  });
   $('#markupNote').addEventListener('input', () => {
     const annotation = annotations.find((item) => item.id === selectedAnnotationId);
     if (!annotation) return;

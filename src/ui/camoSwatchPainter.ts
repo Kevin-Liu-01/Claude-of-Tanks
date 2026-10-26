@@ -147,6 +147,7 @@ function cachedSwatch(sample: HTMLCanvasElement, recipe: CamoSwatchRecipe): HTML
 }
 
 function blit(canvas: HTMLCanvasElement, swatch: HTMLCanvasElement): void {
+  if (canvas.dataset) delete canvas.dataset.loading; // the Garage's skeleton mark (garage.ts paintCamoSwatchPlaceholder)
   canvas.width = CAMO_SWATCH_WIDTH;
   canvas.height = CAMO_SWATCH_HEIGHT;
   const ctx = canvas.getContext('2d');
@@ -181,6 +182,7 @@ export function paintAutoCamoSwatch(
   spec: FleetTankSpec,
 ): void {
   const W = CAMO_SWATCH_WIDTH, H = CAMO_SWATCH_HEIGHT;
+  if (canvas.dataset) delete canvas.dataset.loading;
   canvas.width = W; canvas.height = H;
   const c = canvas.getContext('2d');
   if (!c) return;

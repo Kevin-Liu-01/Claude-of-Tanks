@@ -79,14 +79,14 @@
   --media-fade-soft:linear-gradient(0deg,rgba(5,6,8,.92),rgba(5,6,8,0) 55%);--media-fade-full:linear-gradient(0deg,rgba(5,6,8,.95),rgba(5,6,8,.2) 70%);
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
   --hollow-shadow:0 8px 28px rgba(0,0,0,.32);--stage-halo:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55);
-  --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.62),rgba(5,6,8,.34) 55%,rgba(5,6,8,0));
+  --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.66),rgba(5,6,8,.46) 62%,rgba(5,6,8,0));
   --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-font:var(--font-ui);
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
   --focus-bracket-color:var(--accent-hi);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
   --focus-bracket-dur:var(--dur-fast);
   --media-toggle-z:4;
   --warn-hatch:8px;--team-squad-ring:0px;
-  --studio-z:58;--studio-pop-z:40;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 2px 0 0 var(--accent);
+  --studio-z:58;--studio-pop-z:40;--studio-track-mark:.04em;--studio-track-shelf:.02em;--studio-row-on:inset 0 0 0 1px var(--accent);
   --studio-knob-ring:0 0 0 2px var(--surface-page);--studio-swatch-on:0 0 0 2px var(--accent);--studio-frame-mask:0 0 0 1px oklch(from var(--ink-1) l c h / .18),0 0 0 2000px var(--scrim);
   --studio-clip-fx:rgba(255,90,78,.16);
   --battle-plate-shadow:0 0 0 1px var(--line-1),0 6px 18px rgba(0,0,0,.35);--battle-edge-own:0 0 0 1px oklch(from var(--accent) l c h / .5),0 6px 18px rgba(0,0,0,.35);
