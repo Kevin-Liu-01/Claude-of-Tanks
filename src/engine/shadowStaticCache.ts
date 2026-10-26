@@ -297,6 +297,11 @@ export function casterSignatureParts(object: CasterLike, out: Uint32Array): Uint
   // its aDamage tags): the owner bumps this epoch on every frame it changes (world structureDamage(id).touchShadows())
   const epoch = object.userData.cotShadowEpoch;
   if (typeof epoch === 'number') h = mix(h, epoch);
+  // (battle-spikes-253) and the epoch of the caster it is drawn with: a settled fracture face under its structure's mask
+  // (structureFracture.ts maskTag) changes on the frames its structure's spans do
+  const owner = object.userData.cotShadowEpochOf as { userData?: { cotShadowEpoch?: unknown } } | undefined;
+  const ownerEpoch = owner?.userData?.cotShadowEpoch;
+  if (typeof ownerEpoch === 'number') h = mix(h, ownerEpoch ^ 0x5bd1e995);
   out[5] = h;
   return out;
 }
@@ -321,9 +326,10 @@ function changedPart(before: Uint32Array, after: Uint32Array): string {
 const isCaster = (o: CasterLike): boolean => !!(o.isMesh || o.isLine || o.isPoints);
 const isProxy = (o: THREE.Object3D): boolean => o.userData?.cotCasterProxy === true;
 
-/** Scene children whose subtrees are the static world (map.ts freezes the world root after its build). */
+/** Scene children whose subtrees are the static world (map.ts freezes the world root after its build), and the static
+ *  subtrees a dynamic root holds (`staticShadowRoot` under a `staticShadowNest`: the fx group's settled rubble). */
 export function isStaticShadowRoot(object: THREE.Object3D): boolean {
-  return object.userData?.matrixTraversalFrozen === true;
+  return object.userData?.matrixTraversalFrozen === true || object.userData?.staticShadowRoot === true;
 }
 
 // ------------------------------------------------------------------------------------------------- runtime
@@ -688,6 +694,11 @@ export function createShadowStaticCache(): ShadowStaticCache {
     }
     let h = 2166136261, sh = 2166136261;
     let casters = 0;
+    for (const root of staticRoots) {
+      let shown = 1;
+      for (let n = root.parent; n; n = n.parent) if (!n.visible) shown = 0;
+      h = mix(h, shown); sh = mix(sh, shown);
+    }
     stack.length = 0;
     for (let i = staticRoots.length - 1; i >= 0; i--) stack.push(staticRoots[i]);
     while (stack.length) {
@@ -783,9 +794,15 @@ export function createShadowStaticCache(): ShadowStaticCache {
     }
     staticRoots.length = 0;
     dynamicTop.length = 0;
+    const nested = typeof window === 'undefined' || !window.__SHADOW_DEBUG?.noNestedRoots;
     for (const child of scene.children) {
       if (isStaticShadowRoot(child)) staticRoots.push(child);
-      else if (!(child as THREE.Light).isLight) dynamicTop.push(child);
+      else if ((child as THREE.Light).isLight) continue;
+      else if (nested && child.userData?.staticShadowNest === true) {
+        // (battle-spikes-253) a dynamic root holding static subtrees (the fx group's settled rubble: 158 shadow draws a
+        // frame at Urban 14v14): those join the static layer, its other children stay dynamic
+        for (const sub of child.children) (isStaticShadowRoot(sub) ? staticRoots : dynamicTop).push(sub);
+      } else dynamicTop.push(child);
     }
     if (!staticRoots.length) return;
     const started = performance.now();

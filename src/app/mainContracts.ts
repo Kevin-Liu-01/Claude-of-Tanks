@@ -86,6 +86,8 @@ declare global {
     __MULTIPLAYER_V2?: RuntimeValue;
     __NETWORK_ENTRY_FAILURE?: RuntimeValue;
     __NETWORK_LOAD?: RuntimeValue;
+    /** (battle-spikes-253) The scene's visible lights by kind at the MP entry's compile and at its black watchdog. */
+    __LIGHT_CENSUS?: Record<string, { counts: Record<string, number>; lights: string[] }>;
     __PERF_HUD?: RuntimeValue;
     __SHOTS?: RuntimeValue;
     __SWITCH_TIMINGS?: Array<Record<string, RuntimeValue>>;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   disposeObject3DResources,
+  disposeObject3DResourcesSteps,
   releaseObject3DGpuResources,
   registerRetainedObject3DResources,
   residentResourceLimits,
@@ -141,5 +142,20 @@ assert.deepEqual(inventoryGeometry.attributes.position.array, inventoryBefore.po
 assert.equal(JSON.stringify(inventoryGeometry.groups), inventoryBefore.groups);
 disposeObject3DResources(inventoryRoot);
 assert.equal(inventoryDisposals, 6, 'normal final cleanup still sees the complete inventory');
+
+// (battle-spikes-253) the stepped disposal: a whole world's resources over many steps, the same disposals as one pass
+{
+  const tree = () => {
+    const group = new THREE.Group();
+    for (let i = 0; i < 100; i++) group.add(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial()));
+    return group;
+  };
+  const once = disposeObject3DResources(tree());
+  const steps = disposeObject3DResourcesSteps(tree(), {}, 10);
+  let yields = 0, step = steps.next();
+  while (!step.done) { yields++; step = steps.next(); }
+  assert.deepEqual(step.value, once, 'the same receipt as one pass');
+  assert.equal(yields, 20, '200 disposals, a step every 10');
+}
 
 console.log('resourceLifetime self-test passed');

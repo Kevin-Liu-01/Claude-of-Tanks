@@ -62,7 +62,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
+  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow, warmSceneProbePrograms,
   battleProbeRadianceScale, setSceneProbeTargetSource, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
@@ -100,7 +100,7 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
+import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -245,8 +245,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
-import { normalizeGameMode } from './sim/gameModeCatalog.ts';
+import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createProvingControls } from './game/provingGroundSession.ts';
@@ -748,6 +748,23 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 // instance before any consumer can emit an effect. The typed owner keeps code
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
+/**
+ * (battle-spikes-253) The scene's visible lights at a named moment (the MP entry's compile, its watchdog): three keys every
+ * program on the counts of visible lights by kind, and nav-perf's program log found the depth programs compiled with 7
+ * point lights and drawn with 8. Read as window.__LIGHT_CENSUS[label]; diagnostics only, a few hundred objects walked.
+ */
+function recordLightCensus(label: string): void {
+  if (typeof window === 'undefined') return;
+  const counts: Record<string, number> = {};
+  const lights: string[] = [];
+  scene.traverseVisible((object) => {
+    const light = object as THREE.Light;
+    if (!light.isLight) return;
+    counts[light.type] = (counts[light.type] ?? 0) + 1;
+    if (lights.length < 40) lights.push(`${light.type}:${light.name || '?'}<${light.parent?.name || light.parent?.type || '-'}`);
+  });
+  (window.__LIGHT_CENSUS ??= {})[label] = { counts, lights };
+}
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
@@ -1044,9 +1061,11 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
-  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
-    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
+  // a free sortie on a local host (soloAuthorityFor) enters through the network composition (mp/session/soloHostEntry.ts):
+  // the intent warms it and prepares the battle's host thread (its world, the player's anatomy, the bots' ground); the
+  // page's own solo stays warm beside it for the battles it keeps
+  preloadSoloBattle: () => (soloAuthorityFor('standard').authority === 'host'
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -2664,6 +2683,18 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
     if (!playerBattleActions) {
       throw new Error('Network composition requires player battle actions.');
     }
+    // the network vehicles' wreck and program warms (under the cover, and a solo room's seats after its reveal)
+    const vehicleWarm = (bridge: MultiplayerWarmView, signal?: AbortSignal) => ({
+      entities: bridge.entities.values(),
+      signal,
+      prebakeBurntSteps,
+      anisotropy: engineCtx.anisotropy ?? 4,
+      renderer,
+      scene,
+      camera,
+      compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
+      warmRender,
+    });
     return {
         load: {
           battleLoad,
@@ -2756,17 +2787,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             focusEntity: rig.spectateTargetEnt ?? game.player,
             yieldForBudget: createFrameBudgetYielder(16),
           }),
-          wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks({
-            entities: bridge.entities.values(),
-            signal,
-            prebakeBurntSteps,
-            anisotropy: engineCtx.anisotropy ?? 4,
-            renderer,
-            scene,
-            camera,
-            compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
-            warmRender,
-          }),
+          wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks(vehicleWarm(bridge, signal)),
+          // (a solo room's other seats, under the cover after the viewer's warms)
+          streamedVehicles: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmStreamedVehicles(vehicleWarm(bridge, signal)),
           playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
             kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
           },
@@ -2807,9 +2830,14 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 // Keep the actual compositor path and its pooled FX atomic.
                 // Pass measurements locate indivisible first-use work before
                 // deciding where a cooperative preparation boundary is safe.
-                const rendered = renderCoveredComposerWarm(post.composer);
-                timing.openingRenderMs = rendered.totalMs;
-                timing.openingPasses = rendered.passes;
+                // (battle-spikes-253) No shadow pass, as the solo deployment's warm: this render drew every caster's depth
+                // program at the battle's light counts in one task (nav-perf's root-r room: 1.6 s), ahead of finalShadows'
+                // prime, which makes them a batch at a time between painted frames.
+                renderWithoutShadowUpdates(lighting.csm?.lights ?? [], () => {
+                  const rendered = renderCoveredComposerWarm(post.composer);
+                  timing.openingRenderMs = rendered.totalMs;
+                  timing.openingPasses = rendered.passes;
+                });
               },
             });
             return { ...timing };
@@ -2840,13 +2868,23 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 },
               },
             });
+            // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
+            // program log: LateFxPass.Copy and its pass programs linked in the first live frame of a room)
+            let postPasses: RuntimeValue = null;
+            try {
+              postPasses = await post.warmFirstFrame(async () => { await nextPaintFrame(); signal?.throwIfAborted(); }) as RuntimeValue;
+            } catch (error) {
+              if (signal?.aborted) throw error;
+              postPasses = { failed: String((error as Error)?.message ?? error) };
+            }
             return { cascadeCount: cascadeMs.length,
               totalMs: cascadeMs.reduce((total, ms) => total + ms, 0),
               maxMs: Math.max(0, ...cascadeMs),
               casterWarmup: { batches: casterBatchMs.length, casterCount,
                 batchMs: casterBatchMs,
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
-                maxMs: Math.max(0, ...casterBatchMs) } };
+                maxMs: Math.max(0, ...casterBatchMs) },
+              postPasses };
           },
           // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
           // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;
@@ -2866,6 +2904,28 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           },
           compile: async (signal?: AbortSignal) => {
             battlePresentation.prepareModeVisuals();
+            // (battle-spikes-253) the world's structure materials patched for the collapse mask before the strict
+            // preparation compiles them: patched after (the opening effects' warm), every structure bucket re-keyed and
+            // the black watchdog's render linked twelve masked variants synchronously (nav-perf's room entry, 1.4 s)
+            fxRuntimeAccess.current?.prepareWorldMaterials();
+            recordLightCensus('compile');
+            // (battle-spikes-253) and the black watchdog's readback copy, linked with the rest rather than at the watchdog
+            warmSceneProbePrograms(renderer);
+            // (battle-spikes-253) and the far trees' impostor atlas, as the solo loading bakes it: the room's world is built
+            // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
+            // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
+            // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            try {
+              const world = currentWorld();
+              if (world?.warmImpostorsAsync) {
+                await world.warmImpostorsAsync(async () => {
+                  for (const _ of forwardProgramWarm.linkerBreathingSlices(90)) {
+                    signal?.throwIfAborted();
+                    await nextPaintFrame();
+                  }
+                });
+              } else world?.warmImpostors?.();
+            } catch (error) { if (signal?.aborted) throw error; /* the first update bakes lazily */ }
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
@@ -2907,9 +2967,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             setGarageSpots(active);
             setGarageSunTrim(active);
           },
-          runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
+          runBlackWatchdog: (signal?: AbortSignal) => (recordLightCensus('watchdog'), runSceneBlackWatchdogAsync(
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
-          ),
+          )),
         },
       activation: {
         game,
@@ -2950,11 +3010,79 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 
 /** The last solo entry was a watched battle (Battle Again watches again). */
 let lastEntryWatched = false;
+
+/**
+ * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5, the default from 255): a free sortie in a versus
+ * battle mode plays on a local host, its authority in the browser host's Worker (mp/session/soloHostEntry.ts). The page
+ * keeps its own simulation for the campaign, a watched battle, the practice and co-op modes (rooms host neither), the
+ * mobile tier (it never hosts, MULTIPLAYER-V2 §13.3), a browser without Workers, and `?soloAuthority=page`;
+ * `?soloAuthority=host` forces the host for any free versus sortie (the probes).
+ */
+const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|page)\b/.exec(location.search)?.[1] ?? null;
+function soloAuthorityFor(
+  gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
+): { authority: 'host' | 'page'; reason: string } {
+  const mode = normalizeGameMode(gameMode ?? 'standard');
+  const page = (reason: string) => ({ authority: 'page' as const, reason });
+  if (SOLO_AUTHORITY_PARAM === 'page') return page('opt_out');
+  if (campaign) return page('campaign');
+  if (watch) return page('watch');
+  if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
+  if (typeof Worker !== 'function') return page('no_worker');
+  if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
+  return getDeviceTier() === 'mobile' ? page('mobile') : { authority: 'host', reason: 'default' };
+}
+
+/** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
+function noteSoloAuthority({ authority, reason }: { authority: 'host' | 'page'; reason: string }): void {
+  entryTelemetry.send({ kind: 'solo_authority', code: authority, reason });
+}
+
+let soloHostPrepared = false;
+/** The Battle intent's host thread for a free sortie on a local host (the battlefield selected in the Garage). */
+function prepareSoloHost(): Promise<void> {
+  soloHostPrepared = true;
+  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.prepareSoloHost({
+    specId: garage.getSelected(), mapId: garage.getSelectedMap(), gameMode: 'standard' }));
+}
+/** A battle the page simulates lets the intent's prepared host thread (and its second world) go. */
+function releasePreparedSoloHost(): void {
+  if (!soloHostPrepared) return;
+  soloHostPrepared = false;
+  void import('./mp/session/soloHostEntry.ts').then((entry) => entry.releasePreparedSoloHost()).catch(() => {});
+}
+
+/** A free sortie on a local host; a room that cannot start hands the battle to `page`, the page's own entry. */
+function beginSoloOnHost(specId: string | null | undefined, mapId: string | null | undefined, gameMode: string, page: () => Promise<unknown>) {
+  soloHostPrepared = false;
+  const chosen = specId ?? garage.getSelected();
+  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+    specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+    equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+  }, beginMultiplayerV2Battle, () => {
+    noteSoloAuthority({ authority: 'page', reason: 'fallback' });
+    return page();
+  }));
+}
 function beginBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
+  const authority = soloAuthorityFor(options?.gameMode, { campaign: !!options?.campaignOperationId, watch: options?.watch === true });
+  noteSoloAuthority(authority);
+  if (authority.authority === 'host') {
+    return beginSoloOnHost(specId, mapId, normalizeGameMode(options?.gameMode ?? 'standard'), () => beginPageBattleEntry(specId, mapId, options));
+  }
+  return beginPageBattleEntry(specId, mapId, options);
+}
+
+function beginPageBattleEntry(
+  specId: string,
+  mapId: string | null = null,
+  options: SoloBattleLoadingStartOptions | undefined = undefined,
+) {
+  releasePreparedSoloHost();
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
@@ -2977,15 +3105,24 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
-  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
-  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
-    const chosen = specId ?? garage.getSelected();
-    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
-      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
-    }, beginMultiplayerV2Battle));
+  // a free sortie on a local host by default (soloAuthorityFor)
+  const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
+  noteSoloAuthority(authority);
+  if (authority.authority === 'host') {
+    return beginSoloOnHost(specId, mapId, normalizeGameMode(gameMode),
+      () => beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId }));
   }
+  return beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId });
+}
+
+function beginPageSoloBattle({
+  specId,
+  mapId,
+  randomRoster = true,
+  gameMode = 'standard',
+  campaignOperationId = null,
+}: SoloBattleEntryRequest = {}) {
+  releasePreparedSoloHost();
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3819,6 +3956,12 @@ const studioAccess = createStudioAccess({
     },
     getStudioLight: () => studioLightLive,
     programWarm: forwardProgramWarm,
+    // (2026-10-26) the first view's casters drawn into the cascades a batch at a time behind the Studio's cover, so their
+    // depth programs link between frames; a batch whose programs are linked goes on in the same frame (warm entries)
+    prepareFirstViewShadows: () => {
+      const budget = createFrameBudgetYielder(8);
+      return deploymentShadowWarm.prime(() => budget(false));
+    },
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
@@ -3963,8 +4106,12 @@ if (diagnosticsRequested) {
           next.config.minimap, { ...minimapSnapCtx(), requireTextured: true });
         return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
-      beginBattleEntry,
-      beginSoloBattle,
+      // the debug entries keep the page's own simulation (its fast-forward, forced fire and full roster the probes read)
+      // unless ?soloAuthority=host asks for the free sortie's local host
+      beginBattleEntry: (specId: string, mapId: string | null = null, options?: SoloBattleLoadingStartOptions) => (
+        SOLO_AUTHORITY_PARAM === 'host' ? beginBattleEntry(specId, mapId, options) : beginPageBattleEntry(specId, mapId, options)),
+      beginSoloBattle: (request?: SoloBattleEntryRequest) => (
+        SOLO_AUTHORITY_PARAM === 'host' ? beginSoloBattle(request) : beginPageSoloBattle(request)),
       beginNetworkBattle: beginMultiplayerV2Battle,
       enterGarage,
       leaveBattleToGarage,

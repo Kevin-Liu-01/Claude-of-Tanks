@@ -5540,7 +5540,7 @@ ${snowCap ? `
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   /**
    * (battle-spikes-253) A planned building in three steps — its base build and pose, its region's rebuild, its collision
-   * and merge (nav-perf's phone Garage sweep: one 100-150 ms task a building; Steinburg in Node: the collision 45% of it,
+   * and merge (nav-perf's phone Garage sweep: one 100-150 ms task a building; Verdant in Node: the collision 45% of it,
    * the rebuild 32%). No module scratch is held across a step (another world build may run between them).
    */
   function* placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,

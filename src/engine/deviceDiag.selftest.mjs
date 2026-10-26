@@ -104,13 +104,14 @@ try {
   let bound = { ...original };
   let failReadback = false;
   const timedRenderer = {
-    shadowMap: { enabled: true }, info: { programs: [{}, {}] },
+    shadowMap: { enabled: true }, info: { programs: [{ name: 'MeshStandardMaterial', cacheKey: 'std,srgb,0,1' }, {}] },
     getRenderTarget: () => bound.target,
     getActiveCubeFace: () => bound.face,
     getActiveMipmapLevel: () => bound.mip,
     setRenderTarget(target, face = 0, mip = 0) { clock += 1; bound = { target, face, mip }; },
     clear() { clock += 2; },
-    render() { clock += 13; this.info.programs.push({}); },
+    // (battle-spikes-253) the render makes one program: a standard material's with two point lights where the warm had none
+    render() { clock += 13; this.info.programs.push({ name: 'MeshStandardMaterial', cacheKey: 'std,srgb,2,1' }); },
     readRenderTargetPixels(target, x, y, width, height, buffer) {
       clock += 21;
       assert.deepEqual([x, y, width, height], [0, 0, 64, 22]);
@@ -124,7 +125,8 @@ try {
   assert.deepEqual(bound, original, 'probe restores exact cube face and mip, not only target');
   assert.deepEqual(timed, { before: 18, after: null, rescued: false, stage: null,
     measurements: [{ kind: 'sync', startTime: 0, endTime: 38, setupMs: 3, renderMs: 13, readbackMs: 21,
-      reduceMs: 0, restoreMs: 1, programsBeforeRender: 2, programsAfterRender: 3 }] });
+      reduceMs: 0, restoreMs: 1, programsBeforeRender: 2, programsAfterRender: 3,
+      newPrograms: ['MeshStandardMaterial 2:2/0'] }] });
   failReadback = true;
   const failed = runSceneBlackWatchdog(timedRenderer, scene, {}, { measureTimings: true });
   assert.deepEqual(bound, original, 'failure restores cube face and mip too');

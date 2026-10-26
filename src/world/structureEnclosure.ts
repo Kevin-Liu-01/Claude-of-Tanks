@@ -109,7 +109,20 @@ export function positionsOf(g: BufferGeometry): { array: ArrayLike<number>; stri
  * no wall. Built once at describe (structureDamageSeam.ts).
  */
 export function measureEnclosure(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined,
-  anatomy: Pick<StructureDamageAnatomy, 'storeys'>, { cover = true }: { cover?: boolean } = {}): StructureEnclosure | null {
+  anatomy: Pick<StructureDamageAnatomy, 'storeys'>, options: { cover?: boolean } = {}): StructureEnclosure | null {
+  const steps = measureEnclosureSteps(parts, anatomy, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/**
+ * (battle-spikes-253) measureEnclosure a part geometry and a band a step: the idle measurer (structureDamageSeam.ts) takes a
+ * structure's enclosure in slices (nav-perf's profiled room entry: 67 and 133 ms of one task inside the world's update).
+ * Nothing carried across a step lives outside it (the module's triangle scratch is rewritten a triangle at a time).
+ */
+export function* measureEnclosureSteps(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined,
+  anatomy: Pick<StructureDamageAnatomy, 'storeys'>, { cover = true }: { cover?: boolean } = {}): Generator<void, StructureEnclosure | null, void> {
   if (!parts || !anatomy.storeys.length) return null;
   // (a named piece falls on its own, but a vessel stands with the body: landmarks/pieces.ts damageStands)
   const keep = (bucket: string, g: BufferGeometry): boolean => !SKIP_BUCKETS.has(bucket) && (!g.userData?.damagePiece || g.userData?.damageStands === true)
@@ -191,7 +204,9 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       if (tx < tz) { ci += si; t0 = tx; tx += tdx; } else { ck += sk; t0 = tz; tz += tdz; }
     }
   };
+  let walked = 0;
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
+    if (walked++) yield;
     const wall = keep(bucket, g);
     const covers = cover && COVER_BUCKETS.has(bucket) && (!g.userData?.damagePiece || g.userData?.damageStands === true);
     if (!wall && !covers) continue;
@@ -300,6 +315,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   // a wall cell: the band's walls cover 35 % of its height there (0.6 m at least); then each face's setback to the first
   // such cell along its segments
   for (let s = 0; s < bands.length; s++) {
+    yield;
     const band = bands[s];
     const need = Math.max(0.6, 0.35 * (band.y1 - band.y0));
     for (let c = 0; c < N; c++) if (band.cover[c]! >= need) band.cells[c] = 1;

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { createBattleEntryAcquisition } from '../game/battleEntryAcquisition.ts';
 import { renderCoveredComposerWarm } from '../engine/coveredComposerWarm.ts';
+import { renderWithoutShadowUpdates } from '../engine/deploymentWarm.ts';
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const debugBattleEntry = await readFile(
@@ -287,7 +288,12 @@ const networkWarmBody = networkWarmPort.match(/warmRender: \(\) => \{([\s\S]*?)\
 assert.ok(networkWarmBody, 'network entry supplies the covered post-composer warm callback');
 // Execute only the fixed local repository source read above, never room/user input.
 const renderNetworkWarm = new Function('post', 'renderer', 'timing',
-  'renderCoveredComposerWarm', networkWarmBody);
+  'renderCoveredComposerWarm', 'renderWithoutShadowUpdates', 'lighting', networkWarmBody);
+// (battle-spikes-253) the cascades' shadow updates are off for the warm's draw and back after it: its shadow pass made
+// every far caster's depth program in one task ahead of the shadow prime's batches (nav-perf's root-r room)
+const cascades = [{ shadow: { autoUpdate: true, needsUpdate: true } }, { shadow: { autoUpdate: false, needsUpdate: true } }];
+const cascadesBefore = cascades.map(({ shadow }) => ({ ...shadow }));
+const shadowsOff = () => cascades.every(({ shadow }) => !shadow.autoUpdate && !shadow.needsUpdate);
 
 function withWarmClock(clock, run) {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'performance');
@@ -313,6 +319,7 @@ for (const initial of [true, false]) {
     setRenderTarget: (...state) => { restoredTarget = state; } };
   const pass = { render() { clock += 7; } };
   const composer = { renderer, passes: [pass], renderToScreen: initial, render(dt) {
+    assert.ok(shadowsOff(), 'the covered warm draws no shadow pass');
     assert.equal(this.renderToScreen, false, 'warm effects never reach the default framebuffer');
     assert.equal(dt, 0, 'covered submission does not advance presentation time');
     renderer.setRenderTarget(coveredTarget, 0, 0);
@@ -320,8 +327,10 @@ for (const initial of [true, false]) {
     pass.render();
   } };
   const runWarm = (output, clockSource = performance) => withWarmClock(clockSource, () =>
-    renderNetworkWarm({ composer }, renderer, output, renderCoveredComposerWarm));
+    renderNetworkWarm({ composer }, renderer, output, renderCoveredComposerWarm, renderWithoutShadowUpdates,
+      { csm: { lights: cascades } }));
   runWarm(timing);
+  assert.deepEqual(cascades.map(({ shadow }) => shadow), cascadesBefore, 'the cascades\' shadow flags restored');
   assert.equal(draws, 1, 'the actual post pipeline submits one covered frame');
   assert.equal(timing.openingRenderMs, 7, 'retain the actual compositor cost separately from scar preparation');
   assert.equal(timing.openingPasses.length, 1, 'the actual timing helper records the submitted pass');
