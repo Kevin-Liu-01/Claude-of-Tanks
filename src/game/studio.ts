@@ -5572,16 +5572,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * world's forward renderables inside the placed camera's frustum (or never culled), on the gameplay targets, as the
    * Garage mode preview's are. A first entry's first frame waited 613 ms on links inside one task; preparing the whole map
    * instead queued hundreds of compiles ahead of that frame (a 14.2 s task, reverted in fe9035e418). A preparation that
-   * cannot finish leaves its links to that frame, as before.
+   * cannot finish leaves its links to that frame, as before. (2026-10-26) The scene's, not only the world group's: the
+   * map's air, rebuilt at each entry, hangs off the scene and linked inside the first frame (MapAmbience.fluff, 1.7 s on
+   * a second entry); a program already linked costs the preparation nothing.
    */
   async function prepareFirstViewPrograms(current: () => boolean): Promise<void> {
-    const root = getWorld()?.group;
-    if (!ctx.programWarm || !root || !current()) return;
+    if (!ctx.programWarm || !getWorld()?.group || !current()) return;
     camera.updateMatrixWorld();
     _firstViewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     _firstViewFrustum.setFromProjectionMatrix(_firstViewMatrix);
     const objects: THREE.Object3D[] = [];
-    root.traverseVisible((object) => {
+    scene.traverseVisible((object) => {
       const drawn = object as THREE.Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean };
       if (!drawn.isMesh && !drawn.isPoints && !drawn.isLine) return;
       if (!object.frustumCulled || _firstViewFrustum.intersectsObject(object)) objects.push(object);
