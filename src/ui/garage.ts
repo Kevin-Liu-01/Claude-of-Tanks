@@ -3672,7 +3672,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
     // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
     if (docked) list.scrollTop = 0;
-    else requestAnimationFrame(() => pop.scrollIntoView({ block: 'start' }));
+    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view)
+    else requestAnimationFrame(() => {
+      const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
+      if (column) column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top;
+    });
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
@@ -4145,7 +4149,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<span class="cot-deploy-op-index" aria-hidden="true">${String(operation.index).padStart(2, '0')}</span>` +
         `<span class="cot-deploy-op-map" aria-hidden="true"${thumb ? ` style="background-image:url(&quot;${escapeHtmlAttribute(thumb)}&quot;)"` : ''}></span>` +
         `<span><b class="cot-deploy-op-name">${title}</b><span class="cot-deploy-op-meta">` +
-        `<span>${uiIconSVG('map', 14)}${t(`map.${operation.mapId}`)}</span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
+        `<span>${uiIconSVG('map', 14)}<span class="cot-deploy-op-mapname">${t(`map.${operation.mapId}`)}</span></span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
         `<span class="cot-deploy-op-stars" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars, max: 3 }))}">${
           [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('')}</span>` +
         `<span class="cot-deploy-op-diff" role="img" aria-label="${escapeHtmlAttribute(t('garage.deploy.difficulty', { value: operation.difficulty, max: CAMPAIGN_OPERATIONS.length }))}">${
