@@ -4,10 +4,16 @@ import {
   shouldOpenSettingsFromPointerUnlock,
 } from './keyboardOwnership.ts';
 
-const input = { tagName: 'INPUT', isContentEditable: false };
+const input = { tagName: 'INPUT', type: 'text', isContentEditable: false };
 const canvas = { tagName: 'CANVAS', isContentEditable: false };
 
 assert.equal(isEditingControl(input), true, 'chat input owns typed keys');
+assert.equal(isEditingControl({ tagName: 'INPUT', isContentEditable: false }), true, 'an input of no type takes text');
+assert.equal(isEditingControl({ tagName: 'INPUT', type: 'range', isContentEditable: false }), false,
+  'a slider left focused after Settings closed does not take the next Esc (INTERACTION-REDESIGN C)');
+assert.equal(isEditingControl({ tagName: 'INPUT', type: 'checkbox', isContentEditable: false }), false, 'nor a checkbox');
+assert.equal(isEditingControl({ tagName: 'SELECT', isContentEditable: false }), false, 'nor a closed select');
+assert.equal(isEditingControl({ tagName: 'TEXTAREA', isContentEditable: false }), true, 'a text area takes text');
 assert.equal(isEditingControl(canvas), false, 'game canvas does not own typed keys');
 assert.equal(shouldOpenSettingsFromPointerUnlock({
   battleActive: true,

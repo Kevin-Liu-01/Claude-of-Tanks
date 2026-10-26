@@ -24,6 +24,24 @@ interface ShadowCasterWarmupOptions {
   maxCastersPerBatch?: number;
   yieldBeforeBatch?: (batch: ShadowCasterWarmBatch) => void | Promise<void>;
   onBatch?: (timing: ShadowCasterWarmTiming) => void;
+  /**
+   * (battle-spikes-253) Roots the scene holds hidden at the prime (a network view's unspotted actors), whose casters the
+   * warm batches draw as well: shown only inside each synchronous batch render (and the caster collection), never across
+   * a yield, and never for the final cascades, so no hidden actor's shadow reaches a map anyone sees. nav-perf's root-v
+   * room: a guest linked an unspotted M1A3's four depth programs in a live frame, the frame it was first spotted.
+   */
+  hiddenRoots?: () => Iterable<Object3D | null | undefined>;
+}
+
+/** Show the hidden roots for one synchronous call; every one is hidden again before it returns or throws. */
+function withRootsShown<T>(roots: readonly Object3D[], run: () => T): T {
+  const shown: Object3D[] = [];
+  try {
+    for (const root of roots) if (!root.visible) { root.visible = true; shown.push(root); }
+    return run();
+  } finally {
+    for (const root of shown) root.visible = false;
+  }
 }
 
 export interface ShadowPrimeOptions {
@@ -255,7 +273,9 @@ async function warmFirstCascade(
   state: PrimeState, request: ShadowPrimeRequest, target: WebGLRenderTarget,
   options: ShadowCasterWarmupOptions,
 ): Promise<void> {
-  const casters = collectWarmCasters(state, request.scene);
+  const hidden: Object3D[] = [];
+  for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
+  const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;
@@ -265,7 +285,7 @@ async function warmFirstCascade(
     if (options.yieldBeforeBatch) await options.yieldBeforeBatch(detail);
     assertPrimeCurrent(state, request);
     const startedAt = performance.now();
-    renderWarmBatch(state, request.scene, target, casters, batch.start, batch.end);
+    withRootsShown(hidden, () => renderWarmBatch(state, request.scene, target, casters, batch.start, batch.end));
     assertPrimeCurrent(state, request);
     options.onBatch?.({ ...detail, elapsedMs: performance.now() - startedAt });
     assertPrimeCurrent(state, request);

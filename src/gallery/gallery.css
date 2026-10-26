@@ -10,6 +10,7 @@
 @import url('../ui/tokens/surface-gallery.css');
 @import url('../ui/components/figures.css');
 @import url('../ui/components/notices.css');
+@import url('../ui/components/pickers.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{button,input,select,textarea{font:inherit;color:inherit}}
@@ -77,11 +78,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 @media (prefers-reduced-motion:reduce){.more-facets summary .cot-i{transition:none}}
 .order{display:flex;align-items:center;gap:var(--s1)}
 .order__sort{position:relative;flex:1;min-width:0}
-.order__sort select,.vsc__pick select{width:100%;height:32px;padding:0 var(--s5) 0 var(--s3);appearance:none;-webkit-appearance:none;border:0;
-  border-radius:var(--control-radius);background:transparent;box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.order__sort::after,.vsc__pick::after{content:'';position:absolute;right:10px;top:50%;width:6px;height:6px;margin-top:-5px;
-  border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(45deg);pointer-events:none}
-.order__sort option,.vsc__pick option{background:var(--surface-menu);color:var(--ink-1)}
+/* the sort and the rival are the kit's picker menus (pickerMenu.ts, the interaction census: raw selects), at the toolbar's
+   height */
+.order__sort .cot-c-menu__trigger{min-height:32px;padding-block:0}
 /* the sort direction is the sort menu's kind of control (one ring, no filled box beside it) */
 .order__dir{--h:32px;background:transparent;box-shadow:var(--ring-2);color:var(--ink-2)}
 #sortDirection[aria-pressed=false] .cot-i{transform:rotate(180deg)}
@@ -106,7 +105,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .it__name{flex:1;min-width:0;font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.15;overflow-wrap:anywhere}
 /* a Chinese name stands a size over its era tag, which shares its floor */
 html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(--fs-14))}
-.fam .it .e{margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
+.fam .it .e{margin-left:auto;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
 .it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
 .fam .it[aria-selected=true] .cot-c-sil{color:var(--ink-1)}
@@ -125,6 +124,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   font:600 max(var(--fs-floor-11),var(--fs-12))/1.1 var(--font-display);text-transform:uppercase}
 .fam[data-layout=grid] .it .e{position:absolute;right:8px;top:8px;z-index:var(--z-lift);padding:2px var(--s1);border-radius:var(--control-radius);
   background:var(--glyph-plate)}
+/* the hero card's class glyph (owner 10-26: the tank type in the top right): a plate of the value chip's height over the
+   flag; the sort's value stands under it. A list row has no hero card and no glyph. */
+.it__class{display:none}
+.fam[data-layout=grid] .it__class{position:absolute;right:8px;top:8px;z-index:var(--z-lift);display:grid;place-items:center;min-width:22px;
+  padding:3px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--ink-1);line-height:0}
+.fam[data-layout=grid] .it__class svg{display:block;width:12px;height:12px}
+.fam[data-layout=grid] .it:has(.it__class) .e{top:36px}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
@@ -161,12 +167,11 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .flags button[aria-pressed=true]:hover{box-shadow:var(--ring-accent)}
   .fam .it:hover{background:var(--surface-hover);color:var(--ink-1)}
   .fam .it[aria-selected=true]:hover{background:var(--accent-wash)}
-  .order__sort select:hover,.vsc__pick select:hover{box-shadow:var(--ring-3)}
 }
 .stage{--inset-w:150px}
 .inset{left:16px;bottom:16px;width:150px;margin:0;padding:var(--s2)}
 .inset canvas{display:block;width:100%;height:auto;aspect-ratio:134/96}
-.inset__human{position:absolute;left:calc(var(--s2) + 6px);top:calc(var(--s2) + 6px);font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3);pointer-events:none}
+.inset__human{position:absolute;left:calc(var(--s2) + 6px);top:calc(var(--s2) + 6px);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);pointer-events:none}
 /* the legend stands above the bottom row, so the turntable and photo bar in the middle never sit under it */
 #viewport .legend:not(:empty){right:16px;bottom:64px;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2);
   max-width:min(340px,46%);padding:var(--s3) var(--s3)}
@@ -198,6 +203,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .dossier-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);padding-bottom:28px}
+.dossier-scroll.has-zoom{-webkit-mask-image:none;mask-image:none}
 .take{position:relative;aspect-ratio:16/9;flex:none;overflow:hidden;background:var(--surface-raised)}
 /* the page's notices (gallery.ts) never cover a control: beside the panes at the foot of the dossier's film, on a stacked
    page at the window's foot above the dossier's actions; each on an opaque plate */
@@ -235,6 +241,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .dossier .cot-c-stat__value{display:inline-grid;grid-template-columns:auto auto 6ch;justify-content:end;align-items:baseline}
 .dossier .cot-c-stat__value b{justify-self:end}
 .dossier .cot-c-stat__delta{justify-self:start;margin-left:var(--s1)}
+/* the dossier's units and deltas read at 12 px (the g13 critic read the monospace 11 as 9-10 px beside 18 px figures) */
+.dossier .cot-c-stat__value small,.dossier .cot-c-stat__delta{font-size:max(var(--fs-floor-12),var(--fs-12))}
 .dz-tabs{position:sticky;top:0;z-index:var(--z-hud-world);padding:0 var(--g-pad);border-bottom:1px solid var(--line-1);background:var(--surface-page)}
 .dz-tabs .cot-c-tabs{gap:var(--s3);overflow-x:auto;scrollbar-width:none}
 .dz-tabs .cot-c-tabs__tab{font-size:var(--fs-14)}
@@ -299,7 +307,16 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .shell-nums b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-display)}
 .shell-nums .cot-i{width:14px;height:14px;align-self:center}
 .shell .cot-c-scale{grid-column:2/-1}
-.diagram{margin:0;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
+/* a window under 1440 px (the narrow dossier band) gives a round's name its card's width and sets the three figures on
+   their own row under it, in their columns (the g13 critic: "3BM60 Svinets-2" broke over two lines beside them at 1280) */
+@media (width < 1440px){
+  .shell-id{grid-column:2/-1}
+  .shell-nums>span{grid-row:2}
+  .shell-nums>span:nth-child(1){grid-column:3}
+  .shell-nums>span:nth-child(2){grid-column:4}
+  .shell-nums>span:nth-child(3){grid-column:5}
+}
+.diagram{position:relative;margin:0;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
 .diagram img{display:block;width:100%;height:auto;aspect-ratio:2/1}
 .pose{display:flex;flex-direction:column;gap:var(--s3)}
 .sl{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s2) var(--s3);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
@@ -453,7 +470,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   :root body .take-actions a,:root body .take-media .fleet-take-toggle{width:44px;height:44px}
   :root body .take-media .fleet-take-toggle{right:calc(12px + 52px)}
   .fam .it{min-height:44px}
-  .order__dir,.order__sort select{min-height:40px;min-width:40px}
+  .order__dir,.order__sort .cot-c-menu__trigger{min-height:44px;min-width:44px}
   /* the camera rail and the layer dock at a finger's size (the landscape phone's were 30 to 34 px); eight cameras still fit
      the short stage's height */
   .views button{height:36px;min-width:36px}

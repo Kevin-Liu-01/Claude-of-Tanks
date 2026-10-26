@@ -45,6 +45,8 @@
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);cursor:pointer;outline:none}
 /* a list row: the glyph, then the name over its facts; the row's end keeps the favourite star's room */
 .cot-c-picker--list .cot-c-picker__opt{flex-direction:row;align-items:center;min-height:44px;padding:var(--s2) calc(var(--s2) * 2 + 32px) var(--s2) var(--s3)}
+/* a picker without a memory draws no favourite star, so its rows keep no room for one */
+.cot-c-picker--plain.cot-c-picker--list .cot-c-picker__opt{padding-inline-end:var(--s3)}
 .cot-c-picker--list .cot-c-picker__words{flex:1 1 auto}
 /* a card's facts stand on its foot: the cards of a row share a height, so their facts line up whether a name takes one
    line or two (Rooms r32) */
@@ -59,6 +61,10 @@
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
+/* a small picture in the glyph's place (a nation's flag, a colour preset's swatch): 4:3 at the glyph's 18 px height, on
+   the nation chip's chamfer */
+.cot-c-picker__chip img{display:block;width:24px;height:18px;object-fit:cover;object-position:center;
+  clip-path:polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px))}
 .cot-c-picker__name{min-width:0;font:500 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);color:var(--ink-1)}
 .cot-c-picker__facts{display:flex;flex-wrap:wrap;flex-basis:100%;gap:0 var(--s2);font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
 .cot-c-picker--list .cot-c-picker__facts{flex-basis:100%}
@@ -139,4 +145,40 @@
 .cot-mp__name{display:block;font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-mp__desc{margin:var(--s2) 0 0;font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body);color:var(--ink-2);}
 .cot-mp__rules{display:grid;gap:var(--s1);margin:var(--s3) 0 0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2);}
+/* ---- the picker menu (pickerMenu.ts): the kit's field trigger (the chosen item's picture or glyph, its name, one fact, a
+   chevron that turns) and the kit picker in a popover in the top layer under it, or a bottom sheet on a phone ---- */
+.cot-c-menu__trigger{box-sizing:border-box;display:flex;align-items:center;gap:var(--s2);width:100%;min-width:0;min-height:36px;margin:0;
+  padding:var(--s1) var(--s2) var(--s1) var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
+  color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body);text-align:left;cursor:pointer}
+.cot-c-menu__trigger:hover{background:var(--surface-hover)}
+.cot-c-menu__trigger:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-c-menu__trigger[aria-expanded=true]{background:var(--surface-hover);box-shadow:var(--ring-accent)}
+.cot-c-menu__trigger:disabled{opacity:.55;cursor:default}
+.cot-c-menu__media{flex:none;width:40px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-1)}
+.cot-c-menu__media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.cot-c-menu__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
+.cot-c-menu__words{display:flex;flex:1 1 auto;align-items:baseline;gap:var(--s2);min-width:0}
+.cot-c-menu__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-c-menu__fact{flex:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-12))}
+.cot-c-menu__chev{display:flex;flex:none;margin-left:auto;color:var(--ink-3);transition:rotate var(--dur-fast) var(--ease-enter)}
+.cot-c-menu__trigger[aria-expanded=true] .cot-c-menu__chev{rotate:180deg}
+/* placed by pickerMenu.ts (placeMenu): left, top, width and max-height; its grid scrolls inside */
+.cot-c-menu__pop{position:fixed;inset:auto;box-sizing:border-box;display:none;flex-direction:column;margin:0;padding:var(--s2);border:0;
+  border-radius:var(--plate-radius);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);overflow:hidden}
+.cot-c-menu__pop:popover-open{display:flex}
+.cot-c-menu__picker{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
+.cot-c-menu__picker>.cot-c-picker{flex:1 1 auto}
+/* a menu is narrow: its search takes its own line and its chips the next, so whole chips show (the r21q critic: a star and
+   "Fa…" between the search and the arrow at 1024) */
+.cot-c-menu__pop .cot-c-picker__search,.cot-c-menu__pop .cot-c-picker__filters{flex:1 1 100%}
+/* a menu's picture cards stand two abreast in its room (a staging area, a battlefield), as the battlefield picker's do */
+.cot-c-menu__pop .cot-c-picker--cards .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s2)}
+.cot-c-menu__pop.is-sheet{border-radius:var(--plate-radius) var(--plate-radius) 0 0;padding-bottom:max(var(--s2),env(safe-area-inset-bottom))}
+/* a sheet is named and closes from its head, over a scrim (the g13 critic: a headless sheet's edge sliced the page under it) */
+.cot-c-menu__head{display:none}
+.cot-c-menu__pop.is-sheet .cot-c-menu__head{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
+  padding:0 0 var(--s2) var(--s2);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
+.cot-c-menu__pop.is-sheet::backdrop{background:var(--scrim)}
+@media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
+@media (prefers-reduced-motion:reduce){.cot-c-menu__chev{transition:none}}
 }

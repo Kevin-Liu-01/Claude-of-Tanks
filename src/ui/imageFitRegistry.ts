@@ -21,8 +21,8 @@ const GARAGE_CSS = 'src/ui/garage.css';
 export const IMAGE_FIT_CUTOUTS: readonly ImageFitCutout[] = Object.freeze([
   // tank renders and silhouettes (transparent PNG and WebP cutouts)
   { owner: 'src/ui/serviceRecord.css', key: '.cot-record-vehicle', holds: "the vehicle's side render" },
-  { owner: 'src/ui/endScreen.ts', key: '.cot-es .es-vehicle-card img', holds: "the vehicle's render on its card" },
-  { owner: 'src/ui/endScreenPresentation.css', key: 'body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img', holds: "the vehicle's render on its card" },
+  { owner: 'src/ui/endScreen.ts', key: '.cot-es .es-vehicle-card>img', holds: "the vehicle's render on its card" },
+  { owner: 'src/ui/endScreenPresentation.css', key: 'body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img', holds: "the vehicle's render on its card" },
   { owner: 'src/ui/battleLoad.ts', key: '${WIDE} .cot-bl .team.cards .row.card .sil', holds: "a roster card's side silhouette" },
   { owner: 'src/game/killcam.ts', key: '.cot-kc-killer .nm .sil', holds: "the killer's side silhouette" },
   { owner: 'src/ui/spectatorSwitcher.ts', key: '.cot-spec .portrait img', holds: "the watched tank's angle render" },

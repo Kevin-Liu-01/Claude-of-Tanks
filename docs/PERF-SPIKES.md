@@ -310,6 +310,14 @@ Garage restore, which no fence of B's context sees. The env validity probe's syn
 stays synchronous: the sky's install decides on its answer, and a provisional answer would show the poisoned-PMREM
 iPhones black frames before the rescue; its per-call relink is nav-perf's (4cae8e9c43, the probe kept for the session).
 
+**root-u** (load 3-9): the tall grass's task is gone, and a single player's leave has no task of 200 ms or more. The
+solo stage's 8-28 s task was the census's debug entry (`__DEBUG.startBattle`), not a player's path; through the Garage's
+covered entry the longest solo task is the AudioContext constructor (347 ms). A guest's first live frames still linked
+eight programs: the FFT ocean's, the water ripples' and the ground pressure's passes, which run only on a frame that
+advances time while the covered presentation updates at dt 0. Each field now submits its pass programs against the
+targets it renders to, with no draw (`engine/fullscreenProgramWarm.ts`), and both covered entries call the world's
+`warmSimulationPrograms()`.
+
 **The room's leave** (root-p, Garage return): one 661 ms task, all `getBufferSubData`, under `beginRgba8Readback`.
 The stack named the `tankThumbs` chunk only because `rgba8Readback.ts` is bundled there. Its one synchronous starter
 was the clouds' `updateSunMean`, a 32² readback every 30 frames in every battle and Garage with clouds. Chromium serves

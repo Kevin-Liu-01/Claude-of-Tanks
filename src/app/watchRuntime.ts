@@ -93,7 +93,8 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
     for (const entity of game.tanks) if (entity.id === id) return entity;
     return null;
   };
-  const hudState = { view: 'off' as WatchController['view'], tank: null as TEntity | null, canTake: false, speedIndex: 0,
+  const hudState = { view: 'off' as WatchController['view'], tank: null as TEntity | null, canTake: false,
+    takeRefusal: null as string | null, speedIndex: 0,
     speedSteps: WATCH_DRONE.speeds.length, locked: false };
   const dronePose = { x: 0, z: 0 };
 
@@ -104,6 +105,7 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
     hudState.locked = !!lockedId;
     hudState.tank = byId(lockedId ?? controller.focusId);
     hudState.canTake = controller.canTake;
+    hudState.takeRefusal = controller.takeRefusal;
     hudState.speedIndex = controller.speedIndex;
     hud.update(hudState);
     if (controller.view === 'drone') {

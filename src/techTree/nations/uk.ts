@@ -22,35 +22,35 @@ export const UK_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // Centurion and Vickers
-    node({ id: 'centurion3', tier: 1, line: 'centurion', lane: 2, parents: [], slot: 'line' }),
-    node({ id: 'centurion5_2', tier: 3, line: 'centurion', lane: 2, parents: ['centurion3'], slot: 'line' }),
-    node({ id: 'vickers_mk1', tier: 3, line: 'centurion', lane: 3, parents: ['centurion5_2'], slot: 'line' }),
-    node({ id: 'fv4034', tier: 5, line: 'centurion', lane: 2, parents: ['chieftain5'], slot: 'line' }),
+    node({ id: 'centurion3', tier: 2, line: 'centurion', lane: 3, parents: [], slot: 'line' }),
+    node({ id: 'centurion5_2', tier: 3, line: 'centurion', lane: 3, parents: ['centurion3'], slot: 'line' }),
+    node({ id: 'vickers_mk1', tier: 2, line: 'centurion', lane: 4, parents: ['centurion3'], slot: 'line' }),
+    node({ id: 'fv4034', tier: 4, line: 'centurion', lane: 3, parents: ['chieftain5'], slot: 'line' }),
     // Chieftain to Challenger 3
     node({
-      id: 'chieftain5', tier: 2, line: 'challenger', lane: 1, parents: ['centurion3'], slot: 'line',
+      id: 'chieftain5', tier: 2, line: 'challenger', lane: 2, parents: ['centurion3'], slot: 'line',
       builds: ['chieftain3'],
     }),
-    node({ id: 'challenger1_mk2', tier: 5, line: 'challenger', lane: 1, parents: ['chieftain5'], slot: 'line' }),
+    node({ id: 'challenger1_mk2', tier: 8, line: 'challenger', lane: 1, parents: ['chieftain5'], slot: 'line' }),
     node({
-      id: 'challenger1_mk3', tier: 6, line: 'challenger', lane: 1, parents: ['challenger1_mk2', 'fv4034'],
+      id: 'challenger1_mk3', tier: 8, line: 'challenger', lane: 2, parents: ['challenger1_mk2', 'fv4034'],
       slot: 'line',
     }),
-    node({ id: 'challenger2', tier: 7, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
-    node({ id: 'challenger2e', tier: 8, line: 'challenger', lane: 1, parents: ['challenger2'], slot: 'line' }),
-    node({ id: 'challenger3_proto', tier: 9, line: 'challenger', lane: 1, parents: ['challenger2e'], slot: 'line' }),
-    node({ id: 'challenger3', tier: 10, line: 'challenger', lane: 1, parents: ['challenger3_proto'], slot: 'line' }),
+    node({ id: 'challenger2', tier: 9, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
+    node({ id: 'challenger2e', tier: 9, line: 'challenger', lane: 2, parents: ['challenger2'], slot: 'line' }),
+    node({ id: 'challenger3_proto', tier: 8, line: 'challenger', lane: 3, parents: ['challenger1_mk3'], slot: 'line' }),
+    node({ id: 'challenger3', tier: 10, line: 'challenger', lane: 2, parents: ['challenger3_proto'], slot: 'line' }),
     // Late Chieftain
     node({
-      id: 'chieftain_mk10', tier: 5, line: 'chieftain', lane: 3, parents: ['chieftain5'], slot: 'line',
+      id: 'chieftain_mk10', tier: 4, line: 'chieftain', lane: 4, parents: ['chieftain5'], slot: 'line',
       builds: ['chieftain_mk9'],
     }),
     // Warrior and Ajax
-    node({ id: 'fv510', tier: 3, line: 'warrior', lane: 0, parents: ['chieftain5'], slot: 'line' }),
-    node({ id: 'fv510_milan', tier: 6, line: 'warrior', lane: 0, parents: ['fv510'], slot: 'line' }),
-    node({ id: 'warrior_tes_h', tier: 7, line: 'warrior', lane: 0, parents: ['fv510_milan'], slot: 'line' }),
-    node({ id: 'ajax', tier: 8, line: 'warrior', lane: 0, parents: ['warrior_tes_h'], slot: 'line' }),
+    node({ id: 'fv510', tier: 2, line: 'warrior', lane: 1, parents: ['chieftain5'], slot: 'line' }),
+    node({ id: 'fv510_milan', tier: 3, line: 'warrior', lane: 1, parents: ['fv510'], slot: 'line' }),
+    node({ id: 'warrior_tes_h', tier: 5, line: 'warrior', lane: 0, parents: ['fv510_milan'], slot: 'line' }),
+    node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Special
-    node({ id: 'ares_apc', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

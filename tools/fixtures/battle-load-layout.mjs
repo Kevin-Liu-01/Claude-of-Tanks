@@ -27,7 +27,8 @@ const rows = (count, ally) => Array.from({length:count}, (_,i) => ({
 }));
 window.__LOAD_LAYOUT = {
   screen,
-  roster(allies, enemies) { screen.rosters(rows(allies,true), rows(enemies,false)); },
+  // (with `seats`, a roster still filling: each side holds that many rows, the seats not yet named open)
+  roster(allies, enemies, seats) { screen.rosters(rows(allies,true), rows(enemies,false), null, seats ? {allies:seats, enemies:seats} : null); },
 };
 const params = new URLSearchParams(location.search);
 // ?map=<id>&name=<its name>[&mode=<mode id>]: a battlefield as the game passes it (its art, its baked plan on the plate beside the tip, the mode's objectives on it);
@@ -37,5 +38,6 @@ const mapId = params.get('map');
 const modeId = params.get('mode') || 'turbo_ball';
 screen.show({mapName:params.get('name') || 'Steinburg', mode:battleLoadModeLabel(modeId), thumb:`/maps/${mapId || 'urban'}.webp`,
   modeId, ...(mapId ? {biome:mapId} : {}), allies:[], enemies:[]});
-window.__LOAD_LAYOUT.roster(Number(params.get('allies') ?? 7), Number(params.get('enemies') ?? 7));
+// ?seats=N: the sides' seats, the named rows (&allies, &enemies) fewer while the roster fills (live 255's host path)
+window.__LOAD_LAYOUT.roster(Number(params.get('allies') ?? 7), Number(params.get('enemies') ?? 7), Number(params.get('seats')) || 0);
 screen.progress(.97, 'Priming deployment view');

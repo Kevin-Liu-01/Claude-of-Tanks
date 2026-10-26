@@ -101,6 +101,7 @@ import {
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -124,6 +125,7 @@ import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
+import { createGarageCamoTryOn } from './game/garageCamoTryOn.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -133,7 +135,7 @@ import {
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
-  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
+  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
@@ -593,6 +595,16 @@ const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
+// the camo try-on (INTERACTION-REDESIGN B); its timings ride on window.__CAMO_TRY_ON for click-timeline's camo paths
+const camoTryOnStats = { tries: 0, lastTryMs: 0, wears: 0, lastWearMs: 0 };
+(window as Window & { __CAMO_TRY_ON?: typeof camoTryOnStats }).__CAMO_TRY_ON = camoTryOnStats;
+const camoTryOn = createGarageCamoTryOn({
+  paint: paintCamoTryOn,
+  onChange: () => invalidateGaragePresentation(),
+  onTiming: (kind, ms) => {
+    if (kind === 'try') { camoTryOnStats.tries++; camoTryOnStats.lastTryMs = ms; } else { camoTryOnStats.wears++; camoTryOnStats.lastWearMs = ms; }
+  },
+});
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 worldRuntime = createWorldActivationRuntime<
   MainWorld,
@@ -1497,6 +1509,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
+    // the try-on (INTERACTION-REDESIGN B): the hovered or focused paint on the hero, painted small and swapped in
+    preview: (specId: string, patternId: string | null) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.preview(shown && shown.specId === specId ? shown.root : null, patternId);
+    },
     patterns: CAMO_CATALOG_PATTERN_IDS,
     // Read each pattern through t() so the active locale decides the displayed label (the previous
     // `...CAMO_PATTERN_LABEL` spread leaked English text into zh-CN for every service_* / sig_* pattern).
@@ -1508,11 +1525,22 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),
     set: (specId: string, patternId: string) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.wear(shown && shown.specId === specId ? shown.root : null, patternId);
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
-      // frame before a cold pattern bake instead of blocking the click.
+      // frame before a cold pattern bake instead of blocking the click; its
+      // try-on tile stands in until the bake lands.
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
+      }).then(() => camoTryOn.settle(patternId)).then(() => invalidateGaragePresentation());
+      multiplayerLobby?.syncSelection();
+    },
+    // "Wear on every <nation> tank" (INTERACTION-REDESIGN B): one paint on many tanks; the shown hero bakes first
+    setMany: (specIds: readonly string[], patternId: string) => {
+      for (const id of specIds) setCamoSelection(id, patternId);
+      camoSweepP = applyCamoPatternsChunked({
+        priorityIds: [selectedVehicle.id], onlySpecIds: [...specIds],
       }).then(() => invalidateGaragePresentation());
       multiplayerLobby?.syncSelection();
     },
@@ -1520,7 +1548,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      }).then(() => invalidateGaragePresentation());
+      }).then(() => camoTryOn.settle('custom')).then(() => invalidateGaragePresentation());
       // Deliberately sends Factory: custom paint is local single-player only.
       multiplayerLobby?.syncSelection();
     },
@@ -1567,6 +1595,8 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
   podiumTopYM: GARAGE_PODIUM_TOP_Y_M,
   getRetainedWorldMapId: () => currentWorld()?.mapId || null,
   invalidatePresentation: invalidateGaragePresentation,
+  camera,
+  canvas: renderer.domElement,
 });
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
@@ -2039,12 +2069,27 @@ bus.on('ui:debugHud', (payload) => {
 const armorAimOverlay = createArmorAimOverlayAccess();
 // transitions-249: wait, between tasks, until the renderer's queued program links are in, so the draw that binds them
 // does not wait inside one task. Bounded: a link still pending at the deadline waits at its draw, as before.
+// (battle-spikes-253) One completion query a poll, and only once the GPU caught up to the previous poll (gpuCatchUp.ts):
+// asking every pending program each poll was a synchronous round trip apiece behind the GPU's queue. Linked programs
+// answer from three's cache; a last full check covers a program the live array dropped under the cursor.
 const awaitRendererProgramLinks = async (yieldForBudget: (force?: boolean) => Promise<void> | undefined): Promise<void> => {
   const deadline = performance.now() + 12_000;
   const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
-  while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
-    await yieldForBudget(true);
-  }
+  if (!programs) return;
+  const gate = createGpuCatchUpGate(renderer.getContext());
+  let cursor = 0;
+  try {
+    while (performance.now() < deadline) {
+      if (gate.caughtUp()) {
+        while (cursor < programs.length && programs[cursor].isReady?.() !== false) cursor++;
+        if (cursor >= programs.length) {
+          if (programs.every((program) => program.isReady?.() !== false)) return;
+          cursor = 0;
+        }
+      }
+      await yieldForBudget(true);
+    }
+  } finally { gate.dispose(); }
 };
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
@@ -2062,6 +2107,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   drawWarm: (root) => {
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
+  // (battle-spikes-253) a stream's deferred draws: sixteen meshes a step, so no one task first-binds a whole tank's buffers
+  drawWarmSteps: (root) => createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: 16 }),
   // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
   // linked between tasks
   awaitProgramLinks: awaitRendererProgramLinks,
@@ -2421,7 +2468,8 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId: string, useTank = true) => pedestal.lendToBattle(specId, useTank),
+      // the hero leaves for battle in the paint it wears, never a try-on's tile
+      lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
       setupBattle,
       combatWarm,
       presentation: battlePresentation,
@@ -2866,6 +2914,16 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                   casterBatchMs.push(batch.elapsedMs);
                   casterCount += batch.casterCount;
                 },
+                // (battle-spikes-253) the actors this view holds hidden (unspotted): their depth programs warm too, inside
+                // the batches only (shadowPrime.ts hiddenRoots), never in the final maps
+                hiddenRoots: () => {
+                  const roots: THREE.Object3D[] = [];
+                  for (const entity of game.tankById.values()) {
+                    const root = entity.visual?.root;
+                    if (root && !root.visible) roots.push(root);
+                  }
+                  return roots;
+                },
               },
             });
             // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
@@ -2915,6 +2973,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
             // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
             // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            // (battle-spikes-253) and the world's GPU simulations (ocean, ripples, ground pressure), whose passes run only on a
+            // frame that advances time: their links ran in the first live frame (nav-perf's root-u room, 353 ms)
+            try { currentWorld()?.warmSimulationPrograms?.(); } catch { /* the first live pass links them */ }
             try {
               const world = currentWorld();
               if (world?.warmImpostorsAsync) {
@@ -3962,6 +4023,8 @@ const studioAccess = createStudioAccess({
       const budget = createFrameBudgetYielder(8);
       return deploymentShadowWarm.prime(() => budget(false));
     },
+    // (2026-10-26) the renderer's queued program links, waited for between frames
+    awaitProgramLinks: () => awaitRendererProgramLinks(() => nextFrame()),
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.

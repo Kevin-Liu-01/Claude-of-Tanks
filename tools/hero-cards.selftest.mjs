@@ -127,7 +127,9 @@ for (const gunSide of ['left', 'right']) {
 {
   const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
-  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${L.tierSize}px;`;
+  // an 11 px tier chip reads the floor token (11 px in Latin, the zh floor in Chinese: 18cbf57629, the round-9 zh critic)
+  const tierVar = (size) => (size === 11 ? 'var(--fs-floor-11)' : `${size}px`);
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${tierVar(L.tierSize)};`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
   assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
@@ -149,7 +151,8 @@ for (const gunSide of ['left', 'right']) {
     'the selected card\'s layers load eagerly (a lazy LCP waits for layout); the rest stay lazy until drainHeroCards');
   for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
     const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
-    assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
+    // (the Gallery's grid also loads its class glyphs in the same batch: owner 10-26, b15a149f64)
+    assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)(?:, import\('[^']+'\))*\]\)/, `${surface} loads the card module with its stylesheet`);
     assert.doesNotMatch(source, /^import (?!type )[^;]*heroCard\.ts['"];/m, `${surface} never imports the card module statically (type imports are erased)`);
   }
   assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
@@ -169,7 +172,7 @@ for (const gunSide of ['left', 'right']) {
   }
   // a size is a literal px, the house max(<floor>, <token>) (a px or the --fs-floor-N token, whose floor is N px) or a
   // bare type token
-  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g),
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):(?:([\d.]+)px|var\(--fs-floor-(\d+)\))/g),
     ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:(?:max\()?(?:var\(--fs-floor-(\d+)\)|([\d.]+)px|var\(--fs-(\d+)\))/g)]
     .map((m) => Number(m[1] ?? m[2] ?? m[3]));
   assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);

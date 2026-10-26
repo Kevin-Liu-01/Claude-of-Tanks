@@ -53,7 +53,7 @@ try{
    await page.screenshot({path:resolve(out,`${name}-garage.png`)});
    step='navigation';await tap('.cot-mobile-nav-trigger');
    for(const item of await page.locator('.cot-mobile-nav-menu button').all())await reach(item);
-   await tap('[data-mobile-nav="environment"]');await box('.cot-garage-variant-menu');await tap(page.locator('.cot-garage-variant-card').last());
+   await tap('[data-mobile-nav="environment"]');await box('.cot-c-menu__pop:popover-open');await tap(page.locator('.cot-c-menu__pop:popover-open .cot-c-picker__opt').last());
    await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-modal-root.is-open .cot-modal__close');
    // the battlefields: the battle card opens the Deploy screen, whose field holds the battlefield picker
    step='maps';await tap('.cot-battle-mode');await tap('[data-deploy-field]');await box('[data-deploy-field-pop]');
@@ -62,14 +62,12 @@ try{
    await page.locator('[data-deploy-bf] .cot-c-picker__grid').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});
    await tap('[data-deploy-field]');await tap('[data-battle-close]');
    step='appearance';await tap('.cot-lt-paint-all');await box('.cot-leftcol');
-   await tap('.cot-camos .cot-info-trigger');await closeModal();
-   for(const collection of await page.locator('.cot-camo-collection').all())await tap(collection);
-   await tap(page.locator('.cot-camo-collection').first());
-   for(const tag of await page.locator('.cot-camo-tag:not([hidden])').all())await tap(tag);
-   await tap(page.locator('.cot-camo-tag:not([hidden])').first());
-   await reach(page.locator('.cot-camo-card:not([hidden])').last());
+   await tap('.cot-drawer-actions .cot-info-trigger');await closeModal();
+   // the camo picker (INTERACTION-REDESIGN B): each kind chip filters the swatches and a second tap lets it go
+   for(const chip of await page.locator('.cot-camo-picker [data-chip^="tag:"]').all()){await tap(chip);await tap(chip);}
+   await reach(page.locator('.cot-camo-picker .cot-c-picker__opt').last());
    await page.locator('.cot-camos').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-camo.png`)});
-   await tap('.cot-custom-open');await box('.cot-modal-root.is-open .cot-modal');
+   await tap('.cot-camo-picker .cot-c-picker__opt[data-id="custom"]');await box('.cot-modal-root.is-open .cot-modal');
    for(const button of await page.locator('.cot-modal-root.is-open button:not([disabled])').all())await reach(button);
    for(const input of await page.locator('.cot-custom-color input,.cot-custom-repeat input,.cot-custom-check').all())await reach(input);
    await tap('[data-custom-brush-type=round]');await tap('.cot-custom-draw');
@@ -91,15 +89,15 @@ try{
    await page.locator('.stats').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-dossier.png`)});
    await tap('.cot-dossier-close');
    step='equipment';await tap('.cot-lt-loadout .eqslot');await box('.cot-eqpick');
-   assert.equal(await page.locator('.cot-eqpick .ph .x').evaluate(el=>el===document.activeElement),true,'picker focuses close control');
+   assert.equal(await page.locator('.cot-eqpick .cot-c-picker__opt[aria-selected="true"]').evaluate(el=>el===document.activeElement),true,'picker focuses the slot\'s own item');
    await page.keyboard.press('Shift+Tab');assert.equal(await page.locator('.cot-eqpick').evaluate(el=>el.contains(document.activeElement)),true,'picker traps backwards Tab');
-   for(const category of ['all','firepower','recon','mobility','survival']){
-    const chip=page.locator(`.cot-eqpick .chip[data-cat="${category}"]`);if(!await chip.count())continue;
-    await tap(chip);await reach(page.locator('.cot-eqtile:not([disabled])').last());
+   for(const category of ['fire','recon','mobility','survival']){
+    const chip=page.locator(`.cot-eqpick [data-chip="tag:${category}"]`);if(!await chip.count())continue;
+    await tap(chip);await reach(page.locator('.cot-eqpick .cot-c-picker__opt').last());await tap(chip);
    }
    await page.screenshot({path:resolve(out,`${name}-equipment.png`)});
    await page.setViewportSize({width:height,height:width});await page.waitForTimeout(100);await box('.cot-eqpick');await reach('.cot-eqpick .ph .x');
-   await page.setViewportSize({width,height});await page.waitForTimeout(100);await tap(page.locator('.cot-eqtile:not([disabled]):not(.remove)').last());
+   await page.setViewportSize({width,height});await page.waitForTimeout(100);await tap(page.locator('.cot-eqpick .cot-c-picker__opt:not([aria-disabled="true"]):not([data-id="empty"])').last());
    assert.equal(await page.locator('.cot-eqpick').isVisible(),false);assert.equal(await page.locator('.eqslot[data-slot="0"]').evaluate(el=>el===document.activeElement),true,'equipment selection restores slot focus');
    await tap('.cot-lt-loadout .eqslot');await page.keyboard.press('Escape');
    assert.equal(await page.locator('.cot-eqpick').isVisible(),false,'Escape closes the picker');
