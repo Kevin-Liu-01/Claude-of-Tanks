@@ -42,10 +42,11 @@ assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
 assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
   'Garage composition must consume semantic orientation attributes instead of media-query guesses');
-// The laptop bar keeps its destinations labelled and folds GitHub, the locale and Record to glyphs, all through the width
-// band (36af9d7638 kept the labels; the 246 pass moved its sub-1280 fold onto the band itself).
-assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher,\.cot-record-trigger\) \.nav-label\{display:none\}/,
-  'laptop navigation folds GitHub, the locale and Record through the shared width-band contract');
+// The laptop bar keeps its destinations labelled (Record among them: the gauntlet 10-25 found it a lone glyph beside a
+// half-empty bar) and folds GitHub and the locale to glyphs, all through the width band (36af9d7638 kept the labels; the
+// 246 pass moved its sub-1280 fold onto the band itself).
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher\) \.nav-label\{display:none\}/,
+  'laptop navigation folds GitHub and the locale through the shared width-band contract');
 assert.doesNotMatch(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
   'laptop navigation keeps Garage, Deploy, Gallery, Studio and Docs labelled');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
@@ -203,14 +204,14 @@ assert.match(hud,
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
 assert.match(hud,
-  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, x, y\)[\s\S]*fillText\(label, x, y\)/,
-  'incoming result labels must sit beyond the wedge instead of inside its glow');
+  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx, ctx\.lineWidth\)/,
+  'incoming result labels must sit beyond the wedge instead of inside its glow (DOM over the sight, haloed: UI-LOCKDOWN A)');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
 assert.match(hud,
   /function mergeIncomingHitDirection[\s\S]*existing\.kind !== kind \|\| existing\.mergeKey !== mergeKey[\s\S]*incomingHitFeedbackFor\(hit\)[\s\S]*mergeIncomingHitDirection\([\s\S]*feedback\.mergeKey/,
   'nearby hits may merge only when their canonical outcomes match');
-assert.match(hud, /fillStyle = indicator\.labelColor[\s\S]*fillText\(label, x, y\)/,
+assert.match(hud, /fillStyle = indicator\.labelColor;[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx/,
   'direction labels must retain the canonical damage, splash, and outcome colors');
 assert.match(shotInfo,
   /function recordOutgoingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)[\s\S]*function recordIncomingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)/,
@@ -397,8 +398,8 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-ctxlost h2\{[\s\S]*overflow-wrap:anywhere/,
   'the graphics recovery title must reflow without overflowing small screens');
-assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
-  'Gallery feedback toasts must be viewport-bounded');
+assert.match(gallery, /\.cot-c-notices\.gallery-notices\{[^}]*width:min\(420px,calc\(100% - 24px\)\)/,
+  'Gallery feedback notices must be viewport-bounded');
 // the Field Manual's notices are the kit's (components/notices.css): a region bounded to the viewport, text that wraps
 assert.match(docs, /@import url\('\.\.\/ui\/components\/notices\.css'\);/, 'the Field Manual loads the kit\'s notices');
 assert.match(await readFile(new URL('./components/notices.css', import.meta.url), 'utf8'),

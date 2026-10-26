@@ -136,7 +136,7 @@ body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping){display:none}
    gauntlet r7) */
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);text-shadow:none}
 body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:1px}
-body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-2)}
+body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:var(--battle-fs-11);color:var(--ink-2)}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
 body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

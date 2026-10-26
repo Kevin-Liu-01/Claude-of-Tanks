@@ -758,6 +758,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
     'tools/hot-path-alloc.selftest.mjs',
+    'tools/frontend-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
@@ -1002,6 +1003,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
+    // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)
+    'tools/motion-lint.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
     // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
@@ -2293,6 +2297,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
+    // that fails on any on-screen canvas built outside it
+    'src/ui/uiCanvas.selftest.mjs',
+    'src/ui/uiCanvasCensus.selftest.mjs',
+    // a canvas's words and figures as DOM runs over it (the sight's readouts, the glyphs' letters)
+    'src/ui/canvasText.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
     'src/ui/hudNotices.selftest.mjs',
@@ -2384,6 +2394,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
+    'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',

@@ -19,16 +19,16 @@ export const ITALY_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // Carro 45t to C2 Ariete
-    node({ id: 'carro45t', tier: 1, line: 'ariete', lane: 0, parents: [], slot: 'line' }),
-    node({ id: 'c1_ariete_preserie', tier: 4, line: 'ariete', lane: 0, parents: ['carro45t'], slot: 'line' }),
+    node({ id: 'carro45t', tier: 3, line: 'ariete', lane: 0, parents: [], slot: 'line' }),
+    node({ id: 'c1_ariete_preserie', tier: 5, line: 'ariete', lane: 0, parents: ['carro45t'], slot: 'line' }),
     node({
-      id: 'c1_ariete', tier: 6, line: 'ariete', lane: 0, parents: ['c1_ariete_preserie'], slot: 'line',
+      id: 'c1_ariete', tier: 7, line: 'ariete', lane: 0, parents: ['c1_ariete_preserie'], slot: 'line',
       builds: ['c1_ariete_proto_serie1'],
     }),
-    node({ id: 'c2_ariete', tier: 9, line: 'ariete', lane: 0, parents: ['c1_ariete'], slot: 'line' }),
-    node({ id: 'c2_ariete_proto', tier: 10, line: 'ariete', lane: 0, parents: ['c2_ariete'], slot: 'line' }),
+    node({ id: 'c2_ariete_proto', tier: 9, line: 'ariete', lane: 0, parents: ['c1_ariete'], slot: 'line' }),
+    node({ id: 'c2_ariete', tier: 9, line: 'ariete', lane: 1, parents: ['c2_ariete_proto'], slot: 'line' }),
     // Dardo and Lynx
-    node({ id: 'dardo', tier: 5, line: 'dardo', lane: 1, parents: ['c1_ariete_preserie'], slot: 'line' }),
-    node({ id: 'lrmv_lynx', tier: 9, line: 'dardo', lane: 1, parents: ['dardo'], slot: 'line' }),
+    node({ id: 'dardo', tier: 6, line: 'dardo', lane: 2, parents: ['c1_ariete_preserie'], slot: 'line' }),
+    node({ id: 'lrmv_lynx', tier: 9, line: 'dardo', lane: 2, parents: ['dardo'], slot: 'line' }),
   ]),
 });

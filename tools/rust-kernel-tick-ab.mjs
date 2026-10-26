@@ -9,7 +9,10 @@
 // full-precision digest of every tank, shell and destroyed record is compared every 300 ticks — identical digests
 // prove the kernels change no bit of the simulation.
 //
-//   node tools/rust-kernel-tick-ab.mjs [--map=verdant] [--ticks=3600] [--bots=16]
+// `--base=scans` puts A on the kernels too, less the bots' clearance scans (collision.ts ClearanceScan): the scans' own
+// share of the tick.
+//
+//   node tools/rust-kernel-tick-ab.mjs [--map=verdant] [--ticks=3600] [--bots=16] [--base=ts|scans]
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
@@ -24,6 +27,8 @@ const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}
 const mapId = arg('map', 'verdant');
 const ticks = Number(arg('ticks', 3600));
 const bots = Number(arg('bots', 16));
+const base = arg('base', 'ts');
+if (base !== 'ts' && base !== 'scans') throw new Error(`--base=${base}: ts or scans`);
 
 function digest(match) {
   const hash = createHash('sha256');
@@ -48,7 +53,8 @@ const scripted = (index, tick) => {
 };
 
 const kernels = await compileWorldKernels(readFileSync(new URL(`../${COT_SIM_WASM_PATH}`, import.meta.url)));
-const worldA = createDedicatedWorldCollision(mapId, { retain: true });
+const worldA = createDedicatedWorldCollision(mapId, { retain: true, ...(base === 'scans' ? { kernels } : {}) });
+if (base === 'scans') delete worldA.queryObstacles.clearance;
 const worldB = createDedicatedWorldCollision(mapId, { retain: true, kernels });
 
 const build = (world) => {
@@ -81,8 +87,8 @@ for (let tick = 1; tick <= ticks; tick++) {
 }
 const stats = (list) => { const sorted = [...list].sort((a, b) => a - b); return { mean: list.reduce((a, b) => a + b, 0) / list.length, p50: sorted[sorted.length >> 1], p95: sorted[Math.floor(sorted.length * 0.95)] }; };
 const [sa, sb] = sides.map((s) => stats(s.cpu));
-console.log(`[tick-ab] ${mapId}, ${players.length} tanks, ${ticks} ticks, kernels contact+grids+support, load ${load0.toFixed(1)} -> ${loadavg()[0].toFixed(1)}`);
-console.log(`[tick-ab] A (TypeScript) mean ${sa.mean.toFixed(3)} ms p50 ${sa.p50.toFixed(3)} p95 ${sa.p95.toFixed(3)}; B (WebAssembly kernels) mean ${sb.mean.toFixed(3)} ms p50 ${sb.p50.toFixed(3)} p95 ${sb.p95.toFixed(3)}; B/A ${(sb.mean / sa.mean).toFixed(3)} (${((1 - sb.mean / sa.mean) * 100).toFixed(1)} % less tick CPU)`);
+console.log(`[tick-ab] ${mapId}, ${players.length} tanks, ${ticks} ticks, kernels contact+grids+support+clearance scans, load ${load0.toFixed(1)} -> ${loadavg()[0].toFixed(1)}`);
+console.log(`[tick-ab] A (${base === 'ts' ? 'TypeScript' : 'kernels less the clearance scans'}) mean ${sa.mean.toFixed(3)} ms p50 ${sa.p50.toFixed(3)} p95 ${sa.p95.toFixed(3)}; B (WebAssembly kernels) mean ${sb.mean.toFixed(3)} ms p50 ${sb.p50.toFixed(3)} p95 ${sb.p95.toFixed(3)}; B/A ${(sb.mean / sa.mean).toFixed(3)} (${((1 - sb.mean / sa.mean) * 100).toFixed(1)} % less tick CPU)`);
 console.log(`[tick-ab] digests ${firstDiff === null ? 'identical at every check' : `DIFFER from tick ${firstDiff}`}`);
 process.exitCode = firstDiff === null ? 0 : 1;
 worldA.release?.();

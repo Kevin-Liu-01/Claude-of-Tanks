@@ -267,6 +267,11 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     drawPickupGlyph: (c, x, y) => placed.push(['pickup', x, y]),
     drawPennant: (c, x, y) => placed.push(['pennant', x, y]),
     drawProgressArc() {}, drawCheck() {},
+    // (UI-LOCKDOWN A) a badge's letter is DOM over the plate: the painter hands its placement on
+    badgeLetter: (x, y, r, color, out) => Object.assign(out, { x, y, px: r, color, halo: 1 }),
+    laneLetter: (x, y, r, out) => Object.assign(out, { x, y, px: r, color: '#fff', halo: 1 }),
+    mapLetter: { x: 0, y: 0, px: 0, color: '', halo: 0 },
+    placeMapLetter: (label, letter) => { if (label) placed.push(['letter', label, letter.x, letter.y]); },
   });
   drawObjectives([
     { kind: 'spawn', x: 100, z: -40, side: 'own', status: 'active' },
@@ -274,8 +279,8 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     { kind: 'goal', x: 100, z: -40, side: 'enemy' },
   ], 1.5, 999, 999, false);
   const expected = projectWorldToMinimap(100, -40, worldSize, mapSize);
-  assert.deepEqual(placed, [['spawn', ...expected], ['badge', ...expected], ['goal', ...expected]],
-    'co-located objective glyphs share one exact point instead of being spread apart');
+  assert.deepEqual(placed, [['spawn', ...expected], ['badge', ...expected], ['letter', 'A', ...expected], ['goal', ...expected]],
+    'co-located objective glyphs share one exact point instead of being spread apart (the zone\'s letter placed on it)');
 }
 
 {
@@ -289,15 +294,18 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     get: (target, key) => (key in target ? target[key] : (...args) => { log.push([key, ...args]); }),
     set: (target, key, value) => { target[key] = value; return true; },
   });
+  // (UI-LOCKDOWN A) the plate is a uiCanvas: its store follows the box (578 px here, a 220 px plate at DPR 2.627), and
+  // begin() sets the map's 220-unit transform; the layer is a scratchCanvas at the store's size
   const drawBackground = (layerContext) => {
     const main = [], layer = [], chromeOn = [], made = [];
-    const mmCtx = recorder(main), mmBg = { raster: true }, dpr = 2.625;
-    const draw = new Function('MM', 'mmDpr', 'mmCanvas', 'mmCtx', 'mmBg', 'drawMinimapChrome', 'document',
+    const mmCtx = recorder(main), mmBg = { raster: true };
+    const mmSurface = { canvas: { width: 578, height: 578 }, begins: 0, begin() { this.begins++; return true; } };
+    const draw = new Function('MM', 'mmSurface', 'mmCtx', 'mmBg', 'drawMinimapChrome', 'scratchCanvas',
       `${stripTypeScriptTypes(hudSource.slice(begin, end))}\nreturn drawMinimapBackground;`)(
-      mapSize, dpr, { width: 578, height: 578 }, mmCtx, mmBg,
+      mapSize, mmSurface, mmCtx, mmBg,
       (context) => { chromeOn.push(context === mmCtx ? 'plate' : 'layer'); },
-      { createElement: (tag) => { const canvas = { tag, getContext: () => layerContext?.(layer) ?? null }; made.push(canvas); return canvas; } });
-    return { draw, main, layer, chromeOn, made, mmBg, dpr };
+      (width, height) => { const canvas = { width, height, getContext: () => layerContext?.(layer) ?? null }; made.push(canvas); return canvas; });
+    return { draw, main, layer, chromeOn, made, mmBg, mmSurface, scale: 578 / mapSize };
   };
   let layerContext = null;
   const run = drawBackground((log) => (layerContext ??= recorder(log)));
@@ -307,11 +315,12 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   assert.deepEqual(run.chromeOn, ['layer'], 'the first paint renders the chrome into the layer');
   assert.deepEqual(run.layer.map(([op]) => op), ['setTransform', 'clearRect', 'setTransform'],
     'the layer clears at device scale and draws the chrome in the plate\'s CSS frame');
-  assert.deepEqual(run.layer[2], ['setTransform', run.dpr, 0, 0, run.dpr, 0, 0]);
+  assert.deepEqual(run.layer[2], ['setTransform', run.scale, 0, 0, run.scale, 0, 0]);
   assert.deepEqual(run.main, [
     ['fillRect', 0, 0, mapSize, mapSize], ['drawImage', run.mmBg, 0, 0, mapSize, mapSize],
-    ['setTransform', 1, 0, 0, 1, 0, 0], ['drawImage', run.made[0], 0, 0], ['setTransform', run.dpr, 0, 0, run.dpr, 0, 0],
-  ], 'each paint is the raster, then the chrome layer copied 1:1 at device scale, then the plate\'s transform again');
+    ['setTransform', 1, 0, 0, 1, 0, 0], ['drawImage', run.made[0], 0, 0],
+  ], 'each paint is the raster, then the chrome layer copied 1:1 at device scale');
+  assert.equal(run.mmSurface.begins, 2, 'and the plate\'s transform again (uiCanvas begin(): once to paint, once after the copy)');
   for (let paint = 1; paint < refresh; paint++) run.draw();
   assert.deepEqual(run.chromeOn, ['layer'], `the next ${refresh - 1} paints reuse the layer`);
   assert.equal(run.main.filter(([op, image]) => op === 'drawImage' && image === run.made[0]).length, refresh,
@@ -325,6 +334,12 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   run.draw();
   assert.equal(run.chromeOn.length, 3, 'a restored layer is reused again');
   assert.equal(run.made.length, 1, 'the layer canvas is created once');
+  // a size step, a layout or a DPR flip changes the plate's store: the layer takes its size and re-renders
+  run.mmSurface.canvas.width = run.mmSurface.canvas.height = 330;
+  run.draw();
+  assert.deepEqual([run.made[0].width, run.made[0].height], [330, 330], 'the layer follows the plate\'s store');
+  assert.equal(run.chromeOn.length, 4, 'and re-renders at it');
+  assert.deepEqual(run.layer.at(-1), ['setTransform', 330 / mapSize, 0, 0, 330 / mapSize, 0, 0]);
   // no 2D context for the layer (a canvas memory cap): the chrome draws straight onto the plate every paint
   const direct = drawBackground(null);
   direct.draw(); direct.draw();
