@@ -24,7 +24,7 @@
   box-shadow:var(--ring-1);text-align:center;color:var(--ink-3);font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body)}
 .cot-c-empty[hidden]{display:none}
 .cot-c-empty p{margin:0;max-width:44ch}
-.cot-c-empty svg{width:24px;height:24px;color:var(--ink-4)}
+.cot-c-empty svg{width:24px;height:24px;color:var(--ink-3)}
 /* ---- colour swatches: a colour input as one ringed square, its colour without the browser's inner frame ---- */
 .cot-c-swatch{box-sizing:border-box;width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:none;
   box-shadow:var(--ring-2);cursor:pointer;overflow:hidden}

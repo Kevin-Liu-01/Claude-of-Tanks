@@ -85,6 +85,16 @@ const SITES = [
   ['src/ui/playMenu.ts', '.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}', "Rooms' rule glyphs paint the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
+  ['src/ui/garage.ts', 'data-mode-tone="${id}"', "Deploy's mode tiles and rows carry their mode"],
+  ['src/ui/deploy.css', '.cot-garage .cot-battle-choice .choice-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's tile and row glyphs paint the mode"],
+  ['src/ui/garage.ts', 'setupIcon.dataset.modeTone = battleGameMode;', "Deploy's heading glyph carries its mode"],
+  ['src/ui/deploy.css', '.cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's heading glyph paints the mode"],
+  ['src/ui/serviceRecordView.ts', '<span data-mode-tone="${battle.mode}">', "a Record battle's place line carries its mode"],
+  ['src/ui/serviceRecord.css', '.cot-record-battle-what small [data-mode-tone] svg{color:var(--mode-ink,var(--ink-3))}', "a Record battle's mode glyph paints the mode"],
+  ['src/docs/chapters/modes.ts', '<h3 data-mode-tone="${mode}">', "the Field Manual's mode headings carry their mode"],
+  ['src/docs/chapters/modes.ts', '<a href="#${modeAnchor(mode)}" data-mode-tone="${mode}">', "the Field Manual's modes table rows carry their mode"],
+  ['src/docs/chapters/multiplayer.ts', '<a href="${modes}#${modeAnchor(mode)}" data-mode-tone="${mode}">', "the Field Manual's multiplayer mode chips carry their mode"],
+  ['src/docs/chapters.css', '[data-mode-tone] .cot-i.dm-mode-glyph{color:var(--mode-ink,var(--ink-3))}', "the Field Manual's mode glyphs paint the mode"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
 const garage = read('src/ui/garage.css');

@@ -22,6 +22,8 @@
   min-height:min(136px,22vh);padding:var(--s5) var(--s5) var(--s4) var(--s6);border-bottom-color:var(--line-2);
   background:linear-gradient(90deg,var(--surface-scene) 16%,color-mix(in srgb,var(--surface-scene) 58%,transparent) 58%,color-mix(in srgb,var(--surface-scene) 24%,transparent)),
     var(--record-map,none) center 42%/cover no-repeat var(--surface-raised)}
+/* a record with no battle has no map behind its header: the plate alone, no scrim over nothing */
+.cot-modal-root.cot-service-record.no-map .cot-modal__header{background:var(--surface-raised)}
 .cot-modal-root.cot-service-record .cot-modal__header>div:first-child{grid-area:title}
 .cot-record-plate-host,.cot-record-plate{display:contents}
 .cot-record-plate .cot-record-vehicle{grid-area:tank;align-self:center;width:208px;height:120px}
@@ -66,12 +68,15 @@
 .cot-record-outcomes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s3)}
 .cot-record-outcome.win-rate{grid-column:span 3}
 .cot-record-outcome{min-width:0;overflow-wrap:anywhere}
-.cot-record-outcome{display:flex;flex-direction:column;justify-content:space-between;padding:var(--s4);background:var(--surface-raised);box-shadow:var(--ring-1)}
-.cot-record-outcome:not(.win-rate){padding-bottom:calc(var(--s4) + var(--s3) + 6px)}
-.cot-record-outcome strong{display:block;margin-top:var(--s2);font:600 var(--fs-28)/1 var(--font-display);color:var(--ink-1)}
+/* the outcome plates share their rows (label, figure, bar): every figure sits on the win rate's baseline */
+.cot-record-outcomes{grid-auto-rows:auto}
+.cot-record-outcome{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:var(--s2);align-content:start;padding:var(--s4);background:var(--surface-raised);box-shadow:var(--ring-1)}
+.cot-record-outcome strong{display:block;align-self:last baseline;margin:0;font:600 var(--fs-28)/1 var(--font-display);color:var(--ink-1)}
 .cot-record-outcome.win strong{color:var(--text-ok)}
 .cot-record-outcome.loss strong{color:var(--text-danger)}
 .cot-record-outcome.win-rate strong{font-size:var(--fs-52)}
+/* a missing figure is an en dash at the outcome figures' size, in the quiet ink */
+.cot-record-outcome strong.is-null{font-size:var(--fs-28);color:var(--ink-3)}
 .cot-record-split{display:flex;gap:2px;height:6px;margin-top:var(--s3);background:var(--line-1)}
 .cot-record-split i{min-width:4px}
 .cot-record-split .win{background:var(--ok)}
@@ -101,7 +106,7 @@
 .cot-record-reason-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-1)}
 .cot-record-reason-stats>div{min-width:0}
 .cot-record-reason-stats b{display:block;margin-top:6px;font:600 max(var(--fs-floor-12),var(--fs-15))/1.2 var(--font-display);color:var(--ink-1)}
-.cot-record-campaign{margin-top:var(--s4)}
+.cot-record-campaign{margin-top:var(--s3)}
 .cot-record-campaign-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
 .cot-record-campaign-grid>div{min-width:0}
 .cot-record-campaign-grid b{display:block;margin-top:6px;font:600 var(--fs-18)/1.2 var(--font-display);color:var(--ink-1)}
@@ -120,8 +125,8 @@
 .cot-record-medal-art svg{max-width:100%;height:auto}
 .cot-record-medal-inspect{display:grid;place-items:center;width:100%;min-width:0;padding:0;border:0;background:none;color:inherit;cursor:help}
 .cot-record-medal-inspect::after{content:'';position:absolute;inset:0}
-.cot-record-medal-copy{width:100%;min-width:0;overflow-wrap:anywhere}
-.cot-record-medal-copy strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.35;color:var(--ink-1)}
+.cot-record-medal-copy{width:100%;min-width:0;overflow-wrap:break-word}
+.cot-record-medal-copy strong{display:block;min-height:2.7em;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.35;color:var(--ink-1);text-wrap:balance}
 .cot-record-medal-count{display:block;margin-top:6px;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-2)}
 .cot-record-medal-count small{display:block;margin-top:2px;font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-3)}
 
@@ -131,7 +136,8 @@
   background:var(--surface-raised);box-shadow:var(--ring-1)}
 .cot-record-ach-art{display:grid;place-items:center;padding:0;border:0;background:none;cursor:help}
 .cot-record-ach-copy{min-width:0;overflow-wrap:anywhere}
-.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
+/* a title row holds a NEW tag's height whether or not it carries one, so a row of cards shares its lines */
+.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2);min-height:20px;margin-bottom:var(--s3)}
 .cot-record-ach-title strong{font-size:max(var(--fs-floor-12),var(--fs-15));color:var(--ink-1)}
 .cot-record-tier{font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);color:var(--ink-2)}
 .cot-record-bar{height:4px;background:var(--line-3)}
@@ -145,7 +151,7 @@
 .cot-record-battle summary{position:relative;padding:var(--s3) var(--s7) var(--s3) var(--s4);list-style:none;cursor:pointer}
 .cot-record-battle summary::-webkit-details-marker{display:none}
 .cot-record-battle summary:hover{background:var(--fill-faint)}
-.cot-record-battle-row{display:grid;grid-template-columns:96px minmax(0,1fr) 104px 104px auto;align-items:center;gap:var(--s4)}
+.cot-record-battle-row{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(104px,auto) minmax(104px,auto) auto;align-items:center;gap:var(--s4)}
 /* a render's hull sits low in its frame: the art rides to its box's top, so the tank centres on the row's text */
 /* the render is square: its box is as wide as the art draws, so no dead band opens before the row's text */
 .cot-record-vehicle{display:block;width:96px;height:88px;object-fit:contain;object-position:50% 0;filter:var(--sil-shadow)}
@@ -157,6 +163,7 @@
 /* the place (with its glyph) and the mode each keep their words; the line breaks between them */
 .cot-record-battle-what small>span{display:inline-block}
 .cot-record-battle-what small svg{display:inline-block;margin-right:5px;vertical-align:-1px}
+.cot-record-battle-what small [data-mode-tone] svg{color:var(--mode-ink,var(--ink-3))}
 .cot-record-battle-what time{font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-3)}
 .cot-record-battle-num{display:flex;flex-direction:column-reverse;gap:2px}
 .cot-record-battle-num b{display:block;font:600 var(--fs-20)/1.1 var(--font-display);color:var(--ink-1)}
@@ -167,6 +174,8 @@
 .cot-record-battle-medals small{margin-left:2px;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-2)}
 .cot-record-expand{position:absolute;top:50%;right:var(--s3);display:flex;color:var(--ink-3);translate:0 -50%}
 .cot-record-battle[open] .cot-record-expand{rotate:180deg}
+/* an open battle shows its medals once, in its body (surface registry S6); the row keeps their room so nothing moves */
+.cot-record-battle[open] .cot-record-battle-medals{visibility:hidden}
 .cot-record-battle-body{padding:var(--s4) var(--s5);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .cot-record-battle-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s4)}
 .cot-record-battle-awards{display:flex;flex-wrap:wrap;gap:var(--s1);margin-bottom:var(--s4)}
@@ -175,7 +184,7 @@
 .cot-record-trace-head{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3)}
 .cot-record-trace-head strong{font:600 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1)}
 /* one column grid for every step (subgrid), so the times, vehicles and outcomes share their edges */
-.cot-record-trace{display:grid;grid-template-columns:64px 44px minmax(80px,1fr) auto auto;margin:0;padding:var(--s3) 0 0 18px;list-style:none}
+.cot-record-trace{display:grid;grid-template-columns:64px auto minmax(80px,1fr) auto auto;margin:0;padding:var(--s3) 0 0 18px;list-style:none}
 .cot-record-trace li{position:relative;display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;gap:var(--s3);padding:var(--s2) 0;
   font-size:max(var(--fs-floor-12),var(--fs-12));border-bottom:1px solid var(--line-1)}
 .cot-record-trace li::before{content:'';position:absolute;z-index:var(--z-lift);top:50%;left:-18px;width:7px;height:7px;margin-top:-3px;background:var(--ink-3);rotate:45deg}
@@ -194,11 +203,12 @@
   .cot-record-outcome.win-rate{grid-column:1/-1}
   .cot-record-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
-  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) 104px 104px}
+  .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) minmax(104px,auto) minmax(104px,auto)}
   .cot-record-vehicle{width:96px;height:64px}
-  .cot-record-outcome:not(.win-rate){padding-bottom:var(--s4)}
   .cot-record-expand{top:var(--s3);translate:0}
   .cot-record-battle-medals{grid-column:2/-1}
+  /* here the row's medals take a line of their own: an open battle drops it (its body shows them) */
+  .cot-record-battle[open] .cot-record-battle-medals{display:none}
 }
 @media(max-width:700px){
   .cot-modal-root.cot-service-record .cot-modal__header{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'title close' 'line tank';min-height:0;padding:var(--s4)}
@@ -234,7 +244,7 @@
   .cot-record-battle-medals{grid-row:2;grid-column:4;justify-content:end}
   .cot-record-battle-body{padding:var(--s3)}
   .cot-record-battle-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .cot-record-trace{grid-template-columns:52px 36px minmax(0,1fr)}
+  .cot-record-trace{grid-template-columns:52px auto minmax(0,1fr)}
   .cot-record-trace li{gap:var(--s2)}
   .cot-record-trace small,.cot-record-step-gap{grid-column:3}
   .cot-record-trace small{padding-left:calc(32px + var(--s2))}

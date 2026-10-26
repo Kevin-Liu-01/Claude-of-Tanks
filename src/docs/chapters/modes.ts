@@ -176,16 +176,16 @@ function modeCard(mode: GameModeId): string {
   ];
   return `<article class="dm-mode" id="${modeAnchor(mode)}"><div class="dm-mode__media${diagram ? ' has-map' : ''}">`
     + `<div class="dm-mode__still">${modeStill(mode)}</div>${diagram}</div>`
-    + `<div class="dm-mode__body"><h3>${icon(definition.icon as IconId, { size: 20 })}<span>${esc(modeName(mode))}</span></h3>`
+    + `<div class="dm-mode__body"><h3 data-mode-tone="${mode}">${icon(definition.icon as IconId, { size: 20, className: 'dm-mode-glyph' })}<span>${esc(modeName(mode))}</span></h3>`
     + `<p>${esc(modeDescription(mode))}</p>`
-    + `<dl class="dm-mode__facts">${facts.map(([glyph, label, value]) => `<div>${icon(glyph, { size: 16 })}<dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`
+    + `<dl class="dm-mode__facts">${facts.map(([glyph, label, value]) => `<div>${icon(glyph, { size: 18 })}<dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`
     + `${chips.length ? `<ul class="dm-chips">${chips.map((chip) => `<li>${esc(chip)}</li>`).join('')}</ul>` : ''}</div></article>`;
 }
 
 function glanceTable(): string {
   const rows = GROUPS.flatMap((group) => group.modes).map((mode) => {
     const rules = matchRulesetFor(mode);
-    return `<tr><th scope="row"><a href="#${modeAnchor(mode)}">${icon(GAME_MODE_DEFINITIONS[mode].icon as IconId, { size: 16 })}`
+    return `<tr><th scope="row"><a href="#${modeAnchor(mode)}" data-mode-tone="${mode}">${icon(GAME_MODE_DEFINITIONS[mode].icon as IconId, { size: 18, className: 'dm-mode-glyph' })}`
       + `<span>${esc(modeName(mode))}</span></a></th><td>${esc(winBy(mode, rules))}</td><td>${esc(clockText(rules))}</td>`
       + `<td>${esc(respawnText(rules))}</td><td>${esc(sidesText(rules))}</td></tr>`;
   }).join('');

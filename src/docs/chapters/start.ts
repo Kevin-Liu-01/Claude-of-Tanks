@@ -7,7 +7,6 @@ import { DEFAULT_BINDINGS, labelForCode, type ActionId } from '../../game/input.
 import { CONSUMABLE_RULES } from '../../game/consumables.ts';
 import { WATCH_RIDE } from '../../engine/watchCamera.ts';
 import { matchRulesetFor, SIDES_PRESETS } from '../../sim/matchRuleset.ts';
-import { RANDOM_BATTLE_MAP_IDS } from '../../world/maps/mapIds.ts';
 import { PRODUCT_STATS } from '../../productStats.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import { hrefForLocale } from '../../ui/localeRouting.ts';
@@ -51,7 +50,8 @@ export function startSections(): RichSection[] {
     ['garage', shot('start-garage', t('docs.start.garage.alt')),
       line('docs.start.garage.body', { tanks: String(PRODUCT_STATS.battlePlayableVehicles) })],
     ['deploy', shot('start-deploy', t('docs.start.deploy.alt')),
-      line('docs.start.deploy.body', { modes: String(PRODUCT_STATS.battleModes), maps: String(RANDOM_BATTLE_MAP_IDS.length),
+      // the battlefields counted as the manual's index counts them ({{COT_BATTLEFIELDS}}: the whole map list)
+      line('docs.start.deploy.body', { modes: String(PRODUCT_STATS.battleModes), maps: String(PRODUCT_STATS.battlefields),
         small: sides('7v7'), large: sides('14v14') })],
     ['drive', shot('start-hud', t('docs.start.drive.alt')),
       line('docs.start.drive.body', { zooms: WATCH_RIDE.zooms.map((zoom) => `×${zoom}`).join(' / ') },

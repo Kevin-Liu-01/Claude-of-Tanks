@@ -50,7 +50,8 @@
 .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
   border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);letter-spacing:normal;
   text-transform:none;color:var(--ink-2)}
-.cot-c-kbd svg{width:12px;height:12px}
+.cot-c-kbd svg{width:12px;height:12px;margin-inline:-1px}
+/* a glyph cap is as wide as a letter cap (22 px): the glyph gives back the 2 px it has over a capital */
 .cot-c-btn--primary .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring)}
 body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
 @media (hover:none),(pointer:coarse){.cot-c-kbd{display:none}}
