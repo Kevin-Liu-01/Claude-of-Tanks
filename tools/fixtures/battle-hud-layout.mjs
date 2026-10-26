@@ -13,7 +13,7 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
-import { Vector3, WebGLRenderer } from 'three';
+import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { sightFurniture, sightNotice } from '../../src/ui/sightFurniture.ts';
@@ -71,6 +71,11 @@ const tanks = Array.from({length:TANK_COUNT},(_,i)=>{
     spec, state:createTankState(spec,i===0?new Vector3(0,0,50):spread(i,ally),0), combat:createCombatState(spec)};
 });
 const player = tanks[0];
+// ?state=markers: the in-world markers over the tanks in view (the hull bars over allies and enemies, the target plate
+// over the enemy under the gun), a camera at the player's roof looking down the field where the other states have none
+const homes = tanks.map((tank) => tank.state.pos.clone());
+const MARKER_SEATS = [[8, 0, 150], [9, -38, 200], [10, 44, 240], [2, -26, 80], [3, 30, 104]];
+const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
 hud.setDamagePanel(panel);
 panel.setTank(player.spec);
 panel.setState(player.combat);
@@ -192,6 +197,7 @@ function multiplayer(kind='healthy', role='host') {
 function state(name) {
   network?.dispose();network=null;
   delete frame.rosterTanks; frame.tanks=tanks; frame.aim=defaultAim(); frame.mode='battle';
+  delete frame.camera; tanks.forEach((tank, i) => { tank.state.pos.copy(homes[i]); tank.combat.hp = tank.combat.maxHp; });
   // (a networked state's link round trip from its first frame: the corner chip reads it at most once a second)
   frame.pingMs=name==='mp-host'||name==='mp-client'?42:0;
   frame.aim.gunLimitSpec = name==='notifications';
@@ -259,6 +265,16 @@ function state(name) {
     // (the gunship flown from its gimbal, its airframe hidden: the lens's sight and solution show, gauntlet r4)
     player.visual=name==='gunship'?{root:{visible:false}}:undefined;
     for(let i=0;i<5;i++)hud.update(frame);
+  }
+  if(name==='markers'){
+    for(const [i,x,z] of MARKER_SEATS)tanks[i].state.pos.set(x,0,z);
+    markerCamera.aspect=innerWidth/innerHeight;markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
+    markerCamera.updateProjectionMatrix();markerCamera.updateMatrixWorld();
+    const target=tanks[8].state.pos, at=new Vector3(target.x,1.6,target.z);
+    frame.camera=markerCamera;
+    frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
+    tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
+    for(let i=0;i<4;i++)hud.update(frame);
   }
   if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
