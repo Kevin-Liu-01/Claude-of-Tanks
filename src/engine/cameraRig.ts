@@ -1655,8 +1655,12 @@ function measureLocalPoints(root: THREE.Object3D, drawnOnly: boolean): number {
   const visit = (o: THREE.Object3D): void => {
     if (!(o instanceof THREE.Mesh) || !o.geometry) return;
     if (drawnOnly) {
+      // a shadow proxy draws no colour: its one box wraps the whole tank, gun and all (the articulated shadow batch put
+      // the silhouette's foot about 125 px under the tracks at 1920 and framed every hero smaller than it is)
+      if (o.userData.authoredShadowProxy === true) return;
       const material = o.material as THREE.Material | THREE.Material[] | undefined;
-      if (Array.isArray(material) ? !material.some((m) => m.visible !== false) : material?.visible === false) return;
+      const draws = (m: THREE.Material): boolean => m.visible !== false && m.colorWrite !== false;
+      if (Array.isArray(material) ? !material.some(draws) : material ? !draws(material) : false) return;
     }
     const parts = o instanceof THREE.InstancedMesh ? [] : staticMergePartsOf(o);
     for (const part of parts) addBox(part.geometry, staticMergePartMatrixWorld(o, part, _sbPartWorld));
@@ -1711,6 +1715,9 @@ interface ShowroomOrbitDeps {
   keepRing?(): { x: number; y: number; z: number; r: number; h: number } | null;
   /** The whole free stage (CSS px) the turntable keeps inside, left to right; the screen when absent. */
   getKeepRect?(): ShowroomStageRect | null;
+  /** The silhouette's foot rests on the stage rect's foot rather than its middle on the rect's middle: the Garage's tracks
+   *  on the name line, for every hero and size (owner 10-26: "more lower again!!! more!"). */
+  anchorFoot?(): boolean;
   floorY?(): number;
 }
 
@@ -2115,6 +2122,7 @@ export function createShowroomOrbit(
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
     let d = fixedDist || Math.max(dFloor, nearDist * 2.2);
     let sx = 0, sy = 0;
+    const foot = deps.anchorFoot ? deps.anchorFoot() : false;
     for (let it = 0; it < SHOW_SOLVE_ITERS; it++) {
       readProjectionBounds(d, sx, sy, tanH, tanV);
       if (!fixedDist) {
@@ -2146,8 +2154,9 @@ export function createShowroomOrbit(
       // area. Camera ANGLES are untouched — this only slides the eye/look-at
       // pair along the camera's right axis, exactly like the old offset.
       sx = fitHorizontalWindow(d, tanH);
-      // vertical framing keeps the original extremes-midpoint behavior
-      sy += ((projectionBounds.ny0 + projectionBounds.ny1) * 0.5 - w.cy) * d * tanV;
+      // vertically, the extremes' midpoint on the rect's centre; foot-anchored, the silhouette's lowest point on the rect's
+      // foot (it fills at most `fill` of the rect, so its top stays inside it)
+      sy += (foot ? projectionBounds.ny0 - (w.cy - w.hy) : (projectionBounds.ny0 + projectionBounds.ny1) * 0.5 - w.cy) * d * tanV;
     }
     return { dist: d, sx, sy };
   }

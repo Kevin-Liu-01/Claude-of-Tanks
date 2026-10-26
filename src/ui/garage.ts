@@ -3045,17 +3045,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // and the dock under the tank (its name, identity row, band and fleet), measured from the live layout and cached: a
   // ResizeObserver and the layout events re-measure it (no layout read per frame), and a change wakes the still Garage so
   // the camera eases onto it. The camera frames the canonical box (main.ts GARAGE_FRAME_BOX, the M1A2 reference) in the
-  // hero rect: at 63 % of the free stage's height, so the tracks stand just over the name and the turntable reads as ground
-  // (owner 10-26 via Main: "should be moved down a little", then "still too high up"; it sat at 53 %, then 60 %), at
-  // about 62 % of its width, or as tall as the stage allows; across it, a third of the way from the free stage's centre
+  // hero rect, its foot on the stage's foot: the camera rests the hero's tracks on that line (cameraRig anchorFoot), just over
+  // the name, for every hero and size, the turntable running behind the name and the dock (owner 10-26 via Main: "should
+  // be moved down a little", "still too high up", "move it down even more", "more lower again!!! more!"; it sat at 53 %,
+  // 60 %, 63 %, 67 % of the stage), at about 70 % of its width ("zoom in a lil more"; 62 % before), or as tall as the stage
+  // allows; across it, a third of the way from the free stage's centre
   // toward the window's (owner 10-26: "a lil too left": the readout's column pulled the free stage's centre left), never
   // so far that the hull reaches the column.
   interface StageRect { x: number; y: number; w: number; h: number }
-  const HERO_SPAN_OF_FREE = 0.62;   // the hero's share of the free width (Main 10-25: 60-65 %)
+  const HERO_SPAN_OF_FREE = 0.70;   // the hero's share of the free width (Main 10-25: 60-65 %; owner 10-26: "zoom in a lil more")
   const SOLVER_FILL = 0.86;         // engine/cameraRig.ts SHOW_HERO_FILL: the share of the rect the camera fills
-  const HERO_LOW = 0.13;            // the hero's centre sits this share of the stage height below the stage's middle
   const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
   const HERO_TOWARD_WINDOW = 1 / 3; // the share of the way the hero's centre moves from the free stage's centre to the window's
+  const HERO_FOOT_GAP = 4;          // px between the hero's lowest part and the name block's top edge
   let stageFree: StageRect | null = null;
   let stageHero: StageRect | null = null;
   // the callouts' room: the free stage a step clear of the bar and ending above the name, so no plate reads as part of
@@ -3106,13 +3108,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reach = (r: StageRect): number => Math.min(HERO_SPAN_OF_FREE * r.w, SOLVER_FILL * r.h / BOX_ASPECT);
     const free = above && reach(above) >= reach(beside) ? above : beside;
     const w = free.w * HERO_SPAN_OF_FREE / SOLVER_FILL;
-    // a short stage fits the box by its height: its foot never sinks past the stage's (the name never covers the hull)
-    const boxH = Math.min(SOLVER_FILL * w * BOX_ASPECT, SOLVER_FILL * free.h);
-    const cy = Math.min(free.y + free.h * (0.5 + HERO_LOW), free.y + free.h - boxH / 2);
     const freeCx = free.x + free.w / 2, windowCx = rr.left + rr.width / 2;
     // the rect stays inside the free stage, so the hull never passes under the readout or the left column
     const cx = Math.min(free.x + free.w - w / 2, Math.max(free.x + w / 2, freeCx + (windowCx - freeCx) * HERO_TOWARD_WINDOW));
-    stageHero = { x: cx - w / 2, y: cy - free.h / 2, w, h: free.h };
+    // the rect's foot is the name's top edge less HERO_FOOT_GAP (or the stage's foot beside the name): the camera stands the
+    // hero's lowest part on it and fits the hero under the bar; the tracks' own boxes overhang them by about 20 px at 1920,
+    // so the tracks rest a short step over the name block (Main 10-26: "about an 8-12 px gap")
+    const foot = free === above && head ? head.top - HERO_FOOT_GAP : free.y + free.h;
+    stageHero = { x: cx - w / 2, y: free.y, w, h: Math.max(1, foot - free.y) };
   }
   let stageQueued = false;
   const queueStageMeasure = (): void => {

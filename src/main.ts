@@ -1702,6 +1702,8 @@ const showroom = createGarageShowroomRuntime({
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
   getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
+  // the tracks rest on the name line; photo mode's whole-screen stage centres the hero
+  anchorFoot: () => !document.body.classList.contains('cot-photo-on'),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();
