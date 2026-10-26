@@ -33,6 +33,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { containModalTab } from './modal.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
@@ -1595,8 +1596,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         const button=el('button','',tabs);button.type='button';button.dataset.reportView=id;button.id=`es-tab-${id}`;button.setAttribute('role','tab');button.setAttribute('aria-controls',`es-panel-${id}`);
         button.innerHTML=`${uiIconSVG(icon,18)}<span>${t(key)}</span>`;
         button.onclick=()=>selectView(id);
-        button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'personal':event.key==='End'?'teams':id==='personal'?'teams':'personal';selectView(next);tabs.querySelector<HTMLButtonElement>(`[data-report-view="${next}"]`)?.focus();}};
       }
+      // (the kit's roving keys, arrows and Home / End pressing the next tab: hand-rolled keys here, INTERACTION-REDESIGN C)
+      wireRovingKeys(tabs);
       function selectView(id:string) {
         awardTooltip.hide();
         for(const panel of host.querySelectorAll<HTMLElement>('.es-debrief')){const name=panel.classList.contains('personal')?'personal':'teams';panel.hidden=name!==id;panel.id=`es-panel-${name}`;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',`es-tab-${name}`);}
