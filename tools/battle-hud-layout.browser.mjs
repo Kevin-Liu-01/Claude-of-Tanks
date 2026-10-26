@@ -349,9 +349,11 @@ function measure(state){
       if(r.width<1||r.height<1)continue;
       // (the settings tabs and header by their own room: on a short window the header and its close button sit in the
       // end padding the strip keeps for them, responsiveSurfaces.css, the header's own padding over the strip's)
-      const style=getComputedStyle(el);
-      const end=el.classList.contains('cot-set-tabs')?parseFloat(style.paddingInlineEnd)||0:0;
-      const start=el.classList.contains('cot-set-hdr')?parseFloat(style.paddingInlineStart)||0:0;
+      // (their style alone is read: the success path reads no other, battleHudLayout.selftest.mjs)
+      const tabs=!!el.classList?.contains('cot-set-tabs'),hdr=!!el.classList?.contains('cot-set-hdr');
+      const style=tabs||hdr?getComputedStyle(el):null;
+      const end=tabs?parseFloat(style.paddingInlineEnd)||0:0;
+      const start=hdr?parseFloat(style.paddingInlineStart)||0:0;
       rects.push({name:el.className,x:r.x+start,y:r.y,right:r.right-end,bottom:r.bottom});
     }
     return rects;
