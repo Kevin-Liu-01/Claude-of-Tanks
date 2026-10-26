@@ -1290,10 +1290,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const other = theirs?.[key];
       const gap = other == null ? null : Number((value - other).toFixed(digits));
       // an even figure carries no gap: only a difference is news
-      const delta = gap == null || gap === 0 ? '' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
+      // comparing, every figure keeps its gap's cell (empty when even), so the figures share one right edge
+      const delta = gap == null ? '' : gap === 0 ? '<em class="num"></em>' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
         `${gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
       return `<div class="cot-hrow" data-stat="${key}">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
-        `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}${delta}</span>` +
+        `<span class="v${theirs ? ' cmp' : ''}"><b class="num">${value.toFixed(digits)}</b>${unit || theirs ? `<small>${unit}</small>` : ''}${delta}</span>` +
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
     const peers = rival ? rivalPeers(spec) : [];
@@ -1554,7 +1555,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       syncSidebarPanelHeight();
       queueCountryRailAffordances();
       if (next && previous !== next && openGaragePanel() === next) {
-        root.querySelector<HTMLElement>(next === 'equipment' ? '.cot-dossier-close' : '.cot-drawer-close')?.focus({ preventScroll: true });
+        // every paint opens on the worn swatch (the picker's arrows start there); the other panels on their close
+        if (next === 'appearance' && camoPicker) camoPicker.focus();
+        else root.querySelector<HTMLElement>(next === 'equipment' ? '.cot-dossier-close' : '.cot-drawer-close')?.focus({ preventScroll: true });
       }
     });
   };

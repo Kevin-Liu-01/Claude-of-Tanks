@@ -192,9 +192,12 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 /* the unit and the gap set at 12 px: the monospace's small x-height read below the floor at 11 (the gauntlet 10-25) */
 .cot-garage .cot-hrow .v small{font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-mono);color:var(--ink-3);}
 /* comparing, the figures share one right edge: the unit and the gap each keep a fixed column */
-.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v{display:grid;grid-template-columns:auto 4ch 5ch;justify-content:end;align-items:baseline;}
-.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v b{justify-self:end;}
-.cot-garage .cot-overview-section:has(.cot-rival) .cot-hrow .v em{justify-self:start;}
+/* comparing: the figure, its unit and its gap in three columns, so every figure ends on one edge (the r17 critic: the
+   column zig-zagged by each gap's width; the old :has(.cot-rival) switch missed the picker, which stands outside the
+   section) */
+.cot-garage .cot-hrow .v.cmp{display:grid;grid-template-columns:auto 4ch 5ch;justify-content:end;align-items:baseline;}
+.cot-garage .cot-hrow .v.cmp b{justify-self:end;}
+.cot-garage .cot-hrow .v.cmp em{justify-self:start;}
 .cot-garage .cot-hrow .v em{margin-left:var(--s1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-mono);font-style:normal;color:var(--ink-3);}
 .cot-garage .cot-hrow .v em.up{color:var(--text-ok);}
 .cot-garage .cot-hrow .v em.dn{color:var(--text-danger);}

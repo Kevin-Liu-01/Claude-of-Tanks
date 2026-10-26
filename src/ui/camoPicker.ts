@@ -147,7 +147,9 @@ export function createGarageCamoPicker(options: GarageCamoPickerOptions): Garage
       filters: camoPickerFilters(options.words),
       randomId: 'auto',
       memory: `camo.${specId}`,
-      onPreview: (item) => options.onPreview(item && item.id !== CUSTOM_CAMO_ID ? item.id : null),
+      // the worn paint is the hull's own full bake: a preview of it is the restore (focusing the worn swatch on open
+      // would otherwise swap in a low tile of the same paint)
+      onPreview: (item) => options.onPreview(item && item.id !== CUSTOM_CAMO_ID && item.id !== worn ? item.id : null),
       onChoose: (item) => {
         // "Make your own" opens the studio and wears nothing: the worn paint stays the chosen swatch until the studio
         // applies its own
