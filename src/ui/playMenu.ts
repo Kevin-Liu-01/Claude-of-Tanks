@@ -1102,6 +1102,17 @@ export function createPlayMenu({
     const pick = region.getBoundingClientRect();
     const both = pick.bottom - origin - card <= panel.clientHeight - sticky - 12;
     panel.scrollTop = Math.max(0, both ? card : pick.top - origin);
+    // the stuck foot and the fade it lays over what scrolls under it (measured where it now stands): the picker rises
+    // clear of them, never past its own top (Rooms r33: the chosen card's name and facts sat in the fade)
+    const foot = panel.querySelector<HTMLElement>('.lobby.show .controls');
+    if (!foot || getComputedStyle(foot).position !== 'sticky') return;
+    const options = foot.querySelector<HTMLElement>('.control-options');
+    const fade = options ? parseFloat(getComputedStyle(options, '::before').height) || 0 : 0;
+    const cover = Math.min(foot.getBoundingClientRect().top, (options?.getBoundingClientRect().top ?? Infinity) - fade);
+    const placed = region.getBoundingClientRect();
+    const under = placed.bottom + 12 - cover;
+    const room = placed.top - (panel.getBoundingClientRect().top + sticky + 12);
+    if (under > 0 && room > 0) panel.scrollTop += Math.min(under, room);
   }
   battlefieldPick.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
