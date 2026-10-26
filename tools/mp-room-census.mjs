@@ -33,6 +33,9 @@ const useLock = argv.includes('--lock');
 const budgetMin = Number(option('budget-min', '20'));
 // --map=<id>: the room's battlefield (the lobby's map control, set by the host); without it the room keeps its default
 const mapId = option('map', '');
+// --solo: before the room, a solo battle on the same battlefield (the page's own kernels, its own CSP reports)
+const solo = argv.includes('--solo');
+const CSP_TEXT = /Content Security Policy|Content-Security-Policy|\[Report Only\]|Refused to (compile|evaluate|load|execute)/i;
 const root = new URL('..', import.meta.url).pathname;
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 // the deployment's own headers on a plain-http host
@@ -55,7 +58,21 @@ function portFree(port) {
 
 /** Each page's console since the last stage: errors (with page errors and failed requests) and warnings. */
 function observe(page, name, log) {
+  // (Main 2026-10-25) a CSP report is counted on its own, from the page console, the page's securitypolicyviolation
+  // events and each worker's Log domain (a report-only refusal in the match host's Worker never reaches the page)
+  page.evaluateOnNewDocument(() => {
+    window.__cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.disposition} ${e.effectiveDirective} ${e.blockedURI}`));
+  }).catch(() => {});
+  page.on('workercreated', async (worker) => {
+    try {
+      const session = worker.client;
+      session.on('Log.entryAdded', ({ entry }) => { if (CSP_TEXT.test(entry.text)) log.csp.push(`${name} worker ${worker.url().split('/').pop()}: ${entry.text.slice(0, 200)}`); });
+      await session.send('Log.enable');
+    } catch { /* a worker that ended at once */ }
+  });
   page.on('console', async (m) => {
+    if (CSP_TEXT.test(m.text())) log.csp.push(`${name}: ${m.text().slice(0, 200)}`);
     if (IGNORED.test(m.text())) return;
     // an Error logged with the message travels as an argument: its stack names where the entry failed
     if (m.type() === 'error') {
@@ -73,13 +90,20 @@ function observe(page, name, log) {
 }
 
 const samples = [];
-const log = { errors: [], warnings: [] };
-const stage = (name, startedAt) => {
+const log = { errors: [], warnings: [], csp: [] };
+let pagesForStage = [];
+const stage = async (name, startedAt) => {
+  // each page's own violation events since the last stage, and the world kernels as the page reports them
+  const pageState = await Promise.all(pagesForStage.map((page) => page.evaluate(() => ({ csp: (window.__cspViolations ?? []).splice(0),
+    kernels: globalThis.__SIM_KERNELS ? { mode: globalThis.__SIM_KERNELS.mode, worlds: globalThis.__SIM_KERNELS.worlds } : null })).catch(() => null)));
+  const csp = [...log.csp.splice(0), ...pageState.flatMap((p, i) => (p?.csp ?? []).map((v) => `${'AB'[i]} event: ${v}`))];
   samples.push({ kind: `lobby-${name}`, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length,
-    consoleWarningTexts: log.warnings.splice(0) }, wallMs: Math.round(performance.now() - startedAt) });
+    consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null) },
+    wallMs: Math.round(performance.now() - startedAt) });
   const last = samples.at(-1).census;
-  console.log(`lobby-${name.padEnd(8)} ${String(last.consoleErrors.length).padStart(2)} errors ${String(last.consoleWarnings).padStart(2)} warnings`
-    + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}`);
+  console.log(`lobby-${name.padEnd(8)} ${String(last.consoleErrors.length).padStart(2)} errors ${String(last.consoleWarnings).padStart(2)} warnings `
+    + `${String(csp.length).padStart(2)} csp  kernels ${JSON.stringify(last.kernels)}`
+    + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}${csp.length ? `\n    ${csp.slice(0, 6).join('\n    ')}` : ''}`);
 };
 
 const lock = useLock ? createCaptureLock() : null;
@@ -106,6 +130,7 @@ try {
   for (const page of [pageA, pageB]) await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
   observe(pageA, 'A', log);
   observe(pageB, 'B', log);
+  pagesForStage = [pageA, pageB];
   const garage = () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage';
   const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
     && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
@@ -113,7 +138,19 @@ try {
   let at = performance.now();
   await pageA.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await pageA.waitForFunction(garage, { timeout: 240_000, polling: 100 });
-  stage('boot', at);
+  await stage('boot', at);
+
+  if (solo) {
+    at = performance.now();
+    const specId = await pageA.evaluate(() => window.__DEBUG?.selectedSpecId ?? window.__DEBUG?.game?.player?.specId ?? null);
+    await pageA.evaluate((spec, map) => { void window.__DEBUG.startBattle(spec ?? 'm1a2_sepv3', map || null); }, specId, mapId);
+    await pageA.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && getComputedStyle(document.querySelector('.cot-bl')).display === 'none',
+      { timeout: 240_000, polling: 100 });
+    await new Promise((r) => setTimeout(r, 5000));
+    await stage('solo', at);
+    await pageA.evaluate(() => window.__DEBUG.leaveBattleToGarage());
+    await pageA.waitForFunction(garage, { timeout: 120_000, polling: 100 });
+  }
 
   at = performance.now();
   // the rooms open from Deploy's room tabs on every layout (the Garage's own entry button hides where the panels persist)
@@ -138,7 +175,7 @@ try {
   await pageA.click('.cot-play [data-action="create"]');
   await pageA.waitForFunction(() => document.querySelector('.cot-play .lobby')?.classList.contains('show') && /[?&]room=[A-Z0-9]{6}/.test(location.search), { timeout: 30_000, polling: 100 });
   const invite = new URL(await pageA.evaluate(() => location.href));
-  stage('create', at);
+  await stage('create', at);
 
   at = performance.now();
   for (const [key, value] of new URLSearchParams(BOOT_QUERY)) invite.searchParams.set(key, value);
@@ -147,7 +184,7 @@ try {
   await pageB.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2
     || document.querySelector('.cot-play .status')?.classList.contains('err'), { timeout: 60_000, polling: 100 });
   await pageA.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2, { timeout: 30_000, polling: 100 });
-  stage('join', at);
+  await stage('join', at);
 
   at = performance.now();
   await pageB.evaluate(() => {
@@ -166,13 +203,13 @@ try {
   await pageB.click('.cot-play [data-action="ready"]');
   await pageA.click('.cot-play [data-action="ready"]');
   await pageA.waitForFunction(() => !document.querySelector('.cot-play [data-action="start"]')?.disabled, { timeout: 30_000, polling: 100 });
-  stage('ready', at);
+  await stage('ready', at);
 
   at = performance.now();
   await pageA.click('.cot-play [data-action="start"]');
   await Promise.all([pageA, pageB].map((page) => page.waitForFunction(inBattle, { timeout: 240_000, polling: 100 })));
   await new Promise((r) => setTimeout(r, 3000));
-  stage('battle', at);
+  await stage('battle', at);
 
   at = performance.now();
   for (const page of [pageB, pageA]) {
@@ -180,7 +217,7 @@ try {
     await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'garage', { timeout: 60_000, polling: 100 });
   }
   await new Promise((r) => setTimeout(r, 2000));
-  stage('leave', at);
+  await stage('leave', at);
 } catch (error) {
   // where each page stood when the stage gave up, and the stage's console so far
   const state = await Promise.all(pages.map((page) => page.evaluate(() => {
@@ -190,8 +227,8 @@ try {
       // the network entry's own record of a failed round (main.ts recordEntryFailure) and its stage trace
       entryFailure: window.__NETWORK_ENTRY_FAILURE ?? null, entryTrace: window.__NETWORK_LOAD?.stages ?? null };
   }).catch((e) => ({ unreadable: String(e?.message || e).split('\n')[0] }))));
-  samples.push({ kind: `lobby-${['boot', 'create', 'join', 'ready', 'battle', 'leave'][samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0],
-    pages: state, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length, consoleWarningTexts: log.warnings.splice(0) } });
+  samples.push({ kind: `lobby-${(solo ? ['boot', 'solo', 'create', 'join', 'ready', 'battle', 'leave'] : ['boot', 'create', 'join', 'ready', 'battle', 'leave'])[samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0],
+    pages: state, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length, consoleWarningTexts: log.warnings.splice(0), cspReports: log.csp.splice(0) } });
   console.error(`mp-room-census: ${samples.at(-1).error}`);
   for (const [i, s] of state.entries()) console.error(`  page ${'AB'[i]}: ${JSON.stringify(s)}`);
   for (const line of [...samples.at(-1).census.consoleErrors, ...samples.at(-1).census.consoleWarningTexts]) console.error(`  ${String(line).slice(0, 240)}`);
