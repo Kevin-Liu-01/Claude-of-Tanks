@@ -182,24 +182,24 @@
    "owner": "premiere-site"
   },
   "bundle/game/any/brotliBytes": {
-   "value": 1078698,
+   "value": 1078846,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
   },
   "bundle/game/any/entryBrotliBytes": {
-   "value": 244043,
+   "value": 244017,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
   },
   "bundle/cn/any/brotliBytes": {
-   "value": 1121750,
+   "value": 1121898,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
   },
   "bundle/cn/any/entryBrotliBytes": {
-   "value": 244043,
+   "value": 244017,
    "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
   }
  }
 }
