@@ -22,7 +22,7 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
 import { readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
-import { notify } from './components/notice.ts';
+import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, customCamoPatternId } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
@@ -2088,13 +2088,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   /** The custom studio's trigger: the picker's "Make your own" swatch while it is drawn (its aria-expanded follows the
    *  studio). */
   const makeOwnOption = (): HTMLElement | null => camosEl.querySelector<HTMLElement>(`.cot-c-picker__opt[data-id="${CUSTOM_CAMO_ID}"]`);
+  // a notice only ever follows a press: the kit's notices load then, off the Garage's boot (on its own the notice module
+  // was one more game boot request; Main's no-extra-request ruling)
+  const notifyLater = (options: ToastOptions): void => {
+    void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
+  };
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
     option?.setAttribute('aria-busy', 'true');
     try {
       await customCamoStudioAccess?.open();
     } catch (error) {
-      notify({ id: 'cot-custom-camo', severity: 'error', text: t('garage.camo.customStudioRetryTitle'),
+      notifyLater({ id: 'cot-custom-camo', severity: 'error', text: t('garage.camo.customStudioRetryTitle'),
         retry: () => customCamoStudioAccess?.open() ?? Promise.resolve() });
       console.warn('[garage] custom camouflage studio failed to load', error);
     } finally {
@@ -2120,7 +2125,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const ids = [...cardById.keys()].filter((id) => specById.get(id)?.nation === spec.nation);
     camoOpts.setMany(ids, patternId);
     for (const id of ids) requeueTankThumbs(id);
-    notify({ id: 'cot-camo-nation', severity: 'success',
+    notifyLater({ id: 'cot-camo-nation', severity: 'success',
       text: t('garage.camo.appliedNation', { paint: camoPatternLabel(patternId), count: ids.length, nation: tNation(spec.nation) }) });
   }
   function initializeCamoPicker(): void {
