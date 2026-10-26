@@ -55,7 +55,8 @@ const battleEval = option('battle-eval', '');
 // task of the battle stage names the programs it made and the key parts that differ from the nearest program of that
 // name made before it (a program released and made again reads "same key")
 const programLog = argv.includes('--program-log');
-// --profile-leave: a CPU profile of both pages through the leave to the Garage, each long task attributed
+// --profile-leave: a CPU profile of both pages through the leave to the Garage, each long task attributed (with --solo,
+// also the host page's leave from its solo battle: a single player's leave, no second battle in the GPU process)
 const profileLeave = argv.includes('--profile-leave');
 // --leave-first=A|B and --leave-gap-ms=<ms>: who leaves first (B by default) and how long the other waits after that
 // page's Garage is back (0 by default): two pages share the census's GPU process, so a gap keeps one page's Garage
@@ -286,8 +287,28 @@ try {
       { timeout: 240_000, polling: 100 });
     await new Promise((r) => setTimeout(r, 5000));
     await stage('solo', at);
+    const soloSample = samples.at(-1);
+    let soloCdp = null, soloFrom = 0;
+    if (profileLeave) {
+      soloCdp = await pageA.createCDPSession();
+      await soloCdp.send('Profiler.enable');
+      await soloCdp.send('Profiler.setSamplingInterval', { interval: 500 });
+      soloFrom = await pageA.evaluate(() => performance.now());
+      await soloCdp.send('Profiler.start');
+    }
     await pageA.evaluate(() => window.__DEBUG.leaveBattleToGarage());
     await pageA.waitForFunction(garage, { timeout: 120_000, polling: 100 });
+    if (soloCdp) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const { profile } = await soloCdp.send('Profiler.stop');
+      const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= soloFrom && ms >= 200);
+      mkdirSync(join(out, label), { recursive: true });
+      writeFileSync(join(out, label, 'solo-leave-A.cpuprofile'), JSON.stringify(profile));
+      soloSample.leaveProfile = attribute(profile, spans, profile.startTime / 1000 - soloFrom);
+      soloSample.leaveLongTasks = spans.map(([start, ms]) => [Math.round(start - soloFrom), Math.round(ms)]);
+      console.log(`solo leave: ${spans.length} long tasks ${JSON.stringify(soloSample.leaveLongTasks)}`);
+      for (const task of soloSample.leaveProfile) console.log(`solo leave task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 24).join('\n    ')}`);
+    }
   }
 
   at = performance.now();
