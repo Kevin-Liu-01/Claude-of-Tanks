@@ -467,13 +467,14 @@ async function pageDrawAttribution(frames) {
   };
   // the static shadow cache's decision a frame (engine/shadowStaticCache.ts frameRecord): its cascades rebuilt, reused,
   // rendered whole or still settling, and why
-  const cache = { frames: 0, rebuilt: 0, reused: 0, full: 0, unsettled: 0, reasons: {}, content: {} };
+  const cache = { frames: 0, rebuilt: 0, reused: 0, full: 0, unsettled: 0, kept: 0, reasons: {}, content: {} };
   const bits = (mask) => { let n = 0; for (let m = mask >>> 0; m; m &= m - 1) n++; return n; };
   const readCache = () => {
     const r = D.lighting?.staticCacheFrame;
     if (!r) return;
     cache.frames++; cache.rebuilt += bits(r.rebuildMask); cache.reused += bits(r.reuseMask); cache.full += bits(r.fullMask);
     cache.unsettled += bits(r.unsettledMask);
+    cache.kept += bits(r.keptMask ?? 0); // (a bounded content change's cascades left standing)
     if (r.reason) cache.reasons[r.reason] = (cache.reasons[r.reason] ?? 0) + 1;
     if (r.content) { const key = `${r.content}:${r.changed}`; cache.content[key] = (cache.content[key] ?? 0) + 1; }
   };
