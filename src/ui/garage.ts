@@ -2792,6 +2792,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // name are here. No era or nation text: the cloth flag is the nation.
       card.innerHTML =
         (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
+        // the vehicle's class glyph (owner 10-26: "the tank type icon in the top right of each hero card"), filled with
+        // the facet tables (fillCardClasses), never in the boot graph
+        `<span class="hc-class" aria-hidden="true" hidden></span>` +
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || t('garage.card.devTag')}</span>` : '') +
         `<div class="nm"><span class="nmt"></span></div><span class="cot-fav" aria-hidden="true">${uiIconSVG('star', 14)}</span>`;
       // a model number keeps its hyphen's halves on one line (a narrow card broke "Type 96-" / "72 Lóng")
@@ -2807,6 +2810,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeTankCards();
+  /** Each card's class glyph and its name (the tip, and the card's accessible name), once the facet tables, their glyphs
+   *  and the class names' catalog slice are in: idle work after the first frame, the roster's boot untouched. */
+  function fillCardClasses(): void {
+    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())]).then(([facets, icons]) => {
+      for (const [id, card] of cardById) {
+        const value = facets.vehicleClassForId(id);
+        const slot = card.querySelector<HTMLElement>('.hc-class');
+        if (!value || !slot || !slot.hidden) continue;
+        const name = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
+        slot.innerHTML = icons.vehicleClassGlyphSVG(value, 12);
+        slot.dataset.tip = name;
+        slot.hidden = false;
+        card.setAttribute('aria-label', `${card.getAttribute('aria-label') ?? ''}, ${name}`);
+      }
+    }).catch(() => {});
+  }
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(fillCardClasses, { timeout: 2500 });
+  else setTimeout(fillCardClasses, 600);
   renderFavourites();
   applyCountryFilter(countryFilter);
   // Hero layers arrive with the lazy heroCard chunk and its manifest. A vehicle without a hero row (or

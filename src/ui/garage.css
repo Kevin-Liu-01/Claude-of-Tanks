@@ -557,6 +557,15 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 /* Facing left (policy v5, owner 2026-10-20 "Whole tank faces left"): the flag holds the rear-top (right) corner,
    so the tier chip and the dev tag take the bow-side (left) one, as the compositor draws them. */
 .cot-hc[data-hero-facing='left'] .hc-tier,.cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:6px;}
+/* the class glyph (owner 10-26): a plate of the tier chip's height and ground in the corner the tier leaves free, the top
+   right of a card facing left (and under the tier on the right where the tier keeps that corner) */
+.cot-card .hc-class{position:absolute;z-index:3;top:calc(var(--hc-tier) + 14px);right:6px;display:grid;place-items:center;
+  min-width:20px;padding:2px var(--s1);color:var(--ink-1);background:var(--scrim);border:1px solid var(--line-3);line-height:0;pointer-events:auto;}
+.cot-card .hc-class[hidden]{display:none;}
+.cot-card .hc-class svg{display:block;width:12px;height:12px;}
+.cot-hc[data-hero-facing='left'] .hc-class{top:6px;}
+/* a development vehicle's tag keeps that place on a card facing right: the glyph stands under it */
+.cot-card.dev-only:not([data-hero-facing='left']) .hc-class{top:calc(var(--hc-tier) * 2 + 24px);}
 .cot-card .flag{position:absolute;z-index:3;top:7px;left:7px;line-height:0;}
 .cot-card .flag .cot-flag{display:block;object-fit:cover;box-shadow:var(--flag-ring);}
 .cot-card .dev-tag{position:absolute;right:6px;top:calc(var(--hc-tier) + 14px);z-index:3;padding:2px 5px;
@@ -1154,6 +1163,8 @@ body[data-cot-panels='overlay'] .cot-card .hc-tier b{font-size:var(--hc-tier)}
 html[lang^='zh'] body[data-cot-panels='overlay'] .cot-card .hc-tier{font-size:var(--hc-tier)}
 body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:20px;padding:1px 3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
+body[data-cot-panels='overlay'] .cot-card .hc-class{top:20px;right:3px;min-width:16px;padding:1px 2px}
+body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-class{top:3px}
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}

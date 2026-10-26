@@ -805,12 +805,13 @@ function groupRecords(list: GalleryRecord[]): RosterGroup[] {
   return [...groups.values()];
 }
 
-let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
-Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
-  .then(async ([module]) => {
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest; classes: typeof import('../vehicles/vehicleFacets.ts');
+  glyphs: typeof import('../ui/vehicleFacetIcons.ts') } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css'), import('../vehicles/vehicleFacets.ts'), import('../ui/vehicleFacetIcons.ts')])
+  .then(async ([module, , classes, glyphs]) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
-    heroCards = { module, manifest };
+    heroCards = { module, manifest, classes, glyphs };
     const mask = module.heroCardFlagMask(manifest);
     vehicleList.style.setProperty('--hc-flag-mask', mask);
     takeMedia.style.setProperty('--hc-flag-mask', mask);
@@ -826,8 +827,14 @@ const rowTip = (record: GalleryRecord): string => rowName(record) === record.dis
 function rowMarkup(record: GalleryRecord): string {
   const selected = record.id === selectedId;
   const dev = record.developmentOnly ? `<b class="it__dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
+  // a hero card names its vehicle's class by its glyph in the top right (owner 10-26), its name the glyph's tip and label
+  const classId = heroCards && record.vehicleClass ? record.vehicleClass.id : '';
+  const classMeta = classId && heroCards ? (heroCards.classes.VEHICLE_CLASS_META as Readonly<Record<string, Parameters<typeof heroCards.classes.vehicleFacetLabel>[0]>>)[classId] : null;
+  const classPlate = classMeta && heroCards
+    ? `<span class="it__class" role="img" aria-label="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}" data-tip="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}">`
+      + `${heroCards.glyphs.vehicleClassGlyphSVG(classId, 12)}</span>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
-    + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
+    + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}${classPlate}`
     + `<span class="it__name"${rowTip(record)}>${esc(keepDesignation(rowName(record)))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {

@@ -124,6 +124,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   font:600 max(var(--fs-floor-11),var(--fs-12))/1.1 var(--font-display);text-transform:uppercase}
 .fam[data-layout=grid] .it .e{position:absolute;right:8px;top:8px;z-index:var(--z-lift);padding:2px var(--s1);border-radius:var(--control-radius);
   background:var(--glyph-plate)}
+/* the hero card's class glyph (owner 10-26: the tank type in the top right): a plate of the value chip's height over the
+   flag; the sort's value stands under it. A list row has no hero card and no glyph. */
+.it__class{display:none}
+.fam[data-layout=grid] .it__class{position:absolute;right:8px;top:8px;z-index:var(--z-lift);display:grid;place-items:center;min-width:22px;
+  padding:3px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--ink-1);line-height:0}
+.fam[data-layout=grid] .it__class svg{display:block;width:12px;height:12px}
+.fam[data-layout=grid] .it:has(.it__class) .e{top:36px}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
