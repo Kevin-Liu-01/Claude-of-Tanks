@@ -183,9 +183,10 @@ export async function heapObjectIdOf(cdp, expression) {
   finally { await cdp.send('Runtime.releaseObjectGroup', { objectGroup: 'cot-heap-retainers' }); }
 }
 
-/** Take the page's heap snapshot through a CDP session and return each marker's retainer paths (`ids`: a marker's heap
- *  snapshot object id by its name, found by id rather than by name). */
-export async function snapshotRetainerPaths(cdp, markerNames, max = 3, ids = {}) {
+/** Take the page's heap snapshot through a CDP session and return each marker's retainer paths. `locate`: an expression
+ *  a marker's name reads it by in the page, whose heap snapshot object id (asked once the snapshot has assigned ids, the
+ *  handle released) finds it where the string table may have misnamed it. */
+export async function snapshotRetainerPaths(cdp, markerNames, max = 3, locate = {}) {
   const parser = createSnapshotParser();
   const onChunk = ({ chunk }) => parser.feed(chunk);
   cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
@@ -193,5 +194,12 @@ export async function snapshotRetainerPaths(cdp, markerNames, max = 3, ids = {})
   finally { cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk); }
   const snapshot = parser.finish();
   if (snapshot.fault) console.error(`[heap-retainers] the string table read string by string: ${JSON.stringify(snapshot.fault)}`);
+  const ids = {};
+  for (const name of markerNames) {
+    if (!locate[name]) continue;
+    const id = await heapObjectIdOf(cdp, locate[name]).catch(() => null);
+    if (id && id !== '0') ids[name] = id;
+  }
+  if (Object.keys(locate).length) console.error(`[heap-retainers] marker ids ${JSON.stringify(ids)}`);
   return Object.fromEntries(markerNames.map((name) => [name, retainerPaths(snapshot, name, max, ids[name] ?? null)]));
 }
