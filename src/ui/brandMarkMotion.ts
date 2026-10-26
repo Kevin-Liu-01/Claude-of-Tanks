@@ -63,11 +63,12 @@ export const BRAND_MOTION_CSS = `
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The living mark as compositor layers (2026-10-26, the boot census; owner: "even the claude tank animation doesnt play bc
-// its just loading"). The svg above moves its groups with CSS transforms and a stroke-dashoffset on svg children, which
-// Chrome never runs on the compositor: every frame of it is main-thread style and paint, so each long task of a cold load
-// froze the tank. Here every moving group is its own HTML box over the same drawing, moved by transform and opacity
-// alone, which the compositor runs whatever the main thread is doing. The same parts, origins, travel and timing as the
-// svg's loop (its ground's units become percentages of each box), so the two draw the same frames.
+// its just loading"). Chrome runs the svg loop's group transforms on the compositor, but its track links are a
+// stroke-dashoffset, main-thread paint: under each long task of a cold load the wheels turned while the tracks stood
+// still (tools/mark-compositor-probe.mjs, a 1.5 s busy main thread: the links moved in 0 of 7 sampled frames, every other
+// part in 7). Here every moving group is its own HTML box over the same drawing, moved by transform and opacity alone,
+// the links a translate inside a clip, so the whole loop runs on the compositor whatever the main thread is doing. The
+// same parts, origins, travel and timing as the svg loop (its ground's units become percentages of each box).
 const [VB_X, VB_Y, VB_W, VB_H] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
 const pct = (n: number): string => `${Number(n.toFixed(4))}%`;
 /** A box over the mark's region [x, x + w] x [y, y + h], in its units. */

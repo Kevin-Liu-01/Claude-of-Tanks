@@ -1,6 +1,6 @@
 // The living mark as compositor layers (brandMarkMotion.ts brandMarkMotionLayers; 2026-10-26, the boot census: the svg
-// loop moved svg children, which Chrome runs on the main thread only, so every long task of a cold load froze the boot
-// card's tank). Copyright © 2026 Kevin B. Liu.
+// loop's track links are a stroke-dashoffset, main-thread paint, so every long task of a cold load stopped the boot
+// card's tracks under its turning wheels). Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BRAND_MOTION_CSS, BRAND_MOTION_LAYER_CSS, LOOP_S, brandMarkMotionLayers } from './brandMarkMotion.ts';
@@ -48,7 +48,7 @@ const index = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
 const card = /<div class="cot-boot-mark" [^>]*>([\s\S]*?)\n {6}<\/div>\n/.exec(index)?.[1] ?? '';
 assert.match(card, /<svg class="cot-boot-words" [^>]*aria-hidden="true"/);
 assert.match(card, /<span class="cot-boot-tank" style="left:[\d.]+%;top:-?[\d.]+%;width:[\d.]+%"><span class="cot-mark cot-mark--layers"/);
-assert.doesNotMatch(card, /cot-mark--motion/, 'no svg loop in the boot card: it froze under every long task');
+assert.doesNotMatch(card, /cot-mark--motion/, 'no svg loop in the boot card: its track links froze under every long task');
 assert.ok(index.includes(BRAND_MOTION_LAYER_CSS.trim().split('\n')[0]), 'the layers\' rules in the boot sheet');
 assert.match(index, /:has\(\.cot-boot-retry\.on\) :is\(\.cot-mark--motion, \.cot-mark--layers\) \* \{ animation-play-state: paused; \}/);
 console.log('brandMarkLayers.selftest: ok');
