@@ -266,16 +266,7 @@ function state(name) {
     player.visual=name==='gunship'?{root:{visible:false}}:undefined;
     for(let i=0;i<5;i++)hud.update(frame);
   }
-  if(name==='markers'){
-    for(const [i,x,z] of MARKER_SEATS)tanks[i].state.pos.set(x,0,z);
-    markerCamera.aspect=innerWidth/innerHeight;markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
-    markerCamera.updateProjectionMatrix();markerCamera.updateMatrixWorld();
-    const target=tanks[8].state.pos, at=new Vector3(target.x,1.6,target.z);
-    frame.camera=markerCamera;
-    frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
-    tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
-    for(let i=0;i<4;i++)hud.update(frame);
-  }
+  if(name==='markers')markers();
   if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
   // (the frame carries the sight too: a mode set alone was undone by the next frame's 'battle', gauntlet r3 read idle)
@@ -296,6 +287,18 @@ function state(name) {
   }))});
   return name;
 }
+// The markers staged over the state on screen (the receipts check them in every state: spectate, Watch, the aerial
+// views, a networked battle's host and client): the camera, the seats in view and the enemy under the gun.
+function markers() {
+  for(const [i,x,z] of MARKER_SEATS)tanks[i].state.pos.set(x,0,z);
+  markerCamera.aspect=innerWidth/innerHeight;markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
+  markerCamera.updateProjectionMatrix();markerCamera.updateMatrixWorld();
+  const target=tanks[8].state.pos, at=new Vector3(target.x,1.6,target.z);
+  frame.camera=markerCamera;
+  frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
+  tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
+  for(let i=0;i<4;i++)hud.update(frame);
+}
 function roster(allies, enemies) {
   const entries=Array.from({length:allies+enemies},(_,i)=>{
     const spec=TANK_SPECS[['leo2a4_v','m1a1_abrams_hc','t90am'][i%3]];
@@ -308,7 +311,7 @@ function roster(allies, enemies) {
   hud.update(frame);
 }
 // (the layout's published sight furniture, the HUD's own module instance: tools/hud-sight-furniture.browser.mjs reads it)
-window.__HUD_LAYOUT = {multiplayer,state, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
+window.__HUD_LAYOUT = {multiplayer,state, markers, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 // (two more frames once layout settles: the HUD's size observers (the minimap's label size, 140 px and under none) land

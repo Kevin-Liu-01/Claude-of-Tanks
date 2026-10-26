@@ -2079,7 +2079,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:var(--battle-fs-11)}
 .cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
-.cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
+.cot-hpb{position:absolute;width:128px;height:40px;text-align:center;will-change:transform;
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
   font-family:${FONT_COND};
@@ -2093,21 +2093,23 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
 .cot-hpb .fl{height:100%;width:100%;transform-origin:0 50%;background:var(--hud-enemy);transition:transform var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
-.cot-hpb::after{content:"";display:block;width:0;height:0;margin:1px auto 0;
-  border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
-.cot-hpb.ally::after{border-top-color:var(--hud-own);}
+/* the side under the bar in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond,
+   the target plate's, and the ally's chevron, each whole inside the bar's box (the 31 px box cut the old pointer) */
+.cot-hpb::after{content:"";display:block;width:6px;height:6px;margin:3px auto 0;transform:rotate(45deg);
+  background:var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
+.cot-hpb.ally::after{width:0;height:0;margin-top:1px;transform:none;background:none;
+  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--hud-own);}
 /* Over-target marker (brand-ui 242, the direction's 06-battle-hud .tgt): one compact plate row on the target — its
-   flag, its silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
+   silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
    points, the enemy's diamond pointing into the tank. A stable-height instrument follows the exact projected turret
    roof; its width changes only when its copy does, so names stay whole without steady-state frame reflow. The plate is
-   the row alone: the instrument around it paints nothing over the battlefield. */
+   the row alone: the instrument around it paints nothing over the battlefield. No nation flag on any marker over a tank
+   (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"): the side reads in the silhouette's
+   and the bar's colour and the diamond's shape; the rosters, the load card, the scoreboard and the report keep them. */
 .cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:var(--s1);}
 .cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;text-shadow:var(--battle-text-halo);}
-.cot-tgt .flg{display:flex;flex:none;}.cot-tgt .flg:empty{display:none;}
-.cot-tgt .flg .cot-flag{display:block;box-shadow:var(--flag-ring);}
 .cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
 .cot-tgt .nick{flex:none;font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
@@ -2306,12 +2308,11 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The width the plate keeps for its range ("1,240 m" at the data face's 12 px). */
   const TARGET_RANGE_W = 52;
   const tgtEl = el('div', 'cot-tgt', root);
-  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="flg"></span><span class="cg"></span>` +
+  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="cg"></span>` +
     `<b class="nick"></b><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
     `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
     `<div class="hp num"></div></div><div class="anch"></div></div>`;
   const tgtRefs = {
-    flg: requireElement<HTMLElement>(tgtEl, '.flg'),
     rng: requireElement<HTMLElement>(tgtEl, '.rng'),
     nick: requireElement<HTMLElement>(tgtEl, '.nick'),
     tier: requireElement<HTMLElement>(tgtEl, '.tier'),
@@ -2321,7 +2322,6 @@ export function initHud(bus: EventBus): HudRuntime {
     cg: requireElement<HTMLElement>(tgtEl, '.cg'),
   };
   let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
-  let tgtLastFlagKey = ''; // the flag shown: its vehicle and whether the flag art had loaded
   let tgtLastRangeM = -2; // the range shown, whole metres (-1: no player to range from)
   let tgtShown = false;
   let tgtRect: TargetPlateRect | null = null; // screen-px rect of the shown plate (sniper hairline gap)
@@ -5881,6 +5881,12 @@ export function initHud(bus: EventBus): HudRuntime {
       ?? findScreenAimTarget(lastTanksRef || [], camera);
   }
 
+  function showTargetPlate(): void {
+    if (tgtShown) return;
+    tgtEl.style.display = 'block';
+    tgtShown = true;
+  }
+
   function hideTargetPlate(): void {
     aimTargetId = null;
     tgtLastRangeM = -2;
@@ -5920,10 +5926,17 @@ export function initHud(bus: EventBus): HudRuntime {
       copyChanged = true;
     }
     if (!copyChanged) return;
-    // the row: its padding, the flag, the silhouette, the callsign, the tier, the vehicle and the range's reserve
-    const rowWidth = 20 + 24 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + 22
+    // (measured shown: a hidden plate's spans measure nothing, so it kept its floor and cut the callsign and the vehicle
+    // at both ends on each new target; the gauntlet's markers frames)
+    showTargetPlate();
+    // the hull points at their widest (they only fall from full), beside the bar
+    const full = String(Math.round(target.combat.maxHp));
+    tgtRefs.hp.textContent = `${full}/${full}`;
+    // the row: its padding, the silhouette, the callsign, the tier, the vehicle and the range's reserve; the bar's row
+    const rowWidth = 20 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + Math.ceil(tgtRefs.tier.scrollWidth) + 8
       + Math.ceil(tgtRefs.veh.scrollWidth) + 8 + TARGET_RANGE_W;
-    tgtPlateWidth = Math.max(176, Math.min(440, rowWidth));
+    const barWidth = 118 + 6 + Math.ceil(tgtRefs.hp.scrollWidth);
+    tgtPlateWidth = Math.max(176, Math.min(440, Math.max(rowWidth, barWidth)));
     tgtEl.style.width = `${tgtPlateWidth}px`;
   }
 
@@ -5943,13 +5956,6 @@ export function initHud(bus: EventBus): HudRuntime {
       maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', 'currentColor');
       tgtLastVehicleId = vehicleId;
     }
-    // the flag (flags.ts loads with its art after the HUD; the plate takes it once it has)
-    const nation = target.spec?.nation ?? '';
-    const flagKey = flagHtml && nation ? `${vehicleId}:${nation}` : '';
-    if (flagKey !== tgtLastFlagKey) {
-      tgtRefs.flg.innerHTML = flagKey && flagHtml ? flagHtml(nation) : '';
-      tgtLastFlagKey = flagKey;
-    }
     // the range from the player's tank, in whole metres
     const from = playerRef?.state?.pos;
     const to = target.state.pos;
@@ -5963,10 +5969,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
     const hpText = `${Math.max(0, Math.round(target.combat.hp))}/${Math.round(target.combat.maxHp)}`;
     if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
-    if (!tgtShown) {
-      tgtEl.style.display = 'block';
-      tgtShown = true;
-    }
+    showTargetPlate();
     const bar = hpPool.get(target.id);
     if (bar?.shown) { bar.root.style.display = 'none'; bar.shown = false; }
   }
