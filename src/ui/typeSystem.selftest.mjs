@@ -622,8 +622,8 @@ for (const path of SHIPPED_HTML) {
 assert.match(read('src/ui/brandMark.ts'), /WORDMARK_WORDS[\s\S]*WORDMARK_OF/, 'the wordmark is the outlined master (SPEC 3.1: never live text)');
 assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
 assert.match(read('src/presentation/publicShell.ts'), /WORDMARK = `<span class="cot-wordmark">\$\{BRAND_WORDMARK_HTML\}<\/span>`/, 'the public bar and footer set the one wordmark (no live text to track)');
-assert.match(read('index.html'), /<div class="cot-boot-mark" role="img" aria-label="Claude of Tanks"[^>]*><!-- cot:boot-lockup -->[\s\S]*?<svg class="wm"/,
-  'the boot lockup is the outlined one-line wordmark (SPEC 3.3; owner, 2026-10-26), named for assistive reading');
+assert.match(read('index.html'), /<div class="cot-boot-mark" role="img" aria-label="Claude of Tanks"[^>]*><!-- cot:boot-lockup -->[\s\S]*?<svg class="wm-stack"/,
+  'the boot lockup is the outlined wordmark stacked beside the tank (SPEC 3.3; owner, 2026-10-26), named for assistive reading');
 
 // The zh-CN label floor (the type rules: Chinese labels one step up, 13 px floor) ships only inside Chinese documents, right
 // after their type head; English documents and the game entry carry none of it. Every selector names classes the shipped

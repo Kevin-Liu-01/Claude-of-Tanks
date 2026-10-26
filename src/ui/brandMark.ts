@@ -117,6 +117,58 @@ export function brandBustBody({ ink, accent, keyline = false, id = 'cot-bk' }: M
 export const BRAND_WORDMARK_HTML = `<svg class="wm" viewBox="${WORDMARK_VIEWBOX}" aria-hidden="true" focusable="false">`
   + `<path fill="currentColor" d="${WORDMARK_WORDS}"/><path style="fill:var(--accent)" d="${WORDMARK_OF}"/></svg>`;
 
+/** A path's contours (split at each M) with their boxes; the wordmark's paths use M, L, H, V and their relative h and v,
+ *  with implicit lineto pairs after M. */
+function contours(path: string): { d: string; x0: number; y0: number; x1: number; y1: number }[] {
+  return path.split(/(?=M)/).filter(Boolean).map((d) => {
+    const xs: number[] = [], ys: number[] = [];
+    let x = 0, y = 0;
+    for (const [, command, args] of d.matchAll(/([MLHVZhvz])([^MLHVZhvz]*)/g)) {
+      const n = (args.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+      if (command === 'M' || command === 'L') for (let i = 0; i + 1 < n.length; i += 2) { x = n[i]; y = n[i + 1]; xs.push(x); ys.push(y); }
+      else if (command === 'H' || command === 'h') for (const v of n) { x = command === 'H' ? v : x + v; xs.push(x); ys.push(y); }
+      else if (command === 'V' || command === 'v') for (const v of n) { y = command === 'V' ? v : y + v; xs.push(x); ys.push(y); }
+    }
+    return { d, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+  });
+}
+
+/** The boot lockup's stack beside the tank, in the mark's units: level with the tank's drawing from the helmet's top to
+ *  the track's foot, `gap` to its right. tools/brand-marks.mjs draws lockup-boot.svg with it and tools/sync-brand-marks.mjs
+ *  sizes the boot card's stack from it. */
+export const BRAND_BOOT_STACK = { top: 40.5, height: 97.5, gap: 14 } as const;
+
+/** The boot card's word stack (owner, 2026-10-26: "tank onn left and then claude, then of, than tanks left aligned, to the
+ *  right of the tannk logo"; the one exception to the one-line name): CLAUDE, OF and TANKS on three lines, their left
+ *  edges on one line, the wordmark's own outlines. OF keeps the accent and its rule, which runs on to CLAUDE's right edge.
+ *  Its viewBox is the stack's ink, so the host sizes it by height. */
+export function brandWordmarkStack(ink = 'currentColor', accent = 'var(--accent)'): string {
+  const [, top, , cap] = WORDMARK_VIEWBOX.split(' ').map(Number);
+  const marks = contours(WORDMARK_OF);
+  const rules = marks.filter((part) => part.y1 - part.y0 < cap * 0.2);
+  const letters = marks.filter((part) => !rules.includes(part));
+  const ofX0 = Math.min(...letters.map((part) => part.x0)), ofX1 = Math.max(...letters.map((part) => part.x1));
+  const ofY0 = Math.min(...letters.map((part) => part.y0)), ofY1 = Math.max(...letters.map((part) => part.y1));
+  const words = contours(WORDMARK_WORDS);
+  const claude = words.filter((part) => part.x1 < ofX0), tanks = words.filter((part) => part.x0 > ofX1);
+  const left = (parts: typeof words): number => Math.min(...parts.map((part) => part.x0));
+  const right = (parts: typeof words): number => Math.max(...parts.map((part) => part.x1));
+  const width = Math.max(right(claude) - left(claude), right(tanks) - left(tanks));
+  const gap = cap * 0.3, ofH = ofY1 - ofY0;
+  const ofTop = cap + gap, tanksTop = ofTop + ofH + gap;
+  const rule = rules[0];
+  const ruleX = ofX1 - ofX0 + (rules[1] ? rules[1].x0 - ofX1 : cap * 0.2);
+  const ruleY = ofTop + (rule.y0 - ofY0);
+  const group = (parts: typeof words, dx: number, dy: number, fill: string): string =>
+    `<path transform="translate(${(-dx).toFixed(1)} ${dy.toFixed(1)})" style="fill:${fill}" d="${parts.map((part) => part.d).join('')}"/>`;
+  const height = tanksTop + cap;
+  return `<svg class="wm-stack" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" aria-hidden="true" focusable="false">`
+    + group(claude, left(claude), -top, ink)
+    + group(letters, ofX0, ofTop - ofY0, accent)
+    + `<rect style="fill:${accent}" x="${ruleX.toFixed(1)}" y="${ruleY.toFixed(1)}" width="${(width - ruleX).toFixed(1)}" height="${(rule.y1 - rule.y0).toFixed(1)}"/>`
+    + group(tanks, left(tanks), tanksTop - top, ink) + '</svg>';
+}
+
 /** The mark for a bar or a card, `height` px tall (its width follows): the tank in the host's ink, the commander in the accent. */
 export function brandMarkSVG(height: number): string {
   return `<svg class="cot-mark" viewBox="${BRAND_TANK_VIEWBOX}" width="${Math.round(height * BRAND_TANK_ASPECT)}" height="${height}" `

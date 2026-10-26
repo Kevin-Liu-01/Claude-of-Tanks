@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BRAND_BUST_VIEWBOX, BRAND_TANK_VIEWBOX, brandBustBody, brandTankBody,
+  BRAND_BOOT_STACK, BRAND_BUST_VIEWBOX, BRAND_TANK_VIEWBOX, brandBustBody, brandTankBody, brandWordmarkStack,
 } from '../src/ui/brandMark.ts';
 import { BRAND_MOTION_CSS, brandMarkMotionSVG } from '../src/ui/brandMarkMotion.ts';
 import { WORDMARK_OF, WORDMARK_VIEWBOX, WORDMARK_WORDS } from '../src/ui/brandWordmark.ts';
@@ -55,6 +55,16 @@ const TALL = (() => {
 function lockupTall(ink, accent, body = null) {
   return svg(`${wx} ${TALL.top.toFixed(0)} ${ww} ${(wy + wh - TALL.top).toFixed(0)}`,
     (body ?? place(tank(ink, accent), TANK, TALL.x, TALL.top, TALL.width)) + words(ink, accent));
+}
+/** The boot card's lockup, the one place the words stack (owner, 2026-10-26): the tank on the left and CLAUDE, OF, TANKS to
+ *  its right, left-aligned, the stack as tall as the tank's drawing (the helmet's top to the track's foot) and level with
+ *  it. The boot card draws the same with the living mark (tools/sync-brand-marks.mjs). */
+function lockupBoot(ink, accent) {
+  const stack = brandWordmarkStack(ink, accent);
+  const [, , sw, sh] = /viewBox="([^"]+)"/.exec(stack)[1].split(' ').map(Number);
+  const width = BRAND_BOOT_STACK.height * sw / sh, x = tx + tw + BRAND_BOOT_STACK.gap;
+  return svg(`${tx} ${ty} ${(tw + BRAND_BOOT_STACK.gap + width).toFixed(1)} ${th}`, tank(ink, accent)
+    + place(stack.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''), [0, 0, sw, sh], x, BRAND_BOOT_STACK.top, width));
 }
 /** The in-world sign's lockup in brushed metal (the Garage display atlas's brand.wordmark.metal): the horizontal lockup
  *  with its ink a steel ramp. */
@@ -182,6 +192,7 @@ const masters = {
   'lockup-mono.svg': lockup(PAPER, PAPER).replace(tank(PAPER, PAPER), tank(PAPER, PAPER, true, 'lm')),
   'lockup-tall.svg': lockupTall(PAPER, TUNGSTEN),
   'lockup-tall-paper.svg': lockupTall(GRAPHITE, TUNGSTEN_600),
+  'lockup-boot.svg': lockupBoot(PAPER, TUNGSTEN),
   // the Garage display atlas's sign sources (tools/generate-garage-display-atlas.mjs), the lockup itself since 10-26
   'logo-full.svg': lockup(PAPER, TUNGSTEN),
   'logo-full-metal.svg': lockupMetal(),
@@ -285,7 +296,7 @@ const purpose = {
   'app-icon.svg': 'app icon master (full bleed)', 'maskable.svg': 'maskable and tile master (80 % safe zone)',
   'social-avatar.svg': 'X / GitHub avatar', 'lockup.svg': 'horizontal lockup on dark', 'lockup-paper.svg': 'horizontal lockup on paper',
   'lockup-mono.svg': 'horizontal lockup, one colour', 'lockup-tall.svg': 'the mark over the one-line wordmark, on dark',
-  'lockup-tall-paper.svg': 'the mark over the one-line wordmark, on paper', 'logo-full.svg': 'Garage sign source (the horizontal lockup)',
+  'lockup-tall-paper.svg': 'the mark over the one-line wordmark, on paper', 'logo-full.svg': 'Garage sign source (the horizontal lockup)', 'lockup-boot.svg': 'the boot card: the tank beside the stacked words',
   'logo-full-metal.svg': 'Garage sign source in brushed metal', 'title-card.svg': 'the living mark over the one-line wordmark (brand motion)',
   'og-logo.svg': 'OG brand card',
 };

@@ -279,11 +279,12 @@
     }
 
     /* --- emblem + wordmark ------------------------------------------------ */
-    /* the lockup: the living mark over the one-line wordmark. The tank rolls along while the game loads, on the
-       compositor so a busy main thread never stops it (src/ui/brandMarkMotion.ts; reduced motion shows the still) */
-    .cot-boot-mark { grid-area: mark; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 2.2vh, 22px); margin: 0 auto; }
-    .cot-boot-mark .mkl { width: clamp(132px, 13vw, 196px); }
-    .cot-boot-mark .wm { display: block; width: clamp(272px, 34vw, 520px); height: auto; color: var(--ink-1); }
+    /* the lockup (owner, 2026-10-26): the living tank on the left, CLAUDE / OF / TANKS stacked to its right, left-aligned and
+       level with the tank's drawing; the one place the words stack. --boot-mark is the tank's width, and the generated
+       rules below size the gap and the stack from it. The tank rolls along on the compositor, so a busy main thread never
+       stops it (src/ui/brandMarkMotion.ts; reduced motion shows the still) */
+    .cot-boot-mark { --boot-mark: clamp(150px, 15vw, 224px); grid-area: mark; display: flex; align-items: flex-start; justify-content: center; margin: 0 auto; color: var(--ink-1); }
+    .cot-boot-mark .mkl { flex: none; width: var(--boot-mark); }
     /* cot:brand-motion */
     .mkl{--mk-loop:1.2s;position:relative;aspect-ratio:184/106}
     .mkl-l{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -309,6 +310,8 @@
     @keyframes mkl-sway{0%,100%{transform:none}50%{transform:rotate(-5deg)}}
     @keyframes mkl-puff{0%{opacity:.5;transform:none}100%{opacity:0;transform:translate(-343.8%,-156.3%) scale(3.2)}}
     @media (prefers-reduced-motion:reduce){.mkl *{animation:none}.mkl-puff{display:none}}
+    .cot-boot-mark{gap:calc(var(--boot-mark) * 0.07609)}
+    .cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * 0.52989);margin-top:calc(var(--boot-mark) * 0.03533)}
     /* /cot:brand-motion */
     .cot-boot-invite {
       grid-area: invite; display: none; width: fit-content; max-width: min(560px, 84vw); margin: 12px auto 0;
@@ -553,11 +556,9 @@
       animation: cot-boot-fade var(--dur-screen) var(--ease-camera) .18s backwards;
     }
     @media (width < 768px) {
-      .cot-boot-mark { gap: 12px; }
+      .cot-boot-mark { --boot-mark: 128px; }
       .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
-      .cot-boot-mark .mkl { width: 124px; }
-      .cot-boot-mark .wm { width: min(300px, 78vw); }
       .cot-boot-retry { justify-self: stretch; }
     }
     /* a narrow phone: the version stands over the foot row's right end */
@@ -565,11 +566,9 @@
     @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; } }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
-      .cot-boot-mark { gap: 10px; }
-      .cot-boot-mark .mkl { width: auto; height: min(22vh, 86px); }
-      .cot-boot-mark .wm { width: min(44vw, 340px); }
+      .cot-boot-mark { --boot-mark: min(36vh, 150px); }
       .cot-boot-invite { margin-top: 12px; }
-      #cot-boot.has-invite .cot-boot-mark .mkl { height: min(17vh, 66px); }
+      #cot-boot.has-invite .cot-boot-mark { --boot-mark: min(28vh, 116px); }
       #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
@@ -1132,7 +1131,7 @@
            tools/sync-brand-marks.mjs from src/ui/brandMarkMotion.ts and src/ui/brandMark.ts. -->
       <div class="cot-boot-mark" role="img" aria-label="Claude of Tanks" data-i18n-aria-label="aria.claudeoftanks"><!-- cot:boot-lockup -->
         <div class="mkl" aria-hidden="true"><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/></svg><span class="mkl-links mkl-links--top" style="top:80.802%"><i></i></span><span class="mkl-links mkl-links--low" style="top:96.085%"><i></i></span><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:11.196%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:23.696%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:36.196%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:48.696%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:61.196%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><svg class="mkl-wheel" viewBox="-5.4 -5.4 10.8 10.8" style="left:73.696%;top:84.057%" focusable="false"><g fill="currentColor"><circle r="1.7"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(0)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(120)"/><rect x="-0.55" y="-5.4" width="1.1" height="5.4" transform="rotate(240)"/></g></svg><div class="mkl-l mkl-hull"><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><path fill="currentColor" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/></svg><i class="mkl-puff" style="animation-delay:0.00s"></i><i class="mkl-puff" style="animation-delay:-0.40s"></i><i class="mkl-puff" style="animation-delay:-0.80s"></i><div class="mkl-l mkl-turret"><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><g fill="currentColor"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g></svg><div class="mkl-l mkl-antenna"><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><path d="M64 76 56 41" fill="none" stroke="currentColor" stroke-width="1.6"/><path style="fill:var(--accent)" d="M56 38.5 41 43l15 4.5Z"/></svg></div><div class="mkl-l mkl-crew"><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><path style="fill:var(--accent)" fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/><g fill="currentColor"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></svg></div><svg class="mkl-l" viewBox="30 34 184 106" focusable="false"><g fill="currentColor"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l3.1 10Z"/></g></svg></div></div></div>
-        <svg class="wm" viewBox="55 142 9956 700" aria-hidden="true" focusable="false"><path fill="currentColor" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM7020.5 257H6811.5V142H7365.5V257H7156.5V842H7020.5ZM7591.5 142H7715.5L7971.5 842H7833.5L7776.5 687H7530.5L7473.5 842H7335.5ZM7746.5 575 7653.5 309H7651.5L7561.5 575ZM8081.5 142H8203.5L8515.5 617H8517.5V142H8648.5V842H8526.5L8214.5 368H8212.5V842H8081.5ZM8818.5 142H8954.5V435H9060.5L9229.5 142H9382.5L9177.5 491L9399.5 842H9243.5L9059.5 551H8954.5V842H8818.5ZM9469.5 734V634H9603.5V693L9636.5 726H9843.5L9877.5 692V576L9844.5 543H9579.5L9471.5 435V250L9579.5 142H9895.5L10003.5 250V351H9869.5V291L9836.5 258H9638.5L9605.5 291V394L9638.5 427H9903.5L10011.5 535V732L9901.5 842H9577.5Z"/><path style="fill:var(--accent)" d="M5085 619.8V372.2L5143.2 314H5314.8L5373.1 372.2V619.8L5314.8 678H5143.2ZM5290.9 634.3 5323.1 602.1V389.9L5290.9 357.7H5167.1L5134.9 389.9V602.1L5167.1 634.3ZM5529.1 314H5768.3V357.7H5579V478.3H5743.3V522H5579V678H5529.1ZM4396 455h520v90h-520ZM5916 455h520v90h-520Z"/></svg>
+        <svg class="wm-stack" viewBox="0 0 3946 2184" aria-hidden="true" focusable="false"><path transform="translate(-55.0 -142.0)" style="fill:currentColor" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495Z"/><path transform="translate(-5085.0 596.0)" style="fill:var(--accent)" d="M5085 619.8V372.2L5143.2 314H5314.8L5373.1 372.2V619.8L5314.8 678H5143.2ZM5290.9 634.3 5323.1 602.1V389.9L5290.9 357.7H5167.1L5134.9 389.9V602.1L5167.1 634.3ZM5529.1 314H5768.3V357.7H5579V478.3H5743.3V522H5579V678H5529.1Z"/><rect style="fill:var(--accent)" x="831.0" y="1051.0" width="3115.0" height="90.0"/><path transform="translate(-6811.5 1342.0)" style="fill:currentColor" d="M7020.5 257H6811.5V142H7365.5V257H7156.5V842H7020.5ZM7591.5 142H7715.5L7971.5 842H7833.5L7776.5 687H7530.5L7473.5 842H7335.5ZM7746.5 575 7653.5 309H7651.5L7561.5 575ZM8081.5 142H8203.5L8515.5 617H8517.5V142H8648.5V842H8526.5L8214.5 368H8212.5V842H8081.5ZM8818.5 142H8954.5V435H9060.5L9229.5 142H9382.5L9177.5 491L9399.5 842H9243.5L9059.5 551H8954.5V842H8818.5ZM9469.5 734V634H9603.5V693L9636.5 726H9843.5L9877.5 692V576L9844.5 543H9579.5L9471.5 435V250L9579.5 142H9895.5L10003.5 250V351H9869.5V291L9836.5 258H9638.5L9605.5 291V394L9638.5 427H9903.5L10011.5 535V732L9901.5 842H9577.5Z"/></svg>
         <!-- /cot:boot-lockup --></div>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite" data-datum="room-code"></div>
       <div class="cot-boot-load" data-datum="load-progress">

@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BRAND_MARK_LIVE_CSS, brandMarkLiveHTML } from '../src/ui/brandMarkMotion.ts';
-import { BRAND_WORDMARK_HTML, brandMarkSVG } from '../src/ui/brandMark.ts';
+import { BRAND_BOOT_STACK, BRAND_TANK_VIEWBOX, brandMarkSVG, brandWordmarkStack } from '../src/ui/brandMark.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
@@ -38,13 +38,18 @@ function syncFile(relativePath, expected) {
   return true;
 }
 
-// The boot card's lockup (owner, 2026-10-26: the name on one line, and a mark that keeps moving while the game loads): the
-// living mark as compositor layers (src/ui/brandMarkMotion.ts) over the one-line wordmark, with the layers' rules in the
-// boot sheet.
+// The boot card's lockup (owner, 2026-10-26: "tank onn left and then claude, then of, than tanks left aligned", and a mark
+// that keeps moving while the game loads): the living mark as compositor layers (src/ui/brandMarkMotion.ts) with the word
+// stack to its right, sized in the mark's width (--boot-mark) by BRAND_BOOT_STACK; the layers' rules in the boot sheet.
+const [, markTop, markWidth] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
+const share = (units) => (units / markWidth).toFixed(5);
+const stackCss = `.cot-boot-mark{gap:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.gap)})}\n`
+  + `.cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.height)});`
+  + `margin-top:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.top - markTop)})}`;
 let index = replaceBetween(read('index.html'), '<!-- cot:boot-lockup -->', '<!-- /cot:boot-lockup -->',
-  `\n        ${brandMarkLiveHTML()}\n        ${BRAND_WORDMARK_HTML}\n        `);
+  `\n        ${brandMarkLiveHTML()}\n        ${brandWordmarkStack()}\n        `);
 index = replaceBetween(index, '/* cot:brand-motion */', '/* /cot:brand-motion */',
-  `\n${BRAND_MARK_LIVE_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
+  `\n${`${BRAND_MARK_LIVE_CSS.trim()}\n${stackCss}`.split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
 syncFile('index.html', index);
 
 // (brand-ui 247) the Field Manual's static pages carry the mark in their footer: the drawing src/ui/brandMark.ts gives at
