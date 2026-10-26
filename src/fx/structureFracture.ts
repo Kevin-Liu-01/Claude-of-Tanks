@@ -38,6 +38,9 @@ import {
   createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, struckFace, type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
+/** (battle-spikes-253) The view a flying body's shadow laws read: its position and unit forward (its camera's -Z). */
+export interface FractureView { x: number; y: number; z: number; fx: number; fy: number; fz: number }
+
 interface StructureFractureOptions {
   pool: DebrisPhysics;
   group: THREE.Group;
@@ -48,12 +51,12 @@ interface StructureFractureOptions {
   /** A bucket's material for a building (its spans' own, else the world's). */
   materialFor(seam: StructureDamageSeam, bucket: string): THREE.Material | null;
   /**
-   * (battle-spikes-253) The view's ground position this frame, for a flying body's shadow reach: a body casts only into
-   * the cascades its shadow can reach from where it is (shadowCasterProfiles.ts's reach law), not into every cascade
-   * whose box it stands in. A house's collapse drew its bodies 252 times a frame into the shadow maps against 117 in the
-   * main pass (the draw census, urban 7v7). Absent: every cascade, as before.
+   * (battle-spikes-253) The view this frame, for a flying body's shadow: a body casts only into the cascades its shadow
+   * can reach from where it is and that sample where it can fall (shadowCasterProfiles.ts's reach and near laws), not
+   * into every cascade whose box it stands in. A house's collapse drew its bodies 252 times a frame into the shadow maps
+   * against 117 in the main pass (the draw census, urban 7v7). Absent: every cascade, as before.
    */
-  viewAt?(): { x: number; z: number } | null;
+  viewAt?(): FractureView | null;
   /** The fx clock (s). */
   now(): number;
   /** Keep a span's original positions before the first change (the owner's reset restores them). */
@@ -231,7 +234,8 @@ interface LiveBody {
   age: number;
   sounds: number;
   pose: Float64Array;
-  /** (battle-spikes-253) Its shadow profile while it flies (heightM its diameter, reachM kept by writePose), and radius. */
+  /** (battle-spikes-253) Its shadow profile while it flies (heightM its diameter, reachM and nearDepthM kept by
+   * writePose), and radius. */
   shadow: ShadowCasterProfile | null;
   radius: number;
   /** Its geometry per material, in the building's body frame (the copy its cells were packed in: no per-vertex work). */
@@ -1530,7 +1534,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (const part of parts) if (part.kind === 'box') for (let k = 0; k < 3; k++) half[k] = Math.max(half[k], Math.abs(part.center[k]) + part.half[k]);
     // (battle-spikes-253) a shadow-casting body's reach is kept as it flies (writePose)
     const shadow: ShadowCasterProfile | null = o.viewAt && meshes.some((mesh) => mesh.castShadow)
-      ? { heightM: bodyRadius * 2, reachM: undefined } : null;
+      ? { heightM: bodyRadius * 2, reachM: undefined, nearDepthM: undefined } : null;
     if (shadow) for (const mesh of meshes) if (mesh.castShadow) setShadowCasterProfile(mesh, shadow);
     const body: LiveBody = { structureIdx: live.seam.structureIdx, handle, meshes, massKg: mass, material: g0.material, still: 0, age: 0, sounds: 0,
       pose: new Float64Array(7).fill(NaN), shadow, radius: bodyRadius, parts: partsOut, cells: cells.slice(), cracked: cells.length < CRACK_MIN_CELLS * 2, half, tipped: false,
@@ -1783,9 +1787,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     _m4.compose(_v, _q, _s).multiply(b.fromBody);
     for (const mesh of b.meshes) { mesh.matrix.copy(_m4); mesh.matrixWorldNeedsUpdate = true; }
     if (b.shadow) {
-      // its farthest planar reach from the view: no cascade sampled from beyond it (and its shadow's length) draws it
+      // its farthest planar reach from the view: no cascade sampled from beyond it (and its shadow's length) draws it;
+      // its nearest view depth: no cascade sampled only short of it (less its shadow's length) draws it
       const view = o.viewAt?.() ?? null;
       b.shadow.reachM = view ? Math.hypot(src[0] - view.x, src[2] - view.z) + b.radius : undefined;
+      b.shadow.nearDepthM = view
+        ? (src[0] - view.x) * view.fx + (src[1] - view.y) * view.fy + (src[2] - view.z) * view.fz - b.radius : undefined;
     }
   }
   /** A body at rest into its building's heap: its geometry baked where it lies (one static mesh a body). */

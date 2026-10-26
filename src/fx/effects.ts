@@ -1280,8 +1280,9 @@ function* createFxSteps(
   // (battle-spikes-253) the struck buildings' redrawn faces, rooms and heaps stand still between strikes: a static subtree
   // of the fx group (shadowStaticCache.ts staticShadowNest), so their shadows come from the cached layer instead of a
   // draw a cascade a frame (fx-fracture-face: 158 shadow draws a frame at Urban 14v14)
-  // (battle-spikes-253) the view's ground position, kept by update() for the fracture's flying bodies' shadow reach
-  const fractureView = { x: 0, z: 0, known: false };
+  // (battle-spikes-253) the view's position and forward, kept by update() for the fracture's flying bodies' shadow reach
+  // and nearest depth
+  const fractureView = { x: 0, y: 0, z: 0, fx: 0, fy: 0, fz: -1, known: false };
   const settledFracture = new THREE.Group();
   settledFracture.name = 'fx-settled';
   settledFracture.matrixAutoUpdate = false;
@@ -6379,8 +6380,14 @@ function* createFxSteps(
     ): void {
       attachWorld();
       resolvePendingHe();
-      // (battle-spikes-253) the view's ground position for the flying bodies' shadow reach (structureFracture viewAt)
-      { const e = camera.matrixWorld.elements; fractureView.x = e[12]; fractureView.z = e[14]; fractureView.known = true; }
+      // (battle-spikes-253) the view's position and forward (its -Z) for the flying bodies' shadow laws (structureFracture
+      // viewAt)
+      {
+        const e = camera.matrixWorld.elements, length = Math.hypot(e[8], e[9], e[10]) || 1;
+        fractureView.x = e[12]; fractureView.y = e[13]; fractureView.z = e[14];
+        fractureView.fx = -e[8] / length; fractureView.fy = -e[9] / length; fractureView.fz = -e[10] / length;
+        fractureView.known = true;
+      }
       tracerSubject = resolveSubject; // atmospherics lane: the tracers' shooter lookup
       if (!cinematicTintOwner) battleLightTintFromRig(engineCtx.scene ?? null, particles.sharing.uLightTint.value);
       // (EF.12) one world wind: the columns lean and drift with the media and the clouds over them

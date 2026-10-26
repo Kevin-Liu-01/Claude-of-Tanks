@@ -419,7 +419,7 @@ export function filterTraceEvents(events) {
  * view camera (the far merge's 30 m and the far LOD's 180 m) and its part (two levels under the root); with the distinct
  * materials and programs drawn, all and on tanks. Run in the page (no closures).
  */
-async function pageDrawAttribution(frames) {
+export async function pageDrawAttribution(frames) {
   const D = window.__DEBUG, R = D.renderer, scene = D.scene, camera = D.camera;
   const roots = new Map();
   for (const tank of D.game.tanks) if (tank.visual?.root) roots.set(tank.visual.root, tank);
@@ -439,7 +439,7 @@ async function pageDrawAttribution(frames) {
   // (battle-spikes-253) shadow draws by cascade (the shadow camera's light), the static cache's phase (a rebuild's static
   // layer, the dynamic layer over a copy, or an ordinary render) and owner (world, tank, other)
   const cascadeOf = new Map((D.lighting?.csm?.lights ?? []).map((light, index) => [light.shadow.camera, index]));
-  const cascades = {}, dynamicWorld = {};
+  const cascades = {}, dynamicWorld = {}, fxCascades = {};
   R.renderBufferDirect = function (cam, sc, geometry, material, object) {
     const pass = cam?.isOrthographicCamera ? 'shadow' : 'main';
     passes[pass] = (passes[pass] ?? 0) + 1;
@@ -480,6 +480,8 @@ async function pageDrawAttribution(frames) {
       if (top !== object && (top.name === 'fx' || top.userData?.fxRoot)) {
         const kind = `${(object.name || object.type).replace(/[-_]?\d+$/, '')}|${pass}`;
         fxKinds[kind] = (fxKinds[kind] ?? 0) + 1;
+        // and its shadow draws by cascade (a flying body's reach profile keeps it out of the cascades it cannot reach)
+        if (pass === 'shadow') { const ck = `${kind}|c${cascadeOf.get(cam) ?? '?'}`; fxCascades[ck] = (fxCascades[ck] ?? 0) + 1; }
       }
     }
     return orig.apply(this, arguments);
@@ -517,6 +519,7 @@ async function pageDrawAttribution(frames) {
     dynamicWorld: Object.entries(dynamicWorld).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
     fxKinds: Object.entries(fxKinds).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30),
+    fxCascades: Object.fromEntries(Object.entries(fxCascades).sort().map(([k, v]) => [k, per(v)])),
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
 }
 

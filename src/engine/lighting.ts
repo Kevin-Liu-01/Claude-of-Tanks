@@ -25,7 +25,7 @@ import {
 import { createShadowFitCache } from './shadowFitCache.ts';
 import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePolicy } from './renderLayers.ts';
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
-import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
+import { csmSampledFromM, csmSampledToM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
   CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
 } from './renderLayers.ts';
@@ -1597,6 +1597,8 @@ export function createLighting(
       } else sample.frustum = null;
       sample.texelM = (shadowCam.right - shadowCam.left) / Math.max(1, shadow.mapSize.x);
       sample.sampledFromM = csmSampledFromM(i === 0 ? 0 : csm.breaks[i - 1], camera.near, far, csm.fade);
+      // (battle-spikes-253) and to where it is sampled (the near law: the last cascade samples to the shadow far)
+      sample.sampledToM = i === lights.length - 1 ? Infinity : csmSampledToM(csm.breaks[i], camera.near, far, csm.fade);
     }
     profileCascades.length = lights.length;
     // csm.lightDirection points FROM the sun: its -y is the sine of the sun's elevation
