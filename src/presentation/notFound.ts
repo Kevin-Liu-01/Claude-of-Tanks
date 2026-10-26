@@ -66,6 +66,36 @@ function mountSearch(form: HTMLFormElement): void {
     const query = input.value;
     void load().then((find) => { if (input.value === query) render(find(query), query); });
   });
+  // the hits are the field's list: they close when the search loses the focus or on Esc (back to the field), reopen when
+  // the field takes it again, and the arrows walk them (Down from the field enters them, Up from the first leaves them)
+  const links = (): HTMLAnchorElement[] => [...list.querySelectorAll<HTMLAnchorElement>('a')];
+  const close = (): void => { list.hidden = true; empty.hidden = true; };
+  input.addEventListener('focus', () => {
+    if (!input.value.trim()) return;
+    if (links().length) list.hidden = false; else empty.hidden = false;
+  });
+  form.addEventListener('focusout', (event) => { if (!form.contains(event.relatedTarget as Node | null)) close(); });
+  form.addEventListener('keydown', (event) => {
+    const open = !list.hidden || !empty.hidden;
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      input.focus();
+      return;
+    }
+    if (event.key === 'ArrowDown' && list.hidden && event.target === input && links().length && input.value.trim()) {
+      event.preventDefault();
+      list.hidden = false;
+      return;
+    }
+    if ((event.key !== 'ArrowDown' && event.key !== 'ArrowUp') || list.hidden) return;
+    const all = links();
+    const at = all.indexOf(document.activeElement as HTMLAnchorElement);
+    const to = event.key === 'ArrowDown' ? Math.min(all.length - 1, at + 1) : at - 1;
+    event.preventDefault();
+    if (to < 0) input.focus(); else all[to]?.focus();
+  });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const first = list.querySelector<HTMLAnchorElement>('a');

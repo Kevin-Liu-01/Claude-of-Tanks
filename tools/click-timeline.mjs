@@ -516,6 +516,17 @@ const ACCESS_SURFACES = [
   { id: 'rooms', scope: '.cot-play',
     open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-room="private"]'), ctx);
       await waitFor(page, `shown('.cot-play .panel')`, 30000); } },
+  // the lobby's battlefield picker (a host in a fresh room: the rooms service or the LAN helper), the room left after
+  { id: 'rooms-battlefield', scope: '.cot-play .battlefield-pick',
+    open: async (page, ctx) => {
+      await openDeploy(page, ctx);
+      for (const [press, shown] of [['#cot-battle-menu [data-deploy-room="private"]', `shown('.cot-play .panel')`],
+        ['.cot-play [data-action="create"]', `shown('.cot-play .roomhead .code')`],
+        ['.cot-play [data-control="map"] [data-select-trigger]', `shown('.cot-play [data-picker="rooms-battlefield"]')`]]) {
+        await tapOrClick(page, await target(page, press), ctx);
+        await waitFor(page, shown, 30000);
+      }
+    } },
 ];
 /** Undo a step path's task (not counted): close what it opened, leave the room, or end the battle it started. */
 async function resetStepPath(page, ctx, reset) {
@@ -883,6 +894,10 @@ export const PATHS = [
       await restoreGarage(page, ctx);
       let presses = 0;
       try {
+        for (const step of path.setup ?? []) {
+          await tapOrClick(page, await target(page, step.press, step.index ?? 0), ctx);
+          await waitFor(page, step.shown, step.shownTimeoutMs ?? 30000);
+        }
         for (const step of path.steps) {
           const sample = await run(`steps:${path.id}:${step.name}`, () => (step.key ? null : target(page, step.press, step.index ?? 0)),
             { key: step.key ?? null, shown: step.shown, shownTimeoutMs: step.shownTimeoutMs ?? 15000 });
