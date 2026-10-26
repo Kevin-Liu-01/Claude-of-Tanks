@@ -19,21 +19,21 @@ export const JAPAN_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // STB-1 to Type 10
-    node({ id: 'stb1', tier: 3, line: 'type', lane: 0, parents: [], slot: 'line' }),
-    node({ id: 'type74', tier: 4, line: 'type', lane: 0, parents: ['stb1'], slot: 'line' }),
+    node({ id: 'stb1', tier: 1, line: 'type', lane: 1, parents: [], slot: 'line' }),
+    node({ id: 'type74', tier: 1, line: 'type', lane: 0, parents: ['stb1'], slot: 'line' }),
     node({
-      id: 'type90', tier: 6, line: 'type', lane: 0, parents: ['type74'], slot: 'line', builds: ['type90_kyumaru'],
+      id: 'type90', tier: 8, line: 'type', lane: 0, parents: ['type74'], slot: 'line', builds: ['type90_kyumaru'],
     }),
-    node({ id: 'type90a', tier: 6, line: 'type', lane: 1, parents: ['type90'], slot: 'line' }),
+    node({ id: 'type90a', tier: 8, line: 'type', lane: 1, parents: ['type90'], slot: 'line' }),
     node({ id: 'type10_tk_x', tier: 9, line: 'type', lane: 1, parents: ['type90a'], slot: 'line' }),
-    node({ id: 'type10b', tier: 9, line: 'type', lane: 2, parents: ['type90a'], slot: 'line' }),
+    node({ id: 'type10b', tier: 9, line: 'type', lane: 0, parents: ['type90a'], slot: 'line' }),
     node({
       id: 'type10', tier: 10, line: 'type', lane: 1, parents: ['type10_tk_x', 'type10b'], slot: 'line',
       builds: ['type10_dozer'],
     }),
     // Hayate to Raijū
-    node({ id: 'hayate_ifv', tier: 3, line: 'ifv', lane: 3, parents: ['stb1'], slot: 'line' }),
-    node({ id: 'type89', tier: 9, line: 'ifv', lane: 3, parents: ['hayate_ifv'], slot: 'line' }),
-    node({ id: 'raiju_ifv', tier: 10, line: 'ifv', lane: 3, parents: ['type89'], slot: 'line' }),
+    node({ id: 'hayate_ifv', tier: 2, line: 'ifv', lane: 2, parents: ['stb1'], slot: 'line' }),
+    node({ id: 'type89', tier: 6, line: 'ifv', lane: 2, parents: ['hayate_ifv'], slot: 'line' }),
+    node({ id: 'raiju_ifv', tier: 10, line: 'ifv', lane: 2, parents: ['type89'], slot: 'line' }),
   ]),
 });
