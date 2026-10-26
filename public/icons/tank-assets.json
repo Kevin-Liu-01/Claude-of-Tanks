@@ -30425,8 +30425,8 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.72,
         "overallLength": 6.72,
@@ -31375,7 +31375,7 @@
         ]
       },
       "geometryHash": "8076fb29",
-      "metadataHash": "91c964eb",
+      "metadataHash": "270e0494",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": -0.0611
@@ -31436,15 +31436,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25282,
-          "sha256": "f80d9e86120d834c1171a79d5b354108f6c241c46cb1ef6b6f91de8f08b40b64",
+          "bytes": 25250,
+          "sha256": "ddceb39d0426cfae944985623e26f327d3cfe0897ce0390532895539246d7083",
           "thumbnail": {
             "file": "thumbs/bmp2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10428,
-            "sha256": "77286ba132d05f87e3dd5173a90bad8eb08b069166faa3e58e8870acd7825024"
+            "bytes": 10426,
+            "sha256": "a68b8dda4c4b6019b3adad3a3666caffa3f508454bf649e57223e8f0a325d7d0"
           }
         },
         "top": {
@@ -31460,8 +31460,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14764,
-          "sha256": "667994ece0c82e719ad0002f1643a634432c89fe739c98b424986dce0fe6a200"
+          "bytes": 14730,
+          "sha256": "33ed72da32a4f1480f23e8ddb5028f68f8efbf1ac3755338379b1517186eabe3"
         },
         "topSilhouette": {
           "file": "bmp2_top_silhouette.png",
@@ -31484,24 +31484,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 40148,
-          "sha256": "9aaa6ed0a446b7bea09f6612b94d841fa212b49fb91aeb294f131099c3bb8563"
+          "bytes": 40184,
+          "sha256": "4c5c52025fefd689a851665dc13016a711d51d80bd317b94462093e5c8d09911"
         },
         "modulesSide": {
           "file": "bmp2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37734,
-          "sha256": "8ddf36565bcd9f215b8a442092e14f0c0be6b68de51c320965c8ca6f909f955f"
+          "bytes": 37786,
+          "sha256": "e98f87da2133918638b69db21405b208155a545ddda9b5d7e41c13b9e61a5f7d"
         },
         "crewSide": {
           "file": "bmp2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33318,
-          "sha256": "ca2e6bc72dbe166a598b46d388a9510af28d97a77ea5e1590d0bfd0feb7d39e9"
+          "bytes": 33152,
+          "sha256": "5357a9a9f62ceb9e6905b29c8d4d4e6ac4358db9921bb9fa50f08d8363c811ab"
         },
         "markings": {
           "file": "bmp2_markings.png",
@@ -157391,8 +157391,8 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.95,
         "overallLength": 6.95,
@@ -158202,7 +158202,7 @@
         ]
       },
       "geometryHash": "c57540a2",
-      "metadataHash": "ccfd044a",
+      "metadataHash": "2949f73f",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.2022
@@ -158264,15 +158264,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30534,
-          "sha256": "840db80f84a39c8e030d3b3bac095b78e4e128bd4c5bc53839d6c0399ae8125c",
+          "bytes": 30464,
+          "sha256": "5aa1b7b91c4fe006101594388d6cee2bcd0a3822754a0b101c99fe0141ff7f4c",
           "thumbnail": {
             "file": "thumbs/kv2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12048,
-            "sha256": "3aadddf6a344ddd48f0e3c7a5386f1bc818dd902f31899c752be11e14708b08e"
+            "bytes": 12032,
+            "sha256": "f363bf1494487deac8808e3efcdcf8b37a142ca9f8c91bd1f51032c1f734a785"
           }
         },
         "top": {
@@ -158280,16 +158280,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15908,
-          "sha256": "d719c001940ddbd0dc934d3fb74f0c498b550a73187b21dbf9d06d0e05fb3491"
+          "bytes": 15942,
+          "sha256": "91a724fce8b0e81be646cb4bd32c5e2726950682b26843621238fff5d47de61c"
         },
         "side": {
           "file": "kv2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16900,
-          "sha256": "6895e9bc3df4fd1aad235d7e2d331c4b62b56c9e661a14cc83cec38bf81a2854"
+          "bytes": 16896,
+          "sha256": "8f02c16a16425e7423fe8303d8b1ef5a1e5a7bef38174456698694b9142ac349"
         },
         "topSilhouette": {
           "file": "kv2_top_silhouette.png",
@@ -158312,24 +158312,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37270,
-          "sha256": "48b2872d8d1e0fb8312132a38da2ac6c20af5344bec6e5bb71cfd7afe22fd978"
+          "bytes": 37008,
+          "sha256": "bb8f1bbd77b536bf4ab29c2b85c813c89e4e41ba168bfae37fd4899d6652375c"
         },
         "modulesSide": {
           "file": "kv2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38846,
-          "sha256": "6ff5a063940f6c2e9cbdcf17e6ed950d5a93cb95ec5409aab78fa4648d9cb977"
+          "bytes": 38700,
+          "sha256": "608ec8ce61b23fcb5f6acf8840b31e4d2e6728de00ffc0ec6e00aac28aed1257"
         },
         "crewSide": {
           "file": "kv2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37778,
-          "sha256": "be162c6193233e37805bfb36ba9dcae8cd00c9c784ff995344e1fabd44a034d7"
+          "bytes": 37702,
+          "sha256": "9a2bb59ec0a102ded536a19d8508c262323e06db27a21487582f9d2e87f2540a"
         },
         "markings": {
           "file": "kv2_markings.png",
