@@ -227,13 +227,17 @@ export function formatBanner(banner: NetworkBanner): string {
   }
 }
 
-/** The panel's rows, label then value, in display order. */
-export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>): Array<[string, string]> {
+/** The panel's rows, label then value, in display order. With `stripCells` (the strip shows its seat and seated cells
+ *  beside the ping) the panel leaves those to it, and gives the round trip's median and spread, not its figure again
+ *  (UI-LOCKDOWN B12); a folded strip shows its ping alone, and the panel keeps them. */
+export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>, stripCells = false): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
   if (s.attached) {
     const link = t(`mpStatus.link.${s.link}`);
     rows.push([t('mpStatus.row.link'), s.transport === 'reconnecting' ? `${link} · ${t('mpStatus.value.attempt', { attempt: s.reconnectAttempt })}` : link]);
-    rows.push([t('mpStatus.row.rtt'), s.rttMs === null ? '—' : t('mpStatus.value.rtt', { ms: round(s.rttMs), median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })]);
+    rows.push([t('mpStatus.row.rtt'), s.rttMs === null ? '—' : stripCells
+      ? t('mpStatus.value.rttSpread', { median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })
+      : t('mpStatus.value.rtt', { ms: round(s.rttMs), median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })]);
     rows.push([t('mpStatus.row.updates'), t('mpStatus.value.hz', { hz: s.snapshotHz.toFixed(1), expected: s.expectedSnapshotHz })]);
     rows.push([t('mpStatus.row.age'), t('mpStatus.value.ago', { ms: round(s.snapshotAgeMs) })]);
     rows.push([t('mpStatus.row.buffer'), t('mpStatus.value.buffer', { ms: round(s.interpolationDelayMs), frames: s.bufferedFrames })]);
@@ -254,6 +258,7 @@ export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>): Array<[stri
   const roomPhase = s.roomPhase ? ` · ${t(`mpStatus.roomPhase.${s.roomPhase}`)}` : '';
   rows.push([t('mpStatus.row.room'), s.roomRttMs === null ? `${room}${roomPhase}` : `${room}${roomPhase} · ${t('mpStatus.value.ms', { ms: round(s.roomRttMs) })}`]);
   rows.push([t('mpStatus.row.region'), s.roomRegion ?? '—']);
+  if (stripCells) return rows;
   rows.push([t('mpStatus.row.seat'), s.seat === null ? '—' : String(s.seat)]);
   rows.push([t('mpStatus.row.roster'), `${s.rosterCount} / ${s.rosterCapacity}`]);
   return rows;
@@ -357,7 +362,8 @@ export function createMultiplayerStatusSurface({
 
   function paintPanel(s: Readonly<NetworkStatusSnapshot>): void {
     write(panelVerdict, `${healthLabel(s.health)} · ${reasonLabel(s.healthReason)}`);
-    const rows = formatPanelRows(s);
+    // (the strip's seat cell shown beside its ping: not folded to the ping alone, multiplayerStatus's data-compact)
+    const rows = formatPanelRows(s, (seatUnit.getClientRects?.().length ?? 0) > 0);
     while (rowNodes.length < rows.length) {
       const row = createElement('div', 'row', panelRows);
       rowNodes.push({ label: createElement('span', '', row), value: createElement('b', '', row) });
@@ -379,7 +385,9 @@ export function createMultiplayerStatusSurface({
     const shown = text.length > 0;
     panelNotice.hidden = !shown;
     if (panelNotice.textContent !== text) panelNotice.textContent = text;
-    if (banner.hidden === shown) banner.hidden = !shown;
+    // (while the panel is open its notice holds the text, never the banner as well: UI-LOCKDOWN B13)
+    const bannerShown = shown && !panelOpen;
+    if (banner.hidden === bannerShown) banner.hidden = !bannerShown;
     if (!shown) { lastBannerText = ''; return; }
     if (text !== lastBannerText) { lastBannerText = text; bannerText.textContent = text; }
     const severe = armed || s.health === 'bad' || s.health === 'offline';
@@ -420,6 +428,7 @@ export function createMultiplayerStatusSurface({
     strip.setAttribute('title', t(open ? 'mpStatus.toggleAria.hide' : 'mpStatus.toggleAria.show'));
     try { storage?.setItem(MP_STATUS_PANEL_STORAGE_KEY, open ? '1' : '0'); } catch { /* storage may be blocked */ }
     if (open && lastSnapshot) paintPanel(lastSnapshot);
+    if (lastSnapshot) paintBanner(lastSnapshot, lastBanner, now());
   }
 
   function pressLeave(): 'armed' | 'left' | 'ignored' {

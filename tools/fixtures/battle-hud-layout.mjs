@@ -227,6 +227,9 @@ function state(name) {
     bus.emit('mode:respawn',{id:tanks[1].id});
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
+    // (a burst's allied lane full of a teammate's kills: the player's own go to the kill ribbon wherever it shows,
+    // UI-LOCKDOWN B1, so the burst would leave that lane short of its eight rows)
+    if(name==='feed-burst'){bus.emit('mode:respawn',{id:tanks[10].id});bus.emit('tank:destroyed',{id:tanks[10].id,killerId:tanks[2].id,cause:'fire'});}
   }
   if(name==='notifications'||name.startsWith('mode-')) {
     bus.emit('player:spotted',{timeS:frame.timeS-4});

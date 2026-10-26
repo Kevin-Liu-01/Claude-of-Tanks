@@ -163,7 +163,8 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid var(--line-3)}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon{color:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-instrument .flight-icon svg{width:16px;height:16px}
-.cot-flight-hud[data-kind=drone] .flight-battery{grid-column:1/-1;grid-row:3;height:3px;margin:0 0 2px;pointer-events:none}
+.cot-flight-hud[data-kind=drone] .flight-instrument{position:relative}
+.cot-flight-hud[data-kind=drone] .flight-battery{position:absolute;left:var(--s3);right:var(--s3);bottom:-4px;width:auto;height:3px;margin:0;pointer-events:none}
 .cot-flight-hud[data-kind=drone] .flight-battery::-webkit-meter-bar{height:3px}
 /* (the charge in the accent in every view, a load bar's fill: infrared's white view ink made it the brightest line on the
    HUD, in no palette colour, gauntlet r5) */
@@ -184,7 +185,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:var(--line-2)}
 /* (the strong plate itself: a warm gradient made the return the HUD's one gradient tile, gauntlet r6) */
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px 1px 2px;background:var(--hud-plate-strong)}
-.cot-flight-hud[data-kind=drone] .flight-view-switch{grid-column:1;grid-row:4;display:grid;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:9px;row-gap:5px;align-content:center}
+.cot-flight-hud[data-kind=drone] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:9px;row-gap:5px;align-content:center}
 .cot-flight-hud[data-kind=drone] .flight-optic-icon{grid-column:1;grid-row:1/3;display:flex;color:var(--flight-accent)}
 .flight-optic-icon svg{width:22px;height:22px}
 .cot-flight-hud[data-kind=drone] .flight-feed{grid-column:2;grid-row:1;min-width:0;width:100%;color:inherit;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.02em}
@@ -192,7 +193,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-cycle-icon{display:none}
 .cot-flight-hud[data-kind=drone] .flight-view-track{grid-column:2;grid-row:2;display:flex;gap:var(--s1);height:3px}
 .flight-view-track .scope-vision-step.active{background:var(--flight-accent);box-shadow:none}
-.cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:4;justify-content:center}
+.cot-flight-hud[data-kind=drone] .cot-drone-return{grid-column:2;grid-row:3;justify-content:center}
 .cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
 /* (open, on the primary fill: its glyph in the button's ink and its key the kit's cap on the accent, as the Watch bar's
    seat button: the amber glyph vanished on the amber fill and the pale V cap disagreed with DRIVE's, gauntlet r8) */

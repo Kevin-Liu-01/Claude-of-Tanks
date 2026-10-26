@@ -275,6 +275,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img{max-height:150p
 body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:74px;padding:10px var(--s3);gap:6px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:var(--battle-fs-28)}
 /* (the lead tile is its accent alone, on the grid with the others: a 40 px figure stood it 16 px taller, gauntlet r1) */
+/* (a narrow sheet's scoreboard names the sides and who lived; the score is the headline's, never its figures as well,
+   UI-LOCKDOWN B17: a watched battle's headline leaves its score to the card under 1280 px, below) */
+body[data-cot-width] .cot-es.cot-es--record:not(.watched) .es-scoreboard :is(.sn,.es-score-dash){display:none}
 /* the rosters as the direction's tables: one line a row, the side's head over glyph columns, no scoreboard (the
    headline carries the score) */
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{display:none}
@@ -291,7 +294,6 @@ body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{grid-column:fl
 /* (a side's name in the label's capitals at every width, the HUD's ALLIES: "Alpha" here, "ALPHA" under 1280, gauntlet r5) */
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side b{font:700 var(--battle-fs-18)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--team-own)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster.foe .es-roster-cols .side b{color:var(--team-enemy)}
-body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .tot{font:700 var(--battle-fs-18)/1 var(--font-ui);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .alive{display:inline-flex;align-items:center;gap:var(--s1);font:500 var(--battle-fs-12)/1 var(--font-data)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st){display:flex}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.kc{grid-area:kc}
@@ -396,9 +398,6 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{display:flex;align-items:baseline;gap:var(--s2);min-width:0}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side b{font:700 var(--battle-fs-13)/1 var(--font-ui);color:var(--team-own)}
   body[data-cot-width] .cot-es.cot-es--record .es-roster.foe .es-roster-cols .side b{color:var(--team-enemy)}
-  /* (the side's score leads its head in the bright ink, as the wide tables' does, its survivors after it in the data
-     face: both in the grey data face, the count's slash read taller than the score, gauntlet r14 at 844x390) */
-  body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side .tot{font:700 var(--battle-fs-13)/1 var(--font-ui);color:var(--ink-1)}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side .alive{font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2)}
   /* (the side's head on the rows' left edge, its tally's glyph a gap from its figures: it began 46 px in, on nothing, and
      read "✓5/21", gauntlet r5) */

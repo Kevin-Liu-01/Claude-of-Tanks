@@ -115,6 +115,11 @@ const live = (patch = {}) => ({
   assert.equal(reconnecting[1][1], '—');
   const lobbyRows = formatPanelRows({ ...base(), room: 'connecting' });
   assert.deepEqual(lobbyRows.map(([label]) => label), ['Room', 'Region', 'Seat', 'Seated']);
+  // (the strip's cells shown beside its ping: the panel leaves seat and seated to them and gives the round trip's median
+  // and spread, never its figure again: UI-LOCKDOWN B12)
+  const stripRows = formatPanelRows(snapshot, true);
+  assert.deepEqual(stripRows.map(([label]) => label), ['Link', 'Round trip', 'Updates', 'Last update', 'Buffer', 'Loss', 'Corrections', 'Traffic', 'Reconnects', 'Room', 'Region']);
+  assert.equal(stripRows.find(([label]) => label === 'Round trip')[1], 'median 72 ms ± 4');
   assert.deepEqual(lobbyRows.map(([, value]) => value), ['Connecting', '—', '—', '0 / 28']);
 }
 
@@ -224,7 +229,9 @@ const live = (patch = {}) => ({
   // a bad sample: the banner names the attempt and the countdown and offers the leave
   surface.set(live({ transport: 'reconnecting', link: 'reconnecting', reconnectAttempt: 2, health: 'bad', healthReason: 'reconnecting' }),
     { kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }, at);
-  assert.equal(banner.hidden, false);
+  // (the panel is open: its notice holds the text, never the banner as well, UI-LOCKDOWN B13)
+  assert.equal(banner.hidden, true);
+  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Reconnecting · attempt 2 · next try in 3 s');
   assert.equal(banner.children[0].textContent, 'Reconnecting · attempt 2 · next try in 3 s');
   assert.equal(banner.className, 'cot-mp-banner battle bad leaving');
   assert.equal(strip.className, 'cot-mp-strip bad');
@@ -245,7 +252,8 @@ const live = (patch = {}) => ({
 
   // the leave key: arm, expire, arm, confirm
   assert.equal(surface.pressLeave(), 'armed');
-  assert.equal(banner.hidden, false);
+  assert.equal(banner.hidden, true, 'the open panel holds the notice');
+  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Leave the battle? Press again to confirm');
   assert.equal(banner.children[0].textContent, 'Leave the battle? Press again to confirm');
   assert.equal(banner.className, 'cot-mp-banner battle good leaving');
   assert.equal(leaves, 0);

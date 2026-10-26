@@ -1020,7 +1020,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const columns = el('div', 'es-roster-cols', panel);
     const glyphHead = (icon: string, label: string, cls: string): string =>
       `<span class="ch ${cls}" data-tip="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
-    columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b><span class="tot num">${fmtN(side.kills)}</span>` +
+    // (the side's head names it and who lived: its kills are the headline's score, never a second figure, UI-LOCKDOWN B17)
+    columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b>` +
       `<span class="alive num" data-tip="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
       `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
       glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
