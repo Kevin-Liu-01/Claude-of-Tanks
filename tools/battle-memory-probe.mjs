@@ -319,14 +319,18 @@ async function probeScenario(options, scenario) {
       await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
       // (--leak-check) this battle's world, held weakly and marked (a class of its own, named in a heap snapshot)
-      if (options.leakCheck) await page.evaluate((label) => {
+      if (options.leakCheck) await page.evaluate((label, battleIndex) => {
         const world = window.__DEBUG?.world;
         if (!world) return;
         window.__WORLD_REFS ??= [];
-        const Marker = { [`LeakMarker_${label}`]: class {} }[`LeakMarker_${label}`];
-        world.__leakMarker = new Marker();
+        // a class named in its own source: a heap snapshot names an instance by its class's declared (or inferred) name,
+        // not by a computed .name (a `{ [key]: class {} }` marker read as its variable's name)
+        const markers = [class LeakMarker_1 {}, class LeakMarker_2 {}, class LeakMarker_3 {}, class LeakMarker_4 {},
+          class LeakMarker_5 {}, class LeakMarker_6 {}, class LeakMarker_7 {}, class LeakMarker_8 {}, class LeakMarker_9 {},
+          class LeakMarker_10 {}, class LeakMarker_11 {}, class LeakMarker_12 {}];
+        world.__leakMarker = new markers[(battleIndex - 1) % markers.length]();
         window.__WORLD_REFS.push({ label, mapId: world.mapId, ref: new WeakRef(world) });
-      }, `${battle}_${battleMap}`);
+      }, `${battle}_${battleMap}`, battle);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
       await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
@@ -341,7 +345,8 @@ async function probeScenario(options, scenario) {
         }));
         log(`worlds alive: ${row.worldsAlive.map((w) => `${w.label}${w.alive ? (w.current ? ' (current)' : w.cached ? ' (cached)' : ' (LEAKED)') : ' (collected)'}`).join(', ')}`);
         // (--retainers) a leaked world's shortest strong retainer paths, from a heap snapshot parsed as it streams
-        const leaked = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached).map((w) => `LeakMarker_${w.label}`);
+        const leaked = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached)
+          .map((w) => `LeakMarker_${((Number.parseInt(w.label, 10) - 1) % 12) + 1}`);
         if (options.retainers && leaked.length) {
           row.retainers = await snapshotRetainerPaths(cdp, leaked, 3);
           for (const [name, perMarker] of Object.entries(row.retainers)) {
