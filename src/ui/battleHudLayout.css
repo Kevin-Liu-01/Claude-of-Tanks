@@ -178,6 +178,9 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
 body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .cot-vehicle-controls>button{flex:0 0 auto;margin-left:var(--hud-tile-dx,0px)}
 .cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
+/* (the jump's tile in the rack is a tile like its neighbours, its glyph in their ink: its hint's amber glyph without the
+   selected frame read as a half-selected third state, gauntlet r9) */
+.cot-vehicle-controls>.cot-jump .si{color:inherit}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
 /* an engaged system reads as a selected ammo slot does: the accent's ring all round on its wash (gauntlet r2: an underline
    alone beside the slot's full frame, one coloured edge) */
@@ -370,11 +373,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.empty{border-bottom-color:var(--hud-danger)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl,.sk,.system-status){display:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:var(--ink-1)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:start;justify-self:end;margin:3px 3px 0 0;font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:var(--ink-1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
-/* a tile showing a count lifts its icon to the top, so the count under it never crosses the glyph (gauntlet r1: the
-   smoke's "3/3" sat on the cloud's base) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button:is(:has(>.sl[data-count]),:has(>.system-status:not(:empty))) .si{align-self:start;margin-top:4px;--hud-tile-icon:18px}
+/* a tile showing a count sets it in the top-right corner, as the shells' and the mouse tiles' counts sit, and its icon at
+   the foot, so the count over it never crosses the glyph (gauntlet r1: the smoke's "3/3" sat on the cloud's base; r9: the
+   touch count at the foot was a corner of its own) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button:is(:has(>.sl[data-count]),:has(>.system-status:not(:empty))) .si{align-self:end;margin-bottom:4px;--hud-tile-icon:18px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
 /* (on the last page the chevron turns back to the first) */
 .cot-systems-more.last .si svg{transform:scaleX(-1)}
