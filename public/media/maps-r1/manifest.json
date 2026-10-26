@@ -633,6 +633,14 @@
             "bytes": 212994
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/titan_gorge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1082251
       }
     },
     {
@@ -659,6 +667,14 @@
             "bytes": 278932
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/skybridge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1077619
       }
     },
     {
@@ -685,6 +701,14 @@
             "bytes": 319168
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/polders-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1085559
       }
     },
     {
@@ -779,6 +803,14 @@
             "bytes": 309524
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/oasis-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1102921
       }
     },
     {
@@ -805,6 +837,14 @@
             "bytes": 178050
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/whiteout-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1089028
       }
     },
     {
@@ -831,6 +871,14 @@
             "bytes": 325166
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/orchard-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1080622
       }
     },
     {
@@ -925,6 +973,14 @@
             "bytes": 207706
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/saltwind-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1071539
       }
     },
     {
@@ -951,6 +1007,14 @@
             "bytes": 285550
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/reservoir-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1088601
       }
     },
     {
@@ -1011,6 +1075,14 @@
             "bytes": 116110
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/moon-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081018
       }
     },
     {
