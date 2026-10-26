@@ -573,6 +573,14 @@
             "bytes": 175564
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/ruinspires-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1066756
       }
     },
     {
