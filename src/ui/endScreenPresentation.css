@@ -189,8 +189,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
 /* (the result's chip in the headline's capitals: "Alpha" under "ALPHA WINS", gauntlet r6) */
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:uppercase;letter-spacing:var(--track-label-s)}
-/* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6) */
-:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
+/* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6; lifted by
+   that much, not padded under, so the head keeps the Latin height: padded, it took 7 px from the report under it, which
+   showed a row fewer than en's at 1280x720 and 1024x600 over a row-high empty band, r13) */
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{position:relative;top:-.08em}
 /* (a watched battle's two rosters share the plate's width at every wide window, as at 1920: capped to a reading width
    they stopped short of the plate's edge or left a 470 px channel between them at 2560, gauntlet r8 to r11) */
 body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{width:100%;box-sizing:border-box}
@@ -244,6 +246,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .word{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st){display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch{display:flex;justify-content:flex-end;color:var(--ink-3)}
+/* (the damage head over its figures' column, the narrow sheet's second: with no word before it, it took the names' column
+   and stood 45 to 75 px left of the figures, gauntlet r13; the wide grid seats it by its area) */
+body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch.dg{grid-column:2}
 body[data-cot-width] .cot-es.cot-es--record .es-tr :is(.kc,.dc){display:none}
 /* the report's foot: the actions, the commander mark signing it at the far end (still: a result holds still) */
 /* (over battleHudLayout.css's centred 1160 px row: the report's foot spans the report, the actions at its start) */
