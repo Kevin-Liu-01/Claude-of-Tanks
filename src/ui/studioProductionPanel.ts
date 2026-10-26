@@ -93,6 +93,17 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', tex
   if (text) element.textContent = text;
   return element;
 }
+/** A name with an inner hyphen, dot or slash (T-90M, 2S19-M2, M1A2/TUSK): it never breaks inside. */
+const KEPT_NAME = /([A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)/;
+/** A card's caption: its hyphenated names stand whole in no-wrap spans (the s15 critic: "炮火下的 T-" over "90M 纵队"). */
+function caption(text: string): HTMLElement {
+  const parts = text.split(KEPT_NAME);
+  if (parts.length === 1) return node('strong', '', text);
+  const strong = node('strong');
+  // the split's odd parts are the names it captured
+  parts.forEach((part, index) => { if (part) strong.append(node('span', index % 2 ? 'nobr' : '', part)); });
+  return strong;
+}
 /** The kit's controls (src/ui/components): a 36 px button, a primary, a chip. */
 const KIT_BUTTON = 'cot-c-btn cot-c-btn--36';
 const KIT_PRIMARY = 'cot-c-btn cot-c-btn--primary cot-c-btn--36';
@@ -193,7 +204,7 @@ export function mountStudioProductionPanel(
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), node('strong', '', presetText(preset.id, 'title', preset.title)),
+    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), caption(presetText(preset.id, 'title', preset.title)),
       node('small', '', `${S.getMapInfo(preset.map).name} · ${t('studio.director.ui.shotCount', { count: preset.shots.length })}`));
     cards.set(preset.id, card);
     library.append(card);
@@ -222,7 +233,10 @@ export function mountStudioProductionPanel(
       if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes();
     },
   });
-  frameLabel.append(frame.group); tankLabel.append(tankHost); fields.append(frameLabel, tankLabel);
+  frameLabel.append(frame.group); tankLabel.append(tankHost);
+  // in the Studio app the frame is the header's (and on a phone the palette's): one datum, one control (the s15 critic:
+  // the Director's frame row repeated the header's switch); the receipts' bare dock keeps its own
+  if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
   const stage = button(productionLabel('stage'), () => {
     if (staging || S.recordingStatus().active) return;
     staging = true; refresh(); say(productionLabel('staging'));
@@ -279,7 +293,7 @@ export function mountStudioProductionPanel(
     photo.loading = 'lazy';
     photo.decoding = 'async';
     card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: ((take.durationMs ?? 0) / 1000).toFixed(1) })),
-      node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
+      caption(zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
     takeCards.set(take.id, card);
     return card;
   }

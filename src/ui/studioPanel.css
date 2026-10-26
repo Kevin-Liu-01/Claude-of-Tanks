@@ -171,6 +171,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .grid:has(>.cot-c-btn),.cot-studio .st-insp :is(.production-exports,.production-transport){grid-template-columns:minmax(0,1fr)}
 .st-insp .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
 .st-insp .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.st-insp .film-rows{display:flex;flex-direction:column;gap:var(--s3)}
 .st-insp .grid .cot-c-btn,.st-insp .grid3 .cot-c-btn,.st-insp .grid .cot-c-chip,.st-insp .grid3 .cot-c-chip{width:100%;min-width:0}
 .st-insp :is(.grid,.grid3) .cot-c-chip{justify-content:center;padding:0 var(--s2);text-align:center}
 .st-insp .cot-c-chip{height:auto;min-height:30px;padding:var(--s2) var(--s2);justify-content:center;white-space:normal;line-height:1.15;text-align:center}
@@ -254,6 +255,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop{padding:var(--s2)}
 .cot-studio .mapPop>.cot-bf__in{flex:1 1 auto;min-height:0}
 .cot-studio .mapPop .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--s2)}
+/* the inspector is narrow: the search takes its own line over the chips and their arrow, which stay inside the popover
+   (the s15 critic: at 844 x 390 the arrow stood 10 px past its edge) */
+.cot-studio .mapPop .cot-c-picker__bar{flex-wrap:wrap;min-width:0}
+.cot-studio .mapPop .cot-c-picker__search{flex:1 1 100%}
 .cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
 .cot-studio .pickBtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -388,6 +393,10 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
    wraps (zh 1920: "M1A2 Abrams TUSK，工厂公路") deepens the caption row for all, so the stills keep one height and the
    durations one line */
 .st-shelf .production-card{grid-row:1/span 2;grid-template-rows:subgrid;min-height:0}
+/* a shelf caption keeps its names whole and takes at most two lines, so the stills above keep their height (the s15
+   critic: a three-line caption at 1280 crushed every still to a strip) */
+.cot-studio .production-card .nobr{white-space:nowrap}
+.st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
 
@@ -538,6 +547,8 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio[data-controls-collapsed=true] :is(.st-out,.st-insp,.st-shelf,.st-tl){display:none}
 .cot-studio[data-controls-collapsed=true] .st-vp{grid-column:1/-1;grid-row:2/-1}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 132px 160px}
+/* a laptop's shelf shows four takes across, wide enough for a caption on one line (five read as 25 px strips) */
+body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-shelf .production-takes .production-library{grid-auto-columns:calc((100% - 3 * var(--s4)) / 4)}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.st-head .sv),body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
 /* a tablet's narrow viewport and bars keep every control on screen: the secondary chips keep their glyphs (their names stay
    accessible), the header drops its key caps, and the viewport's two chip groups never meet */
@@ -593,6 +604,12 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head{gap:var(--
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r [data-scene-link-copy]{display:none}
 /* the queue keeps to the frame's row on a phone, clear of the transport under it */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{max-height:calc(40dvh - var(--s2))}
+/* a queue cut to the viewport's room shows a drawn scrollbar, the cue that presets wait below (the s15 critic: on a phone
+   and at 844 x 390 the fifth preset was cut with no cue) */
+.st-queue{scrollbar-width:auto;scrollbar-color:auto}
+.st-queue::-webkit-scrollbar{width:6px}
+.st-queue::-webkit-scrollbar-track{background:var(--fill-quiet);border-radius:3px}
+.st-queue::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:3px}
 /* the Field frames read as one column on a phone: the cards fill the dialog, with no sideways fade */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .archiveBody{padding:var(--s3)}
 /* a phone's Field frames take the whole screen (an inset dialog cut the header's buttons along its top edge) */
@@ -616,6 +633,9 @@ body[data-cot-height='short'] .st-queue{max-height:calc(100dvh - 50px - 35px - v
    palette's way: the frame formats, Quick and Pro and undo are commands there, as on a phone */
 body[data-cot-height='short'][data-cot-input='coarse'] .st-app{grid-template-rows:50px minmax(0,1fr) 0 44px}
 body[data-cot-height='short'] :is(.st-head .st-mode,.st-head>.cot-c-seg,.st-head .hist){display:none}
+/* and, as on a phone, the gallery, the queue and the scene link (the palette carries them): a short window's header keeps
+   Commands, Export and Exit (the s15 critic: 844 x 390 kept six buttons) */
+body[data-cot-height='short'] .st-head .r :is(.gal,.que,[data-scene-link-copy]){display:none}
 body[data-cot-height='short'] .st-shelf{display:none}
 body[data-cot-height='short'] :is(.st-out,.st-insp){grid-row:2/span 2}
 /* a short window (a landscape phone): the timeline keeps its transport (the lanes need the room the workspaces and the

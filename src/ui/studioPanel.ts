@@ -420,6 +420,13 @@ function studioShortcut(e: KeyboardEvent): boolean {
 const GIZMO_RADIUS = 30;
 /** At most this many camouflage swatches paint in one frame (each a 2 m crop of the real pattern tile). */
 const SWATCHES_PER_FRAME = 3;
+/** The room one ruler label takes (m:ss in 11 px figures and its gap): a narrow ruler labels fewer ticks. */
+const RULER_LABEL_PX = 44;
+/** The battlefield popover's height: the inspector's room under the map card within these, under its 4 px gap and an
+ *  8 px margin. */
+const MAP_POP_MIN = 200;
+const MAP_POP_MAX = 560;
+const MAP_POP_GAP = 12;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
 const CONTROLS_MODE_KEY = 'cot.studio.controls';
 function readControlsMode(): 'quick' | 'pro' {
@@ -974,11 +981,26 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     mapName.textContent = mapLabel(shown);
     mapId.textContent = shown;
   }
+  /**
+   * The popover takes the inspector's room under the card, with the map's heading at the inspector's top: a focus moving
+   * in it scrolls its own grid, never the inspector, so the card above it (its preview) stays whole (the s15 critic: on a
+   * phone and at 1024 x 600 the card scrolled away or showed as a strip).
+   */
+  function fitMapPop(): void {
+    mapPop.style.maxHeight = '';
+    const scroller = mapPick.closest<HTMLElement>('.st-insp');
+    if (!scroller) return;
+    const pad = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
+    scroller.scrollTop += secScene.getBoundingClientRect().top - scroller.getBoundingClientRect().top - pad;
+    const room = scroller.getBoundingClientRect().bottom - mapPick.getBoundingClientRect().bottom - MAP_POP_GAP;
+    mapPop.style.maxHeight = `${Math.round(Math.max(MAP_POP_MIN, Math.min(MAP_POP_MAX, innerHeight * 0.65, room)))}px`;
+  }
   function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
     mapPop.classList.toggle('open', next);
     mapBtn.setAttribute('aria-expanded', String(next));
     if (!next) { paintMapCard(null); return; }
+    fitMapPop();
     if (mapPicker) mapPicker.setValue(S.mapId);
     else {
       mapPicker = createBattlefieldPicker(mapPop, {
@@ -1556,15 +1578,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   dock.appendChild(outputGroup.root);
   const secCap = section('output', t('studio.film.heading'), 'deploy');
   // --- film: deterministic offline export (studioFilm*.ts) ----------------------
-  const filmSizeRow = el('div', 'grid');
   // the export settings are a few each (five or fewer): the kit's segmented controls, every choice in view (the
-  // interaction census: raw selects)
+  // interaction census: raw selects), each at the inspector's width on its own line (side by side, a 2 + 1 wrap beside a
+  // three-line one gave the pair two heights and two tops: the s15 critic)
+  const filmSizeRow = el('div', 'film-rows');
   const filmSize = labelledSegments(t('studio.film.size'),
     FILM_RESOLUTIONS.map((resolution) => [String(resolution), `${resolution}p`] as const), String(FILM_RESOLUTIONS[0]));
   const filmFps = labelledSegments(t('studio.film.rate'), [24, 30, 60].map((fps) => [String(fps), t('studio.film.fpsOption', { fps })] as const), '30');
   filmSizeRow.append(filmSize.row, filmFps.row);
   secCap.appendChild(filmSizeRow);
-  const filmBlurRow = el('div', 'grid');
+  const filmBlurRow = el('div', 'film-rows');
   const filmBlur = labelledSegments(t('studio.film.blur'), ([['studio.film.blurOff', 1], ['studio.film.blurDraft', 4],
     ['studio.film.blurGood', 8], ['studio.film.blurBest', 16], ['studio.film.blurMaster', 32]] as const)
     .map(([key, samples]) => [String(samples), t(key)] as const), '8');
@@ -1899,13 +1922,21 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const rest = sec - minutes * 60;
     return `${minutes}:${rest < 10 ? '0' : ''}${Number.isInteger(rest) ? rest : rest.toFixed(1)}`;
   };
-  let rulerFor = -1;
-  /** A labelled tick every step (at most ten across the take) and a short one between; redrawn when the length changes. */
+  let rulerFor = '';
+  // the ruler's width, from its own observer (never read in the frame loop): a narrow ruler takes fewer labels
+  let rulerWidth = 0;
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(([entry]) => { rulerWidth = entry?.contentRect.width ?? 0; drawRuler(); }).observe(rulerMarks);
+  }
+  /** A labelled tick every step (at most ten across the take, and one per RULER_LABEL_PX of the ruler) and a short one
+   *  between; redrawn when the length or the ruler's width changes. */
   function drawRuler(): void {
-    if (S.durationMs === rulerFor) return;
-    rulerFor = S.durationMs;
+    const key = `${S.durationMs}|${Math.round(rulerWidth)}`;
+    if (key === rulerFor) return;
+    rulerFor = key;
     const seconds = S.durationMs / 1000;
-    const step = [0.5, 1, 2, 5, 10, 15, 30, 60, 120].find((value) => seconds / value <= 10) ?? 300;
+    const most = rulerWidth > 0 ? Math.max(2, Math.min(10, Math.floor(rulerWidth / RULER_LABEL_PX))) : 10;
+    const step = [0.5, 1, 2, 5, 10, 15, 30, 60, 120].find((value) => seconds / value <= most) ?? 300;
     const marks: HTMLElement[] = [];
     for (let k = 0; k * step <= seconds + 1e-6; k++) {
       const at = k * step * 1000;
@@ -1913,9 +1944,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       tick.style.left = pct(at);
       marks.push(tick);
       // the first label would sit under the playhead's thumb at rest, so its tick stands alone; the scene's end reads
-      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off)
+      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off); a label
+      // too near the end's leaves its tick bare (the s15 critic: "0:10" over "0:12" on a phone)
       const end = at >= S.durationMs - step * 400;
-      if (k > 0 && (!end || at >= S.durationMs - 1)) {
+      const crowdsEnd = !end && rulerWidth > 0 && ((S.durationMs - at) / Math.max(1, S.durationMs)) * rulerWidth < RULER_LABEL_PX * 1.5;
+      if (k > 0 && !crowdsEnd && (!end || at >= S.durationMs - 1)) {
         const label = el('b', end ? 'end' : null, rulerClock(k * step));
         label.style.left = pct(at);
         marks.push(label);
