@@ -165,7 +165,8 @@ function heroBlock() {
     + `<ul class="hero__stats" data-datum="fleet-counts">`
     + `<li>${iconMarkup('gallery', 18)}<b>{{COT_PRODUCTION_VEHICLES}}</b>${t('home.stats.tanks')}</li>`
     + `<li>${iconMarkup('map', 18)}<b>{{COT_BATTLEFIELDS}}</b>${t('home.stats.battlefields')}</li>`
-    + `<li>${iconMarkup('modeStandard', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`
+    // every mode together reads with the Deploy screen's glyph: a mode's own glyph (Standard's included) wears its mode hue
+    + `<li>${iconMarkup('deploy', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`
     + `<li>${iconMarkup('team', 18)}<b lang="en">7v7</b>${t('home.stats.rooms')}</li></ul>`
     // the trailer plays in a dialog with its sound, on the viewer's press: nothing of it loads before then. Its controls are
     // the kit's (ghost icon buttons, the Studio's scrubber), never the browser's own (publicPages.ts mountFilm)
@@ -253,7 +254,7 @@ function modeTile(id) {
 const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`mechanics/${id}`, `media.home.mechanics.${camel(id)}`)}`
   + `<figcaption class="play-tile__nm">${t(`home.mechanics.${camel(id)}.title`, 'b')}</figcaption></figure>`;
 function playBlock() {
-  const tabs = [['modes', 'modeStandard', 'home.stats.modes', ''],
+  const tabs = [['modes', 'deploy', 'home.stats.modes', ''],
     ...MECHANICS.map(([group, icon]) => [group, icon, `home.mechanics.group.${group}`, ''])]
     .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="radio" data-play-tab="${value}" aria-checked="${i === 0}">`
       + `${iconMarkup(icon, 16)}${t(key)}${extra}</button>`).join('');

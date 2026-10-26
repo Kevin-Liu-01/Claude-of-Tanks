@@ -144,6 +144,8 @@ img{display:block;max-width:100%}
 .home-head>.home-h2{text-box:trim-end cap alphabetic}
 :lang(zh-CN) :is(.home-head>.home-h2,.press__title){margin-bottom:.12em}
 :lang(zh-CN) .hero__title{line-height:1.08}
+/* a Chinese matchup breaks only at its spaces, never inside 对阵 or 与 */
+:lang(zh-CN) :is(.hero__shot,.bento__cap) b{word-break:keep-all}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -317,8 +319,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .feat__link .cot-i{width:20px;height:20px}
   :root{--home-h1:clamp(var(--fs-32),10vw,var(--fs-44));--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
-  /* the closing band keeps the phone's 80 px section rhythm */
-  .press{padding:var(--s6) 0 calc(var(--s7) + var(--s6))}
+  /* the closing band keeps the phone's 64 px section step (the band's picture has no inset of its own) */
+  .press{padding:var(--s6) 0 calc(2 * var(--s6))}
   /* one whole card per view; the switch keeps its arrows beside it while the column holds all four tabs (the play-acts
      query below sets them two by two when it does not), at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
