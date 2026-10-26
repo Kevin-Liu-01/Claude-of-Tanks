@@ -106,7 +106,7 @@ assert.match(propsSource, /const registerDestructibles = \(\): \(\(\) => void\) 
   'partially constructed props expose a deferred registration, not a global retained closure');
 // (PERF's program variants, 1c23e8e74: the props' variant twins are split between the registration and the return;
 // integ 254: battle-spikes' sliced build yields after the registration and shows a sliced group before the return)
-assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*(?:yield;\s*)?(?:\/\/[^\n]*\n\s*)*(?:const programVariants = splitProgramVariants\(props\.group\);\s*group\.userData\.programVariants = programVariants;\s*)?(?:if \(sliced\) group\.visible = true;\s*)?return \{\s*mapId: config\.id,\s*(?:terrainVariant: [^\n]*,\s*)?dispose\(\) \{\s*terrain\.userData\.cancelSourcedTextures\?\.\(\);\s*unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
+assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*(?:yield;\s*)?(?:\/\/[^\n]*\n\s*)*(?:const programVariants = splitProgramVariants\(props\.group\);\s*group\.userData\.programVariants = programVariants;\s*)?(?:if \(sliced\) group\.visible = true;\s*)?return \{\s*mapId: config\.id,\s*(?:terrainVariant: [^\n]*,\s*)?dispose\(\) \{\s*terrain\.userData\.cancelSourcedTextures\?\.\(\);\s*(?:delete terrain\.userData\.cancelSourcedTextures;\s*)?unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
   'completed assembly cancels source work before releasing external bindings and vegetation on eviction');
 
 let grantBlockedLease;
@@ -801,4 +801,33 @@ await defaultForegroundUsesShortPaintBudget();
 }
 console.log('worldBuildCoordinator.selftest: a loading-paced intent prefetch takes the covered slices under its lease and is promoted; passive speculation keeps its budget');
 
+// (battle-spikes-253, the memory lockdown) releaseCached: a dormant cached world released now (its dispose and its
+// resources), never the current one and never one still building
+{
+  let current = null;
+  const released = [];
+  const local = createWorldBuildCoordinator({
+    engineContext: {}, scene: new THREE.Scene(), renderer: { renderLists: { dispose() {} } }, deviceTier: 'desktop',
+    getCurrentWorld: () => current, getGarageActivity: () => ({ phase: 'garage', transitionActive: false, lastActivityAt: 0 }),
+    releaseShadowMaterial() {},
+    loadModule: async () => ({ async createMapAsync(_engine, { mapId }) {
+      const group = new THREE.Group();
+      group.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+      return { group, dispose() { released.push(mapId); } };
+    } }),
+    now: () => 0, foregroundYielder: () => async () => {}, backgroundYielder: () => async () => {},
+  });
+  const a = await local.beginBuild('urban').promise;
+  const pending = local.beginBuild('verdant');
+  assert.equal(local.releaseCached('verdant'), false, 'a world still building is never released');
+  await pending.promise;
+  current = a;
+  assert.equal(local.releaseCached('urban'), false, 'the current world is never released');
+  current = null;
+  assert.equal(local.releaseCached('urban'), true);
+  assert.deepEqual(released, ['urban'], 'its own dispose ran');
+  assert.equal(local.cache.has('urban'), false);
+  assert.equal(local.lastRelease?.id, 'urban', 'and its resources went through the release receipt');
+  assert.equal(local.releaseCached('urban'), false, 'nothing left to release');
+}
 console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup, cancellation and default foreground 6/16 policy passed');

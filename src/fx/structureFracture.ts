@@ -40,6 +40,10 @@ import {
 interface StructureFractureOptions {
   pool: DebrisPhysics;
   group: THREE.Group;
+  /** (battle-spikes-253) Where what stands still is drawn — the redrawn faces, the rooms, the heaps: a static shadow root
+   *  (shadowStaticCache.ts) under the fx group, so their shadows come from the cached layer, not a draw a frame; `group`
+   *  when absent. The falling bodies stay in `group`. */
+  settled?: THREE.Group;
   /** A bucket's material for a building (its spans' own, else the world's). */
   materialFor(seam: StructureDamageSeam, bucket: string): THREE.Material | null;
   /** The fx clock (s). */
@@ -373,6 +377,7 @@ function neutral(name: string): number {
 
 export function createStructureFracture(o: StructureFractureOptions): StructureFracture {
   const lives = new Map<number, Live>();
+  const settled = o.settled ?? o.group;
   /** (round 5) Faces and rooms of buildings come down, drawn until the mask has carried them down (release keepS). */
   const releasing: Array<{ meshes: THREE.Mesh[]; at: number }> = [];
   const bodies = new Map<number, LiveBody>();
@@ -945,7 +950,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   /** Rebuild a face's standing meshes from its packed cells (typed copies; the per-vertex work only where a cell sags or
    *  stands loose). */
   function redraw(live: Live, draw: FaceDraw): void {
-    for (const mesh of draw.meshes) { o.group.remove(mesh); mesh.geometry.dispose(); }
+    for (const mesh of draw.meshes) { mesh.removeFromParent(); mesh.geometry.dispose(); }
     draw.meshes.length = 0;
     const g = draw.grid;
     const rows = g.rowY.length - 1;
@@ -1060,7 +1065,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.userData.cellRanges = ranges;
       mesh.name = `fx-fracture-face-${live.seam.structureIdx}`;
       maskTag(live, mesh);
-      o.group.add(mesh);
+      settled.add(mesh);
       draw.meshes.push(mesh);
     }
     live.seam.touchShadows();
@@ -1115,6 +1120,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       live.depthFor.set(mesh.material as THREE.Material, depth);
     }
     if (depth) mesh.customDepthMaterial = depth;
+    // (battle-spikes-253) its shadow changes on the frames its structure's mask reshapes the spans: the static shadow cache
+    // reads their epoch with its own (shadowStaticCache.ts casterSignatureParts), so a settled face is never stale
+    mesh.userData.cotShadowEpochOf = live.seam.spans.find((span) => (span.mesh as THREE.Mesh).castShadow)?.mesh;
   }
 
   // ---- the room behind a holed storey -------------------------------------------------------------------------------
@@ -1199,7 +1207,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
       mesh.matrixWorldNeedsUpdate = true;
       mesh.receiveShadow = true;
-      o.group.add(mesh);
+      settled.add(mesh);
       live.room.push(mesh);
     }
   }
@@ -1500,7 +1508,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       wz: (rng() - 0.5) * spin + (lean ? lean[2] : 0),
     });
     if (handle < 0) {
-      for (const m of meshes) { o.group.remove(m); m.geometry.dispose(); }
+      for (const m of meshes) { m.removeFromParent(); m.geometry.dispose(); }
       skipped++;
       refuse(live, cells, vx, vy, vz, at);
       return false;
@@ -1607,7 +1615,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const at = _atM.clone();
     unlist(b);
     o.pool.release(b.handle);
-    for (const m of b.meshes) { o.group.remove(m); m.geometry.dispose(); }
+    for (const m of b.meshes) { m.removeFromParent(); m.geometry.dispose(); }
     clumps.forEach((clump, i) => {
       spawnCells(live, clump, _crackVel[0] * 0.8, _crackVel[1] * 0.8 + 0.6, _crackVel[2] * 0.8, 4, damageSeed(b.handle * 31 + 7, i), at);
     });
@@ -1772,7 +1780,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (let i = 0; i < b.meshes.length; i++) {
       const mesh = b.meshes[i];
       mesh.matrixWorldNeedsUpdate = true;
-      if (live) { live.bakedPending.push(mesh); pendingBody.set(mesh, bakedCount); } else { o.group.remove(mesh); mesh.geometry.dispose(); }
+      if (live) { live.bakedPending.push(mesh); pendingBody.set(mesh, bakedCount); } else { mesh.removeFromParent(); mesh.geometry.dispose(); }
     }
     bakedCount++;
   }
@@ -1839,7 +1847,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           out[i + 3] = _mn.x; out[i + 4] = _mn.y; out[i + 5] = _mn.z;
         }
         at += src.length;
-        o.group.remove(mesh);
+        mesh.removeFromParent();
         mesh.geometry.dispose();
       }
       // the layout as the first mesh carried it (every mesh of a key shares it)
@@ -1857,8 +1865,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.matrixWorldNeedsUpdate = true;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      o.group.add(mesh);
-      if (old) { o.group.remove(old); old.geometry.dispose(); }
+      settled.add(mesh);
+      if (old) { old.removeFromParent(); old.geometry.dispose(); }
       live.bakedMerged.set(key, mesh);
       live.heapBody.set(key, bodyOf);
     }
@@ -2262,7 +2270,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!live) return;
       const i = live.room.indexOf(mesh);
       if (i < 0) return;
-      o.group.remove(mesh); mesh.geometry.dispose();
+      mesh.removeFromParent(); mesh.geometry.dispose();
       live.room.splice(i, 1);
     },
     release(structureIdx, keepS = 0) {
@@ -2277,7 +2285,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       live.room.length = 0;
       // (round 5) kept while the mask carries them down with the walls (maskTag), then gone
       if (keepS > 0) { releasing.push({ meshes, at: o.now() + keepS }); return; }
-      for (const m of meshes) { o.group.remove(m); m.geometry.dispose(); }
+      for (const m of meshes) { m.removeFromParent(); m.geometry.dispose(); }
     },
     dropRooms(structureIdx, fromStorey, only = false) {
       const live = lives.get(structureIdx);
@@ -2287,7 +2295,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const m = live.room[i];
         const st = m.userData.storey as number;
         if (only ? st !== fromStorey : !(st >= fromStorey)) continue;
-        o.group.remove(m); m.geometry.dispose();
+        m.removeFromParent(); m.geometry.dispose();
         live.roomStoreys.delete(m.userData.roomKey as string);
         live.room.splice(i, 1);
       }
@@ -2351,7 +2359,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (releasing.length) {
         const now = o.now();
         let k = 0;
-        for (const r of releasing) { if (now >= r.at) for (const m of r.meshes) { o.group.remove(m); m.geometry.dispose(); } else releasing[k++] = r; }
+        for (const r of releasing) { if (now >= r.at) for (const m of r.meshes) { m.removeFromParent(); m.geometry.dispose(); } else releasing[k++] = r; }
         releasing.length = k;
       }
       const tWork = profStart();
@@ -2410,20 +2418,20 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     },
     liveBodies() { return bodies.size; },
     reset() {
-      for (const b of list) { o.pool.release(b.handle); for (const m of b.meshes) { o.group.remove(m); m.geometry.dispose(); } }
+      for (const b of list) { o.pool.release(b.handle); for (const m of b.meshes) { m.removeFromParent(); m.geometry.dispose(); } }
       bodies.clear();
       list.length = 0;
       cracking.length = 0;
       skipped = 0;
       roofGone.clear();
       for (const live of lives.values()) {
-        for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
-        for (const m of [...live.room, ...live.baked, ...live.bakedPending, ...live.bakedMerged.values()]) { o.group.remove(m); m.geometry.dispose(); }
+        for (const d of live.faces.values()) for (const m of d.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+        for (const m of [...live.room, ...live.baked, ...live.bakedPending, ...live.bakedMerged.values()]) { m.removeFromParent(); m.geometry.dispose(); }
       }
       lives.clear();
       work.length = 0;
       bakedCount = 0;
-      for (const r of releasing) for (const m of r.meshes) { o.group.remove(m); m.geometry.dispose(); }
+      for (const r of releasing) for (const m of r.meshes) { m.removeFromParent(); m.geometry.dispose(); }
       releasing.length = 0;
     },
     stats() {

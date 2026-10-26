@@ -1030,6 +1030,7 @@ function* assembleWorldSteps(
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
     dispose() {
       terrain.userData.cancelSourcedTextures?.();
+      delete terrain.userData.cancelSourcedTextures;
       unregisterDestructibles();
       vegetation.dispose();
       // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)

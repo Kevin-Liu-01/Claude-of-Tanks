@@ -2865,6 +2865,10 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           },
           compile: async (signal?: AbortSignal) => {
             battlePresentation.prepareModeVisuals();
+            // (battle-spikes-253) the world's structure materials patched for the collapse mask before the strict
+            // preparation compiles them: patched after (the opening effects' warm), every structure bucket re-keyed and
+            // the black watchdog's render linked twelve masked variants synchronously (nav-perf's room entry, 1.4 s)
+            fxRuntimeAccess.current?.prepareWorldMaterials();
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
