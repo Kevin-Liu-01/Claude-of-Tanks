@@ -295,6 +295,29 @@ memory-infra dump in the Garage after a Steinburg battle: the renderer's partiti
 GB, the walk from the world, the game and the scene reaching 0.36-0.38 GB of it; the rest is held by closures and
 module state a property walk cannot see.
 
+## Memory: the retainers found, the release restored
+
+The probe's `--retainers` (tools/heap-retainers.mjs) took three fixes before it could read the game page's snapshot (11
+million nodes, 31 million edges, ~760 MB of JSON): the node and edge arrays sized from the counts the meta declares (the
+doubling Float64 arrays' growth threw inside the protocol's event handler, which swallowed it, and every chunk after was
+lost); the chunks kept while they arrive and parsed once the snapshot is done (parsed in the handler, the probe read slower
+than the snapshot came and the stream ended at ~470 MB); a marker found by its heap id, asked after the snapshot (V8 assigns
+ids then). A WeakMap table's edge is never a retainer (it holds a value only while its key lives).
+
+The evicted world (Steinburg, Verdant, Desert in one page: the first battle's world leaves the two-world cache at the
+third) had two retainers:
+- **The drones' callbacks** (20abf7caad): `game.aerialCallbacks` was made inside `simStep` on the first step; a closure
+  made there shares the call's context with every variable any of its closures reads, the step's collider among them,
+  so the first battle's collision bundle and world stayed reachable for the life of the game state. A module-level factory.
+- **The sourced terrain's cancel** (cd5539133b): `abort()` with no reason made a DOMException whose captured stack held
+  the frames' receivers, the disposing world among them. A plain reason; the hook dropped after it runs.
+
+After both: the evicted world is collected; the peak 5,482 MB (8,207 before), the renderer 3,892 MB (6,694). The dormant
+battlefield's release (9ee50b12cd, reverted for this leak) is back (242033223f). The gated receipt is
+`node tools/battle-memory-probe.mjs --root=. --scenarios=urban:zone_control --sequence=urban:zone_control,verdant:standard,desert:standard --size=7 --battles=3 --seconds=10 --leak-check --gate`
+against tools/battle-memory-budget.json (no leaked world; heap, RSS, textures and listeners a battle and the peak about
+1.5x the fixed build's run).
+
 ## The Garage's background world build and presses
 
 nav-perf's phone census (4x CPU): the next battle's world builds behind the Garage and its steps met presses (stonePlan
