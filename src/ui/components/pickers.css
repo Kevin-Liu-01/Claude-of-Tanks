@@ -155,6 +155,8 @@
 .cot-c-menu__pop:popover-open{display:flex}
 .cot-c-menu__picker{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
 .cot-c-menu__picker>.cot-c-picker{flex:1 1 auto}
+/* a menu's picture cards stand two abreast in its room (a staging area, a battlefield), as the battlefield picker's do */
+.cot-c-menu__pop .cot-c-picker--cards .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s2)}
 .cot-c-menu__pop.is-sheet{border-radius:var(--plate-radius) var(--plate-radius) 0 0;padding-bottom:max(var(--s2),env(safe-area-inset-bottom))}
 @media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
 @media (prefers-reduced-motion:reduce){.cot-c-menu__chev{transition:none}}

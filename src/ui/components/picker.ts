@@ -75,6 +75,8 @@ interface PickerController {
 
 /** Search and filters appear past this many items. */
 const SEARCH_FROM = 9;
+/** The width a surface may fade at the chip row's end (garage and showroom mask their last 40 px). */
+const CHIP_FADE = 48;
 /** Recents kept per memory key. */
 const RECENT_MAX = 6;
 
@@ -223,6 +225,15 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   const chipsResize = new ResizeObserver(syncMore);
   chipsResize.observe(chipRow);
+  /** A pressed chip stands in the row's view, clear of a surface's end fade (the r20q critic: the pressed Protection chip
+   *  lay past the row's end, so nothing showed which filter was on). */
+  const revealChip = (chip: HTMLElement): void => {
+    const row = chipRow.getBoundingClientRect();
+    const box = chip.getBoundingClientRect();
+    if (box.left < row.left) chipRow.scrollLeft -= row.left - box.left;
+    else if (box.right > row.right - CHIP_FADE) chipRow.scrollLeft += box.right - row.right + CHIP_FADE;
+    syncMore();
+  };
 
   const options$ = (): HTMLElement[] => [...grid.querySelectorAll<HTMLElement>('.cot-c-picker__opt')];
   const itemOf = (element: Element | null): PickerItem | null => {
@@ -337,6 +348,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
         : key === 'recent' ? { ...query, recent: on }
           : { ...query, tags: on ? [...query.tags, key.slice(4)] : query.tags.filter((tag) => tag !== key.slice(4)) };
       render();
+      if (on) revealChip(chip);
       return;
     }
     if (target.closest('.cot-c-picker__fav')) { favourite(itemOf(target.closest('.cot-c-picker__cell')?.querySelector('.cot-c-picker__opt') ?? null)); return; }

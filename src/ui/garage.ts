@@ -276,7 +276,11 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
   fit(grid);
   grid.style.minHeight = `${Math.ceil(Math.max(floor, grid.getBoundingClientRect().height))}px`;
 }
-function fitWholeRows(grid: HTMLElement): void {
+/**
+ * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
+ * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic).
+ */
+function fitWholeRows(grid: HTMLElement, peek = true): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
   const style = getComputedStyle(grid);
@@ -293,7 +297,12 @@ function fitWholeRows(grid: HTMLElement): void {
       if (box.bottom - top <= room + 0.5) foot = Math.max(foot, box.bottom - top);
       else if (box.top - top < nextTop) { nextTop = box.top - top; nextHeight = box.height; }
     }
-    if (foot > 0) {
+    if (foot > 0 && !peek) {
+      // the window ends one row gap under the last whole row, where the next row has not begun
+      const gap = parseFloat(style.rowGap) || 0;
+      grid.style.maxHeight = `${Math.floor(Math.min(grid.clientHeight, foot + gap))}px`;
+      grid.style.setProperty('--peek', `${Math.round(gap)}px`);
+    } else if (foot > 0) {
       const height = Math.min(grid.clientHeight, Number.isFinite(nextTop) ? nextTop + nextHeight * 0.4 : foot + pad);
       grid.style.maxHeight = `${Math.ceil(height)}px`;
       grid.style.setProperty('--peek', `${Math.max(Math.round(pad), Math.ceil(height - foot))}px`);
@@ -785,18 +794,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</div>` +
     `<div class="cot-leftcol">` +
     `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 18)}</button></div>` +
-    `<div class="cot-garage-variant-control">` +
-    `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
-    `aria-haspopup="listbox" aria-expanded="false" ` +
-    `aria-controls="cot-garage-variant-menu">` +
-    `<img class="cot-garage-variant-trigger-thumb" alt="" draggable="false">` +
-    `<span class="cot-garage-variant-trigger-copy">` +
-    `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
-    `<span class="cot-garage-variant-action">` +
-    `${uiIconSVG('chevronRight', 16, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
+    `<div class="cot-garage-variant-control"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
-    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
-    `aria-label="${t('garage.tools.environments')}" hidden></div>` +
     // The showroom's lower third (brand-ui S2): the selected tank's name, once and large, over its identity as a flag and
     // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
     // The band under the name (the 245 redesign): the three equipment slots, the paint (what the tank wears, three more to
@@ -1034,10 +1033,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const roomControls = requiredElement<HTMLElement>(root, '.cot-room-controls');
   const roomReady = requiredElement<HTMLButtonElement>(root, '.cot-room-ready');
   const recordTrigger = requiredElement<HTMLButtonElement>(root, '.cot-record-trigger');
-  const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
-  const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
-  const garageVariantLabel = requiredElement<HTMLElement>(root, '.cot-garage-variant-label');
-  const garageVariantThumb = requiredElement<HTMLImageElement>(root, '.cot-garage-variant-trigger-thumb');
+  const garageVariantHost = requiredElement<HTMLElement>(root, '.cot-garage-variant-control');
   const mobileNavTrigger = requiredElement<HTMLButtonElement>(root, '.cot-mobile-nav-trigger');
   const mobileNavMenu = requiredElement<HTMLElement>(root, '.cot-mobile-nav-menu');
   const garagePanelScrim = requiredElement<HTMLButtonElement>(root, '.cot-garage-panel-scrim');
@@ -1286,7 +1282,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let selectedGarageVariantId = garageVariants.some((variant) =>
     variant.id === opts.selectedGarageVariantId)
     ? opts.selectedGarageVariantId : garageVariants[0]?.id || '';
-  const garageVariantButtons = new Map<string, HTMLButtonElement>();
   const cardById = new Map<string, HTMLElement>();
   const cardsByCountry = new Map<string, HTMLElement[]>();
   const specsByCountry = new Map<string, GarageTankSpec[]>();
@@ -1311,100 +1306,56 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const emit = (ev: string, payload: RuntimeValue): void => { if (bus?.emit) bus.emit(ev, payload); };
   const selectedGarageVariant = () => garageVariants.find((variant) =>
     variant.id === selectedGarageVariantId) || garageVariants[0] || null;
-  const isGarageVariantMenuOpen = () => !garageVariantMenu.hidden;
-  const closeGarageVariantMenu = ({ restoreFocus = false } = {}) => {
-    if (!isGarageVariantMenuOpen()) return;
-    garageVariantMenu.hidden = true;
-    garageVariantTrigger.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) garageVariantTrigger.focus();
-  };
-  const openGarageVariantMenu = () => {
-    if (!garageVariants.length) return;
-    try { opts.onGarageVariantMenuIntent?.(); } catch (_) { /* optional warm path */ }
-    closeBattleMenu();
-    closeMobileNavigation();
-    garageVariantMenu.hidden = false;
-    garageVariantTrigger.setAttribute('aria-expanded', 'true');
-    garageVariantButtons.get(selectedGarageVariantId)?.focus();
-  };
-  const refreshGarageVariantUi = () => {
-    const selected = selectedGarageVariant();
-    if (!selected) {
-      garageVariantTrigger.hidden = true;
-      return;
-    }
-    const variantDisplayName = t(`garage.variant.${selected.id}`) || selected.name;
-    const variantLocation = t(`garageVariant.${selected.id}.location`) || selected.location;
-    garageVariantLabel.textContent = variantDisplayName;
-    garageVariantThumb.src = selected.thumb || selected.hero || '';
-    garageVariantThumb.hidden = !garageVariantThumb.src;
-    garageVariantTrigger.dataset.tip = `${variantDisplayName} · ${variantLocation}`;
-    garageVariantTrigger.setAttribute('aria-label',
-      t('garage.tools.environmentAria', { name: variantDisplayName }));
-    root.dataset.garageVariant = selected.id;
-    for (const [id, button] of garageVariantButtons) {
-      const active = id === selected.id;
-      button.classList.toggle('sel', active);
-      button.setAttribute('aria-selected', String(active));
-    }
-  };
-  const selectGarageVariant = (variantId: string, { notify = true } = {}) => {
-    if (!garageVariantButtons.has(variantId)) return false;
-    selectedGarageVariantId = variantId;
-    refreshGarageVariantUi();
-    closeGarageVariantMenu({ restoreFocus: true });
-    if (notify) opts.onGarageVariantSelect?.(variantId);
-    return true;
-  };
-  function initializeGarageVariantPicker(): void {
-    for (const variant of garageVariants) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'cot-garage-variant-card';
-      button.setAttribute('role', 'option');
-      button.dataset.variantId = variant.id;
-      const image = document.createElement('img');
-      image.src = variant.thumb || variant.hero || '';
-      image.alt = '';
-      image.loading = 'lazy';
-      image.decoding = 'async';
-      const copy = document.createElement('span');
-      copy.className = 'cot-garage-variant-copy';
-      const name = document.createElement('strong');
-      name.textContent = t(`garage.variant.${variant.id}`) || variant.name;
-      const location = document.createElement('small');
-      location.textContent = t(`garageVariant.${variant.id}.location`) || variant.location;
-      const description = document.createElement('em');
-      description.textContent = t(`garageVariant.${variant.id}.description`) || variant.description;
-      copy.append(name, location, description);
-      const check = document.createElement('span');
-      check.className = 'cot-garage-variant-check';
-      check.innerHTML = uiIconSVG('check', 12);
-      button.append(image, copy, check);
-      const signalVariantIntent = () => {
-        try { opts.onGarageVariantIntent?.(variant.id); } catch (_) { /* optional warm path */ }
-      };
-      button.addEventListener('pointerenter', signalVariantIntent, { passive: true });
-      button.addEventListener('focusin', signalVariantIntent);
-      button.addEventListener('touchstart', signalVariantIntent, { passive: true });
-      button.addEventListener('pointerdown', signalVariantIntent, { passive: true });
-      button.addEventListener('click', () => {
-        emit('ui:click', {});
-        selectGarageVariant(variant.id);
-      });
-      garageVariantMenu.appendChild(button);
-      garageVariantButtons.set(variant.id, button);
-    }
-    refreshGarageVariantUi();
-  }
-  initializeGarageVariantPicker();
+  // The staging area is the kit's picker menu (INTERACTION-REDESIGN C, "Garage staging area picker"): the trigger shows the
+  // area's picture, its name and its place, the menu its ten picture cards; pointing at a card warms its scene and one press
+  // stages it. A phone opens it from its menu (the trigger's column is hidden there), anchored to that menu's trigger.
+  const variantName = (variant: GarageVariantView): string => t(`garage.variant.${variant.id}`) || variant.name;
+  const variantPlace = (variant: GarageVariantView): string => t(`garageVariant.${variant.id}.location`) || variant.location;
   const signalVariantMenuIntent = () => {
     try { opts.onGarageVariantMenuIntent?.(); } catch (_) { /* optional warm path */ }
   };
-  garageVariantTrigger.addEventListener('pointerenter', signalVariantMenuIntent, { passive: true });
-  garageVariantTrigger.addEventListener('focusin', signalVariantMenuIntent);
-  garageVariantTrigger.addEventListener('touchstart', signalVariantMenuIntent, { passive: true });
-  garageVariantTrigger.addEventListener('pointerdown', signalVariantMenuIntent, { passive: true });
+  const stagingMenu: PickerMenu | null = garageVariants.length ? createPickerMenu(garageVariantHost, {
+    id: 'garage-staging',
+    label: t('garage.tools.stagingAreas'),
+    layout: 'cards',
+    text: pickerText(),
+    value: selectedGarageVariantId || null,
+    items: garageVariants.map((variant) => {
+      const picture = variant.thumb || variant.hero || '';
+      return { id: variant.id, name: variantName(variant), facts: [variantPlace(variant)], ...(picture ? { media: { poster: picture } } : {}) };
+    }),
+    onPreview: (item) => {
+      if (item) try { opts.onGarageVariantIntent?.(item.id); } catch (_) { /* optional warm path */ }
+    },
+    onChoose: (item) => { emit('ui:click', {}); selectGarageVariant(item.id); },
+  }) : null;
+  const openGarageVariantMenu = (from?: HTMLElement) => {
+    if (!stagingMenu) return;
+    signalVariantMenuIntent();
+    closeBattleMenu();
+    closeMobileNavigation();
+    stagingMenu.open(from);
+  };
+  const closeGarageVariantMenu = () => { stagingMenu?.close(); };
+  const refreshGarageVariantUi = () => {
+    const selected = selectedGarageVariant();
+    garageVariantHost.hidden = !selected;
+    if (!selected) return;
+    root.dataset.garageVariant = selected.id;
+    stagingMenu?.setValue(selected.id);
+  };
+  const selectGarageVariant = (variantId: string, { notify = true } = {}) => {
+    if (!garageVariants.some((variant) => variant.id === variantId)) return false;
+    selectedGarageVariantId = variantId;
+    refreshGarageVariantUi();
+    if (notify) opts.onGarageVariantSelect?.(variantId);
+    return true;
+  };
+  refreshGarageVariantUi();
+  garageVariantHost.addEventListener('pointerenter', signalVariantMenuIntent, { passive: true });
+  garageVariantHost.addEventListener('focusin', signalVariantMenuIntent);
+  garageVariantHost.addEventListener('touchstart', signalVariantMenuIntent, { passive: true });
+  garageVariantHost.addEventListener('pointerdown', signalVariantMenuIntent, { passive: true });
   const openSelectedInGallery = (layer = 'appearance') => {
     emit('ui:click', {});
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
@@ -1622,7 +1573,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   document.addEventListener('pointerdown', (event) => {
     if (isOverlayPanelLayout() || openGaragePanel() !== 'appearance') return;
     const target = eventElement(event);
-    if (target?.closest('.cot-leftcol, .cot-garage-variant-menu, button[data-garage-panel="appearance"], .cot-modal-root')) return;
+    if (target?.closest('.cot-leftcol, .cot-c-menu__pop, button[data-garage-panel="appearance"], .cot-modal-root')) return;
     setGaragePanel('');
   }, true);
   const openMobileNavigation = () => {
@@ -1639,10 +1590,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   document.addEventListener('pointerdown', (event) => {
     const target = eventNode(event);
-    if (isGarageVariantMenuOpen() && event.target !== garageVariantTrigger &&
-      !garageVariantTrigger.contains(target) && !garageVariantMenu.contains(target)) {
-      closeGarageVariantMenu();
-    }
     if (isMobileNavigationOpen() && event.target !== mobileNavTrigger &&
       !mobileNavTrigger.contains(target) && !mobileNavMenu.contains(target)) {
       closeMobileNavigation();
@@ -1651,19 +1598,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // Escape belongs to the open disclosure. Capture it before the game's
   // rebindable input layer so closing navigation cannot also open Settings.
   window.addEventListener('keydown', (event) => {
-    if (!isGarageVariantMenuOpen() || event.code !== 'Escape') return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    closeGarageVariantMenu({ restoreFocus: true });
-  }, true);
-  window.addEventListener('keydown', (event) => {
     if (!isMobileNavigationOpen() || event.code !== 'Escape') return;
     event.preventDefault();
     event.stopImmediatePropagation();
     closeMobileNavigation({ restoreFocus: true });
   }, true);
   window.addEventListener('keydown', (event) => {
-    if (!openGaragePanel() || event.code !== 'Escape' || isAnyModalOpen() || eqOpenSlot >= 0) return;
+    // an open picker menu's Escape is its own (it closes the menu, the sheet stays)
+    if (!openGaragePanel() || event.code !== 'Escape' || isAnyModalOpen() || eqOpenSlot >= 0
+      || eventElement(event)?.closest('.cot-c-menu__pop')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     setGaragePanel('', { restoreFocus: true });
@@ -1873,7 +1816,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const stats = statsEl.getBoundingClientRect();
       root.classList.toggle('picker-over-readout', eqpickEl.getBoundingClientRect().right > stats.left - 1);
     }
-    fitWholeRows(grid);
+    fitWholeRows(grid, false);
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
@@ -2213,6 +2156,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eqLocks.clear();
     for (const group of groups) for (const entry of group.items) if (entry.lock) eqLocks.set(entry.item.id, entry.lock);
     eqTitleEl.textContent = t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 });
+    // the docked head shares the search's row: the row starts after the slot's name (showroom.css)
+    eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
     eqPicker.show(groups, eqOpenSlot, cur[eqOpenSlot] || null);
     eqPreviewId = null;
     eqShutId = null;
@@ -4313,11 +4258,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // r9.1 header nav — Studio rides the exact F8 production path (studio.ts
   // listens on window keydown and gates on game.phase === 'garage'); Home and
   // Docs use their public pretty routes. Garage is the current screen.
-  garageVariantTrigger.addEventListener('click', () => {
-    emit('ui:click', {});
-    if (isGarageVariantMenuOpen()) closeGarageVariantMenu({ restoreFocus: true });
-    else openGarageVariantMenu();
-  });
   recordTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isRecordOpen()) closeServiceRecord();
@@ -4438,7 +4378,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         openServiceRecord();
       } else if (destination === 'environment') {
         emit('ui:click', {});
-        openGarageVariantMenu();
+        openGarageVariantMenu(mobileNavTrigger);
       }
     });
   }

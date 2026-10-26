@@ -20,7 +20,6 @@ const LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,utilities,over
 const SHELL: readonly string[] = [
   // game bar and garage
   '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span',
-  '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
   '.cot-sidebar-section-title span',
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",
   '.cot-garage .sub>span', '.cot-garage .srow .lr>span', "body[data-cot-panels='persistent'] .cot-garage .srow .lr>span",

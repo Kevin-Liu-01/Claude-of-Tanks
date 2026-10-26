@@ -53,7 +53,7 @@ try{
    await page.screenshot({path:resolve(out,`${name}-garage.png`)});
    step='navigation';await tap('.cot-mobile-nav-trigger');
    for(const item of await page.locator('.cot-mobile-nav-menu button').all())await reach(item);
-   await tap('[data-mobile-nav="environment"]');await box('.cot-garage-variant-menu');await tap(page.locator('.cot-garage-variant-card').last());
+   await tap('[data-mobile-nav="environment"]');await box('.cot-c-menu__pop:popover-open');await tap(page.locator('.cot-c-menu__pop:popover-open .cot-c-picker__opt').last());
    await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-modal-root.is-open .cot-modal__close');
    // the battlefields: the battle card opens the Deploy screen, whose field holds the battlefield picker
    step='maps';await tap('.cot-battle-mode');await tap('[data-deploy-field]');await box('[data-deploy-field-pop]');

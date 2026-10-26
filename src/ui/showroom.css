@@ -241,19 +241,31 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
   grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);padding:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:contents;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading>strong{display:none;}
-/* the staging choice is as wide as its name and its chevron (stretched over the head, its chevron stood 1000 px from its
-   label at 2560: the r18 critic) */
+/* the staging choice (the kit's picker menu) is as wide as its picture, name, place and chevron, one control height (stretched
+   over the head, its chevron stood 1000 px from its label at 2560: the r18 critic) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1;flex:none;width:auto;justify-self:start;max-width:100%;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{width:auto;max-width:100%;height:var(--btn-h-s);padding-block:var(--s1);}
-/* a sheet too narrow for the staging choice's name beside the nation's paint shows the choice as its picture and chevron
-   (its name stays its label): at 900 px it truncated to "VERDANT ..." (the r19q critic) */
+body[data-cot-panels='persistent'] .cot-garage-variant-control .cot-c-menu__trigger{width:auto;max-width:100%;min-height:var(--btn-h-s);padding-block:2px;}
+/* a sheet too narrow for its place beside the nation's paint keeps the area's name and drops its place (r19q: the name cut
+   to "VERDANT ..."; r20q: a bare chevron box read unfinished) */
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{container:sheet / inline-size;}
 @container sheet (width < 640px){
-  .cot-garage-variant-trigger-copy{display:none;}
+  .cot-garage-variant-control .cot-c-menu__fact{display:none;}
+}
+/* and its picture, so its name shows whole beside the nation's paint (r21 at 1024: "Sirocco Deploym...") */
+@container sheet (520px <= width < 640px){
+  .cot-garage-variant-control .cot-c-menu__media{display:none;}
 }
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:1/2;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{grid-area:1/3;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:2/1/3/4;}
+/* a window under 960 px stands the staging choice on its own row over the nation's paint, so its name shows whole (r21 at
+   900: one row left the name 27 px) */
+@media (max-width:959px){
+  body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{grid-template-rows:auto auto minmax(0,1fr);}
+  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1/2/3;}
+  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:2/1/3/4;justify-self:start;}
+  body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:3/1/4/4;}
+}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker{gap:var(--s2)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{flex:0 1 240px;height:var(--btn-h-s)}
@@ -371,15 +383,16 @@ body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker--swatches .cot-c-pi
   max-height:none;min-height:0;flex:0 1 auto;}
 /* a docked window 520-719 px tall keeps the picker left of the column as well: the column stays in place while it is open
    (the gauntlet 10-25: it vanished, and the layout jumped), and the grid scrolls under its fade if a row is left over */
-/* a short window gives the rows the head's line: the slot shows as the open slot in the band, close stands at the chips' end */
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph{position:absolute;top:var(--s2);right:var(--s3);margin:0;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph .t{display:none;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-c-picker__bar{padding-right:calc(var(--btn-h-s) + var(--s2));}
+/* the head shares the search's row, so the rows keep its line: the slot's name at the row's start (garage.ts measures it
+   into --eq-title-w), close at its end (the r20q critic: a short window dropped the slot's name, and the head's own row
+   left the grid one row of cards at 1280 x 720) */
+body[data-cot-panels='persistent'] .cot-eqpick .ph{position:absolute;top:var(--s2);left:var(--s3);right:var(--s3);height:var(--btn-h-s);margin:0;pointer-events:none;}
+body[data-cot-panels='persistent'] .cot-eqpick .ph>*{pointer-events:auto;}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{padding-left:calc(var(--eq-title-w,0px) + var(--s3));padding-right:calc(var(--btn-h-s) + var(--s2));}
 /* the picker opens over the name's place: the name steps aside while it is open */
 body[data-cot-panels='persistent'] .cot-garage.picker-open .cot-lt-head{visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-garage.picker-open.picker-over-readout :is(.stats,.cot-stations){visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-eqpick{padding:var(--s2) var(--s3);}
-body[data-cot-panels='persistent'] .cot-eqpick .ph{margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__opt{gap:var(--s1);padding:var(--s2) 3px var(--s1);}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-eq-glyph svg{width:28px;height:28px;}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__name{display:block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
@@ -397,9 +410,12 @@ body[data-cot-panels='persistent'] .cot-eqpreview .metric{flex:none}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__search{flex:0 1 220px;height:var(--btn-h-s)}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__filters{flex:1 1 auto;min-width:0}
-/* a short window's tiles stand lower (a smaller glyph, a slimmer pad), so as few rows as can be are left to scroll */
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-c-picker__opt{padding:var(--s1) 2px;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-eq-glyph svg{width:22px;height:22px;}
+/* a window up to 760 px tall stands its tiles lower (a smaller glyph, a slimmer pad), so as few rows as can be are left to
+   scroll: two of the three rows at 1280 x 720 */
+@media (max-height:760px){
+  body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__opt{padding:var(--s1) 2px;}
+  body[data-cot-panels='persistent'] .cot-eqpick .cot-eq-glyph svg{width:22px;height:22px;}
+}
 
 /* ---- the fleet: the roster tools over the cards, left of the column ---- */
 /* one kit row (owner 10-25 via Main): the search and its filter joined as one field, the nations, the favourites and the

@@ -21,6 +21,10 @@ assert.equal(spot.maxHeight, 420, 'min(60 % of 900, 420)');
 assert.equal(placeMenu(trigger(100, 200, 120), view, 300, false).width, 280, 'never narrower than 280');
 assert.equal(placeMenu(trigger(100, 200, 900), view, 300, false).width, 480, 'never wider than 480');
 
+// a set of picture cards takes the widest room (its pictures two abreast), still inside the window
+assert.equal(placeMenu(trigger(100, 200, 300), view, 300, false, true).width, 480, 'cards: the widest room');
+assert.equal(placeMenu(trigger(20, 200, 300), { width: 420, height: 800 }, 300, false, true).width, 420 - 16, 'cards: inside a narrow window');
+
 // inside the window: a trigger at the right edge moves the menu in
 spot = placeMenu(trigger(1300, 200, 120), view, 300, false);
 assert.equal(spot.left + spot.width, 1440 - 8, 'its right edge stays 8 px inside the window');

@@ -102,7 +102,8 @@ export const INTERACTION_SITES = Object.freeze({
   // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
   'garage-camo': { chooses: 'camo', options: 175, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-camo'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
   'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], lane: 'premiere-gallery-studio' },
-  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:#cot-garage-variant-menu', 'bespoke:id===selected.id'], lane: 'premiere-gallery-studio' },
+  // INTERACTION-REDESIGN C: the staging area is the kit's picker menu over its ten picture cards (the hand-rolled listbox went)
+  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-staging'], lane: 'premiere-gallery-studio' },
   'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
   'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:option===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
   'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },

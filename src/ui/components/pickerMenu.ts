@@ -36,7 +36,9 @@ export interface PickerMenu {
   setItems(items: readonly PickerItem[], value?: string | null): void;
   setValue(id: string | null): void;
   setDisabled(disabled: boolean): void;
-  open(): void;
+  /** Open it; `from` anchors it to another control for this opening (a phone's menu item, where the trigger is hidden), which
+   *  takes the focus back on close. */
+  open(from?: HTMLElement): void;
   close(): void;
   dispose(): void;
 }
@@ -65,20 +67,22 @@ interface MenuPlace {
  * Where the popover stands for a trigger at `anchor` in a `view` window: under the trigger, or above it when the room below
  * is short of what it needs and the room above is larger; as wide as the trigger within 280-480 px and inside the window;
  * at most min(60 % of the window, 420 px) tall and no taller than its side's room. A coarse pointer on a window under 520 px
- * wide gets a bottom sheet across it. `height` is the popover's natural height (its content at full room). Pure.
+ * wide gets a bottom sheet across it. `height` is the popover's natural height (its content at full room); `wide` (a set of
+ * picture cards) takes the widest room, so its pictures stand two abreast. Pure.
  */
 export function placeMenu(
   anchor: { readonly left: number; readonly top: number; readonly bottom: number; readonly width: number },
   view: { readonly width: number; readonly height: number },
   height: number,
   coarse: boolean,
+  wide = false,
 ): MenuPlace {
   const cap = Math.min(view.height * 0.6, MENU_MAX_H);
   if (coarse && view.width < SHEET_BELOW) {
     const maxHeight = Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
   }
-  const width = Math.min(MENU_MAX_W, Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
+  const width = Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
   const left = Math.max(MENU_EDGE, Math.min(anchor.left, view.width - MENU_EDGE - width));
   const below = view.height - anchor.bottom - MENU_GAP - MENU_EDGE;
   const aboveRoom = anchor.top - MENU_GAP - MENU_EDGE;
@@ -102,6 +106,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   let value = options.value;
   let picker: ReturnType<typeof createPicker> | null = null;
   let previewed: PickerItem | null = null;
+  /** This opening's anchor when it is not the trigger. */
+  let openFrom: HTMLElement | null = null;
 
   const trigger = doc.createElement('button');
   trigger.type = 'button';
@@ -141,10 +147,10 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   const coarse = (): boolean => typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
   const place = (): void => {
     if (!isOpen()) return;
-    const rect = trigger.getBoundingClientRect();
+    const rect = (openFrom?.isConnected ? openFrom : trigger).getBoundingClientRect();
     pop.style.maxHeight = '';
     const natural = pop.scrollHeight;
-    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse());
+    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards');
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
     pop.style.left = `${spot.left}px`;
@@ -195,12 +201,15 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     win.removeEventListener('scroll', placeSoon, true);
     win.removeEventListener('resize', placeSoon);
     doc.removeEventListener('pointerdown', onOutside, true);
-    if (restoreFocus) trigger.focus({ preventScroll: true });
+    const back = openFrom?.isConnected ? openFrom : trigger;
+    openFrom = null;
+    if (restoreFocus) back.focus({ preventScroll: true });
   }
-  function open(): void {
+  function open(from?: HTMLElement): void {
     if (isOpen() || trigger.disabled) return;
     openMenu?.close();
     openMenu = api;
+    openFrom = from && from !== trigger ? from : null;
     ensurePicker();
     trigger.setAttribute('aria-expanded', 'true');
     pop.showPopover();
@@ -213,7 +222,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   }
   const onOutside = (event: PointerEvent): void => {
     const target = event.target as Node | null;
-    if (target && (pop.contains(target) || trigger.contains(target))) return;
+    if (target && (pop.contains(target) || trigger.contains(target) || openFrom?.contains(target))) return;
     close();
   };
   const onTrigger = (): void => { if (isOpen()) close(true); else open(); };
@@ -231,7 +240,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   };
   const onPopFocusOut = (event: FocusEvent): void => {
     const next = event.relatedTarget as Node | null;
-    if (next && (pop.contains(next) || next === trigger)) return;
+    if (next && (pop.contains(next) || next === trigger || next === openFrom)) return;
     // a Tab out, or the focus moving anywhere else: closed with nothing changed (a pointer press is onOutside's)
     if (next) close();
   };
