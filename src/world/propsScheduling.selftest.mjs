@@ -472,8 +472,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     boxClearOfPoints, sharpBends: [],
     // the wreck's collision pose reads the support quaternion (identity on the fixture's level ground)
     // (2026-10-07, the hitbox lane: the wreck's shell record is its own slabs, placeWreckShellCollision)
-    THREE, placeWreckCollision, placeWreckShellCollision, _quat: Object.assign(new THREE.Quaternion(), { setFromUnitVectors() { return this; } }), _upAxis: {},
-    _posv: { set() { return this; } },
+    // (battle-spikes-253: the commit makes its own quaternion from the support's normal, a step between its transforms)
+    THREE, placeWreckCollision, placeWreckShellCollision, _upAxis: new THREE.Vector3(0, 1, 0), _posv: new THREE.Vector3(),
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
     // (2026-10-08) a hulk refuses a seat that meets a tall solid or a tree (props.ts hulkMeetsTallSolid): the fixture's
     // ground holds neither

@@ -5537,9 +5537,14 @@ ${snowCap ? `
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
+  /**
+   * (battle-spikes-253) A planned building in three steps — its base build and pose, its region's rebuild, its collision
+   * and merge (nav-perf's phone Garage sweep: one 100-150 ms task a building; Steinburg in Node: the collision 45% of it,
+   * the rebuild 32%). No module scratch is held across a step (another world build may run between them).
+   */
+  function* placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
     fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
-    kitPose?: { x: number; z: number; rot: number }): boolean {
+    kitPose?: { x: number; z: number; rot: number }): Generator<PropsBuildSlice, boolean, void> {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -5661,6 +5666,7 @@ ${snowCap ? `
         uv.needsUpdate = true;
       }
     }
+    yield { fine: true };
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
@@ -5686,6 +5692,7 @@ ${snowCap ? `
         }
         if (Number.isFinite(b.minX)) body = b;
       }
+      yield { fine: true };
     }
     if (vacated) {
       // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
@@ -5729,7 +5736,7 @@ ${snowCap ? `
     if (!explicitStructure) bi++;
     return true;
   }
-  function placeRoadBuilding(cand: BuildingCandidate, side: number): void {
+  function* placeRoadBuilding(cand: BuildingCandidate, side: number): Generator<PropsBuildSlice, void, void> {
     if (rng() < P.sideSkip) return;
     const lat = P.buildingLat[0] + rng() * P.buildingLat[1];
     const px = cand.x - cand.tz * side * lat;
@@ -5742,7 +5749,7 @@ ${snowCap ? `
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
     const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
-    placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
+    yield* placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -5752,7 +5759,7 @@ ${snowCap ? `
       if (bi >= builders.length) return;
       for (const side of [-1, 1]) {
         if (bi >= builders.length) return;
-        placeRoadBuilding(cand, side);
+        yield* placeRoadBuilding(cand, side);
         yield { fine: true };
       }
     }
@@ -5855,7 +5862,7 @@ ${snowCap ? `
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     const build = plannedBuild(index, site);
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+    yield* placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
       site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
@@ -5866,7 +5873,7 @@ ${snowCap ? `
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     const build = plannedBuild(index, site);
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+    yield* placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
       site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
@@ -6162,7 +6169,7 @@ ${snowCap ? `
     if (!P.blockFill || bi >= builders.length) return;
     const brng = mulberry32(seed + 404);
     const step = 27;
-    const tryPlaceTownBuilding = (gx: number, gz: number): void => {
+    function* tryPlaceTownBuilding(gx: number, gz: number): Generator<PropsBuildSlice, void, void> {
       if (bi >= builders.length) return;
       const px = gx + (brng() - 0.5) * 10, pz = gz + (brng() - 0.5) * 10;
       const roadDistance = heightField._roadDist(px, pz);
@@ -6171,11 +6178,11 @@ ${snowCap ? `
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-      placePlannedBuilding(px, pz, rot, undefined, undefined, true);
-    };
+      yield* placePlannedBuilding(px, pz, rot, undefined, undefined, true);
+    }
     for (let gz = town.z0 + 14; gz < town.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = town.x0 + 14; gx < town.x1 - 14 && bi < builders.length; gx += step) {
-        tryPlaceTownBuilding(gx, gz);
+        yield* tryPlaceTownBuilding(gx, gz);
         yield { fine: true };
       }
     }
@@ -9129,7 +9136,7 @@ ${snowCap ? `
         if (!baked) return false;
         const seat = seatWreck(baked, x, z, yaw, false);
         if (!seat) return false;
-        commitWreck(specId, baked, seat);
+        yield* commitWreck(specId, baked, seat);
         // A rejected slope/bake is not a placed wreck. Retry this donor on the
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
@@ -9177,20 +9184,33 @@ ${snowCap ? `
         if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return null;
         return { x, z, yaw, support };
       }
-      /** A seated hulk into the world: its mesh, debris, shadow proxy, solids and records. */
-      function commitWreck(specId: string, baked: WreckBake,
-        { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): void {
+      /**
+       * A seated hulk into the world: its mesh, debris, shadow proxy, solids and records. (battle-spikes-253) A step
+       * between its geometry's three transforms (nav-perf's phone Garage sweep: one 150 ms task a road wreck; a hulk is
+       * ~50k vertices, a transform ~6.5 ms on a desktop) and its debris; the bounds computed once, after the last (three's
+       * applyMatrix4 recomputes them from the moved positions, so the same bytes). Its own quaternion: a step lets another
+       * world build (the Garage's background build beside a deploy's) use the module's.
+       */
+      function* commitWreck(specId: string, baked: WreckBake,
+        { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): Generator<PropsBuildSlice, void, void> {
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         const y = support.y;
-        _quat.setFromUnitVectors(_upAxis,
+        const quat = new THREE.Quaternion().setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
         const g = baked.geo.clone();
+        wreckGeos.push(g); // (a cancelled build's dispose reaches it between the steps)
+        const box = g.boundingBox !== null, sphere = g.boundingSphere !== null;
+        g.boundingBox = null; g.boundingSphere = null;
         g.rotateY(yaw);
-        g.applyQuaternion(_quat);
+        yield { fine: true };
+        g.applyQuaternion(quat);
+        yield { fine: true };
+        if (box) g.boundingBox = new THREE.Box3();
+        if (sphere) g.boundingSphere = new THREE.Sphere();
         g.translate(x, y, z); // settled on dead suspension across its whole footprint
-        wreckGeos.push(g);
         // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
         pushWreckDrawnFootprint(g, y, 0.3);
+        yield { fine: true };
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
         // read without adding draw calls, animation, or live vehicle state.
@@ -9210,17 +9230,18 @@ ${snowCap ? `
           }
           debrisTris = debris.tris;
           bakedTris += debrisTris;
+          yield { fine: true };
         }
         if (baked.shadowGeo) {
           const sg = baked.shadowGeo.clone();
           sg.rotateY(yaw);
-          sg.applyQuaternion(_quat);
+          sg.applyQuaternion(quat);
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
         // Separate hull/turret solids follow the exact visible yaw and slope pose.
         // A sideways gun must never turn the empty space beside a wreck into a wall.
-        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(quat)
           .multiply(new THREE.Matrix4().makeRotationY(yaw));
         placement.setPosition(x, y, z);
         const rec = placeWreckCollision(baked.solids, placement);
@@ -9259,8 +9280,8 @@ ${snowCap ? `
           if (!seat) continue;
           const twin = seatWreck(baked, 2 * cx - seat.x, 2 * cz - seat.z, seat.yaw + Math.PI, true);
           if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < 2 * Math.hypot(baked.hx, baked.hz) + 2) continue;
-          commitWreck(specId, baked, seat);
-          commitWreck(specId, baked, twin);
+          yield* commitWreck(specId, baked, seat);
+          yield* commitWreck(specId, baked, twin);
           wreckPickSerial += tries + 1;
           return 2;
         }
