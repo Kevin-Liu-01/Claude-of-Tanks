@@ -46,7 +46,7 @@ import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconId, shellIconSVG } from './shellIcons.ts';
 import { shellTypeLabel } from './shellLabels.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup, garageStatShare,
   garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
@@ -2459,22 +2459,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return ranges;
   }
   const STAT_RANGES = buildStatRanges(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
-  // min→0.14 stub, max→1.0 full; degenerate spans (single-vehicle group)
-  // park at a neutral 0.72 so the card never shows an all-stub column
+  // the bar's rule (garageStatShare, pinned by garageDossier.selftest): the stat's place in its tier and era's spread
   function statFrac(
     group: string,
     key: StatRangeKey,
     v: number | null | undefined,
     invert = false,
   ): number {
-    const r = STAT_RANGES.get(group);
-    if (!r || v == null || !isFinite(v)) return 0.6;
-    const [lo, hi] = r[key];
-    const span = hi - lo;
-    if (!(span > Math.max(1e-6, Math.abs(hi) * 0.02))) return 0.72;
-    let f = (v - lo) / span;
-    if (invert) f = 1 - f;
-    return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
+    return garageStatShare(STAT_RANGES.get(group)?.[key], v, invert);
   }
 
   // --- COUNTRY FILTER CHIPS -------------------------------------------------

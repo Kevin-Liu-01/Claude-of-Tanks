@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { getLocale, setLocale } from './i18n.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageTechnicalViews,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatShare, garageTechnicalViews,
 } from './garageDossier.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
@@ -64,6 +64,17 @@ assert.equal(new Set(silhouettes).size, shellIconTypes().length, 'each ammunitio
 for (const type of ['AP', 'APCR', 'APFSDS', 'HEAT', 'HE']) {
   assert.match(shellIconSVG(type), new RegExp(`data-shell-type="${type}"`));
 }
+// The Garage bar's rule: a stat's place between its tier-and-era group's least and most, a 0.14 stub to full, inverted
+// where less is better; a group with no spread parks at 0.72 (Main 258 asked which rule fills the bars: this one, 257's)
+const cells = (share) => Math.max(1, Math.round(share * 20));
+assert.equal(garageStatShare([400, 800], 400), 0.14, 'the least is a stub');
+assert.equal(garageStatShare([400, 800], 800), 1, 'the most is full');
+assert.equal(cells(garageStatShare([400, 800], 600)), 11, 'the middle fills 11 of 20');
+assert.equal(garageStatShare([5, 10], 5, true), 1, 'inverted: the fastest reload fills');
+assert.equal(garageStatShare([5, 10], 10, true), 0.14, 'inverted: the slowest is a stub');
+assert.equal(garageStatShare([400, 800], 900), 1, 'clamped above');
+assert.equal(garageStatShare([700, 700], 700), 0.72, 'a group of one parks at 0.72');
+assert.equal(garageStatShare(undefined, 700), 0.6, 'no range');
 } finally {
   setLocale(originalLocale);
 }
