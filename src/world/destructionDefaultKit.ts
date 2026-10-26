@@ -24,6 +24,7 @@
  * Frames are the body frame (destructionKit.ts). Registered as 'default' on import (the world's seam imports it).
  */
 import type { BufferGeometry } from 'three';
+import { rawFloats, rawIndices } from './rawAttributes.ts';
 import { STRUCTURE_WALL_STUB_M } from './collision.ts';
 import { intactPlanAt, ruinKind } from './collapseRuin.ts';
 import { enclosedAt, faceSetback, measureEnclosure } from './structureEnclosure.ts';
@@ -182,10 +183,15 @@ function bodyTopOf(parts: StructureDescribeInput['parts'], top: number): number 
       if (!pos) continue;
       const index = g.getIndex();
       const n = index ? index.count : pos.count;
+      // (battle-spikes-253) a plain float array read where it stands, as the getters read it (shell.ts rawFloats)
+      const raw = rawFloats(pos), rawIndex = index ? rawIndices(index) : null;
+      const X = (i: number): number => (raw ? raw[i * 3] : pos.getX(i)), Y = (i: number): number => (raw ? raw[i * 3 + 1] : pos.getY(i));
+      const Z = (i: number): number => (raw ? raw[i * 3 + 2] : pos.getZ(i));
       for (let t = 0; t + 2 < n; t += 3) {
-        const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-        const ax = pos.getX(a), ay = pos.getY(a), az = pos.getZ(a);
-        const ux = pos.getX(b) - ax, uy = pos.getY(b) - ay, uz = pos.getZ(b) - az, vx = pos.getX(c) - ax, vy = pos.getY(c) - ay, vz = pos.getZ(c) - az;
+        const a = index ? (rawIndex ? rawIndex[t] : index.getX(t)) : t, b = index ? (rawIndex ? rawIndex[t + 1] : index.getX(t + 1)) : t + 1;
+        const c = index ? (rawIndex ? rawIndex[t + 2] : index.getX(t + 2)) : t + 2;
+        const ax = X(a), ay = Y(a), az = Z(a);
+        const ux = X(b) - ax, uy = Y(b) - ay, uz = Z(b) - az, vx = X(c) - ax, vy = Y(c) - ay, vz = Z(c) - az;
         const ny = uz * vx - ux * vz, nl = Math.hypot(uy * vz - uz * vy, ny, ux * vy - uy * vx);
         if (!(nl > 1e-9) || Math.abs(ny) > 0.5 * nl) continue;
         const reach = Math.max(Math.hypot(ux, uy, uz), Math.hypot(vx, vy, vz));
