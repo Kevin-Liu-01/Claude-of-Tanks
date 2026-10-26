@@ -679138,8 +679138,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.63,
@@ -680731,7 +680731,7 @@
         ]
       },
       "geometryHash": "e297997a",
-      "metadataHash": "0454bfb8",
+      "metadataHash": "511489dd",
       "presentationAnchor": {
         "xM": -0.0013,
         "zM": -0.753
@@ -680793,15 +680793,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31070,
-          "sha256": "56a8591317d5f42c267fffd7f4be118dd120a8b96bc22c1f8bb1ffb1feec17cd",
+          "bytes": 31086,
+          "sha256": "5c33db58e2c6d3596ba0604207fbdf5a6afcc3f016c5f29ca945b75de3d67ada",
           "thumbnail": {
             "file": "thumbs/merkava1b_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 11974,
-            "sha256": "1e9f6cd3e3448e6d76f6396876d43680582987a642ea47c8700a077e8b0308c6"
+            "sha256": "1ef460df1c0f4d6b0981efe7d5ba336cf60943068f7d767db9b8dbc54033fc95"
           }
         },
         "top": {
@@ -680817,8 +680817,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17002,
-          "sha256": "eebdbdfb94a42235f5cd6f9ed5546e4c11385ee60b2b2f4f3276a3ae0dae6892"
+          "bytes": 17056,
+          "sha256": "ead8fea5be97268b51c6db7152cd5d7481c97913356719ff906f0be717d1faef"
         },
         "topSilhouette": {
           "file": "merkava1b_top_silhouette.png",
@@ -680841,24 +680841,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35960,
-          "sha256": "a83957515557dad5ca548a912456022fe82e22e7044dbe10f60b950929aa11b4"
+          "bytes": 35900,
+          "sha256": "b17301f7226c96f8186623fc976260646f105901447c4b7c1f64ec3357981e19"
         },
         "modulesSide": {
           "file": "merkava1b_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 40108,
-          "sha256": "5ee96bf1e7da03d4af1f6db4096484929d1833e242a1503b31fbc037fed50cc9"
+          "bytes": 40116,
+          "sha256": "d8c492ae73c1be5ea9b792ec2daa351c313e8557dbe33597ff8f3edbb245fa68"
         },
         "crewSide": {
           "file": "merkava1b_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38442,
-          "sha256": "42e051d417bc12f02f61555452807df43faa5074503cec684f02d259987feb68"
+          "bytes": 38378,
+          "sha256": "c8a546e9b6edcf5941441a2dca38f9b671a0a8d33ba9f35bf3fb06a218b03118"
         },
         "markings": {
           "file": "merkava1b_markings.png",
@@ -680902,8 +680902,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.78,
@@ -682631,7 +682631,7 @@
         ]
       },
       "geometryHash": "3c09843b",
-      "metadataHash": "6ae59ecc",
+      "metadataHash": "f7977b42",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.6398
@@ -682740,24 +682740,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34502,
-          "sha256": "4f653815c5bf76dcd688149ed3db4aeb9ce9506119376dbddfe6378b783b32c5"
+          "bytes": 34544,
+          "sha256": "3db74be5421797b160e7b320a2e27f7b3bac418da352d96609fc02c2d9f708da"
         },
         "modulesSide": {
           "file": "merkava2b_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38692,
-          "sha256": "744b275cf7bf7ed711fc623fbfc1d0b75c97fa20f7075bdffb95f912e4e8ea44"
+          "bytes": 38682,
+          "sha256": "b8d2d7bde722ada26cd7fa65b35ae930aa1280d459ece485aa507e2ce0c9c68d"
         },
         "crewSide": {
           "file": "merkava2b_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36984,
-          "sha256": "8aacf16d4e53479028a2a11960b8e274194bf7418b5b1bc30dec802828c91382"
+          "bytes": 37030,
+          "sha256": "372bb0f7e4d42bfaccbf145194e2cc1b11b6477b20273c8dd7f985e09e3ed1b8"
         },
         "markings": {
           "file": "merkava2b_markings.png",
@@ -682801,8 +682801,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.78,
@@ -684840,7 +684840,7 @@
         ]
       },
       "geometryHash": "764108ea",
-      "metadataHash": "7d28da4f",
+      "metadataHash": "5b250c57",
       "presentationAnchor": {
         "xM": 0.0012,
         "zM": -0.527
@@ -684901,15 +684901,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31920,
-          "sha256": "606cd2f04045d7e2304aa58b761166b72417102d2d869e61a4e5c7726f08d96f",
+          "bytes": 31888,
+          "sha256": "162b6e8286d0bdbe7b2bb97ab301417174da4077a5553f9d1fe71a88be66e0c4",
           "thumbnail": {
             "file": "thumbs/merkava2d_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12624,
-            "sha256": "4a37393aa47389484efd55d1af7182aee6961fc37d7e138c497ae03954261bca"
+            "bytes": 12640,
+            "sha256": "4d7d498ccd9d12b1f37e7ca930b9ee628081c4435359a40945d8611c90d0c577"
           }
         },
         "top": {
@@ -684917,16 +684917,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17698,
-          "sha256": "763d920aed2ba1c01024252ce66e75b157928b46e8511b7f5db6154a9b96b66f"
+          "bytes": 17706,
+          "sha256": "ac50b5ba04961c71494acb3bbe7cedc3a5cc9edfe86e3833d1cdb02fe59caa7a"
         },
         "side": {
           "file": "merkava2d_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17378,
-          "sha256": "f8a52bc9e9b1ec4811411722c6a5ddde31b8a76ced4582e97a707031bb49763c"
+          "bytes": 17350,
+          "sha256": "81f5af9b9777dffe0416ddd09fcc08edfd14dd3ee3fdf412650aeafed3ec6ce3"
         },
         "topSilhouette": {
           "file": "merkava2d_top_silhouette.png",
@@ -684949,24 +684949,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38070,
-          "sha256": "8d1e2437cac5fc0fd93ae6d09c3fe5c94efcd1e29acd6c7f1ee85a4025ad0c5a"
+          "bytes": 37942,
+          "sha256": "c75dc37f275279a0ab64bf622e8355e33b1567c8e20e99bc5d77c80121097c1d"
         },
         "modulesSide": {
           "file": "merkava2d_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 41292,
-          "sha256": "a6e2e7339056d81400dccf2f6dd130d75855c16e9aaa9f423ad6b9a524545d6f"
+          "bytes": 41224,
+          "sha256": "3f78bb048807c188886b5387e24140d96b0d9d35dd4a962778c21c7b09117e8a"
         },
         "crewSide": {
           "file": "merkava2d_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 39280,
-          "sha256": "cb82b4223c032485e713057c01a2055b3b2dc9e397c61b642bf89f506ed33b4d"
+          "bytes": 39178,
+          "sha256": "fcf65fbdb71da6833545225bb7691cd5183a32bc1b7a4755a670d18b529ba957"
         },
         "markings": {
           "file": "merkava2d_markings.png",
@@ -685011,8 +685011,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -687236,7 +687236,7 @@
         ]
       },
       "geometryHash": "aa34d85e",
-      "metadataHash": "e4e68c30",
+      "metadataHash": "3b5d1dd3",
       "presentationAnchor": {
         "xM": -0.0053,
         "zM": -0.8152
@@ -687346,24 +687346,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33668,
-          "sha256": "60d4f8905456b5f1437c2192df25397ce6b8bcddc3172d49898078ed1903cf7c"
+          "bytes": 33728,
+          "sha256": "e385649a40818906e707ec762996d2c545883984a5fc4043e775dd0bd1d94f24"
         },
         "modulesSide": {
           "file": "merkava3_baz_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33834,
-          "sha256": "118cadda87a6e1953b831052315bcfa6dfd29a966b1e091f9be76120477feb1f"
+          "bytes": 33836,
+          "sha256": "b9d0d62dbf5b90ba948f1b3468e7365cd3b61a4c8575bcbb2971fdfa1a6a2e43"
         },
         "crewSide": {
           "file": "merkava3_baz_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31876,
-          "sha256": "b71c78d6e3a0a8b6cdb86cc123eac74d515e0d51597d2c49e06d09234a3f8a54"
+          "bytes": 31854,
+          "sha256": "ed12435131d00de452de2e30a8a5e971fb7aabb9dd49b16a0b619f72ad043cd4"
         },
         "markings": {
           "file": "merkava3_baz_markings.png",
@@ -687407,8 +687407,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -689608,7 +689608,7 @@
         ]
       },
       "geometryHash": "c10ac105",
-      "metadataHash": "48edb3e7",
+      "metadataHash": "debd21d6",
       "presentationAnchor": {
         "xM": -0.0006,
         "zM": -0.8042
@@ -689719,24 +689719,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 44538,
-          "sha256": "7ec55b75f343c8fe2437705cab0569867deee359115597d53f1e37ce0f9e0e51"
+          "bytes": 44534,
+          "sha256": "ab3240f00c21ce23b286f6b534a90fa49bb959eec5532e09e33f7ecf10bd7592"
         },
         "modulesSide": {
           "file": "merkava3c_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 44584,
-          "sha256": "b4e98483aece7bf5851a2d48153c484b5991d5b4f36e20e9ebeba58c85a968d0"
+          "bytes": 44594,
+          "sha256": "6c78ed35a85954aa2849e2553bed75a4f250f8f4d2b31ee7af56aa031d6221a3"
         },
         "crewSide": {
           "file": "merkava3c_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 44224,
-          "sha256": "fee73b0e96d78d073b1e44a2d34e676870ad6a8001cc0e670d0e73f2bca8a59c"
+          "bytes": 44884,
+          "sha256": "9437673d6cb260635a61d66d4eb379838c7611b170569d91e83a6b8ba790ba8a"
         },
         "markings": {
           "file": "merkava3c_markings.png",
@@ -689780,8 +689780,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.9645,
         "overallLength": 8.8382,
@@ -691451,7 +691451,7 @@
         ]
       },
       "geometryHash": "7df713df",
-      "metadataHash": "8a6ca1c8",
+      "metadataHash": "744e6b05",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0039
@@ -691513,24 +691513,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23976,
-          "sha256": "a1814a5c42e05dc69d877968c626b41139001cad4aac58d89c470df5e2b610ee"
+          "bytes": 23912,
+          "sha256": "481ecba28791e71a24d5bb067663c5411868f73ab6e4750aa523b9b87fbb670d"
         },
         "modulesSide": {
           "file": "merkava3d_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23930,
-          "sha256": "2ccefe2fba8bdc80e1f93f376aa8fa1963c6f4eb02f3e119a250a7ed435585d2"
+          "bytes": 23858,
+          "sha256": "bbc9a31b82b2b3b76dd7a06e64e3d9c66eff9c8648a327d2bbc4a718ee13e395"
         },
         "crewSide": {
           "file": "merkava3d_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22770,
-          "sha256": "47575ac86f26735470ad8a02fe2d6041701854cf7d43e678e2c096233fbabcef"
+          "bytes": 22716,
+          "sha256": "2ab79e80e2e6a19cce6482cabb597b84bc8f53be93edab011b4c6d84ae761096"
         },
         "angle": {
           "file": "merkava3d_angle.webp",
@@ -691561,8 +691561,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16790,
-          "sha256": "1fd85615180d6802f6a8f37d154356a6f9ea21ff266fe8d8bde82957ea7ba64b"
+          "bytes": 16778,
+          "sha256": "ab3997805501154e257a7d402b3ba455eaf56de0e63c3252608da36ef6992817"
         },
         "topSilhouette": {
           "file": "merkava3d_top_silhouette.png",
@@ -691622,8 +691622,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 8.705,
@@ -692862,7 +692862,7 @@
         ]
       },
       "geometryHash": "4cac32a3",
-      "metadataHash": "f9aaf683",
+      "metadataHash": "0d5fcb50",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": -0.0078
@@ -692923,24 +692923,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23948,
-          "sha256": "eb71e4da992edfab69675fed1091cdcb22664d1ae398b2ce26a0be05f64265b9"
+          "bytes": 23960,
+          "sha256": "ec263e7a89d8a2c5ed2af2b8034abcd4a5dc9423d78fcf1e4ec3a096b32e20db"
         },
         "modulesSide": {
           "file": "merkava4_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24468,
-          "sha256": "35c29438c1fb792bbd0b1f4286434f0d2eb60e21d171d1d83be92b1628730f99"
+          "bytes": 24490,
+          "sha256": "d53608e8df1fe627ed1d5b977b0a37f9de83bf5361e43ea835bf0cb2ea424cb1"
         },
         "crewSide": {
           "file": "merkava4_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23012,
-          "sha256": "05533255588b7233ebe09c48dc5215cfc69c4bde0cabe5f5f400dd9043f90ff8"
+          "bytes": 23018,
+          "sha256": "5cd92d074b6bfcf4004568639f3bab1130cbe9f75c6af89e6e79dd6f3ca889b4"
         },
         "angle": {
           "file": "merkava4_angle.webp",
@@ -692971,8 +692971,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 18632,
-          "sha256": "9a46710337841b3c84d8eebe0fb6fb6f6daf6cb0efb25a46a96c62241ee2ff85"
+          "bytes": 18648,
+          "sha256": "7a8c52d63fd662bab0b0ada6abe7ac8aa57ba739c5403f201f2e82a24eac5002"
         },
         "topSilhouette": {
           "file": "merkava4_top_silhouette.png",
@@ -694298,24 +694298,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30612,
-          "sha256": "84f314ed29f23c19d914792b2454b09a42cee669fb8e09406d1884b6c7ae8b71"
+          "bytes": 30270,
+          "sha256": "05b9eadae7494f3e2018257cb7199f5d7572f60c451370bb68e52dfe5c6f26e5"
         },
         "modulesSide": {
           "file": "merkava4_barak_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32142,
-          "sha256": "5ff5a10f651512b1905459ddbbaa9cc58fd16c05c549e963e61cfea6acc32ea3"
+          "bytes": 32078,
+          "sha256": "f1c6d043c54da9ea03ee346d6caf51361a91cafa1196d4bc81da166744eecb48"
         },
         "crewSide": {
           "file": "merkava4_barak_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29622,
-          "sha256": "bdad82c7c3683dcf57cadfd8c08b11e0184cb885ab256c5e62b7cd5995600b56"
+          "bytes": 29566,
+          "sha256": "38c226b8ff18063687255b21d5a94f6de0afc18ce933df070c18a05a423c8d2f"
         },
         "angle": {
           "file": "merkava4_barak_angle.webp",
@@ -694346,8 +694346,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15358,
-          "sha256": "49cf42b21b5041a4c084312dda6fa97cd3329020a5d821432909ad065bd3a69a"
+          "bytes": 15390,
+          "sha256": "99d4ede11bbec1ab265850b948b013d87f8253a231354ce1b34df6586ee6fb51"
         },
         "topSilhouette": {
           "file": "merkava4_barak_top_silhouette.png",
@@ -694376,8 +694376,8 @@
         "technicalLabels": {
           "file": "merkava4_barak_technical.json",
           "mime": "application/json",
-          "bytes": 4197,
-          "sha256": "0a87c3f21f0b9816ad2ae227d922d00d8f7cd4dd6331d1a07fd4cbd4a3ed8650"
+          "bytes": 4041,
+          "sha256": "fde0fb9f79240f20299d8dabddbf9477d7e7b804e0c14263db6295ed05553fb9"
         }
       }
     },
@@ -694408,8 +694408,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 8.8755,
@@ -695648,7 +695648,7 @@
         ]
       },
       "geometryHash": "94826664",
-      "metadataHash": "3c8ecd45",
+      "metadataHash": "d67939c6",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0438
@@ -695709,24 +695709,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 41836,
-          "sha256": "c11684698122dd2d76b15cc0aabbc7bbb5f6897b36855ce30579eed2331c21e9"
+          "bytes": 40226,
+          "sha256": "90837144f9976de373065b01190b798c98b6c5fce7c2ce5c9fb5ca2e2388a19d"
         },
         "modulesSide": {
           "file": "merkava4_trophy_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38950,
-          "sha256": "a6521448b6c02417c3b91875f59ba46b33c4758a160210d2ff32be453c079294"
+          "bytes": 38940,
+          "sha256": "c137ae51c3669c04afe10cdeb3903946038b85289c2735f3dc96b3a6dc2c50a8"
         },
         "crewSide": {
           "file": "merkava4_trophy_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38214,
-          "sha256": "7fcc2cff91e318ea3438cfbb83fe0a01e719be39ce42a352f60b682e4533a4c7"
+          "bytes": 38184,
+          "sha256": "096906a08de54ce98c77c7348afd3b6bde0fb28d10f403167c8dd07cd6143644"
         },
         "angle": {
           "file": "merkava4_trophy_angle.webp",
@@ -695757,8 +695757,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 19932,
-          "sha256": "ee943d150c6df9838820a5bfeec2cc8fdb060ea99f2fa693277cbdcab566ce03"
+          "bytes": 19920,
+          "sha256": "1b7e188df151bb407f75d82156079f0b0314f41eeab109d304075f447d51a12f"
         },
         "topSilhouette": {
           "file": "merkava4_trophy_top_silhouette.png",
@@ -695818,8 +695818,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -697738,7 +697738,7 @@
         ]
       },
       "geometryHash": "954dd30f",
-      "metadataHash": "bef21c53",
+      "metadataHash": "a93b2ccc",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.38
@@ -697800,15 +697800,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33144,
-          "sha256": "f22c0a7342eb7a160b9f271c70d56065cf0d888fb4997b4fbb669db84f191669",
+          "bytes": 33162,
+          "sha256": "bfb31a6cd576c368bcf248b00364b223467d675a54be75ad92e8dc2f18fe8e3d",
           "thumbnail": {
             "file": "thumbs/merkava4b_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12256,
-            "sha256": "2152242b4e6d7aa2766f59448bb8c99818d8ad6efe523d9fd107fef9f63af054"
+            "bytes": 12268,
+            "sha256": "6aa9b8346cc56383c143574c7477cd7ba26e1b81a949a5cefb1d57e19cbc6af7"
           }
         },
         "top": {
@@ -697816,16 +697816,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29816,
-          "sha256": "f5f9345724d22d8ac6abb1eeb5ecbda8109dbf9a2ae7f49f5690e847f0261a81"
+          "bytes": 29806,
+          "sha256": "163035c79d0ff937bf751ff00aa9ac6db1717345211dd4a816090d1bd24775a0"
         },
         "side": {
           "file": "merkava4b_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 20048,
-          "sha256": "09b7fc1c2029c9d26faed8907428590eb81f942950e2604dd56b17bc3105f032"
+          "bytes": 20062,
+          "sha256": "6975a5fad277efb19701357106794b8d3e8d0f53da696931437ca21380c0d01b"
         },
         "topSilhouette": {
           "file": "merkava4b_top_silhouette.png",
@@ -697848,24 +697848,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 49718,
-          "sha256": "242f68df2a58d6c809b922edca4a6b42cbd029731f5a8367e129e2e3f7aa89b0"
+          "bytes": 49652,
+          "sha256": "6a046283a0bd224e758bf0a9d52929c0cf706a458d8efada4c5d64110386e99f"
         },
         "modulesSide": {
           "file": "merkava4b_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 50018,
-          "sha256": "994b20b4b270a19af2b54c20897d72eb5fcfc9001762a1ec0b357b3684e3feb1"
+          "bytes": 49982,
+          "sha256": "4a3f3a5b10432e6e251d5ee09efa55bd4e0fe4228a3cfed172a629b0af5c1a3e"
         },
         "crewSide": {
           "file": "merkava4b_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 48308,
-          "sha256": "70a0fb3fdf36f63b6f78bf439ec48e575c5c469f2f94679466611aba5a3e8be4"
+          "bytes": 48142,
+          "sha256": "8bcb08936f0f1ae7815292fe2359189d0d23a36d9961628b42b635a7aca3d591"
         },
         "markings": {
           "file": "merkava4b_markings.png",
@@ -697909,8 +697909,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.32,
         "overallLength": 7.4825,
@@ -698903,7 +698903,7 @@
         ]
       },
       "geometryHash": "ed7b802a",
-      "metadataHash": "67108bcf",
+      "metadataHash": "e7202e10",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0149
@@ -698963,24 +698963,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38496,
-          "sha256": "4e3ff13df797b8a32bd191a482a2a764748413a0d6e6e5800e6c3c60cf9adfd2"
+          "bytes": 38484,
+          "sha256": "d040a1117bee9e1a1abf8445c916e37dcca05b68d4d231d25e153d440c1fda8f"
         },
         "modulesSide": {
           "file": "namer_ifv_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42916,
-          "sha256": "997479173d545bd5687a37191d5b18710cdfaf9b02c673af3871bf9133492e21"
+          "bytes": 42902,
+          "sha256": "8219241e0675e77c0af618784fe3621bc5ff8673831f48538317e4a103d99911"
         },
         "crewSide": {
           "file": "namer_ifv_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 40300,
-          "sha256": "27ed466828c43a2f87496e864455cc8af6ce14288635083e67d5002af3d77cc8"
+          "bytes": 40152,
+          "sha256": "cb9507518d0b7ef01c1db307a20d99818209f303c9d31a8da583c85436e9aa39"
         },
         "angle": {
           "file": "namer_ifv_angle.webp",
@@ -734269,8 +734269,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.01,
         "overallLength": 9.0379,
@@ -735471,7 +735471,7 @@
         ]
       },
       "geometryHash": "0223f69e",
-      "metadataHash": "d9ee627b",
+      "metadataHash": "f33cfb12",
       "presentationAnchor": {
         "xM": 0.0009,
         "zM": -0.0714
@@ -735530,24 +735530,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28736,
-          "sha256": "4ab147a39b6a0eab76a3450cdc1ecb420a78e0a1e56b74c418afed81c0ed7dc2"
+          "bytes": 28738,
+          "sha256": "c046d1371946d46bd096cc79fce2c2e7857762fee282fa45dce40c1bcea7440f"
         },
         "modulesSide": {
           "file": "sabra_mk2_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33714,
-          "sha256": "57774cdfed937fd5658b6f0590304f5291c53ab498e5f9ada158fd4952aaaa06"
+          "bytes": 33712,
+          "sha256": "a1adf913fff863eed9b0cf00beadc0062a90e5bd7fce4643bf7ea76afb5a2dfa"
         },
         "crewSide": {
           "file": "sabra_mk2_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30780,
-          "sha256": "ddb8bdce244ad8ab2d828422532e849c0e64b1dc39a015d0fa5c31ce6a86513a"
+          "bytes": 30740,
+          "sha256": "4578b011339a207fbe6f747d03f065ba4fa809c56a40fcda39f1ad68c5531788"
         },
         "angle": {
           "file": "sabra_mk2_angle.webp",
@@ -735578,8 +735578,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15804,
-          "sha256": "9fc54d41dd10b064ed4e5c16721028b2cbbb08df8004f9131e3aaf0312bf2eed"
+          "bytes": 15808,
+          "sha256": "34e970dfdd24720b9aefa511a9ac99ed63d4824b8641495b4d4f52f48fb00463"
         },
         "topSilhouette": {
           "file": "sabra_mk2_top_silhouette.png",
