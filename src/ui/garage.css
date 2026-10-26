@@ -471,6 +471,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 /* the proving ground's test drive (v2 progression, 2026-10-17), under the Gallery link */
 .cot-test-drive{margin-top:6px;}
 .cot-technical-viewer .cot-modal__body{padding:clamp(var(--s3),2vw,22px);background:var(--surface-nav);}
+/* the viewer is opaque, its head with it: the plate's translucent ground let the dossier's figures show through the title
+   (the r19q critic) */
+.cot-technical-viewer{background:var(--surface-nav);}
 .cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
 .cot-technical-viewer-tab{min-height:38px;padding:0 var(--s3);color:var(--ink-3);background:var(--side-plate);
   border:1px solid var(--line-2);cursor:pointer;
@@ -743,6 +746,13 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 :is(.cot-camo-swatch,.cot-lt-swatch canvas)[data-loading]{background:var(--fill-quiet);}
 /* the sheet's head carries its actions (the nation's paint, the about tip) beside its close, for the paint sheet only */
 .cot-drawer-actions{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
+/* its about trigger stands as tall as the button beside it (the r19q critic: a 16 px circle by a 34 px button) */
+.cot-drawer-actions .cot-info-trigger{width:var(--btn-h-s);height:var(--btn-h-s)}
+/* a phone's paint head keeps its close in view: the title and the close on one row, the nation's paint on the next (the
+   kit's padding made the row too wide for 390 px, and the close fell off the sheet) */
+body[data-cot-width='phone'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{flex:0 0 auto;flex-wrap:wrap;row-gap:var(--s2)}
+body[data-cot-width='phone'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{order:2;margin-left:auto}
+body[data-cot-width='phone'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{order:3;flex:1 1 100%;margin-left:0}
 .cot-garage:not([data-garage-panel='appearance']) .cot-drawer-actions{display:none}
 .cot-camo-lab{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:18px;min-height:460px}
 .cot-camo-lab__canvas,.cot-camo-lab__controls{min-width:0;display:flex;flex-direction:column;gap:var(--s3)}
@@ -875,15 +885,22 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-eqpreview{container-type:inline-size}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-/* the summary says again what the action line says ("Adds X to Slot 1"), and the heading names the tank in view */
+/* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
+   summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
 .cot-eqpreview :is(.metrics-heading,.summary){display:none}
-.cot-eqpreview .cot-eqtip[data-shut] .action{color:var(--ink-2)}
-/* a wide readout sets the values beside the item's words, so one fixed height holds them (stacked, they ran past it) */
+.cot-eqpreview .cot-eqtip:not([data-shut]) .action{display:none}
+.cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
+.cot-eqpreview .cot-eqtip[data-shut] .action{border-top:0;padding-top:0;color:var(--ink-2);text-transform:none}
+/* a wide readout in a sheet sets the values beside the item's words, so one fixed height holds them */
 @container (width >= 560px){
-  .cot-eqpreview .cot-eqtip{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);column-gap:var(--s4);align-items:start}
-  .cot-eqpreview .cot-eqtip>:not(.metrics){grid-column:1}
-  .cot-eqpreview .cot-eqtip>.metrics{grid-column:2;grid-row:1/span 4;margin-top:0}
+  body[data-cot-panels='overlay'] .cot-eqpreview .cot-eqtip{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);column-gap:var(--s4);align-items:start}
+  body[data-cot-panels='overlay'] .cot-eqpreview .cot-eqtip>:not(.metrics){grid-column:1}
+  body[data-cot-panels='overlay'] .cot-eqpreview .cot-eqtip>.metrics{grid-column:2;grid-row:1/span 4;margin-top:0}
 }
+/* the cards always keep a row and its peek (at 1280 x 720 the readout squeezed them to a sliver); the favourite is the F
+   key's and the Favorites chip's here: its star covered a small card's glyph and name */
+.cot-eqpick .cot-c-picker__grid{min-height:5.5rem}
+.cot-eqpick .cot-c-picker__fav{display:none}
 
 /* the readout's body (the item, what it does, its projected values and what a press does) */
 .cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
@@ -1610,7 +1627,8 @@ body[data-cot-panels='overlay'] .cot-nav:has(.cot-mobile-nav-menu:not([hidden]))
 body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){min-width:44px;min-height:44px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}
 /* A short viewport must scroll a useful diagram, never collapse its image. */
-body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:none}
+/* a touch screen's drawing takes the height the dialog leaves it (a 390 px tall landscape cut its hull and legend off) */
+body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 190px)}
 
 /* The expanded dossier is a complete reading view, not the compact preview. */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:var(--s6)}

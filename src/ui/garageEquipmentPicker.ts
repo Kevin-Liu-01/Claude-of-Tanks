@@ -74,7 +74,7 @@ interface GarageEquipmentPickerOptions {
 }
 
 export interface GarageEquipmentPicker {
-  /** Show the set for `openSlot` with `fitted` (null: the slot is empty) chosen. */
+  /** Show the whole set for `openSlot` with `fitted` (null: the slot is empty) chosen, its filters released. */
   show(groups: EquipmentGroups, openSlot: number, fitted: string | null): void;
   focus(): void;
   /** The cards' grid, for the caller's row fit. */
@@ -127,7 +127,8 @@ export function createGarageEquipmentPicker(options: GarageEquipmentPickerOption
     show(groups, openSlot, fitted) {
       const items = equipmentPickerItems(groups, openSlot, options.words);
       const value = fitted ?? EQUIPMENT_EMPTY_ID;
-      if (picker) { picker.setItems(items, value); return; }
+      // each slot opens on the whole set: a filter left pressed from the last slot read as a picker missing items
+      picker?.dispose();
       picker = createPicker(host, {
         id: options.id,
         label: options.label,

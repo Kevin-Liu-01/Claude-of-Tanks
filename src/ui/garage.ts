@@ -271,8 +271,9 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
  */
 function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): void {
   grid.style.minHeight = '';
+  const floor = parseFloat(getComputedStyle(grid).minHeight) || 0;
   fit(grid);
-  grid.style.minHeight = `${Math.ceil(grid.getBoundingClientRect().height)}px`;
+  grid.style.minHeight = `${Math.ceil(Math.max(floor, grid.getBoundingClientRect().height))}px`;
 }
 function fitWholeRows(grid: HTMLElement): void {
   grid.style.maxHeight = '';
@@ -2301,12 +2302,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
-    eyebrow.textContent = category;
+    eyebrow.textContent = item ? category : '';
+    // Empty is named as its card names it, with no sentence about what a press does (the r19q critics)
     const name = document.createElement('strong');
-    name.textContent = item ? equipmentLabel(item.id) : t('garage.equipment.emptySlot');
+    name.textContent = item ? equipmentLabel(item.id) : t('garage.equipment.empty.name');
     const detail = document.createElement('span');
     detail.className = 'detail';
-    detail.textContent = item ? equipmentDesc(item.id) : t('garage.equipment.removeFitted');
+    detail.textContent = item ? equipmentDesc(item.id) : '';
     const preview = spec && equipmentPreview
       ? equipmentPreview.equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !lock)
       : null;

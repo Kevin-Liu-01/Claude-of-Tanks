@@ -249,6 +249,12 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .
    label at 2560: the r18 critic) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1;flex:none;width:auto;justify-self:start;max-width:100%;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{width:auto;max-width:100%;height:var(--btn-h-s);padding-block:var(--s1);}
+/* a sheet too narrow for the staging choice's name beside the nation's paint shows the choice as its picture and chevron
+   (its name stays its label): at 900 px it truncated to "VERDANT ..." (the r19q critic) */
+body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{container:sheet / inline-size;}
+@container sheet (width < 640px){
+  .cot-garage-variant-trigger-copy{display:none;}
+}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:1/2;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{grid-area:1/3;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:2/1/3/4;}
@@ -382,8 +388,15 @@ body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__opt{gap:var(--s1);
 body[data-cot-panels='persistent'] .cot-eqpick .cot-eq-glyph svg{width:28px;height:28px;}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__name{display:block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__facts{display:none;}
-/* the docked readout is two lines lower: the band's room goes to the cards */
-body[data-cot-panels='persistent'] .cot-eqpreview{block-size:7.5rem}
+/* the docked readout is two lines: the item, its kind and what it does, then its projected values in one row (the band's
+   room goes to the cards) */
+body[data-cot-panels='persistent'] .cot-eqpreview{block-size:3.9rem;overflow:hidden}
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2)}
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip>:is(.eyebrow,strong,.detail){margin:0}
+body[data-cot-panels='persistent'] .cot-eqpreview .metrics{flex:1 1 100%;display:flex;flex-wrap:nowrap;gap:var(--s1);margin-top:0;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent)}
+body[data-cot-panels='persistent'] .cot-eqpreview .metric{flex:none}
 /* the docked picker's search and chips share one row, as the paint sheet's do: the panel stands lower over the tank */
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__search{flex:0 1 220px;height:var(--btn-h-s)}
