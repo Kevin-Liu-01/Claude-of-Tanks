@@ -19,7 +19,8 @@ html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s
 body{--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
 img{display:block;max-width:100%}
-:focus-visible{outline:2px solid var(--accent-hi);outline-offset:4px}
+/* the page's own focus outline; the kit's controls draw their ring (components.css), so they take no second outline */
+:focus-visible:not([class*='cot-c-']){outline:2px solid var(--accent-hi);outline-offset:4px}
 .home main{overflow:hidden}
 .home h1,.home h2,.home h3{text-wrap:balance}
 .shell,.home-shell{width:min(calc(100% - var(--home-gutter) * 2),var(--shell-max));margin-inline:auto}

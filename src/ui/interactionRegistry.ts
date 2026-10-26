@@ -191,7 +191,6 @@ export const INTERACTION_SITES = Object.freeze({
   'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
-  'home-rail': { chooses: 'view', options: 4, screen: 'site', owner: 'site/home.html', build: 'segmented', marks: ['segmented:~play-title', 'src/presentation/homePage.ts bespoke:other===option'], lane: 'lead' },
   'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'bespoke', marks: ['bespoke:index===0', 'bespoke:buttonIndex===index'], lane: 'premiere-site' },
   'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'bespoke', marks: ['bespoke:own===stage'], lane: 'premiere-site' },
   'docs-archive-filter': { chooses: 'filter', options: 11, screen: 'site', owner: 'src/presentation/mediaArchive.ts', build: 'bespoke', marks: ['bespoke:dataset.feature', 'bespoke:feature===active'], lane: 'premiere-site' },
@@ -211,4 +210,5 @@ export const INTERACTION_EXEMPT: readonly InteractionExempt[] = Object.freeze([
   { owner: 'src/gallery/damageWorkbench.ts', mark: "bespoke:action==='hitboxes'", reason: 'the Hitboxes and Probe tools show their own on state: toggles, not a set' },
   { owner: STUDIO, mark: 'bespoke:light.override?.sunElevationDeg', reason: "the sun elevation's Auto chip shows whether the map's own elevation holds: a toggle" },
   { owner: 'src/presentation/heroReel.ts', mark: 'bespoke:dataset.reelShot', reason: "the hero reel's caption follows the playing shot: a readout, nothing to choose" },
+  { owner: 'src/presentation/homePage.ts', mark: 'bespoke:other===option', reason: "the landing's rail switch: tabs over its panels (role=tab, tabpanel): navigation, not a choice" },
 ]);
