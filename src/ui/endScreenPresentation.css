@@ -376,7 +376,6 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols{padding-left:var(--s2)}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side .alive{display:inline-flex;align-items:center;gap:var(--s1)}
 }
-}
 /* (a phone up to 420 px wide stacks each side of the card, its figure over its name and its two lines, centred on its
    half: beside the figures the sides' names and lines had about 34 px, "Alpha" and "5 / 21 survived" were cut, zh's
    "Alpha 队" wrapped and Bravo's damage ran off the panel at 320x568, gauntlet r8) */
@@ -398,4 +397,5 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding-block:var(--s1)}
   body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:52px;padding-block:3px}
   body[data-cot-width] .cot-es.cot-es--record :is(.es-tal,.es-tal.hot) .v{font-size:22px}
+}
 }
