@@ -137,8 +137,8 @@ assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root bloc
 // none.
 const sheetPaths = Object.keys(first).filter((path) => ![TOKENS_CSS, TOKENS_TS, SELECTION_TS].includes(path));
 assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(),
-  ['src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css'],
-  'the landing, the manual and the Gallery each have their own token sheet');
+  ['src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css'],
+  'the landing, the manual, the Gallery and the technical diagrams each have their own token sheet');
 const sheetDecls = new Map();
 for (const path of sheetPaths) {
   const body = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{\s*:root\{([^}]*)\}\s*\}\s*$/
