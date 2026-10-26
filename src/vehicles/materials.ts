@@ -1475,7 +1475,8 @@ export function paintCamoTryOn(texture: THREE.Texture, selection: string, canvas
   const patternId = resolveSelectionPattern(entry.spec.id, selection);
   const visual = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
   const stream = camoPatternStreamSeed(visual, camoPatternIdHash(patternId));
-  paintCamo(canvas, visual, mulberry32(stream), TRY_ON_FEATURES, stream);
+  // the pattern stream seeds the paint, never the hull's texture seed (camoPatternSeed.selftest pins every call's form)
+  paintCamo(canvas, visual, mulberry32(camoPatternStreamSeed(visual, camoPatternIdHash(patternId))), TRY_ON_FEATURES, stream);
   exposureTrim(canvas);
   return true;
 }
