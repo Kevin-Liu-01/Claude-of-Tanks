@@ -467,7 +467,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-chip .lbl{font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);}
 .cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 .cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
-.cot-country-chip.sel{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--seg-on-shadow);}
+.cot-country-chip.sel{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
