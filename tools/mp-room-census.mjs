@@ -292,7 +292,12 @@ try {
       soloEntryFrom = await pageA.evaluate(() => performance.now());
       await soloEntryCdp.send('Profiler.start');
     }
-    await pageA.evaluate((spec, map) => { void window.__DEBUG.startBattle(spec ?? 'm1a2_sepv3', map || null); }, specId, mapId);
+    // the Garage BATTLE button's covered entry (main.ts beginBattleEntry); the debug startBattle sets the battle up in
+    // one task (root-u: an 8.4-27.8 s task no player meets), so it is only the fallback for a build without the former
+    await pageA.evaluate((spec, map) => {
+      const debug = window.__DEBUG;
+      void (debug.beginBattleEntry ?? debug.startBattle)(spec ?? 'm1a2_sepv3', map || null);
+    }, specId, mapId);
     await pageA.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && getComputedStyle(document.querySelector('.cot-bl')).display === 'none',
       { timeout: 240_000, polling: 100 });
     await new Promise((r) => setTimeout(r, 5000));
