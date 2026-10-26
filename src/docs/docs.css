@@ -20,6 +20,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .brand{display:flex;align-items:center;gap:11px;text-decoration:none;text-transform:uppercase;letter-spacing:var(--track-label);font-size:max(var(--fs-floor-11),var(--fs-11))}.brand [lang=en]{letter-spacing:var(--track-label)}.brand :is(img,svg){width:31px;height:38px}.brand b{color:var(--amber)}
 .docs-hero{border-bottom:1px solid var(--line);position:relative;overflow:hidden}.docs-hero::after{content:"";position:absolute;right:-12vw;top:-25vw;width:55vw;height:55vw;border:1px solid var(--accent-wash);border-radius:50%;box-shadow:var(--e1);pointer-events:none}.docs-hero .shell{position:relative;z-index:var(--z-lift);padding:64px 0 50px;display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,.82fr);gap:54px;align-items:center}
 .kicker{margin:0 0 14px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);text-transform:uppercase}.docs-hero h1{margin:0;max-width:760px;font-size:var(--docs-h1);line-height:.9;letter-spacing:var(--track-title);text-transform:uppercase;text-wrap:balance}.docs-hero h1 span{display:block;color:transparent;-webkit-text-stroke:1px var(--ink-4)}.docs-hero h1 br{display:none}:lang(zh-CN) :is(.docs-hero h1,.topic-hero h1,.docs-chapters h2,.docs-archive-dialog>header h2,.battle-reels-head h3){line-height:1.14}:lang(zh-CN) .docs-hero h1 span{color:var(--ink-2);-webkit-text-stroke:0}
+/* over the hero's footage a secondary action stands on an opaque plate, as the pause control does (a see-through fill
+   ramps with the picture) */
+.docs-hero .cot-c-btn--secondary{background:var(--surface-raised)}
 .docs-evidence{border-bottom:1px solid var(--line);background:var(--surface-page)}.docs-evidence dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0}.docs-evidence dl>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:15px 18px;border-left:1px solid var(--line)}.docs-evidence dl>div:first-child{border-left:0;padding-left:0}
 .docs-evidence dl>div:last-child{padding-right:0}.docs-evidence dt{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.docs-evidence dd{margin:0;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700}.docs-evidence dd span{color:var(--ink-3)}
 .docs-layout{display:grid;grid-template-columns:250px minmax(0,870px) minmax(190px,1fr);gap:54px;align-items:start;padding-top:48px;padding-bottom:100px}
@@ -47,7 +50,6 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-evidence dl{grid-template-columns:repeat(2,minmax(0,1fr))}
 .docs-evidence dl>div:nth-child(odd){border-left:0;padding-left:0}
 .docs-evidence dl>div:nth-child(even){padding-right:0}
-.docs-evidence dl>div:nth-child(n+3){border-top:1px solid var(--line)}
 .docs-layout{display:block;padding-top:24px}
 .docs-toc{top:70px;z-index:calc(var(--z-shell) - var(--z-lift));margin-bottom:30px}
 .toc-head button{display:block}
@@ -176,6 +178,12 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-side.is-searching>.dm-grp,.dm-side.is-searching>a:not(.dm-home){display:none}
 .dm-main{min-width:0}
 .dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
+/* a short landscape phone keeps the chapter's first lines in its first view: the banner is as tall as its trail and title,
+   which stand on the pause control's 16 px top inset in every locale, and the title steps down */
+@media (height < 520px){
+  .dm-banner{height:auto}:root{--docs-banner-h1:var(--fs-36)}
+  .dm-banner .dm-banner__t{position:relative;left:auto;right:auto;bottom:auto;margin:0 var(--docs-gutter);padding:var(--s4) 0 26px}
+}
 .dm-banner>picture,.dm-banner>picture>img,.dm-banner>img,.dm-banner>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%}
 .dm-banner>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .dm-banner>video.has-frame{opacity:1}
@@ -188,9 +196,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-banner__t>*{position:relative}
 .dm-banner__t::before{content:'';position:absolute;inset:calc(var(--s7) * -1) calc(var(--s8) * -1) calc(var(--s5) * -1) calc(var(--docs-gutter) * -1);
   background:linear-gradient(0deg,var(--scrim) calc(100% - var(--s7)),transparent);mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s8)),transparent);pointer-events:none}
-/* the trail sits on a glyph plate, so it holds its contrast over any footage; the plate bleeds left by its padding, so the
-   trail's text starts on the title's edge */
-.dm-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:fit-content;margin:0 0 14px calc(var(--s2) * -1);padding:4px var(--s2);border-radius:var(--r1);background:var(--glyph-plate);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
+/* the trail sits on a glyph plate, so it holds its contrast over any footage; the plate stands on the title's and the
+   column's edge */
+.dm-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:fit-content;margin:0 0 14px;padding:4px var(--s2);border-radius:var(--r1);background:var(--glyph-plate);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
 .dm-crumb a{display:inline-flex;align-items:center;min-height:24px;color:inherit;text-decoration:none}
 @media (pointer:coarse){.dm-crumb a{min-height:var(--cot-control-floor,44px)}}
 .dm-crumb a:hover{color:var(--ink-1)}
@@ -276,17 +284,22 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 
 /* Scene Studio battle reel library */
 .battle-reels{scroll-margin-top:90px;margin:34px 0 40px;padding-top:30px;border-top:1px solid var(--line)}
-.battle-reels-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.62fr);gap:12px 30px;align-items:end;margin-bottom:19px}.battle-reels-head>span{grid-column:1/-1;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);letter-spacing:var(--track-label-s);text-transform:uppercase}.battle-reels-head h3{margin:0;font-size:var(--docs-h2);line-height:.96;text-transform:uppercase}.battle-reels-head p{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.55}
-.battle-reel-stage{margin:0;border:1px solid var(--line2);background:var(--surface-scene);box-shadow:var(--e2)}.battle-reel-stage video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover}.battle-reel-stage figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 15px;border-top:1px solid var(--line);background:var(--surface-raised)}.battle-reel-stage figcaption span{display:grid;gap:3px}.battle-reel-stage figcaption strong{font-size:max(var(--fs-floor-11),var(--fs-11))}.battle-reel-stage figcaption small{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono);letter-spacing:normal;text-transform:uppercase}.battle-reel-stage figcaption>b{color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);white-space:nowrap}
-.battle-reel-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:1px;background:var(--line)}.battle-reel-card{min-width:0;padding:0;border:1px solid transparent;background:var(--surface-raised);text-align:left;cursor:pointer;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease,transform var(--dur-fast) ease}.battle-reel-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;filter:saturate(.92) contrast(1.04)}.battle-reel-card>span{display:grid;grid-template-columns:20px minmax(0,1fr);gap:4px 8px;padding:10px}.battle-reel-card b{grid-row:1/3;color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono)}.battle-reel-card strong{color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.3;overflow-wrap:anywhere}.battle-reel-card small{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono);overflow-wrap:anywhere}.battle-reel-card[aria-pressed="true"]{position:relative;border-color:var(--amber);background:var(--surface-raised)}.battle-reel-card[aria-pressed="true"] b,.battle-reel-card[aria-pressed="true"] small{color:var(--ink-1)}.battle-reel-card[aria-pressed="true"] img{filter:saturate(1.06) contrast(1.03)}.battle-reel-card:active{transform:scale(.985)}
-@media(hover:hover) and (pointer:fine){.battle-reel-card:hover{border-color:var(--line-3);background:var(--surface-raised)}.battle-reel-card:hover img{filter:saturate(1.04) contrast(1.03)}}
+.battle-reels-head{margin-bottom:var(--s5)}.battle-reels-head h3{margin:0;font-size:var(--docs-h2);line-height:.96;text-transform:uppercase}.battle-reels-head p{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.55}
+.battle-reel-stage{margin:0;border:1px solid var(--line2);background:var(--surface-scene);box-shadow:var(--e2)}.battle-reel-stage video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover}.battle-reel-stage figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:var(--s3) var(--s2);border-top:1px solid var(--line);background:var(--surface-raised)}.battle-reel-stage figcaption>span{display:grid;gap:3px}.battle-reel-stage figcaption strong{font-size:max(var(--fs-floor-11),var(--fs-11))}.battle-reel-stage figcaption small{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono);letter-spacing:normal;text-transform:uppercase}.battle-reel-stage figcaption>b{color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);white-space:nowrap}
+/* the takes are the kit's picker (cards, battleReels.ts): four a row under the player, two on a phone */
+.battle-reel-grid{margin-top:var(--s3)}
+/* a card's facts close its card, so a row's facts share one line whatever its names wrap to; a phone's search meets the
+   touch floor */
+:is(.battle-reel-grid,.filming-stage-bar,.filming-take-grid) .cot-c-picker__words{flex:1 1 auto;align-content:space-between}
+/* a player, its picker and the note under it share one text edge: the cards' own 8 px inset */
+:is(.battle-reel-grid,.filming-take-grid) .cot-c-picker__search{padding-inline:var(--s2)}
+.filming-stage-note{padding-inline:var(--s2)}
+@media (pointer:coarse){:is(.battle-reel-grid,.filming-take-grid) .cot-c-picker__search{height:var(--cot-control-floor,44px)}}
+.battle-reel-grid .cot-c-picker__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (width < 768px){
 .battle-reels-head{display:block}
 .battle-reels-head h3{margin:11px 0 13px}
-.battle-reel-stage figcaption{align-items:flex-start}
-.battle-reel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.battle-reel-card>span{grid-template-columns:17px minmax(0,1fr);padding:8px 7px}
-.battle-reel-card strong{font-size:max(var(--fs-floor-11),var(--fs-11))}
+.battle-reel-grid .cot-c-picker__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* Readable, collapsible references keep the complete fleet useful on phones. */
@@ -307,17 +320,14 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-viewer{margin:30px 0 0}
 .filming-screen{margin:0;border:1px solid var(--line2);background:var(--surface-scene);box-shadow:var(--e2)}
 .filming-screen video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene);object-fit:cover}
-.filming-screen figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 15px;border-top:1px solid var(--line);background:var(--surface-raised)}
+.filming-screen figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:var(--s3) var(--s2);border-top:1px solid var(--line);background:var(--surface-raised)}
 .filming-screen figcaption span{display:grid;gap:3px}
 .filming-screen figcaption strong{font-size:max(var(--fs-floor-11),var(--fs-11))}
-.filming-screen figcaption small{color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono);letter-spacing:normal;text-transform:uppercase}
+.filming-screen figcaption small{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-screen figcaption>b{color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);white-space:nowrap}
-.filming-stage-bar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;margin-top:1px;background:var(--line)}
-.filming-stage-button{display:flex;align-items:center;gap:8px;min-width:0;min-height:46px;padding:0 12px;border:1px solid transparent;background:var(--surface-raised);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;line-height:1.25;letter-spacing:normal;text-align:left;text-transform:uppercase;cursor:pointer;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
-.filming-stage-button b{color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono)}
-.filming-stage-button[aria-pressed="true"]{border-color:var(--amber);background:var(--surface-raised);color:var(--ink-1)}
-.filming-stage-button[aria-pressed="true"] b{color:var(--ink-1)}
-.filming-stage-button:disabled{cursor:default;opacity:.36}
+/* the stages and the takes are the kit's pickers (cards): six stages a row under the screen, four takes a row under the story */
+.filming-stage-bar{margin:var(--s3) 0}
+.filming-stage-bar .cot-c-picker__grid{grid-template-columns:repeat(6,minmax(0,1fr))}
 .filming-stage-note{min-height:3.3em;max-width:76ch;margin:14px 0 0;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
 .filming-frames{margin:16px 0 0;border:1px solid var(--line);background:var(--surface-scene)}
 .filming-frame-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line)}
@@ -331,34 +341,26 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-take-scene{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
 .filming-take-scene a{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid var(--line);background:var(--surface-raised);color:var(--ink-2);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);letter-spacing:var(--track-label-s);text-decoration:none;text-transform:uppercase;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
 .filming-take-scene a[data-filming-studio]{border-color:var(--line-3);background:var(--surface-raised);color:var(--ink-1)}
-.filming-take-scene small{flex:1 1 240px;color:var(--ink-4);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5}
-.filming-take-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:18px;background:var(--line)}
-.filming-take-card{min-width:0;padding:0;border:1px solid transparent;background:var(--surface-raised);text-align:left;cursor:pointer;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
-.filming-take-card img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;filter:saturate(.92) contrast(1.04)}
-.filming-take-card>span{display:grid;grid-template-columns:20px minmax(0,1fr);gap:4px 8px;padding:10px}
-.filming-take-card b{grid-row:1/3;color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono)}
-.filming-take-card strong{color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.3;overflow-wrap:anywhere}
-.filming-take-card small{color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--mono);letter-spacing:normal;text-transform:uppercase;overflow-wrap:anywhere}
-.filming-take-card[aria-pressed="true"]{border-color:var(--amber);background:var(--surface-raised)}
-.filming-take-card[aria-pressed="true"] b{color:var(--ink-1)}
-@media(hover:hover) and (pointer:fine){.filming-take-card:hover,.filming-stage-button:not(:disabled):hover,.filming-take-scene a:hover{background:var(--surface-menu)}}
+.filming-take-scene small{flex:1 1 240px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5}
+.filming-take-grid{margin-top:var(--s5)}
+.filming-take-grid .cot-c-picker__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(hover:hover) and (pointer:fine){.filming-take-scene a:hover{background:var(--surface-menu)}}
 .filming-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
 .filming-numbers div{min-width:0;padding:16px 14px;background:var(--surface-raised)}
 .filming-numbers dt{color:var(--ink);font-size:var(--docs-fluid-1);font-weight:700;line-height:1;letter-spacing:var(--track-title);white-space:nowrap}
-.filming-numbers dd{margin:8px 0 0;color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1.45 var(--mono);letter-spacing:normal;text-transform:uppercase}
+.filming-numbers dd{margin:8px 0 0;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin:14px 0 0;padding:0;border:1px solid var(--line);background:var(--line);list-style:none}
 .filming-steps li{display:grid;grid-template-rows:auto auto auto 1fr;gap:8px;min-width:0;padding:16px 14px;background:linear-gradient(160deg,var(--surface-menu),var(--surface-page))}
 .filming-step-icon{width:30px;height:30px;padding:6px;border:1px solid currentColor;background:var(--scrim)}
-.filming-steps b{color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono)}
+.filming-steps b{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display)}
 .filming-steps strong{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.2}
 .filming-steps li>span:last-child{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5}
 @media (width < 1100px){
 .filming-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (width < 768px){
-.filming-stage-bar{display:flex;overflow-x:auto;scrollbar-width:thin}
-.filming-stage-button{flex:0 0 auto;white-space:nowrap}
-.filming-take-grid,.filming-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}
+.filming-stage-bar .cot-c-picker__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.filming-take-grid .cot-c-picker__grid,.filming-numbers{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (width < 520px){.filming-frame-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
@@ -393,9 +395,11 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .doc-section>p:not(.lead){font:400 var(--fs-16)/var(--lh-docs) var(--font-body);color:var(--ink-2)}
 
 .docs-chapters h2{font:700 var(--docs-h2)/.94 var(--font-display)}
-.docs-chapter-grid{gap:10px;background:none}
-/* a card's frame is drawn inside its box, so the cards start on the search field's and the stat strip's edge */
-.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
+.docs-chapter-grid{gap:var(--s3);background:none}
+/* a card's frame is drawn inside its box (one line, which the picture covers as the class and map cards' do), so the
+   cards start on the search field's and the stat strip's edge */
+.docs-chapter-grid a{overflow:hidden;border:0;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
+@media(hover:hover) and (pointer:fine){.docs-chapter-grid a:hover{box-shadow:var(--ring-3)}}
 /* the manual's index: the search, the two shelves (tools/docs-prerender.mjs shelves the cards), the battle takes and
    the archive */
 .docs-index{display:grid;gap:var(--s7);padding-top:var(--s6);padding-bottom:var(--s8)}
@@ -406,9 +410,11 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* the topic shelf folds its search away under 1100 px; the index keeps its own */
 .docs-index-search.dm-search{display:flex}
 .docs-index-search .dm-search__field{height:48px}
+/* the result count stands on the 8 px step between the field's focus ring and the results panel */
+.docs-index-search.dm-search{gap:var(--s3)}
 .docs-index-search input{font-size:var(--fs-16)}
 /* the results panel drops from the field on its edges: its ring is drawn inside its box, as the field's is */
-.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + 6px);left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2-flush)}
+.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + var(--s2));left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2-flush)}
 .docs-index-search a.dm-hit{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:var(--r1);color:var(--ink-3);text-decoration:none}
 .docs-index-search a.dm-hit:hover,.docs-index-search a.dm-hit:focus-visible{color:var(--ink-2);background:var(--accent-wash)}
 .docs-shelf{display:grid;gap:var(--s4);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}

@@ -96,8 +96,9 @@ const history = recordTabMarkup('history', names, view);
 assert.equal((history.match(/<details class="cot-record-battle result-victory"/g) || []).length, 1);
 assert.match(history, /veh:type10_tk_x/);
 assert.match(history, /map:arctic/);
-assert.equal((history.match(/<li class="linked">/g) || []).length, 2, 'the second and third kills link into a chain; the fourth stands alone');
-assert.equal((history.match(/<li class="">/g) || []).length, 2);
+assert.equal((history.match(/<li class="[^"]*\blinked\b[^"]*">/g) || []).length, 2, 'the second and third kills link into a chain; the fourth stands alone');
+assert.equal((history.match(/<li class="[^"]*\bjoins\b[^"]*">/g) || []).length, 2, 'the first and second kills carry the rail down to the next');
+assert.equal((history.match(/<li class="(?![^"]*\blinked\b)[^"]*">/g) || []).length, 2, 'the first and the fourth kills stand unlinked');
 assert.match(history, /veh:spec-e1/);
 
 // Seen: the marks go, the awards stay.

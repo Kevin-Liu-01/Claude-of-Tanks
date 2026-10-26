@@ -1,4 +1,3 @@
-import type { CustomSelectController } from './customSelect.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { vehicleActionsFor } from './vehicleActionList.ts';
 import type { VehicleActionBinding } from '../game/vehicleActions.ts';
@@ -39,7 +38,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
+import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -730,11 +729,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
     // enter custom numbers of allies and enemies" — one setting for the symmetric solo modes (game/teamArrangement.ts)
     `<div class="cot-battle-menu-label">${t('garage.battle.sides')}</div>` +
-    `<div class="cot-battle-sides" role="group" aria-label="${t('garage.battle.sidesAria')}">` +
-    `<button class="cot-sides-choice" type="button" data-sides="7v7" aria-pressed="true">${t('garage.battle.sides7')}</button>` +
-    `<button class="cot-sides-choice" type="button" data-sides="14v14" aria-pressed="false">${t('garage.battle.sides14')}</button>` +
-    `<button class="cot-sides-choice" type="button" data-sides="custom" aria-pressed="false">${t('garage.battle.sidesCustom')}</button>` +
-    `</div><div class="cot-battle-sides-custom" data-sides-custom hidden>` +
+    // the kit's segmented control (three exclusive values, every one in view, roving keys; census row deploy-sides)
+    segmented({ label: t('garage.battle.sidesAria'), className: 'cot-battle-sides', value: '7v7', options: [
+      { value: '7v7', label: t('garage.battle.sides7') }, { value: '14v14', label: t('garage.battle.sides14') },
+      { value: 'custom', label: t('garage.battle.sidesCustom') }] }) +
+    `<div class="cot-battle-sides-custom" data-sides-custom hidden>` +
     `<label><span>${t('garage.battle.sidesAllies')}</span><input type="number" inputmode="numeric" step="1" ` +
     `min="${TEAM_ARRANGEMENT_LIMITS.allies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.allies.standard[1]}" data-sides-field="allies"></label>` +
     `<label><span>${t('garage.battle.sidesEnemies')}</span><input type="number" inputmode="numeric" step="1" ` +
@@ -748,11 +747,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
+    // each a set of three on the kit's segmented control, every value in view (census row deploy-mars)
     `<div class="cot-battle-mars" role="group" aria-label="${t('garage.battle.marsAria')}" data-mars-settings hidden>` +
-    `<label><span>${t('garage.battle.marsGravity')}</span><select data-mars-field="gravity">` +
-    MARS_GRAVITY_IDS.map((id) => `<option value="${id}">${t(`mars.gravity.${id}`)}</option>`).join('') + `</select></label>` +
-    `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
-    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label></div>` +
+    `<div class="cot-battle-mars-field"><span>${t('garage.battle.marsGravity')}</span>` +
+    segmented({ label: t('garage.battle.marsGravity'), className: 'cot-deploy-mars', value: MARS_GRAVITY_IDS[0], attrs: { 'data-mars-field': 'gravity' },
+      options: MARS_GRAVITY_IDS.map((id) => ({ value: id, label: t(`mars.gravity.${id}`) })) }) + `</div>` +
+    `<div class="cot-battle-mars-field"><span>${t('garage.battle.marsCaches')}</span>` +
+    segmented({ label: t('garage.battle.marsCaches'), className: 'cot-deploy-mars', value: MARS_CACHE_IDS[0], attrs: { 'data-mars-field': 'caches' },
+      options: MARS_CACHE_IDS.map((id) => ({ value: id, label: t(`mars.caches.${id}`) })) }) + `</div></div>` +
     `</div></div>` +
     // the foot (the direction's .tank and .deploy): the tank you deploy with, its rounds and fittings, then Deploy
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
@@ -3603,6 +3605,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // its first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
   let deployFieldLoad: Promise<void> | null = null;
+  /** A phone's column scroll before the picker scrolled it into view (restored when the picker closes). */
+  let deployFieldColumnScroll: number | null = null;
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     if (!pop.firstChild) {
@@ -3618,10 +3622,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
     // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
     if (docked) list.scrollTop = 0;
-    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view)
+    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view); the
+    // column returns to where it stood when the picker closes
     else requestAnimationFrame(() => {
       const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
-      if (column) column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top;
+      if (!column) return;
+      deployFieldColumnScroll ??= column.scrollTop;
+      // the picker's top stands clear of the column's top fade (its band is --s3)
+      const fade = Number.parseFloat(getComputedStyle(column).getPropertyValue('--s3')) || 12;
+      column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top - fade;
     });
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
@@ -3664,6 +3673,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!pop || pop.hidden) return;
     pop.hidden = true;
     for (const host of root.querySelectorAll('#cot-deploy-quick, .cot-battle-details')) host.classList.remove('is-picking');
+    if (deployFieldColumnScroll !== null) {
+      const column = root.querySelector<HTMLElement>('.cot-battle-menu-scroll');
+      if (column) column.scrollTop = deployFieldColumnScroll;
+      deployFieldColumnScroll = null;
+    }
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
   /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
@@ -3676,7 +3690,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     markTabbar('garage');
     closeDeployField();
     arrangementPanel?.close();
-    marsDropdowns.forEach(dropdown => dropdown.close());
     battleMenu.classList.remove('open');
     battleModeBtn.setAttribute('aria-expanded', 'false');
     if (restoreFocus) battleModeBtn.focus();
@@ -3701,7 +3714,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           battle();
         },
         difficulty: () => difficulty,
-        lastBattle: () => getRecentBattles()[0], loadEstimateS: battleLoadEstimateS, keycap,
+        lastBattle: () => getRecentBattles()[0], loadEstimateS: battleLoadEstimateS, keycap, segmented, wireRoving, setRoving,
         click: () => emit('ui:click', {}),
         // the campaign tab's plate: the operation in focus, as facts the screen sets (the next to play by default)
         ops: deployOps,
@@ -3892,7 +3905,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
   // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
-  const sidesChoices = [...battleMenu.querySelectorAll<HTMLButtonElement>('.cot-sides-choice')];
+  const sidesGroup = requiredElement<HTMLElement>(battleMenu, '.cot-battle-sides');
   const sidesCustom = requiredElement<HTMLElement>(battleMenu, '[data-sides-custom]');
   const sidesField = (name: string) => requiredElement<HTMLInputElement>(sidesCustom, `input[data-sides-field="${name}"]`);
   const sidesReadout = requiredElement<HTMLElement>(sidesCustom, '[data-sides-readout]');
@@ -3901,15 +3914,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const sides = rulesetSides(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
     const preset = sidesPresetOf(sides);
     const custom = sidesCustomOpen || preset === 'custom';
-    for (const choice of sidesChoices) choice.setAttribute('aria-pressed', String(choice.dataset.sides === (custom ? 'custom' : preset)));
+    setRoving(sidesGroup, custom ? 'custom' : preset);
     sidesCustom.hidden = !custom;
     sidesField('allies').value = String(sides.allies);
     sidesField('enemies').value = String(sides.enemies);
     sidesReadout.textContent = t('garage.battle.sidesReadout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
   }
-  for (const choice of sidesChoices) choice.addEventListener('click', () => {
+  wireRoving(sidesGroup, (id) => {
     emit('ui:click', {});
-    const id = choice.dataset.sides;
     if (id === 'custom') sidesCustomOpen = true;
     else if (id === '7v7' || id === '14v14') { sidesCustomOpen = false; writeTeamArrangement(battleGameMode, { ...readTeamArrangement(battleGameMode), ...SIDES_PRESETS[id] }); }
     renderBattleOptions();
@@ -3927,17 +3939,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // Mars settings: two selects on the mars arrangement (game/teamArrangement.ts), visible while Mars is the rule
   const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
   const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
-  const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
-  // The Mars selects' dropdowns load with the battle menu's first render, like the TEAMS control below (232 bundle diet:
-  // the custom select left the game's boot graph); until then the native selects stand in.
-  let marsDropdowns: CustomSelectController[] = [];
-  let marsDropdownsLoad: Promise<void> | null = null;
-  const loadMarsDropdowns = (): void => {
-    marsDropdownsLoad ??= import('./customSelect.ts').then(({ createCustomSelect }) => {
-      marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
-      marsDropdowns.forEach(dropdown => { if (marsSettings.hidden) dropdown.close(); dropdown.refresh(); });
-    });
-  };
+  const marsField = (name: 'gravity' | 'caches') => requiredElement<HTMLElement>(marsSettings, `[data-mars-field="${name}"]`);
+  for (const name of ['gravity', 'caches'] as const) wireRoving(marsField(name), (value) => {
+    emit('ui:click', {});
+    writeMarsSettings({ ...readMarsSettings(), [name]: value });
+    renderBattleOptions();
+  });
   const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
   const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
@@ -4139,7 +4146,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
     }
     renderArrangementPanel();
-    loadMarsDropdowns();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
@@ -4167,9 +4173,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     marsLabel.hidden = !shown;
     marsSettings.hidden = !shown;
     const settings = readMarsSettings();
-    marsField('gravity').value = settings.gravity;
-    marsField('caches').value = settings.caches;
-    marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
+    setRoving(marsField('gravity'), settings.gravity);
+    setRoving(marsField('caches'), settings.caches);
     deployScreen?.render();
   };
   /** The plate's rules card for one mode, the chosen one or the one the mode picker previews under the pointer or the
@@ -4186,11 +4191,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       modeCopyValues(mode));
     renderDeployRules(mode);
   }
-  marsSettings.addEventListener('change', () => {
-    emit('ui:click', {});
-    writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
-    renderBattleOptions();
-  });
   renderBattleOptions();
   // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
   // in the play menu (or last session) is what BATTLE launches instead of silently reverting to Standard
@@ -4448,7 +4448,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
     if (target?.closest('.cot-c-menu__pop')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
-    // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here
+    // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here.
+    // A picker menu's popover (the further options' counts and nations) sits in the body and keeps every key.
+    if (target?.closest('.cot-c-menu__pop')) return;
     if (target?.closest('[data-deploy-field-pop], [data-deploy-modes]') && e.code !== 'Escape') return;
     if (openGaragePanel()) {
       const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');

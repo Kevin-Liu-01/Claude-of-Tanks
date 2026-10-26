@@ -14,9 +14,7 @@
       ".docs-motion-grid video",
       ".docs-chapter-grid img",
       ".battle-reel-stage video",
-      ".battle-reel-card img",
       ".filming-screen video",
-      ".filming-take-card img",
       ".manual-take .fleet-take-video"
     ],
     "src/gallery/gallery.css": [

@@ -38,16 +38,16 @@ try{
   const map=page.locator('.hud-edit-part[data-part="map"]');await map.focus();
   const before=await map.boundingBox();await page.keyboard.press('Shift+ArrowLeft');
   const after=await map.boundingBox();assert.ok(after.x<before.x,`${name}: keyboard moves panel`);
-  await page.locator('.hud-edit-list button[data-part="score"]').click();
+  await page.locator('.hud-edit-list [role=option][data-id="score"]').click();
   const score=page.locator('.hud-edit-part[data-part="score"]');const box=await score.boundingBox();
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2-25,box.y+box.height/2+20,{steps:4});await page.mouse.up();
   const moved=await score.boundingBox();assert.ok(moved.y>box.y,`${name}: pointer moves score`);
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
-  await page.locator('.hud-edit-list button[data-part="enemies"]').click();
+  await page.locator('.hud-edit-list [role=option][data-id="enemies"]').click();
   await page.getByRole('button',{name:'Hide element',exact:true}).click();
   assert.equal(await page.locator('.hud-edit-part[data-part="enemies"]').isVisible(),false);
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
-  await page.locator('.hud-edit-list button[data-part="enemies"]').click();
+  await page.locator('.hud-edit-list [role=option][data-id="enemies"]').click();
   await page.getByRole('button',{name:'Show element',exact:true}).click();
   assert.equal(await page.locator('.hud-edit-part[data-part="enemies"]').isVisible(),true);
   const bounds=await page.evaluate(()=>[...document.querySelectorAll('.cot-hud-editor .cot-modal__header,.hud-edit-preview,.hud-edit-inspector,.hud-edit-save,.hud-edit-cancel')].map(n=>{const r=n.getBoundingClientRect();return {name:n.className,x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
@@ -56,10 +56,10 @@ try{
   // Switching profiles keeps separate drafts and recreates production viewport rules.
   const activeName=touch?(width>height?'Phone landscape':'Phone portrait'):'Desktop';
   const otherName=activeName==='Desktop'?'Phone portrait':'Desktop';
-  await page.getByRole('button',{name:otherName,exact:true}).click();
+  await page.getByRole('radio',{name:otherName,exact:true}).click();
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
   assert.equal(await page.locator('.hud-edit-scene').count(),1,`${name}: one isolated preview`);
-  await page.getByRole('button',{name:activeName,exact:true}).click();
+  await page.getByRole('radio',{name:activeName,exact:true}).click();
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
   const retained=await page.locator('.hud-edit-part[data-part="map"]').boundingBox();
   assert.ok(Math.abs(retained.x-after.x)<1,`${name}: profile draft survives switching`);
@@ -81,7 +81,7 @@ try{
   await page.evaluate(()=>window.__HUD_LAYOUT.settings.open());
   await page.locator('.cot-set-tab[data-tab="gameplay"]').click();await page.locator('.cot-set-hud-editor').click();
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
-  await page.locator('.hud-edit-list button[data-part="enemies"]').click();await page.getByRole('button',{name:'Hide element',exact:true}).click();
+  await page.locator('.hud-edit-list [role=option][data-id="enemies"]').click();await page.getByRole('button',{name:'Hide element',exact:true}).click();
   await page.getByRole('button',{name:'Save layout',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.cot-ear.r')?.hasAttribute('data-hud-hidden'));
   await page.locator('.cot-set-hud-editor').click();

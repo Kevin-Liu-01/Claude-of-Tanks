@@ -1,6 +1,8 @@
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
+import '../../src/ui/components/components.css';
+import '../../src/ui/components/pickers.css';
 import { createInput } from '../../src/game/input.ts';
 import { createSettings } from '../../src/ui/settings.ts';
 import { createBus } from '../../src/game/stateCore.ts';

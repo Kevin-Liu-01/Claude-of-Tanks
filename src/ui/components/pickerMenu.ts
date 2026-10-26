@@ -152,6 +152,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     const picture = shown?.media?.poster ?? shown?.media?.mosaic?.[0];
     const media = picture
       ? `<span class="cot-c-menu__media"><img src="${esc(picture)}" alt="" decoding="async"></span>`
+      : shown?.chip ? `<span class="cot-c-menu__glyph cot-c-picker__chip"><img src="${esc(shown.chip)}" alt="" decoding="async"></span>`
       : shown?.glyph ? `<span class="cot-c-menu__glyph"${shown.tone ? ` data-mode-tone="${esc(shown.tone)}"` : ''}>${icon(shown.glyph, { size: 18 })}</span>` : '';
     const fact = shown?.facts?.[0];
     trigger.innerHTML = `${media}<span class="cot-c-menu__words"><span class="cot-c-menu__name">${esc(shown?.name ?? '')}</span>`
