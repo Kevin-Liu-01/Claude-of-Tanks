@@ -157,7 +157,7 @@ export const spectatorSwitcherStyles = `
 .cot-spec .subject:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media(hover:hover){.cot-spec .subject:hover{box-shadow:var(--ring-3)}}
 /* the picker of allies over the bar, its left edge on the plate's: the kit picker's list, no favourites in a battle */
-.cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(50vh,360px);display:flex;
+.cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
  flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--ring-1);
  pointer-events:auto;overflow:hidden}
 .cot-spec-pick[hidden]{display:none}
@@ -203,7 +203,7 @@ export const spectatorSwitcherStyles = `
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
 @media(max-width:900px){
  .cot-spec{grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
- .cot-spec .subject{grid-template-columns:48px minmax(0,1fr);gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}
+ .cot-spec .subject{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}
  .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:var(--battle-fs-15)}
  .cot-spec .gar{letter-spacing:0}
 }

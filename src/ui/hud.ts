@@ -1499,7 +1499,9 @@ const HUD_CSS = `
   --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
   --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
-.cot-hud *{box-sizing:border-box;margin:0;padding:0;}
+/* (the kit picker's parts keep the kit's own box: this surface reset outranks its components layer, and zeroed the
+   spectator bar's list rows to their edges; :where keeps the reset's weight where it applies) */
+.cot-hud :where(:not(.cot-c-picker, .cot-c-picker *)){box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
 .cot-ret-text{z-index:var(--hud-layer-sight);}
 /* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
@@ -8273,6 +8275,7 @@ export function initHud(bus: EventBus): HudRuntime {
         specId: payload.specId || 'm1a1_abrams_fep',
         count: payload.count,
         index: payload.index,
+        allies: payload.allies,
       }, true);
     },
 

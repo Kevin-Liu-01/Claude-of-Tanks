@@ -1,6 +1,8 @@
 import '../../src/ui/tokens/tokens.css';
 // the shared kit, as the game's entry loads it (main.ts): the HUD's flags, silhouettes, chips and key caps
 import '../../src/ui/components/components.css';
+// (the kit picker's sheet, which main.ts loads for the game: the spectator bar's picker of allies)
+import '../../src/ui/components/pickers.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
 // Real production components, deterministic presentation data, no WebGL/simulation.
