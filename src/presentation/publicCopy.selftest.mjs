@@ -107,8 +107,8 @@ assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trai
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 // Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
 // lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.
-assert.match(homeSource, /<h1 class="hero__title home-sr" id="hero-title">Claude of Tanks<\/h1>/,
-  'the hero names the game in its h1 for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
+assert.match(homeSource, /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n="home\.hero\.title">[^<]+<\/span><\/h1>/,
+  'the hero\'s headline says what the game is (owner 2026-10-25: "also add text here at the left that says stuff about this!") and its h1 names the game for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
 assert.doesNotMatch(homeSource, /hero__lockup/, 'the hero draws no second lockup');
 assert.doesNotMatch(homeStyles, /html\[lang\^='zh'\][^{]*\{[^}]*-webkit-text-stroke/, 'no outline type on the Chinese hero');
 assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(--hollow-ink,#eef4f8\);-webkit-text-stroke:0;opacity:\.72\}/,

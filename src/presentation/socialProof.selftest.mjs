@@ -9,8 +9,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const styles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 
-assert.match(home, /<!--home:hero-->[\s\S]*?<!--\/home:hero-->\s*<!--home:features-->[\s\S]*?<!--\/home:features-->\s*<!--home:play-->[\s\S]*?<!--\/home:play-->\s*<section class="press" aria-labelledby="press-title">/,
-  'the generated hero reel, features and modes rail open the page; the press band follows');
+// (owner 2026-10-25: "we hide too much and we had better sections") head to head, in battle and the fleet return
+const blocks = (names) => names.map((name) => `<!--home:${name}-->[\\s\\S]*?<!--\\/home:${name}-->`).join('\\s*');
+assert.match(home, new RegExp(`${blocks(['hero', 'duels', 'features', 'clips', 'play', 'fleet'])}\\s*<section class="press" aria-labelledby="press-title">`),
+  'the generated hero reel, head to head, the features, in battle, the modes rail and the fleet open the page; the press band follows');
 const press = home.match(/<section class="press"[\s\S]*?<\/section>/)?.[0] ?? '';
 assert.match(press, /<p class="press__date"><time datetime="2026-09-08" data-i18n="home\.social\.snapshot">As of September 8, 2026<\/time><\/p>/,
   'static platform counts disclose their capture date, as a dated label');

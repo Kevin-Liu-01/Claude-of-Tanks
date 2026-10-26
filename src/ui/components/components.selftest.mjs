@@ -164,7 +164,8 @@ for (const file of ['./components.css', './figures.css', './notices.css']) {
   assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, `${file}: type sizes read the type scale`);
   assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, `${file}: durations read the motion tokens`);
   for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
-    if (name === 'h' || name === 'sil') continue;
+    // --mode-ink is the sheet's own mode-tone mapping (data-mode-tone=<mode id>), set from the --mode-<id> tokens
+    if (name === 'h' || name === 'sil' || name === 'mode-ink') continue;
     assert.match(tokensCss, new RegExp(`--${name}:`), `${file}: --${name} is a design token`);
   }
 }
