@@ -77,13 +77,13 @@
   color:var(--ink-2);background:var(--surface-page);border:1px solid var(--line-2);
   box-shadow:var(--e1);
   font-family:var(--font-ui);
-  transition:color var(--dur-fast),border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast);}
+  transition:color var(--dur-fast),border-color var(--dur-fast),transform var(--dur-fast);}
 .cot-garage-variant-trigger::before{content:'';position:absolute;z-index:1;inset:0;
   background:linear-gradient(90deg,var(--surface-scene) 0%,var(--scrim) 52%,var(--fill-faint) 100%),
     linear-gradient(0deg,var(--surface-plate),transparent 70%);pointer-events:none;}
 .cot-garage-variant-trigger-thumb{position:absolute;z-index:0;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center;
   background:var(--surface-menu);filter:saturate(.9) brightness(.66) contrast(1.07);transform:scale(1.01);
-  transition:filter var(--dur-fast) ease,transform var(--dur-base) ease;}
+  transition:transform var(--dur-base) ease;}
 .cot-garage-variant-trigger-copy{position:relative;z-index:2;min-width:0;display:flex;flex-direction:column;gap:6px;
   text-shadow:var(--stage-halo);}
 .cot-garage-variant-trigger-copy small{display:flex;align-items:center;gap:5px;color:var(--text-accent);
@@ -204,7 +204,7 @@
 .cot-battle-control{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;width:252px;height:46px;display:flex;z-index:20;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
-  transition:filter var(--dur-fast),transform var(--dur-instant);}
+  transition:transform var(--dur-instant);}
 
 .cot-battle,.cot-battle-mode{height:100%;cursor:pointer;border:0;outline:0;color:var(--ink-1);
   background:transparent;font-family:var(--font-ui);font-weight:700;text-shadow:none;}
@@ -533,7 +533,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   border:1px solid var(--line-3);cursor:pointer;opacity:.68;outline:none;
   box-shadow:var(--e1);
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast),
-    box-shadow var(--dur-fast),transform var(--dur-fast) ease-out;}
+    transform var(--dur-fast) ease-out;}
 .cot-country-edge.prev{grid-column:1;}
 .cot-country-edge.next{grid-column:4;}
 .cot-country-edge:hover,.cot-country-edge:focus-visible{color:var(--accent-hi);border-color:var(--accent);
@@ -615,7 +615,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid var(--line-3);
-  transition:border-color var(--dur-fast),transform var(--dur-fast),box-shadow var(--dur-fast);}
+  transition:border-color var(--dur-fast),transform var(--dur-fast);}
 .cot-card::after{content:"";position:absolute;z-index:2;left:0;right:0;bottom:0;pointer-events:none;
   height:calc(var(--hc-band) + var(--hc-n2,0px) + 6px);
   background:linear-gradient(180deg,transparent 0%,var(--scrim) 50%,var(--scrim) 100%);}
@@ -702,9 +702,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-map-card.sel{border-color:var(--accent);background:var(--accent-wash);}
 .cot-map-card .mthumb{width:100%;height:auto;aspect-ratio:2.65;background-size:112% auto;
   background-position:center;border:1px solid var(--surface-scene);position:relative;
-  box-shadow:var(--ring-2);
-  transition:background-size var(--dur-fast) ease;}
-.cot-map-card:hover .mthumb{background-size:128% auto;}
+  box-shadow:var(--ring-2);}
 .cot-map-card.sel .mthumb{box-shadow:var(--ring-accent);}
 .cot-map-card .mthumb.verdant{background-color:#3d5a2e;background-image:linear-gradient(135deg,#4c6b38,#2c421f);}
 .cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
@@ -727,10 +725,10 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-map-card .mthumb.random .random-map-mosaic{position:absolute;inset:0;display:grid;
   grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:1px;background:var(--surface-nav);}
 .cot-map-card .mthumb.random .random-map-tile{display:block;min-width:0;min-height:0;background-position:center;
-  background-size:cover;filter:saturate(.92) contrast(1.06);transition:transform var(--dur-fast) ease,filter var(--dur-fast) ease;}
+  background-size:cover;filter:saturate(.92) contrast(1.06);transition:transform var(--dur-fast) ease;}
 .cot-map-card .mthumb.random::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
   border:1px solid var(--line-2);box-shadow:inset 0 0 9px rgba(3,6,8,.3);}
-.cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);filter:saturate(1.08) contrast(1.08);}
+.cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);}
 .cot-map-card .mname{margin-top:3px;min-width:0;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;line-height:1.1;
   color:var(--ink-1);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-map-regions{position:absolute;top:2px;right:2px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:90%;pointer-events:none}
@@ -789,7 +787,7 @@ body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-camo-card{cursor:pointer;text-align:center;padding:5px var(--s1) var(--s1);min-width:0;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast);}
+  transition:border-color var(--dur-fast),background var(--dur-fast);}
 .cot-camo-card:hover{border-color:var(--line-control);}
 .cot-camo-card.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));
@@ -933,7 +931,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   width:100%;min-width:0;padding:var(--s2) 5px 7px;font:inherit;color:inherit;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast);}
+  transition:border-color var(--dur-fast),background-color var(--dur-fast),transform var(--dur-fast);}
 .cot-eqtile.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));}
 .cot-eqtile svg{display:block;width:38px;height:38px;margin:0 auto 5px;
@@ -1047,9 +1045,9 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
   box-shadow:var(--e2);transition:border-color var(--dur-fast);}
 .cot-featured .fshot:hover{border-color:var(--accent);}
 .cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
-  opacity:0;transform:scale(1.025);transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
-.cot-featured .fly.on{opacity:1;transform:scale(1);
-  transition:opacity var(--cot-motion-scene) var(--cot-ease-out),transform 7s linear;}
+  opacity:0;transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
+/* a take crossfades in; its slow 7 s settle from a 1.025 scale was a moving picture with no token (motion lint) */
+.cot-featured .fly.on{opacity:1;}
 .cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px var(--s7) 5px var(--s2);
   font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1);
   background:linear-gradient(0deg,var(--side-plate),transparent);white-space:nowrap;
