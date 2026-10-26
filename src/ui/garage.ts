@@ -1623,6 +1623,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   root.querySelector('.cot-drawer-close')?.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
     if (!isOverlayPanelLayout()) setGaragePanel('');
+    // an open battlefield picker whose place no longer fits (the mode list's when docked, the field's in a phone's column)
+    const fieldPop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
+    if (fieldPop && !fieldPop.hidden && (fieldPop.parentElement?.id === 'cot-deploy-quick') === isOverlayPanelLayout()) closeDeployField();
   });
   // a docked layout has no scrim under every paint: a press anywhere else closes it (in capture, before the stage's drag)
   document.addEventListener('pointerdown', (event) => {
@@ -3646,8 +3649,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     label: t(`playMenu.matchMode.${id}.label`), icon,
   }])) as Partial<Record<GameModeId, BattleChoiceMeta>>;
   // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
-  // the kit's battlefieldPicker opens in the field's place (deploy.css gives it the field's and the rules' room), its
-  // cards narrowed to the chosen mode with Random first, a large preview of the map under the pointer or the focus, and
+  // the kit's battlefieldPicker opens in the mode list's place on a docked Deploy (the list's width and height give its
+  // cards and the preview beside them their room, and the plate beside it holds still) and in the field's place in a
+  // phone's column (deploy.css gives it the field's and the rules' room), its cards narrowed to the chosen mode with Random first, a large preview of the map under the pointer or the focus, and
   // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Each card reads
   // battlefieldFacts (its name, landscape and the maps-r1 stills; the Rooms host's picker reads the same). It loads with
   // its first opening (the boot graph keeps no picker).
@@ -3660,10 +3664,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" data-deploy-field-close ` +
         `aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button></div><div class="cot-deploy-bf" data-deploy-bf></div>`;
     }
+    const docked = !isOverlayPanelLayout();
+    const list = requiredElement<HTMLElement>(battleMenu, '#cot-deploy-quick');
+    const dock = docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-deploy-field');
+    if (pop.parentElement !== dock) dock.append(pop);
     pop.hidden = false;
-    pop.closest('.cot-battle-details')?.classList.add('is-picking');
-    // the picker opens where the battlefield and the rules stood (deploy.css gives it their room), so nothing scrolls
-    battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
+    (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
+    list.scrollTop = 0;
+    // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
+    if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
     if (deployField) {
       deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
@@ -3701,7 +3710,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
     pop.hidden = true;
-    pop.closest('.cot-battle-details')?.classList.remove('is-picking');
+    for (const host of root.querySelectorAll('#cot-deploy-quick, .cot-battle-details')) host.classList.remove('is-picking');
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
   /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
@@ -4471,6 +4480,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
+    // the open battlefield picker owns its keys (its Enter chooses, never deploys); its Escape still closes it here
+    if (target?.closest('[data-deploy-field-pop]') && e.code !== 'Escape') return;
     if (openGaragePanel()) {
       const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');
       containModalTab(e, drawer, drawer);

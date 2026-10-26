@@ -129,8 +129,9 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     options.toggleAttribute('data-more', open);
     // the mode's own settings open in the battlefield card's room above the pickers (deploy.css), so nothing scrolls
     options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
-    // the further options and the battlefield picker take one place: opening one closes the other
-    if (open && menu.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
+    // in a phone's column the further options and the battlefield picker take one place: opening one closes the other (a
+    // docked Deploy opens the picker in the mode list's place, beside them)
+    if (open && menu.querySelector<HTMLElement>('.cot-battle-details [data-deploy-field-pop]')?.hidden === false) {
       menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
     }
 

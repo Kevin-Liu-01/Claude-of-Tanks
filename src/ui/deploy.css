@@ -290,8 +290,6 @@ body[data-cot-panels] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:no
    further options open under the pickers with the field held at its resting height (deployScreen.ts measures both) */
 body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{flex:none;min-height:0;
   height:calc(var(--field-rest,200px) + var(--rules-rest,0px) + var(--s3));}
-/* a compact height sets the rules after the pickers: the picker takes the battlefield's room alone */
-body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{height:var(--field-rest,200px);}
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */
 /* a tall screen's card yields the options their room and keeps its name over its art (its tag and map step aside) */
@@ -311,8 +309,14 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mod
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-launch{display:none;}
 /* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])){flex:none;}
+/* a docked Deploy opens the picker in the mode list's place: the list's width and height give its cards and the preview
+   beside them their room, and the plate beside it (the field, the rules, the pickers, Deploy) holds still; the field
+   that opened it keeps the accent ring while it is open */
+body[data-cot-panels='persistent'] .cot-garage #cot-deploy-quick.is-picking{overflow:hidden;}
+body[data-cot-panels='persistent'] .cot-garage #cot-deploy-quick.is-picking>:not(.cot-deploy-field-pop){display:none;}
+.cot-garage .cot-deploy-field-card[aria-expanded='true']{box-shadow:var(--ring-accent);}
 /* the open picker: its head (the battlefield label in the panel's label style, its close) over the kit's battlefield
-   picker (battlefieldPicker.ts), which takes the rest of the field's room */
+   picker (battlefieldPicker.ts), which takes the rest of its room */
 .cot-garage .cot-deploy-field-head{display:flex;align-items:center;gap:var(--s2);min-height:24px;margin-bottom:var(--s3);
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-garage .cot-deploy-field-head>svg{flex:none;width:16px;height:16px;}
