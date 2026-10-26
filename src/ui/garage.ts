@@ -73,7 +73,7 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -283,30 +283,20 @@ type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
 /** The modes public/media/deploy-r1 holds a 640 card picture for (the others have their 480 tile picture). */
 const DEPLOY_CARD_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
-/** A headline mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick for each card): its 640
- *  card picture, or its tile picture until a card one lands (Drone, 2026-10-25). */
-const deployCardArt = (id: string): string => DEPLOY_CARD_ART.has(id)
-  ? `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
-  : `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+/** A mode's picture on the Deploy screen (public/media/deploy-r1, the direction's pick: a battle frame of that mode, HUD
+ *  hidden; Proving Ground's range too): its 640 card picture, else its 480 tile picture. */
+const deployModeArt = (id: string): string => `/media/deploy-r1/${id}-${DEPLOY_CARD_ART.has(id) ? 640 : 480}.webp`;
 
-/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range
- *  too); a mode that only has a card picture shows that one. */
-const deployTileArt = (id: string): string => DEPLOY_CARD_ART.has(id)
-  ? `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`
-  : `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
-
-/**
- * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
- * glyph on a plate and the rules the ruleset sets at the foot (renderDeployChips); the rest as picture tiles in the same
- * grammar on a wide screen (rows, a glyph well, the name and its rules, on a folded one).
- */
-function deployCardsHTML(ids: readonly GameModeId[], card: boolean): string {
-  return ids.map((id) => {
-    const name = `<span class="choice-name">${t(`playMenu.matchMode.${id}.label`)}</span><span class="cot-deploy-chips" data-deploy-chips="${id}"></span>`;
-    return `<button class="cot-battle-choice${card ? ' cot-deploy-card' : ''}" type="button" data-game-mode="${id}" data-mode-tone="${id}" ` +
-      `aria-pressed="false">${card ? deployCardArt(id) : deployTileArt(id)}<span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', 21)}</span>` +
-      `<span class="cot-deploy-choice-t">${name}</span></button>`;
-  }).join('');
+/** A motion token's length in ms (tokens.css --dur-*; 1 ms under reduced motion), read once: a Web Animation times itself
+ *  on the tokens, as the stylesheets do (motion lint D). */
+const motionTokenMs = new Map<string, number>();
+function motionMs(token: '--dur-fast' | '--dur-base'): number {
+  let ms = motionTokenMs.get(token);
+  if (ms === undefined) {
+    ms = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(token)) || 0;
+    motionTokenMs.set(token, ms);
+  }
+  return ms;
 }
 
 function requiredElement<T extends Element>(parent: ParentNode, selector: string): T {
@@ -746,21 +736,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</nav></header>` +
     `<div class="cot-battle-menu-scroll">` +
     `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
-    `<div class="cot-deploy-cards">` +
-    `<button class="cot-battle-choice cot-deploy-card" type="button" data-mode="solo" data-mode-tone="standard" aria-pressed="true">` +
-    `${deployCardArt('standard')}<span class="choice-icon">${uiIconSVG('modeStandard', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="cot-deploy-chips" data-deploy-chips="standard"></span></span></button>` +
-    // the presentation order (sim/gameModeCatalog.ts): Standard leads as the solo card above, then the other headline modes
-    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(1, HEADLINE_MODE_COUNT), true) +
-    `</div><div class="cot-deploy-rows">` +
-    deployCardsHTML(MODE_PRESENTATION_ORDER.slice(HEADLINE_MODE_COUNT), false) +
-    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
-    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving_ground">` +
-    `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span><span class="cot-deploy-chips"></span></span></button>` +
+    // the battle modes: the one mode picker (modePicker.ts, the Rooms host's too), filled when it loads (openDeployModes)
+    `<div class="cot-deploy-modes" data-deploy-modes></div>` +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen; an
+    // action beside the mode choices, not one of them
+    `<button class="cot-deploy-proving" type="button" data-proving data-mode-tone="proving_ground">` +
+    `<img class="cot-deploy-proving-art" src="${deployModeArt('proving_ground')}" alt="" width="480" height="270" loading="lazy" decoding="async">` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
+    `${uiIconSVG('chevronRight', 18)}</button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
-    `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
+    `<div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
     `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
     `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
@@ -1099,8 +1084,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The Deploy screen fills the viewport, so it lives at the Garage root, outside the Deploy button's transformed box.
   root.appendChild(battleMenu);
   const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
-  const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
-  const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
   const roomControls = requiredElement<HTMLElement>(root, '.cot-room-controls');
   const roomReady = requiredElement<HTMLButtonElement>(root, '.cot-room-ready');
@@ -2894,7 +2877,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (previousCountry && previousCountry !== countryId && api.isOpen &&
         cardsEl.animate && !prefersReducedMotion()) {
       cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
-        { duration: 140, easing: 'ease-out' });
+        { duration: motionMs('--dur-fast'), easing: 'ease-out' });
     }
     // the strip returns to its start in the frame's callback, ahead of the selection's reveal (queued after it): a
     // scroll write here laid the strip out inside the press (click-perf-248)
@@ -3114,7 +3097,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!shouldAnimate) return;
     statsEl.animate(
       [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 190, easing: 'ease-out' },
+      { duration: motionMs('--dur-base'), easing: 'ease-out' },
     );
   }
 
@@ -3749,7 +3732,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
         selectedMap: () => selectedMapId, selectedMode: () => battleGameMode,
         again(mode, mapId) {
-          battleMenu.querySelector<HTMLButtonElement>(mode === 'standard' ? '.cot-deploy-cards [data-mode="solo"]' : `[data-game-mode="${mode}"]`)?.click();
+          if (mode === 'standard') setBattleMode('solo'); else setBattleGameMode(mode);
           api.setSelectedMap(mapId);
           battle();
         },
@@ -3801,17 +3784,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleMenu.classList.add('open');
     deployScreen?.drawObjectives();
     battleModeBtn.setAttribute('aria-expanded', 'true');
-    const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
-      : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    const scroller = battleMenuScroll;
-    scroller.scrollTop = 0;
-    const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
-    const scrollBounds = scroller.getBoundingClientRect();
-    const selectedBounds = selectedChoice?.getBoundingClientRect();
-    const visibleChoice = selectedBounds && selectedBounds.top >= scrollBounds.top
-      && selectedBounds.bottom <= scrollBounds.bottom ? selectedChoice : null;
-    (visibleChoice || requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]'))
-      .focus({ preventScroll: true });
+    battleMenuScroll.scrollTop = 0;
+    // the mode picker takes the focus on the chosen mode (the screen's close until the picker has loaded)
+    requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').focus({ preventScroll: true });
+    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); });
   }
   function setBattleMode(nextMode: string | undefined): void {
     if (!nextMode || !(nextMode in battleModeMeta)) return;
@@ -3830,10 +3806,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
-    for (const choice of battleChoices) {
-      choice.setAttribute('aria-pressed', String(choice.dataset.mode === mode));
-    }
-    for (const choice of battleRuleChoices) choice.setAttribute('aria-pressed', 'false');
+    deployModes?.setValue(battleGameMode);
     renderBattleOptions();
     opts.onGameModeSelect?.(battleGameMode);
   }
@@ -3851,10 +3824,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
-    for (const choice of battleChoices) choice.setAttribute('aria-pressed', 'false');
-    for (const choice of battleRuleChoices) {
-      choice.setAttribute('aria-pressed', String(choice.dataset.gameMode === id));
-    }
+    deployModes?.setValue(id);
     renderBattleOptions();
   }
 
@@ -3920,20 +3890,42 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (battleMenu.classList.contains('open')) closeBattleMenu();
     else openBattleMenu();
   });
-  for (const choice of battleChoices) choice.addEventListener('click', () => {
-    emit('ui:click', {});
-    if (choice.dataset.mode === 'private' || choice.dataset.mode === 'lan') {
-      openMultiplayer(choice.dataset.mode);
-    } else setBattleMode(choice.dataset.mode);
-  });
-  requiredElement<HTMLButtonElement>(root, '.cot-battle-choice[data-proving]').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-proving]').addEventListener('click', () => {
     emit('ui:click', {});
     startTestDrive(selectedId);
   });
-  for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
-    emit('ui:click', {});
-    setBattleGameMode(choice.dataset.gameMode);
-  });
+  // the battle modes (INTERACTION-REDESIGN.md part C; the census's deploy-mode row): the one mode picker, the Rooms host's
+  // too. Each card is the mode's picture, its glyph in its hue, its name and the first two rules the ruleset keeps
+  // (modeRuleLines); the plate is the rules card, showing the mode under the pointer or the focus and the chosen one
+  // again when it leaves; one press chooses. It loads at the Garage's first idle moment, before Deploy opens (the boot
+  // graph keeps no picker).
+  let deployModes: import('./modePicker.ts').ModePicker | null = null;
+  let deployModesLoad: Promise<void> | null = null;
+  let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
+  function openDeployModes(): Promise<void> {
+    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker, modeRuleLines }, { pickerText }]) => {
+      const cards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
+        id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
+        // Frontline Assault's first fact is the campaign it plays, as the Rooms host's card says
+        facts: id === 'frontline_assault' ? [t('campaign.heading'), ...modeRuleLines(id, readTeamArrangement(id)).slice(0, 1)]
+          : modeRuleLines(id, readTeamArrangement(id)).slice(0, 2),
+        media: { poster: deployModeArt(id) }, description: '', rules: [],
+      }));
+      deployModeCards = cards;
+      deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
+        id: 'deploy-mode', label: t('playMenu.battleRulesAria'), cards: cards(), value: battleGameMode, text: pickerText(),
+        layout: 'cards',
+        onPreview: (card) => renderModePlate(card ? normalizeGameMode(card.id) : battleGameMode),
+        onChoose: (id) => {
+          emit('ui:click', {});
+          if (id === 'standard') setBattleMode('solo'); else setBattleGameMode(id);
+        },
+      });
+    }, () => { deployModesLoad = null; });
+    return deployModesLoad;
+  }
+  const idleLoad = (globalThis as { requestIdleCallback?: (run: () => void) => number }).requestIdleCallback;
+  if (idleLoad) idleLoad(() => void openDeployModes()); else setTimeout(() => void openDeployModes(), 1200);
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
   // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
@@ -4042,15 +4034,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell',
     gravity: 'modeMars', speed: 'speed', boss: 'shield',
   } as const;
-  function renderDeployChips(): void {
-    for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
-      const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
-      const shown = (['gravity', 'speed', 'boss', 'respawn', 'victory', 'teams', 'clock'] as const).filter((key) => facts[key] != null).slice(0, 2);
-      row.innerHTML = rules(shown.map((key) => [DEPLOY_FACT_ICON[key], String(facts[key])] as const));
-    }
-  }
-  function renderDeployRules(): void {
-    const facts: DeployFacts = deployFacts(battleGameMode);
+  function renderDeployRules(mode: GameModeId): void {
+    const facts: DeployFacts = deployFacts(mode);
     // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
     const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
     const keys = ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
@@ -4195,14 +4180,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
     const meta = (solo && battleRuleMeta[battleGameMode]) || battleModeMeta[battleMode];
-    setupTitle.textContent = meta.label;
     setupSelection.textContent = meta.label;
-    setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
-    setupIcon.dataset.modeTone = battleGameMode;
-    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
-    setupDescription.textContent = t(shown ? 'garage.battle.marsSetupDescription'
-      : solo ? `playMenu.matchMode.${battleGameMode}.desc`
-      : `garage.battle.${battleMode}SetupDescription`, solo ? modeCopyValues(battleGameMode) : undefined);
+    if (solo) renderModePlate(battleGameMode);
+    else {
+      setupTitle.textContent = meta.label;
+      setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+      setupIcon.dataset.modeTone = battleGameMode;
+      setupDescription.textContent = t(`garage.battle.${battleMode}SetupDescription`);
+      renderDeployRules(battleGameMode);
+    }
+    // the mode cards' rules follow the player's arrangement (sides, Mars)
+    if (deployModes && deployModeCards) deployModes.setCards(deployModeCards(), battleGameMode);
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
@@ -4218,10 +4206,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     marsField('gravity').value = settings.gravity;
     marsField('caches').value = settings.caches;
     marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
-    renderDeployRules();
-    renderDeployChips();
     deployScreen?.render();
   };
+  /** The plate's rules card for one mode, the chosen one or the one the mode picker previews under the pointer or the
+   *  focus: its name, glyph in its hue, sentence and rules. */
+  function renderModePlate(mode: GameModeId): void {
+    const meta = battleRuleMeta[mode];
+    if (!meta) return;
+    setupTitle.textContent = meta.label;
+    setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
+    setupIcon.dataset.modeTone = mode;
+    // a mode's numbers come from its ruleset (modeCopyValues), never from the copy
+    setupDescription.textContent = t(mode === 'mars' ? 'garage.battle.marsSetupDescription' : `playMenu.matchMode.${mode}.desc`,
+      modeCopyValues(mode));
+    renderDeployRules(mode);
+  }
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
     writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
@@ -4486,8 +4485,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
-    // the open battlefield picker owns its keys (its Enter chooses, never deploys); its Escape still closes it here
-    if (target?.closest('[data-deploy-field-pop]') && e.code !== 'Escape') return;
+    // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here
+    if (target?.closest('[data-deploy-field-pop], [data-deploy-modes]') && e.code !== 'Escape') return;
     if (openGaragePanel()) {
       const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');
       containModalTab(e, drawer, drawer);
@@ -4541,10 +4540,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
     }
     if (typing) return;
-    // (only from the mode list or the bare screen: a dropdown or a segmented control keeps its own arrows)
+    // the bare screen's arrows go to the mode picker (a dropdown or a segmented control keeps its own)
     if (deployOpen && /^Arrow(Left|Right|Up|Down)$/.test(e.code) && !e.metaKey && !e.ctrlKey && !e.altKey
-      && (!target || target === document.body || target === battleMenu || target.closest('.cot-deploy-panel'))) {
-      deployScreen?.move(e.code, target);
+      && (!target || target === document.body || target === battleMenu)) {
+      deployModes?.focus();
       e.preventDefault();
       return;
     }
@@ -4552,11 +4551,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      // on the Deploy screen the chosen mode deploys from its tile (the arrows choose as they move); a mode reached by Tab
-      // takes its own Enter first and is chosen, so Enter never deploys the mode chosen before. Every other control keeps
-      // its own Enter.
-      const tile = deployOpen ? target?.closest<HTMLElement>('.cot-deploy-panel .cot-battle-choice:not([data-proving])') : null;
-      if (tile ? tile.getAttribute('aria-pressed') !== 'true' : target?.closest('button,input,select,a,[role="button"]')) return;
+      // the bare screen's Enter deploys; every control keeps its own
+      if (target?.closest('button,input,select,a,[role="button"]')) return;
       battle();
       e.preventDefault();
     }

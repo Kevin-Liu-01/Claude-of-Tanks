@@ -579,8 +579,8 @@ export const PATHS = [
   { id: 'deploy-open', doc: 'game', reps: 5,
     press: (page) => target(page, '[data-nav=deploy], .cot-battle-mode'), shown: `shown('#cot-battle-menu.open')`, after: closeDeploy },
   { id: 'deploy-mode', doc: 'game', reps: 6, setup: openDeploy,
-    press: (page, i) => target(page, '#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice[data-mode=solo]', i + 1),
-    teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu .cot-battle-choice[data-mode=solo], #cot-battle-menu .cot-battle-choice', 0), ctx).catch(() => {});
+    press: (page, i) => target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt', i + 1),
+    teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', 0), ctx).catch(() => {});
       await closeDeploy(page, ctx); } },
   { id: 'deploy-sides', doc: 'game', reps: 4, setup: openDeploy,
     press: (page, i) => target(page, `#cot-battle-menu .cot-sides-choice[data-sides="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
@@ -716,7 +716,7 @@ export const PATHS = [
       await canvasProbe(page, ctx, 'garage', [
         pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'),
         pressOn('.cot-settings-slot .cot-gear, [data-nav=settings]'), () => closeSettings(page, ctx),
-        () => openDeploy(page, ctx), pressOn('#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice'),
+        () => openDeploy(page, ctx), pressOn('#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt'),
         () => closeDeploy(page, ctx),
         pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
       ]);

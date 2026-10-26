@@ -2,7 +2,7 @@
   "$comment": "The interaction census's ratchet (INTERACTION-REDESIGN.md part D). failing: the choose-one sites in src/ui/interactionRegistry.ts that fail the bar's line 1 today; the list only shrinks (a fixed site leaves it, a new one never joins). paths: each common path's presses from where the player is; a count only falls. Copyright 2026 Kevin B. Liu.",
   "failing": [
     "camo-lab-tools", "damage-lab-kind", "damage-lab-target", "deploy-arrangement", "deploy-difficulty",
-    "deploy-mars", "deploy-mode", "deploy-sides", "docs-archive-filter", "docs-battle-reel", "docs-filming-stage",
+    "deploy-mars", "deploy-sides", "docs-archive-filter", "docs-battle-reel", "docs-filming-stage",
     "docs-media-collection", "gallery-camera-view", "gallery-facets", "gallery-layer", "gallery-part", "gallery-rival",
     "gallery-sort", "gallery-tank", "garage-camo", "garage-camo-collection", "garage-camo-tag", "garage-equipment",
     "garage-equipment-category", "garage-facets", "garage-featured-still", "garage-nation", "garage-paint-band",

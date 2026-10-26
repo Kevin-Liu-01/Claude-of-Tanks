@@ -1,7 +1,7 @@
 // The Deploy screen's second half (brand-ui 243; the Premiere direction's 04-deploy page). Copyright © 2026 Kevin B. Liu.
 // It loads with the screen's sheet (deploy.css), off the game entry (owner: shell first), and mounts before the screen
 // first shows, so nothing arrives late: the last battle again, the next battle's bot tier, the toggle for the mode's own
-// settings, the core cards' badges, the load estimate, the objective map and the key hints. garage.ts owns the screen,
+// settings, the load estimate, the objective map and the key hints. garage.ts owns the screen,
 // its state and every choice; this module reads them through the host and adds its controls to the markup. It imports
 // only modules that already stand in chunks of their own: a module the entry also imports (the profile, the kit, the load
 // estimate) comes through the host, or the bundler splits it off the entry into one more request at boot.
@@ -81,8 +81,6 @@ export interface DeployScreen {
   render(): void;
   /** Draw the chosen battlefield's opening objectives for the chosen mode (the screen must be showing). */
   drawObjectives(): void;
-  /** Arrow keys: move the chosen mode across the cards and rows, by where each sits on screen. */
-  move(code: string, from: Element | null): void;
   /** Brief the campaign tab's operation in focus on the plate (the tab must be showing). */
   brief(id?: string): void;
 }
@@ -138,15 +136,6 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
-  // the core cards' badge (the direction's .badge): the mode the campaign plays (the ring says which mode is chosen)
-  const badges = [...menu.querySelectorAll<HTMLButtonElement>('.cot-deploy-cards .cot-battle-choice')].map((card) => {
-    const badge = document.createElement('span');
-    badge.className = 'cot-c-tag cot-deploy-badge';
-    badge.hidden = true;
-    card.append(badge);
-    return { card, badge };
-  });
-
   // the Deploy bar's estimate beside its key, and the objective map over the tactical map
   const estimate = document.createElement('span');
   menu.querySelector('.cot-deploy-end')?.prepend(estimate);
@@ -162,14 +151,13 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>`;
   menu.append(keys);
 
-  // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right
-  // under its card or row, one block; a wide layout keeps them on the plate
+  // a folded layout sets the plate's rules, battlefield and pickers right under the mode picker, one column; a wide
+  // layout keeps them on the plate beside it
   const details = menu.querySelector<HTMLElement>('.cot-battle-details');
   const plate = menu.querySelector<HTMLElement>('.cot-deploy-plate');
   function placeDetails(): void {
     if (!details || !plate) return;
-    const chosen = document.body.dataset.cotPanels === 'overlay'
-      ? menu.querySelector<HTMLElement>('#cot-deploy-quick .cot-battle-choice[aria-pressed="true"]') : null;
+    const chosen = document.body.dataset.cotPanels === 'overlay' ? menu.querySelector<HTMLElement>('[data-deploy-modes]') : null;
     if (chosen) {
       if (chosen.nextElementSibling !== details) chosen.after(details);
       details.classList.add('is-inline');
@@ -261,11 +249,6 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   return {
     brief,
     render() {
-      for (const { card, badge } of badges) {
-        const label = card.dataset.gameMode === 'frontline_assault' ? t('campaign.heading') : '';
-        badge.textContent = label;
-        badge.hidden = !label;
-      }
       const last = host.lastBattle();
       const offered = last?.gameMode ? host.modeOf(last.gameMode) : null;
       againOf = offered && last?.mapId && host.mapIds.has(last.mapId) ? { mode: offered.mode, mapId: last.mapId } : null;
@@ -283,30 +266,5 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       drawObjectives();
     },
     drawObjectives,
-    move(code, from) {
-      const panel = menu.querySelector<HTMLElement>('#cot-deploy-quick');
-      if (!panel || panel.hidden) return;
-      const choices = [...panel.querySelectorAll<HTMLButtonElement>('.cot-battle-choice:not([data-proving])')];
-      const current = from?.closest<HTMLButtonElement>('.cot-battle-choice:not([data-proving])')
-        ?? choices.find((choice) => choice.getAttribute('aria-pressed') === 'true') ?? choices[0];
-      if (!current) return;
-      const a = current.getBoundingClientRect();
-      const dx = code === 'ArrowLeft' ? -1 : code === 'ArrowRight' ? 1 : 0;
-      const dy = code === 'ArrowUp' ? -1 : code === 'ArrowDown' ? 1 : 0;
-      let best: HTMLButtonElement | null = null;
-      let bestScore = Infinity;
-      for (const choice of choices) {
-        if (choice === current) continue;
-        const b = choice.getBoundingClientRect();
-        const ox = b.left + b.width / 2 - (a.left + a.width / 2), oy = b.top + b.height / 2 - (a.top + a.height / 2);
-        const along = dx ? ox * dx : oy * dy;
-        if (along <= 1) continue;
-        const score = along + 2 * (dx ? Math.abs(oy) : Math.abs(ox));
-        if (score < bestScore) { bestScore = score; best = choice; }
-      }
-      if (!best) return;
-      best.click();
-      best.focus();
-    },
   };
 }
