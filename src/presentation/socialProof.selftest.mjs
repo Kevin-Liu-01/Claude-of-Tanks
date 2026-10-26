@@ -47,7 +47,7 @@ assert.equal((press.match(/<img class="v5-social-card__avatar"/g) || []).length,
 assert.equal((press.match(/<article role="listitem" class="v5-social-card v5-social-card--reddit"><a href="https:\/\/www\.reddit\.com\//g) || []).length, 5,
   'the five Reddit launch posts, each a card');
 assert.equal((press.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 10, 'every external link isolates its browsing context');
-assert.equal((press.match(/<dt><span class="v5-social-metric-icon v5-social-metric-icon--(?:view|like|bookmark)" aria-hidden="true"><\/span>/g) || []).length, 4,
+assert.equal((press.match(/<dt><span class="v5-social-metric-icon v5-social-metric-icon--(?:view|upvote|bookmark)" aria-hidden="true"><\/span>/g) || []).length, 4,
   'all four launch numbers carry a matching metric icon');
 const quotes = press.match(/<div class="press__posts">([\s\S]*?)<div class="press__reddit"/)?.[1] ?? '';
 assert.ok(quotes.indexOf('@hakimieiqbal') >= 0 && quotes.indexOf('@hakimieiqbal') < quotes.indexOf('@VaibhavSisinty'), 'Hakimi before Vaibhav');
@@ -98,7 +98,8 @@ assert.match(styles, /\.press__posts\{[^}]*grid-template-columns:repeat\(4,/, 'd
 assert.match(styles, /\.press__posts>\.v5-social-card--threejs\{grid-column:span 2;grid-row:span 2\}/, 'the Three.js post is the largest card');
 assert.match(styles, /\.press__reddit\{[^}]*grid-template-columns:repeat\(5,/, 'desktop shows the five Reddit posts in a row');
 // (2026-10-25 gauntlet r4, line 6) the partner's name is ink: the accent is the primary's, the selection's and a display noun's count
-assert.match(styles, /\.press__title em\{[^}]*color:var\(--ink-1\)/, 'the Three.js name in the title is ink, not the accent');
+// (home r29) the name is outlined like the rest of the title, never the accent
+assert.doesNotMatch(styles, /\.press__title em\{[^}]*(?:--accent|-webkit-text-stroke:0)/, 'the Three.js name in the title is outlined with its title, not the accent or a solid fill');
 // (2026-10-25 gauntlet, one accent and no other colour) the metric icons and the platform marks paint in ink
 assert.match(styles, /\.v5-social-metric-icon\{color:var\(--ink-2\);/, 'every metric icon paints in one ink');
 assert.doesNotMatch(styles, /\.v5-social-metric-icon--\w+\{[^}]*color:#/, 'no metric icon keeps a colour of its own');

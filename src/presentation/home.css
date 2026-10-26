@@ -162,7 +162,7 @@ img{display:block;max-width:100%}
 .play-acts .cot-c-btn--icon:disabled{opacity:.55;cursor:default}
 .play-acts .cot-c-seg__opt{font-size:max(var(--fs-floor-12),var(--fs-13))}
 .play-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--s3) * 2) / 3);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;
-  /* whole cards per view, the arrows the way on; on a phone the next card peeks under a fade (below) */
+  /* whole cards per view, the arrows the way on; a phone shows one whole card at a time (below) */
   --fade-l:0px;--fade-r:0px;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%)}
 .play-rail::-webkit-scrollbar{display:none}
 .play-rail[hidden]{display:none}
@@ -189,7 +189,7 @@ img{display:block;max-width:100%}
 :lang(zh-CN) :is(.press__posts blockquote,.press__reddit h3){line-break:strict}
 /* the press head ends on its baseline like the modes head, so both sit 24 px over their content */
 .press__title{grid-area:title;text-box:trim-end cap alphabetic}
-.press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
+.press__title em{font-style:normal}
 .press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5) var(--s3);margin:0}
 .press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
@@ -203,8 +203,7 @@ img{display:block;max-width:100%}
 .press__reddit{grid-area:reddit;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
 /* one size for every quote, the last line never a lone word */
 .press__posts .v5-social-card__body blockquote,.press__posts .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
-.press__posts .v5-social-card--threejs .v5-social-card__body blockquote{font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase;color:var(--accent)}
-.v5-social-card--threejs{--social-accent:var(--accent)}
+.press__posts .v5-social-card--threejs .v5-social-card__body blockquote{font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .v5-social-card--urban-crossfire{--social-card-image:url('/media/site50-r14/stills/s19-roof-tiles-close.webp');--social-card-position:50% 48%}
 .v5-social-card--threejs .v5-social-card__body{justify-content:flex-end}
 :is(.press__posts,.press__reddit) .v5-social-metrics{gap:var(--s4);font-size:max(var(--fs-floor-12),var(--fs-12))}
@@ -215,9 +214,8 @@ img{display:block;max-width:100%}
 .v5-social-card__avatar--reddit .v5-social-platform-icon{width:22px;height:22px}
 .v5-social-card__title{margin:0;color:var(--ink-1);font:600 var(--fs-18)/1.3 var(--font-display);text-wrap:pretty}
 .press__reddit .v5-social-card__body{justify-content:flex-start;padding:var(--s5) 0}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
+.v5-social-card{position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
-.v5-social-card--vaibhav{--social-accent:var(--ink-2)}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
 .v5-social-card--winter-breaker{--social-card-image:url('/media/site50-r14/stills/s24-ice-duel.webp');--social-card-position:52% 50%}
 .v5-social-card--verdant-column{--social-card-image:url('/media/site50-r14/stills/s04-column-under-fire.webp');--social-card-position:50% 52%}
@@ -227,7 +225,6 @@ img{display:block;max-width:100%}
 .v5-social-card__identity>span:nth-child(2){display:flex;min-width:0;flex-direction:column;line-height:1.15}
 .v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-2);font:400 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
-.v5-social-card__identity em{margin-left:auto;padding:0 var(--s2);height:20px;display:inline-flex;align-items:center;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--social-accent);font:600 var(--fs-11)/1 var(--font-display);font-style:normal;letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap}
 .v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover;object-position:50% 50%}
 .v5-social-card__body{display:flex;flex:1;flex-direction:column;justify-content:center;padding:var(--s6) 0}
 .v5-social-card__body blockquote{margin:0;color:var(--ink-1);font:600 var(--fs-28)/1.2 var(--font-display)}
