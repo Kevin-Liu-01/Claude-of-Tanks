@@ -437,7 +437,9 @@
     .cot-credits-portrait{box-sizing:border-box;display:block;width:100%;height:auto;aspect-ratio:1;
       object-fit:cover;object-position:center;border-radius:var(--control-radius);background:var(--surface-raised)}
     .cot-credits-copy{min-width:0;padding:32px;text-align:left}
-    .cot-credits h2{margin:0 0 var(--s5);padding-right:var(--s6);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
+    /* the close button's corner: the title and any copy line beside it wrap short of it; lines below run to the edge */
+    .cot-credits-copy::before{content:"";float:right;width:44px;height:44px;margin-left:var(--s3)}
+    .cot-credits h2{margin:0 0 var(--s5);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
     .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
     /* zh: a line breaks between any two characters, never before closing or after opening punctuation */
     .cot-credits p:lang(zh-CN){line-break:strict;text-spacing-trim:trim-both}
@@ -465,6 +467,7 @@
       .cot-credits-actions{flex-direction:column;align-items:stretch}
       .cot-credits-actions .cot-boot-link:last-child{margin-left:0}
       .cot-credits-close{top:24px;right:24px}
+      .cot-credits-copy::before{content:none}
     }
     /* a short landscape screen: a small portrait beside the copy, so the whole dialog fits */
     @media (height < 520px) {
@@ -476,6 +479,7 @@
       .cot-credits p{margin-bottom:var(--s2);line-height:1.6}
       .cot-credits-actions{margin-top:var(--s3);padding-top:var(--s3)}
       .cot-credits-close{top:24px;right:24px}
+      .cot-credits-copy::before{content:""}
     }
     .cot-boot-gate {
       grid-area: slot; align-self: start; margin-top: 24px; height: 22px;
