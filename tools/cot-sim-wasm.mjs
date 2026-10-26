@@ -1,7 +1,8 @@
 // Copyright (c) Kevin B. Liu. See NOTICE.md.
 //
-// The cot-sim WebAssembly module (crates/cot-sim-wasm, raw C ABI, no imports) for Node tools and browser pages, and
-// the pinned ECMAScript math it carries.
+// The cot-sim WebAssembly module (crates/cot-sim-wasm, raw C ABI) for Node tools and browser pages, and the pinned
+// ECMAScript math it carries. Its one import, the world kernels' terrain height (src/world/wasmWorldKernels.ts binds the
+// map's), is a stub here: the math and the benchmarks never read terrain.
 //
 // `pinMath(wasm)` replaces the transcendental Math functions with the module's (the pure-Rust libm the Rust port
 // computes with) and Math.hypot with V8's Kahan formula in plain JavaScript, so a TypeScript evaluation gives the same
@@ -15,7 +16,7 @@ export const COT_SIM_WASM_PATH = 'crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm';
 
 /** Instantiate the module from its bytes (a browser page fetches them; Node reads them with loadCotSimWasmNode). */
 export async function instantiateCotSimWasm(bytes) {
-  const { instance } = await WebAssembly.instantiate(bytes, {});
+  const { instance } = await WebAssembly.instantiate(bytes, { env: { terrain_height: () => NaN } });
   return instance.exports;
 }
 

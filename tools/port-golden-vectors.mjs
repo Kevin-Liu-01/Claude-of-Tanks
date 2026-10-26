@@ -35,7 +35,8 @@ import { loadCotSimWasmNode, pinMath } from './cot-sim-wasm.mjs';
 import { createTerrainContactSampler } from '../src/world/terrainContactSurface.ts';
 import { createTerrainDeformation } from '../src/sim/terrainDeformation.ts';
 import { createStructureSupportField } from '../src/sim/structureSupport.ts';
-import { createHullFootprint, hullFootprint } from '../src/world/collision.ts';
+import { collisionClearanceContainsPoint, createHullFootprint, hullFootprint, rayCollisionClearanceEntry2 } from '../src/world/collision.ts';
+import * as detMath from '../src/sim/detMath.ts';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import {
   GRAVITY_SCALE,
@@ -269,6 +270,21 @@ function deformationVectors() {
 }
 
 // ---------------------------------------------------- structure support ------
+/** A collision record whole, as the Rust builds its table (records.rs Record): AABB, flags, shape. */
+function encodePart(part) {
+  if (!part) return null;
+  const y = part.y0 !== undefined ? [num(part.y0), num(part.y1)] : null;
+  if (part.kind === 'obb') return { kind: 'obb', cx: num(part.cx), cz: num(part.cz), hw: num(part.hw), hl: num(part.hl), yaw: num(part.yaw), y };
+  if (part.kind === 'circle') return { kind: 'circle', cx: num(part.cx), cz: num(part.cz), r: num(part.r), y };
+  return { kind: 'convex', points: part.points.map(num), tp: part.tp ? part.tp.map(num) : null, y };
+}
+function encodeRecord(record) {
+  const shape = record.shape2;
+  return { min: record.min.map(num), max: record.max.map(num), crushable: !!record.crushable,
+    wreck: record.kind === 'tank-wreck' || record.kind === 'tram-wreck', crushed: !!record.crushed, dead: !!record.dead,
+    shape: !shape ? null : shape.kind === 'compound' ? { compound: shape.parts.map(encodePart) } : { simple: encodePart(shape) } };
+}
+
 // Hulls placed over real battlefields' records (Urban's roofed buildings, Titan Gorge's drawn-top stones, Verdant), their
 // belly lines a metre under to half a metre over the tops, half of them posed (pitched and rolled footprints): each
 // hull's candidates as the obstacle grid gave them, whether it stands on a deck, and structureTopAt over a 7 x 7 grid
@@ -277,19 +293,6 @@ function deformationVectors() {
 function structureSupportVectors() {
   const rng = mulberry32(2531);
   const records = new Map();
-  const encodePart = (part) => {
-    if (!part) return null;
-    const y = part.y0 !== undefined ? [num(part.y0), num(part.y1)] : null;
-    if (part.kind === 'obb') return { kind: 'obb', cx: num(part.cx), cz: num(part.cz), hw: num(part.hw), hl: num(part.hl), yaw: num(part.yaw), y };
-    if (part.kind === 'circle') return { kind: 'circle', cx: num(part.cx), cz: num(part.cz), r: num(part.r), y };
-    return { kind: 'convex', points: part.points.map(num), tp: part.tp ? part.tp.map(num) : null, y };
-  };
-  const encode = (record) => {
-    const shape = record.shape2;
-    return { min: record.min.map(num), max: record.max.map(num), crushable: !!record.crushable,
-      wreck: record.kind === 'tank-wreck' || record.kind === 'tram-wreck', crushed: !!record.crushed, dead: !!record.dead,
-      shape: !shape ? null : shape.kind === 'compound' ? { compound: shape.parts.map(encodePart) } : { simple: encodePart(shape) } };
-  };
   const hulls = [];
   const rect = { centerX: 0.02, centerZ: 0.2, halfLength: 3.6, halfWidth: 1.75, frontLiftM: 0.45, rearLiftM: 0.3 };
   for (const [mapId, count] of [['urban', 40], ['titan_gorge', 30], ['verdant', 20]]) {
@@ -313,7 +316,7 @@ function structureSupportVectors() {
       const candidates = [];
       world.queryObstacles(x - 6, z - 6, x + 6, z + 6, candidates);
       const candidateIds = candidates.map((r) => index.get(r));
-      for (const id of candidateIds) if (!records.has(`${mapId}:${id}`)) records.set(`${mapId}:${id}`, encode(obstacles[id]));
+      for (const id of candidateIds) if (!records.has(`${mapId}:${id}`)) records.set(`${mapId}:${id}`, encodeRecord(obstacles[id]));
       const samples = [];
       for (let a = 0; a < 7; a++) for (let b = 0; b < 7; b++) {
         const sx = x + (a - 3) * 1.6 + (rng() - 0.5) * 0.3, sz = z + (b - 3) * 1.6 + (rng() - 0.5) * 0.3;
@@ -330,8 +333,58 @@ function structureSupportVectors() {
     collisionSha256: sha('src/world/collision.ts'), records: Object.fromEntries(records), hulls };
 }
 
+// ------------------------------------------------------------ clearance ------
+// The bots' clearance queries (collisionClearanceContainsPoint, rayCollisionClearanceEntry2) over real battlefields'
+// obstacles: points about each record (inside, on the margin, past a corner) at the bots' margins, and lanes across
+// it from every side. The slivers with needle corners (Verdant's mill plinths) are taken first, so the bevels are read.
+function clearanceVectors() {
+  const rng = mulberry32(2541);
+  const records = {};
+  const points = [];
+  const lanes = [];
+  const margins = [0, 0.4, 1.2, 2.95, 4.5];
+  for (const [mapId, count] of [['verdant', 160], ['urban', 120], ['titan_gorge', 80]]) {
+    const world = createDedicatedWorldCollision(mapId);
+    const obstacles = [...new Set(world.getObstacles())];
+    // sharp convex corners first (the bevels), then the rest at random
+    const sharp = obstacles.filter((r) => [r.shape2, ...(r.shape2?.parts ?? [])].some((p) => p?.kind === 'convex' && p.points.length >= 6
+      && sharpestCorner(p.points) < 0.5));
+    const picks = [...sharp.slice(0, count / 4)];
+    while (picks.length < count) picks.push(obstacles[Math.floor(rng() * obstacles.length)]);
+    for (const record of picks) {
+      const id = obstacles.indexOf(record);
+      records[`${mapId}:${id}`] = encodeRecord(record);
+      const w = record.max[0] - record.min[0], d = record.max[2] - record.min[2];
+      for (let k = 0; k < 12; k++) {
+        const margin = margins[k % margins.length];
+        const x = record.min[0] - margin - 1 + rng() * (w + 2 * margin + 2), z = record.min[2] - margin - 1 + rng() * (d + 2 * margin + 2);
+        points.push([`${mapId}:${id}`, num(x), num(z), num(margin), collisionClearanceContainsPoint(record, x, z, margin)]);
+        const angle = rng() * Math.PI * 2, reach = 2 + rng() * 40;
+        const sx = x - detMath.sin(angle) * (reach * 0.5), sz = z - detMath.cos(angle) * (reach * 0.5);
+        const dx = detMath.sin(angle) * (k % 3 ? 1 : 2.5), dz = detMath.cos(angle) * (k % 3 ? 1 : 2.5);
+        const entry = rayCollisionClearanceEntry2(record, sx, sz, dx, dz, reach, margin);
+        lanes.push([`${mapId}:${id}`, num(sx), num(sz), num(dx), num(dz), num(reach), num(margin), entry == null ? null : num(entry)]);
+      }
+    }
+    world.release?.();
+  }
+  return { source: 'src/world/collision.ts', sourceSha256: sha('src/world/collision.ts'), records, points, lanes };
+}
+
+/** The smallest interior angle (radians) of a convex outline's corners. */
+function sharpestCorner(points) {
+  let least = Math.PI;
+  for (let i = 0; i < points.length; i += 2) {
+    const p = (i + points.length - 2) % points.length, n = (i + 2) % points.length;
+    const ax = points[p] - points[i], az = points[p + 1] - points[i + 1], bx = points[n] - points[i], bz = points[n + 1] - points[i + 1];
+    const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz);
+    if (la > 1e-9 && lb > 1e-9) least = Math.min(least, Math.acos(Math.max(-1, Math.min(1, (ax * bx + az * bz) / (la * lb)))));
+  }
+  return least;
+}
+
 // --------------------------------------------------------------- main ------
-const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors(), deformation: deformationVectors(), structureSupport: structureSupportVectors() });
+const generate = () => ({ rng: rngVectors(), ballistics: ballisticsVectors(), contact: contactVectors(), deformation: deformationVectors(), structureSupport: structureSupportVectors(), clearance: clearanceVectors() });
 const engineModules = generate();
 const restoreMath = pinMath(await loadCotSimWasmNode());
 let modules;
