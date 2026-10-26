@@ -31,8 +31,9 @@ interface PickerMenuOptions {
   readonly memory?: string;
   readonly randomId?: string;
   /** The room the menu stays in (CSS px, top to bottom), where the trigger's scrolling panel is not it: the Garage's
-   *  staging area keeps under the top bar. */
-  readonly bounds?: () => { readonly top: number; readonly bottom: number } | null;
+   *  staging area keeps under the top bar. With its sides (left, right) the menu spans them: the Gallery's rival menu
+   *  covers its dossier's width, so no row of the dossier shows beside it. */
+  readonly bounds?: () => MenuRoom | null;
 }
 
 export interface PickerMenu {
@@ -63,6 +64,13 @@ const SHEET_TOP_SHORT = 48;
 /** A scrolling panel under this height is no bound: the menu takes the window's room. */
 const BOUNDS_MIN_H = 240;
 
+interface MenuRoom {
+  readonly top: number;
+  readonly bottom: number;
+  readonly left?: number;
+  readonly right?: number;
+}
+
 interface MenuPlace {
   readonly sheet: boolean;
   readonly left: number;
@@ -88,15 +96,20 @@ export function placeMenu(
   height: number,
   coarse: boolean,
   wide = false,
-  bounds: { readonly top: number; readonly bottom: number } = { top: 0, bottom: view.height },
+  bounds: MenuRoom = { top: 0, bottom: view.height },
 ): MenuPlace {
   const cap = Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   if (coarse && (view.width < SHEET_BELOW || view.height < SHEET_BELOW)) {
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
   }
-  const width = Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
-  const left = Math.max(MENU_EDGE, Math.min(anchor.left, view.width - MENU_EDGE - width));
+  // a room with sides is spanned whole, to the window's edge where the room reaches it (a dossier at the window's right);
+  // otherwise the trigger's width within 280-480 px, a step inside the window
+  const side = bounds.left != null && bounds.right != null ? { left: bounds.left, width: bounds.right - bounds.left } : null;
+  const edge = side ? 0 : MENU_EDGE;
+  const width = side ? Math.min(side.width, view.width)
+    : Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
+  const left = Math.max(edge, Math.min(side ? side.left : anchor.left, view.width - edge - width));
   const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
   const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
   const want = Math.min(height, cap);

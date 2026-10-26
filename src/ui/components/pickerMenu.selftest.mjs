@@ -46,6 +46,14 @@ spot = placeMenu(trigger(100, 40, 320), { width: 1024, height: 600 }, 500, false
 assert.equal(spot.above, false);
 assert.equal(spot.maxHeight, 360, 'min(60 % of 600, 420, the room below)');
 
+// a room with sides is spanned: the menu takes its width and its left edge, past the 480 px cap
+spot = placeMenu(trigger(160, 600, 330), { width: 2560, height: 1440 }, 300, false, false, { top: 72, bottom: 1300, left: 140, right: 700 });
+assert.equal(spot.width, 560, 'the room\'s width');
+assert.equal(spot.left, 140, 'the room\'s left edge');
+// a room against the window's right edge keeps its edge (no window margin pushes it left)
+spot = placeMenu(trigger(1050, 600, 330), { width: 1440, height: 900 }, 300, false, false, { top: 72, bottom: 860, left: 1038, right: 1440 });
+assert.deepEqual([spot.left, spot.width], [1038, 402], 'the room\'s edges, flush with the window');
+
 // a phone gets a bottom sheet across the window
 spot = placeMenu(trigger(20, 300, 200), { width: 390, height: 844 }, 400, true);
 assert.equal(spot.sheet, true);
