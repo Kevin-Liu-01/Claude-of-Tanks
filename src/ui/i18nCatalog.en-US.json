@@ -395,7 +395,7 @@
   "playMenu.ready.markReady": "Mark yourself ready",
   "playMenu.ready.markNotReady": "Mark yourself not ready",
   "touch.gfx.label": "GFX {short}",
-  "touch.gfx.aria": "Graphics quality: {label}. Tap to change level",
+  "touch.gfx.aria": "Graphics quality: {label}",
   "touch.gfx.title": "Graphics: {label}",
   "touch.gfx.perf": "Perf",
   "touch.gfx.bal": "Bal",

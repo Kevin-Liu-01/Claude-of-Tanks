@@ -407,7 +407,7 @@
   "playMenu.ready.markReady": "标记自己为已准备",
   "playMenu.ready.markNotReady": "取消准备状态",
   "touch.gfx.label": "画质 {short}",
-  "touch.gfx.aria": "画质：{label}。点击切换",
+  "touch.gfx.aria": "画质：{label}",
   "touch.gfx.title": "画质：{label}",
   "touch.gfx.perf": "性能",
   "touch.gfx.bal": "均衡",
