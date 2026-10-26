@@ -41,6 +41,9 @@ const MIN_STAT = 216;
 /** A card is at most this many rows wide: a tree short of height narrows its columns to keep its cards' shape, and one
  * still too tall for the board scrolls. */
 const CARD_ASPECT = 2.4;
+/** A tree a little too tall for the board flattens its cards, to at most this many rows wide, to fit it rather than
+ * scroll a sliver past the board's foot. */
+const FLAT_ASPECT = 2.8;
 /** A card's two 1 px edges, which a name's column has to clear (the selected card's wider edge grows outward). */
 const CARD_EDGES = 2;
 /** Wide screens fill with wider columns (the grid shares the title's and the detail's left edge) up to this; past it the
@@ -49,6 +52,8 @@ const MAX_COL = 360;
 /** A gutter is at most this share of a column: a tree with spare width grows its columns before its gutters. */
 const GAP_SHARE = 1;
 const MIN_ROW = 60;
+/** A fitted tree's rows may run this far under MIN_ROW (with FLAT_ASPECT) rather than scroll a sliver. */
+const MIN_FIT_ROW = 54;
 /** A connector's arrowhead, at the screen's scale. */
 const ARROW = 8;
 const arrowSize = (): number => Math.round(ARROW * uiScale() * 10) / 10;
@@ -156,6 +161,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   /** The cards' far edges on the grid: the board fades only where a card runs past its own edge. */
   const extent = { right: 0, bottom: 0 };
   let zoom = 1;
+  const coarsePointer = matchMedia('(pointer:coarse)');
+  coarsePointer.addEventListener('change', () => paintZoom());
 
   // Each stat's fleet range, for the kit's 20-cell scale (reload reads lower as better).
   const range = (pick: (spec: TechTreeVehicle) => number): readonly [number, number] => {
@@ -362,9 +369,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   /**
    * The board's cells: the width gives a column (up to MAX_COL) and the height a row. A row short of height narrows the
    * column to keep the card's shape (CARD_ASPECT), but no further than gutters of GAP_SHARE of a column; past that the
-   * tree scrolls. The spare width goes to the gutters, so every tree ends on the right gutter. The tree takes one name
-   * size, the column's (nameScale) or less so its longest name fits, never under the floor; a name longer than that
-   * widens the columns. Zoom scales the cells and the names.
+   * rows flatten to fit (to FLAT_ASPECT and MIN_FIT_ROW), and a tree taller still scrolls. The spare width goes to the
+   * gutters, so every tree ends on the right gutter. The tree takes one name size, the column's (nameScale) or less so
+   * its longest name fits, never under the floor; a name longer than that widens the columns. Zoom scales the cells and
+   * the names.
    */
   function measure(): Geometry {
     const tiers = tierColumns(tree), count = tiers.length;
@@ -378,7 +386,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     const heightRow = Math.floor(boardHeight / Math.max(1, rows));
     const shapeCol = Math.min(widthCol, Math.max(MIN_COL, heightRow * CARD_ASPECT,
       Math.floor(span / (count + GAP_SHARE * Math.max(0, count - 1)))));
-    const fitRow = Math.max(MIN_ROW, Math.round(shapeCol / CARD_ASPECT), Math.min(Math.round(shapeCol * 0.72), heightRow));
+    const tall = Math.max(MIN_ROW, Math.round(shapeCol / CARD_ASPECT));
+    const fitRow = heightRow >= tall ? Math.min(Math.round(shapeCol * 0.72), heightRow)
+      : heightRow >= Math.max(MIN_FIT_ROW, shapeCol / FLAT_ASPECT) ? heightRow : tall;
     const m = nameMetrics();
     const room = shapeCol - CARD_EDGES - m.inset;
     const fits = Math.min(nameScale(shapeCol), room / m.text);
@@ -676,8 +686,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   function paintZoom(): void {
     for (const item of zoomButtons) {
       const kind = item.dataset.zoom;
-      // fit stays live and shows when the board sits at fit; in and out stop at their bounds
-      if (kind === 'fit') item.setAttribute('aria-pressed', String(Math.abs(zoom - 1) < 1e-3));
+      // fit stays live and shows when the board sits at fit; in and out stop at their bounds. A touch screen pinches
+      // to zoom and keeps fit alone: a plain button there, since one option always on reads as a stuck toggle.
+      if (kind === 'fit' && coarsePointer.matches) item.removeAttribute('aria-pressed');
+      else if (kind === 'fit') item.setAttribute('aria-pressed', String(Math.abs(zoom - 1) < 1e-3));
       else item.disabled = kind === 'in' ? zoom >= ZOOM_MAX - 1e-3 : zoom <= ZOOM_MIN + 1e-3;
     }
   }

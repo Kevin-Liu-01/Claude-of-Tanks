@@ -153,10 +153,10 @@
   font:700 calc(var(--tt-name-size) * var(--tt-name-step, 1))/1.05 var(--font-ui);letter-spacing:0;
   overflow-wrap:anywhere}
 .cot-tt .tt-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
-/* (the trailing letter's tracking comes off the right inset, so the label sits centred) */
-.cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui) - var(--track-label))
-  calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
-  font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label)}
+/* (an indent of the tracking matches the trailing letter's, so the label sits centred; zh's tracking is a bare 0, which
+   no length calc accepts) */
+.cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
+  font-size:max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)));letter-spacing:var(--track-label);text-indent:var(--track-label)}
 .cot-tt .tt-detail-special[hidden]{display:none}
 /* the builds follow the tags on the name's line where the width allows, so a twin node keeps the band's height */
 .cot-tt .tt-builds{flex-wrap:wrap;max-width:100%}
@@ -170,6 +170,8 @@
 .cot-tt .tt-stats .cot-c-stat__label{font:600 max(var(--fs-floor-12),calc(var(--fs-12) * var(--tt-ui)))/1.2 var(--font-ui);
   letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .cot-tt .tt-stats .cot-c-stat__value b{font-size:calc(var(--fs-18) * var(--tt-ui))}
+/* the label and its value share a baseline */
+.cot-tt .tt-stats .cot-c-stat__label,.cot-tt .tt-stats .cot-c-stat__value{align-self:baseline}
 .cot-tt .tt-stats .cot-c-stat__value small{font-size:max(var(--fs-floor-11),calc(var(--fs-11) * var(--tt-ui)))}
 .cot-tt .tt-stats .cot-c-scale{height:calc(8px * var(--tt-ui))}
 .cot-tt .tt-stats .cot-c-stat{grid-template-columns:calc(20px * var(--tt-ui)) minmax(0,1fr) auto}
