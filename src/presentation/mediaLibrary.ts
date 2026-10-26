@@ -219,6 +219,24 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
   head.innerHTML = kitTabs({ label: t('mediaLibrary.tabsAria'), className: 'media-library-tabs', selected: index.collections[0]?.key ?? '',
     tabs: index.collections.map((summary) => ({ id: summary.key, label: say(summary.title) })) });
   const tabs = head.firstElementChild as HTMLElement;
+  // a strip longer than the column scrolls sideways: its more button steps it on and turns back at its end
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--secondary media-library-more';
+  more.setAttribute('aria-label', t('picker.more'));
+  more.innerHTML = icon('chevronRight', { size: 16 });
+  head.append(more);
+  const syncMore = (): void => {
+    const over = tabs.scrollWidth > tabs.clientWidth + 1;
+    tabs.classList.toggle('is-over', over);
+    more.hidden = !over;
+    more.classList.toggle('is-back', over && tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 1);
+  };
+  more.addEventListener('click', () => {
+    tabs.scrollLeft = more.classList.contains('is-back') ? 0 : tabs.scrollLeft + tabs.clientWidth * 0.8;
+  });
+  tabs.addEventListener('scroll', syncMore, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(syncMore).observe(tabs);
   const panel = document.createElement('div');
   panel.className = 'media-library-panel';
   panel.setAttribute('role', 'tabpanel');
@@ -257,6 +275,7 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
   words();
   onLocaleChange(() => {
     words();
+    syncMore();
     if (active) select(active, true);
     viewer.refresh();
   });

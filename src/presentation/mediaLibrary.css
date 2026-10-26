@@ -17,8 +17,15 @@
 .media-library-grid{display:flex;flex-wrap:wrap;gap:var(--s2)}
 /* the collections are one strip at every width, its rule on the column's edges; a strip longer than the column scrolls
    sideways and fades its cut end */
-.media-library-tabs{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent)}
+.media-library-head{position:relative}
+.media-library-tabs{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+/* a strip longer than the column fades its end under a more button (the kit picker's chips do the same), which steps the
+   strip on and turns back at its end */
+.media-library-tabs.is-over{padding-right:calc(var(--cot-control-floor,44px) + var(--s2));
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--cot-control-floor,44px) - var(--s6)),transparent calc(100% - var(--cot-control-floor,44px)))}
+.media-library-more{position:absolute;top:50%;right:0;translate:0 -50%}
+.media-library-more[hidden]{display:none}
+.media-library-more.is-back svg{transform:scaleX(-1)}
 .media-library-tabs .cot-c-tabs__tab{flex:none}
 .media-library-tabs::-webkit-scrollbar{display:none}
 .media-library-thumb{flex:none;padding:0;border:0;background-color:var(--surface-scene);background-repeat:no-repeat;cursor:zoom-in;outline-offset:2px}
@@ -39,7 +46,7 @@
 .media-library-controls output{min-width:76px;color:var(--library-muted);font:500 var(--fs-11)/1 var(--font-mono);text-align:center}
 .media-library-controls button{display:inline-grid;place-items:center;min-width:42px;min-height:42px;border:1px solid var(--library-line);background:transparent;color:var(--library-gold);cursor:pointer;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
 @media (width < 768px){
-:root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
+:root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
 :root body .media-library-tabs::-webkit-scrollbar{display:none}
 :root body .media-library-tabs .cot-c-tabs__tab{flex:none}
 }

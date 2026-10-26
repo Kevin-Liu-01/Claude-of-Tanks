@@ -128,7 +128,8 @@ interface PickerQuery {
   readonly recent: boolean;
 }
 
-const fold = (value: string): string => value.normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+// (NFKD reads a no-break space as a space; a word joiner a caller set inside a name is dropped)
+const fold = (value: string): string => value.normalize('NFKD').replace(/\p{M}|\u2060/gu, '').toLocaleLowerCase();
 
 /**
  * The items a query keeps, in the caller's order (recents in their own order when that chip is pressed). The Random item
