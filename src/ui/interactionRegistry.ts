@@ -158,7 +158,7 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], lane: 'premiere-gallery-studio' },
   'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], lane: 'premiere-gallery-studio' },
   'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], lane: 'premiere-gallery-studio' },
-  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'bespoke', marks: ["bespoke:a.camo||'inherit'"], lane: 'premiere-gallery-studio' },
+  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-camo'], lane: 'premiere-gallery-studio' },
   'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], lane: 'premiere-gallery-studio' },
   'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
   'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:group'], lane: 'premiere-gallery-studio' },

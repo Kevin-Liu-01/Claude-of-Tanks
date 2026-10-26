@@ -28,7 +28,7 @@ assert.doesNotMatch(flagsSource, /<svg|<rect|<polygon|function star/, 'flag UI n
 const garageSource = await readFile(join(uiDir, 'garage.ts'), 'utf8');
 // the camo picker (INTERACTION-REDESIGN B) retired the flag-only country collections: a paint names its nation in the
 // locale as a fact, from the same flag-tag map
-assert.match(garageSource, /nationOfTag: \(tag\) => CAMO_TAG_NATION\[tag as CamoTagId\] \?\? null,\s*nationName: tNation,/,
+assert.match(garageSource, /nationOfTag: camoTagNation,\s*nationName: tNation,/,
   "the camo picker names a paint's nation in the locale");
 
 const srcRoot = join(uiDir, '..');

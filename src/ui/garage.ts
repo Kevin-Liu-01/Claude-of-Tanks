@@ -23,7 +23,7 @@ import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
 import { readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
-import { CUSTOM_CAMO_ID, customCamoPatternId } from '../vehicles/camoPolicy.ts';
+import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
@@ -92,7 +92,7 @@ import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { ShellSpec } from '../vehicles/specHelpers.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
-import type { CamoTagId, CustomCamo } from '../vehicles/camoPolicy.ts';
+import type { CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
@@ -417,11 +417,6 @@ const NATION_FULL_LABEL: Readonly<Record<string, string>> = {
   France: 'France', Israel: 'Israel', China: 'China', 'South Korea': 'South Korea',
   Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine',
 };
-const CAMO_TAG_NATION: Readonly<Partial<Record<CamoTagId, string>>> = Object.freeze({
-  usa: 'USA', de: 'Germany', ru: 'Russia', uk: 'UK', fr: 'France', cn: 'China',
-  it: 'Italy', jp: 'Japan', pl: 'Poland', kr: 'South Korea', se: 'Sweden',
-  il: 'Israel', ua: 'Ukraine',
-});
 function nationFullLabel(nation: string): string {
   return NATION_FULL_LABEL[nation] || nation;
 }
@@ -1991,7 +1986,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       patterns: camoOpts.patterns,
       words: {
         label: camoPatternLabel,
-        nationOfTag: (tag) => CAMO_TAG_NATION[tag as CamoTagId] ?? null,
+        nationOfTag: camoTagNation,
         nationName: tNation,
         kindName: (kind) => t(`garage.camo.kind.${kind}`),
         auto: camoPatternLabel('auto'),

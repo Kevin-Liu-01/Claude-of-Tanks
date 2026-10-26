@@ -219,11 +219,13 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio select option{background:var(--surface-menu);color:var(--ink-1)}
 .cot-studio input[type=number]{width:64px;font-family:var(--font-data)}
 .cot-studio :is(select,input):disabled{opacity:.45;cursor:default}
-.st-insp .sw{display:flex;flex-wrap:wrap;gap:var(--s2);max-height:92px;padding:2px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
-.st-insp .sw button{width:30px;height:22px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--flag-ring)}
-.st-insp .sw button canvas{display:block;width:100%;height:100%;object-fit:cover}
-.st-insp .sw button[aria-pressed=true]{box-shadow:var(--studio-swatch-on)}
-.st-insp .sw .cot-c-chip{width:auto;height:22px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-11))}
+/* the paint is the kit's camo picker (camoPicker.ts): compact swatches in the inspector's width, its grid scrolling under
+   its search and kind chips, each swatch named and its facts its search words */
+.st-insp .st-camo .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:var(--s1);max-height:264px}
+.st-insp .st-camo .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:3/2}
+.st-insp .st-camo .cot-c-picker__opt{gap:var(--s1);padding:var(--s1)}
+.st-insp .st-camo .cot-c-picker__name{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.2}
+.st-insp .st-camo .cot-c-picker__facts{display:none}
 .st-insp .cot-c-seg{display:flex;flex-wrap:wrap}
 .st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 var(--s3);font-size:max(var(--fs-floor-11),var(--fs-12))}
 /* the seven times of day stand in three even columns (every name with room round it, the columns aligned row to row) */

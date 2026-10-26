@@ -9,7 +9,7 @@
     "rooms-kind", "rooms-operation",
     "scope-vision", "settings-accessibility", "settings-brain",
     "settings-crew-voice", "settings-difficulty", "settings-language", "settings-quality", "settings-right-click",
-    "studio-camo", "studio-commands", "studio-effect", "studio-fleet-take",
+    "studio-commands", "studio-effect", "studio-fleet-take",
     "studio-hour", "studio-picture", "studio-sequence",
     "studio-site-take", "studio-state", "tech-tree-nation", "tech-tree-node"
   ],

@@ -23,6 +23,8 @@ import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
+import { createGarageCamoPicker } from './camoPicker.ts';
+import { camoTagNation } from '../vehicles/camoPolicy.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
@@ -1084,28 +1086,53 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     poses.appendChild(option);
   }
   pose.append(facing.row, turret.row, gun.row, recoilBtn, poses);
-  // paint: the garage's pick and every catalogue pattern as its real swatch, painted as it scrolls into view
+  // paint: the kit's camo picker (camoPicker.ts, the Garage's): every catalogue paint as its real swatch on this tank, by
+  // kind, with search and the tank's favourites and recents (memory camo.<specId>, shared with the Garage); its own paint
+  // reset puts the scene's paint back (a bespoke strip of 174 swatches named by their ids in the census)
   const paint = el('div', 'sec');
   paint.appendChild(sectionHead(t('studio.ws.paint'), 'camouflage'));
-  const swatches = el('div', 'sw');
-  swatches.setAttribute('role', 'group');
-  swatches.setAttribute('aria-label', t('studioPanel.selected.camoLabel'));
-  const swatchButtons = new Map<string, HTMLButtonElement>();
-  const inheritSwatch = chipButton(t('studioPanel.selected.camoInherit'), null, true);
-  inheritSwatch.addEventListener('click', () => patchSel({ camo: null }));
-  swatchButtons.set('inherit', inheritSwatch);
-  swatches.appendChild(inheritSwatch);
-  for (const cid of S.CAMO_PATTERN_IDS) {
-    const swatch = el('button');
-    swatch.type = 'button';
-    swatch.setAttribute('aria-pressed', 'false');
-    swatch.setAttribute('aria-label', cid);
-    swatch.dataset.camo = cid;
-    createUiCanvas(swatch, '', { draw: coverImage });
-    swatch.addEventListener('click', () => patchSel({ camo: cid }));
-    swatchButtons.set(cid, swatch);
-    swatches.appendChild(swatch);
+  const camoHost = el('div', 'cot-camo-picker st-camo');
+  const inheritBtn = kitButton(t('studioPanel.selected.camoInherit'), 'ghost', 'undo');
+  inheritBtn.addEventListener('click', () => patchSel({ camo: null }));
+  // the swatches paint a few a frame, the painter and the fleet's specs loading with the first
+  let swatchPainter: Promise<SwatchPainter> | null = null;
+  const swatchQueue: Array<readonly [HTMLCanvasElement, string, string]> = [];
+  let swatchFrame = 0;
+  function pumpSwatches(): void {
+    if (swatchFrame || !swatchQueue.length) return;
+    swatchPainter ??= Promise.all([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
+      .then(([painter, specs]) => ({ paint: painter.paintCamoSwatch, auto: painter.paintAutoCamoSwatch, spec: specs.getSpec }));
+    swatchFrame = requestAnimationFrame(() => {
+      swatchFrame = 0;
+      void swatchPainter?.then((painter) => {
+        for (const [canvas, specId, patternId] of swatchQueue.splice(0, SWATCHES_PER_FRAME)) {
+          const spec = painter.spec(specId) as unknown as Parameters<SwatchPainter['paint']>[1] | undefined;
+          if (!spec || !canvas.isConnected) continue;
+          if (patternId === 'auto') painter.auto(canvas, spec);
+          else painter.paint(canvas, spec, patternId);
+        }
+        pumpSwatches();
+      });
+    });
   }
+  const camoLabel = (id: string): string => {
+    const generic = `garage.camo.generic.${id}`;
+    return t(generic) !== generic ? t(generic) : id === 'auto' ? t('garage.camo.auto') : t(`camoPattern.${id}`);
+  };
+  const camoPicker = createGarageCamoPicker({
+    id: 'studio-camo', host: camoHost, label: t('studioPanel.selected.camoLabel'), patterns: S.CAMO_PATTERN_IDS,
+    words: {
+      label: camoLabel, nationOfTag: camoTagNation, nationName: (nation) => t(`nation.${nation}`),
+      kindName: (kind) => t(`garage.camo.kind.${kind}`), auto: camoLabel('auto'), makeOwn: t('garage.camo.makeOwn'),
+    },
+    text: pickerText(), custom: false,
+    createSwatch: () => createUiCanvas(null, '', { draw: coverImage }).canvas,
+    paintSwatch: (canvas, specId, patternId) => { swatchQueue.push([canvas, specId, patternId]); pumpSwatches(); },
+    // the scene's tank rebuilds its paint on a press; its swatch is the preview
+    onPreview: () => {},
+    onChoose: (patternId) => patchSel({ camo: patternId }),
+    onMakeOwn: () => {},
+  });
   const stateSeg = el('div', 'cot-c-seg');
   stateSeg.setAttribute('role', 'radiogroup');
   wireRovingKeys(stateSeg);
@@ -1123,57 +1150,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     stateButtons.set(sid, option);
     stateSeg.appendChild(option);
   }
-  paint.append(swatches, stateSeg);
+  paint.append(camoHost, inheritBtn, stateSeg);
   const delBtn = kitButton(t('studio.remove'), 'danger', 'trash');
   delBtn.classList.add('cot-c-btn--wide');
   delBtn.addEventListener('click', () => { const a = S._internal.selected; if (a) S.removeActor(a); });
   secSel.append(transform, pose, paint, delBtn);
   const selEmpty = el('div', 'note', t('studioPanel.emptySelected'));
   tanksGroup.body.append(selEmpty, secSel);
-
-  // lazy, batched swatch painting: only what is on screen, a few per frame, each pattern once per tank
-  let swatchSpecId = '';
-  let swatchPainter: Promise<SwatchPainter> | null = null;
-  const swatchQueue: HTMLButtonElement[] = [];
-  let swatchFrame = 0;
-  const swatchObserver = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const button = entry.target as HTMLButtonElement;
-      if (button.dataset.painted !== swatchSpecId) swatchQueue.push(button);
-    }
-    pumpSwatches();
-  }, { root: dock }) : null;
-  for (const [cid, button] of swatchButtons) if (cid !== 'inherit') swatchObserver?.observe(button);
-  function pumpSwatches(): void {
-    if (swatchFrame || !swatchQueue.length || !swatchSpecId) return;
-    swatchPainter ??= Promise.all([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
-      .then(([painter, specs]) => ({ paint: painter.paintCamoSwatch, spec: specs.getSpec }));
-    swatchFrame = requestAnimationFrame(() => {
-      swatchFrame = 0;
-      void swatchPainter?.then((painter) => {
-        const spec = painter.spec(swatchSpecId);
-        for (const button of swatchQueue.splice(0, SWATCHES_PER_FRAME)) {
-          const canvas = button.querySelector('canvas');
-          if (!canvas || !spec || !button.dataset.camo || button.dataset.painted === swatchSpecId) continue;
-          painter.paint(canvas, spec as unknown as Parameters<SwatchPainter['paint']>[1], button.dataset.camo);
-          button.dataset.painted = swatchSpecId;
-        }
-        pumpSwatches();
-      });
-    });
-  }
-  function repaintSwatches(specId: string): void {
-    if (specId === swatchSpecId) return;
-    swatchSpecId = specId;
-    swatchQueue.length = 0;
-    // a new tank wears every pattern its own way: the observer re-reports what is on screen
-    for (const [cid, button] of swatchButtons) {
-      if (cid === 'inherit' || !swatchObserver) continue;
-      swatchObserver.unobserve(button);
-      swatchObserver.observe(button);
-    }
-  }
 
   // === ADD TANKS section: the roster picker (flag, silhouette, name, era), add in view or click to place ===
   const secActors = section('addTanks', t('studioPanel.section.addTanks'), 'zoomIn');
@@ -2835,7 +2818,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
           .then(([cards]) => (hero.dataset.spec === specId
             ? cards.decorateHeroTile(hero, specId, { tankSizes: '340px', flagSizes: '340px', priority: true }) : false))
           .catch(() => false);
-        repaintSwatches(a.spec.id);
       }
       gun.setRange(-(a.spec.gunDepressionDeg ?? 10), a.spec.gunElevationDeg ?? 20);
       facing.set(a.pose.facingDeg);
@@ -2844,7 +2826,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (document.activeElement !== px.input) px.input.value = String(Math.round(a.pose.x * 10) / 10);
       if (document.activeElement !== pz.input) pz.input.value = String(Math.round(a.pose.z * 10) / 10);
       if (document.activeElement !== heading.input) heading.input.value = String(Math.round(a.pose.facingDeg));
-      for (const [cid, button] of swatchButtons) press(button, (a.camo || 'inherit') === cid);
+      camoPicker.setTank(a.spec.id, specInfo(a.spec.id).nation ?? null, a.camo || '');
+      inheritBtn.hidden = !a.camo;
       for (const [sid, option] of stateButtons) {
         option.setAttribute('aria-checked', String(sid === a.stateName));
         option.tabIndex = sid === a.stateName ? 0 : -1;
@@ -3010,5 +2993,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
 type SwatchPainter = {
   readonly paint: typeof import('./camoSwatchPainter.ts').paintCamoSwatch;
+  readonly auto: typeof import('./camoSwatchPainter.ts').paintAutoCamoSwatch;
   readonly spec: typeof import('../vehicles/specs.ts').getSpec;
 };

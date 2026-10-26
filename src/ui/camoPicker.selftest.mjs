@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
 import { CAMO_CATALOG_PATTERN_IDS } from '../vehicles/materials.ts';
+import { camoTagNation } from '../vehicles/camoPolicy.ts';
 import { CAMO_KINDS, camoKindOf, camoPickerFilters, camoPickerItems } from './camoPicker.ts';
 
 // The Garage's camo picker (INTERACTION-REDESIGN B): every paint once, Auto leading, "Make your own" last, each named
 // with its nation and its kind (two facts at most) and filterable by its kind; the kinds are the picker's chips.
 
-// the Garage's flag-tag map (garage.ts CAMO_TAG_NATION): spec nations are display-cased
-const NATION_OF_TAG = { usa: 'USA', de: 'Germany', ru: 'Russia', uk: 'UK', fr: 'France', cn: 'China', it: 'Italy',
-  jp: 'Japan', pl: 'Poland', kr: 'South Korea', se: 'Sweden', il: 'Israel', ua: 'Ukraine' };
+// the flag tags' nations (camoPolicy.ts camoTagNation, which the Garage and the Studio read): spec nations are display-cased
+assert.equal(camoTagNation('ua'), 'Ukraine');
+assert.equal(camoTagNation('ru'), 'Russia', "a tag's first spelling");
+assert.equal(camoTagNation('woodland'), null);
 const words = {
   label: (id) => `L:${id}`,
-  nationOfTag: (tag) => NATION_OF_TAG[tag] ?? null,
+  nationOfTag: camoTagNation,
   nationName: (nation) => `N:${nation}`,
   kindName: (kind) => `K:${kind}`,
   auto: 'Auto',
