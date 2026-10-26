@@ -668,6 +668,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="sum-pic" data-deploy-pic aria-hidden="true"></span>` +
     `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode"${datumAttr('mode-name')}>${t('garage.battle.soloLabel')}</span>` +
     `<span class="sum-map" data-deploy-map${datumAttr('map-name')}></span></button>` +
+    // the card's corner control (owner 10-26): the mode, then the battlefield, as the kit's picker menus anchored to it
+    `<button type="button" class="cot-c-btn cot-c-btn--icon cot-battle-quick" data-battle-quick aria-haspopup="listbox" ` +
+    `aria-expanded="false" aria-label="${t('garage.battle.quickChoose')}" data-tip="${t('garage.battle.quickChoose')}">` +
+    `${uiIconSVG('chevronDown', 16)}</button><div class="cot-battle-quick-hosts" data-battle-quick-hosts hidden>` +
+    `<div data-quick-mode></div><div data-quick-field></div></div>` +
     // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
     // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
     // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
@@ -3626,15 +3631,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
       { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
     ]) => {
-      const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.map((map) => {
-        if (map.id === 'random') {
-          return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
-            media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
-        }
-        const facts = battlefieldFacts(map.id);
-        return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-          media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, tags: [...facts.regions] };
-      });
+      const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => battlefieldCards(battlefieldFacts);
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
         id: 'deploy-battlefield', label: t('garage.battlefield.heading'), cards: cards(), value: selectedMapId,
@@ -3649,6 +3646,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField = { picker, cards };
     }, () => { deployFieldLoad = null; });
     void deployFieldLoad.then(() => { if (!pop.hidden) deployField?.picker.focus(); });
+  }
+  /** The battlefields as picture cards, Random's four-picture mosaic first: the Deploy screen's picker and the battle card's
+   *  quick menu read the same cards. */
+  function battlefieldCards(battlefieldFacts: typeof import('./battlefieldFacts.ts').battlefieldFacts): import('./battlefieldPicker.ts').BattlefieldCard[] {
+    return maps.map((map) => {
+      if (map.id === 'random') {
+        return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
+          media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
+      }
+      const facts = battlefieldFacts(map.id);
+      return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+        media: { poster: facts.poster.src, srcset: facts.poster.srcset }, hero: facts.poster.hero, tags: [...facts.regions] };
+    });
   }
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
@@ -3854,17 +3864,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // (modeRuleLines); the plate is the rules card, showing the mode under the pointer or the focus and the chosen one
   // again when it leaves; one press chooses. It loads at the Garage's first idle moment, before Deploy opens (the boot
   // graph keeps no picker).
+  /** The modes as picture cards with their glyphs in their hues: the picture, glyph and name alone (the Deploy screen's plate
+   *  beside its cards is the rules card, showing every rule of the mode under the pointer or the focus; a rule line under
+   *  each picture wrapped and repeated the name). The Deploy screen's picker and the battle card's quick menu read them. */
+  const modeCards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
+    id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
+    facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
+  }));
   let deployModes: import('./modePicker.ts').ModePicker | null = null;
   let deployModesLoad: Promise<void> | null = null;
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
   function openDeployModes(): Promise<void> {
     deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
-      const cards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
-        id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
-        // the picture, glyph and name alone: the plate beside the cards is the rules card, showing every rule of the mode under
-        // the pointer or the focus (a rule line under each picture wrapped and repeated the name)
-        facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
-      }));
+      const cards = modeCards;
       deployModeCards = cards;
       deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
         id: 'deploy-mode', label: t('playMenu.battleRulesAria'), cards: cards(), value: battleGameMode, text: pickerText(),
@@ -3880,6 +3892,44 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   const idleLoad = (globalThis as { requestIdleCallback?: (run: () => void) => number }).requestIdleCallback;
   if (idleLoad) idleLoad(() => void openDeployModes()); else setTimeout(() => void openDeployModes(), 1200);
+  // The battle card's corner control (owner 10-26: "fix the top right button here", a drawn triangle on a plate): the kit's
+  // icon button over the card's picture. It opens the mode, then the battlefield, as the kit's picker menus anchored to it;
+  // the card itself still opens the Deploy screen. The menus are made at its first press.
+  const quickBtn = requiredElement<HTMLButtonElement>(root, '[data-battle-quick]');
+  let quickMenus: { readonly mode: PickerMenu; readonly field: PickerMenu } | null = null;
+  let quickLoad: Promise<void> | null = null;
+  function openQuickMenus(): void {
+    quickLoad ??= import('./battlefieldFacts.ts').then(({ battlefieldFacts }) => {
+      const hosts = requiredElement<HTMLElement>(root, '[data-battle-quick-hosts]');
+      const field = createPickerMenu(requiredElement<HTMLElement>(hosts, '[data-quick-field]'), {
+        id: 'garage-quick-battlefield', label: t('garage.battlefield.heading'), layout: 'cards', text: pickerText(),
+        items: battlefieldCards(battlefieldFacts), value: selectedMapId, randomId: 'random',
+        onChoose: (item) => { emit('ui:click', {}); api.setSelectedMap(item.id); },
+      });
+      const mode = createPickerMenu(requiredElement<HTMLElement>(hosts, '[data-quick-mode]'), {
+        id: 'garage-quick-mode', label: t('playMenu.battleRulesAria'), layout: 'cards', text: pickerText(),
+        items: modeCards(), value: battleGameMode,
+        // a mode chosen, its battlefield follows from the same control
+        onChoose: (item) => {
+          emit('ui:click', {});
+          if (item.id === 'standard') setBattleMode('solo'); else setBattleGameMode(item.id);
+          field.setValue(selectedMapId);
+          field.open(quickBtn);
+        },
+      });
+      quickMenus = { mode, field };
+    }, () => { quickLoad = null; });
+    void quickLoad.then(() => {
+      if (!quickMenus) return;
+      quickMenus.mode.setValue(battleGameMode);
+      quickMenus.mode.open(quickBtn);
+    });
+  }
+  quickBtn.addEventListener('click', () => {
+    if (quickBtn.getAttribute('aria-expanded') === 'true') { quickMenus?.mode.close(); quickMenus?.field.close(); return; }
+    emit('ui:click', {});
+    openQuickMenus();
+  });
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
   // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead

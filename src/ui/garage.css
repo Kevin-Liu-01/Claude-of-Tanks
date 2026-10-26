@@ -162,16 +162,11 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 .cot-battle .battle-word{text-indent:.24em;text-transform:uppercase;}
 .cot-battle-mode{position:relative;flex:0 0 32%;min-width:0;padding:1px var(--s4) 0 2px;border-left:1px solid var(--accent-lo);
   font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:0;text-align:center;}
-.cot-battle-mode::after{content:'';position:absolute;right:9px;top:50%;margin-top:-2px;
-  border-left:3px solid transparent;border-right:3px solid transparent;border-top:4px solid currentColor;
-  opacity:.82;transition:transform var(--dur-fast);}
-.cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
 /* Coarse pointers (2026-09-14, outside QA): the mode toggle decides what you are about to play and
    measured 38x44 beside the 114x44 BATTLE button — the easiest finger-miss on the screen. It takes a
    third of the control with a larger label; the semantic input attribute drives it, never a width query. */
 body[data-cot-input='coarse'] .cot-battle{flex:0 0 62%;}
 body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;padding:1px var(--s4) 0 6px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:var(--track-label-s);}
-body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-width:4px;border-right-width:4px;border-top-width:5px;}
 .cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
 /* The battle menu is the Deploy screen: src/ui/deploy.css draws it open, full screen. Closed, it takes no space. */
 .cot-battle-menu{box-sizing:border-box;display:none;color-scheme:dark;letter-spacing:normal;word-spacing:normal;
@@ -1030,7 +1025,6 @@ body[data-cot-panels='overlay'] .cot-battle-mode{flex:0 0 52px;min-width:44px;pa
 /* the split stays inside the button's face: a short rule, not the full-height border that overhung the hexagon */
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{border-left:0;
   background:linear-gradient(var(--btn-primary-press),var(--btn-primary-press)) left center/1px 56% no-repeat;}
-body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 
 body[data-cot-panels='overlay'] .cot-leftcol{display:none}
 body[data-cot-panels='overlay'] .cot-garage .stats{
@@ -1183,7 +1177,6 @@ body[data-cot-width='phone'] .cot-battle-control{width:180px}
 body[data-cot-width='phone'] .cot-battle{font-size:max(13px,var(--fs-13));padding-left:5px;gap:5px}
 body[data-cot-width='phone'] .cot-battle .battle-active-icon{width:18px;height:18px}
 body[data-cot-width='phone'] .cot-battle-mode{font-size:max(var(--fs-floor-11),var(--fs-11));padding-right:13px}
-body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-battle-control{
   top:max(64px,calc(env(safe-area-inset-top) + 58px));
 }

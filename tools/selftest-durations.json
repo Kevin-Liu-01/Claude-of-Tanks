@@ -648,6 +648,7 @@
     "src/ui/garageSkylineKit.selftest.mjs": 1000,
     "src/ui/garageSlideshowClearance.selftest.mjs": 12000,
     "src/ui/garageVariantPicker.selftest.mjs": 1000,
+    "src/ui/garageBattleQuick.selftest.mjs": 1000,
     "src/ui/garageVerdantHall.selftest.mjs": 1000,
     "src/ui/garageYardWear.selftest.mjs": 1000,
     "src/ui/hitEventFormat.selftest.mjs": 1000,

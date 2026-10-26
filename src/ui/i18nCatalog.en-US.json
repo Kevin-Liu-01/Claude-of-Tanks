@@ -267,6 +267,7 @@
   "garage.battle.startBots": "Start Standard Battle",
   "garage.battle.menuAria": "Battle setup",
   "garage.battle.menuTypeBots": "Standard Battle. Change battle setup",
+  "garage.battle.quickChoose": "Choose mode and battlefield",
   "garage.battle.typePrivate": "Private room",
   "garage.battle.typeLan": "Local network",
   "garage.battle.sectors": "Sectors",

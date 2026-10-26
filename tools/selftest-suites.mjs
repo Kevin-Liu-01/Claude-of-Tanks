@@ -2356,6 +2356,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
+    'src/ui/garageBattleQuick.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
