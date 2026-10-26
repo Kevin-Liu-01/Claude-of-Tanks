@@ -1273,8 +1273,17 @@ function* createFxSteps(
   // (destruction-slabs 227 round 4; the round-3 critics: "phones get none of the round-3 hanging fix") the phone keeps the
   // kit's holes, falls and heaps but has what they leave hanging come down too: the stages' sweep alone (a third of the
   // desktop's work a frame, in steps a third the size) and a small pool for what it drops
+  // (battle-spikes-253) the struck buildings' redrawn faces, rooms and heaps stand still between strikes: a static subtree
+  // of the fx group (shadowStaticCache.ts staticShadowNest), so their shadows come from the cached layer instead of a
+  // draw a cascade a frame (fx-fracture-face: 158 shadow draws a frame at Urban 14v14)
+  const settledFracture = new THREE.Group();
+  settledFracture.name = 'fx-settled';
+  settledFracture.matrixAutoUpdate = false;
+  settledFracture.userData.staticShadowRoot = true;
+  group.add(settledFracture);
+  group.userData.staticShadowNest = true;
   const fractureStages: FractureStages | null = createFractureStages({
-    group, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
+    group, settled: settledFracture, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
     materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
     onLanding: pieceLanding,
     onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
