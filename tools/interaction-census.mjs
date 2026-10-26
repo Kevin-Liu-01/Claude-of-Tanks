@@ -8,7 +8,8 @@
 //   the registry id it stamps as data-picker;
 // - select: a raw <select> in markup, or one made by a call (document.createElement('select'), el('select'));
 // - custom-select: a createCustomSelect() dropdown (the pre-Premiere select skin);
-// - segmented: a hand-built .cot-c-seg radio group (the kit's look without the kit's builder);
+// - segmented: the kit's segmented control, made by its builder (segmented({ className })) and keyed by its own class,
+//   or a hand-built .cot-c-seg radio group (the kit's look without the kit's builder);
 // - radio-group, listbox: a hand-built radiogroup or listbox;
 // - bespoke: a hand-rolled selection, where the chosen state is written by comparing each item with the current value
 //   (aria-pressed/checked/selected or a .sel/.on class set from `a === b`), keyed by what it compares.
@@ -124,6 +125,11 @@ export function scanSource(path, raw) {
     const literal = /\bid:\s*['"`]([\w-]+)['"`]/.exec(head)?.[1];
     if (!literal && match[1] === 'createPicker' && consumer) continue;
     add('picker', literal ?? /\bid:\s*([\w$.]+)/.exec(head)?.[1], match.index);
+  }
+  for (const match of text.matchAll(/\bsegmented\(\s*\{/g)) {
+    const head = text.slice(match.index, match.index + 600);
+    const own = /\bclassName:\s*['"`]([\w-]+)/.exec(head)?.[1];
+    add('segmented', own ? `.${own}` : null, match.index);
   }
   for (const match of text.matchAll(/<select\b/g)) add('select', tagKey(tagAt(text, match.index)), match.index);
   // a <select> made by a call: document.createElement('select'), or a module's own el('select', …) / node('select')

@@ -4,6 +4,7 @@ import { pickerText } from './pickerText.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
+import { segmented, setRoving, wireRoving } from './components/components.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
@@ -370,7 +371,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
-.cot-play :is([data-field='create-size'],[data-control='size']) :is([data-select-value],.menu-select-option),
+.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
 .cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}
@@ -406,9 +407,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-option-copy small,.cot-play .menu-select-trigger-copy small{color:var(--ink-3);
   font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui)}
 /* a seat's team: alpha in the own-team blue and bravo in the enemy red, as the roster draws them */
-.cot-play :is(.menu-select-mark,.team-mark){display:inline-block;width:8px;height:8px;flex:0 0 8px;border:1.5px solid var(--team-neutral);border-radius:50%;background:none}
-.cot-play :is(.menu-select-mark,.team-mark).alpha{border:0;background:var(--team-own)}
-.cot-play :is(.menu-select-mark,.team-mark).bravo{border:0;border-radius:1px;background:var(--team-enemy);transform:rotate(45deg) scale(.85)}
+.cot-play .team-mark{display:inline-block;width:8px;height:8px;flex:0 0 8px;border:1.5px solid var(--team-neutral);border-radius:50%;background:none}
+.cot-play .team-mark.alpha{border:0;background:var(--team-own)}
+.cot-play .team-mark.bravo{border:0;border-radius:1px;background:var(--team-enemy);transform:rotate(45deg) scale(.85)}
 .cot-play .player .team{display:inline-flex;align-items:center;gap:var(--s2)}
 .cot-play .menu-select--map .menu-select-trigger,.cot-play .menu-select--vehicle .menu-select-trigger{min-height:44px;padding-left:var(--s1)}
 .cot-play .menu-select-thumb{position:relative;display:block;width:60px;height:34px;flex:0 0 60px;overflow:hidden;border-radius:2px;
@@ -429,7 +430,6 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play button[data-action="ready"]{min-height:44px}
 .cot-play .status{margin-top:var(--s3);scroll-margin-block:var(--s6)}
 .cot-play .status.is-empty{height:0;min-height:0;margin:0;padding:0;overflow:hidden;background:none;box-shadow:none}
-.cot-play .status-legacy{min-height:18px;margin-top:var(--s3);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .status.err{color:var(--text-danger)}.cot-play .status[hidden]{display:none}
 
 /* the lobby */
@@ -441,7 +441,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .roomhead>.action{align-self:center}
 .cot-play .seats-count{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data)}
 .cot-play .code{color:var(--ink-1);font:700 var(--fs-28)/1 var(--font-data);letter-spacing:.18em}
-.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));column-gap:var(--s3);min-height:108px;
+.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr);column-gap:var(--s3);min-height:108px;
   margin-top:var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-art{position:relative;min-height:108px;overflow:hidden;background:var(--surface-page) center/cover no-repeat padding-box;
   border-right:1px solid var(--line-1)}
@@ -449,14 +449,15 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-page)}
 .cot-play .battlefield-art.is-random .random-map-mosaic{display:grid}
 .cot-play .battlefield-art .random-map-tile{display:block;min-width:0;background:center/cover no-repeat}
-/* the battlefield picker opens under the card's words, in the picture's place: its preview is the picture */
+/* the battlefield picker opens under the card's words, in the picture's place: its preview is the picture. A short
+   screen keeps it under the sticky head (112 px: the sheet's edge, the head and the panel's foot) */
 .cot-play .battlefield-card.picking{grid-template-columns:minmax(0,1fr)}
 .cot-play .battlefield-card.picking .battlefield-art{display:none}
 .cot-play .battlefield-card.picking .battlefield-copy{grid-column:1 / -1;padding-left:var(--s4)}
-.cot-play .battlefield-pick{box-sizing:border-box;height:clamp(340px,52vh,520px);margin-top:var(--s3);padding:var(--s4);border-radius:var(--plate-radius);
+.cot-play .battlefield-card.picking .format-field{display:none}
+.cot-play .battlefield-pick{box-sizing:border-box;height:min(clamp(340px,52vh,520px),calc(var(--cot-viewport-height,100dvh) - 112px));margin-top:var(--s3);padding:var(--s4);border-radius:var(--plate-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-pick[hidden]{display:none}
-.cot-play:where(:has(.control-options>.field[hidden])) .battlefield-card{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
@@ -466,7 +467,7 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
   box-shadow:var(--ring-1);font-size:max(var(--fs-floor-12),var(--fs-12));
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 /* a co-op room has every player on one side: their team words would repeat down the roster, so only a spectator's show */
-.cot-play:where(:has(.control-options>.field[hidden])) .player:not(.spectator) .team{visibility:hidden}
+.cot-play.coop .player:not(.spectator) .team{visibility:hidden}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
@@ -487,10 +488,15 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .controls{display:grid;gap:var(--s3);margin-top:var(--s3)}
 .cot-play .lobby.show .controls{position:sticky;bottom:calc(-1 * var(--s5));z-index:4;margin:var(--s3) calc(-1 * var(--s5)) 0;
   padding:var(--s4) var(--s5);background:var(--play-plate);border-top:1px solid var(--line-2)}
-.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:var(--s3);align-items:end}
+.cot-play .control-options{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr);gap:var(--s3);align-items:end}
 .cot-play .control-options .field{width:auto;min-width:0}
-.cot-play .control-options .field[hidden]{display:none}
-.cot-play .control-options:has(>.field[hidden]){grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.cot-play .format-field[hidden]{display:none}
+/* a room's small settings (battle format, deployment) are the kit's segmented control, as wide as their field and as
+   tall as its other controls; a guest still reads the format the host chose */
+.cot-play :is(.create-size,.room-size,.room-team){display:flex;width:100%}
+.cot-play :is(.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
+.cot-play :is(.room-size,.room-team) .cot-c-seg__opt[aria-checked=true]:disabled{color:var(--ink-2)}
+.cot-play .start-count{margin-left:var(--s2);font-family:var(--font-data);letter-spacing:normal}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
 .cot-play .control-actions .leave-room{margin-right:auto}
@@ -546,9 +552,7 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-hea
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .close{top:var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.show .controls{
   margin:var(--s3) calc(-1 * var(--s4)) 0;padding:var(--s3) var(--s4) var(--s4)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:repeat(2,minmax(0,1fr))}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options .vehicle-field{grid-column:1/-1}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options:has(>.field[hidden])>.field{grid-column:1/-1}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:minmax(0,1fr)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s4)}
@@ -763,6 +767,44 @@ function bindMenuSelect(
   return { close, positionList };
 }
 
+/** The battle formats a room offers (players a side), as the kit's segmented options. */
+function roomSizeOptions(): { value: string; label: string }[] {
+  return ['1', '2', '3', '5', '7'].map((size) => ({ value: size, label: t('playMenu.sizeFormat', { size }) }));
+}
+
+/**
+ * A room setting of two to five values on the kit's segmented control (components.ts segmented, wireRoving, setRoving;
+ * INTERACTION-REDESIGN.md line 1): the group answers `value` and `disabled` as the room's dropdowns did, and a press
+ * or an arrow dispatches `change`.
+ */
+function bindSegmentedSetting(group: MenuSelectElement): void {
+  const options = [...group.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+  let disabled = false;
+  Object.defineProperty(group, 'value', {
+    configurable: true,
+    get: () => group.dataset.value ?? '',
+    set: (next: RuntimeValue) => {
+      if (!options.some((option) => option.dataset.value === String(next))) return;
+      group.dataset.value = String(next);
+      setRoving(group, group.dataset.value);
+    },
+  });
+  Object.defineProperty(group, 'disabled', {
+    configurable: true,
+    get: () => disabled,
+    set: (next: RuntimeValue) => {
+      disabled = !!next;
+      group.setAttribute('aria-disabled', String(disabled));
+      for (const option of options) option.disabled = disabled;
+    },
+  });
+  wireRoving(group, (value) => {
+    if (value === group.dataset.value) return;
+    group.dataset.value = value;
+    group.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 /**
  * The room host of this deployment (src/mp/session/endpoint.ts): the rooms Worker named by the build or the
  * official site, the LAN helper on a local host, null when this origin names none (a misconfigured value counts
@@ -865,19 +907,8 @@ export function createPlayMenu({
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
         <div class="room-action"><div class="room-action-head"><b>${t('playMenu.create.title')}</b></div>
-          <div class="room-action-fields"><div class="field"><span class="field-label" id="cot-create-size-label">${t('playMenu.advanced.size')}</span>
-            <div class="menu-select" data-field="create-size" data-value="2">
-              <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
-                aria-controls="cot-create-size-list" aria-labelledby="cot-create-size-label cot-create-size-value">
-                <span id="cot-create-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 2 })}</span></button>
-              <div class="menu-select-list" id="cot-create-size-list" role="listbox" aria-labelledby="cot-create-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 1 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 2 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
-              </div>
-            </div></div>
+          <div class="room-action-fields"><div class="field"><span class="field-label">${t('playMenu.advanced.size')}</span>
+            ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '2', className: 'create-size', attrs: { 'data-field': 'create-size', 'data-value': '2' } })}</div>
             <button class="action cot-c-btn cot-c-btn--primary" data-action="create" type="button">${t('playMenu.create.action')}</button></div></div>
         <div class="room-action"><div class="room-action-head"><b>${t('playMenu.join.title')}</b></div>
           <div class="room-action-fields"><label>${t('playMenu.join.code')}<input class="code-input" lang="en" data-field="code" maxlength="6"
@@ -908,7 +939,9 @@ export function createPlayMenu({
             </div>
             <label class="operation-picker" data-operation-field hidden><span class="field-label">${t('playMenu.operation.label')}</span>
               <select data-control="operation"><option value="">${t('playMenu.operation.free')}</option>${CAMPAIGN_OPERATIONS.map((operation) =>
-                `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div></div></div>
+                `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div>
+          <div class="field format-field"><span class="field-label">${t('playMenu.advanced.size')}</span>
+            ${segmented({ label: t('playMenu.advanced.size'), options: roomSizeOptions(), value: '1', className: 'room-size', attrs: { 'data-control': 'size', 'data-value': '1' } })}</div></div></div>
       <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
       <div class="players"></div><div class="controls">
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
@@ -920,32 +953,12 @@ export function createPlayMenu({
                 <small data-select-meta>${t('playMenu.advanced.vehicleDesc')}</small></span></button>
             <div class="menu-select-list" id="cot-room-vehicle-list" role="listbox" aria-labelledby="cot-room-vehicle-label"></div>
           </div></div>
-        <div class="field"><span class="field-label" id="cot-room-team-label">${t('playMenu.deployment')}</span>
-          <div class="menu-select" data-control="team" data-value="alpha">
-            <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
-              aria-controls="cot-room-team-list" aria-labelledby="cot-room-team-label cot-room-team-value">
-              <span id="cot-room-team-value" data-select-value>${t('playMenu.team.alpha')}</span></button>
-            <div class="menu-select-list" id="cot-room-team-list" role="listbox" aria-labelledby="cot-room-team-label">
-              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="${t('playMenu.team.alpha')}" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>${t('playMenu.team.alpha')}</button>
-              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="${t('playMenu.team.bravo')}" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>${t('playMenu.team.bravo')}</button>
-              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="${t('playMenu.team.spectator')}" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>${t('playMenu.team.spectator')}</button>
-            </div></div></div>
-          <div class="field"><span class="field-label" id="cot-room-size-label">${t('playMenu.advanced.size')}</span>
-            <div class="menu-select" data-control="size" data-value="1">
-              <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
-                aria-controls="cot-room-size-list" aria-labelledby="cot-room-size-label cot-room-size-value">
-                <span id="cot-room-size-value" data-select-value>${t('playMenu.sizeFormat', { size: 1 })}</span></button>
-              <div class="menu-select-list" id="cot-room-size-list" role="listbox" aria-labelledby="cot-room-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="${t('playMenu.sizeFormat', { size: 1 })}" aria-selected="true">${t('playMenu.sizeFormat', { size: 1 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="${t('playMenu.sizeFormat', { size: 2 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 2 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="${t('playMenu.sizeFormat', { size: 3 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 3 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="${t('playMenu.sizeFormat', { size: 5 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 5 })}</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="${t('playMenu.sizeFormat', { size: 7 })}" aria-selected="false">${t('playMenu.sizeFormat', { size: 7 })}</button>
-              </div></div></div></div>
+        <div class="field"><span class="field-label">${t('playMenu.deployment')}</span>
+          ${segmented({ label: t('playMenu.deployment'), options: (['alpha', 'bravo', 'spectator'] as const).map((team) => ({ value: team, label: lobbyTeamLabel(team) })), value: 'alpha', className: 'room-team', attrs: { 'data-control': 'team', 'data-value': 'alpha' } })}</div></div>
         <div class="control-actions"><button class="action alt leave-room cot-c-btn" data-action="leave" type="button">${t('playMenu.leave')}</button>
           <button class="action alt cot-c-btn" data-action="ready" type="button">${t('playMenu.ready.iAmReady')}</button>
           <button class="action cot-c-btn cot-c-btn--primary" data-action="rejoin" type="button" hidden>${t('playMenu.rejoin')}</button>
-          <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}</button></div>
+          <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}<span class="start-count" data-start-count></span></button></div>
       </div><div class="note"></div>
     </div></section>
     <details class="room-rules"><summary>${t('playMenu.roomRules')}${uiIconSVG('chevronRight', 16)}<span data-selected-rule${datumAttr('mode-name')}></span></summary>
@@ -1066,10 +1079,14 @@ export function createPlayMenu({
     menuBindings.push(binding);
     return controller;
   }
-  bindRoomMenu(createSizeSelect);
   bindRoomMenu(vehicleSelect);
-  bindRoomMenu(teamSelect);
-  bindRoomMenu(sizeSelect);
+  for (const setting of [createSizeSelect, teamSelect, sizeSelect]) bindSegmentedSetting(setting);
+  // a deployment wears its team's mark, as the roster draws it
+  for (const option of teamSelect.querySelectorAll<HTMLElement>('[data-value]')) {
+    const mark = document.createElement('i');
+    mark.className = `team-mark ${option.dataset.value}`;
+    option.prepend(mark);
+  }
   const battlefieldCard = requiredElement<HTMLElement>(root, '.battlefield-card');
   // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
   // the host's battlefield trigger opens it in the card's place, its preview standing for the card's picture. One press
@@ -1152,14 +1169,18 @@ export function createPlayMenu({
     battlefieldPicker.focus();
   }
   /** The opened picker in the panel's view: the battlefield card at the top under the sticky head, the picker under it
-   *  clear of the sticky foot (the grid shows the chosen card itself). */
+   *  clear of the sticky foot (the grid shows the chosen card itself). A short screen holds the picker alone: it takes
+   *  the view, its preview standing for the card (Rooms r25). */
   function revealBattlefieldPick(): void {
     const panel = battlefieldCard.closest<HTMLElement>('.panel');
     if (!panel) return;
     const head = panel.querySelector<HTMLElement>('.play-head');
     const sticky = head && getComputedStyle(head).position === 'sticky' ? head.offsetHeight : 0;
-    const top = battlefieldCard.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - sticky - 12;
-    panel.scrollTop = Math.max(0, top);
+    const origin = panel.getBoundingClientRect().top - panel.scrollTop + sticky + 12;
+    const card = battlefieldCard.getBoundingClientRect().top - origin;
+    const pick = battlefieldPick.getBoundingClientRect();
+    const both = pick.bottom - origin - card <= panel.clientHeight - sticky - 12;
+    panel.scrollTop = Math.max(0, both ? card : pick.top - origin);
   }
   battlefieldPick.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1178,6 +1199,7 @@ export function createPlayMenu({
   const seatsEl = requiredElement<HTMLElement>(root, '[data-seats]');
   const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
   const startBtn = requiredElement<HTMLButtonElement>(root, '[data-action="start"]');
+  const startCount = requiredElement<HTMLElement>(startBtn, '[data-start-count]');
   const rejoinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="rejoin"]');
   const versionBanner = requiredElement<HTMLElement>(root, '.version-refusal');
   const versionText = requiredElement<HTMLElement>(versionBanner, '[data-version-text]');
@@ -1791,15 +1813,20 @@ export function createPlayMenu({
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting'
       || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
-    sizeSelect.closest<HTMLElement>('.field')!.hidden = isCoopGameMode(next.gameMode);
+    // a co-op room has one side: no format to choose, and the roster's team words would only repeat
+    const coop = isCoopGameMode(next.gameMode);
+    sizeSelect.closest<HTMLElement>('.field')!.hidden = coop;
+    root.classList.toggle('coop', coop);
     startBtn.style.display = role === 'host' ? '' : 'none';
     rejoinBtn.hidden = !canRejoinBattle(next) || !!versionRefusal;
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
-    const everyoneReady = activePlayers.length > 0 &&
-      activePlayers.every((candidate) => candidate.ready && candidate.specId);
-    const canStart = role === 'host' && next.phase === 'waiting' && everyoneReady;
+    const readyCount = activePlayers.filter((candidate) => candidate.ready && candidate.specId).length;
+    const canStart = role === 'host' && next.phase === 'waiting' && activePlayers.length > 0 && readyCount === activePlayers.length;
     startBtn.disabled = !canStart;
     startBtn.classList.toggle('can-start', canStart);
+    // Start counts the ready seats, so a Start that waits shows what it waits on
+    startCount.textContent = `${readyCount}/${activePlayers.length}`;
+    startBtn.setAttribute('aria-label', t('playMenu.startReady', { ready: readyCount, total: activePlayers.length }));
   }
 
   function markMissingVehicleIcon(event: Event): void {
@@ -1883,8 +1910,7 @@ export function createPlayMenu({
         : t('playMenu.note.botFill', { size: next.teamSize || 1 });
     note.textContent = fillNote;
     // the room's fill rule is the Battle format picker's hover tip
-    const sizeTrigger = sizeSelect.querySelector<HTMLElement>('[data-select-trigger]');
-    if (sizeTrigger) sizeTrigger.dataset.tip = fillNote;
+    sizeSelect.dataset.tip = fillNote;
   }
 
   function renderLobby(next: SerializedLobby): void {
@@ -2085,7 +2111,7 @@ export function createPlayMenu({
       await navigator.clipboard.writeText(inviteUrl);
       setStatus(t('playMenu.invite.copied'));
     } catch {
-      setStatus(`Invite link: ${inviteUrl}`);
+      setStatus(t('playMenu.invite.link', { url: inviteUrl }));
     }
   });
   teamSelect.addEventListener('change', () => command({ type: 'set_team', team: teamSelect.value }));
@@ -2175,7 +2201,8 @@ export function createPlayMenu({
     revealMenu();
     selectMode(normalizePlayMode(initialMode || 'private'));
     panel.scrollTop = 0;
-    if (failurePanel.hidden) closeBtn.focus({ preventScroll: true });
+    // a keyboard opens on the room code (type it, Enter joins); a touch screen keeps its keyboard down until asked
+    if (failurePanel.hidden) (matchMedia('(pointer: fine)').matches ? codeInput : closeBtn).focus({ preventScroll: true });
     const inviteCode = normalizeRoomCode(invite?.roomCode);
     if (!invite?.autoJoin || session || connecting) return;
     if (inviteCode.length !== 6) {
