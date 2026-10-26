@@ -717,6 +717,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
     'src/vehicles/frontEraPackages.selftest.mjs',
+    'src/vehicles/profiles/eraModuleKit.selftest.mjs',
     // 2026-10-21 (release 230, UA/PL round 11): the three ids' main gun over their own hulls with the shallower mantlet
     // chin and the gun-depression lane's curves (the barrel 25 mm, the mount 20 mm off the hull at every yaw)
     'src/vehicles/nationalGunMantlet.selftest.mjs',
