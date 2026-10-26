@@ -55692,24 +55692,24 @@
         "caliberMm": 120,
         "shells": [
           {
-            "name": "CL3143 APFSDS",
+            "name": "DM73 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 684,
-            "pen1000Mm": 622,
-            "pen2000Mm": 560
+            "pen100Mm": 794,
+            "pen1000Mm": 722,
+            "pen2000Mm": 650
           },
           {
-            "name": "DM12A1 HEAT-MP",
+            "name": "DM12B HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 625,
-            "pen1000Mm": 625,
+            "pen100Mm": 650,
+            "pen1000Mm": 650,
             "pen2000Mm": null
           },
           {
-            "name": "DM11 HE-FRAG",
+            "name": "DM11A1 Programmable",
             "type": "HE",
-            "pen100Mm": 55,
-            "pen1000Mm": 55,
+            "pen100Mm": 65,
+            "pen1000Mm": 65,
             "pen2000Mm": null
           }
         ]
@@ -77428,7 +77428,7 @@
         ]
       },
       "geometryHash": "1569860d",
-      "metadataHash": "0786cbd7",
+      "metadataHash": "253da164",
       "presentationAnchor": {
         "xM": -0.0014,
         "zM": 0.0456

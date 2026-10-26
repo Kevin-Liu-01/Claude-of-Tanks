@@ -411,8 +411,9 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   251 tier-8 rounds, are trimmed; the Mk 10, its second-wave rebuild, keeps its cycle and hull. The C1 pre-series
  *   takes the Chieftain's round.
  * - Tier VII: the C2 Ariete pair brought Tier X armour (the 251 table) down to VII and is trimmed to it. The C2 keeps
- *   its cadence over the C1 (arieteModernSpecs); the prototype cycles slower. The T-72B3 Sich's weaker donor hull, the
- *   Husarz and the Wilk take hull.
+ *   its cadence over the C1 (arieteModernSpecs) and fires its prototype's rounds, so the Hetmans' Relikt cheeks no
+ *   longer shut it out; the prototype cycles slower. The T-72B3 Sich's weaker donor hull takes hull and a quicker
+ *   autoloader; the Husarz and the Wilk take hull.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
@@ -427,7 +428,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
   spec(registry, 't80b').gun.aimTimeS = 1.85;
   for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
-  cannonReload(registry, 't80b', 6.4);
+  cannonReload(registry, 't80b', 6.2);
   cannonReload(registry, 'pt91m', 6.0);
   // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round
   turretFront(registry, 'fv4034', 0.85);
@@ -449,10 +450,16 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier VII: the C2 Ariete pair against the modernized T-72B3/T-80U line
   armor(registry, 'c2_ariete', 0.65);
   spec(registry, 'c2_ariete').hp = 2400;
+  // the C2 fires its prototype's rounds (Main ruling 2026-10-26: the 120/44 takes standard NATO rounds and no new-round
+  // procurement is named; arieteModernSpecs.selftest cites it). Copied before the prototype's cadence below, so the C2
+  // keeps its own 5.4 s cycle.
+  spec(registry, 'c2_ariete').gun.shells = structuredClone(spec(registry, 'c2_ariete_proto').gun.shells);
   cannonReload(registry, 'c2_ariete_proto', 6.3);
   spec(registry, 'c2_ariete_proto').gun.aimTimeS = 1.6;
   armor(registry, 'c2_ariete_proto', 0.7);
   spec(registry, 't72b3_sich').hp = 2850;
+  // the gun's cadence only: its rounds stay the T-90SM's (ammunitionFlow) and carry none of their own
+  spec(registry, 't72b3_sich').gun.reloadS = 6.0;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
 }
 
