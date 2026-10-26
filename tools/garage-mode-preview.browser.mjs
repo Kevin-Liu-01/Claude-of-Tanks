@@ -8,7 +8,7 @@ const out=resolve('.qa-dev/garage-mode-preview');mkdirSync(out,{recursive:true})
 const lock=createCaptureLock();let heartbeat;const timings=[];
 async function selectMode(page,mode){
  await page.click('.cot-battle-mode');
- const selector=mode==='standard'?'.cot-battle-menu [data-mode="solo"]':`.cot-battle-menu [data-game-mode="${mode}"]`;
+ const selector=`.cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`;
  const choice=await page.waitForSelector(selector,{visible:true});
  await choice.scrollIntoView();await choice.click();await page.click('[data-battle-close]');
 }
@@ -52,7 +52,8 @@ try{
    }
    // Rapid menu choices must converge on the final selection without late effects.
    await page.click('.cot-battle-mode');
-   await page.evaluate(()=>{for(const mode of ['juggernaut','drone','capture_the_flag','infected'])document.querySelector(`[data-game-mode="${mode}"]`).click();});
+   await page.waitForSelector('[data-deploy-modes] .cot-c-picker__opt');
+   await page.evaluate(()=>{for(const mode of ['juggernaut','drone','capture_the_flag','infected'])document.querySelector(`[data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`).click();});
    await page.click('[data-battle-close]');
    await page.waitForFunction(fn=>{const s=(0,eval)(`(${fn})`)();return s&&!s.pending&&s.infected>0&&!s.flag&&!s.drone;},{timeout:30000},previewState.toString());
    if(!mobile){

@@ -14,7 +14,7 @@
     "src/ui/battleTimeChoices.css": {"layout":0,"paint":0,"colour":2,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/components/components.css": {"layout":0,"paint":0,"colour":3,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/contextInfo.ts": {"layout":0,"paint":0,"colour":2,"duration":0,"reduced":0,"raf":0,"raster":0},
-    "src/ui/garage.css": {"layout":0,"paint":0,"colour":43,"duration":0,"reduced":0,"raf":0,"raster":0},
+    "src/ui/garage.css": {"layout":0,"paint":0,"colour":41,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/garageFacetPanel.css": {"layout":0,"paint":0,"colour":9,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/modal.ts": {"layout":0,"paint":0,"colour":4,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/playMenu.ts": {"layout":0,"paint":0,"colour":11,"duration":0,"reduced":0,"raf":0,"raster":0},

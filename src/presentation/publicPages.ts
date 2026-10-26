@@ -28,8 +28,15 @@ const savingData = (): boolean => {
 type MediaPlayerModule = typeof import('./mediaPlayer.ts');
 let media: MediaPlayerModule | null = null;
 const pageVideos = document.querySelectorAll<HTMLVideoElement>('video[data-media-player], video[data-autoplay-video]');
+/** A video's name in the page's language: its catalog key with its own variables (a matchup's vehicles), else its label. */
+function videoName(video: HTMLVideoElement): string {
+  if (!video.dataset.i18nLabel) return video.dataset.label || '';
+  let vars: Record<string, string> | undefined;
+  try { vars = video.dataset.i18nVars ? JSON.parse(video.dataset.i18nVars) as Record<string, string> : undefined; } catch { vars = undefined; }
+  return t(video.dataset.i18nLabel, vars);
+}
 const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(playing ? 'publicPages.video.pauseAria'
-  : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' });
+  : 'publicPages.video.playAria', { label: videoName(video) });
 const videoTips = (playing: boolean): string => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip');
 if (pageVideos.length) {
   void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {

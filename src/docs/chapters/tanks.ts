@@ -62,7 +62,7 @@ function rolesSection(): string {
     return `<li>${icon(ROLE_ICONS[role] ?? 'team', { size: 20 })}<div><b>${nameHtml(vehicleFacetLabel(meta, t))}</b><span>${count}</span>`
       + `${meta.hintKey ? `<p>${esc(t(meta.hintKey))}</p>` : ''}</div></li>`;
   }).join('');
-  return `<p>${esc(t('docs.tanks.rolesLede'))}</p><ul class="dm-roles">${items}</ul>`;
+  return `<p>${esc(t('docs.tanks.rolesLede'))}</p><ul class="dm-roles dm-roles--counts">${items}</ul>`;
 }
 
 /** Tiers as bars drawn to one scale (the count each bar names is the count it reaches). */
