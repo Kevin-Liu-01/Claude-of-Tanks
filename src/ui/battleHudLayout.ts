@@ -394,9 +394,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const shown = node && !node.classList?.contains('quiet') ? node : null;
     const key = `${width}x${height}|${shown?.dataset.mode}`;
     if (shown && touch && width > height && height <= OBJECTIVE_COMPACT_H && map && map.left < width / 2 && key !== objectiveTopKey) {
-      const seatWidth = Math.max(map.width, PARKED_CHIP_W);
-      const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
+      // (the map's width, so the plate and the map are one column: at the parked chip's 106 px the plate overhung the 84 px
+      // map by 22 px at 568x256, gauntlet r13; the chip's width only where a word of the copy does not fit the map's)
+      const seatAt = (seatWidth: number) => ({ left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth });
+      let place = seatAt(map.width);
       writeObjective('side', place);
+      if (shown.scrollWidth > shown.clientWidth + 2 && map.width < PARKED_CHIP_W) {
+        place = seatAt(PARKED_CHIP_W);
+        writeObjective('side', place);
+      }
       // (and over a flight's console: the gunship's weapon cards stood 2.5 px under it at 568x256, gauntlet r11)
       const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
         read('.cot-flight-hud:not([hidden]) .flight-console')?.top ?? height, height) - 8;
