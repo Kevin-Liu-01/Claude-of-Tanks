@@ -279,8 +279,9 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.filming.s8.t'), t('docs.topic.filming.s8.p1'), t('docs.topic.filming.s8.p2')],
       [t('docs.topic.filming.s9.t'), t('docs.topic.filming.s9.p1'), t('docs.topic.filming.s9.p2')],
       [t('docs.topic.filming.s10.t'), t('docs.topic.filming.s10.p1'), t('docs.topic.filming.s10.p2')],
-      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts
-      [t('docs.topic.filming.s11.t'), t('docs.topic.filming.s11.p1')],
+      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts (its tabs name its collections, so the
+      // section carries no paragraph of its own)
+      [t('docs.topic.filming.s11.t')],
     ],
     media: [
       ['/media/filming-r1/previz-sheet.webp', t('docs.topic.filming.media1')],
