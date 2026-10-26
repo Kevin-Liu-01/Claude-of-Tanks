@@ -4261,7 +4261,6 @@
   "hud.ribbon.multi.2": "双杀",
   "hud.ribbon.multi.3": "三杀",
   "hud.ribbon.multi.4": "连杀",
-  "hud.mission.ping": "{ms} 毫秒",
   "hud.target.range": "{m} 米",
   "endScreen.finalBlow.ammorack": "{attacker} 引爆了 {target} 的弹药架",
   "endScreen.survivors": "幸存车辆",

@@ -76,6 +76,44 @@
       "where": "/brand/partners/general-translation.png",
       "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
       "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 30 x 30 CSS px in the Garage language credit (3.2x the box, crisp to DPR 3)."
+    },
+    {
+      "rule": "duration",
+      "file": "src/ui/hud.ts",
+      "where": ".cot-prebattle .n.tick~.ring .arc",
+      "reason": "The pre-battle countdown's ring drains over each second of the count (hud.ts preBattleCountdown): its one second is the count's, not a motion step. Reduced motion stops it (hud.ts @media prefers-reduced-motion).",
+      "measured": "Painted box: the dial's ring is 150 px across at its full scale (1920x1080 and up), 61 to 135 px where the dial yields or shrinks (mouseNoticePlan.ts, countdownPlace.ts); one SVG, no layer of its own, no layout (the dial is position:absolute)."
+    },
+    {
+      "rule": "duration",
+      "file": "src/ui/hud.ts",
+      "where": ".cot-prebattle .n.tick-alt~.ring .arc",
+      "reason": "The pre-battle countdown's ring drains over each second of the count (hud.ts preBattleCountdown): its one second is the count's, not a motion step. Reduced motion stops it (hud.ts @media prefers-reduced-motion).",
+      "measured": "Painted box: the dial's ring is 150 px across at its full scale (1920x1080 and up), 61 to 135 px where the dial yields or shrinks (mouseNoticePlan.ts, countdownPlace.ts); one SVG, no layer of its own, no layout (the dial is position:absolute)."
+    },
+    {
+      "rule": "paint",
+      "file": "src/ui/hud.ts",
+      "where": "@keyframes cot-pb-drain",
+      "property": "stroke-dashoffset",
+      "reason": "The pre-battle countdown's ring (an inline SVG arc on the dial) drains, alternates and chases by its dash offset; the dial is the countdown's whole face, shown for the five seconds before the roll-out, and nothing else repaints with it. Reduced motion stops it.",
+      "measured": "Painted box: the dial's ring is 150 px across at its full scale (1920x1080 and up), 61 to 135 px where the dial yields or shrinks (mouseNoticePlan.ts, countdownPlace.ts); one SVG, no layer of its own, no layout (the dial is position:absolute)."
+    },
+    {
+      "rule": "paint",
+      "file": "src/ui/hud.ts",
+      "where": "@keyframes cot-pb-drain-alt",
+      "property": "stroke-dashoffset",
+      "reason": "The pre-battle countdown's ring (an inline SVG arc on the dial) drains, alternates and chases by its dash offset; the dial is the countdown's whole face, shown for the five seconds before the roll-out, and nothing else repaints with it. Reduced motion stops it.",
+      "measured": "Painted box: the dial's ring is 150 px across at its full scale (1920x1080 and up), 61 to 135 px where the dial yields or shrinks (mouseNoticePlan.ts, countdownPlace.ts); one SVG, no layer of its own, no layout (the dial is position:absolute)."
+    },
+    {
+      "rule": "paint",
+      "file": "src/ui/hud.ts",
+      "where": "@keyframes cot-pb-chase",
+      "property": "stroke-dashoffset",
+      "reason": "The pre-battle countdown's ring (an inline SVG arc on the dial) drains, alternates and chases by its dash offset; the dial is the countdown's whole face, shown for the five seconds before the roll-out, and nothing else repaints with it. Reduced motion stops it.",
+      "measured": "Painted box: the dial's ring is 150 px across at its full scale (1920x1080 and up), 61 to 135 px where the dial yields or shrinks (mouseNoticePlan.ts, countdownPlace.ts); one SVG, no layer of its own, no layout (the dial is position:absolute)."
     }
   ]
 }
