@@ -3736,7 +3736,10 @@ export function initHud(bus: EventBus): HudRuntime {
     const enemyScore = horde
       ? (horde.total ? `${remaining} / ${horde.total}` : String(remaining))
       : Math.round(modeState.score?.[enemyTeam] || 0);
-    const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
+    // (integ 254) the Frontline's hostiles ride the plate (.fh), so a change in them alone redraws it (a wave spawning
+    // changed neither score nor tally, and the plate held 0 LEFT under "3 HOSTILES")
+    const frontlineAlive = modeState.id === 'frontline_assault' ? Math.round(modeState.horde?.alive || 0) : 0;
+    const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}|${frontlineAlive}`;
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
       fgEl.classList.toggle('wave', !!horde);
@@ -3759,7 +3762,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // (the Frontline's hostiles on the enemy side, shown where its objective drops them: battleHudLayout.css)
       const frontline = modeState.id === 'frontline_assault';
       topPlate.classList.toggle('frontline', frontline);
-      if (frontline) fhValueEl.textContent = String(Math.round(modeState.horde?.alive || 0));
+      if (frontline) fhValueEl.textContent = String(frontlineAlive);
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
