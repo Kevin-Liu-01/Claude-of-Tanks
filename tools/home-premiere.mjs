@@ -113,10 +113,16 @@ function modeMark(clip) {
   if (!mode) throw new Error(`home-premiere: ${clip.id} plays no known mode (manifest mode: ${clip.mode})`);
   return `<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}${t(`playMenu.matchMode.${clip.mode}.label`)}</span>`;
 }
-/** A reel clip's caption: the vehicles, the battlefield and the mode, stacked in one cell so the longest sets the box and
- *  a turn moves nothing. */
+/** Where and when a clip plays: its battlefield, its hour where the manifest names one (the catalog's atmosphere words),
+ *  and its mode. */
+function whereLine(clip) {
+  if (clip.hour && typeof EN[`atmosphere.${clip.hour}`] !== 'string') throw new Error(`home-premiere: ${clip.id} is filmed at an unknown hour ${clip.hour}`);
+  return `${t(`map.${clip.map}`)}${clip.hour ? t(`atmosphere.${clip.hour}`) : ''}${modeMark(clip)}`;
+}
+/** A reel clip's caption: the vehicles, then where and when, stacked in one cell so the longest sets the box and a turn
+ *  moves nothing. */
 const shotCaption = (clip, on) => `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">${matchup(clip.id, clip.tanks)}`
-  + `<span class="hero__where">${t(`map.${clip.map}`)}${modeMark(clip)}</span></span>`;
+  + `<span class="hero__where">${whereLine(clip)}</span></span>`;
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
 // a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
 const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
@@ -317,7 +323,7 @@ function clipsBlock() {
     const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}">${ladder(clip)}</video>`;
     return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
       + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
-      + `<span class="bento__where">${t(`map.${clip.map}`)}${modeMark(clip)}</span></a></figcaption></figure>`;
+      + `<span class="bento__where">${whereLine(clip)}</span></a></figcaption></figure>`;
   });
   return `<section class="bento bento--clips" aria-labelledby="clips-title"><div class="home-shell">`
     + bentoHead('clips-title', 'home.clips.title') + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
