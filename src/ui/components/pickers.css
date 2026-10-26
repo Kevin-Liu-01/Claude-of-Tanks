@@ -62,8 +62,6 @@
 .cot-c-picker--list .cot-c-picker__glyph~.cot-c-picker__facts{padding-left:calc(18px + var(--s2))}
 /* a fact never splits inside itself: whole facts wrap, and one longer than its row ends in an ellipsis */
 .cot-c-picker__facts>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* a fact or a rule line starts with a capital, as a name does ("Respawn in 6 s" beside "No sorties yet") */
-:is(.cot-c-picker__facts>span,.cot-mp__rules li)::first-letter{text-transform:uppercase}
 .cot-c-picker__facts span+span::before{content:'·';margin-right:var(--s2)}
 /* a favourite's star: the kit's square icon button in the picture's corner, 4 px in from it, while the card is pointed at
    or focused, and always once it is a favourite */

@@ -729,7 +729,8 @@ export function createPlayMenu({
    *  Frontline Assault's first fact is the campaign push. */
   const modeCards = (arrangementOf: (id: GameModeId) => TeamArrangement | null = (id) => readTeamArrangement(id)): ModeCard[] =>
     BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id]).sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) => {
-      const rules = ruleLines(rule.id, arrangementOf(rule.id));
+      // every rule line starts with a capital, wherever it stands ("Unlimited rounds · Respawn in 6 s"); zh has no case
+      const rules = ruleLines(rule.id, arrangementOf(rule.id)).map((line) => line.charAt(0).toLocaleUpperCase(getLocale()) + line.slice(1));
       return { id: rule.id, name: t(`playMenu.matchMode.${rule.id}.label`), glyph: rule.icon as IconId, tone: rule.id,
         facts: rule.id === 'frontline_assault' ? [frontlineProgressLabel(), ...rules.slice(0, 1)] : rules.slice(0, 2),
         description: t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id)), rules };
