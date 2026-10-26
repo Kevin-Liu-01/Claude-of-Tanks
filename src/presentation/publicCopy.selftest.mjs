@@ -123,7 +123,7 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
 const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'close', 'fullscreen', 'sound'];
 // the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place
-assert.match(homeSource, /data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="M4 2\.5h3v11H4zM9 2\.5h3v11H9z"\/>/, 'the reel\'s pause draws the player\'s glyph');
+assert.match(homeSource, /data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="M5 2\.5h1\.25v11H5zM9\.75 2\.5H11v11H9\.75z"\/>/, 'the reel\'s pause draws the player\'s glyph');
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }

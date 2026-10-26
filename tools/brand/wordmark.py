@@ -60,8 +60,33 @@ def svg(words, of, vb, ink, accent, label='Claude of Tanks'):
             f'<path fill="{ink}" d="{words}"/><path fill="{accent}" d="{of}"/></svg>\n')
 
 
+def centre_on_ink(part):
+    """The stacked card centres its lines on their ink, not on their advance boxes: a letter's side bearings (C's open
+    left, S's right) leave a line's ink off the layout's axis. Each line moves to the first line's ink centre, and the
+    "of" sits evenly between its rules, the pair centred on the same axis."""
+    lines = {}
+    for g in part['glyphs']:
+        b = glyph_path(g)[1]
+        lines.setdefault(round(g['baseline']), []).append((g, b))
+    ordered = [lines[k] for k in sorted(lines)]
+    ink = lambda line: (min(b[0] for _, b in line), max(b[2] for _, b in line))
+    first = ink(ordered[0])
+    axis = (first[0] + first[1]) / 2
+    for line in ordered[1:]:
+        lo, hi = ink(line)
+        dx = axis - (lo + hi) / 2
+        for g, _ in line:
+            g['x'] += dx
+        if line[0][0]['weight'] == 500 and len(part['rules']) == 2:
+            left, right = part['rules']
+            gap = (lo - (left['x'] + left['width']) + right['x'] - hi) / 2
+            left['x'] = axis - (hi - lo) / 2 - gap - left['width']
+            right['x'] = axis + (hi - lo) / 2 + gap
+    return part
+
+
 horizontal = build(layout['horizontal'])
-stacked = build(layout['stacked'])
+stacked = build(centre_on_ink(layout['stacked']))
 out = os.path.join(ROOT, 'public', 'brand')
 files = {
     'wordmark.svg': svg(*horizontal, PAPER, TUNGSTEN),
