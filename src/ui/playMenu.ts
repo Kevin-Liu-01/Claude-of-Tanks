@@ -2,7 +2,8 @@ import { createCustomSelect } from './customSelect.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
-import { createModePicker, type ModeCard, type ModePicker } from './modePicker.ts';
+import { createModePicker, modeRuleLines, type ModeCard, type ModePicker } from './modePicker.ts';
+import { battlefieldFacts } from './battlefieldFacts.ts';
 import type { IconId } from './icons/icon.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
@@ -67,7 +68,7 @@ import {
   type GameModeId,
 } from '../sim/gameModeCatalog.ts';
 import { isCoopGameMode } from '../mp/room/roomPolicy.ts';
-import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
+import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
@@ -237,7 +238,7 @@ const CSS = `
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
 .cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
-  --rules-col:max(320px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+  --rules-col:max(344px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -292,8 +293,8 @@ const CSS = `
 body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
-.cot-play .arrange-sides{margin-bottom:var(--s2)}
-.cot-play .arrange-sides-label{margin-right:var(--s1)}
+.cot-play .arrange-sides{margin-bottom:var(--s3)}
+.cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
 .cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
@@ -339,12 +340,12 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .field{display:grid;gap:var(--s2)}
 
 /* fields and the menu select */
-.cot-play :is(input,select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
+.cot-play :is(input:not(.cot-c-picker__search),select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
-.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,
+.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
 .cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}
@@ -385,6 +386,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
   padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .vehicle-pick[hidden]{display:none}
+/* the open vehicle picker would fill a stuck foot and leave the room a strip: the foot scrolls with the room instead,
+   the picker brought under the head (Rooms r30) */
+.cot-play .lobby.show .controls:has(>.vehicle-pick:not([hidden])){position:static}
 .cot-play .vehicle-pick{container-type:inline-size}
 .cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 @container (width < 420px){.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
@@ -486,7 +490,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* Ready is a toggle: pressed, it wears the selection */
 .cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
-.cot-play :is(.note,[data-arrange-note],.arrange-cap){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-play :is(.note,[data-arrange-note],.arrange-cap,.brain-note){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
@@ -713,14 +717,11 @@ export function createPlayMenu({
     return `<div class="campaign-heading"><b>${t('campaign.heading')}</b><span>${t('campaign.progress', { cleared: summary.cleared, total: summary.total })} · ${t('campaign.stars', { stars: summary.stars, max: summary.maxStars })}</span></div>
       <div class="ops" role="list">${cards}</div>`;
   };
-  // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated
-  // from the same table the sim reads, so the card can never promise a rule the battle does not keep
-  // team arrangement (2026-09-15): the card follows the player's arrangement, the nation reads as copy
-  const ruleLineValues = (line: { key: string; values: Readonly<Record<string, string>> }): Record<string, string> =>
-    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) }
-      : line.key === 'teamsMono' ? { scope: t(`rules.teams.scope.${line.values.scope}`) } : { ...line.values };
+  // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated from the same
+  // table the sim reads; the lines are modePicker.ts's modeRuleLines, one source with Deploy (team arrangement
+  // 2026-09-15: the card follows the player's arrangement, the nation reads as copy)
   const ruleLines = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string[] =>
-    rulesetLines(matchRulesetFor(id, null, arrangement)).map((line) => t(`rules.line.${line.key}`, ruleLineValues(line)));
+    modeRuleLines(id, arrangement);
   // the one presentation order (sim/gameModeCatalog.ts), as Deploy shows the modes
   const modeRank = (id: GameModeId): number => { const rank = (MODE_PRESENTATION_ORDER as readonly string[]).indexOf(id); return rank < 0 ? MODE_PRESENTATION_ORDER.length : rank; };
   /** The battle modes as the mode picker's cards (the practice modes launch from the Garage dossier and the Gallery, never
@@ -728,7 +729,8 @@ export function createPlayMenu({
    *  Frontline Assault's first fact is the campaign push. */
   const modeCards = (arrangementOf: (id: GameModeId) => TeamArrangement | null = (id) => readTeamArrangement(id)): ModeCard[] =>
     BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id]).sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) => {
-      const rules = ruleLines(rule.id, arrangementOf(rule.id));
+      // every rule line starts with a capital, wherever it stands ("Unlimited rounds · Respawn in 6 s"); zh has no case
+      const rules = ruleLines(rule.id, arrangementOf(rule.id)).map((line) => line.charAt(0).toLocaleUpperCase(getLocale()) + line.slice(1));
       return { id: rule.id, name: t(`playMenu.matchMode.${rule.id}.label`), glyph: rule.icon as IconId, tone: rule.id,
         facts: rule.id === 'frontline_assault' ? [frontlineProgressLabel(), ...rules.slice(0, 1)] : rules.slice(0, 2),
         description: t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id)), rules };
@@ -1049,8 +1051,14 @@ export function createPlayMenu({
   const battlefieldCards = (): BattlefieldCard[] => maps.map((map): BattlefieldCard => (map.id === 'random'
     ? { id: map.id, name: map.name, facts: [t('playMenu.map.battlefieldsCount', { count: maps.length - 1 })],
       media: { mosaic: maps.filter((other) => other.thumb).slice(0, 4).map((other) => other.thumb as string) } }
-    : { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-      media: { poster: map.thumb || map.hero || '' }, hero: map.hero || map.thumb, tags: [...mapRegionTags(map.id)] }));
+    : mapCard(map)));
+  /** A battlefield's card: its pictures from battlefieldFacts.ts (the media lane's stills, one source with Deploy), its
+   *  two landscapes as facts. */
+  function mapCard(map: PlayMenuMap): BattlefieldCard {
+    const poster = battlefieldFacts(map.id).poster;
+    return { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, tags: [...mapRegionTags(map.id)] };
+  }
   function closeBattlefieldPick(restoreFocus = false): void {
     if (battlefieldPick.hidden) return;
     battlefieldPick.hidden = true;
@@ -1347,6 +1355,8 @@ export function createPlayMenu({
   // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
   const brainSection = root.querySelector<HTMLElement>('[data-brain]')!;
   const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
+  // what Jev is, for a pointer, is the option's hover tip; screen readers keep the note
+  requiredElement<HTMLElement>(brainSeg, '[data-value="jev"]').dataset.tip = t('playMenu.brain.note');
   const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
@@ -1759,7 +1769,7 @@ export function createPlayMenu({
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
-      : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
+      : `url("${String(battlefieldFacts(selectedMap.id).poster.hero).replace(/"/g, '%22')}")`;
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;

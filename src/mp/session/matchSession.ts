@@ -87,6 +87,11 @@ export interface MatchSessionP2pOptions {
   maxPeers?: number;
   /** The countdown a fresh match starts with (5 s; the proofs shorten it). */
   countdownS?: number;
+  /**
+   * A solo battle on a local host (soloHostEntry.ts): the countdown stands until this page has revealed the battle
+   * (releaseCountdown), as a solo battle's begins when its player first sees the field.
+   */
+  holdCountdown?: boolean;
   /** The snapshot rate the host publishes at for the near tier (SNAPSHOT_HZ by default; a divisor of the tick rate — the soak compares 20 and 30). */
   snapshotHz?: number;
   /**
@@ -310,6 +315,10 @@ export class MatchSession {
     else this.pausable.resume();
     host.setPaused(paused);
     return true;
+  }
+  /** The page has revealed its solo battle: the countdown it held (p2p holdCountdown) starts now. */
+  releaseCountdown(): void {
+    this.host?.holdCountdown(false);
   }
   get matchHost(): MatchHost | null { return this.host; }
   /** The peer-to-peer facts, written in place on every read (the status model samples it). */
@@ -794,7 +803,7 @@ export class MatchSession {
       const plan = planHostBoot(round.room, payload, me);
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
-        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, resume: null,
+        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, ...(p2p.holdCountdown ? { holdCountdown: true } : {}), battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, resume: null,
         arrangement: round.room.settings.arrangement ?? null, campaignOperationId: round.room.settings.campaignOperationId ?? null,
         ...(p2p.snapshotHz !== undefined ? { snapshotHz: p2p.snapshotHz } : {}),
       };

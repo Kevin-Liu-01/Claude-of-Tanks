@@ -325,6 +325,54 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.equal(frame(f, cache).handled, false);
 }
 
+// ---------------------------------------------------------------------------------------------- nested static roots
+// (battle-spikes-253) a dynamic root's static subtrees (the fx group's settled rubble): their casters join the static
+// layer, the root's other children stay dynamic; the structure's epoch and the root's visibility re-render it
+{
+  const f = fixture();
+  const fx = new THREE.Group(); fx.name = 'fx'; fx.userData.staticShadowNest = true;
+  const settled = new THREE.Group(); settled.name = 'fx-settled'; settled.userData.staticShadowRoot = true;
+  const face = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  face.castShadow = true; face.name = 'fracture-face';
+  face.userData.cotShadowEpochOf = f.crate; // drawn under its structure's mask: the crate stands in for its spans
+  const body = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  body.castShadow = true; body.name = 'fracture-body';
+  settled.add(face);
+  fx.add(settled, body);
+  f.scene.add(fx);
+  assert.ok(isStaticShadowRoot(settled) && !isStaticShadowRoot(fx));
+  const cache = createShadowStaticCache();
+  settle(f, cache);
+  let r = frame(f, cache);
+  let [staticPass, dynamicPass] = renders(r.log);
+  assert.deepEqual(staticPass.drawn, ['terrain', 'trees', 'moored-hull', 'crate', 'fracture-face'], 'the settled rubble in the static layer');
+  assert.deepEqual(dynamicPass.drawn, ['tank-proxy', 'fracture-body'], 'the falling body stays dynamic');
+  for (const o of [fx, settled, face, body]) assert.equal(o.visible, true, `${o.name} restored`);
+  r = frame(f, cache);
+  assert.deepEqual(renders(r.log).map((e) => e.drawn), [['tank-proxy', 'fracture-body']], 'a still frame: the rubble from the copy');
+  // the structure's mask reshapes it (the seam bumps its spans' epoch): the face's static shadow is re-rendered
+  r = frame(f, cache, { mutate: () => { f.crate.userData.cotShadowEpoch = (f.crate.userData.cotShadowEpoch ?? 0) + 1; } });
+  assert.equal(renders(r.log).length, 2, 'its structure\'s epoch re-renders the static layer');
+  assert.equal(frame(f, cache).log.filter((e) => e.kind === 'render').length, 1, 'once');
+  // the fx root hidden (the killcam): the rubble's shadow goes with it, and comes back
+  r = frame(f, cache, { mutate: () => { fx.visible = false; } });
+  [staticPass] = renders(r.log);
+  assert.equal(renders(r.log).length, 2, 'hiding the fx root re-renders the static layer');
+  assert.ok(!staticPass.drawn.includes('fracture-face'), 'without the hidden rubble');
+  assert.equal(frame(f, cache).log.filter((e) => e.kind === 'render').length, 1);
+  r = frame(f, cache, { mutate: () => { fx.visible = true; } });
+  assert.ok(renders(r.log)[0].drawn.includes('fracture-face'), 'shown again, it is back in the static layer');
+  // the A/B switch: __SHADOW_DEBUG.noNestedRoots keeps the fx root whole and dynamic
+  globalThis.window = { __SHADOW_DEBUG: { noNestedRoots: true } };
+  try {
+    const plain = createShadowStaticCache();
+    settle(f, plain);
+    r = frame(f, plain);
+    [staticPass, dynamicPass] = renders(r.log);
+    assert.ok(!staticPass.drawn.includes('fracture-face') && dynamicPass.drawn.includes('fracture-face'), 'switched off: the rubble draws every frame');
+  } finally { delete globalThis.window; }
+}
+
 // ---------------------------------------------------------------------------------------------- scoped re-renders
 // (battle-spikes-253) a bounded content change re-renders only the cascades whose box its bounds meet
 {

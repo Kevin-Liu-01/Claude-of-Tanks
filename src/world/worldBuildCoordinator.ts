@@ -4,8 +4,9 @@ import {
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
-  disposeObject3DResources,
+  disposeObject3DResourcesSteps,
   residentResourceLimits,
+  type ResourceDisposalReceipt,
 } from '../engine/resourceLifetime.ts';
 
 interface WorldScene {
@@ -114,6 +115,8 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   readonly lastRelease: ReleaseReceipt | null;
   loadModule(): Promise<WorldMapModule<World>>;
   enforceCacheBudget(): void;
+  /** A cached world released now (never the current one or one still building); false when there was none to release. */
+  releaseCached(id: string): boolean;
   beginBuild(
     mapId: string,
     onProgress?: ProgressListener | null,
@@ -186,7 +189,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return modulePromise;
   };
 
-  const releaseWorld = (id: string, world: World): void => {
+  const releaseWorld = (id: string, world: World, paced = false): void => {
     world.dispose?.();
     const preserveRoots = dependencies.scene.children.filter(
       (child) => child !== world.group,
@@ -198,7 +201,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         preserveRoots.push(retained.group);
       }
     }
-    const released = disposeObject3DResources(world.group, {
+    const steps = disposeObject3DResourcesSteps(world.group, {
       preserveRoots,
       onDispose: (type: string, resource: DisposableResource) => {
         if (type === 'material' && isMaterial(resource)) {
@@ -206,8 +209,26 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         }
       },
     });
-    dependencies.renderer.renderLists?.dispose?.();
-    lastRelease = { id, ...released };
+    const finish = (released: ResourceDisposalReceipt): void => {
+      dependencies.renderer.renderLists?.dispose?.();
+      lastRelease = { id, ...released };
+    };
+    if (!paced) {
+      let step = steps.next();
+      while (!step.done) step = steps.next();
+      finish(step.value);
+      return;
+    }
+    // (battle-spikes-253) the dormant battlefield's release disposes its resources in 6 ms slices between tasks (one task
+    // of a whole world's GPU deletes was nav-perf's 1.0 s room leave); the world left the cache and the scene at once
+    const slice = (): void => {
+      const started = now();
+      let step = steps.next();
+      while (!step.done && now() - started < 6) step = steps.next();
+      if (step.done) finish(step.value);
+      else setTimeout(slice, 0);
+    };
+    slice();
   };
 
   const enforceCacheBudget = (): void => {
@@ -218,6 +239,14 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       cache.delete(id);
       releaseWorld(id, cached);
     }
+  };
+
+  const releaseCached = (id: string): boolean => {
+    const cached = cache.get(id);
+    if (!cached || cached === dependencies.getCurrentWorld() || builds.has(id)) return false;
+    cache.delete(id);
+    releaseWorld(id, cached, true);
+    return true;
   };
 
   const beginBuild = (
@@ -461,6 +490,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     get lastRelease() { return lastRelease; },
     loadModule,
     enforceCacheBudget,
+    releaseCached,
     beginBuild,
     prefetch,
     cancelBackgroundExcept,

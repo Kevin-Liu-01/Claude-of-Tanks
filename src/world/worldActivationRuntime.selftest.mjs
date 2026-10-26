@@ -469,4 +469,44 @@ for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume
   assert.equal(target.group.visible, true);
 }
 
-console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, traces and single selected battle IBL/recovery passed');
+// (battle-spikes-253, the memory lockdown) a dormant battlefield is released once another one is asked for — a battle
+// entry or the Garage's planned battle — and kept for a rematch on itself or a speculative prefetch
+{
+  const urban = world('urban'), verdant = world('verdant');
+  const released = [];
+  const releaseCoordinator = {
+    ...coordinator,
+    cache: new Map([['urban', urban], ['verdant', verdant]]),
+    enforceCacheBudget() {},
+    cancelBackgroundExcept() {},
+    beginBuild() { throw new Error('both are cached'); },
+    prefetches: [],
+    prefetch(mapId, options) { this.prefetches.push([mapId, !!options?.intent]); return null; },
+    releaseCached(id) { released.push(id); return this.cache.delete(id); },
+  };
+  const sceneEvents = [];
+  const instance = createWorldActivationRuntime({ ...runtimeOptions, coordinator: releaseCoordinator,
+    setSceneWorldActive: (root, active) => sceneEvents.push([root, active]) });
+  await instance.ensure('urban', null, { precompile: false });
+  assert.equal(instance.releaseDormantExcept('verdant'), false, 'an active battlefield is never released');
+  instance.setDormant(true);
+  assert.equal(instance.releaseDormantExcept('urban'), false, 'a rematch on the same battlefield keeps it');
+  instance.prefetch('verdant');
+  assert.deepEqual(released, [], 'a speculative prefetch keeps it');
+  instance.prefetch('verdant', { intent: true });
+  assert.deepEqual(released, ['urban'], 'the planned battle on another battlefield releases it');
+  assert.equal(instance.current, null);
+  assert.equal(instance.dormant, false);
+  assert.equal(instance.collider, null);
+  assert.deepEqual(sceneEvents.at(-1), [null, false], 'the scene residency forgets its root');
+  assert.equal(releaseCoordinator.cache.has('urban'), false);
+  // and a battle entry on another battlefield releases the dormant one before it builds
+  await instance.ensure('verdant', null, { precompile: false });
+  instance.setDormant(true);
+  releaseCoordinator.cache.set('urban', urban);
+  await instance.ensure('urban', null, { precompile: false });
+  assert.deepEqual(released, ['urban', 'verdant']);
+  assert.equal(instance.current, urban);
+}
+
+console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, the dormant battlefield released, traces and single selected battle IBL/recovery passed');

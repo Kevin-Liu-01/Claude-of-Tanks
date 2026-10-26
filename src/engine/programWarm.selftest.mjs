@@ -431,6 +431,68 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
   assert.equal(timing.programsAfter, 4, 'zero new wrapper count does not mean uniform tables were initialized');
 }
 
+// (battle-spikes-253) The completion queries wait for the GPU to catch up (gpuCatchUp.ts): a poll asks only after the
+// fence its previous poll left has signalled. A held poll queries nothing and takes no round; the result is unchanged.
+function fencedPolls(gl, events, holdFor = 2) {
+  let waits = 0;
+  Object.assign(gl, {
+    SYNC_GPU_COMMANDS_COMPLETE: 0x9117, TIMEOUT_EXPIRED: 0x911B, ALREADY_SIGNALED: 0x911A,
+    fenceSync() { waits = 0; events.push(['fence']); return {}; },
+    flush() {},
+    clientWaitSync() {
+      const go = ++waits > holdFor;
+      events.push([go ? 'go' : 'held']);
+      return go ? this.ALREADY_SIGNALED : this.TIMEOUT_EXPIRED;
+    },
+    deleteSync() {},
+  });
+}
+function assertQueriesAfterGo(events) {
+  let last = null;
+  let queries = 0;
+  for (const [kind] of events) {
+    if (kind === 'fence' || kind === 'go' || kind === 'held') last = kind === 'fence' ? last : kind;
+    if (kind === 'query') { queries++; assert.equal(last, 'go', 'a completion query only in a poll the GPU had caught up to'); }
+  }
+  assert.ok(queries > 0);
+  assert.ok(events.some(([kind]) => kind === 'held'), 'some polls were held');
+}
+{
+  const f = firstUseFixture();
+  fencedPolls(f.gl, f.events);
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name),
+    ['back', 'front', 'instanced'], 'the held polls change nothing the preparation proves');
+  assertQueriesAfterGo(f.events);
+  assert.ok(timing.gpuBehind >= 3, `held polls are counted (${timing.gpuBehind})`);
+}
+{
+  const fixture = timedForwardFixture();
+  const gl = fixture.renderer.getContext();
+  fencedPolls(gl, fixture.events, 1);
+  const timing = {};
+  assert.equal([...fixture.owner.linkerBreathingSlices(6, timing)].length, 6);
+  assertQueriesAfterGo(fixture.events);
+  assert.equal(fixture.events.filter(([kind]) => kind === 'query').length, 2, 'two of six slices asked');
+  assert.equal(timing.gpuBehind, 4);
+}
+
+{
+  // one gate per context: a drain after another finds the last mark signalled and asks at once (a gate per drain spent
+  // each drain's first poll placing a mark: one per wreck visual doubled a room's wreck warm, nav-perf's root-s)
+  const fixture = timedForwardFixture();
+  const gl = fixture.renderer.getContext();
+  fencedPolls(gl, fixture.events, 0);
+  const queries = () => fixture.events.filter(([kind]) => kind === 'query').length;
+  assert.equal([...fixture.owner.linkerBreathingSlices(2, {})].length, 2);
+  assert.equal(queries(), 1, 'the context\'s first drain marks the queue on its first poll');
+  const timing = {};
+  assert.equal([...fixture.owner.linkerBreathingSlices(2, timing)].length, 2);
+  assert.equal(queries(), 3, 'the next drain asks on both of its polls');
+  assert.equal(timing.gpuBehind, undefined);
+}
+
 function visibleRootFixture() {
   const f = firstUseFixture();
   f.mesh.name = 'terrain';

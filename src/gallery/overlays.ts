@@ -3,6 +3,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
 import { t } from '../ui/i18n.ts';
+import { TECHNICAL_LEGENDS, technicalToneColor, technicalToneHex } from '../ui/technicalDiagramLegend.ts';
 import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
@@ -97,30 +98,22 @@ function applyOverlayEmphasis(object: THREE.Mesh): void {
   material.opacity = Math.min(0.74, material.opacity + 0.28);
 }
 
-const MODULE_COLORS: Readonly<Record<string, number>> = Object.freeze({
-  engine: 0xf0a23a, fuelTank: 0xe76f51, ammoRack: 0xff4d5f,
-  roofGun: 0xffc65c,
-  missileRack: 0xff6b45, autoloader: 0xff738e, feedSystem: 0xffa75c,
-  turretRing: 0xb38cff, gunMount: 0xc2a5ff, radio: 0x78a9ff,
-  optics: 0x5ee1d2, gun: 0xe9cf63, transmission: 0xd58a35,
-});
+// 253: the palettes are the technical diagrams' tones (tokens.json diagramhue), the colours their DOM labels name
+const kebab = (name: string): string => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+const MODULE_COLORS: Readonly<Record<string, number>> = Object.freeze(Object.fromEntries(
+  ['engine', 'fuelTank', 'ammoRack', 'roofGun', 'missileRack', 'autoloader', 'feedSystem', 'turretRing', 'gunMount', 'radio',
+    'optics', 'gun', 'transmission'].map((name) => [name, technicalToneColor(`module-${kebab(name)}`)])));
 
-const CREW_COLORS: Readonly<Record<string, number>> = Object.freeze({
-  driver: 0x63d6ff, gunner: 0xffd166, commander: 0xb9f18c, loader: 0xff8fab,
-  radioOperator: 0x9eb7ff, assistantDriver: 0x80d8d0, assistantLoader: 0xffa8c6,
-  weaponOperatorLeft: 0xd8a4ff, weaponOperatorRight: 0xc28cff,
-});
+const CREW_COLORS: Readonly<Record<string, number>> = Object.freeze(Object.fromEntries(
+  ['driver', 'gunner', 'commander', 'loader', 'radioOperator', 'assistantDriver', 'assistantLoader', 'weaponOperatorLeft',
+    'weaponOperatorRight'].map((name) => [name, technicalToneColor(`crew-${kebab(name)}`)])));
 
 function armorThicknessColor(plate: ArmorPlate): number {
-  if (plate.kind === 'era' || plate.era) return 0xc18cff;
-  if (plate.kind === 'spaced') return 0x4fc7d9;
-  if (plate.kind === 'external') return 0x8b9aa4;
+  if (plate.kind === 'era' || plate.era) return technicalToneColor('armor-era');
+  if (plate.kind === 'spaced') return technicalToneColor('armor-spaced');
+  if (plate.kind === 'external') return technicalToneColor('armor-external');
   const ke = Number(plate.keMm ?? plate.physicalMm ?? 0);
-  if (ke >= 650) return 0x50d890;
-  if (ke >= 350) return 0xa8d85d;
-  if (ke >= 180) return 0xf2cf5b;
-  if (ke >= 80) return 0xf39a45;
-  return 0xe96959;
+  return technicalToneColor(`armor-ke-${ke >= 650 ? 4 : ke >= 350 ? 3 : ke >= 180 ? 2 : ke >= 80 ? 1 : 0}`);
 }
 
 function plateGeometry(plate: ArmorPlate): THREE.BufferGeometry | null {
@@ -371,7 +364,7 @@ function addModuleModels(
     const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
     parts.forEach((part, partIndex) => {
       const resolved = part === volume ? volume : { ...volume, min: part.min, max: part.max };
-      const color = MODULE_COLORS[volume.module || 'module'] || 0x78a9ff;
+      const color = MODULE_COLORS[volume.module || 'module'] || technicalToneColor('module-radio');
       const fill = anatomyFillMaterial(color);
       resources.push(fill);
       const model = addInternalModuleModel(
@@ -385,7 +378,7 @@ function addModuleModels(
         partIndex, parts.length);
     });
   });
-  const drivetrainColor = 0x98a6ad;
+  const drivetrainColor = technicalToneColor('module-drivetrain');
   const drivetrainFill = anatomyFillMaterial(drivetrainColor);
   resources.push(drivetrainFill);
   const drivetrain = addInternalDrivetrainModel(
@@ -403,7 +396,7 @@ function addCrewModels(
 ): void {
   const crew = spec.armor?.crew || [];
   crew.forEach((volume, index) => {
-    const color = CREW_COLORS[volume.crew || 'crew'] || 0x68c7ff;
+    const color = CREW_COLORS[volume.crew || 'crew'] || technicalToneColor('crew-other');
     const fill = anatomyFillMaterial(color);
     resources.push(fill);
     const model = addInternalCrewModel(
@@ -602,27 +595,7 @@ export function createInspectionOverlay(
 }
 
 export function inspectionLegend(mode: InspectionMode): Array<readonly [string, string]> {
-  if (mode === 'armor') return [
-    [t('gallery.legend.armor.0'), '#e96959'],
-    [t('gallery.legend.armor.1'), '#f39a45'],
-    [t('gallery.legend.armor.2'), '#f2cf5b'],
-    [t('gallery.legend.armor.3'), '#a8d85d'],
-    [t('gallery.legend.armor.4'), '#50d890'],
-    [t('gallery.legend.armor.era'), '#c18cff'],
-  ];
-  if (mode === 'modules') return [
-    [t('gallery.legend.modules.ammunition'), '#ff4d5f'],
-    [t('gallery.legend.modules.fuel'), '#e76f51'],
-    [t('gallery.legend.modules.engine'), '#f0a23a'],
-    [t('gallery.legend.modules.optics'), '#5ee1d2'],
-    [t('gallery.legend.modules.other'), '#78a9ff'],
-  ];
-  if (mode === 'crew') return [
-    [t('gallery.legend.crew.driver'), '#63d6ff'],
-    [t('gallery.legend.crew.gunner'), '#ffd166'],
-    [t('gallery.legend.crew.commander'), '#b9f18c'],
-    [t('gallery.legend.crew.loader'), '#ff8fab'],
-    [t('gallery.legend.crew.specialist'), '#9eb7ff'],
-  ];
+  // one table with the technical diagrams' DOM legend (src/ui/technicalDiagramLegend.ts)
+  if (mode === 'armor' || mode === 'modules' || mode === 'crew') return TECHNICAL_LEGENDS[mode].map(([key, tone]) => [t(key), technicalToneHex(tone)] as const);
   return [];
 }

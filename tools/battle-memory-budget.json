@@ -1,0 +1,12 @@
+{
+  "receipt": "node tools/battle-memory-probe.mjs --root=. --scenarios=urban:zone_control --sequence=urban:zone_control,verdant:standard,desert:standard --size=7 --battles=3 --seconds=10 --leak-check --gate",
+  "note": "(battle-spikes-253) Three battles in one page on three maps, back to the Garage after each: the first battle's world is evicted from the two-world desktop cache at the third and must be collected (leakedWorlds). The growth limits are regression bounds about 1.5x the fixed build's run (2026-10-26, 20abf7caad + cd5539133b, load 13-35): heap +33 MB a battle, RSS +305 MB a battle, textures +30, listeners +9.5, peak 5,482 MB (renderer 3,892); most of that growth is the cache going from one resident world to two. Before the fixes the evicted world stayed alive (peak 8,207 MB).",
+  "limits": {
+    "leakedWorlds": 0,
+    "jsHeapGrowthPerBattleMB": 50,
+    "rssGrowthPerBattleMB": 460,
+    "texturesGrowthPerBattle": 45,
+    "listenersGrowthPerBattle": 15,
+    "peakRssMB": 7000
+  }
+}

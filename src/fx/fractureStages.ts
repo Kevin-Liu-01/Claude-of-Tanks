@@ -108,6 +108,8 @@ export interface StageFracture {
 interface FractureStagesOptions {
   /** Where the bodies, the redrawn faces and the heaps are drawn (the fx group). */
   group: THREE.Group;
+  /** (battle-spikes-253) Where the redrawn faces, the rooms and the heaps are drawn when given (a static shadow root). */
+  settled?: THREE.Group;
   /** The fx clock (s). */
   now(): number;
   /** What the bodies meet: the ground as drawn (its craters and heaps) and the world's records; null: they wait. */
@@ -248,7 +250,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const versionOf = (idx: number): number => fracture.version(idx) * 4096 + (events.get(idx) ?? 0);
 
   const fracture: StructureFracture = createStructureFracture({
-    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt, environment,
+    pool, group: o.group, settled: o.settled, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt, environment,
     statics: (structureIdx) => bodies.bakedOf(structureIdx),
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),

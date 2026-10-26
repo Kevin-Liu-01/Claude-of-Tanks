@@ -330,6 +330,10 @@ await test('pending program links are awaited between tasks before the probe dra
   assert.ok(!f.names().includes('render'), 'no probe draw while a program is still linking');
   assert.equal(clock.waits.length, 1);
   assert.equal(clock.waits[0].ms, 16, 'the wait polls between tasks');
+  // (battle-spikes-253) the first poll only marks the GPU's queue (gpuCatchUp.ts): it asks nothing
+  const collected = polls; // the pending list's own readiness check
+  await clock.resume();
+  assert.equal(polls, collected, 'the first poll asks nothing');
   await clock.resume();
   await clock.resume();
   assert.ok(!f.names().includes('render'));
@@ -341,6 +345,60 @@ await test('pending program links are awaited between tasks before the probe dra
   const timing = result.measurements[0];
   assert.deepEqual([timing.linkPending, timing.linkLeft], [1, 0], 'the receipt names the links waited for');
   assert.ok(timing.linkWaitMs >= 48);
+  f.assertReleased(1);
+});
+
+// (battle-spikes-253) one completion query a poll: on ANGLE/Metal each query is a synchronous round trip behind the GPU
+// process's queued links (nav-perf's profiled room: every pending program asked in one poll, one 1.2 s task)
+await test('the link wait asks one still-linking program a poll', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  const answers = [];
+  const program = (readyOnCall) => {
+    let calls = 0;
+    return { isReady: () => { const ready = ++calls >= readyOnCall; answers.push(ready); return ready; } };
+  };
+  f.renderer.info.programs = [program(3), program(5), program(7)];
+  f.renderer.getContext = () => f.gl;
+  const pending = f.run({ measureTimings: true });
+  let polls = 0;
+  while (!f.names().includes('render') && polls < 20) {
+    const before = answers.length;
+    await clock.resume();
+    polls++;
+    const stillLinking = answers.slice(before).filter((ready) => !ready).length;
+    assert.ok(stillLinking <= 1, `poll ${polls} asked ${stillLinking} programs that were still linking`);
+  }
+  assert.ok(f.names().includes('render'), 'the draw follows once every program linked');
+  await clock.resume();
+  const result = await pending;
+  assert.deepEqual([result.measurements[0].linkPending, result.measurements[0].linkLeft], [3, 0]);
+  f.assertReleased(1);
+});
+
+// (battle-spikes-253) and a poll asks only once the GPU has caught up to the fence the previous poll left (gpuCatchUp.ts):
+// the first query behind a deep queue was itself a 1.3 s task (nav-perf's root-r room B, the watchdog stage)
+await test('the link wait asks nothing while the GPU is behind its previous poll', async (clock) => {
+  const f = fixture({ asyncSamples: [12] });
+  let asked = 0;
+  f.renderer.info.programs = [{ isReady: () => ++asked > 2 }];
+  f.renderer.getContext = () => f.gl;
+  const fenceSync = f.gl.fenceSync;
+  const behind = [];
+  f.gl.fenceSync = function (...args) {
+    const sync = fenceSync.apply(this, args);
+    if (behind.length < 1) { sync.status = f.gl.TIMEOUT_EXPIRED; behind.push(sync); }
+    return sync;
+  };
+  const pending = f.run({ measureTimings: true });
+  const collected = asked; // the pending list's own readiness check
+  for (let poll = 0; poll < 4; poll++) await clock.resume();
+  assert.equal(asked, collected, 'no completion query while the first mark is unsignalled');
+  behind[0].status = f.gl.CONDITION_SATISFIED;
+  let polls = 0;
+  while (!f.names().includes('render') && polls++ < 10) await clock.resume();
+  assert.ok(asked >= 2 && f.names().includes('render'), 'the GPU caught up: the wait asks, the draw follows');
+  await clock.resume();
+  await pending;
   f.assertReleased(1);
 });
 

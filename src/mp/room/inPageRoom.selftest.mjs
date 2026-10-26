@@ -3,8 +3,9 @@
 // only seat host of a p2p match with the room's bots filling 7 a side, signs its seat token with the page's synchronous
 // HMAC; the real MatchSession boots the host (the in-process core standing in for the Worker), whose check of that token
 // passes; the seat is welcomed through the loopback and the presentation receives the match's frames. A route the room
-// does not serve fails the socket; the solo pause holds the actor's tick and the client's clock; a solo room seats 21 a
-// side where any other stops at 14; closing the service drains it.
+// does not serve fails the socket; the countdown holds until the page releases it (its reveal); the solo pause holds the
+// actor's tick and the client's clock; a solo room seats 21 a side where any other stops at 14; closing the service
+// drains it.
 import assert from 'node:assert/strict';
 import { RoomClient } from './roomClient.ts';
 import { createRoom } from './roomPolicy.ts';
@@ -48,7 +49,7 @@ const session = new MatchSession({
   p2p: {
     createPeerConnection: world.createPeerConnection,
     createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => cores.push(core), reportIntervalMs: 500 }),
-    manifestBase: null, tier: 'desktop', countdownS: 1,
+    manifestBase: null, tier: 'desktop', countdownS: 1, holdCountdown: true,
   },
 });
 session.start();
@@ -70,6 +71,12 @@ try {
   assert.equal(actor.authority.entities.length, 14, 'the room\'s bots fill 7 a side');
   await until(() => rounds.length === 1 && rounds[0].presentation.frames.length > 30, 'the presentation receives frames');
   await until(() => actor.tick > 120, 'the match runs');
+  // the held countdown: two seconds of ticks past its one-second length and it stands, until the page's reveal releases it
+  assert.equal(actor.authority.phase, 'countdown', 'the countdown holds until the reveal');
+  const releasedAt = actor.tick;
+  session.releaseCountdown();
+  await until(() => actor.authority.phase === 'playing', 'the released countdown runs out');
+  assert.ok(actor.tick - releasedAt >= 60, 'its full second from the release');
   // the room heard the host's reports: the match is playing
   await until(() => client.room?.match?.status === 'playing', 'the room marks the match playing');
   // the solo pause: the host's actor holds its tick for 2 s while the page keeps drawing frames; the client neither stalls
@@ -89,7 +96,7 @@ try {
   assert.equal(stats.client?.phase ?? 'live', 'live');
   await until(() => newestTick() > heldTick + 30, 'the presented frames move on past the pause');
 
-  console.log(`inPageRoom.selftest: a solo LAN room in the page started its p2p match on the in-process host: 14 hulls (7 a side with the room's bots), the seat welcomed through the page-signed token, ${rounds[0].presentation.frames.length} frames presented by tick ${actor.tick}; paused 2 s at tick ${heldTick} with no tick, no stall, then resumed`);
+  console.log(`inPageRoom.selftest: a solo LAN room in the page started its p2p match on the in-process host: 14 hulls (7 a side with the room's bots), the seat welcomed through the page-signed token, ${rounds[0].presentation.frames.length} frames presented by tick ${actor.tick}; the countdown held to tick ${releasedAt} and ran its full second from the release; paused 2 s at tick ${heldTick} with no tick, no stall, then resumed`);
 } finally {
   clearInterval(pump);
   session.dispose();
