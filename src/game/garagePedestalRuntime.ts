@@ -470,10 +470,6 @@ export function createGaragePedestalRuntime({
     warn,
     getSpeculativeIds,
     buildSpeculative: (specId, stillValid, protectedIds) => buildSpeculative(specId, stillValid, protectedIds),
-    // the riding stations' prebuild loads with its first call, after the Garage's first tank (UI-LOCKDOWN E)
-    prebuildRidingParts: (order) => {
-      void import('./ridingPartsPrebuild.ts').then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(order), () => {});
-    },
   });
 
   const recordSwitch = (

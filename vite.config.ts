@@ -245,10 +245,12 @@ export default defineConfig({
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
     // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
     // split four boot chunks (+5 game / +4 gallery requests) or drag the builder core into the host. The small
-    // workers are single self-contained files.
+    // workers are single self-contained files. The riding-parts worker (UI-LOCKDOWN E) runs the profile kit the page
+    // has already loaded by the time it starts.
     ...sharedWorkerChunks({ workers: {
       'src/world/wreckBakeWorker.ts': {},
       'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
+      'src/vehicles/ridingPartsWorker.ts': {},
     } }),
     // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot

@@ -1,5 +1,5 @@
-// The riding parts' wire (UI-LOCKDOWN E, 2026-10-25): the workshop worker posts the entries it builds into
-// ridingPartsCache.ts's stores as transferable arrays, and the Garage's prebuild (game/ridingPartsPrebuild.ts) seeds them.
+// The riding parts' wire (UI-LOCKDOWN E, 2026-10-25): the riding-parts worker (ridingPartsWorker.ts) posts the entries it
+// builds into ridingPartsCache.ts's stores as transferable arrays, and the prebuild (ridingPartsPrebuild.ts) seeds them.
 import * as THREE from 'three';
 import type { RidingCradleFit } from './machineGunGeometry.ts';
 import { RIDING_CRADLE_PARTS, RIDING_STATION_PARTS } from './ridingPartsCache.ts';

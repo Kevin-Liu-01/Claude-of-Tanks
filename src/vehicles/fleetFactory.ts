@@ -253,6 +253,8 @@ export function ensureTankBuilder(specId: string): Promise<void> {
   });
 }
 
+let ridingPartsPrebuildAsked = false;
+
 export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
   const groups = new Set<FleetGroup>();
   for (const id of specIds || []) {
@@ -266,6 +268,12 @@ export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
     ensureInteriorFills(specIds),
   ]).then(() => {
     for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
+    // the first ask for builders ahead of their builds starts the riding stations' off-thread prebuild, these tanks
+    // first (UI-LOCKDOWN E): every such ask comes after the Garage's first tank, and its chunk loads only here
+    if (!ridingPartsPrebuildAsked && typeof Worker === 'function') {
+      ridingPartsPrebuildAsked = true;
+      void import('./ridingPartsPrebuild.ts').then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
+    }
   });
 }
 
