@@ -9,6 +9,9 @@
 import { createPicker, type PickerItem, type PickerText } from './components/picker.ts';
 import { esc } from './components/escape.ts';
 import { icon } from './icons/icon.ts';
+import { t } from './i18n.ts';
+import { matchRulesetFor, rulesetLines, type TeamArrangement } from '../sim/matchRuleset.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 
 /** A mode as its card shows it; `description` and `rules` fill the preview's rules card. */
 export interface ModeCard extends PickerItem {
@@ -37,6 +40,15 @@ export interface ModePicker {
   setValue(id: string): void;
   focus(): void;
   dispose(): void;
+}
+
+/** A mode's rule lines, as its card and its rules card read them: the lines sim/matchRuleset.ts generates from the table
+ *  the battle reads, so a card never promises a rule the battle does not keep (the team arrangement as the player set it,
+ *  the nation as copy). The Rooms host's mode cards read them. */
+export function modeRuleLines(id: GameModeId, arrangement: TeamArrangement | null): string[] {
+  return rulesetLines(matchRulesetFor(id, null, arrangement)).map((line) => t(`rules.line.${line.key}`,
+    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) }
+      : line.key === 'teamsMono' ? { scope: t(`rules.teams.scope.${line.values.scope}`) } : { ...line.values }));
 }
 
 /** Favourites and recents belong to the player, not the surface: one memory for every mode picker. */
