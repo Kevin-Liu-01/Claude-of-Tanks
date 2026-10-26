@@ -48,14 +48,16 @@ img{display:block;max-width:100%}
 /* the reel carries the hero: at its foot the headline, its line and the actions on the left, the shot on screen and the
    reel's pause on the right (owner 2026-10-25: "also add text here at the left that says stuff about this!"); the game's
    mark and name stay in the nav bar */
-.hero__card{grid-area:card;align-self:end;display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s6);margin-bottom:var(--s6)}
+/* where the actions and the shot's caption cannot share the row (a narrow desktop), the caption and the pause take their
+   own row on the right */
+.hero__card{grid-area:card;align-self:end;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s6);margin-bottom:var(--s6)}
 .hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:max(calc(var(--home-h1) * 9.4),34rem)}
 .hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
 .hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:balance}
 /* the shot's caption sits beside the reel's pause, which holds the hero's right edge, both centred on the actions' row.
    The pause keeps its place while it waits for the reel (hidden only under reduced motion, where the reel never starts),
    and every caption shares one cell, so the longest sets the box: nothing moves when the reel starts or turns */
-.hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px}
+.hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px;margin-left:auto}
 @media (prefers-reduced-motion:no-preference){.hero__reelbar>.hero__toggle[hidden]{display:grid;visibility:hidden}}
 /* the words' scrim (owner 2026-10-25: their contrast holds over bright snow): a plate of the scene's ink under the lead and
    under the caption, feathered at its edges and running off the screen's side, a gradient mask over imagery, never blur */

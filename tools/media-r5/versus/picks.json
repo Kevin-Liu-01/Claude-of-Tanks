@@ -27,7 +27,8 @@
   "vs07-autumn-ariete-t62-r7-top",
   "vs08-winter-cv90-bmp3-r7-top",
   "vs09-alpine-strv122-t80bv-r7-top",
-  "vs03-reservoir-k2-vt4a1-r8"
+  "vs03-reservoir-k2-vt4a1-r8",
+  "f7-type90-column-r8"
  ],
  "filmsCollection": "versus-films-r1",
  "films": [
@@ -55,7 +56,7 @@
   "vs05-oasis-merkava-t72b3-r6",
   "vs02-verdant-challenger-t80u-r6",
   "vs10-steppe-chieftain-t64-r7",
-  "f7-t90m-column-r5",
+  "f7-type90-column-r8",
   "vs07-autumn-ariete-t62-r6"
  ]
 }
