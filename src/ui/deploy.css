@@ -434,7 +434,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-ga
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
 /* a segmented setting fills its cell, its values sharing the width (Respawn delay's five, the juggernaut's two roles) */
 .cot-garage .cot-battle-menu.open .cot-arrange-seg{display:flex;}
-.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;min-width:0;}
+.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;min-width:0;padding-inline:var(--s1);}
+/* (the kit's 13 px sides on five values overflowed a narrow plate's cell: Respawn delay's 15 left the plate at 1024 x 600) */
 .cot-garage .cot-battle-menu.open .cot-arrange-field[data-mode-field='juggernautRole']{grid-column:1/-1;}
 
 /* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */
