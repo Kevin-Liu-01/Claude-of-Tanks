@@ -79,12 +79,29 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   in the playMode chunk). Requests unchanged.
   // 2026-10-26 (integrator 256, Main's ruling 'hotfix: solo default back to page', the release build of 60b664f11f):
   //   soloAuthorityFor's default back to the page: -170 B game and cn, -170 B entry. Other pages and requests unchanged.
-  game: { brotliBytes: 1078999, requests: 129, entryBrotliBytes: 238806 },
-  cn: { brotliBytes: 1122186, requests: 130, entryBrotliBytes: 238806 },
-  gallery: { brotliBytes: 667458, requests: 75 },
-  home: { brotliBytes: 26144, requests: 8 },
-  docs: { brotliBytes: 33230, requests: 12 },
-  notFound: { brotliBytes: 16652, requests: 7 },
+  // 2026-10-26 (integrator 257, re-pinned at the release build of 97371edb3a after its npm ci; each share is the local build of
+  // its merge commit against the one before, main 256 local within +223 B of its release measure):
+  // - Main: "owner Garage asks + camo picker (interaction redesign B)" (brand-ui-garage-redesign-245 dbd9941cdd: the camera
+  //   lowered, class glyphs on the hero cards, the staging plate, stat-panel titles, the camo picker and try-on, the kit
+  //   picker menus): +5,011 B game, +790 B entry, +6,930 B Gallery; its kitPicker group folds one game and cn boot request;
+  // - Main: "load card team lists + no letterbox" (brand-ui-battle-242 ce619fabd2, then 317d96c2c9's flyby grade): +1,047 B
+  //   and +338 B game (+253 B and +338 B entry), Gallery +67 B, home +10 B, docs +15 B, 404 +11 B;
+  // - interaction-picker-254 c10c8f3834 (favicon set, hover loops, modal kit, toasts in the Tab ring, rooms-kind, Jev switch):
+  //   +352 B game (+202 B entry), Gallery +221 B, home +30 B, docs +31 B, 404 +18 B;
+  // - decor-worker-254 b51f51974b (the kit's own camo entry): +261 B game (+75 B entry); 4e0eaf6f40 (the Studio's second
+  //   entry) with integ's programWarm group: +134 B;
+  // - battle-spikes-253 2e0dd5066c: +122 B game (-16 B entry); its lazy post passes split engine/gpuCatchUp.ts into one more
+  //   game and cn boot request, which integ groups back into programWarm's chunk (97371edb3a);
+  // - retier-257 +56 B, t90-lineage-257 -78 B, image-fit-254 -266 B (entry -269 B), brand-ui-primitives-250 4bab44f1c4 with
+  //   integ's image-fit reconcile -343 B (entry -330 B; Gallery +108 B, home +23 B, docs -246 B, 404 +4 B; docsPickers.css
+  //   adds no docs request).
+  // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged.
+  game: { brotliBytes: 1085633, requests: 128, entryBrotliBytes: 239975 },
+  cn: { brotliBytes: 1127813, requests: 129, entryBrotliBytes: 239975 },
+  gallery: { brotliBytes: 674791, requests: 75 },
+  home: { brotliBytes: 26208, requests: 8 },
+  docs: { brotliBytes: 33013, requests: 12 },
+  notFound: { brotliBytes: 16688, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
