@@ -118,8 +118,9 @@ export function scanSource(path, raw) {
 
   // createPicker, or a shared consumer built on it (createBattlefieldPicker): keyed by the id its caller stamps. A
   // consumer's own createPicker takes its caller's id, so that call is not a site.
-  const consumer = /export function create\w+Picker\(/.test(text);
-  for (const match of text.matchAll(/\b(create\w*Picker)\(/g)) {
+  // (the picker menu, components/pickerMenu.ts, is a shared consumer too: its sites are keyed by their callers' ids)
+  const consumer = /export function create\w*Picker(?:Menu)?\(/.test(text);
+  for (const match of text.matchAll(/\b(create\w*Picker(?:Menu)?)\(/g)) {
     if (/function\s+$/.test(text.slice(Math.max(0, match.index - 12), match.index))) continue;
     const head = text.slice(match.index, match.index + 800);
     const literal = /\bid:\s*['"`]([\w-]+)['"`]/.exec(head)?.[1];

@@ -120,8 +120,8 @@ assert.match(garage,
   /function openBattleMenu\(\)(?:: void)? \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
   'battle selection must close garage disclosures instead of stacking over them');
 assert.match(garage,
-  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
-  'Escape must close one garage drawer without leaking into the global Settings shortcut');
+  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\s*\|\| eventElement\(event\)\?\.closest\('\.cot-c-menu__pop'\)\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
+  'Escape must close one garage drawer without leaking into the global Settings shortcut (an open picker menu takes its own)');
 assert.match(garage,
   /if \(!battleMenu\.classList\.contains\('open'\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*closeBattleMenu\(\{ restoreFocus: true \}\);/,
   'Escape must close the Battle menu without leaking into another UI owner');

@@ -193,7 +193,7 @@ export function createInfoButton({
     if (json) {
       copyButton = document.createElement('button');
       copyButton.type = 'button';
-      copyButton.className = 'cot-modal__button';
+      copyButton.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--secondary';
       copyButton.innerHTML = `${uiIconSVG('copy', 16)}<span>${t('contextInfo.copyJson')}</span>`;
       copyButton.addEventListener('click', () => {
         clipboardWrite(content()).then(() => {

@@ -82,6 +82,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     // the destruction stages the Studio played and its own dug ground (fx lane, destruction core lane, 2026-10-08)
     studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
     prepareFirstViewPrograms: async () => { calls.push('first-view-programs'); },
+    // the entry's own frames between its two first-view preparations (2026-10-26)
+    nextFrame: async () => {},
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -141,6 +143,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
   const programsIndex = calls.indexOf('first-view-programs');
+  // (2026-10-26) the view is prepared again once the entry's own frames have run, before the post warm
+  assert.equal(calls.filter((call) => call === 'first-view-programs').length, 2, 'the first view is prepared twice');
   assert.ok(programsIndex > sunIndex && programsIndex < calls.indexOf('picture-applied'),
     'the first view\'s programs are prepared once its light and camera are set, before its frame');
   if (directBoot) assert.ok(programsIndex < calls.indexOf('covered-frame'), 'and before the covered first frame');

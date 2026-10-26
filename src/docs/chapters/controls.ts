@@ -65,7 +65,7 @@ export const WATCH_KEYS: ReadonlyArray<{ readonly codes: readonly string[]; read
   { codes: ['ShiftLeft'], label: 'docs.controls.watch.boost', view: 'drone' },
   { codes: ['WheelUp', 'WheelDown'], label: 'docs.controls.watch.speed', view: 'drone' },
   { codes: ['KeyF'], label: 'docs.controls.watch.rideCentre', view: 'ride' },
-  { codes: ['Tab', 'KeyQ', 'KeyE'], label: 'docs.controls.watch.cycle', view: 'ride' },
+  { codes: ['KeyQ', 'KeyE'], label: 'docs.controls.watch.cycle', view: 'ride' },
   { codes: ['ShiftLeft'], label: 'docs.controls.watch.sight', view: 'ride' },
   { codes: ['KeyV'], label: 'docs.controls.watch.toDrone', view: 'ride' },
   { codes: ['Enter'], label: 'docs.controls.watch.take', view: 'drive' },

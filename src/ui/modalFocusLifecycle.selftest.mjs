@@ -1,21 +1,24 @@
 import assert from 'node:assert/strict';
-import { createModal } from './modal.ts';
+import { containModalTab, createModal } from './modal.ts';
 
 class ElementFixture {
   constructor(tag = 'div') {
     this.tagName = tag; this.style = {}; this.dataset = {}; this.children = [];
     this.attributes = new Map(); this.classes = new Set(); this.hidden = false;
-    this.isConnected = true; this.focuses = 0;
+    this.isConnected = true; this.focuses = 0; this.listeners = new Map();
     this.classList = { add: (name) => this.classes.add(name), remove: (name) => this.classes.delete(name) };
   }
   append(...nodes) { this.children.push(...nodes); for (const node of nodes) node.parentElement = this; }
   appendChild(node) { this.append(node); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
-  addEventListener() {}
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  dispatch(type) { this.listeners.get(type)?.({ type, target: this, key: '', preventDefault() {}, stopPropagation() {} }); }
   closest(selector) { return selector === 'dialog[open]' ? this.ownerDialog ?? null : null; }
   querySelector() { return null; }
-  querySelectorAll() { return []; }
+  querySelectorAll() { return this.focusables ?? []; }
+  getClientRects() { return [{}]; }
+  contains(node) { for (let at = node; at; at = at.parentElement) if (at === this) return true; return false; }
   remove() { this.isConnected = false; }
   focus() { this.focuses++; document.activeElement = this; }
 }
@@ -77,6 +80,42 @@ try {
   modal.close({ immediate: true });
   const focusCountBeforeDispose = modal.closeButton.focuses;
 
+  // a press on the backdrop closes, unless the modal holds unsaved edits; the close button closes either way
+  let edited = false;
+  const editor = createModal({ unsaved: () => edited }); modals.push(editor);
+  const backdrop = editor.root.children[0];
+  editor.open({ trigger }); flushFrames();
+  backdrop.dispatch('pointerdown');
+  assert.equal(editor.isOpen(), false, 'a backdrop press closes a modal with nothing to lose');
+  editor.open({ trigger }); flushFrames(); edited = true;
+  backdrop.dispatch('pointerdown');
+  assert.equal(editor.isOpen(), true, 'a backdrop press leaves unsaved edits open');
+  editor.closeButton.dispatch('click');
+  assert.equal(editor.isOpen(), false, 'the close button still closes on purpose');
+  flushTimers();
+
+  // a toast shown over a contained panel joins its Tab ring: Tab from the panel's last control reaches the toast's, and
+  // from the toast's last wraps to the panel's first; with no toast the ring is the panel's alone
+  const panel = new ElementFixture('section'), toast = new ElementFixture('div');
+  const [a, b, retry] = [new ElementFixture('button'), new ElementFixture('button'), new ElementFixture('button')];
+  panel.append(a, b); toast.append(retry); panel.focusables = [a, b]; toast.focusables = [retry];
+  let shownToasts = [toast];
+  document.querySelectorAll = (selector) => (selector === '.cot-c-notice--toast' ? shownToasts : []);
+  const tab = (shiftKey = false) => { const event = { key: 'Tab', shiftKey, prevented: false, preventDefault() { this.prevented = true; } };
+    containModalTab(event, panel, a); return event; };
+  b.focus(); tab();
+  assert.equal(document.activeElement, retry, 'Tab from the panel\'s last control reaches the toast\'s Retry');
+  tab();
+  assert.equal(document.activeElement, a, 'and Tab from the toast wraps to the panel\'s first');
+  tab(true);
+  assert.equal(document.activeElement, retry, 'Shift+Tab from the panel\'s first goes back to the toast');
+  a.focus(); assert.equal(tab().prevented, false, 'inside the panel Tab moves natively');
+  shownToasts = [];
+  b.focus(); tab();
+  assert.equal(document.activeElement, a, 'with no toast the ring is the panel alone');
+  trigger.focus(); tab(true);
+  assert.equal(document.activeElement, b, 'from outside, Shift+Tab lands on the panel\'s last');
+
   modal.open({ trigger }); modal.dispose(); flushFrames();
   assert.equal(modal.closeButton.focuses, focusCountBeforeDispose, 'disposed pending open never focuses');
   assert.equal(body.style.overflow, 'auto');
@@ -88,4 +127,4 @@ try {
     else delete globalThis[key];
   }
 }
-console.log('modalFocusLifecycle.selftest: actual queued focus callbacks, supersession and ordinary focus restore pass');
+console.log('modalFocusLifecycle.selftest: actual queued focus callbacks, supersession, ordinary focus restore, the unsaved backdrop guard and the Tab ring with a toast pass');

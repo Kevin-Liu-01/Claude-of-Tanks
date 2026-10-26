@@ -438,11 +438,24 @@ export default defineConfig({
             // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
             // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
             { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
+            // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
+            // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
+            // leaf those two pages (and only they) boot that no worker loads (the worker-shared chunks may not reach the i18n
+            // boot chunk, which pickerText does); on their own they were one more game boot request and two on the Gallery.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
+            // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
+            // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
+            // (564 B). It rides with the program warm owner again, as on 256.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
             // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio): the battlefield preview's minimap URL (minimapAssetUrl.ts, the game's boot and
+            // the lazy battlefield picker) rides here too: on its own it was one more game and cn boot request.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

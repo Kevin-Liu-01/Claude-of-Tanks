@@ -995,9 +995,9 @@ const MOUSE_SEAT = 'left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180p
 const COMPACT_SEAT = '@media(pointer:coarse),(max-width:539px){\n .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}\n'
   + ' .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;'
   + 'min-height:46px;';
-const TOUCH_SEAT = '@media(pointer:coarse){\n /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px '
-  + 'wide narrows it to fit) */\n .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);'
-  + 'width:min(104px,calc(50% - 15vmin - 16px - env(safe-area-inset-left)));min-width:88px}\n}';
+// (a portrait under 343 px wide narrows it to fit on the screen's 12 px gutter: at 8 px it stood off the plates, gauntlet r8)
+const TOUCH_SEAT = ' .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);'
+  + 'width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}\n}';
 assert.ok(AERIAL_CSS.includes(MOUSE_SEAT) && AERIAL_CSS.includes('min-width:156px;min-height:48px'),
   'the sheet seats the mouse vision switch right of the sight, 156x48 at least');
 assert.ok(AERIAL_CSS.includes(COMPACT_SEAT), 'the sheet seats the compact plate (touch, a narrow mouse window) right of the sight');

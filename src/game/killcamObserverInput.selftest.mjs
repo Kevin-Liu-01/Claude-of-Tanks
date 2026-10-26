@@ -66,14 +66,14 @@ try {
   assert.equal(calls.length, 1, 'covered cursor positions cannot accumulate a reveal jump');
   emit('mousemove', { movementX: 0, movementY: 0, clientX: 105, clientY: 107 });
   emit('wheel', { deltaY: -120 });
-  emit('keydown', { code: 'KeyD', repeat: false });
+  emit('keydown', { code: 'KeyE', repeat: false });
   assert.deepEqual(calls.slice(1), [['look', 5, 7], ['zoom', -1], ['target', 'second']],
     'revealed five-second countdown retains normal orbit, zoom, and target blending');
   assert.equal(game.preBattleS, 5);
 
   covered = true;
   emit('mousemove', { movementX: 0, movementY: 0, clientX: 600, clientY: 400 });
-  emit('keydown', { code: 'KeyA', repeat: false });
+  emit('keydown', { code: 'KeyQ', repeat: false });
   covered = false;
   emit('mousemove', { movementX: 0, movementY: 0, clientX: 620, clientY: 420 });
   assert.equal(calls.length, 4, 'a later covered interval also resets fallback delta history');

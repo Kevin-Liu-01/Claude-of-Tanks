@@ -147,14 +147,14 @@ for (const id of SCHEMA_1_IDS) {
   assert.equal(tankSeedId(resolveTankId(id, 1)), id, `${id}: a renamed vehicle keeps its schema-1 seed`);
 }
 // Every place that hashes a vehicle id into its look or name hashes tankSeedId (decor kit, texture seeds and AUTO
-// camouflage, hull numbers, track shade, garage plate hue, bot names).
+// camouflage, hull numbers, track shade, bot names). (The Garage's seeded stand-in swatch stripes went in 383e2d4fde: a
+// paint waiting for its paint shows the kit's skeleton, so the Garage hashes no vehicle id.)
 const SEEDED = {
   // (8295c63e03: a decor twin, the Type 10 Kaitaku on the Type 10's kit, still seeds through tankSeedId)
   'decorations.ts': /const seedId = tankSeedId\((?:DECOR_TWIN\.get\(specId\) \?\? )?specId\)/,
   'materials.ts': /tankSeedId\(key\.slice\(0, split\)\)[\s\S]*\$\{tankSeedId\(specId\)\}:\$\{activeBiome\}[\s\S]*\$\{tankSeedId\(specId\)\}:\$\{biome\}/,
   'vehicleMarkings.ts': /String\(id \? tankSeedId\(id\) : 'tank'\)/,
   'tankFactoryCore.ts': /for \(const ch of tankSeedId\(builderSpec\.id\)\) shadePhase/,
-  '../ui/garage.ts': /\$\{spec\?\.id \? tankSeedId\(spec\.id\) : 'tank'\}:\$\{pid \|\| 'factory'\}/,
   // (a6e7830f8f, brand-ui 245: the HUD's bot nicknames moved to botCallsigns.ts, seeded the same way)
   '../ui/botCallsigns.ts': /hashCallsign\(String\(id\) \+ \(specId \? tankSeedId\(specId\) : ''\)\)/,
   '../audio/vehicleAudioProfiles.ts': /return tankSeedId\(String\(spec\.id \?\? ''\)\)\.toLowerCase\(\)/,
