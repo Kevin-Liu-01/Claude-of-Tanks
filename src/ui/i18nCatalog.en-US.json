@@ -3950,7 +3950,7 @@
   "hud.modeStatus.realistic": "DESTROY CREW OR AMMO",
   "hud.modeStatus.gun_game": "WEAPON {stage}/{total} · {kills}/{required} KILLS",
   "hud.modeStatus.drone": "CONFIRMED KILLS · {own} / {target}",
-  "hud.modeStatus.ac130": "{alive} ALIVE · {rescued}/{required} SAFE · {progress}%",
+  "hud.modeStatus.ac130": "{alive} ALIVE · {rescued}/{required} SAFE · ROUTE {progress}%",
   "hud.aerial.drone": "FPV · THERMAL · {seconds}s BATTERY",
   "hud.aerial.gunship": "AC-130 · THERMAL · 1 / 2 / 3 WEAPONS",
   "playMenu.arrange.juggernautRole": "Your role",

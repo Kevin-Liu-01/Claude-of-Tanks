@@ -630,7 +630,7 @@ function vehicleName(specId: string | null | undefined): string {
 /** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them. */
 const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
   + '.es-stat-secondary,.es-kill-block,.es-rematch';
-const FIT_CUE_H = 22;
+const FIT_CUE_H = 18;
 /** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
 const LATIN_NAME = /^[\x20-\x7e]+$/;
 
@@ -684,7 +684,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     moreObserver?.disconnect();
     for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
       const cue = el('div', 'es-more', panel);
-      cue.innerHTML = uiIconSVG('chevronDown', 16);
+      cue.innerHTML = uiIconSVG('chevronDown', 14);
       cue.setAttribute('aria-hidden', 'true');
       panel.addEventListener('scroll', () => markMore(panel), { passive: true });
       moreObserver?.observe(panel);
@@ -947,7 +947,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm${LATIN_NAME.test(result.name || result.id) ? ' lat' : ''}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="nm${LATIN_NAME.test(result.name || result.id) ? ' lat' : ''}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +

@@ -6,6 +6,9 @@
 // any two that intersect fail unless the pair is a deliberate layering (ALLOWED, each with its reason). Nested
 // instruments fold into their outermost one. The sight's own layers (the reticle canvas, the gimbal sight, a drone's
 // signal-loss veil) and the world-space markers over tanks are the scene's, not instruments, and are not measured.
+// One datum, one place (owner 2026-10-25: "prevent things like that silly double ping indicator from happening again";
+// UI-LOCKDOWN part C): in every state, a networked battle's host and client among them, two visible readouts of one
+// [data-datum] fail, and so does a visible link or frame-rate figure outside any [data-datum].
 // The full rendered regression (tools/battle-hud-layout.browser.mjs, Playwright) covers more windows and locales; this
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
@@ -26,7 +29,7 @@ export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
 export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
-  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde'];
+  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client'];
 /** The HUD's instruments, each a box another may not cross. */
 export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show', '.cot-net', '.cot-mp-status.battle',
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
@@ -51,6 +54,27 @@ function measure(instruments) {
   const seen = new Set();
   return top.filter((a) => (seen.has(a.el) ? false : (seen.add(a.el), true)))
     .map(({ el, selector, x, y, right, bottom }) => ({ selector, name: `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`, x, y, right, bottom }));
+}
+
+/** One datum, one place (UI-LOCKDOWN part C): the visible [data-datum] readouts, two of one datum a failure, and a visible
+ *  link or frame-rate readout (a "42 ms", an "fps") outside any [data-datum] an unregistered one. */
+function datums() {
+  const shown = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+    && el.getBoundingClientRect().width >= 1 && el.getBoundingClientRect().height >= 1;
+  const named = new Map();
+  for (const el of document.querySelectorAll('[data-datum]')) {
+    if (!shown(el) || el.parentElement?.closest('[data-datum]')?.dataset.datum === el.dataset.datum) continue;
+    const list = named.get(el.dataset.datum) ?? [];
+    list.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`);
+    named.set(el.dataset.datum, list);
+  }
+  const duplicates = [...named].filter(([, list]) => list.length > 1).map(([datum, list]) => `${datum}: ${list.join(', ')}`);
+  const unregistered = [];
+  for (const el of document.querySelectorAll('.cot-hud *, .cot-mp-status *')) {
+    if (el.childElementCount || !/^\s*(\d+\s*ms|fps)\s*$/i.test(el.textContent ?? '') || el.closest('[data-datum]') || !shown(el)) continue;
+    unregistered.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${el.textContent.trim()}"`);
+  }
+  return { duplicates, unregistered };
 }
 
 const allowed = (a, b) => ALLOWED.find(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
@@ -85,6 +109,9 @@ try {
           if (w > 1 && h > 1 && !allowed(a, b)) problems.push(`${a.name} overlaps ${b.name} (${Math.round(w)} x ${Math.round(h)} px)`);
         }
       }
+      const { duplicates, unregistered } = await page.evaluate(datums);
+      for (const d of duplicates) problems.push(`duplicate datum ${d}`);
+      for (const u of unregistered) problems.push(`unregistered readout ${u}`);
       for (const e of errors) problems.push(`page error: ${e}`);
       failures += problems.length;
       report.push({ case: name, state, problems, rects });

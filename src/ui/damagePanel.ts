@@ -510,7 +510,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   root.className = 'cot-dp';
   // the hull points over the direction's 20-cell bar (brand-ui H4): each cell 5 % of the hull, lit while it stands
   root.innerHTML =
-    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span><small class="hpmax num"></small></div>` +
+    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num" data-datum="hp">—</span><small class="hpmax num"></small></div>` +
     `<div class="hptrack" aria-hidden="true"></div>` +
     `<div class="fire">${t('damagePanel.onFire')}</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
