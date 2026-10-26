@@ -408,8 +408,9 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-scope-vision .scope-vision-copy{gap:5px}.scope-vision-step{min-width:7px}
 }
 @media(pointer:coarse){
- /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px wide narrows it to fit) */
- .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 16px - env(safe-area-inset-left)));min-width:88px}
+ /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px wide narrows it to fit, on the
+    screen's 12 px gutter: at 8 px it stood off the plates beside it at 320x568, gauntlet r8) */
+ .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}
 }
 /* A shot report or the open combat log over the mouse seat (critic r9: under about 1200 px wide): the mirror seat left of
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout

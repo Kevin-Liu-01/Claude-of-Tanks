@@ -667,7 +667,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
    touch target), each a tile as everywhere on touch */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}
+/* (a short last row keeps the rows' tile width, never stretching to fill: its two tiles ran half as wide again as the
+   three over them at 320x568, gauntlet r8) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:0 0 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}
 /* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
    index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
