@@ -294,12 +294,14 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   heartbeat('boot-screen');
 
   const total = stages.reduce((a, s) => a + s[2], 0);
-  // cumulative [start, end] fraction per stage key
+  // cumulative [start, end] fraction per stage key, after the bar's first share, which the page's inline script fills
+  // with the files as they download (index.html: the bar's data-download-share)
+  const head = Number(elFill?.parentElement?.dataset.downloadShare) || 0;
   const span = new Map<string, readonly [start: number, end: number]>();
   {
     let acc = 0;
     for (const [key, , w] of stages) {
-      span.set(key, [acc / total, (acc + w) / total]);
+      span.set(key, [head + (1 - head) * acc / total, head + (1 - head) * (acc + w) / total]);
       acc += w;
     }
   }
