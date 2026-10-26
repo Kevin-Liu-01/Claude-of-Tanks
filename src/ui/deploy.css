@@ -311,16 +311,16 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mod
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-launch{display:none;}
 /* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])){flex:none;}
-.cot-garage .cot-deploy-field-pop .cot-maps{height:auto;flex:1 1 auto;min-height:0;}
-.cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:24px;gap:var(--s2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
-  letter-spacing:var(--track-label);color:var(--ink-3);}
-body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:var(--cot-control-floor);}
-.cot-garage .cot-deploy-field-pop .cot-deploy-field-close{--h:24px;flex:none;box-shadow:var(--ring-2);color:var(--ink-3);}
-.cot-garage .cot-deploy-field-pop .cot-deploy-field-close:hover{background:var(--surface-hover);box-shadow:var(--ring-3);color:var(--ink-1);}
-body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-deploy-field-close{--h:var(--cot-control-floor);}
-/* one selected treatment for one-of-many tiles: the accent ring (as the mode tiles) */
-.cot-garage .cot-deploy-field-pop .cot-map-card.sel{background:var(--btn-secondary-fill);}
-.cot-garage .cot-deploy-field-pop .cot-map-card.sel .mthumb{box-shadow:var(--ring-2);}
+/* the open picker: its head (the battlefield label in the panel's label style, its close) over the kit's battlefield
+   picker (battlefieldPicker.ts), which takes the rest of the field's room */
+.cot-garage .cot-deploy-field-head{display:flex;align-items:center;gap:var(--s2);min-height:24px;margin-bottom:var(--s3);
+  font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
+.cot-garage .cot-deploy-field-head>svg{flex:none;width:16px;height:16px;}
+body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head{min-height:var(--cot-control-floor);}
+.cot-garage .cot-deploy-field-head .cot-deploy-field-close{--h:24px;flex:none;margin-left:auto;box-shadow:var(--ring-2);color:var(--ink-3);}
+.cot-garage .cot-deploy-field-head .cot-deploy-field-close:hover{background:var(--surface-hover);box-shadow:var(--ring-3);color:var(--ink-1);}
+body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head .cot-deploy-field-close{--h:var(--cot-control-floor);}
+.cot-garage .cot-deploy-bf{flex:1 1 auto;min-height:0;}
 .cot-garage .cot-deploy-field-pop[hidden]{display:none;}
 /* the time, the sides and the bot tier in one row (.ctl, .seg); the mode's own settings open under it on the toggle */
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);}

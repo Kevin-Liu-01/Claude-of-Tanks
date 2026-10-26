@@ -196,13 +196,14 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     ...(options.filters ?? []).map((filter) => [`tag:${filter.id}`, filter.label, filter.icon] as const),
   ].map(([key, label, glyph]) => `<button type="button" class="cot-c-chip" data-chip="${esc(key)}" aria-pressed="false" data-ui-sound="toggle">`
     + `${glyph ? icon(glyph as IconId, { size: 16 }) : ''}<span class="cot-c-chip__label">${esc(label)}</span></button>`).join('');
-  host.innerHTML = `<div class="cot-c-picker__bar"${searchable() ? '' : ' hidden'}>`
+  host.innerHTML = `<div class="cot-c-picker__bar">`
     + `<input class="cot-c-picker__search" type="search" placeholder="${esc(options.text.search)}" aria-label="${esc(options.text.search)}"`
     + ` aria-controls="${uid}" autocomplete="off" spellcheck="false"><div class="cot-c-picker__chips" role="group">${chips()}</div></div>`
     + `<div class="cot-c-picker__grid" id="${uid}" role="listbox" aria-label="${esc(options.label)}"></div>`
     + `<div class="cot-c-picker__empty cot-c-empty" hidden><p>${esc(options.text.empty)}</p>`
     + `<button type="button" class="cot-c-btn cot-c-btn--36" data-picker-clear data-ui-sound="press">${esc(options.text.clear)}</button></div>`;
   const bar = host.querySelector<HTMLElement>('.cot-c-picker__bar')!;
+  bar.hidden = !searchable();
   const search = host.querySelector<HTMLInputElement>('.cot-c-picker__search')!;
   const grid = host.querySelector<HTMLElement>('.cot-c-picker__grid')!;
   const empty = host.querySelector<HTMLElement>('.cot-c-picker__empty')!;

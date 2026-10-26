@@ -111,7 +111,9 @@
 .dm-class__body h3{display:flex;align-self:start;align-items:baseline;gap:8px;margin:0;font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
 .dm-class__body h3 .cot-i{flex:none;align-self:flex-start;color:var(--ink-3)}
 .dm-class__body h3 b{margin-left:auto;font:600 var(--fs-15)/1 var(--font-data);color:var(--ink-2)}
-.dm-class__body p{display:flex;align-items:center;gap:6px;margin:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
+/* the flag sits in the class glyph's 18 px column, so the vehicle line starts on the title's edge */
+.dm-class__body p{display:flex;align-items:center;gap:8px;margin:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3)}
+.dm-class__body p>.cot-c-flag{margin-inline:1px}
 .dm-roles{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
 .dm-roles li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;padding:var(--s3) var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-roles li>.cot-i{margin-top:2px;color:var(--ink-3)}

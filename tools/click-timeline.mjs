@@ -539,8 +539,8 @@ export const PATHS = [
     press: (page, i) => target(page, `#cot-battle-menu .cot-deploy-tab[data-tab="${i % 2 ? 'quick' : 'campaign'}"]`), teardown: closeDeploy },
   { id: 'deploy-map', doc: 'game', reps: 3, setup: openDeploy, teardown: closeDeploy,
     script: async (page, i, run) => {
-      await run('deploy-field', () => target(page, '#cot-battle-menu [data-deploy-field]'), { shown: `shown('.cot-map-card .cot-map-select')` });
-      await run('deploy-map-pick', () => target(page, '.cot-map-card .cot-map-select', i + 1), {});
+      await run('deploy-field', () => target(page, '#cot-battle-menu [data-deploy-field]'), { shown: `shown('[data-deploy-bf] .cot-c-picker__opt')` });
+      await run('deploy-map-pick', () => target(page, '[data-deploy-bf] .cot-c-picker__opt', i + 1), {});
     } },
   { id: 'studio-open', doc: 'game', reps: 3,
     press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,

@@ -1576,14 +1576,7 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 .cot-multiplayer-entry:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
 .has-room .cot-multiplayer-entry{display:none;}
 
-.cot-map-inspect{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:30px;display:grid;place-items:center;
-  border:0;background:none;box-shadow:none;color:var(--accent-hi);cursor:zoom-in;padding:0;
-  opacity:0;pointer-events:none;transition:opacity var(--dur-fast) ease;}
-.cot-map-inspect svg{filter:var(--sil-shadow);}
-.cot-map-card.sel:has(.cot-map-inspect) .cot-map-select{cursor:zoom-in;}
-@media (hover:hover){.cot-map-card.sel:hover .cot-map-inspect:not(:disabled){opacity:1;pointer-events:auto;}}
-.cot-map-card.sel .cot-map-inspect:focus-visible{opacity:1;pointer-events:auto;}
-.cot-map-inspect:focus-visible,.cot-map-select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cot-map-select:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:var(--line-control);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry::before{content:'';position:absolute;inset:1px;z-index:-1;background:var(--surface-raised);
@@ -1609,7 +1602,6 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 
 .cot-map-card{position:relative;}
 .cot-map-select{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;}
-body[data-cot-input="coarse"] .cot-map-inspect{width:44px;height:44px;}
 
 .cot-battle-menu .cot-battle-choice[aria-pressed="true"]{border-color:var(--mode-color);background:color-mix(in srgb,var(--mode-color) 15%,var(--surface-menu));color:var(--mode-color);}
 

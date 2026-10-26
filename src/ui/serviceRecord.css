@@ -9,7 +9,7 @@
 .cot-modal-root.cot-service-record .cot-modal:focus{outline:none}
 .cot-modal-root.cot-service-record .cot-modal__body{display:flex;flex:1;flex-direction:column;padding:0;overflow:hidden}
 .cot-modal-root.cot-service-record .cot-modal__footer{display:none}
-.cot-modal-root.cot-service-record .cot-modal__close{grid-area:close;align-self:start;justify-self:end;min-width:44px;min-height:44px;background:var(--surface-plate);box-shadow:var(--ring-2)}
+.cot-modal-root.cot-service-record .cot-modal__close{grid-area:close;align-self:end;justify-self:end;min-width:44px;min-height:44px;background:var(--surface-plate);box-shadow:var(--ring-2)}
 .cot-modal-root.cot-service-record .cot-modal__header:has(.cot-record-plate.is-empty){min-height:0;grid-template-areas:'title tank close';align-items:center}
 .cot-modal-root.cot-service-record .cot-modal__header:has(.cot-record-plate.is-empty) .cot-modal__close{align-self:center}
 .cot-service-record :is(button,summary,[tabindex]:not([tabindex='-1'])):focus-visible{outline:none;box-shadow:var(--focus-ring)}
@@ -18,13 +18,14 @@
 /* the header plate: the last battle's map behind; the title and the result line on its dark side, the tank's render over
    the map (the plate's wrappers step aside so their parts take the header's areas) */
 .cot-modal-root.cot-service-record .cot-modal__header{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;
-  grid-template-areas:'title tank close' 'line tank close';align-items:end;gap:var(--s2) var(--s4);
+  grid-template-areas:'title tank close' 'line tank .';align-items:end;gap:var(--s2) var(--s4);
   min-height:min(136px,22vh);padding:var(--s5) var(--s6) var(--s4) var(--s6);border-bottom-color:var(--line-2);
   background:linear-gradient(90deg,var(--surface-scene) 16%,color-mix(in srgb,var(--surface-scene) 58%,transparent) 58%,color-mix(in srgb,var(--surface-scene) 24%,transparent)),
     var(--record-map,none) center 42%/cover no-repeat var(--surface-raised)}
 /* a record with no battle has no map behind its header: the plate alone, no scrim over nothing */
 .cot-modal-root.cot-service-record.no-map .cot-modal__header{background:var(--surface-raised)}
-.cot-modal-root.cot-service-record .cot-modal__header>div:first-child{grid-area:title}
+/* the title's box is the close's height, both on the first row's floor: their centres meet at every size */
+.cot-modal-root.cot-service-record .cot-modal__header>div:first-child{grid-area:title;display:flex;flex-direction:column;justify-content:center;min-height:44px}
 .cot-record-plate-host,.cot-record-plate{display:contents}
 .cot-record-plate .cot-record-vehicle{grid-area:tank;align-self:center;width:208px;height:120px}
 .cot-record-plate p{grid-area:line;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px var(--s2);min-width:0;margin:0}
@@ -78,7 +79,7 @@
 .cot-record-outcome.loss strong{color:var(--text-danger)}
 .cot-record-outcome.win-rate strong{font-size:var(--fs-52)}
 /* a missing figure is an en dash at the outcome figures' size, in the quiet ink */
-.cot-record-outcome strong.is-null{font-size:var(--fs-28)}
+.cot-record-outcome:not(.win-rate) strong.is-null{font-size:var(--fs-28)}
 .cot-record-split{display:flex;gap:2px;height:6px;margin-top:var(--s3);background:var(--line-1)}
 .cot-record-split i{min-width:4px}
 .cot-record-split .win{background:var(--ok)}
@@ -192,6 +193,7 @@
 .cot-record-trace{display:grid;grid-template-columns:64px auto minmax(80px,1fr) auto auto;margin:0;padding:var(--s3) 0 0 18px;list-style:none}
 .cot-record-trace li{position:relative;display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;gap:var(--s3);padding:var(--s2) 0;
   font-size:max(var(--fs-floor-12),var(--fs-12));border-bottom:1px solid var(--line-1)}
+.cot-record-trace li:last-child{border-bottom:0}
 .cot-record-trace li::before{content:'';position:absolute;z-index:var(--z-lift);top:50%;left:-18px;width:7px;height:7px;margin-top:-3px;background:var(--ink-3);rotate:45deg}
 .cot-record-trace li.linked::before{background:var(--ink-2)}
 .cot-record-trace li.linked::after{content:'';position:absolute;bottom:50%;left:-15px;width:1px;height:100%;background:var(--ink-3)}
@@ -210,7 +212,6 @@
   .cot-record-cards{grid-template-columns:minmax(0,1fr)}
   .cot-record-battle-row{grid-template-columns:96px minmax(0,1fr) minmax(104px,auto) minmax(104px,auto)}
   .cot-record-vehicle{width:96px;height:64px}
-  .cot-record-expand{top:var(--s3);translate:0}
   .cot-record-battle-medals{grid-column:2/-1}
   /* here the row's medals take a line of their own: an open battle drops it (its body shows them) */
   .cot-record-battle[open] .cot-record-battle-medals{display:none}
@@ -227,7 +228,7 @@
   .cot-record-tab.has-new::after{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
   /* a phone's figures set the glyph over the name, so a three-up name keeps its word whole */
   .cot-service-record :is(.cot-record-outcome,.cot-record-metric){padding:var(--s3)}
-  .cot-service-record :is(.cot-record-outcome .cot-record-stat-label,.cot-record-metric .cot-c-tile__label,.cot-record-reason-stats .cot-record-stat-label){flex-direction:column;gap:var(--s2)}
+  .cot-service-record :is(.cot-record-outcome .cot-record-stat-label,.cot-record-metric .cot-c-tile__label,.cot-record-reason-stats .cot-record-stat-label,.cot-record-battle-num .cot-record-stat-label){flex-direction:column;gap:var(--s2)}
   .cot-record-reason-stats>div{padding-inline:var(--s3)}
   .cot-record-body{padding:var(--s4)}
   .cot-record-outcome strong{font-size:var(--fs-24)}
