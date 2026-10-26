@@ -30,6 +30,13 @@
    (.hc-host, heroCard.ts decorateHeroTile), which takes the card ground once decorated. The Gallery's cards
    draw their own ground (gallery.css). */
 .hc-host{position:absolute;inset:0;}
+/* the tier chip every card wears (heroCardChips.ts), the Garage roster's plate in the bow-side top corner (the flag holds
+   the rear-top one): a card facing left keeps it on the left */
+.cot-hc .hc-tier{position:absolute;z-index:var(--z-lift);top:var(--hc-pad,8px);right:var(--hc-pad,8px);padding:3px var(--s1) 2px;
+  font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);letter-spacing:0;white-space:nowrap;
+  color:var(--ink-3);background:var(--scrim);border:1px solid var(--line-3);}
+.cot-hc .hc-tier b{font-weight:500;color:var(--text-accent);}
+.cot-hc[data-hero-facing='left'] .hc-tier{right:auto;left:var(--hc-pad,8px);}
 .cot-es .es-vehicle-card .hc-host{
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);}

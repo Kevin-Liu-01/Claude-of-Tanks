@@ -131,6 +131,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   padding:3px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--ink-1);line-height:0}
 .fam[data-layout=grid] .it__class svg{display:block;width:12px;height:12px}
 .fam[data-layout=grid] .it:has(.it__class) .e{top:36px}
+/* a hero card's tier chip (heroCardChips.ts) takes the top-left corner; the cloth flag behind the tank is the nation there */
+.it__art .hc-tier{display:none}
+.fam[data-layout=grid] .it__art.cot-hc .hc-tier{display:block}
+.fam[data-layout=grid] .it:has(.it__art.cot-hc .hc-tier)>.cot-c-flag{display:none}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */

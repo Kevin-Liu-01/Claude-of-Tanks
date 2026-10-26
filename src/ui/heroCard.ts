@@ -13,6 +13,7 @@ import {
   HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_NAME_LINE_HEIGHT, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss,
   heroTankFiles, type HeroFacing,
 } from './heroCardPolicy.ts';
+import { heroTierChipHTML } from './heroCardChips.ts';
 
 interface HeroLayerRow {
   readonly sha: readonly string[];
@@ -191,6 +192,8 @@ export async function decorateHeroTile(tile: HTMLElement, specId: string, option
   host.className = 'hc-host';
   host.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
   if (!decorateHeroCard(host, specId, manifest, options)) return false;
+  // every tile wears its tier chip from the tier table (heroCardChips.ts): the end screen, the Studio, the tech tree
+  host.insertAdjacentHTML('beforeend', heroTierChipHTML(specId));
   tile.append(host);
   return true;
 }

@@ -38,6 +38,7 @@ import type { EquipmentItem, EquipmentLock } from '../game/equipment.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
@@ -407,15 +408,6 @@ function equipmentDesc(id: string): string {
   return t(`equipment.${id}.desc`);
 }
 
-/** The roster card's tier chip, "Tier X": the word in the data face, the numeral in tungsten. */
-function tierChipHTML(numeral: string): string {
-  const text = t('garage.card.tier', { tier: numeral });
-  const at = text.lastIndexOf(numeral);
-  // a word that leads with its numeral ("IX级") is one word in one colour: a white 级 after an orange IX read as a stray
-  // character (the r18 zh critic)
-  if (at === 0) return `<b>${text}</b>`;
-  return at < 0 ? text : `${text.slice(0, at)}<b>${numeral}</b>${text.slice(at + numeral.length)}`;
-}
 
 /** A nation's short name beside its flag (cards and filter chips): `nation.short.<nation>`, a code in en-US and the
  *  country's name in zh-CN (BUI-F8: no Latin codes in Chinese). */
