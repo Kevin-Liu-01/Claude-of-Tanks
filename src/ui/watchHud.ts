@@ -12,6 +12,7 @@ import { iconUrl } from './icons.ts';
 import { icon } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { markDatum } from './dom.ts';
 import { vehicleName } from './killSourceIdentity.ts';
 
 type WatchHudView = 'off' | 'drone' | 'ride' | 'drive';
@@ -152,7 +153,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
     `<button type="button" class="wb up" aria-label="${t('watch.climb')}">${icon('moveForward', { size: 24 })}</button>`
     + `<button type="button" class="wb down" aria-label="${t('watch.descend')}">${icon('moveBack', { size: 24 })}</button>`;
 
-  const who = bar.querySelector('.who') as HTMLElement;
+  const who = markDatum(bar.querySelector('.who') as HTMLElement, 'watched');
   const lead = who.querySelector('.lead') as HTMLElement;
   const mark = who.querySelector('.mark') as HTMLElement;
   const name = who.querySelector('b') as HTMLElement;

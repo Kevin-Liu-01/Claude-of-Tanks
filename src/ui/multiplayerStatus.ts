@@ -15,10 +15,9 @@
  * at most at the model's sample cadence. Layout follows the responsive body
  * attributes (no width media queries; the same lanes `.cot-net` uses).
  */
-import { createElement } from './dom.ts';
+import { createElement, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
@@ -287,10 +286,10 @@ export function createMultiplayerStatusSurface({
   strip.setAttribute('aria-controls', 'cot-mp-panel');
   // Built node by node (never queried back out of markup) so the Node receipt drives the real lifecycle on a stub document.
   const glyph = createElement('span', 'glyph', strip);
-  glyph.innerHTML = uiIconSVG('signal', 16);
+  glyph.innerHTML = datumGlyph('link', 16);
   const pingUnitNode = createElement('span', 'unit ping', strip);
   // (the battle's one link readout: the datum receipts find a second one, UI-LOCKDOWN part C)
-  pingUnitNode.setAttribute('data-datum', 'link');
+  markDatum(pingUnitNode, 'link');
   const pingValue = createElement('b', 'num', pingUnitNode);
   pingValue.textContent = '—';
   const pingUnit = createElement('i', '', pingUnitNode);
@@ -298,11 +297,11 @@ export function createMultiplayerStatusSurface({
   hostUnit.hidden = true;
   const hostValue = createElement('b', '', hostUnit);
   const seatUnit = createElement('span', 'unit seat', strip);
-  seatUnit.setAttribute('data-datum', 'seat');
+  markDatum(seatUnit, 'seat');
   seatUnit.hidden = true;
   const seatValue = createElement('b', '', seatUnit);
   const rosterUnit = createElement('span', 'unit roster', strip);
-  rosterUnit.setAttribute('data-datum', 'roster');
+  markDatum(rosterUnit, 'roster');
   const rosterValue = createElement('b', '', rosterUnit);
   rosterValue.textContent = '0/28';
   const touchNotice = createElement('span', 'notice', strip);

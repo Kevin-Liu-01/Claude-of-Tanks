@@ -36,7 +36,7 @@ import { containModalTab } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, escapeHtml } from './dom.ts';
+import { createElement as el, escapeHtml, datumAttr, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
@@ -1056,7 +1056,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     host.dataset.banner = bannerText;
     if (sum.allies.length || sum.enemies.length) {
       const own = fmtN(summarizeTeam(sum.allies).kills), enemy = fmtN(summarizeTeam(sum.enemies).kills);
-      const score = el('div', 'es-score', headline);
+      const score = markDatum(el('div', 'es-score', headline), 'score');
       score.setAttribute('role', 'img');
       score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
       score.innerHTML = `<span class="o">${own}</span><span class="sep" aria-hidden="true">:</span><span class="e">${enemy}</span>`;
@@ -1064,7 +1064,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
     sub.style.setProperty('--i', nextI());
-    sub.innerHTML = `${sum.playerVehicle ? `<b>${escapeHtml(sum.playerVehicle)}</b>` : ''}` +
+    sub.innerHTML = `${sum.playerVehicle ? `<b${datumAttr('tank-name')}>${escapeHtml(sum.playerVehicle)}</b>` : ''}` +
       `<span class="es-why">${outcomeLine(result, sum)}</span>`;
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
@@ -1115,10 +1115,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const bits: string[] = [];
     const mode = sum.mode && Object.hasOwn(GAME_MODE_DEFINITIONS, sum.mode)
       ? GAME_MODE_DEFINITIONS[sum.mode as keyof typeof GAME_MODE_DEFINITIONS] : null;
-    if (mode) bits.push(`<span class="mode">${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
-    if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
+    if (mode) bits.push(`<span class="mode"${datumAttr('mode-name')}>${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
+    if (sum.map) bits.push(`<span${datumAttr('map-name')}>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
     if (sum.timeS > 0) {
-      bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
+      bits.push(`<span${datumAttr('clock')}>${datumGlyph('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
     }
     if (sum.hordeWave != null && Number.isFinite(sum.hordeWave)) {
       bits.push(`<span>${uiIconSVG('modeHorde', 14)}<b>${t('endScreen.horde.wave', { wave: String(Math.max(1, Math.floor(sum.hordeWave))) })}</b></span>`);

@@ -19,7 +19,7 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el } from './dom.ts';
+import { createElement as el, datumAttr, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
@@ -2243,7 +2243,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const touchAimWarningGlyph = el('span', 'g', touchAimWarning);
   touchAimWarningGlyph.setAttribute('aria-hidden', 'true');
   const touchAimWarningText = el('span', 'tx', touchAimWarning);
-  const retCanvas = el('canvas', 'cot-ret', root);
+  const retCanvas = markDatum(el('canvas', 'cot-ret', root), 'reload');
   const ctx = requireCanvasContext(retCanvas);
   const markCanvas = el('canvas', 'cot-hitmark', root);
   const markCtx = requireCanvasContext(markCanvas);
@@ -2291,10 +2291,10 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // --- top score/timer plate ---
   // Scores and clock retain a fixed footprint regardless of roster size.
-  const topPlate = el('div', 'cot-top', root);
+  const topPlate = markDatum(el('div', 'cot-top', root), 'score');
   topPlate.innerHTML = `<div class="sc ally"><span class="team-label" data-default>${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b><i class="bar" aria-hidden="true"><i></i></i></div>` +
-    `<div class="tm-block"><span class="tm-label"></span><span class="tm num" data-datum="clock">15:00</span></div>` +
+    `<div class="tm-block"><span class="tm-label"></span><span class="tm num"${datumAttr('clock')}>15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label" data-default>${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b><i class="bar" aria-hidden="true"><i></i></i></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
@@ -2316,7 +2316,7 @@ export function initHud(bus: EventBus): HudRuntime {
   modeStatusEl.setAttribute('role', 'status');
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
   // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn" data-datum="mode-name"></b><span class="mv" data-datum="objective"></span></span>`
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"${datumAttr('mode-name')}></b><span class="mv"${datumAttr('objective')}></span></span>`
     + `<kbd class="cot-c-kbd" aria-hidden="true">TAB</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
@@ -2340,12 +2340,12 @@ export function initHud(bus: EventBus): HudRuntime {
   netUnits.setAttribute('role', 'status');
   netUnits.setAttribute('aria-label', t('hud.net.perfAria'));
   // (each readout names its datum, UI-LOCKDOWN part B: one visible element a datum, the overlap receipt's duplicate check)
-  netUnits.innerHTML = `<span class="cot-net-unit fps" data-datum="fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
-    `<span class="cot-net-unit ping" data-datum="link"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
+  netUnits.innerHTML = `<span class="cot-net-unit fps"${datumAttr('fps')}><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+    `<span class="cot-net-unit ping"${datumAttr('link')}><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
   const netLink = el('span', 'cot-net-link', netEl);
-  netLink.dataset.datum = 'link';
+  markDatum(netLink, 'link');
   netLink.hidden = true;
-  netLink.innerHTML = `${uiIconSVG('signal', 14)}<b class="num"></b>`;
+  netLink.innerHTML = `${datumGlyph('link', 14)}<b class="num"></b>`;
   const netLinkValue = requireElement<HTMLElement>(netLink, 'b');
   const gearBtn = el('button', 'cot-hud-gear', netEl);
   gearBtn.type = 'button';
@@ -2426,7 +2426,7 @@ export function initHud(bus: EventBus): HudRuntime {
     `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
     `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
-    `<strong class="speed num" data-drive-speed data-datum="speed">0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
+    `<strong class="speed num" data-drive-speed${datumAttr('speed')}>0</strong><span class="unit">${t('hud.drive.kmh')}</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = requireElement<HTMLElement>(driveEl, '[data-drive-speed]');
   const driveLimitEl = requireElement<HTMLElement>(driveEl, '[data-drive-limit]');
@@ -2532,7 +2532,7 @@ export function initHud(bus: EventBus): HudRuntime {
   window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 
-  const killfeed = el('div', 'cot-killfeed', root);
+  const killfeed = markDatum(el('div', 'cot-killfeed', root), 'kill-feed');
   const killLeft = el('div', 'cot-kill-lane l', killfeed);
   const killRight = el('div', 'cot-kill-lane r', killfeed);
   // the player's kills and what they earned, centre low (hudKillRibbon.ts)
@@ -2548,7 +2548,7 @@ export function initHud(bus: EventBus): HudRuntime {
   specBar.setAttribute('role', 'region');
   specBar.setAttribute('aria-label', t('spectator.spectating'));
   const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
-  const specWho = requireElement<HTMLElement>(specBar, '.who');
+  const specWho = markDatum(requireElement<HTMLElement>(specBar, '.who'), 'watched');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
   const specVeh = requireElement<HTMLElement>(specBar, '.veh');
   const specIndex = requireElement<HTMLElement>(specBar, '.idx');
@@ -2668,7 +2668,7 @@ export function initHud(bus: EventBus): HudRuntime {
     },
   };
 
-  const alertEl = el('div', 'cot-alert', root);
+  const alertEl = markDatum(el('div', 'cot-alert', root), 'notices');
   alertEl.setAttribute('role', 'status');
   alertEl.setAttribute('aria-live', 'polite');
   const alertIconEl = el('span', 'cot-alert-icon', alertEl);
@@ -2925,7 +2925,7 @@ export function initHud(bus: EventBus): HudRuntime {
     setAttr(specialButton, 'aria-pressed', active&&suspension ? 'true' : 'false');
   }
 
-  const shellBox = el('div', 'cot-shells', root);
+  const shellBox = markDatum(el('div', 'cot-shells', root), 'ammo');
   const ammoSwitchingStatus = el('span', 'cot-ammo-switching', shellBox);
   ammoSwitchingStatus.setAttribute('role', 'status');
   ammoSwitchingStatus.setAttribute('aria-live', 'polite');
@@ -3010,7 +3010,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const conSep = el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
-  const conBox = el('div', 'cot-cons', shellBox);
+  const conBox = markDatum(el('div', 'cot-cons', shellBox), 'consumables');
   const conEls: HTMLButtonElement[] = [];
   const conSlots: RetainedConsumableSlot[] = [];
   const conReadyAt = [0, 0, 0];
@@ -3085,7 +3085,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const mmCanvas = el('canvas', '', mmWrap);
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
-  mmHead.innerHTML = `<span class="nm"></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
+  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
   const mmName = requireElement<HTMLElement>(mmHead, '.nm');
   const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
   // the grid's coordinates, WoT's convention: numbers are the columns (1 west to 0 east, along the top), letters the rows
