@@ -12,18 +12,18 @@ import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const dist = resolve(arg('dist'));
+const liveOrigin = (arg('origin') ?? '').replace(/\/$/, '');
+const dist = liveOrigin ? null : resolve(arg('dist'));
+// a deployed build refuses analytics and the game's telemetry at the network: a capture adds no production records
+const LIVE_BLOCKED = /googletagmanager\.com|google-analytics\.com|\/api\/telemetry|cot-telemetry\./;
 const vercelJson = arg('vercel-json');
 const out = resolve(arg('out') ?? 'boot-card-shots');
 const root = new URL('..', import.meta.url).pathname;
-const SIZES = [
-  { name: 'desktop-1440', width: 1440, height: 900, dpr: 1 },
-  { name: 'laptop-1280', width: 1280, height: 720, dpr: 1 },
-  { name: 'tablet-768', width: 768, height: 1024, dpr: 2, mobile: true },
-  { name: 'phone-390', width: 390, height: 844, dpr: 3, mobile: true },
-  { name: 'phone-360', width: 360, height: 640, dpr: 2, mobile: true },
-  { name: 'phone-land-844', width: 844, height: 390, dpr: 3, mobile: true },
-];
+// the UI gauntlet's eight sizes (tools/SKILL.md), each in en ('/') and zh ('/cn/')
+const SIZES = [[2560, 1440], [1920, 1080], [1440, 900], [1280, 720], [1024, 600], [900, 700], [390, 844], [844, 390]].flatMap(([width, height]) => {
+  const mobile = width < 768 || height < 500;
+  return [['en', '/'], ['zh', '/cn/']].map(([lang, path]) => ({ name: `${lang}-${width}x${height}`, width, height, dpr: mobile ? 3 : 1, mobile, path }));
+});
 const freePort = () => new Promise((done, fail) => {
   const probe = net.createServer();
   probe.once('error', fail);
@@ -33,11 +33,14 @@ const freePort = () => new Promise((done, fail) => {
 mkdirSync(out, { recursive: true });
 const lock = process.argv.includes('--lock') ? createCaptureLock() : null;
 if (lock) { await lock.acquire(90 * 60 * 1000, { place: 'boot-card-shots' }); setInterval(() => lock.refresh(), 30_000).unref(); }
-const port = await freePort();
-const server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
-  ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
-const origin = `http://127.0.0.1:${port}`;
-for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
+let origin = liveOrigin, server = null;
+if (!origin) {
+  const port = await freePort();
+  server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
+    ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
+  origin = `http://127.0.0.1:${port}`;
+  for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
+}
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--use-gl=angle', '--js-flags=--max-old-space-size=3072'] });
 const rows = [];
 try {
@@ -45,26 +48,32 @@ try {
     const page = await browser.newPage();
     await page.evaluateOnNewDocument(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true }));
     await page.setViewport({ width: size.width, height: size.height, deviceScaleFactor: size.dpr, isMobile: !!size.mobile, hasTouch: !!size.mobile });
-    await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cot-boot .cot-boot-mark .cot-mark--layers', { timeout: 30_000 });
+    if (liveOrigin) {
+      await page.setRequestInterception(true);
+      page.on('request', (request) => { if (LIVE_BLOCKED.test(request.url())) request.abort('blockedbyclient').catch(() => {}); else request.continue().catch(() => {}); });
+    }
+    await page.goto(`${origin}${size.path}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#cot-boot .cot-boot-mark .mkl, #cot-boot .cot-boot-mark .cot-mark--layers', { timeout: 60_000 });
     await new Promise((r) => setTimeout(r, 900));
     const box = await page.evaluate(() => {
       const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect();
         return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width * 10) / 10, h: Math.round(b.height * 10) / 10 }; };
-      return { mark: r('.cot-boot-mark'), words: r('.cot-boot-words'), tank: r('.cot-boot-tank'), layers: r('.cot-mark--layers'),
-        animations: document.getAnimations().filter((a) => a.effect?.target?.closest?.('.cot-mark--layers')).length };
+      const overflowX = document.documentElement.scrollWidth > innerWidth + 1;
+      return { mark: r('.cot-boot-mark'), tank: r('.cot-boot-mark .mkl') ?? r('.cot-mark--layers'), words: r('.cot-boot-mark .wm-stack') ?? r('.cot-boot-words'),
+        animations: document.getAnimations().filter((a) => a.effect?.target?.closest?.('.mkl, .cot-mark--layers')).length, overflowX,
+        lang: document.documentElement.lang };
     });
     await page.screenshot({ path: join(out, `${size.name}-a.png`) });
     await new Promise((r) => setTimeout(r, 1500));
     await page.screenshot({ path: join(out, `${size.name}-b.png`) });
     if (box.mark) await page.screenshot({ path: join(out, `${size.name}-mark.png`), clip: { x: Math.max(0, box.mark.x - 8), y: Math.max(0, box.mark.y - 8), width: box.mark.w + 16, height: box.mark.h + 16 } });
     rows.push({ size: size.name, ...box });
-    console.log(`${size.name}: mark ${JSON.stringify(box.mark)} words ${JSON.stringify(box.words)} tank ${JSON.stringify(box.tank)} layers ${JSON.stringify(box.layers)}, ${box.animations} animations`);
+    console.log(`${size.name}: mark ${JSON.stringify(box.mark)} tank ${JSON.stringify(box.tank)} words ${JSON.stringify(box.words)}, ${box.animations} animations, lang ${box.lang}, overflowX ${box.overflowX}`);
     await page.close();
   }
 } finally {
   await browser.close();
-  server.kill();
+  server?.kill();
   if (lock) await lock.release();
 }
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(rows, null, 2));

@@ -18,12 +18,13 @@ const out = resolve(arg('out') ?? 'mark-probe');
 const width = Number(arg('width') ?? 540);
 const busyMs = Number(arg('busy-ms') ?? 1500);
 const motion = await import(join(src, 'src/ui/brandMarkMotion.ts'));
-const versions = {
-  svg: { css: motion.BRAND_MOTION_CSS, markup: motion.brandMarkMotionSVG(106) },
-  layers: { css: motion.BRAND_MOTION_LAYER_CSS, markup: motion.brandMarkMotionLayers() },
-};
+// every implementation the checkout has: the svg loop, and whichever compositor layers it carries (81ca257fe3's
+// brandMarkMotionLayers, or the lead's brandMarkLiveHTML in the boot lockup)
+const versions = { svg: { css: motion.BRAND_MOTION_CSS, markup: motion.brandMarkMotionSVG(106) } };
+if (motion.brandMarkMotionLayers) versions.layers = { css: motion.BRAND_MOTION_LAYER_CSS, markup: motion.brandMarkMotionLayers() };
+if (motion.brandMarkLiveHTML) versions.live = { css: motion.BRAND_MARK_LIVE_CSS, markup: motion.brandMarkLiveHTML() };
 const page = (version) => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#0b0e11;color:#f6f3ec;--accent:#f0a030}
-.host{width:${width}px;margin:40px}.host>svg{display:block;width:100%;height:auto}${version.css}</style><div class="host">${version.markup}</div>`;
+.host{width:${width}px;margin:40px;--mk-ground:#0b0e11;--surface-scene:#0b0e11}.host>svg{display:block;width:100%;height:auto}${version.css}</style><div class="host">${version.markup}</div>`;
 
 mkdirSync(join(out, 'frames'), { recursive: true });
 const lock = process.argv.includes('--lock') ? createCaptureLock() : null;

@@ -32,6 +32,10 @@ const argv = process.argv.slice(2);
 const option = (name, fallback) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const dist = resolve(option('dist', 'dist'));
 const vercelJson = option('vercel-json', '');
+// --origin=<url>: a deployed build instead of a local dist (the live release's evidence). Analytics and the game's own
+// telemetry are refused at the network, so a census run adds no records to production.
+const liveOrigin = option('origin', '').replace(/\/$/, '');
+const LIVE_BLOCKED = /googletagmanager\.com|google-analytics\.com|\/api\/telemetry|cot-telemetry\./;
 const label = option('label', 'build');
 const out = resolve(option('out', 'boot-census'));
 const profiles = option('profiles', 'desktop,phone').split(',').filter(Boolean);
@@ -413,7 +417,7 @@ function rafLoss(raf, from, to) {
 
 const lock = useLock ? createCaptureLock() : null;
 let server = null;
-const results = { label, dist, profiles: {} };
+const results = { label, dist: liveOrigin || dist, profiles: {} };
 let failed = false;
 try {
   if (lock) {
@@ -421,11 +425,14 @@ try {
     setInterval(() => lock.refresh(), 30_000).unref();
     setTimeout(() => { console.error(`boot-census: past its ${budgetMin} min budget`); process.exit(3); }, budgetMin * 60_000).unref();
   }
-  const port = await freePort();
-  server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
-    ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
-  const origin = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
+  let origin = liveOrigin;
+  if (!origin) {
+    const port = await freePort();
+    server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
+      ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
+    origin = `http://127.0.0.1:${port}`;
+    for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
+  }
   for (const name of profiles) {
     const profile = PROFILES[name];
     // a fresh browser: an empty HTTP cache, no service worker, no storage
@@ -438,6 +445,10 @@ try {
       await page.emulateNetworkConditions(profile.network);
       await page.emulateCPUThrottling(profile.cpu);
       await page.evaluateOnNewDocument(PROBE);
+      if (liveOrigin) {
+        await page.setRequestInterception(true);
+        page.on('request', (request) => { if (LIVE_BLOCKED.test(request.url())) request.abort('blockedbyclient').catch(() => {}); else request.continue().catch(() => {}); });
+      }
       if (noConvolver) {
         await page.evaluateOnNewDocument(() => {
           for (const proto of [window.BaseAudioContext?.prototype, window.AudioContext?.prototype, window.OfflineAudioContext?.prototype]) {
