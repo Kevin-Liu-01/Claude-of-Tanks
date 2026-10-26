@@ -3,7 +3,7 @@
 // registered tank fail the release gate until that output is generated.
 
 import { flagIconCode } from '../ui/flagCodes.ts';
-import { matchTierNumeral, tankTier } from './tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
@@ -197,9 +197,9 @@ export function tankAssetMetadata(spec: TankAssetSpec) {
     nation: spec.nation,
     countryCode: flagIconCode(spec.nation),
     era: spec.era,
-    // the matchmaking tier until the technical diagrams this metadata heads are re-rendered with the shown tier
-    tier: tankTier(spec.id),
-    tierNumeral: matchTierNumeral(spec.id),
+    // the shown tier (253: the technical diagrams' rasters carry no text; their header reads this record)
+    tier: displayTier(spec.id),
+    tierNumeral: tierNumeral(spec.id),
     dimensionsM: {
       hullLength: rounded(Number(spec.dims && spec.dims.hullLengthM)),
       overallLength: rounded(Number(spec.dims && spec.dims.overallLengthM)),
