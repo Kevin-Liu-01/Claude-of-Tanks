@@ -29,9 +29,11 @@ img{display:block;max-width:100%}
 .cot-c-btn--primary .cot-i[data-af],.hero__thumb .cot-i{fill:currentColor}
 
 /* the bar floats over the hero until the page scrolls (publicNav.ts data-scrolled), then takes its plate (02, 03) */
-.home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
-  transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter)}
-.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:var(--surface-nav)}
+.home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* the plate is a layer under the bar's content that fades in: the bar never repaints while it comes */
+.home .public-nav::before{content:'';position:absolute;z-index:-1;inset:0 0 -1px;border-bottom:1px solid var(--line-1);background:var(--surface-nav);
+  opacity:0;pointer-events:none;transition:opacity var(--dur-base) var(--ease-enter)}
+.home .public-nav[data-scrolled]::before{opacity:1}
 
 /* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
 .hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
@@ -172,7 +174,7 @@ img{display:block;max-width:100%}
 .press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
 .press__title a{display:inline-flex;align-items:first baseline;gap:var(--s4)}
 .press__avatar{position:relative;top:.06em;flex:none;width:.8em;height:.8em;border-radius:50%;outline:1px solid var(--line-3)}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
+.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
 .v5-social-card--vaibhav{--social-accent:var(--ink-2)}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
