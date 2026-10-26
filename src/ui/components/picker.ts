@@ -224,6 +224,8 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     const over = chipRow.scrollWidth > chipRow.clientWidth + 1;
     more.hidden = !over;
     more.classList.toggle('is-back', over && chipRow.scrollLeft + chipRow.clientWidth >= chipRow.scrollWidth - 1);
+    // scrolled, the row fades at its start too, so no chip stands cut at its left edge (the r22q critic)
+    chipRow.classList.toggle('is-scrolled', over && chipRow.scrollLeft > 1);
   };
   const chipsResize = new ResizeObserver(syncMore);
   chipsResize.observe(chipRow);
