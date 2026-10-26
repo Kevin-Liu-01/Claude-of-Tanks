@@ -126,7 +126,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   clearButton.append(clearLabel);
   const closeButton = document.createElement('button');
   closeButton.type = 'button';
-  closeButton.className = 'cot-facet-close';
+  closeButton.className = 'cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost cot-facet-close';
   closeButton.setAttribute('aria-label', t('fleet.filter.close'));
   closeButton.innerHTML = uiIconSVG('close', 18);
 

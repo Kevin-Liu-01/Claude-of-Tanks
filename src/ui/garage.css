@@ -552,7 +552,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
-.cot-facet-toggle{grid-column:2;position:relative;z-index:3;align-self:stretch;margin:2px 0 var(--s1) 3px;
+.cot-facet-toggle{grid-column:2;position:relative;z-index:3;align-self:stretch;margin:2px var(--s2) var(--s1) 3px;
   display:inline-flex;align-items:center;justify-content:center;
   min-width:42px;cursor:pointer;padding:6px 10px 5px;outline:none;color:var(--ink-3);background:var(--surface-page);
   border:1px solid var(--line-3);border-bottom:2px solid var(--line-3);}
@@ -908,8 +908,9 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick.open{display:block;}
 .cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
   margin-bottom:9px;}
-.cot-eqpick .ph .t{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);
-  color:var(--ink-2);text-transform:uppercase;}
+/* the picker's head reads as the paint sheet's does: a sentence-case title and the kit's bare close (the gauntlet 10-25:
+   three heads and three closes across the sibling panels) */
+.cot-eqpick .ph .t{color:var(--ink-1);font:600 var(--fs-16)/1 var(--font-display);}
 .cot-eqpick .ph .t i{font-style:normal;color:var(--text-accent);}
 .cot-eqpick .chips{display:flex;gap:var(--s1);margin-bottom:9px;flex-wrap:wrap;}
 /* the kit's chip and icon button (components.css); the Garage's element reset takes their padding */
@@ -953,6 +954,8 @@ html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wr
 /* a locked tile reads as unavailable by its tag and its quiet plate, its words still legible (opacity took them to 2.9:1) */
 .cot-eqtile.locked{cursor:default;opacity:.8;}
 .cot-eqtile.locked :is(.n,.e){color:var(--ink-3);}
+/* its glyph quiets with its words, on every layout (the phone kept a full-colour frame on a locked tile) */
+.cot-eqtile.locked svg{opacity:.5;filter:grayscale(1) var(--sil-shadow);}
 .cot-eqtile.remove .n{color:var(--ink-3);}
 .cot-eqtile.remove svg{opacity:.55;}
 .cot-eqtile:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;
@@ -1670,8 +1673,10 @@ body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:aut
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
 body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
-/* a portrait phone wraps its picker and paint chip rows: every chip whole (an edge fade over a cut chip read as clipped) */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-eqpick .chips,.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;
+/* a portrait phone wraps its picker's chips (every chip whole); its paint sheet keeps the nations and the kinds on one
+   strip each under the edge fade, so the sheet's room goes to paint (the gauntlet 10-25: seven rows of chips filled half
+   the sheet before the first swatch) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpick .chips{flex-wrap:wrap;
   overflow:visible;padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 /* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to

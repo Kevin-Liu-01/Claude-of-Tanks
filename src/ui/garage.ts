@@ -3226,9 +3226,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const rounds = autoloader ? autoloader.magazineSize : salvo!.rounds;
     const between = autoloader ? autoloader.intraClipS : salvo!.intervalS * loadoutReload *
       rulesetReloadMultiplier(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
-    // set as the readout's other figures are: a glyph beside the label over the value
+    // the station's own plate (statBar's markup without its scale), so the two cells and the plates under them share one
+    // layout at every density and one unit style
     const cell = (glyph: string, value: string, unit: string, label: string): string =>
-      `<div class="cot-mag-cell">${uiIconSVG(glyph, 16)}<span>${label}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ''}</b></div>`;
+      `<div class="srow cot-mag-cell"><span class="sicon">${uiIconSVG(glyph, 16)}</span><div class="lr"><span>${label}</span>` +
+      `<b class="num">${value}${unit ? ` ${unit}` : ''}</b></div></div>`;
     return `<div class="cot-mag" role="group" aria-label="${t('garage.mag.heading')}">` +
       cell('ammoRack', String(rounds), '', t(autoloader ? 'garage.mag.perClip' : 'garage.mag.perSalvo')) +
       cell('reload', between.toFixed(between < 1 ? 2 : 1), 's', t('garage.mag.between')) + `</div>`;
@@ -3488,7 +3490,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
-      statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
+      statBar(t('garage.dossier.stat.hp'), `${spec.hp} ${t('garage.unit.hp')}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       `</div></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
