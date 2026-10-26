@@ -431,10 +431,15 @@ export default defineConfig({
             // the collision chunk as one of its dependencies, put that whole 57 KB chunk on the Gallery's boot for 15 KB of
             // math its vehicle markings and launcher muzzles import. One chunk, exactly these modules, ahead of the collision
             // group's dependency sweep.
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/]detMath)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (integrator 253): the UI canvas primitive (canvas-ui-253) and the vehicle eras table (equipment-rules-253)
+            // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
+            // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/]spottingStats)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
+            // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
