@@ -26,7 +26,7 @@ try {
   // a module the catalog does not name falls back to the callout's own title
   assert.equal(technicalLabelText(callout('M09', .5, .5, .01, { module: 'smokeDischarger', title: 'smoke Discharger' }), 'modules'), 'M09 · smoke Discharger');
   await setLocale('zh-CN');
-  assert.equal(technicalLabelText(armor[0], 'armor'), 'H01 · 400 毫米', 'the unit comes from the catalog');
+  assert.equal(technicalLabelText(armor[0], 'armor'), 'H01 · 400 mm', 'the unit comes from the catalog (zh writes mm, as every Garage figure does)');
   assert.equal(technicalLabelText(callout('M02', .5, .5, .01, { module: 'ammoRack' }), 'modules'), 'M02 · 弹药架');
   assert.equal(technicalLabelText(callout('C01', .5, .5, .01, { crew: 'driver' }), 'crew'), 'C01 · 驾驶员');
   await setLocale('en-US');
