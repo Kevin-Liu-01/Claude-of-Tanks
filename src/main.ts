@@ -2856,13 +2856,23 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 },
               },
             });
+            // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
+            // program log: LateFxPass.Copy and its pass programs linked in the first live frame of a room)
+            let postPasses: RuntimeValue = null;
+            try {
+              postPasses = await post.warmFirstFrame(async () => { await nextPaintFrame(); signal?.throwIfAborted(); }) as RuntimeValue;
+            } catch (error) {
+              if (signal?.aborted) throw error;
+              postPasses = { failed: String((error as Error)?.message ?? error) };
+            }
             return { cascadeCount: cascadeMs.length,
               totalMs: cascadeMs.reduce((total, ms) => total + ms, 0),
               maxMs: Math.max(0, ...cascadeMs),
               casterWarmup: { batches: casterBatchMs.length, casterCount,
                 batchMs: casterBatchMs,
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
-                maxMs: Math.max(0, ...casterBatchMs) } };
+                maxMs: Math.max(0, ...casterBatchMs) },
+              postPasses };
           },
           // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
           // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;

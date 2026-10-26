@@ -20,6 +20,12 @@ assert.ok(patchAt > 0 && patchAt < compileBody.indexOf('forwardProgramWarm.prepa
 const probeAt = compileBody.indexOf('warmSceneProbePrograms(renderer)');
 assert.ok(probeAt > 0 && probeAt < compileBody.indexOf('forwardProgramWarm.prepareSceneSteps('), 'the MP compile warms the probe copy');
 
+// (and the MP finalShadows warm draws the post chain's first frame under the cover, as the solo deployment does)
+const shadowsAt = main.indexOf('finalShadows: async (signal?: AbortSignal) => {');
+const shadowsBody = main.slice(shadowsAt, main.indexOf('submitPrograms: async', shadowsAt));
+assert.ok(shadowsAt > 0 && shadowsBody.indexOf('post.warmFirstFrame(') > shadowsBody.indexOf('lighting.primeShadowMaps('),
+  'the MP finalShadows warm draws the post chain after the shadow prime');
+
 // the solo combat warm: before its first compileAll (the tanks', then the world's)
 const warm = read('./battleWarmRuntime.ts');
 const hidden = warm.indexOf('function* compileHiddenVariantsSteps(');
@@ -27,4 +33,4 @@ const body = warm.slice(hidden, warm.indexOf('\nfunction', hidden + 10));
 const solo = body.indexOf('context.fx.prepareWorldMaterials?.()');
 assert.ok(solo > 0 && solo < body.indexOf('yield* compileAll(entity.visual.root)') && solo < body.indexOf('yield* compileAll(world.group)'),
   'the solo combat warm patches the world before it compiles it');
-console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it; the probe copy warms with the MP compile');
+console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it; the probe copy warms with the MP compile; its finalShadows warms the post chain');
