@@ -9,17 +9,20 @@
 // on SwiftShader (no GPU, no lock) for a functional check: the battle enters on the host and its Worker steps.
 //
 // --latency=N: the feel gate, N trials of input to motion. The player's hull stands still, W goes down, and the probe
-// counts the frames (and ms) until the hull the page presents has moved 1 cm; then W comes up and the hull settles.
+// counts the frames (and ms) until the hull as drawn (its visual root) has moved 1 cm; then W comes up and it settles.
 // --cpu-throttle=R slows the page's CPU R times (CDP), for the low frame rates (about 11 fps).
 //
+// --dist=<dir> serves a production build (vite preview) instead of the dev server: the entry as a player meets it (the
+// dev server loads every module of a path the first time that path runs).
+//
 //   node tools/solo-host-probe.mjs [--map=verdant] [--sizes=7,14] [--seconds=20] [--cycles=1] [--smoke]
-//                                  [--latency=12] [--cpu-throttle=6]
+//                                  [--latency=12] [--cpu-throttle=6] [--dist=.qa-dev/dist]
 //   (report: .qa-dev/solo-host-probe.json)
 import { resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import puppeteer from 'puppeteer';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -35,9 +38,12 @@ const port = Number(arg('port', 5296));
 const out = resolve(root, '.qa-dev', 'solo-host-probe.json');
 
 const lock = smoke ? null : createCaptureLock();
-const vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-host-vite-cache'), logLevel: 'error',
-  server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
-await vite.listen();
+const dist = arg('dist', null);
+const vite = dist
+  ? await preview({ root, logLevel: 'error', build: { outDir: resolve(root, dist) }, preview: { host: '127.0.0.1', port, strictPort: true } })
+  : await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-host-vite-cache'), logLevel: 'error',
+    server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
+if (!dist) await vite.listen();
 const origin = `http://127.0.0.1:${port}`;
 const browser = await puppeteer.launch({ headless: true, protocolTimeout: 600_000, args: ['--no-sandbox',
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
@@ -88,13 +94,16 @@ async function run(mode, size) {
   const frames = Math.max(1, frames1 - frames0);
   const state = await page.evaluate(() => {
     const game = window.__DEBUG.game, network = window.__DEBUG.network;
+    // the entry's own stages: the composition's load trace on the host, the solo start's timings in the page
+    const trace = window.__NETWORK_LOAD ?? window.__START_BATTLE_TIMINGS ?? null;
     return { tanks: (game.rosterTanks ?? game.tanks).length, timeS: game.timeS ?? null,
+      entryStages: trace?.stages ?? trace ?? null,
       network: network ? { phase: network.session?.phase ?? network.phase ?? null, role: network.session?.role ?? null,
         hostTick: network.session?.p2p?.tick ?? network.session?.host?.tick ?? null } : null };
   });
   const workers = page.workers().map((worker) => worker.url().replace(/^.*\//, ''));
   const latency = latencyTrials > 0 ? await measureLatency(page, latencyTrials) : null;
-  const result = { mode, size, tanks: state.tanks, network: state.network, entryMs, frames, fps: frames / ((t1 - t0) / 1000),
+  const result = { mode, size, tanks: state.tanks, network: state.network, entryMs, entryStages: state.entryStages, frames, fps: frames / ((t1 - t0) / 1000),
     mainMsPerFrame: ((task1 - task0) * 1000) / frames, battleTimeS: state.timeS,
     // battle seconds a real second over the window (1: the simulation keeps real time)
     simRate: (sim1 - sim0) / ((t1 - t0) / 1000), workers, latency, errors: errors.slice(0, 6) };
@@ -111,7 +120,8 @@ async function measureLatency(page, trials) {
   for (let trial = 0; trial < trials; trial++) {
     await page.evaluate(() => new Promise((settled) => {
       let still = 0, last = null;
-      const pos = () => { const p = window.__DEBUG.game.player?.state?.pos; return p ? { x: p.x, z: p.z } : null; };
+      // the hull as drawn (its visual root), in both modes: solo's state is the simulation's newest tick, not what is drawn
+      const pos = () => { const p = window.__DEBUG.game.player?.visual?.root?.position ?? window.__DEBUG.game.player?.state?.pos; return p ? { x: p.x, z: p.z } : null; };
       const check = () => {
         const now = pos();
         if (now && last && Math.hypot(now.x - last.x, now.z - last.z) < 0.001) still++; else still = 0;
@@ -122,13 +132,13 @@ async function measureLatency(page, trials) {
     }));
     // the page arms its frame watch first, then the key goes down
     await page.evaluate(() => {
-      const p = window.__DEBUG.game.player.state.pos;
+      const p = window.__DEBUG.game.player.visual?.root?.position ?? window.__DEBUG.game.player.state.pos;
       window.__soloProbeLatency = { from: { x: p.x, z: p.z }, keyAt: null, frames: 0, ms: null };
       const watch = () => {
         const probe = window.__soloProbeLatency;
         if (probe.keyAt !== null) {
           probe.frames++;
-          const now = window.__DEBUG.game.player?.state?.pos;
+          const now = window.__DEBUG.game.player?.visual?.root?.position ?? window.__DEBUG.game.player?.state?.pos;
           if (now && Math.hypot(now.x - probe.from.x, now.z - probe.from.z) >= 0.01) { probe.ms = performance.now() - probe.keyAt; return; }
           if (probe.frames > 600) return;
         }
@@ -148,7 +158,7 @@ async function measureLatency(page, trials) {
   return { trials: samples, framesP50: frames[frames.length >> 1], msP50: ms[ms.length >> 1] ?? null };
 }
 
-const report = { mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, loadStart: loadavg()[0], runs: [] };
+const report = { mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, dist, loadStart: loadavg()[0], runs: [] };
 try {
   if (lock) await lock.acquire(90 * 60 * 1000);
   for (const size of sizes) {
@@ -167,5 +177,6 @@ try {
   writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);
   lock?.release();
   await browser.close();
-  await vite.close();
+  if (dist) await new Promise((done) => vite.httpServer.close(() => done()));
+  else await vite.close();
 }

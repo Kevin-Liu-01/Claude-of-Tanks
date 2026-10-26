@@ -2513,6 +2513,39 @@ The remedy waits for the next migration-format change. It is a per-generation ke
 `sha256(MATCH_SEAT_SECRET:matchId:generation)`, plus a successor that opens the previous generation's blob with a
 key the room hands only to the newly elected host. Log the change here when it lands.
 
+### 13.30 A solo battle on a local host (the Rust lane, RUST-ENGINE-DECISION §7 step 5, 2026-10-25)
+
+`?soloAuthority=host` (off by default) plays a free sortie through this stack, so its authority steps in the browser
+host's Worker on the world kernels and the page keeps only the client. The campaign keeps the page's own simulation.
+
+- **The room in the page** (`src/mp/room/inPageRoom.ts`) is the same `RoomActor` the Durable Object and the LAN helper run.
+  The page's `RoomClient` reaches it through the WebSocket transport's socket factory instead of a network. Frames cross on
+  a microtask, so the room and the client never re-enter each other.
+- **Synchronous crypto.** The actor's ports hash and sign synchronously, which Web Crypto cannot do.
+  `src/mp/room/syncCrypto.ts` computes SHA-256 and HMAC-SHA256, so a seat token signed in the page is byte-identical to
+  Node's and verifies in the host's Worker.
+- **The entry** (`src/mp/session/soloHostEntry.ts`, from `beginSoloBattle` in main) creates a LAN room, readies the only
+  seat and starts it. The room names that seat host, and its `match_start` reaches the browser composition as a Play-menu
+  room's does.
+- **A solo room is no social session** (`roomInfo.solo`):
+  - no Play-menu lobby, no Garage room status and no room-state event, so the end screen keeps Battle Again;
+  - the Garage return closes the room.
+  - It seats up to 21 a side (`ROOM_SOLO_MAX_TEAM_SIZE`), through a policy guard (`maxTeamSize`) that only the page's
+    service sets. Every other room stops at 14.
+- **The hold.** The battle frame raises `network.setHeld` while the settings are open or the killcam plays, until the
+  battle is decided, as the page's solo simulation holds.
+  - `MatchSession.setPaused` acts on it for a solo room only: the host's actor stops at a tick boundary
+    (`MatchActor.pause`, refused for a match with more than one human seat), and the session's clock (a `PausableClock`)
+    stands still with it.
+  - Nothing of it reaches the wire.
+- **Receipts:**
+  - `src/mp/room/syncCrypto.selftest.mjs`;
+  - `src/mp/room/inPageRoom.selftest.mjs`: a solo room's p2p match on the in-process host, a 2 s pause, 21 a side;
+  - `server/match/matchActorPause.selftest.mjs`: a paused match against its unpaused twin;
+  - `tools/mp-client-soak.selftest.mjs`: the solo pause case;
+  - `src/game/battleFrameRuntime.selftest.mjs`: the hold's edges.
+  - In Chrome, `tools/solo-host-probe.mjs` (A B B A against the page's solo).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
