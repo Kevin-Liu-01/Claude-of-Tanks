@@ -80,6 +80,14 @@ body[data-studio-settling] #app{visibility:hidden}
 .st-head .redo .cot-i{transform:scaleX(-1)}
 @media (hover:hover){.st-head .ib:not(:disabled):hover{color:var(--ink-1)}}
 .st-head .cot-c-chip{height:32px}
+/* one height across the header and one casing across the Studio's controls: its kit buttons speak like its chips (the
+   s16 critic: "EXPORT FILM" in tall capitals among sentence-case chips) */
+.st-head .cot-c-btn{--h:32px}
+.cot-studio .cot-c-btn{font-family:var(--font-body);letter-spacing:0;text-transform:none}
+/* the scene link stands in the header; the Director's own shows only where the header's is put away */
+.cot-studio .production-link{display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio .production-link,
+body[data-cot-height='short'] .cot-studio .production-link{display:inline-flex}
 button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 
 /* the outliner (09-studio .out): a head per workspace, its rows under it */
@@ -205,10 +213,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .poses .cot-c-sil{width:40px;height:13px}
 @media (hover:hover){.st-insp .poses button:hover{color:var(--ink-1);box-shadow:var(--ring-3)}}
 .cot-studio input[type=range]{-webkit-appearance:none;appearance:none;width:100%;min-width:0;height:16px;margin:0;background:transparent}
-.cot-studio input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),var(--fill-scale) 0)}
+.cot-studio input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),var(--line-3) 0)}
 .cot-studio input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4px;border-radius:50%;
   background:var(--ink-1);box-shadow:var(--studio-knob-ring)}
-.cot-studio input[type=range]::-moz-range-track{height:3px;background:var(--fill-scale)}
+.cot-studio input[type=range]::-moz-range-track{height:3px;background:var(--line-3)}
 .cot-studio input[type=range]::-moz-range-progress{height:3px;background:var(--accent)}
 .cot-studio input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--ink-1);box-shadow:var(--studio-knob-ring)}
 .cot-studio input[type=range]:disabled{opacity:.4}
@@ -259,6 +267,18 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
    (the s15 critic: at 844 x 390 the arrow stood 10 px past its edge) */
 .cot-studio .mapPop .cot-c-picker__bar{flex-wrap:wrap;min-width:0}
 .cot-studio .mapPop .cot-c-picker__search{flex:1 1 100%}
+/* where the inspector is short the picker is a sheet over it (fitMapPop places it), its head naming it and closing it */
+/* (the Studio's root takes no pointer; the sheet stands in it, so it takes them itself) */
+.cot-studio .mapPop.sheet{position:fixed;right:auto;bottom:auto;max-height:none;box-shadow:var(--studio-sheet-veil);pointer-events:auto}
+.cot-studio .mapPopHead{display:none}
+.cot-studio .mapPop.sheet .mapPopHead{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
+  padding:0 0 var(--s2) var(--s1);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
+@media (pointer:coarse){.cot-studio .mapPopX{--h:44px}}
+/* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them */
+@media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 200px}}
+/* the focus is the pointer's or the keys' place and wears the kit's amber ring; the scene's current map keeps its fill
+   under a neutral edge (the s16 critic: two cards in the same amber) */
+.cot-studio .mapPop .cot-c-picker__opt[aria-selected=true]:not(:focus-visible){box-shadow:var(--ring-3)}
 .cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
 .cot-studio .pickBtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -458,20 +478,16 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
 .st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
-  max-height:min(70vh,560px,calc(100dvh - 64px));padding:var(--s4) var(--s3) var(--s6);overflow-y:auto;border-radius:var(--r2);
+  max-height:calc(100dvh - 72px);padding:var(--s4) var(--s3) var(--s3);overflow-y:auto;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
-/* its foot fades where the list continues: a sticky shade in the menu's own colour (a mask let the frame show through) */
-.st-queue::after{content:'';position:sticky;bottom:calc(-1 * var(--s6));flex:none;height:var(--s6);margin:calc(-1 * var(--s6)) calc(-1 * var(--s3)) calc(-1 * var(--s6));
-  background:linear-gradient(180deg,transparent,var(--surface-menu));pointer-events:none}
-/* the queue names itself; its foot (start, clear) stands over the fade when there are jobs */
+/* the queue takes the window's height, so it scrolls only on a short screen, where its drawn scrollbar is the cue (its
+   sticky foot fade overflowed it by 20 px everywhere and drew a scrollbar at every size: the s16 critic) */
 /* the title starts where the rows' names and the empty line do (the s13 critic: it stood 9 px left of them) */
 .st-queue .qh{margin:0;padding-left:var(--s2);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
-.st-queue:has(.qf:not([hidden])){padding-bottom:var(--s3)}
-.st-queue:has(.qf:not([hidden]))::after{display:none}
-.st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
+.st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:var(--s1)}
 .st-queue .ql:not(:empty),.st-queue .qe:not([hidden]){padding-bottom:var(--s3);border-bottom:1px solid var(--line-1)}
 /* a delivery's name over its cost, the add or remove control beside both: the whole preset name always reads */
-.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px var(--s3);min-height:34px;padding:var(--s1) var(--s1) var(--s1) var(--s2);
+.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s1) var(--s3);min-height:40px;padding:var(--s2) var(--s1) var(--s2) var(--s2);
   border-radius:var(--r1);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-body)}
 .st-queue .qn{min-width:0}
 .st-queue .qc{grid-row:2}

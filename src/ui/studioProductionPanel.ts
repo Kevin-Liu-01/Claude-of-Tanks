@@ -93,8 +93,9 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', tex
   if (text) element.textContent = text;
   return element;
 }
-/** A name with an inner hyphen, dot or slash (T-90M, 2S19-M2, M1A2/TUSK): it never breaks inside. */
-const KEPT_NAME = /([A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)/;
+/** A vehicle's name: capitalised or numbered words in a run (Leopard 2A6, M1A2 Abrams TUSK, T-14 Armata, T-90M): it never
+ * breaks inside (the s16 critic: "Leopard" over "2A6", "M1A2 Abrams" over "TUSK"). */
+const KEPT_NAME = /([A-Z0-9][A-Za-z0-9./-]*(?: [A-Z0-9][A-Za-z0-9./-]*)+|[A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)/;
 /** A card's caption: its hyphenated names stand whole in no-wrap spans (the s15 critic: "炮火下的 T-" over "90M 纵队"). */
 function caption(text: string): HTMLElement {
   const parts = text.split(KEPT_NAME);
