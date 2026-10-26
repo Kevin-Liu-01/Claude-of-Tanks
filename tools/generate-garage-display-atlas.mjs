@@ -8,8 +8,8 @@
 // re-run of this tool on new public/brand art with no geometry change.
 //
 // Inputs (only these; never public/media/modern, showcase-r2, garage-environments-r2 or presentation-r1):
-//   - public/brand: logo-mark.svg, logo-mark-metal.svg, logo-mark-bw.svg, logo-full.svg, logo-full-metal.svg (the
-//     current brand; rasterised by the repo's puppeteer Chrome so the embedded Inter wordmark renders exactly)
+//   - public/brand: logo-mark.svg, logo-mark-metal.svg, logo-mark-bw.svg and wordmark.svg (the horizontal wordmark, one
+//     line on every sign; rasterised by the repo's puppeteer Chrome)
 //   - public/media/site50-r14/stills: the featured battlefield stills the game already shows
 //   - public/icons: the exhibit tanks' armour and module readouts
 //   - public/maps/thumbs: the ten Garage maps
@@ -76,9 +76,11 @@ const PICTOGRAMS = Object.freeze([
   'extinguisher', 'callpoint', 'ear', 'eye', 'head', 'gloves', 'overhead', 'forklift', 'electric', 'flammable',
   'tankcrossing', 'nosmoking', 'eyewash', 'firstaid', 'exit', 'speed10',
 ]);
+// the name is the horizontal wordmark, one line everywhere it hangs (owner 10-26: "for all words of 'claude of tanks', it
+// should be horizontal, not the words stacked on top of each other"): a narrow sign scales the line, never stacks it
 const BRAND = Object.freeze({
   mark: 'public/brand/logo-mark.svg', markMetal: 'public/brand/logo-mark-metal.svg', markBw: 'public/brand/logo-mark-bw.svg',
-  full: 'public/brand/logo-full.svg', fullMetal: 'public/brand/logo-full-metal.svg',
+  word: 'public/brand/wordmark.svg',
 });
 
 const stillPath = (id) => {
@@ -334,40 +336,41 @@ async function generate() {
     { key: 'mark', file: BRAND.mark, w: 512, h: 512 },
     { key: 'markMetal', file: BRAND.markMetal, w: 512, h: 512 },
     { key: 'markBw', file: BRAND.markBw, w: 512, h: 512 },
-    { key: 'full', file: BRAND.full, w: 2000, h: 840 },
-    { key: 'fullMetal', file: BRAND.fullMetal, w: 2000, h: 840 },
+    // the wordmark's 9956 x 700 box, at about four times the widest sign's pixels
+    { key: 'word', file: BRAND.word, w: 2844, h: 200 },
   ]);
   const img = {};
   for (const [key, buffer] of brand) img[key] = await loadImage(buffer);
 
-  /** The wordmark alone: the lockup's text, right of its crest, trimmed to its pixels. */
-  const wordmarkOf = (image) => {
+  /** An image trimmed to its pixels (the wordmark's box carries a margin). */
+  const trimmed = (image) => {
     const probe = createCanvas(image.width, image.height);
     const g = probe.getContext('2d');
     g.drawImage(image, 0, 0);
-    // the text starts after the first clear gap of columns right of the crest
-    const full = g.getImageData(0, 0, image.width, image.height).data;
-    const columnInk = (x) => { for (let y = 0; y < image.height; y += 1) if (full[(y * image.width + x) * 4 + 3] > 24) return true; return false; };
-    let x0 = Math.round(image.width * 0.3), gap = 0;
-    for (let x = x0; x < image.width * 0.6; x += 1) {
-      gap = columnInk(x) ? 0 : gap + 1;
-      if (gap >= 10) { x0 = x; break; }
-    }
-    while (x0 < image.width && !columnInk(x0)) x0 += 1;
-    const data = g.getImageData(x0, 0, image.width - x0, image.height).data;
+    const data = g.getImageData(0, 0, image.width, image.height).data;
     let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
-    const rowW = image.width - x0;
     for (let y = 0; y < image.height; y += 1) {
-      for (let x = 0; x < rowW; x += 1) {
-        if (data[(y * rowW + x) * 4 + 3] > 24) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+      for (let x = 0; x < image.width; x += 1) {
+        if (data[(y * image.width + x) * 4 + 3] > 24) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
       }
     }
     const crop = createCanvas(maxX - minX + 1, maxY - minY + 1);
-    crop.getContext('2d').drawImage(probe, x0 + minX, minY, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    crop.getContext('2d').drawImage(probe, minX, minY, crop.width, crop.height, 0, 0, crop.width, crop.height);
     return crop;
   };
-  const word = wordmarkOf(img.full);
-  const wordMetal = wordmarkOf(img.fullMetal);
+  /** The wordmark in brushed metal: its own shapes filled with the crest plate's steel. */
+  const metalOf = (image) => {
+    const out = createCanvas(image.width, image.height);
+    const g = out.getContext('2d');
+    g.drawImage(image, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    const steel = g.createLinearGradient(0, 0, 0, image.height);
+    steel.addColorStop(0, '#e3e6e8'); steel.addColorStop(0.45, '#9aa1a6'); steel.addColorStop(0.55, '#7d848a'); steel.addColorStop(1, '#c8cdd1');
+    g.fillStyle = steel; g.fillRect(0, 0, image.width, image.height);
+    return out;
+  };
+  const word = trimmed(img.word);
+  const wordMetal = metalOf(word);
 
   const albedo = createCanvas(W, H);
   const a = albedo.getContext('2d');
