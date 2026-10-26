@@ -207,9 +207,11 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-c-picker__name{min-width:0;font:500 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);color:var(--ink-1)}
-.cot-c-picker__facts{display:flex;flex-basis:100%;gap:var(--s2);font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
+.cot-c-picker__facts{display:flex;flex-wrap:wrap;flex-basis:100%;gap:0 var(--s2);font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
 .cot-c-picker--list .cot-c-picker__facts{flex-basis:100%}
 .cot-c-picker--list .cot-c-picker__glyph~.cot-c-picker__facts{padding-left:calc(18px + var(--s2))}
+/* a fact never splits inside itself: whole facts wrap, and one longer than its row ends in an ellipsis */
+.cot-c-picker__facts>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cot-c-picker__facts span+span::before{content:'·';margin-right:var(--s2)}
 /* a favourite's star: the kit's square icon button in the picture's corner, 4 px in from it, while the card is pointed at
    or focused, and always once it is a favourite */
@@ -280,7 +282,6 @@ button.cot-c-chip{cursor:pointer}
 .cot-mp__name{display:block;font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-mp__desc{margin:var(--s2) 0 0;font:400 max(var(--fs-floor-12),var(--fs-14))/1.5 var(--font-body);color:var(--ink-2);}
 .cot-mp__rules{display:grid;gap:var(--s1);margin:var(--s3) 0 0;padding:0;list-style:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2);}
-.cot-mp__rules li::before{content:'·';margin-right:var(--s2);color:var(--ink-3)}
 /* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
    its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
 [data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}

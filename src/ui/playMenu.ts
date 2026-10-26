@@ -237,7 +237,7 @@ const CSS = `
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
 .cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
-  --rules-col:320px}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+  --rules-col:calc(320px * var(--cot-type-scale, 1))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -385,7 +385,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
   padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .vehicle-pick[hidden]{display:none}
-.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.cot-play .vehicle-pick{container-type:inline-size}
+.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+@container (width < 420px){.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
 .cot-play .vehicle-pick .cot-c-picker__media{container-type:inline-size;background:var(--surface-page)}
 .cot-play .vehicle-pick .cot-c-picker__media>img{object-position:50% calc(100cqw * (9 / 32 - var(--icon-ink-y)))}
 
@@ -472,6 +474,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* the five formats are mono numbers: they need little air to fit the rules column */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt{padding-inline:var(--s1)}
 .cot-play .room-team .cot-c-seg__opt[hidden]{display:none}
+/* the arrangement's sides and the opponent brain fill their row as the room's other settings do */
+.cot-play :is(.sides-seg,.brain-seg){display:flex;flex:1 1 auto}
+.cot-play :is(.sides-seg,.brain-seg) .cot-c-seg__opt{flex:1 1 0;min-width:0}
+.cot-play .arrange-readout[hidden]{display:none}
 .cot-play .start-count{margin-left:var(--s2);font-family:var(--font-data);letter-spacing:normal}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
@@ -480,7 +486,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* Ready is a toggle: pressed, it wears the selection */
 .cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
-.cot-play :is(.note,[data-arrange-note]){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-play :is(.note,[data-arrange-note],.arrange-cap){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
@@ -1260,6 +1266,8 @@ export function createPlayMenu({
       enemies.min = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]); enemies.max = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]);
       allies.value = String(asymmetric ? defaults.allies ?? sides.allies : sides.allies);
       enemies.value = String(asymmetric ? defaults.enemies ?? sides.enemies : sides.enemies);
+      // the readout adds what the counts do not show, the sides with the player counted: a preset already names them
+      sidesReadout.hidden = !custom;
       sidesReadout.textContent = t('playMenu.arrange.readout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
     }
     const waveLabel = arrangeSection.querySelector<HTMLElement>('[data-arrange-wave]')!;
