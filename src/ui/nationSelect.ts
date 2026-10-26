@@ -8,7 +8,7 @@ import { pickerText } from './pickerText.ts';
 interface NationChoice { readonly value: string; readonly name: string; readonly nation?: string }
 
 const nationItems = (choices: readonly NationChoice[]): PickerItem[] => choices.map(({ value, name, nation }) =>
-  nation ? { id: value, name, flag: flagIconUrl(nation) } : { id: value, name, glyph: 'globe' });
+  nation ? { id: value, name, chip: flagIconUrl(nation) } : { id: value, name, glyph: 'globe' });
 
 /** The shared nation menu (the kit's picker menu): each choice by its official flag and name. */
 export function createNationMenu(host: HTMLElement, label: string, choices: readonly NationChoice[], value: string,

@@ -1,5 +1,6 @@
 import { getLocale, onLocaleChange, t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
+import { setRoving, tabs as kitTabs, wireRoving } from '../ui/components/components.ts';
 
 // The media library: every finished picture of the media rounds' current takes (library-r3, 2026-10-21: r2's one final
 // a subject left out "so many pictures"; r1's 11,215, every render, review sheet and candidate, were "way too much"),
@@ -213,20 +214,19 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
   const viewer = createViewer();
   const head = document.createElement('div');
   head.className = 'media-library-head';
-  const tabs = document.createElement('div');
-  tabs.className = 'media-library-tabs';
-  tabs.setAttribute('role', 'tablist');
+  // the collections are the kit's underline tabs (each switches the panel under them; arrows rove between them)
+  head.innerHTML = kitTabs({ label: t('mediaLibrary.tabsAria'), className: 'media-library-tabs', selected: index.collections[0]?.key ?? '',
+    tabs: index.collections.map((summary) => ({ id: summary.key, label: say(summary.title) })) });
+  const tabs = head.firstElementChild as HTMLElement;
   const panel = document.createElement('div');
   panel.className = 'media-library-panel';
   panel.setAttribute('role', 'tabpanel');
-  head.append(tabs);
   root.replaceChildren(head, panel);
   let active = '';
   const select = (key: string, again = false): void => {
     if (key === active && !again) return;
     active = key;
-    tabs.querySelectorAll<HTMLButtonElement>('button').forEach((button) =>
-      button.setAttribute('aria-selected', String(button.dataset.collection === key)));
+    setRoving(tabs, key);
     panel.setAttribute('aria-busy', 'true');
     panel.replaceChildren(Object.assign(document.createElement('p'), {
       className: 'media-library-wait', textContent: t('mediaLibrary.loading'),
@@ -244,19 +244,13 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
       active = '';
     });
   };
-  for (const summary of index.collections) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.setAttribute('role', 'tab');
-    button.dataset.collection = summary.key;
-    button.addEventListener('click', () => select(summary.key));
-    tabs.appendChild(button);
-  }
+  wireRoving(tabs, (key) => select(key));
   // the words in the current locale; a language switch re-words the head, the open collection and the viewer
   const words = (): void => {
     tabs.setAttribute('aria-label', t('mediaLibrary.tabsAria'));
     index.collections.forEach((summary, k) => {
-      tabs.children[k].textContent = say(summary.title);
+      const name = tabs.children[k]?.querySelector('span');
+      if (name) name.textContent = say(summary.title);
     });
   };
   words();

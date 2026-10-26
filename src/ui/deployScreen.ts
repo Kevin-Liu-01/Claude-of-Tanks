@@ -231,7 +231,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-facts">${host.rules([['clock', op.clock]])}` +
       `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span>` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
-      `${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div>` +
+      `<div class="cot-deploy-brief-where">${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div></div>` +
       `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async"></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;
     const mm = plateBrief.querySelector('.cot-deploy-brief-mm');

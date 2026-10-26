@@ -35,7 +35,10 @@ import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { wireRovingKeys } from './components/components.ts';
+import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import type { PickerItem } from './components/picker.ts';
+import { pickerText } from './pickerText.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import {
@@ -49,7 +52,6 @@ import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
-import type { NationSelectController } from './nationSelect.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -82,6 +84,11 @@ import { tokenValue } from './tokens/tokens.ts';
 const QUALITY_PREVIEWS: ReadonlySet<PresetName> = new Set<PresetName>(['low', 'medium', 'high', 'ultra']);
 const qualityPreview = (name: PresetName): string | null =>
   (QUALITY_PREVIEWS.has(name) ? `/media/settings-r1/quality-${name}-640.webp` : null);
+
+/** A colour preset's swatch for its picker (an SVG data URL): its ally chevron and enemy diamond, as the sample draws them. */
+const teamSwatch = (own: string, enemy: string): string => `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 18"><path d="M6 3 11 14H1Z" fill="${own}"/>`
+  + `<path d="M18 3l5 6-5 6-5-6Z" fill="${enemy}"/></svg>`)}`;
 
 const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   ultra: 'settings.preset.ultra',
@@ -279,7 +286,7 @@ const SETTINGS_CSS = `
   padding:var(--s1) var(--s2);background:linear-gradient(var(--line-1),var(--line-1)) center bottom/calc(100% - var(--s2) * 2) 1px no-repeat;
   transition:background-color var(--dur-fast) var(--ease-enter);}
 .cot-set-row:not(:has(~ .cot-set-row)){background-image:none;}
-.cot-set-row:has(.cot-set-seg button:disabled):not(:has(.cot-set-seg button:enabled)) .cot-setting-label-text{color:var(--ink-3);}
+.cot-set-row:has(.cot-c-seg__opt:disabled):not(:has(.cot-c-seg__opt:enabled)) .cot-setting-label-text{color:var(--ink-3);}
 .cot-set-row:hover{background-color:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
@@ -309,8 +316,8 @@ const SETTINGS_CSS = `
 .cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:none;outline:1px dashed var(--ink-4);outline-offset:-1px;}
 .cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
   animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
-.cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
-.cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-seg button:focus-visible{box-shadow:var(--focus-ring);}
+.cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus{outline:none;}
+.cot-chip:focus-visible,.cot-set-tab:focus-visible{box-shadow:var(--focus-ring);}
 .cot-set-slider input[type=range]:focus{outline:none;}
 .cot-set-slider input[type=range]:focus-visible{box-shadow:var(--focus-ring);}
 @keyframes cotChipPulse{50%{opacity:.7;}}
@@ -347,18 +354,12 @@ const SETTINGS_CSS = `
 /* the unit sits inside its field's end (a multiplier's is empty), so every value field ends on the controls' edge */
 .cot-set-slider .unit{width:20px;margin-left:calc(-1 * (var(--s3) + 20px));pointer-events:none;text-align:start;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
-/* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
-   (components.css .cot-c-seg) on the panel's own state class; every inline control is 36 px tall */
-.cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
-  box-shadow:var(--ring-1);}
-.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:30px;padding:0 13px;
-  border:0;border-radius:var(--control-radius);background:transparent;cursor:pointer;white-space:nowrap;
-  color:var(--ink-3);font:500 max(13px,var(--fs-13))/1 var(--font-body);
-  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
-.cot-set-seg button:hover{color:var(--ink-1);}
-.cot-set-seg button.sel{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
-.cot-set-seg button:disabled{color:var(--ink-4);cursor:not-allowed;}
-.cot-set-seg.onoff button{min-width:48px;}
+/* the settings of two to five values (difficulty, right click, a phone's quality, language, On/Off) are the kit's segmented
+   control (components.css .cot-c-seg); every inline control is 36 px tall. The sets of six (the desktop's quality, the
+   colour presets) and the crew voice are the kit's picker menu, as wide as the crew field. */
+.cot-settings .cot-c-seg__opt{height:30px;}
+.cot-settings .cot-set-onoff .cot-c-seg__opt{min-width:48px;}
+.cot-set-menu{width:260px;max-width:100%;min-width:0;}
 /* time of day (battleTimeChoices.ts): a multi-select, so the kit's chips (each its own pill, a tick when on) rather than
    a segmented control; the legend names the group */
 .cot-settings .cot-battle-times{display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:0;border:0;min-width:0;}
@@ -458,9 +459,6 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 .cot-a11y-preview .sample{margin-left:auto;font-size:var(--fs-16);font-weight:600;}
 .cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px var(--s2);background:var(--hud-plate);
   box-shadow:var(--ring-2);}
-.cot-set-seg.glyphs button{min-width:40px;padding:0 var(--s2);}
-.cot-set-seg .sw{display:inline-flex;gap:2px;}
-.cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
 .cot-a11y-custom{display:flex;align-items:center;gap:var(--s2);}
 /* each custom colour beside its team's shape (a team is shape plus colour) */
 .cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
@@ -563,6 +561,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- DOM ---------------------------------------------------------------------
   const root = el('div', 'cot-settings');
+  // the keys a kit control keeps (onPanelKey yields them to it) stop here, short of the game behind the panel
+  root.addEventListener('keydown', (event) => { if (open) event.stopPropagation(); });
   root.innerHTML =
     `<div class="cot-set-panel" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
@@ -747,7 +747,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab: SettingsTab = 'controls';
-  let crewSelectController: NationSelectController | null = null;
+  /** The open tab's picker menus (their popovers live in the body): disposed when the tab re-renders. */
+  const tabMenus: PickerMenu[] = [];
   // A touch-only device has no keyboard to rebind, so the Controls
   // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
   // touch target). Hide the tab and land on Gameplay instead.
@@ -963,31 +964,24 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLDivElement {
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, SETTINGS_OPTION_ICONS[key]);
-    const seg = el('div', 'cot-set-seg onoff', row);
-    const btns: HTMLButtonElement[] = [];
-    const sync = () => {
-      const on = !!input.getSettings()[key];
-      btns[0].classList.toggle('sel', !on);
-      btns[1].classList.toggle('sel', on);
-      btns[0].setAttribute('aria-pressed', String(!on));
-      btns[1].setAttribute('aria-pressed', String(on));
-    };
-    for (const [val, txt] of [[false, t('settings.off')], [true, t('settings.on')]] as const) {
-      const b = el('button', '', seg);
-      b.type = 'button';
-      b.textContent = txt;
-      b.setAttribute('aria-label', `${label}: ${txt}`);
-      b.addEventListener('click', () => {
-        if (!!input.getSettings()[key] === val) return; // no-op re-click
-        input.setSetting(key, val);
-        sync();
-        if (onChange) onChange();
-        emit('ui:click', {});
-      });
-      btns.push(b);
-    }
-    sync();
+    mountSeg(row, segmented({ label, className: 'cot-set-onoff', value: input.getSettings()[key] ? 'on' : 'off',
+      options: [{ value: 'off', label: t('settings.off') }, { value: 'on', label: t('settings.on') }] }),
+      () => (input.getSettings()[key] ? 'on' : 'off'), (value) => { input.setSetting(key, value === 'on'); onChange?.(); });
     return row;
+  }
+
+  /** Mount a kit segmented control (its markup from segmented()) at the end of `row`: it shows `current()`, and a new value
+   *  goes to `choose`. Returns its group and a sync for a value changed elsewhere. */
+  function mountSeg<T extends string>(row: HTMLElement, markup: string, current: () => T, choose: (value: T) => void): { group: HTMLElement; sync(): void } {
+    row.insertAdjacentHTML('beforeend', markup);
+    const group = row.lastElementChild as HTMLElement;
+    const sync = (): void => setRoving(group, current());
+    wireRoving(group, (value) => {
+      if (value !== current()) { choose(value as T); emit('ui:click', {}); }
+      sync();
+    });
+    sync();
+    return { group, sync };
   }
 
   function renderGameplay() {
@@ -1017,21 +1011,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     if (!touchLayout) {
       const rmbRow = el('div', 'cot-set-row', aim);
       settingLabel(rmbRow, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
-      const rmbSeg = el('div', 'cot-set-seg', rmbRow);
-      const rmbBtns: HTMLButtonElement[] = [];
-      for (const [value, label] of RMB_MODE_DEFS) {
-        const b = el('button', '', rmbSeg);
-        b.type = 'button';
-        b.textContent = label;
-        b.dataset.mode = value;
-        b.addEventListener('click', () => {
-          input.setSetting('rmbMode', value);
-          for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === value);
-          emit('ui:click', {});
-        });
-        rmbBtns.push(b);
-      }
-      for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
+      mountSeg(rmbRow, segmented({ label: t('settings.rmb.label'), className: 'cot-set-rmb', value: input.getSettings().rmbMode,
+        options: RMB_MODE_DEFS.map(([value, label]) => ({ value, label })) }),
+        () => input.getSettings().rmbMode, (value) => input.setSetting('rmbMode', value));
       const rmbNote = el('div', 'cot-set-note', aim);
       rmbNote.textContent = t('settings.aim.note');
     }
@@ -1039,77 +1021,32 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const battle = groupCard(body, t('settings.battle.title'));
     const diffRow = el('div', 'cot-set-row', battle);
     settingLabel(diffRow, t('settings.gameplay.difficultyNext'), SETTINGS_OPTION_ICONS.aiDifficulty);
-    const seg = el('div', 'cot-set-seg', diffRow);
-    const diffBtns: HTMLButtonElement[] = [];
-    for (const tier of ['easy', 'normal', 'hard'] as const satisfies readonly AiDifficulty[]) {
-      const b = el('button', '', seg);
-      b.type = 'button';
-      b.textContent = t(`settings.difficulty.${tier}`);
-      b.addEventListener('click', () => {
-        input.setSetting('aiDifficulty', tier);
-        for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === tier);
-        emit('ui:difficulty', { difficulty: tier });
-        emit('ui:click', {});
-      });
-      b.dataset.tier = tier;
-      diffBtns.push(b);
-    }
-    for (const x of diffBtns) x.classList.toggle('sel', x.dataset.tier === input.getSettings().aiDifficulty);
+    mountSeg(diffRow, segmented({ label: t('settings.gameplay.difficultyNext'), className: 'cot-set-tier', value: input.getSettings().aiDifficulty,
+      options: (['easy', 'normal', 'hard'] as const satisfies readonly AiDifficulty[]).map((tier) => ({ value: tier, label: t(`settings.difficulty.${tier}`) })) }),
+      () => input.getSettings().aiDifficulty, (tier) => { input.setSetting('aiDifficulty', tier); emit('ui:difficulty', { difficulty: tier }); });
     const diffNote = el('div', 'cot-set-note', battle);
     diffNote.textContent = t('settings.difficulty.note');
 
     const brainRow = el('div', 'cot-set-row', battle);
     const brainLabel = t('settings.gameplay.brainNext');
     settingLabel(brainRow, brainLabel, SETTINGS_OPTION_ICONS.aiDifficulty);
-    const brainSeg = el('div', 'cot-set-seg', brainRow);
-    brainSeg.setAttribute('role', 'group');
-    brainSeg.setAttribute('aria-label', brainLabel);
-    const brainButtons: HTMLButtonElement[] = [];
+    const brain = mountSeg(brainRow, segmented({ label: brainLabel, className: 'cot-set-brain', value: readBrainSettings().opponent,
+      options: (['classic', 'jev'] as const).map((opponent) => ({ value: opponent, label: t(`playMenu.brain.${opponent}`) })) }),
+      () => readBrainSettings().opponent, (opponent) => { writeBrainSettings({ opponent }); syncBrain(); });
     const alliesRow = el('div', 'cot-set-row', battle);
     settingLabel(alliesRow, t('settings.gameplay.alliesJev'), { id: 'team' });
-    const alliesSeg = el('div', 'cot-set-seg onoff', alliesRow);
-    const alliesButtons: HTMLButtonElement[] = [];
+    const allies = mountSeg(alliesRow, segmented({ label: t('settings.gameplay.alliesJev'), className: 'cot-set-onoff', value: readBrainSettings().allies ? 'on' : 'off',
+      options: [{ value: 'off', label: t('settings.off') }, { value: 'on', label: t('settings.on') }] }),
+      () => (readBrainSettings().allies ? 'on' : 'off'), (value) => { writeBrainSettings({ allies: value === 'on' }); syncBrain(); });
     const brainNote = el('div', 'cot-set-note', battle);
-    const syncBrain = () => {
+    // the allies' brain is Jev's alone: Off and On wait for Jev
+    function syncBrain(): void {
       const current = readBrainSettings();
-      for (const b of brainButtons) {
-        const selected = b.dataset.brainOpponent === current.opponent;
-        b.classList.toggle('sel', selected);
-        b.setAttribute('aria-pressed', String(selected));
-      }
-      for (const b of alliesButtons) {
-        const selected = (b.dataset.brainAllies === 'true') === current.allies;
-        b.disabled = current.opponent !== 'jev';
-        b.classList.toggle('sel', selected);
-        b.setAttribute('aria-pressed', String(selected));
-      }
+      brain.sync();
+      allies.sync();
+      for (const option of allies.group.querySelectorAll<HTMLButtonElement>('.cot-c-seg__opt')) option.disabled = current.opponent !== 'jev';
       brainNote.textContent = t('playMenu.brain.sub')
         + (current.opponent === 'jev' ? ' ' + t('playMenu.brain.note') : '');
-    };
-    for (const opponent of ['classic', 'jev'] as const) {
-      const b = el('button', '', brainSeg);
-      b.type = 'button';
-      b.dataset.brainOpponent = opponent;
-      b.textContent = t(`playMenu.brain.${opponent}`);
-      b.addEventListener('click', () => {
-        writeBrainSettings({ opponent });
-        syncBrain();
-        emit('ui:click', {});
-      });
-      brainButtons.push(b);
-    }
-    for (const on of [false, true]) {
-      const b = el('button', '', alliesSeg);
-      b.type = 'button';
-      b.dataset.brainAllies = String(on);
-      b.textContent = t(on ? 'settings.on' : 'settings.off');
-      b.setAttribute('aria-label', `${t('settings.gameplay.alliesJev')}: ${b.textContent}`);
-      b.addEventListener('click', () => {
-        writeBrainSettings({ allies: on });
-        syncBrain();
-        emit('ui:click', {});
-      });
-      alliesButtons.push(b);
     }
     syncBrain();
 
@@ -1230,32 +1167,28 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const crewRow = el('div', 'cot-set-row cot-set-crew-row', crew);
     settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
     const crewField = el('div', 'cot-set-crew-field', crewRow);
-    const crewSelect = el('select', '', crewField);
-    crewSelect.dataset.setting = 'crewVoice';
-    crewSelect.setAttribute('aria-label', t('settings.crew.voice'));
-    crewSelect.add(new Option(t('settings.crew.national'), 'national'));
-    for (const [value, nation] of Object.entries(CREW_VOICE_NATIONS)) {
-      crewSelect.add(new Option(t(`nation.${nation}`), value));
-    }
-    crewSelect.value = input.getSettings().crewVoice;
-    crewSelect.addEventListener('change', () => {
-      if (!isCrewVoiceSetting(crewSelect.value)) return;
-      input.setSetting('crewVoice', crewSelect.value);
-      emitVolumes();
-      emit('ui:click', {});
-    });
-    // Let the shared dropdown handle keys first, then contain Tab and prevent
+    crewField.dataset.setting = 'crewVoice';
+    const crewItems = (flag?: (nation: string) => string): PickerItem[] => [
+      { id: 'national', name: t('settings.crew.national'), glyph: 'globe' },
+      ...Object.entries(CREW_VOICE_NATIONS).map(([value, nation]) => ({ id: value, name: t(`nation.${nation}`), chip: flag?.(nation) })),
+    ];
+    const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewItems(),
+      value: input.getSettings().crewVoice, layout: 'list', text: pickerText(),
+      onChoose: (item) => {
+        if (!isCrewVoiceSetting(item.id)) return;
+        input.setSetting('crewVoice', item.id);
+        emitVolumes();
+        emit('ui:click', {});
+      } });
+    tabMenus.push(crewMenu);
+    // Let the menu's trigger handle keys first, then contain Tab and prevent
     // game shortcuts. The panel's capture listener yields this field below.
     crewField.addEventListener('keydown', event => {
       event.stopPropagation();
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
     // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./nationSelect.ts').then(({ createNationSelect }) => {
-      if (!crewSelect.isConnected) return;
-      crewSelectController = createNationSelect(crewSelect, t('settings.crew.voice'), value =>
-        isCrewVoiceSetting(value) && value !== 'national' ? CREW_VOICE_NATIONS[value] : undefined);
-    });
+    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
@@ -1284,36 +1217,29 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const card = groupCard(body, t('settings.graphics.title'));
     const row = el('div', 'cot-set-row', card);
     settingLabel(row, t('settings.graphics.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
-    const seg = el('div', 'cot-set-seg', row);
-    const btns: HTMLButtonElement[] = [];
     const mobile = getDeviceTier() === 'mobile';
     const choices: readonly ('auto' | PresetName)[] = mobile
       ? MOBILE_PRESET_ORDER
       : ['auto', ...PRESET_ORDER];
-    for (const name of choices) {
-      const b = el('button', '', seg);
-      b.type = 'button';
-      b.textContent = name === 'auto'
-        ? t('settings.preset.auto')
-        : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra');
-      b.dataset.name = name;
-      b.addEventListener('click', () => {
-        stagedPreset = name; // applied when the panel closes (commitGraphics)
-        for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
-        chosen = name;
-        showPreview(name);
-        emit('ui:click', {});
-      });
-      // the preview shows the preset a pointer or the focus is on, then returns to the chosen one
-      b.addEventListener('pointerenter', () => showPreview(name));
-      b.addEventListener('focus', () => showPreview(name));
-      btns.push(b);
-    }
+    const presetName = (name: 'auto' | PresetName): string => (name === 'auto'
+      ? t('settings.preset.auto')
+      : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra'));
     const selected = stagedPreset ?? (mobile ? getMobilePresetChoice() : getStoredChoice());
     let chosen: string = selected;
-    for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
-    seg.addEventListener('pointerleave', () => showPreview(chosen));
-    seg.addEventListener('focusout', (event) => { if (!seg.contains(event.relatedTarget as Node | null)) showPreview(chosen); });
+    // a preset is applied when the panel closes (commitGraphics)
+    const stage = (name: string): void => { stagedPreset = name; chosen = name; showPreview(name); };
+    if (mobile) {
+      // a phone's four presets on the segmented control
+      mountSeg(row, segmented({ label: t('settings.graphics.label'), className: 'cot-set-quality', value: selected,
+        options: choices.map((name) => ({ value: name, label: presetName(name) })) }), () => chosen, stage);
+    } else {
+      // the desktop's six on the picker menu: the preset under the pointer or the focus shows its still below, and leaving
+      // the menu returns it to the chosen one
+      tabMenus.push(createPickerMenu(el('div', 'cot-set-menu', row), { id: 'settings-quality', label: t('settings.graphics.label'),
+        items: choices.map((name) => ({ id: name, name: presetName(name) })), value: selected, layout: 'list', text: pickerText(),
+        onPreview: (item) => showPreview(item?.id ?? chosen),
+        onChoose: (item) => { stage(item.id); emit('ui:click', {}); } }));
+    }
     // the desktop presets' preview (phones keep the picker alone): Auto shows the preset it resolves to
     const preview = mobile ? null : el('figure', 'cot-set-preview', card);
     const previewImage = preview ? el('img', '', preview) : null;
@@ -1336,30 +1262,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const diagnostics = groupCard(body, t('settings.diagnostics.title'));
     const diagRow = el('div', 'cot-set-row', diagnostics);
     settingLabel(diagRow, t('settings.diagnostics.telemetry'), SETTINGS_OPTION_ICONS.showDebugHud);
-    const diagSeg = el('div', 'cot-set-seg onoff', diagRow);
-    const diagBtns: HTMLButtonElement[] = [];
     const diagStorage = (): Storage | null => { try { return window.localStorage; } catch (_) { return null; } };
-    const syncDiag = () => {
-      const on = !telemetryOptOutStored(diagStorage());
-      diagBtns[0].classList.toggle('sel', !on);
-      diagBtns[1].classList.toggle('sel', on);
-      diagBtns[0].setAttribute('aria-pressed', String(!on));
-      diagBtns[1].setAttribute('aria-pressed', String(on));
-    };
-    for (const [val, txt] of [[false, t('settings.off')], [true, t('settings.on')]] as const) {
-      const b = el('button', '', diagSeg);
-      b.type = 'button';
-      b.textContent = txt;
-      b.setAttribute('aria-label', `${t('settings.diagnostics.telemetry')}: ${txt}`);
-      b.addEventListener('click', () => {
-        if (!telemetryOptOutStored(diagStorage()) === val) return;
-        setTelemetryOptOut(!val, diagStorage());
-        syncDiag();
-        emit('ui:click', {});
-      });
-      diagBtns.push(b);
-    }
-    syncDiag();
+    const diagOn = (): 'on' | 'off' => (telemetryOptOutStored(diagStorage()) ? 'off' : 'on');
+    mountSeg(diagRow, segmented({ label: t('settings.diagnostics.telemetry'), className: 'cot-set-onoff', value: diagOn(),
+      options: [{ value: 'off', label: t('settings.off') }, { value: 'on', label: t('settings.on') }] }),
+      diagOn, (value) => setTelemetryOptOut(value === 'off', diagStorage()));
     el('div', 'cot-set-note keep', diagnostics).textContent = t('settings.diagnostics.note');
   }
 
@@ -1376,39 +1283,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     rosters: { id: 'team', tone: 'cyan' },
   } as const satisfies Readonly<Record<string, SettingsIconSpec>>;
 
-  /** One segmented choice bound to a preference (aria-pressed on each option). */
+  /** One setting of two or three values bound to a preference, on the kit's segmented control. */
   function a11ySeg<T extends string>(
     parent: HTMLElement, label: string, icon: SettingsIconSpec,
-    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, glyphs = false,
-  ): HTMLButtonElement[] {
+    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void,
+  ): void {
     const row = el('div', 'cot-set-row', parent);
     settingLabel(row, label, icon);
-    const seg = el('div', `cot-set-seg${glyphs ? ' glyphs' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
-    seg.setAttribute('role', 'group');
-    seg.setAttribute('aria-label', label);
-    const buttons = options.map(([value, text]) => {
-      const b = el('button', '', seg);
-      b.type = 'button';
-      b.dataset.value = value;
-      // glyph options (the team-colour presets) show their art; the name is the accessible name and the hover tip
-      if (glyphs) { b.setAttribute('aria-label', text); b.dataset.tip = text; } else b.textContent = text;
-      b.addEventListener('click', () => {
-        if (current() === value) return;
-        choose(value);
-        sync();
-        emit('ui:click', {});
-      });
-      return b;
-    });
-    const sync = (): void => {
-      for (const b of buttons) {
-        const on = b.dataset.value === current();
-        b.classList.toggle('sel', on);
-        b.setAttribute('aria-pressed', String(on));
-      }
-    };
-    sync();
-    return buttons;
+    mountSeg(row, segmented({ label, className: 'cot-set-a11y', value: current(), options: options.map(([value, text]) => ({ value, label: text })) }),
+      current, choose);
   }
 
   /** A percentage slider bound to a numeric preference (the range and its number field, as the other tabs). */
@@ -1458,28 +1341,29 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       + '<span class="shape squad">&#9679;</span><span class="sample">' + t('settings.a11y.sample') + '</span><span class="hudnum num">88</span>';
     a11ySlider(vision, t('settings.a11y.textScale'), A11Y_ICONS.textScale, 'textScale', RANGES.textScale);
     a11ySlider(vision, t('settings.a11y.hudScale'), A11Y_ICONS.hudScale, 'hudScale', RANGES.hudScale);
-    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read; its
-    // name is the option's tip (six worded options did not fit beside the label and wrapped over it).
-    const presetButtons = a11ySeg(vision, t('settings.a11y.colors'), A11Y_ICONS.colors,
-      COLOR_PRESETS.map((preset) => [preset, t(`settings.a11y.preset.${preset}`)] as const),
-      () => prefs().colorPreset, (preset: ColorPreset) => { saveAccessibility({ colorPreset: preset }); syncCustom(); }, true);
-    const swatch = (button: HTMLButtonElement, own: string, enemy: string): void => {
-      const sw = document.createElement('span');
-      sw.className = 'sw';
-      sw.setAttribute('aria-hidden', 'true');
-      sw.style.setProperty('--o', own);
-      sw.style.setProperty('--e', enemy);
-      sw.innerHTML = '<i>&#9650;</i><i>&#9670;</i>';
-      button.prepend(sw);
+    // The colour presets on the picker menu: each by its own ally and enemy colours on the chevron and the diamond (the
+    // custom pair as saved), and its name. The preset under the pointer or the focus wears its colours on the sample
+    // above; leaving the menu returns the sample to the chosen one.
+    const presetColours = (preset: ColorPreset): readonly [string, string] => {
+      if (preset === 'custom') return [prefs().customOwn, prefs().customEnemy];
+      const cvd = preset === 'default' ? {} : { cvd: preset };
+      return [tokenValue('team-own', cvd), tokenValue('team-enemy', cvd)];
     };
-    for (const button of presetButtons) {
-      const preset = button.dataset.value as ColorPreset;
-      if (preset === 'custom') button.insertAdjacentHTML('afterbegin', uiIconSVG('brush', 16));
-      else {
-        const cvd = preset === 'default' ? {} : { cvd: preset };
-        swatch(button, tokenValue('team-own', cvd), tokenValue('team-enemy', cvd));
-      }
-    }
+    const presetItems = (): PickerItem[] => COLOR_PRESETS.map((preset) => ({
+      id: preset, name: t(`settings.a11y.preset.${preset}`), chip: teamSwatch(...presetColours(preset)),
+    }));
+    const colorsRow = el('div', 'cot-set-row', vision);
+    settingLabel(colorsRow, t('settings.a11y.colors'), A11Y_ICONS.colors);
+    const colorsMenu = createPickerMenu(el('div', 'cot-set-menu', colorsRow), { id: 'settings-colour-preset', label: t('settings.a11y.colors'),
+      items: presetItems(), value: prefs().colorPreset, layout: 'list', text: pickerText(),
+      onPreview: (item) => {
+        const colours = item ? presetColours(item.id as ColorPreset) : null;
+        for (const [i, token] of (['--team-own', '--team-enemy'] as const).entries()) {
+          if (colours) preview.style.setProperty(token, colours[i]); else preview.style.removeProperty(token);
+        }
+      },
+      onChoose: (item) => { saveAccessibility({ colorPreset: item.id as ColorPreset }); syncCustom(); emit('ui:click', {}); } });
+    tabMenus.push(colorsMenu);
     // Custom: own and enemy pickers; a pair under the colour-vision or contrast floors is refused (colorVision.ts).
     const customRow = el('div', 'cot-set-row', vision);
     settingLabel(customRow, t('settings.a11y.preset.custom'), { id: 'brush' });
@@ -1518,9 +1402,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       const check = setCustomTeamColours(ownPick.value, enemyPick.value);
       if (check.ok) {
         syncCustom();
-        const sw = presetButtons.find((b) => b.dataset.value === 'custom')?.querySelector<HTMLElement>('.sw');
-        sw?.style.setProperty('--o', ownPick.value);
-        sw?.style.setProperty('--e', enemyPick.value);
+        colorsMenu.setItems(presetItems());
         return;
       }
       refused.hidden = false;
@@ -1568,32 +1450,20 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const langCard = groupCard(body, t('settings.language.card'));
     const langRow = el('div', 'cot-set-row', langCard);
     settingLabel(langRow, t('settings.language.label'), { id: 'globe' });
-    const langSeg = el('div', 'cot-set-seg', langRow);
-    const langBtns: HTMLButtonElement[] = [];
-    const currentLocale = getLocale();
-    for (const locale of getSupportedLocales()) {
-      const b = el('button', '', langSeg);
-      b.type = 'button';
-      b.dataset.locale = locale;
-      b.textContent = t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en'));
-      b.addEventListener('click', () => {
-        if (locale === getLocale()) return;
+    mountSeg(langRow, segmented({ label: t('settings.language.label'), className: 'cot-set-lang', value: getLocale(),
+      options: getSupportedLocales().map((locale) => ({ value: locale, label: t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en')) })) }),
+      () => getLocale(), (locale) => {
         setLocale(locale);
-        emit('ui:click', {});
         // Most screens are constructed once and own translated DOM. Reloading
         // is the only atomic way to avoid a mixed-language Garage or battle.
         window.location.assign(currentLocationHrefForLocale(window.location, locale));
       });
-      langBtns.push(b);
-    }
-    for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === currentLocale);
     const langNote = el('div', 'cot-set-note', langCard);
     langNote.textContent = t('settings.language.note');
   }
 
   function renderTab() {
-    crewSelectController?.dispose();
-    crewSelectController = null;
+    for (const menu of tabMenus.splice(0)) menu.dispose();
     cancelCapture();
     clearConflict();
     for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
@@ -1612,32 +1482,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
-    nameSegments();
     scheduleScrollFades(); // fades follow the fresh content's real overflow
   }
 
-  // every segmented picker is a named group whose options say which one is on: a group without its own name takes its
-  // row's label, and one observer mirrors each option's .sel into aria-pressed (the pickers' handlers toggle the class)
-  const syncPressed = (option: Element): void => {
-    if (option instanceof HTMLButtonElement && !option.hasAttribute('role')) {
-      option.setAttribute('aria-pressed', String(option.classList.contains('sel')));
-    }
-  };
-  function nameSegments(): void {
-    for (const seg of body.querySelectorAll<HTMLElement>('div.cot-set-seg')) {
-      if (!seg.hasAttribute('role')) seg.setAttribute('role', 'group');
-      const label = seg.closest('.cot-set-row')?.querySelector('.cot-setting-label-text')?.textContent;
-      if (label && !seg.hasAttribute('aria-label')) seg.setAttribute('aria-label', label);
-      for (const option of seg.children) syncPressed(option);
-    }
-  }
-  if (typeof MutationObserver === 'function') {
-    new MutationObserver((records) => {
-      for (const record of records) {
-        if (record.target instanceof Element && record.target.parentElement?.classList.contains('cot-set-seg')) syncPressed(record.target);
-      }
-    }).observe(body, { subtree: true, attributes: true, attributeFilter: ['class'] });
-  }
 
   // (owner, the 10-24 UI sweep: no helper text in view) a card's explanations fold behind one info button in its
   // title, which shows and hides them; a live status, the sound credits and the privacy disclosure (.keep) and a refusal
@@ -1815,9 +1662,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (!e.repeat) finishCapture(e.code);
       return;
     }
-    // The crew voice's menu consumes arrows, Enter and its Escape: its popover sits in the body, and its field
-    // contains bubbling keys so they still cannot reach the game behind us.
+    // A kit control keeps its own keys: a picker menu's popover (in the body) every key, a segmented control's and a
+    // menu trigger's arrows, Home and End, the crew voice's field all but Escape. The panel's bubble listener (and the
+    // crew field's) keeps them from the game behind us.
     if (e.target instanceof Element && (e.target.closest('.cot-c-menu__pop')
+        || (/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key) && e.target.closest('.cot-c-seg, .cot-c-menu__trigger'))
         || (e.target.closest('.cot-set-crew-field') && e.code !== 'Escape'))) return;
     if (isAnyModalOpen()) return; // The HUD editor owns focus and Escape above Settings.
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
@@ -1930,7 +1779,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
     commitGraphics();
-    crewSelectController?.close();
+    for (const menu of tabMenus) menu.close();
     if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
     clearConflict();

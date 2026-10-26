@@ -1,5 +1,6 @@
 import { onLocaleChange, t } from '../ui/i18n.ts';
 import { designationHtml } from './designations.ts';
+import type { PickerItem } from '../ui/components/picker.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
 
@@ -78,15 +79,34 @@ export function mountBattleReels(scope: Document = document): void {
     }
   }
 
-  grid.innerHTML = BATTLE_REELS.map((reel, index) => `
-    <button class="battle-reel-card" type="button" data-battle-reel-index="${index}" aria-pressed="${index === 0}">
-      <img src="${reel.poster}" alt="" loading="lazy" decoding="async">
-      <span><b>${reelNumber(index)}</b><strong>${designationHtml(reel.title)}</strong><small>${designationHtml(reel.map)}</small></span>
-    </button>
-  `).join('');
-
-  const buttons = [...grid.querySelectorAll<HTMLButtonElement>('[data-battle-reel-index]')];
   let activeIndex = 0;
+  // the takes are the kit's picker (cards), loaded with its sheet when the library nears the screen: each by its poster,
+  // its title and its battlefield; one press plays it
+  let reels: { setItems(items: readonly PickerItem[], value?: string | null): void; setValue(id: string | null): void } | null = null;
+  const reelItems = (): PickerItem[] => BATTLE_REELS.map((reel) => ({ id: reel.id, name: reel.title, facts: [reel.map], media: { poster: reel.poster } }));
+  const mountPicker = (): void => {
+    void Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
+      .then(([{ createPicker }, { pickerText }]) => {
+        reels = createPicker(grid, {
+          id: 'docs-battle-reel', label: t('docs.studio.reelsGridAria'), items: reelItems(), value: BATTLE_REELS[activeIndex].id,
+          layout: 'cards', text: pickerText(),
+          // the take under the pointer or the focus shows its poster on the player while it is not playing
+          onPreview: (item) => {
+            if (video.paused) video.poster = (BATTLE_REELS.find((reel) => reel.id === item?.id) ?? BATTLE_REELS[activeIndex]).poster;
+          },
+          onChoose: (item) => selectReel(BATTLE_REELS.findIndex((reel) => reel.id === item.id)),
+        });
+      }).catch(() => { /* the player keeps its opening take */ });
+  };
+  if (typeof IntersectionObserver !== 'function') mountPicker();
+  else {
+    const near = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      near.disconnect();
+      mountPicker();
+    }, { rootMargin: '600px 0px' });
+    near.observe(grid);
+  }
 
   const caption = (index: number): void => {
     const reel = BATTLE_REELS[index];
@@ -99,11 +119,7 @@ export function mountBattleReels(scope: Document = document): void {
   caption(0); // the page's static caption is the English one the media wiring writes
   // A Chinese page's catalog can land after the mount: the cards and the caption follow it.
   onLocaleChange(() => {
-    buttons.forEach((button, index) => {
-      const label = button.querySelector('strong'), place = button.querySelector('small');
-      if (label) label.innerHTML = designationHtml(BATTLE_REELS[index].title);
-      if (place) place.innerHTML = designationHtml(BATTLE_REELS[index].map);
-    });
+    reels?.setItems(reelItems(), BATTLE_REELS[activeIndex].id);
     caption(activeIndex);
   });
 
@@ -111,9 +127,7 @@ export function mountBattleReels(scope: Document = document): void {
     const reel = BATTLE_REELS[index];
     if (!reel) return;
 
-    buttons.forEach((button, buttonIndex) => {
-      button.setAttribute('aria-pressed', String(buttonIndex === index));
-    });
+    reels?.setValue(reel.id);
     caption(index);
 
     if (activeIndex !== index) {
@@ -126,25 +140,4 @@ export function mountBattleReels(scope: Document = document): void {
     if (play) video.play().catch(() => {});
   };
 
-  grid.addEventListener('click', (event) => {
-    const button = event.target instanceof Element
-      ? event.target.closest<HTMLButtonElement>('[data-battle-reel-index]') : null;
-    if (!button) return;
-    selectReel(Number(button.dataset.battleReelIndex));
-  });
-
-  grid.addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
-    const focused = scope.activeElement;
-    const current = focused instanceof HTMLButtonElement ? buttons.indexOf(focused) : -1;
-    if (current < 0) return;
-    event.preventDefault();
-    const widthBand = scope.body?.dataset.cotWidth;
-    const columns = widthBand === 'phone' || widthBand === 'compact' ? 2 : 4;
-    const offset = event.key === 'ArrowLeft' ? -1
-      : event.key === 'ArrowRight' ? 1
-        : event.key === 'ArrowUp' ? -columns : columns;
-    const next = Math.max(0, Math.min(buttons.length - 1, current + offset));
-    buttons[next].focus();
-  });
 }

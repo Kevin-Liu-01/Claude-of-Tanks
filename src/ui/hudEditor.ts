@@ -1,17 +1,22 @@
 import { loadHudPreview, type HudPreviewScene } from './hudEditorScene.ts';
 import { createModal } from './modal.ts';
 import { t } from './i18n.ts';
-import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { uiIconSVG } from './uiIcons.ts';
+import type { IconId } from './icons/icon.ts';
+import { segmented, setRoving, wireRoving } from './components/components.ts';
+import { createPicker } from './components/picker.ts';
+import { pickerText } from './pickerText.ts';
 import { layoutViewportSize } from './responsiveLayout.ts';
 import { HUD_PARTS, hudCenter, hudProfile, readHudPreferences, saveHudPreferences,
   type HudPartId, type HudProfile } from './hudPreferences.ts';
 
 type Part = typeof HUD_PARTS[number];
-const PART_ICONS:Record<HudPartId,UiIconId>={score:'clock',objective:'modeZones',allies:'team',enemies:'team',health:'shield',drive:'speed',ammo:'shell',systems:'settings',map:'map',damage:'damage',killsLeft:'skull',killsRight:'skull',report:'penetration',detected:'lightbulb',alerts:'info',chat:'radio',network:'performance',medals:'star',aircraft:'modeAc130',joystick:'controller',fire:'fireGun',scopeButton:'scope',autoAim:'autoAim',labels:'battleBots',damageNumbers:'damage'};
+const PART_ICONS:Record<HudPartId,IconId>={score:'clock',objective:'modeZones',allies:'team',enemies:'team',health:'shield',drive:'speed',ammo:'shell',systems:'settings',map:'map',damage:'damage',killsLeft:'skull',killsRight:'skull',report:'penetration',detected:'lightbulb',alerts:'info',chat:'radio',network:'performance',medals:'star',aircraft:'modeAc130',joystick:'controller',fire:'fireGun',scopeButton:'scope',autoAim:'autoAim',labels:'battleBots',damageNumbers:'damage'};
 const label=(id:string)=>t(`hudEditor.${id}`);
 const PROFILES:HudProfile[]=['desktop','portrait','landscape'];
 const SIZES:Record<HudProfile,[number,number]>={desktop:[1440,900],portrait:[390,844],landscape:[844,390]};
 const BACKDROP='/media/site50-r14/stills/s19-roof-tiles.webp';
+const SECONDARY='cot-c-btn cot-c-btn--36 cot-c-btn--secondary';
 function element<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement){
   const node=document.createElement(tag);node.className=cls;parent.append(node);return node;
 }
@@ -34,12 +39,14 @@ export function openHudEditor(trigger:HTMLElement):void {
   }});
   modal.root.classList.add('cot-hud-editor');
   const toolbar=element('div','hud-edit-toolbar',modal.body);
-  const tabs=element('div','hud-edit-profiles',toolbar);tabs.setAttribute('role','group');tabs.setAttribute('aria-label',label('profile'));
-  const profileButtons=new Map<HudProfile,HTMLButtonElement>();
-  for(const id of PROFILES){const b=element('button','',tabs);b.type='button';b.textContent=label(id);profileButtons.set(id,b);b.onclick=()=>{if(profile===id&&scene)return;profile=id;void load();};}
-  const zoomButton=element('button','hud-edit-zoom',toolbar);zoomButton.type='button';zoomButton.textContent=label('zoom');
+  // the screen layouts on the kit's segmented control; the editor's buttons are the kit's
+  toolbar.insertAdjacentHTML('beforeend',segmented({label:label('profile'),className:'hud-edit-profiles',value:profile,
+    options:PROFILES.map(id=>({value:id,label:label(id)}))}));
+  const tabs=toolbar.querySelector<HTMLElement>('.hud-edit-profiles')!;
+  wireRoving(tabs,id=>{if(profile===id&&scene)return;profile=id as HudProfile;void load();});
+  const zoomButton=element('button',`hud-edit-zoom ${SECONDARY}`,toolbar);zoomButton.type='button';zoomButton.textContent=label('zoom');
   zoomButton.onclick=()=>{zoom=zoom===1?2:1;zoomButton.textContent=label(zoom===1?'zoom':'fit');fit();};
-  const reset=element('button','',toolbar);reset.type='button';reset.textContent=label('reset');reset.onclick=()=>{draft[profile]={};render();};
+  const reset=element('button',SECONDARY,toolbar);reset.type='button';reset.textContent=label('reset');reset.onclick=()=>{draft[profile]={};render();};
   const content=element('div','hud-edit-content',modal.body);
   const preview=element('div','hud-edit-preview',content);
   const viewport=element('div','hud-edit-viewport',preview);
@@ -51,27 +58,34 @@ export function openHudEditor(trigger:HTMLElement):void {
   const loading=element('p','hud-edit-loading',preview);loading.setAttribute('role','status');loading.textContent=label('loading');
   const inspector=element('aside','hud-edit-inspector',content);
   const inspectorTitle=element('h3','',inspector);
-  const visibility=element('button','',inspector);visibility.type='button';
-  const restore=element('button','',inspector);restore.type='button';restore.textContent=label('restore');
+  const visibility=element('button',SECONDARY,inspector);visibility.type='button';
+  const restore=element('button',SECONDARY,inspector);restore.type='button';restore.textContent=label('restore');
   const nudge=element('div','hud-edit-nudge',inspector);
   for(const [key,dx,dy] of [['left',-10,0],['up',0,-10],['down',0,10],['right',10,0]] as const){
     // the sprite's chevrons; up is the down chevron turned (hudEditor.css)
-    const b=element('button',`nudge-${key}`,nudge);b.type='button';b.innerHTML=uiIconSVG(({left:'chevronLeft',up:'chevronDown',down:'chevronDown',right:'chevronRight'} as const)[key],18);b.setAttribute('aria-label',label(key));
+    const b=element('button',`nudge-${key} ${SECONDARY} cot-c-btn--icon`,nudge);b.type='button';b.innerHTML=uiIconSVG(({left:'chevronLeft',up:'chevronDown',down:'chevronDown',right:'chevronRight'} as const)[key],18);b.setAttribute('aria-label',label(key));
     b.onclick=()=>{const node=nodes.get(selected);if(node)move(selected,(parseFloat(node.style.left)+dx)/vw,(parseFloat(node.style.top)+dy)/vh);};
   }
   const tip=element('p','',inspector);
-  const list=element('div','hud-edit-list',inspector);list.setAttribute('role','group');list.setAttribute('aria-label',label('elements'));
+  // the parts on the kit picker's list: a part under the pointer or the focus is outlined on the preview, a press selects it
+  const list=element('div','hud-edit-list',inspector);
+  const parts=createPicker(list,{id:'hud-editor-part',label:label('elements'),items:[],value:selected,layout:'list',text:pickerText(),
+    onPreview:item=>{for(const [key,node] of nodes)node.classList.toggle('is-previewed',key===item?.id);},
+    onChoose:item=>{
+      const id=item.id as HudPartId;select(id);const node=nodes.get(id);if(node&&!node.hidden)node.focus();
+      else if(!scene?.parts.has(id)&&['aircraft','medals','alerts','damage','killsRight'].includes(id))void load();
+    }});
   const status=element('p','hud-edit-status',modal.footer);status.setAttribute('role','status');
   status.textContent=label('sample');
-  const cancel=element('button','hud-edit-cancel',modal.footer);cancel.type='button';cancel.textContent=label('cancel');cancel.onclick=()=>modal.close();
-  const save=element('button','hud-edit-save',modal.footer);save.type='button';save.textContent=label('save');save.onclick=()=>{
+  const cancel=element('button',`hud-edit-cancel ${SECONDARY}`,modal.footer);cancel.type='button';cancel.textContent=label('cancel');cancel.onclick=()=>modal.close();
+  const save=element('button','hud-edit-save cot-c-btn cot-c-btn--36 cot-c-btn--primary',modal.footer);save.type='button';save.textContent=label('save');save.onclick=()=>{
     if(saveHudPreferences(draft))modal.close();else status.textContent=label('saveError');
   };
   function currentPart(){return HUD_PARTS.find(part=>part.id===selected)!;}
   function select(id:HudPartId){
     selected=id;
     for(const [key,node] of nodes)node.setAttribute('aria-pressed',String(key===id));
-    for(const row of list.querySelectorAll<HTMLButtonElement>('button[data-part]'))row.setAttribute('aria-pressed',String(row.dataset.part===id));
+    parts.setValue(id);
     inspectorTitle.textContent=label(id);
     visibility.textContent=label(draft[profile][id]?.hidden?'show':'hide');
     visibility.setAttribute('aria-pressed',String(!draft[profile][id]?.hidden));
@@ -141,28 +155,23 @@ export function openHudEditor(trigger:HTMLElement):void {
       const tag=element('span','hud-edit-tag',node);tag.textContent=label(part.id);
       nodes.set(part.id,node);bind(part,node);position(part);
     }
-    const row=element('button','',list);row.type='button';row.dataset.part=part.id;
-    const icon=element('span','hud-edit-list-icon',row);icon.innerHTML=uiIconSVG(PART_ICONS[part.id],18);
-    element('span','hud-edit-list-label',row).textContent=label(part.id);
-    const state=element('span','hud-edit-list-state',row);state.textContent=draft[profile][part.id]?.hidden?'−':'+';
-    state.setAttribute('aria-hidden','true');row.dataset.hidden=String(!!draft[profile][part.id]?.hidden);
-    row.setAttribute('aria-pressed',String(part.id===selected));
-    row.onclick=()=>{select(part.id);const node=nodes.get(part.id);if(node&&!node.hidden)node.focus();
-      else if(!source&&['aircraft','medals','alerts','damage','killsRight'].includes(part.id))void load();};
   }
   function render(){
     drag=null;nodes.clear();dimensions.clear();defaults.clear();
-    stage.querySelectorAll('.hud-edit-part').forEach(node=>node.remove());list.replaceChildren();
+    stage.querySelectorAll('.hud-edit-part').forEach(node=>node.remove());
     for(const part of HUD_PARTS)addPart(part);
+    // a hidden part says so on its row (its row stays, so the part can be shown again)
+    parts.setItems(HUD_PARTS.filter(part=>!('touch' in part&&profile==='desktop')).map(part=>({id:part.id,name:label(part.id),
+      glyph:PART_ICONS[part.id],facts:draft[profile][part.id]?.hidden?[label('hidden')]:undefined})),selected);
     select(selected);fit();
   }
   async function load(){
     request?.abort();scene?.frame.remove();scene=null;delete modal.root.dataset.previewReady;
-    stage.querySelectorAll('.hud-edit-part').forEach(node=>node.remove());list.replaceChildren();
+    stage.querySelectorAll('.hud-edit-part').forEach(node=>node.remove());
     request=new AbortController();const pending=request;
     [vw,vh]=profile===activeProfile?liveSize():SIZES[profile];
     stage.style.width=`${vw}px`;stage.style.height=`${vh}px`;
-    for(const [id,b] of profileButtons)b.setAttribute('aria-pressed',String(profile===id));
+    setRoving(tabs,profile);
     loading.hidden=false;loading.textContent=label('loading');save.disabled=true;inspector.inert=true;fit();
     try{
       const [result]=await Promise.all([loadHudPreview(stage,profile,vw,vh,pending.signal,selected),backdropReady]);

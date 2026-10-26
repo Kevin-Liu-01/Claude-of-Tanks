@@ -32,7 +32,7 @@ try {
           const option=list.locator('[role=option]').last();
           target=await option.getAttribute('data-id');
           await option.click();
-          if(key==='enemyNation') assert.equal(await trigger.locator('.cot-c-picker__flag img').count(),1,'nation retains official flag');
+          if(key==='enemyNation') assert.equal(await trigger.locator('.cot-c-picker__chip img').count(),1,'nation retains official flag');
           assert.equal(await list.count(),0,'selection dismisses menu');
         } else {
           const option=field.locator('.cot-c-seg__opt').last();

@@ -124,15 +124,20 @@ export const INTERACTION_SITES = Object.freeze({
   'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'picker', marks: ['picker:nation-dropdown'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)
-  'settings-right-click': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-site' },
-  'settings-difficulty': { chooses: 'difficulty', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.tier'], lane: 'premiere-site' },
-  'settings-brain': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent', 'bespoke:dataset.brainAllies'], lane: 'premiere-site' },
-  'settings-crew-voice': { chooses: 'nation', options: 14, screen: 'settings', owner: SETTINGS, build: 'select', marks: ['select:crewSelect'], lane: 'premiere-site' },
-  'settings-quality': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.name'], lane: 'premiere-site' },
-  'settings-accessibility': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.value'], lane: 'premiere-site' },
-  'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.locale'], lane: 'premiere-site' },
-  'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:key===id', 'bespoke:dataset.part', 'bespoke:part.id'], lane: 'premiere-site' },
-  'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:profile===id'], lane: 'premiere-site' },
+  'settings-right-click': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-rmb'], lane: 'premiere-site' },
+  'settings-difficulty': { chooses: 'difficulty', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-tier'], lane: 'premiere-site' },
+  'settings-brain': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-brain'], lane: 'premiere-site' },
+  'settings-crew-voice': { chooses: 'nation', options: 14, screen: 'settings', owner: SETTINGS, build: 'picker', marks: ['picker:settings-crew-voice'], lane: 'premiere-site' },
+  // a desktop's six presets on the picker menu, a phone's four on the segmented control
+  'settings-quality': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'picker', marks: ['picker:settings-quality', 'segmented:.cot-set-quality'], lane: 'premiere-site' },
+  'settings-accessibility': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-a11y'], lane: 'premiere-site' },
+  'settings-colour-preset': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'picker', marks: ['picker:settings-colour-preset'], lane: 'premiere-site' },
+  // every On/Off setting (the alarms, the HUD, the allies' brain, the telemetry)
+  'settings-on-off': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-onoff'], lane: 'premiere-site' },
+  'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'segmented', marks: ['segmented:.cot-set-lang'], lane: 'premiere-site' },
+  // the parts on the picker's list; the preview's own parts select by a press or a drag (direct manipulation)
+  'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'picker', marks: ['picker:hud-editor-part', 'bespoke:key===id'], lane: 'premiere-site' },
+  'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'segmented', marks: ['segmented:.hud-edit-profiles'], lane: 'premiere-site' },
 
   // ---- Rooms (the lead)
   'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
@@ -194,10 +199,11 @@ export const INTERACTION_SITES = Object.freeze({
   'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
-  'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'bespoke', marks: ['bespoke:index===0', 'bespoke:buttonIndex===index'], lane: 'premiere-site' },
-  'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'bespoke', marks: ['bespoke:own===stage'], lane: 'premiere-site' },
-  'docs-archive-filter': { chooses: 'filter', options: 11, screen: 'site', owner: 'src/presentation/mediaArchive.ts', build: 'bespoke', marks: ['bespoke:dataset.feature', 'bespoke:feature===active'], lane: 'premiere-site' },
-  'docs-media-collection': { chooses: 'media', options: 8, screen: 'site', owner: 'src/presentation/mediaLibrary.ts', build: 'bespoke', marks: ['bespoke:dataset.collection'], lane: 'premiere-site' },
+  'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'picker', marks: ['picker:docs-battle-reel'], lane: 'premiere-site' },
+  'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-stage'], lane: 'premiere-site' },
+  'docs-filming-take': { chooses: 'take', options: 8, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-take'], lane: 'premiere-site' },
+  // (2026-10-26) the archive's feature filter and the library's collections are the kit's tabs: each switches the view
+  // under it (the archive's grid, the library's panel), navigation the census does not count as a choice
 } as const satisfies Readonly<Record<string, InteractionSite>>);
 
 /** A census mark that is not a choose-one, with why. */

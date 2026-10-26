@@ -4224,6 +4224,7 @@
   "hud.status.more": "{count} more conditions",
   "hudEditor.loading": "Preparing battle preview…",
   "hudEditor.unavailable": "This element appears only in certain battle states. Its visibility can still be changed here.",
+  "hudEditor.hidden": "Hidden",
   "hud.kill.shot": "Destroyed",
   "hud.kill.ammorack": "Ammo rack",
   "hud.kill.drone": "Drone strike",

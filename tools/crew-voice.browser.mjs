@@ -37,12 +37,12 @@ try {
         await trigger.click();
         const bounds = await popup.boundingBox();
         assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1, `${locale} ${name}: popup fits viewport`);
-        assert.equal(await popup.locator('.cot-c-picker__flag img').count(), 13);
+        assert.equal(await popup.locator('.cot-c-picker__chip img').count(), 13);
         const option = popup.locator(`[role=option][data-id="${pack}"]`);
         if (touch) assert.ok((await option.boundingBox()).height >= 44, 'touch options have a 44 px target');
         await option.click();
         assert.equal(await field.inputValue(), pack);
-        assert.match(await trigger.locator('.cot-c-picker__flag img').getAttribute('src'), new RegExp(`/${flagIconCode(nation)}[-.]`));
+        assert.match(await trigger.locator('.cot-c-picker__chip img').getAttribute('src'), new RegExp(`/${flagIconCode(nation)}[-.]`));
         const state = await page.evaluate(() => ({
           stored: JSON.parse(localStorage.getItem('cot.settings.v1')).crewVoice,
           live: window.__CREW_VOICE_TEST.volumes.at(-1).crewVoice,

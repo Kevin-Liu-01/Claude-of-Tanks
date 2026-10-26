@@ -12,9 +12,6 @@
   min-width:0;color:var(--library-ink)
 }
 .media-library-head{display:grid;gap:14px;margin:0 0 22px}
-.media-library-tabs{display:flex;flex-wrap:wrap;gap:6px}
-.media-library-tabs button{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--library-line);background:var(--surface-plate);color:var(--library-muted);font-family:inherit;font-size:var(--fs-11);font-weight:700;line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;cursor:pointer;transition:color var(--dur-fast) ease,border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
-.media-library-tabs button[aria-selected='true']{color:var(--ink-on-accent);border-color:var(--library-amber);background:var(--library-amber)}
 .media-library-set{margin:0 0 26px;content-visibility:auto;contain-intrinsic-size:auto 420px}
 .media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:var(--fs-11);letter-spacing:var(--track-label);text-transform:uppercase}
 .media-library-grid{display:flex;flex-wrap:wrap;gap:3px}
@@ -38,16 +35,15 @@
 @media (width < 768px){
 :root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
 :root body .media-library-tabs::-webkit-scrollbar{display:none}
-:root body .media-library-tabs button{flex:none}
+:root body .media-library-tabs .cot-c-tabs__tab{flex:none}
 }
 @media (width < 520px){
 :root body .media-library-viewer figcaption{flex-wrap:wrap;padding:12px}
 }
-@media ((pointer: coarse) or (hover: none)){:root body .media-library-tabs button,:root body .media-library-controls button{min-height:44px}}
+@media ((pointer: coarse) or (hover: none)){:root body .media-library-controls button{min-height:44px}}
 @media(hover:hover) and (pointer:fine){
-  .media-library-tabs button:hover{color:var(--library-ink);border-color:var(--library-line-strong)}
   .media-library-thumb:hover{filter:brightness(1.18)}
   .media-library-controls button:hover{border-color:var(--library-amber);background:var(--accent-wash)}
 }
-@media(prefers-reduced-motion:reduce){.media-library-tabs button,.media-library-thumb,.media-library-controls button{transition:none}}
+@media(prefers-reduced-motion:reduce){.media-library-thumb,.media-library-controls button{transition:none}}
 }

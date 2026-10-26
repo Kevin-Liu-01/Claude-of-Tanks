@@ -171,6 +171,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 .cot-garage .cot-deploy-brief-facts{grid-column:1;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4);}
 .cot-garage :is(.cot-deploy-brief-facts,.cot-deploy-camp) .cot-c-rules{font-family:var(--font-body);}
 .cot-garage .cot-deploy-brief-facts .cot-flag{border-radius:1px;box-shadow:var(--ring-2);}
+/* the operation's map and its enemy's flag keep a line of their own under the clock, the stars and the difficulty, at every width */
+.cot-garage .cot-deploy-brief-where{display:flex;align-items:center;gap:var(--s3);flex-basis:100%;}
 .cot-garage .cot-deploy-brief-mm{grid-column:2;grid-row:2/6;position:relative;align-self:start;aspect-ratio:1;overflow:hidden;
   border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--ring-2);}
 .cot-garage .cot-deploy-brief-mm :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;}
@@ -220,7 +222,7 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 .cot-garage .cot-deploy-field:has(.cot-deploy-field-mm img[hidden]) .cot-deploy-field-card{border-radius:var(--control-radius);}
 /* the open picker's field keeps the accent ring over its art (a ring on the card itself lies under the picture) */
 .cot-garage .cot-deploy-field-card[aria-expanded='true']::after{content:'';position:absolute;inset:0;z-index:var(--z-lift);border-radius:inherit;
-  outline:2px solid var(--accent);outline-offset:-2px;pointer-events:none;}
+  box-shadow:var(--ring-accent);pointer-events:none;}
 .cot-garage .cot-deploy-field-thumb{position:absolute;inset:0;display:block;background:var(--surface-hover) center/cover no-repeat;}
 .cot-garage .cot-deploy-field-thumb::after{content:'';position:absolute;inset:0;background:var(--media-fade-soft);}
 .cot-garage .cot-deploy-field-thumb .random-map-mosaic{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;width:100%;height:100%;}
@@ -256,6 +258,9 @@ body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-fie
 @media (max-height:500px) and (orientation:landscape){
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__preview{display:none;}
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__in{grid-template-columns:minmax(0,1fr);}
+  /* a whole row of cards shows under the search: six narrow cards, each its picture and its name */
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));}
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-c-picker__facts{display:none;}
 }
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */

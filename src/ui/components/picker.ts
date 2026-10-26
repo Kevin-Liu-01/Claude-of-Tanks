@@ -21,8 +21,8 @@ export interface PickerItem {
   /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures. */
   readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[] };
   readonly glyph?: IconId;
-  /** A nation's flag (its image URL), drawn in the glyph's place at the flag's own 4:3. */
-  readonly flag?: string;
+  /** A small picture (its image URL) drawn in the glyph's place at 4:3: a nation's flag, a colour preset's swatch. */
+  readonly chip?: string;
   /** A game mode id: the glyph wears that mode's hue (data-mode-tone). */
   readonly tone?: string;
   /** The filter tags it answers (a biome, a size, a kind). */
@@ -162,14 +162,14 @@ export function gridStep(at: number, key: string, columns: number, count: number
 
 /* -------------------------------------------------------------------------------------------------- the controller */
 
-const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean, layout: PickerOptions['layout'], text: PickerText): string => {
+const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean | null, layout: PickerOptions['layout'], text: PickerText): string => {
   const picture = !item.media || layout === 'list' ? ''
     : item.media.mosaic?.length
       ? `<span class="cot-c-picker__mosaic">${item.media.mosaic.slice(0, 4).map((src) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`).join('')}</span>`
       : item.media.poster ? `<img src="${esc(item.media.poster)}"`
         + `${item.media.srcset ? ` srcset="${esc(item.media.srcset)}" sizes="${esc(item.media.sizes ?? '240px')}"` : ''} alt="" loading="lazy" decoding="async">` : '';
   const media = picture ? `<span class="cot-c-picker__media cot-c-media cot-c-media--soft">${picture}</span>` : '';
-  const glyph = item.flag ? `<span class="cot-c-picker__glyph cot-c-picker__flag"><img src="${esc(item.flag)}" alt="" decoding="async"></span>`
+  const glyph = item.chip ? `<span class="cot-c-picker__glyph cot-c-picker__chip"><img src="${esc(item.chip)}" alt="" decoding="async"></span>`
     : item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
   const facts = item.facts?.length ? `<span class="cot-c-picker__facts">${item.facts.slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('')}</span>` : '';
   const tip = item.disabled ? ` data-tip="${esc(item.disabled)}"` : '';
@@ -177,8 +177,9 @@ const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean, lay
     + `<div class="cot-c-picker__opt" role="option" id="" data-id="${esc(item.id)}" aria-selected="${chosen}" tabindex="-1"`
     + `${item.disabled ? ' aria-disabled="true"' : ''}${tip} data-ui-sound="select">${media}`
     + `<span class="cot-c-picker__words">${glyph}<span class="cot-c-picker__name">${esc(item.name)}</span>${facts}</span></div>`
-    + `<button type="button" class="cot-c-picker__fav" tabindex="-1" aria-pressed="${favourite}" aria-label="${esc(text.favourite)}"`
-    + ` data-tip="${esc(text.favourite)} (F)" data-ui-sound="toggle">${icon('star', { size: 16 })}</button></div>`;
+    // a picker without a memory (a menu's short set) keeps no favourites, so it draws no star
+    + (favourite === null ? '</div>' : `<button type="button" class="cot-c-picker__fav" tabindex="-1" aria-pressed="${favourite}" aria-label="${esc(text.favourite)}"`
+    + ` data-tip="${esc(text.favourite)} (F)" data-ui-sound="toggle">${icon('star', { size: 16 })}</button></div>`);
 };
 
 /** Mount the picker into `host` (its contents are replaced). */
@@ -194,6 +195,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const uid = `cot-picker-${options.id}-${Math.random().toString(36).slice(2, 7)}`;
 
   host.classList.add('cot-c-picker', `cot-c-picker--${options.layout}`);
+  host.classList.toggle('cot-c-picker--plain', !options.memory);
   host.dataset.picker = options.id;
   const searchable = (): boolean => items.length >= SEARCH_FROM;
   const chips = (): string => [
@@ -277,7 +279,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);
-    grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, memory.favourites.includes(item.id), options.layout, options.text)).join('');
+    grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
     options$().forEach((element, i) => { element.id = `${uid}-${i}`; });
     empty.hidden = shown.length > 0;
     grid.hidden = shown.length === 0;

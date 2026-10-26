@@ -140,7 +140,7 @@ function overview(view: ServiceRecordView): string {
   const figure = (value: number, text = num(value)) => (value ? text : '–');
   const career = `<div class="cot-record-overview"><div class="cot-record-outcomes"${datumAttr('record')}>` +
     `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}${record.matches ? `<strong>${pct}%</strong>` : '<strong class="is-null">–</strong>'}` +
-    `${record.matches ? splitBar(record.wins, record.draws, record.losses) : ''}</div>` +
+    `${splitBar(record.wins, record.draws, record.losses)}</div>` +
     `<div class="cot-record-outcome${record.wins ? ' win' : ''}">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +
     `<div class="cot-record-outcome${record.losses ? ' loss' : ''}">${statLabel(t('garage.record.defeats'), 'statDefeat')}<strong>${num(record.losses)}</strong></div>` +
     `<div class="cot-record-outcome">${statLabel(t('garage.record.draws'), 'statDraw')}<strong>${num(record.draws)}</strong></div></div>` +

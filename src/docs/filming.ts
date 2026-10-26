@@ -3,6 +3,7 @@ import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
 import { designationHtml } from './designations.ts';
+import type { PickerItem } from '../ui/components/picker.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
 // four loop ... along with the process"). The media is public/media/filming-r1, built by
@@ -86,20 +87,20 @@ const NUMBERS: readonly (readonly [string, string])[] = [
 ];
 
 const pad = (n: number): string => String(n).padStart(2, '0');
+/** The kit picker's controls the viewer drives (components/picker.ts, loaded at the viewer's lazy boundary). */
+interface StagePicker { setItems(items: readonly PickerItem[], value?: string | null): void; setValue(id: string | null): void }
 const takeLabel = (take: FilmingTake): string => t('docs.filming.viewer.take', { n: pad(take.n) });
 
 function viewerMarkup(): string {
-  const stageButtons = FILMING_STAGES.map((stage, index) => `<button type="button" class="filming-stage-button" data-filming-stage="${stage}" aria-pressed="false"><b>${pad(index + 1)}</b><span>${STAGE_TEXT[stage].label}</span></button>`).join('');
-  const takeCards = FILMING_TAKES.map((take, index) => `<button type="button" class="filming-take-card" data-filming-take="${index}" aria-pressed="false"><img src="${filmingThumb(take)}" alt="" width="384" height="216" loading="lazy" decoding="async"><span><b>${pad(take.n)}</b><strong>${designationHtml(take.title)}</strong><small>${take.place} · ${take.time}</small></span></button>`).join('');
   return `<div class="filming-viewer" data-filming-viewer role="region" aria-label="${t('docs.filming.viewer.aria')}">
     <figure class="filming-screen"><video data-filming-video muted loop playsinline controls preload="none"></video>
       <figcaption><span><strong data-filming-stage-label></strong><small data-filming-stage-detail></small></span><b data-filming-take-label></b></figcaption></figure>
-    <div class="filming-stage-bar" role="group" aria-label="${t('docs.filming.viewer.stagesAria')}">${stageButtons}</div>
+    <div class="filming-stage-bar" data-filming-stages></div>
     <p class="filming-stage-note" data-filming-stage-note></p>
     <figure class="filming-frames"><div class="filming-frame-row" data-filming-frames>${FRAME_TIMES.map((time) => `<span class="filming-frame" role="img" data-filming-frame="${time}"><b>${time} s</b></span>`).join('')}</div><figcaption data-filming-frames-caption></figcaption></figure>
     <div class="filming-take-story"><h3 data-filming-take-title></h3><p class="filming-take-meta" data-filming-take-meta></p><p data-filming-take-story></p>
       <div class="filming-take-scene"><a data-filming-studio href="">${t('docs.filming.viewer.openStudio')}</a><a data-filming-scene href="" download>${t('docs.filming.viewer.sceneJson')}</a><small>${t('docs.filming.viewer.sceneNote')}</small></div></div>
-    <div class="filming-take-grid" role="group" aria-label="${t('docs.filming.viewer.takesAria')}">${takeCards}</div>
+    <div class="filming-take-grid" data-filming-takes></div>
   </div>`;
 }
 
@@ -161,19 +162,19 @@ export function mountFilming(article: HTMLElement): void {
   // motion allowed and no data saving; the video's own controls are the viewer's, and nothing transfers before a play.
   const player = createMediaPlayer(video, { native: true, control: 'none', label: () => '' });
   const field = (name: string): HTMLElement => root.querySelector<HTMLElement>(`[data-filming-${name}]`)!;
-  const stageButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-filming-stage]')];
-  const takeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-filming-take]')];
   const frames = [...root.querySelectorAll<HTMLElement>('[data-filming-frame]')];
   let take = FILMING_TAKES[0];
+  let stages: StagePicker | null = null;
+  let takes: StagePicker | null = null;
+  // the take's stages, in the rounds' order, each by its own picture and its number in the run
+  const stageItems = (): PickerItem[] => FILMING_STAGES.filter((s) => take.stages.includes(s)).map((s) => ({
+    id: s, name: STAGE_TEXT[s].label, facts: [pad(FILMING_STAGES.indexOf(s) + 1)], media: { poster: filmingPoster(take, s) },
+  }));
   let stage: FilmingStage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
 
   const show = (): void => {
     const text = STAGE_TEXT[stage];
-    stageButtons.forEach((button) => {
-      const own = button.dataset.filmingStage as FilmingStage;
-      button.disabled = !take.stages.includes(own);
-      button.setAttribute('aria-pressed', String(own === stage));
-    });
+    stages?.setValue(stage);
     field('stage-label').textContent = text.label;
     field('stage-detail').textContent = text.detail;
     field('stage-note').textContent = text.note;
@@ -184,7 +185,8 @@ export function mountFilming(article: HTMLElement): void {
   };
 
   const showTake = (): void => {
-    takeButtons.forEach((button) => button.setAttribute('aria-pressed', String(FILMING_TAKES[Number(button.dataset.filmingTake)] === take)));
+    takes?.setValue(take.id);
+    stages?.setItems(stageItems(), stage);
     field('take-title').innerHTML = designationHtml(take.title);
     field('take-meta').textContent = `${takeLabel(take)} · ${take.place} · ${take.time}`;
     field('take-story').textContent = take.story;
@@ -200,37 +202,32 @@ export function mountFilming(article: HTMLElement): void {
     field('frames-caption').textContent = t('docs.filming.viewer.frames', { stage: STAGE_TEXT[take.frames].label });
   };
 
-  root.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const stageButton = target?.closest<HTMLButtonElement>('[data-filming-stage]');
-    if (stageButton && !stageButton.disabled) {
-      stage = stageButton.dataset.filmingStage as FilmingStage;
-      show();
-      return;
-    }
-    const takeButton = target?.closest<HTMLButtonElement>('[data-filming-take]');
-    if (!takeButton) return;
-    take = FILMING_TAKES[Number(takeButton.dataset.filmingTake)] ?? take;
-    // A picked stage stays picked from take to take wherever the take has it.
-    if (!take.stages.includes(stage)) stage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
-    showTake();
-    show();
-  });
-
-  // Arrow keys move along the stage bar and across the take grid.
-  root.addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
-    const focused = document.activeElement;
-    if (!(focused instanceof HTMLButtonElement)) return;
-    const inStages = stageButtons.includes(focused);
-    const group = inStages ? stageButtons.filter((button) => !button.disabled) : takeButtons;
-    const current = group.indexOf(focused);
-    if (current < 0) return;
-    event.preventDefault();
-    const columns = inStages ? group.length : (document.body?.dataset.cotWidth === 'phone' || document.body?.dataset.cotWidth === 'compact' ? 2 : 4);
-    const step = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' ? -columns : columns;
-    group[Math.max(0, Math.min(group.length - 1, current + step))].focus();
-  });
+  // The stages and the takes are the kit's pickers, loaded with their sheet at this lazy boundary: each stage by its own
+  // picture (pointing at one shows it on the screen above), each take by its thumbnail, its place and its hour. A picked
+  // stage stays picked from take to take wherever the take has it.
+  void Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
+    .then(([{ createPicker }, { pickerText }]) => {
+      stages = createPicker(field('stages'), {
+        id: 'docs-filming-stage', label: t('docs.filming.viewer.stagesAria'), items: stageItems(), value: stage, layout: 'cards', text: pickerText(),
+        onPreview: (item) => { video.poster = filmingPoster(take, (item?.id ?? stage) as FilmingStage); },
+        onChoose: (item) => { stage = item.id as FilmingStage; show(); },
+      });
+      takes = createPicker(field('takes'), {
+        id: 'docs-filming-take', label: t('docs.filming.viewer.takesAria'), value: take.id, layout: 'cards', text: pickerText(),
+        items: FILMING_TAKES.map((one): PickerItem => ({ id: one.id, name: one.title, facts: [one.place, one.time], media: { poster: filmingThumb(one) } })),
+        // the take under the pointer or the focus shows on the screen at the stage in view (or its latest render)
+        onPreview: (item) => {
+          const one = FILMING_TAKES.find((other) => other.id === item?.id) ?? take;
+          video.poster = filmingPoster(one, one.stages.includes(stage) ? stage : one.frames);
+        },
+        onChoose: (item) => {
+          take = FILMING_TAKES.find((one) => one.id === item.id) ?? take;
+          if (!take.stages.includes(stage)) stage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
+          showTake();
+          show();
+        },
+      });
+    }).catch(() => { /* the screen keeps its opening take */ });
 
   showTake();
   show();
