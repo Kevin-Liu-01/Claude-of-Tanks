@@ -74,5 +74,7 @@ for (const file of sources) {
 
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
-assert.equal(digest, 'ce42ef5225095a00', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-25 re-pin: the owner's Japan and South Korea tiers (the Type 10 and its dozer at X, the TK-X and 10B its tier IX
+// prototypes; the K1A1 ahead of the K1E1 and K2B, the XK2 ahead of the K21, the K2 ahead of the K2B prototype).
+assert.equal(digest, 'cb5a5ca24c440814', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
