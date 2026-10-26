@@ -2059,6 +2059,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   drawWarm: (root) => {
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
+  // (battle-spikes-253) a stream's deferred draws: sixteen meshes a step, so no one task first-binds a whole tank's buffers
+  drawWarmSteps: (root) => createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: 16 }),
   // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
   // linked between tasks
   awaitProgramLinks: awaitRendererProgramLinks,
