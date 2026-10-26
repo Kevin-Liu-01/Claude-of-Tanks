@@ -509,8 +509,10 @@ try {
     assert.equal(phone.px('kill-left-top'), 221, 'the left lane starts under the map, on the right lane\'s pitch');
     assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
     assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
-    // (171 px wide, the global feed stacks its rows, 41 px apart: three of them, gauntlet r8)
-    assert.equal(phone.px('kill-right-height'), 3 * 41 - 3, '390x844: the right kill lane stops above the moved row');
+    // (a 171 px half lane would stack its rows 41 px apart beside the personal lane's 29, on no common baseline, gauntlet
+    // r14: the global feed takes one row the width right of the map instead, above the personal lane)
+    assert.equal(phone.px('kill-right-height'), 29 - 3, '390x844: one wide row of the global feed, above the personal lane');
+    assert.equal(phone.px('kill-right-width'), 390 - 100 - 8, '390x844: the global feed the width right of the map');
     assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
       'the left lane shows only the rows that fit');
     // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
@@ -523,12 +525,13 @@ try {
     assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
     assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
       'tall: level with the tray, the row sits left of it, whole within the space');
-    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408, the
-    // right lane's moved 3 px down onto the left's row (one pitch: their rows sat 3 px apart, gauntlet r5)
+    // the lanes start under the map and the chrome, the right lane's moved 3 px down onto the left's row (one pitch: their
+    // rows sat 3 px apart, gauntlet r5); and they end above the reticle's band (500 - SIGHT_BAND_ABOVE - 8 = 428), never
+    // the row's moved floor (632) nor its natural one (560): a portrait lane crosses the sight, and under the expanded map
+    // no row fits above it (Watch's ride ran a row through the ring at 320x568, gauntlet r14)
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
-    assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
-    // (191 px wide, the global feed's rows stacked: three in the same floor, gauntlet r8)
-    assert.equal(tall.px('kill-right-height'), 3 * 41 - 3, 'tall: the right kill lane keeps the natural floor');
+    assert.equal(tall.px('kill-left-height'), 0, 'tall: no left lane row through the reticle');
+    assert.equal(tall.px('kill-right-height'), 0, 'tall: no right lane row through the reticle');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
@@ -603,7 +606,9 @@ try {
     const every = Object.fromEntries(kinds.map((selector, i) => [selector, [box(300 + i * 30, 600, 320 + i * 30, 620)]]));
     const published = solve(900, 700, { ...every, '.cot-scope-vision': [right(900, 700)] }).boxes;
     for (const [i, selector] of kinds.entries()) {
-      assert.ok(published.some((got) => got[0] === 300 + i * 30 && got[1] === 600), `${selector} is furniture`);
+      // (a round control published 5 px out on every side, ROUND_CONTROL_PAD: its ring keeps the marks 8 px off, r14)
+      const pad = selector === '.cot-touch.on .round' ? 5 : 0;
+      assert.ok(published.some((got) => got[0] === 300 + i * 30 - pad && got[1] === 600 - pad), `${selector} is furniture`);
     }
     let solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)] });
     assert.equal(solved.seat, '', '900x700: nothing over the seat right of the sight, the switch stays');
