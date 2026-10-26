@@ -537,7 +537,7 @@ const ACCESS_SURFACES = [
   { id: 'record', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-record-trigger'), ctx);
     await waitFor(page, `shown('#cot-record-modal')`, 20000); } },
   { id: 'paint', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-lt-paint-all'), ctx);
-    await waitFor(page, `shown('.cot-camo-card')`, 15000); } },
+    await waitFor(page, `shown('[data-picker="garage-camo"] .cot-c-picker__opt') || shown('.cot-camo-card')`, 15000); } },
   { id: 'equipment', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.eqslot[data-slot]'), ctx);
     await waitFor(page, `shown('.cot-eqpick .cot-c-picker__opt')`, 15000); } },
   { id: 'rooms', scope: '.cot-play',
