@@ -69,7 +69,7 @@
   "href": "/docs/controls#watch",
   "title": "Watch mode",
   "chapter": "Controls and Watch",
-  "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×2.5. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view TAB Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
+  "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×2.5. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
  },
  {
   "href": "/docs/controls#hud",
