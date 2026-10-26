@@ -3094,7 +3094,6 @@
   "docs.filming.viewer.take": "镜头 {n}",
   "docs.filming.viewer.openStudio": "在场景工作室中打开",
   "docs.filming.viewer.sceneJson": "场景 JSON",
-  "docs.filming.viewer.sceneNote": "该镜头的场景，即场景工作室保存的格式，取自镜头库。可以直接在场景工作室中打开，也可以保存文件后在场景工作室中用“载入 JSON”载入。",
   "docs.filming.time.day": "白天",
   "docs.filming.time.night": "夜晚",
   "docs.filming.time.sunset": "日落",

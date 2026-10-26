@@ -555,20 +555,24 @@ function mountShelfRow(shelf: HTMLElement): void {
   if (typeof ResizeObserver === 'function') new ResizeObserver(edges).observe(shelf);
 }
 
-/** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
+/** "On this page" follows the reader: the last section to have reached the top third of the screen is the current one.
+ *  The observed band runs from far above the screen down to that line, so a jump past several sections (a link, a
+ *  search hit) still counts each of them; a thin band at the line missed a section that jumped across it. */
 function mountTocSpy(root: HTMLElement): void {
   const links = [...root.querySelectorAll<HTMLAnchorElement>('.dm-toc a[href^="#"]')];
   const targets = links.map((link) => document.getElementById(link.hash.slice(1))).filter((el): el is HTMLElement => el !== null);
   if (!targets.length) return;
+  const reached = new Set<Element>();
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      for (const link of links) {
-        if (link.hash === `#${entry.target.id}`) link.setAttribute('aria-current', 'location');
-        else link.removeAttribute('aria-current');
-      }
+      if (entry.isIntersecting) reached.add(entry.target); else reached.delete(entry.target);
     }
-  }, { rootMargin: '-20% 0px -70%' });
+    const current = targets.filter((target) => reached.has(target)).pop() ?? targets[0];
+    for (const link of links) {
+      if (link.hash === `#${current.id}`) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }, { rootMargin: '100000px 0px -70%' });
   for (const target of targets) observer.observe(target);
 }
 
