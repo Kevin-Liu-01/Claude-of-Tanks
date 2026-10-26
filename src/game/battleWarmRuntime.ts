@@ -93,6 +93,8 @@ interface BattleWarmWorld {
   getGrassWorkState?(): {
     disposed: boolean;
     carpet?: { cold: boolean; pending: boolean };
+    /** The tall grass's near cells still to build (map.ts). */
+    swardNearPending?: number;
   };
   heightField?: {
     warmFastTilesAround(points: TerrainWarmPoint[]): Iterable<number>;
@@ -214,7 +216,9 @@ export async function primeOpeningTerrainPresentation({
     requireCurrent();
     const grass = world.getGrassWorkState?.();
     if (grass?.disposed) throw new Error('Opening ground cover world was disposed');
-    if (!grass?.carpet || (!grass.carpet.cold && !grass.carpet.pending)) return;
+    // (battle-spikes-253) and the tall grass's near ring: its cold fill is capped per update (tallGrass.ts
+    // coldUpdateMs), so the sward beside the camera completes here, a bounded update at a time, not after the reveal
+    if (!grass?.carpet || (!grass.carpet.cold && !grass.carpet.pending && !(grass.swardNearPending! > 0))) return;
     if (!yieldForBudget) await nextPaintFrame();
   }
   throw new Error('Opening ground cover did not complete within 900 bounded batches');

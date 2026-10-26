@@ -196,8 +196,8 @@ export interface WorldRuntime {
   layoutTier: 'mobile' | 'desktop';
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
-  /** Readiness snapshot only; never performs streaming work. */
-  getGrassWorkState: VegetationRuntime['getGrassWorkState'];
+  /** Readiness snapshot only; never performs streaming work. (battle-spikes-253: with the tall grass's near ring.) */
+  getGrassWorkState(): ReturnType<VegetationRuntime['getGrassWorkState']> & { swardNearPending: number };
   /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
    *  a readiness snapshot only, as the grass's. */
   getFieldWallWorkState(): { pending: number };
@@ -1051,7 +1051,7 @@ function* assembleWorldSteps(
     layoutTier: getDeviceTier(),
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
-    getGrassWorkState: () => vegetation.getGrassWorkState(),
+    getGrassWorkState: () => ({ ...vegetation.getGrassWorkState(), swardNearPending: tallGrass.nearPending() }),
     getFieldWallWorkState: () => ({ pending: (props.group.userData.fieldWallLod as { pending?: number } | undefined)?.pending ?? 0 }),
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
