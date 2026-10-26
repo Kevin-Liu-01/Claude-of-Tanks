@@ -410,6 +410,9 @@ function equipmentDesc(id: string): string {
 function tierChipHTML(numeral: string): string {
   const text = t('garage.card.tier', { tier: numeral });
   const at = text.lastIndexOf(numeral);
+  // a word that leads with its numeral ("IX级") is one word in one colour: a white 级 after an orange IX read as a stray
+  // character (the r18 zh critic)
+  if (at === 0) return `<b>${text}</b>`;
   return at < 0 ? text : `${text.slice(0, at)}<b>${numeral}</b>${text.slice(at + numeral.length)}`;
 }
 
