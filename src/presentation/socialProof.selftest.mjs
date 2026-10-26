@@ -1,5 +1,7 @@
-// The landing's press band (2026-10-25 redesign; owner: "not have goofy text"): the Three.js feature, the launch numbers
-// with their capture date, the four quoted posts over their battle photos and the Reddit threads, all local, no embeds.
+// The landing's press band (2026-10-25 redesign; owner: "not have goofy text"; 2026-10-26: "dont hide the reddit squares make
+// them prominnnet againn; also make the post by threejs its own proper box"): the launch numbers with their capture date,
+// the Three.js feature first and largest, the four quoted posts over their battle photos, then the five Reddit launch
+// posts on the same card, all local, no embeds.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -17,8 +19,10 @@ const press = home.match(/<section class="press"[\s\S]*?<\/section>/)?.[0] ?? ''
 assert.match(press, /<p class="press__date"><time datetime="2026-09-08" data-i18n="home\.social\.snapshot">As of September 8, 2026<\/time><\/p>/,
   'static platform counts disclose their capture date, as a dated label');
 assert.match(press,
-  /<h2 class="home-h2 press__title" id="press-title"><a href="https:\/\/x\.com\/threejs\/status\/2090638002003575214" target="_blank" rel="noopener noreferrer"><img class="press__avatar" src="\/media\/social-proof\/threejs\.jpg" alt=""[^>]*><span class="t-hollow" data-i18n-html="home\.social\.kicker"[^>]*>Featured by <em>Three\.js<\/em><\/span><\/a><\/h2>/,
-  'the band leads with the Three.js feature, its name the link to the post');
+  /<h2 class="home-h2 press__title" id="press-title"><span class="t-hollow" data-i18n-html="home\.social\.kicker"[^>]*>Featured by <em>Three\.js<\/em><\/span><\/h2>/,
+  'the band\'s title is a plain section title: the Three.js post is its own card');
+assert.match(press, /<div class="press__posts"><article class="v5-social-card v5-social-card--threejs[^"]*"><a href="https:\/\/x\.com\/threejs\/status\/2090638002003575214"/,
+  'the Three.js post leads the posts');
 assert.ok(!home.includes('Shared across the web') && !home.includes('Claude of Tanks 🎖️'), 'the band carries no tagline and no emoji quote');
 assert.doesNotMatch(home, /platform\.twitter\.com|embed\.reddit\.com|twitter-tweet|reddit-embed-bq/,
   'social proof must not load third-party embed scripts');
@@ -38,23 +42,26 @@ const redditLinks = [
   'https://www.reddit.com/r/vibecoding/comments/1vu0p6q/vibecoded_a_multiplayer_threejs_browser_tank_game/',
 ];
 for (const url of [...xLinks, ...redditLinks]) assert.ok(press.includes(`href="${url}"`), `missing social-proof source ${url}`);
-assert.equal((press.match(/<article class="v5-social-card(?:\s[^"<]*)?">/g) || []).length, 4, 'four quoted posts');
-assert.equal((press.match(/<img class="v5-social-card__avatar"/g) || []).length, 4, 'every quoted post shows its real account avatar');
-assert.equal((press.match(/<a class="press__src" href="https:\/\/www\.reddit\.com\//g) || []).length, 5, 'the five Reddit threads');
+assert.equal((press.match(/<article class="v5-social-card(?:\s[^"<]*)?">/g) || []).length, 5, 'the Three.js post and four quoted posts');
+assert.equal((press.match(/<img class="v5-social-card__avatar"/g) || []).length, 5, 'every X post shows its real account avatar');
+assert.equal((press.match(/<article role="listitem" class="v5-social-card v5-social-card--reddit"><a href="https:\/\/www\.reddit\.com\//g) || []).length, 5,
+  'the five Reddit launch posts, each a card');
 assert.equal((press.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 10, 'every external link isolates its browsing context');
 assert.equal((press.match(/<dt><span class="v5-social-metric-icon v5-social-metric-icon--(?:view|like|bookmark)" aria-hidden="true"><\/span>/g) || []).length, 4,
   'all four launch numbers carry a matching metric icon');
-const quotes = press.match(/<div class="press__quotes">([\s\S]*?)<ul class="press__sources"/)?.[1] ?? '';
+const quotes = press.match(/<div class="press__posts">([\s\S]*?)<div class="press__reddit"/)?.[1] ?? '';
 assert.ok(quotes.indexOf('@hakimieiqbal') >= 0 && quotes.indexOf('@hakimieiqbal') < quotes.indexOf('@VaibhavSisinty'), 'Hakimi before Vaibhav');
 for (const quote of [
   'A solo dev just shipped what would take a game studio months.',
   'Someone built a multiplayer browser tank game with 100+ vehicles in four weeks using Claude Code and Codex.',
   'Proves how agentic coding tools can scaffold interactive 3D multiplayer games from scratch in hours.',
 ]) assert.ok(press.includes(quote), `missing requested social-proof quote: ${quote}`);
-for (const value of ['445K', '79.4K', '1,598', '272', '38K', '13.4K', '6,094', '1,282']) assert.ok(press.includes(value), `missing verified engagement value ${value}`);
+for (const value of ['445K', '79.4K', '1,598', '272', '20.5K', '38K', '13.4K', '6,094', '1,282', '185K', '118K', '53K', '49K', '25K']) {
+  assert.ok(press.includes(value), `missing verified engagement value ${value}`);
+}
 // (2026-10-25 gauntlet) each post card keeps its views, likes and replies; the badge and the minor counts left
 assert.doesNotMatch(press, /home\.social\.card\w+Badge|home\.social\.count(?:Reposts|RepostsQuotes|Bookmarks)/, 'no badge or minor count on the cards');
-for (const label of ['views', 'likes', 'replies']) {
+for (const label of ['views', 'likes', 'replies', 'upvotes', 'comments']) {
   assert.match(press, new RegExp(`aria-label="[^"]+ ${label}"`), `missing accessible ${label} metric`);
 }
 
@@ -76,7 +83,7 @@ const sitePicks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/
 const backgrounds = new Map(Object.entries(sitePicks.home.socialCards).map(([modifier, pick]) =>
   [modifier, `media/${sitePicks.collection}/stills/${pick.id}${pick.still === 'close' ? '-close' : ''}.webp`]));
 const used = [...quotes.matchAll(/v5-social-card--(desert-duel|winter-breaker|verdant-column|coastal-harbor|urban-crossfire)/g)].map((m) => m[1]);
-assert.equal(new Set(used).size, 4, 'every quoted post uses a distinct battle photo');
+assert.equal(new Set(used).size, 5, 'every X post uses a distinct battle photo');
 for (const modifier of used) {
   const relative = backgrounds.get(modifier);
   assert.ok(relative && existsSync(join(ROOT, 'public', relative)), `missing battle background for ${modifier}`);
@@ -87,7 +94,9 @@ assert.match(styles, /\.v5-social-card::after\{[^}]*background:var\(--social-car
 assert.match(styles, /\.v5-social-card>a\{[^}]*position:relative;z-index:2;[^}]*background:linear-gradient/, 'card content sits above a readability scrim');
 assert.match(styles, /@media\(hover:hover\) and \(pointer:fine\)\{[^\n]*\.v5-social-card:hover::after\{[^}]*opacity:/, 'card hover polish is fine-pointer-only');
 assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-card::after[^}]*transition:none/, 'card motion honors reduced motion');
-assert.match(styles, /\.press__quotes\{[^}]*grid-template-columns:repeat\(4,/, 'desktop shows the four posts in a row');
+assert.match(styles, /\.press__posts\{[^}]*grid-template-columns:repeat\(4,/, 'desktop sets the posts four columns wide');
+assert.match(styles, /\.press__posts>\.v5-social-card--threejs\{grid-column:span 2;grid-row:span 2\}/, 'the Three.js post is the largest card');
+assert.match(styles, /\.press__reddit\{[^}]*grid-template-columns:repeat\(5,/, 'desktop shows the five Reddit posts in a row');
 // (2026-10-25 gauntlet r4, line 6) the partner's name is ink: the accent is the primary's, the selection's and a display noun's count
 assert.match(styles, /\.press__title em\{[^}]*color:var\(--ink-1\)/, 'the Three.js name in the title is ink, not the accent');
 // (2026-10-25 gauntlet, one accent and no other colour) the metric icons and the platform marks paint in ink
