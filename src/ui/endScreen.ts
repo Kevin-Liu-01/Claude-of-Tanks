@@ -887,6 +887,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', me.ready ? 'close' : 'check',
       me.ready ? t('endScreen.notReady') : t('endScreen.readyNext'), me.ready ? 'ready-now' : 'needs-ready');
     ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
+    // (a held Ready says why, as its tip and its description: it dimmed with no reason, INTERACTION-REDESIGN C)
+    const heldBy = state.phase !== 'waiting' ? 'endScreen.ready.held.starting' : me.connected === false ? 'endScreen.ready.held.reconnecting'
+      : !me.specId ? 'endScreen.ready.held.noTank' : '';
+    if (heldBy) { ready.dataset.tip = t(heldBy); ready.setAttribute('aria-description', t(heldBy)); }
     ready.setAttribute('aria-pressed', String(!!me.ready));
     ready.setAttribute('aria-label', me.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
     ready.addEventListener('click', () => {
