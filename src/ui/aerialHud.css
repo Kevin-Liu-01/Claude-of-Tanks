@@ -154,7 +154,10 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-designation .flight-icon{color:inherit}.flight-designation svg{width:19px;height:19px}
 .cot-flight-hud[data-kind=drone] .flight-telemetry{
  grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
- width:100%;margin:0;padding:5px 0;background:var(--battle-chip-plate);
+ width:100%;margin:0;padding:5px 0;box-sizing:border-box;border-radius:var(--r1);background:var(--hud-plate-strong);
+ /* (the tiles' plate: their fill, their 1 px edge and 2 px foot, their corners; a borderless square slab between two
+    tiles read as a second plate treatment, gauntlet r13) */
+ box-shadow:inset 0 0 0 1px var(--line-2),inset 0 -2px 0 var(--line-2);
 }
 .cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:var(--battle-fs-15);line-height:22px;font-weight:700;letter-spacing:.01em}
 .cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid var(--line-3)}
