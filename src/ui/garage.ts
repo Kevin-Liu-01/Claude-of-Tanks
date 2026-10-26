@@ -20,6 +20,7 @@ import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThum
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
+import { readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { notify } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, customCamoPatternId } from '../vehicles/camoPolicy.ts';
@@ -2495,7 +2496,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function refreshBandPaint(spec: GarageTankSpec, selectedPatternId: string): void {
     if (!camoOpts) { paintEl.hidden = true; return; }
     const patterns = camoOpts.patterns;
-    const picks = [selectedPatternId, ...BAND_PAINT_PICKS.filter((id) => id !== selectedPatternId && patterns.includes(id))].slice(0, 4);
+    // the worn paint, then this tank's recent and favourite paints from the camo picker's memory, then the stock picks
+    // (the interaction census: a fixed four read the same on every tank)
+    const memory = readMemory(`camo.${spec.id}`);
+    const picks = [...new Set([selectedPatternId, ...memory.recent, ...memory.favourites, ...BAND_PAINT_PICKS])]
+      .filter((id, index) => index === 0 || (id !== CUSTOM_CAMO_ID && patterns.includes(id))).slice(0, 4);
     const allLabel = t('garage.tools.appearanceHint');
     paintEl.innerHTML = picks.map((patternId, index) => {
       const label = escapeHtmlAttribute(camoPatternLabel(patternId));
