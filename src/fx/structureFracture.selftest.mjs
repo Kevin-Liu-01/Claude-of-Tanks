@@ -15,6 +15,7 @@ import { streamFrom } from '../world/maps/regional/geometry.ts';
 import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture } from './structureFracture.ts';
+import { shadowCasterProfileOf } from '../engine/renderLayers.ts';
 // every body's drawn corners inside its box parts (the fracture's own check, on here): a corner outside one would sink
 // into the ground or float over it
 globalThis.__fractureDebug = true;
@@ -160,6 +161,40 @@ const log = () => {
   return out;
 };
 assert.equal(log(), log(), 'deterministic');
+// (battle-spikes-253) a flying body casts only into the cascades its shadow can reach from where it is: with the view's
+// ground position, each shadow-casting body carries a profile (heightM its diameter, reachM its planar reach from the
+// view, kept as it flies) and drops it at rest; without one, every body casts into every cascade, as before
+{
+  const flying = (q) => q.group.children.filter((m) => m.isMesh && m.castShadow && /^fx-fracture-body-/.test(m.name));
+  bucket.attributes.position.array.set(before);
+  const plain = rig(seam);
+  plain.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+  plain.fracture.flush();
+  plain.step(0.2);
+  assert.ok(flying(plain).length >= 1 && flying(plain).every((m) => shadowCasterProfileOf(m) === null), 'no view: no profile');
+  plain.fracture.reset(); plain.restore();
+  const view = { x: x + 30, z: z - 10 };
+  const q = rig(seam, { viewAt: () => view });
+  q.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+  q.fracture.flush();
+  q.step(0.2);
+  const bodies = flying(q);
+  assert.ok(bodies.length >= 1, 'bodies fly');
+  const p = new THREE.Vector3();
+  for (const m of bodies) {
+    const profile = shadowCasterProfileOf(m);
+    assert.ok(profile && profile.heightM > 0 && Number.isFinite(profile.reachM), `${m.name}: a reach-kept profile`);
+    m.updateMatrixWorld();
+    m.getWorldPosition(p);
+    const planar = Math.hypot(p.x - view.x, p.z - view.z);
+    assert.ok(profile.reachM >= planar - profile.heightM && profile.reachM <= planar + profile.heightM + 0.01,
+      `${m.name}: reach ${profile.reachM.toFixed(2)} m about its planar distance ${planar.toFixed(2)} m`);
+  }
+  q.step(12);
+  const rested = bodies.filter((m) => !flying(q).includes(m) || q.fracture.stats().bodies === 0);
+  assert.ok(rested.length >= 1 && rested.every((m) => shadowCasterProfileOf(m) === null), 'a body at rest drops its profile');
+  q.fracture.reset(); q.restore();
+}
 // (wave 397: "the whole front hangs in its own plane as a staggered mosaic of loose rectangular panels" for a second) a
 // front breached along its foot leans out off it: within a second and a half nothing of what fell stands in the wall's
 // plane, and the pieces lie out from the face, the higher ones further
