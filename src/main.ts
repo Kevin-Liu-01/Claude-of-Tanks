@@ -1701,7 +1701,7 @@ const showroom = createGarageShowroomRuntime({
   frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
-  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
+  getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();

@@ -232,6 +232,8 @@ export interface GarageRuntime {
   drainThumbs(): void;
   setDecorativeWorkGate(covered: () => boolean): void;
   getStageRect(centred?: boolean): { x: number; y: number; w: number; h: number };
+  /** The room the turntable keeps whole in, left to right (CSS px): the window's, past the readout column. */
+  getRingRect(): { x: number; y: number; w: number; h: number };
   setSelected(specId: string): void;
   getSelected(): string;
   getSelectedGarageVariant(): string;
@@ -3043,19 +3045,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // and the dock under the tank (its name, identity row, band and fleet), measured from the live layout and cached: a
   // ResizeObserver and the layout events re-measure it (no layout read per frame), and a change wakes the still Garage so
   // the camera eases onto it. The camera frames the canonical box (main.ts GARAGE_FRAME_BOX, the M1A2 reference) in the
-  // hero rect: centred across the free stage and at 60 % of its height, so the tracks stand just over the name and the
-  // turntable reads as ground (owner 10-26 via Main: "should be moved down a little"; it sat at 53 %), at about 62 % of
-  // its width, or as tall as the stage allows.
+  // hero rect: at 63 % of the free stage's height, so the tracks stand just over the name and the turntable reads as ground
+  // (owner 10-26 via Main: "should be moved down a little", then "still too high up"; it sat at 53 %, then 60 %), at
+  // about 62 % of its width, or as tall as the stage allows; across it, a third of the way from the free stage's centre
+  // toward the window's (owner 10-26: "a lil too left": the readout's column pulled the free stage's centre left), never
+  // so far that the hull reaches the column.
   interface StageRect { x: number; y: number; w: number; h: number }
   const HERO_SPAN_OF_FREE = 0.62;   // the hero's share of the free width (Main 10-25: 60-65 %)
   const SOLVER_FILL = 0.86;         // engine/cameraRig.ts SHOW_HERO_FILL: the share of the rect the camera fills
-  const HERO_LOW = 0.10;            // the hero's centre sits this share of the stage height below the stage's middle
+  const HERO_LOW = 0.13;            // the hero's centre sits this share of the stage height below the stage's middle
   const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
+  const HERO_TOWARD_WINDOW = 1 / 3; // the share of the way the hero's centre moves from the free stage's centre to the window's
   let stageFree: StageRect | null = null;
   let stageHero: StageRect | null = null;
   // the callouts' room: the free stage a step clear of the bar and ending above the name, so no plate reads as part of
   // the title or tucks under the bar (the r16 critic at 1280 and 1440)
   let stageCallouts: StageRect | null = null;
+  // the turntable's room: whole on the screen, but it may run behind the readout column (its ring is far wider than the
+  // hull, and kept inside the free stage it held the hero at the free stage's centre at 1920, the owner's "a lil too left")
+  let stageRing: StageRect | null = null;
   const stageRect = (x0: number, y0: number, x1: number, y1: number): StageRect =>
     ({ x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) });
   /** The free stage and the hero's rect (CSS px), from the live layout; a hidden Garage keeps the last ones. */
@@ -3077,7 +3085,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const floor = sideways ? countryRailEl.getBoundingClientRect() : head;
       const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
         : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
-      stageFree = stageHero = stageCallouts = stageRect(rr.left + 18, rr.top + 66, x1, y1);
+      stageFree = stageHero = stageCallouts = stageRing = stageRect(rr.left + 18, rr.top + 66, x1, y1);
       return;
     }
     const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
@@ -3086,6 +3094,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const y0 = Math.max(rr.top + 66, bar && bar.height ? bar.bottom + 8 : rr.top + 78);
     const floor = band && band.height ? band.top - 10 : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190;
     stageFree = stageRect(x0, y0, x1, Math.min(rr.bottom, floor));
+    stageRing = stageRect(x0, y0, rr.right - 18, Math.min(rr.bottom, floor));
     // the callouts start under the staging plate in the stage's top-left corner, where it shows
     const plate = garageVariantHost.getBoundingClientRect();
     const calloutTop = plate.height ? Math.max(y0 + 8, plate.bottom + 8) : y0 + 8;
@@ -3100,7 +3109,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // a short stage fits the box by its height: its foot never sinks past the stage's (the name never covers the hull)
     const boxH = Math.min(SOLVER_FILL * w * BOX_ASPECT, SOLVER_FILL * free.h);
     const cy = Math.min(free.y + free.h * (0.5 + HERO_LOW), free.y + free.h - boxH / 2);
-    stageHero = { x: free.x + (free.w - w) / 2, y: cy - free.h / 2, w, h: free.h };
+    const freeCx = free.x + free.w / 2, windowCx = rr.left + rr.width / 2;
+    // the rect stays inside the free stage, so the hull never passes under the readout or the left column
+    const cx = Math.min(free.x + free.w - w / 2, Math.max(free.x + w / 2, freeCx + (windowCx - freeCx) * HERO_TOWARD_WINDOW));
+    stageHero = { x: cx - w / 2, y: cy - free.h / 2, w, h: free.h };
   }
   let stageQueued = false;
   const queueStageMeasure = (): void => {
@@ -4663,6 +4675,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
       if (!stageHero || !stageFree) measureStage();
       return (centred ? stageHero : stageFree) ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+    },
+    getRingRect() {
+      if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+      if (!stageRing) measureStage();
+      return stageRing ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
     },
 
     /**
