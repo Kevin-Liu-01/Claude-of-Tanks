@@ -137,21 +137,27 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm{display:grid;grid-template-columns:var(--docs-side-w) minmax(0,1fr);max-width:calc(var(--shell-max) + var(--shell-gutter) * 2);margin-inline:auto;align-items:start;min-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 .dm-side{position:sticky;top:var(--shell-nav-h);display:flex;flex-direction:column;gap:4px;height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h));overflow:auto;
   padding:18px 16px var(--s6) var(--shell-gutter);background:var(--side-plate);box-shadow:var(--docs-side-edge);scrollbar-width:thin}
-.dm-home{display:flex;align-items:center;gap:9px;height:36px;padding:0;margin-bottom:10px;border-radius:var(--control-radius);color:var(--ink-2);
+/* the shelf's one text edge: the index link and the group heads lead with a glyph at the set's small size (16 px, its
+   16-unit master where the sprite draws one: data-doc-size) and one gap, and a chapter's label starts on that edge */
+.dm-side{--dm-glyph:16px;--dm-glyph-gap:9px}
+.dm-home .doc-icon,.dm-grp .doc-icon{width:var(--dm-glyph);height:var(--dm-glyph)}
+.dm-home{display:flex;align-items:center;gap:var(--dm-glyph-gap);height:36px;padding:0;margin-bottom:10px;border-radius:var(--control-radius);color:var(--ink-2);
   font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);text-decoration:none}
 .dm-home:hover{color:var(--ink-1)}
-.dm-grp{display:flex;align-items:center;gap:9px;height:34px;margin:6px 0 0;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
-.dm-grp .doc-icon{width:16px;height:16px;color:var(--ink-3)}
-.dm-side a:not(.dm-home){display:flex;align-items:center;min-height:30px;padding:4px 10px 4px 26px;border-radius:var(--control-radius);color:var(--ink-3);
+.dm-grp{display:flex;align-items:center;gap:var(--dm-glyph-gap);height:34px;margin:6px 0 0;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
+.dm-grp .doc-icon{color:var(--ink-3)}
+.dm-side a:not(.dm-home){display:flex;align-items:center;min-height:30px;padding:4px 10px 4px calc(var(--dm-glyph) + var(--dm-glyph-gap));border-radius:var(--control-radius);color:var(--ink-3);
   font:400 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);text-decoration:none}
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
 /* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
    take the shelf's place in the column */
 .dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+/* both fields (the shelf's and the index's) keep one inline inset on both sides: the magnifier gives back its 2 px side
+   bearing, so its ink starts on the inset as the last key cap's edge ends on it */
+.dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
 .dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.dm-search__field:has(input:focus-visible){outline:2px solid var(--amber);outline-offset:2px}.dm-main:focus{outline:none}
-.dm-search__field .doc-icon{width:16px;height:16px}
+.dm-search__field .doc-icon{width:16px;height:16px;margin-inline-start:-2px}
 .dm-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
 .dm-search input::placeholder{color:var(--ink-3)}
 .dm-search input::-webkit-search-cancel-button{display:none}
@@ -225,7 +231,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
    abutted the words beside it and stood past the column); a token moves to the next line whole and wraps inside only
    when it is wider than the column */
 .dm-article code{display:inline-block;max-width:100%;overflow-wrap:anywhere;vertical-align:baseline;font-family:var(--font-data);font-size:max(var(--fs-floor-12),var(--fs-14));font-weight:400;color:inherit}
-.dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1)}
+/* a figure's frame is drawn inside its box, so the figure ends on the block edge with the tables and cards */
+.dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1-flush)}
 .dm-section .topic-figure img{display:block;width:100%;height:auto}
 .dm-section .topic-figure figcaption{padding:11px 12px;border-top:1px solid var(--line-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2)}
 .dm-toc{position:sticky;top:calc(var(--shell-nav-h) + var(--s5));display:flex;flex-direction:column;gap:14px;padding-top:var(--s5)}
@@ -253,8 +260,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   .dm-side[data-at-end]{--dm-fade-end:0px}
   .dm-grp{display:none}
   .dm-search{display:none}
-  /* every item, the index link too, keeps one horizontal padding, so the selected plate has the same gap on both sides */
-  .dm-side a.dm-home,.dm-side a:not(.dm-home){flex:none;margin:0;padding:4px var(--s3);white-space:nowrap}
+  /* every item, the index link too, keeps one horizontal padding, so the selected plate has the same gap on both sides,
+     and one type size and leading, so the index link's label stands on the chips' baseline */
+  .dm-side a.dm-home,.dm-side a:not(.dm-home){flex:none;margin:0;padding:4px var(--s3);white-space:nowrap;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.25}
   .dm-home{box-shadow:none}
   .dm-body{grid-template-columns:minmax(0,1fr)}
   .dm-toc{display:none}
@@ -386,7 +394,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 
 .docs-chapters h2{font:700 var(--docs-h2)/.94 var(--font-display)}
 .docs-chapter-grid{gap:10px;background:none}
-.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1)}
+/* a card's frame is drawn inside its box, so the cards start on the search field's and the stat strip's edge */
+.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
 /* the manual's index: the search, the two shelves (tools/docs-prerender.mjs shelves the cards), the battle takes and
    the archive */
 .docs-index{display:grid;gap:var(--s7);padding-top:var(--s6);padding-bottom:var(--s8)}
@@ -396,9 +405,10 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (width < 1100px){.docs-index-search{width:100%}}
 /* the topic shelf folds its search away under 1100 px; the index keeps its own */
 .docs-index-search.dm-search{display:flex}
-.docs-index-search .dm-search__field{height:48px;padding:0 10px 0 14px}
+.docs-index-search .dm-search__field{height:48px}
 .docs-index-search input{font-size:var(--fs-16)}
-.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + 6px);left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2)}
+/* the results panel drops from the field on its edges: its ring is drawn inside its box, as the field's is */
+.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + 6px);left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2-flush)}
 .docs-index-search a.dm-hit{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:var(--r1);color:var(--ink-3);text-decoration:none}
 .docs-index-search a.dm-hit:hover,.docs-index-search a.dm-hit:focus-visible{color:var(--ink-2);background:var(--accent-wash)}
 .docs-shelf{display:grid;gap:var(--s4);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
@@ -415,6 +425,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (height < 520px){.dm-banner__cap{display:none}}
 :lang(zh) .docs-evidence :is(dt,dd){line-break:strict}
 .dm-keys .cot-c-kbd{vertical-align:middle}
+/* a key cap holds Latin legends only, never Chinese: in a Chinese document, where the label tokens step up to 13 px
+   (tokens.css, src/ui/zhTypeFloor.ts), it keeps the Latin scale on the figure token, which holds in every locale */
+:lang(zh-CN) .cot-c-kbd{--fs-floor-11:var(--battle-fs-fig-11);--fs-11:calc(var(--battle-fs-fig-11) * var(--cot-type-scale))}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
 }
