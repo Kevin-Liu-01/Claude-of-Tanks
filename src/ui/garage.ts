@@ -726,7 +726,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
     `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-quick" data-tab="quick" aria-selected="true" aria-controls="cot-deploy-quick">` +
-    `${uiIconSVG('battleBots', 18)}${t('garage.deploy.quick')}</button>` +
+    `${uiIconSVG('play', 18)}${t('garage.deploy.quick')}</button>` +
     `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-campaign" data-tab="campaign" aria-selected="false" aria-controls="cot-deploy-campaign" tabindex="-1">` +
     `${uiIconSVG('modeFrontline', 18)}${t('campaign.heading')}<span class="cot-deploy-count num" data-deploy-campaign-count></span></button></div>` +
     `<button type="button" class="cot-deploy-tab" data-deploy-room="private">${uiIconSVG('battlePrivate', 18)}${t('garage.battle.typePrivate')}</button>` +
@@ -746,7 +746,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
     `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
     `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
-    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
+    `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span><span class="cot-deploy-chips"></span></span></button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
@@ -755,7 +755,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the campaign tab's plate: the operation in focus (deployScreen.ts brief)
     `<section class="cot-deploy-brief" data-deploy-brief aria-live="polite"></section>` +
     `<div class="cot-battle-details">` +
-    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
+    `<div class="cot-battle-preview"><span class="cot-battle-preview-icon is-active" data-setup-icon aria-hidden="true"></span>` +
     `<h3 id="cot-deploy-mode-title" data-setup-title${datumAttr('mode-name')}></h3>` +
     `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
     `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +
@@ -3775,15 +3775,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     pop.append(mapsEl);
+    // the open picker's one close, beside its (i); it leaves with the picker
+    mapsEl.querySelector('.mtitle')?.insertAdjacentHTML('beforeend', `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-deploy-field-close" ` +
+      `data-deploy-field-close aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>`);
     pop.hidden = false;
+    pop.closest('.cot-battle-details')?.classList.add('is-picking');
     pop.scrollIntoView({ block: 'nearest' }); // a phone's opened picker comes into view above the dock
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
-    mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
+    // the selected battlefield scrolls into view within the list only (its column keeps its place)
+    const list = mapsEl.querySelector<HTMLElement>('.cot-map-scroll');
+    const sel = mapsEl.querySelector<HTMLElement>('.cot-map-card.sel');
+    if (list && sel) {
+      const at = sel.getBoundingClientRect(), box = list.getBoundingClientRect();
+      if (at.top < box.top || at.bottom > box.bottom) list.scrollTop += at.top - box.top;
+    }
   }
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
     pop.hidden = true;
+    pop.closest('.cot-battle-details')?.classList.remove('is-picking');
+    mapsEl.querySelector('[data-deploy-field-close]')?.remove();
     camosEl.before(mapsEl);
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
@@ -4236,6 +4248,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     if (requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').hidden) openDeployField(); else closeDeployField();
   });
+  requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').addEventListener('click', (event) => {
+    if (!(event.target as Element | null)?.closest('[data-deploy-field-close]')) return;
+    emit('ui:click', {});
+    closeDeployField();
+    requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').focus();
+  });
   for (const host of [deployOps, deployLower, requiredElement<HTMLElement>(battleMenu, '[data-deploy-brief]')]) host.addEventListener('click', (event) => {
     const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
     if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
@@ -4553,6 +4571,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return;
     }
     if (e.code === 'Escape' && battleMenu.classList.contains('open')) {
+      // an open battlefield picker takes the first Escape
+      const fieldPop = battleMenu.querySelector<HTMLElement>('[data-deploy-field-pop]');
+      if (fieldPop && !fieldPop.hidden) {
+        closeDeployField();
+        battleMenu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.focus();
+        e.preventDefault();
+        return;
+      }
       closeBattleMenu({ restoreFocus: true });
       e.preventDefault();
       return;

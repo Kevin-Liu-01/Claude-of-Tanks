@@ -171,7 +171,7 @@
   "href": "/docs/combat#special",
   "title": "Spaced armor, ERA and HE",
   "chapter": "Armor, angling and spotting",
-  "text": "Not every plate is solid steel, and not every shell needs to go through. Air gaps cost HEAT 5 % of its penetration per 10 cm. ERA takes a fixed bite out of HEAT and a share of a kinetic round; a tandem warhead goes through it unless the block is built against tandems. HE never bounces: it blasts what it hits, plate or not."
+  "text": "Not every plate is solid steel, and not every shell needs to go through. Air gaps cost HEAT 5 % of its penetration per 10 cm. ERA takes a fixed bite out of HEAT and a share of a kinetic round; a tandem warhead goes through it unless the block is built against tandems. HE never bounces: it blasts what it hits, plate or not."
  },
  {
   "href": "/docs/combat#modules",
@@ -405,7 +405,7 @@
   "href": "/docs/simulation#topic-section-2",
   "title": "The host runs the match",
   "chapter": "Simulation and authority",
-  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. This differs from the older dedicated-server architecture still documented for historical reference. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
+  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
  },
  {
   "href": "/docs/simulation#topic-section-3",
@@ -597,13 +597,13 @@
   "href": "/docs/filming#topic-section-1",
   "title": "Shots written as code",
   "chapter": "Filming the media",
-  "text": "Every take on the site is a scene document, not a recording: the map, the time of day and the weather, the cast and its paint, each tank's route and speed, where each gun points, the camera's rail and the moment for its still. tools/media-r5/site50.mjs writes all fifty from one table, so a change to the plan reaches every take that shares it. The shot library keeps each take's scene exactly as the Studio saves it, so a take opens in the Studio from a link: the viewer below opens every featured take that way. The owner directs each round with notes: the lens on a three-dimensional track that swings close and far, tanks fast in every direction, fronts and quarters rather than rears, and a list of tanks that each lead a take of their own. Every round renders into folders of its own, so earlier versions stay beside the code that made them."
+  "text": "Every take on the site is a scene document, not a recording: the map, the time of day and the weather, the cast and its paint, each tank's route and speed, where each gun points, the camera's rail and the moment for its still. tools/media-r5/site50.mjs writes all fifty from one table, so a change to the plan reaches every take that shares it. The shot library keeps each take's scene exactly as the Studio saves it, so a take opens in the Studio from a link: the viewer below opens every featured take that way. Each round is directed with notes: the lens on a three-dimensional track that swings close and far, tanks fast in every direction, fronts and quarters rather than rears, and a list of tanks that each lead a take of their own. Every round renders into folders of its own, so earlier versions stay beside the code that made them."
  },
  {
   "href": "/docs/filming#topic-section-2",
   "title": "One take, every stage",
   "chapter": "Filming the media",
-  "text": "Pick a take, then a stage. Round four is the loop delivered on 4 October, before the motion note. Engine review 1 is the first motion plan rendered small in the engine, with everything it caught. Previz is round six's plan as a schematic camera, and engine review 2 is that plan in the engine after the fixes. Engine review 3 is round seven: the plan re-staged on the 2.0 maps, the scenes the 4K finals render from."
+  "text": "Pick a take, then a stage. Round four is the first loop, before the motion note. Engine review 1 is the first motion plan rendered small in the engine, with everything it caught. Previz is round six's plan as a schematic camera, and engine review 2 is that plan in the engine after the fixes. Engine review 3 is round seven: the plan re-staged on the 2.0 maps, the scenes the 4K finals render from."
  },
  {
   "href": "/docs/filming#topic-section-3",

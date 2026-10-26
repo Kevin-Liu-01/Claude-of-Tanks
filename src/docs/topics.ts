@@ -412,20 +412,21 @@ const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.gro
 
 /** The title in the direction's two voices (08 h1): its first words solid, its last words in the hollow outline. A
  *  Chinese title has no spaces and stays one solid line (the type package keeps CJK solid, SPEC 4.7). */
+const VOICE_TAIL = new Set(['a', 'an', 'the', 'to', 'of', 'for', 'and', 'in', 'on', 'with', 'at', 'by', 'from']);
+/** The title's two voices: split after its first comma, else at the word break nearest its middle (never leaving a short
+ * function word at the end of the first voice); a title with neither stays one voice. */
 function titleMarkup(title: string): string {
-  const words = title.split(' ');
-  if (words.length < 2) return `<span>${title}</span>`;
-  const cut = Math.ceil(words.length / 2);
-  return `<span>${words.slice(0, cut).join(' ')}</span> <span class="t-hollow">${words.slice(cut).join(' ')}</span>`;
+  const comma = title.search(/[,，]/);
+  let cut = comma > 0 ? comma + 1 : -1;
+  if (cut < 0) {
+    const breaks = [...title.matchAll(/ /g)].map((match) => match.index ?? 0)
+      .filter((at) => !VOICE_TAIL.has(title.slice(0, at).split(' ').pop()?.toLowerCase() ?? ''));
+    if (!breaks.length) return `<span>${title}</span>`;
+    cut = breaks.reduce((best, at) => (Math.abs(at - title.length / 2) < Math.abs(best - title.length / 2) ? at : best));
+  }
+  return `<span>${title.slice(0, cut).trim()}</span> <span class="t-hollow">${title.slice(cut).trim()}</span>`;
 }
 
-/** Minutes to read a topic: 200 Latin words, or 400 Chinese characters, a minute. */
-function readMinutes(topic: TopicDefinition, rich: readonly RichSection[] | null): number {
-  const text = [topic.lede, ...(rich ? rich.map((section) => section.text) : topic.sections.flat())].join(' ');
-  const cjk = (text.match(/[㐀-鿿]/g) ?? []).length;
-  const words = text.replace(/[㐀-鿿]/g, ' ').split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200 + cjk / 400));
-}
 
 function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
   const [title, ...paragraphs] = section;
@@ -444,8 +445,19 @@ function mountSearchEntry(root: HTMLElement): void {
     input.focus();
     input.select();
   });
-  const kbd = root.querySelector('.dm-search kbd');
-  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
+  // one key cap a key: the platform's modifier, then K
+  const keys = root.querySelector('.dm-search__keys');
+  if (keys) keys.innerHTML = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut')
+    .split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('');
+}
+
+/** A table wider than its column scrolls under a fade at its end (chapters.css .dm-table.is-scrollable). */
+function markScrollableTables(root: HTMLElement): void {
+  if (typeof ResizeObserver !== 'function') return;
+  const observer = new ResizeObserver((entries) => {
+    for (const { target } of entries) target.classList.toggle('is-scrollable', target.scrollWidth > target.clientWidth + 1);
+  });
+  for (const box of root.querySelectorAll<HTMLElement>('.dm-table')) observer.observe(box);
 }
 
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
@@ -500,17 +512,17 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">${t('docs.search.shortcutMac')}</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
+    + `<span class="dm-search__keys" aria-hidden="true">${t('docs.search.shortcutMac').split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('')}</span></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">${CRUMB}</i>`
-    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></nav>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span>${groupLabel(group.key)}</span></span>`
+    + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div></header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
-    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
@@ -545,6 +557,7 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
+  markScrollableTables(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
