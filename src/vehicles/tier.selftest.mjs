@@ -43,7 +43,7 @@ assert.equal(matchTierNumeral('unknown-dev-row'), '', 'an unknown matchmaking nu
 // national tree (src/techTree/tiers.ts; techTree.selftest.mjs checks it against the trees), and matchmaking keeps this
 // table, so the two diverge on purpose.
 assert.deepEqual(['m60a1', 'kv2', 'ajax'].map((id) => [tankTier(id), displayTier(id), tierNumeral(id)]),
-  [[8, 3, 'III'], [7, 1, 'I'], [10, 8, 'VIII']], 'matchmaking tier against the tier shown');
+  [[8, 1, 'I'], [7, 1, 'I'], [10, 5, 'V']], 'matchmaking tier against the tier shown (the 257 capability re-tier)');
 assert.equal(tierNumeral('unknown-dev-row'), '', 'an unknown shown tier stays blank, so missing data is visible');
 assert.equal(tankTier('unknown-dev-row'), 6, 'unknown matchmaking tier keeps the legacy fallback');
 

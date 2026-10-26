@@ -31,8 +31,8 @@ const bad = { id: 't', nations: [], flagNation: 'USA', name: 't', lines: [{ id: 
 ] };
 assert.deepEqual(layoutProblems(bad).sort(), ['a -> c runs through b', 'a -> d runs through f', 'f -> g and d -> e: crossing']);
 // A second parent drops into its child from above or below rather than sharing the left entry.
-const merge = layoutTree(tree('usa')).edges.find((edge) => edge.parent === 'm48a5_patton' && edge.child === 'm60a3');
-assert.equal(merge.points.length, 3, 'the M48A5 enters the M60A3 from below');
+const merge = layoutTree(tree('japan')).edges.find((edge) => edge.parent === 'type10b' && edge.child === 'type10');
+assert.equal(merge.points.length, 3, 'the Type 10B enters the Type 10 from above or below');
 
 // ------------------------------------------------------------------------------------------------ the fleet, once each
 const production = [...TANK_CATALOGS.production].sort();
@@ -53,47 +53,50 @@ assert.equal(nodeForVehicle('not_a_tank'), null);
 assert.equal(displayTier('not_a_tank'), 0, 'an id no tree draws sorts last');
 assert.equal(tierNumeral('not_a_tank'), '', 'and shows no numeral');
 assert.equal(displayTier('toString'), 0, 'the table answers own ids only');
-assert.deepEqual(childrenOf(tree('usa'), 'm1a1_abrams_hc').map((n) => n.id).sort(), ['m1a1_abrams_aim', 'm1a1_abrams_sa']);
+assert.deepEqual(childrenOf(tree('usa'), 'm1a1_abrams_hc').map((n) => n.id).sort(), ['m1a1_abrams_aim']);
 assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolves to its node');
 
-// ------------------------------------------------------------------------------------------------ the 251 order
-// Owner 2026-10-25 (253): "order we had before for all tanks was good we just need em re tiered". The shown tier keeps
-// the order of the matchmaking tiers as they stood at release 251 (src/vehicles/tier.ts; AT_251 below), the era
-// breaking ties: a tank never shows below one that ranked lower, a T-72/T-80/T-90 lineage never steps down, and a
-// prototype never shows above its production type. The owner's Japan placements (the Type 10 and its dozer at X, the
-// TK-X and 10B at IX) sit inside their bands; the owner's Korean orders are relative and hold inside the bands too.
-const ERA = { ww2: 0, 'cold-war': 1, modern: 2, 'next-generation': 3 };
-const OWNER_RULED = new Set(['type10', 'type10_dozer', 'type10_tk_x', 'type10b']);
-// 257 moved the T-90 obr. 1992 and the T-90A Burlak Prototype from X to IX in tier.ts (their lineage stepped down); the
-// order kept here is the 251 one the owner approved, so those two rank where they stood then.
-const AT_251 = Object.freeze({ t90_1992: 10, t90a_burlak_proto: 10 });
-const rank = (id) => [AT_251[id] ?? tankTier(id), ERA[TANK_SPECS[id].era]];
-const below = (a, b) => rank(a)[0] < rank(b)[0] || (rank(a)[0] === rank(b)[0] && rank(a)[1] < rank(b)[1]);
-const inversions = [];
-for (const a of drawn) {
-  for (const b of drawn) {
-    if (below(a, b) && displayTier(a) > displayTier(b) && !OWNER_RULED.has(a) && !OWNER_RULED.has(b)) inversions.push(`${a} > ${b}`);
-  }
-}
-assert.deepEqual(inversions, [], 'no tank shows above one that outranked it at 251');
+// ------------------------------------------------------------------------------------------------ the 257 order
+// Owner 2026-10-26 (257): "fix tank ordering. we need more tier 9s, stuff like leopard 2a6m,2a5, m1a2s, like these are all
+// powerful tanks". The shown tier follows a capability score (stats against the vehicle's own class, generation, era and
+// the 251 tier; ~/cot-launch-state/streams/tech-tree/RETIER-257.md), with the owner's anchors. These rules hold whatever
+// the scores: the anchors, the owner's Japan and Korea rulings, the T-90 line and the equal-rank lineages never stepping
+// down, an upgrade never below its base, and a prototype never above its production type.
+assert.deepEqual(['leo2a5', 'leo2a6', 'leo2a6m', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_tusk'].map(displayTier),
+  [9, 9, 9, 9, 9, 9], "the owner's Tier IX anchors");
 assert.deepEqual(['type10', 'type10_dozer', 'type10_tk_x', 'type10b'].map(displayTier), [10, 10, 9, 9], "the owner's Type 10 tiers");
 // the owner's Korean order (2026-10-25): the K1A1 above the K1E1 and the K2B, the XK2 above the K21, the K2 above the K2B
 for (const [above, below] of [['k1a1', 'k1e1'], ['k1a1', 'k2b'], ['xk2_black_panther', 'k21'], ['k2_black_panther', 'k2b']]) {
   assert.ok(displayTier(above) > displayTier(below), `${above} shows above ${below}`);
 }
-const lineages = [['t72b3m_2022', 't72bu_1989', 'pt91m'], ['t80', 't80b', 't80bv', 't80uk', 't84'],
-  ['t90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90am', 't90ms_2011', 't90m_proryv']];
-for (const line of lineages) {
+// the 251 rank (tier.ts then; 257 moved the T-90 obr. 1992 and the Burlak Prototype to IX), the era breaking ties
+const ERA = { ww2: 0, 'cold-war': 1, modern: 2, 'next-generation': 3 };
+const AT_251 = Object.freeze({ t90_1992: 10, t90a_burlak_proto: 10 });
+const rank = (id) => [AT_251[id] ?? tankTier(id), ERA[TANK_SPECS[id].era]];
+const t90Line = ['t90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90am', 't90ms_2011', 't90m_proryv'];
+t90Line.forEach((a, i) => t90Line.slice(i + 1).forEach((b) => assert.ok(displayTier(a) <= displayTier(b), `${a} never shows above ${b}`)));
+for (const line of [['t72b3m_2022', 't72bu_1989', 'pt91m'], ['t80', 't80b', 't80bv', 't80uk', 't84']]) {
   line.forEach((a, i) => line.slice(i + 1).forEach((b) => {
     if (String(rank(a)) === String(rank(b))) assert.ok(displayTier(a) <= displayTier(b), `${a} never shows above ${b}`);
   }));
 }
+const upgrades = [['t72b3', 't72b3m_2016'], ['t72b3m_2016', 't72b3m_2022'], ['t80', 't80b'], ['t80b', 't80bv'], ['t80bv', 't80u'],
+  ['t80u', 't80u_kursk'], ['type90', 'type90a'], ['leopard2_proto', 'leo2a2'], ['leo2a2', 'leo2a3'], ['leo2a3', 'leo2a4'],
+  ['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'],
+  ...['t72b3_sich', 't72b3_zubr', 't72b3_qilin', 't72b3_bastion_m', 't72b3m_hetman', 't72b3m_wilk', 't72b3m_kunlun', 't72b3m_bulat_m']
+    .map((id) => ['t72b3', id]),
+  ...['t80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'].map((id) => ['t80u', id])];
+for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displayTier(base), `${upgrade} never shows below ${base}`);
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
   ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
   ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100']]) {
   assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
 }
+// no tier piles up: at most about 1.6x the average
+const perTier = new Map();
+for (const id of drawn) perTier.set(displayTier(id), (perTier.get(displayTier(id)) ?? 0) + 1);
+for (const [tier, count] of perTier) assert.ok(count <= Math.ceil(1.6 * drawn.length / 10), `Tier ${tier} holds ${count}`);
 
 // ------------------------------------------------------------------------------------------------ read-only
 for (const entry of TECH_TREES) {
@@ -114,7 +117,7 @@ for (const file of sources) {
 
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
-// 2026-10-25 re-pin (253): every tree re-tiered in the 251 order and re-laid (RETIER-253.md), keeping the owner's Japan
-// placements and his Korean order inside the 251 bands.
-assert.equal(digest, '42723b1d84b79f2d', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
+// the Japan and Korea rulings.
+assert.equal(digest, 'a3a272cf88fee65a', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

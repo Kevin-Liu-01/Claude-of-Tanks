@@ -1322,8 +1322,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.6094,
         "overallLength": 7.6094,
@@ -6054,7 +6054,7 @@
         ]
       },
       "geometryHash": "bf213e5c",
-      "metadataHash": "3aa6cb09",
+      "metadataHash": "6cdf72de",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.1879
@@ -6220,8 +6220,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.2932,
         "overallLength": 7.2932,
@@ -7094,7 +7094,7 @@
         ]
       },
       "geometryHash": "17062165",
-      "metadataHash": "20c9ad84",
+      "metadataHash": "a34afab6",
       "presentationAnchor": {
         "xM": -0.0066,
         "zM": -0.2983
@@ -7263,8 +7263,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 5.9,
         "overallLength": 5.98,
@@ -9418,7 +9418,7 @@
         ]
       },
       "geometryHash": "2b384dea",
-      "metadataHash": "e9e1b45b",
+      "metadataHash": "d44ba042",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0117
@@ -9589,8 +9589,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 5.9,
         "overallLength": 5.98,
@@ -14657,7 +14657,7 @@
         ]
       },
       "geometryHash": "c701936c",
-      "metadataHash": "39835d0c",
+      "metadataHash": "6c301cb8",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0055
@@ -17221,8 +17221,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.59,
         "overallLength": 9.48,
@@ -20834,7 +20834,7 @@
         ]
       },
       "geometryHash": "41758d5d",
-      "metadataHash": "0b31acb2",
+      "metadataHash": "a11041da",
       "presentationAnchor": {
         "xM": -0.0014,
         "zM": -0.0491
@@ -21005,8 +21005,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.6816,
         "overallLength": 10.0588,
@@ -22605,7 +22605,7 @@
         ]
       },
       "geometryHash": "b2a47c0a",
-      "metadataHash": "1c0cf2e8",
+      "metadataHash": "25710f3d",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.0029
@@ -22774,8 +22774,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.8,
         "overallLength": 10.04,
@@ -23725,7 +23725,7 @@
         ]
       },
       "geometryHash": "2d3b2577",
-      "metadataHash": "a4308632",
+      "metadataHash": "27a4ae77",
       "presentationAnchor": {
         "xM": 0.0064,
         "zM": -0.0566
@@ -23897,8 +23897,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.4393,
         "overallLength": 10.0342,
@@ -28496,7 +28496,7 @@
         ]
       },
       "geometryHash": "cd3ca332",
-      "metadataHash": "33ce4d5a",
+      "metadataHash": "a763b0a7",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.0747
@@ -28668,8 +28668,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.4908,
         "overallLength": 6.4908,
@@ -30259,7 +30259,7 @@
         ]
       },
       "geometryHash": "6c6b1185",
-      "metadataHash": "9d905a1a",
+      "metadataHash": "7f3d328e",
       "presentationAnchor": {
         "xM": 0.0018,
         "zM": -0.0014
@@ -30425,8 +30425,8 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.72,
         "overallLength": 6.72,
@@ -31375,7 +31375,7 @@
         ]
       },
       "geometryHash": "8076fb29",
-      "metadataHash": "270e0494",
+      "metadataHash": "61228aac",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": -0.0611
@@ -31547,8 +31547,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.14,
         "overallLength": 7.14,
@@ -32374,7 +32374,7 @@
         ]
       },
       "geometryHash": "9cc0fb22",
-      "metadataHash": "de5ebd2a",
+      "metadataHash": "10dbfbad",
       "presentationAnchor": {
         "xM": 0.0051,
         "zM": -0.0738
@@ -32548,8 +32548,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.14,
         "overallLength": 7.2,
@@ -33375,7 +33375,7 @@
         ]
       },
       "geometryHash": "9e8b11b5",
-      "metadataHash": "6793c3d2",
+      "metadataHash": "b75d3c2b",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0394
@@ -34740,8 +34740,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.203,
         "overallLength": 7.938,
@@ -39914,7 +39914,7 @@
         ]
       },
       "geometryHash": "2c08cb26",
-      "metadataHash": "01814ee0",
+      "metadataHash": "a25e2888",
       "presentationAnchor": {
         "xM": 0.0023,
         "zM": -0.0049
@@ -40089,8 +40089,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.7203,
         "overallLength": 6.7203,
@@ -42328,7 +42328,7 @@
         ]
       },
       "geometryHash": "d85e18b8",
-      "metadataHash": "ac51f201",
+      "metadataHash": "2d954a7d",
       "presentationAnchor": {
         "xM": 0.0017,
         "zM": -0.0856
@@ -42498,8 +42498,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.84,
         "overallLength": 6.84,
@@ -44661,7 +44661,7 @@
         ]
       },
       "geometryHash": "d8395d7c",
-      "metadataHash": "a2e14780",
+      "metadataHash": "0fdcaacd",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.001
@@ -44833,8 +44833,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.9,
         "overallLength": 7.12,
@@ -45691,7 +45691,7 @@
         ]
       },
       "geometryHash": "140ecf83",
-      "metadataHash": "8bb555cf",
+      "metadataHash": "c4c794e6",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": 0.0274
@@ -45862,8 +45862,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 8.6381,
         "overallLength": 10.5136,
@@ -53244,7 +53244,7 @@
         ]
       },
       "geometryHash": "77acca34",
-      "metadataHash": "285feb4b",
+      "metadataHash": "a3362679",
       "presentationAnchor": {
         "xM": -0.0019,
         "zM": 0.2196
@@ -53412,8 +53412,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.59,
         "overallLength": 9.67,
@@ -54363,7 +54363,7 @@
         ]
       },
       "geometryHash": "f315a0c1",
-      "metadataHash": "3eff2978",
+      "metadataHash": "ceb5e4da",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.0784
@@ -54535,8 +54535,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 8.349,
         "overallLength": 10.637,
@@ -55510,7 +55510,7 @@
         ]
       },
       "geometryHash": "c04660f6",
-      "metadataHash": "a6d1838a",
+      "metadataHash": "f6832df0",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": 0.0877
@@ -55680,8 +55680,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 8.6381,
         "overallLength": 11.5128,
@@ -77428,7 +77428,7 @@
         ]
       },
       "geometryHash": "1569860d",
-      "metadataHash": "5967e9a4",
+      "metadataHash": "0498f627",
       "presentationAnchor": {
         "xM": -0.0014,
         "zM": 0.0456
@@ -77599,8 +77599,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 8.349,
         "overallLength": 10.637,
@@ -81741,7 +81741,7 @@
         ]
       },
       "geometryHash": "e5f52e14",
-      "metadataHash": "b863bc8b",
+      "metadataHash": "748ba63a",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0864
@@ -81912,8 +81912,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.98,
         "overallLength": 10.6,
@@ -82897,7 +82897,7 @@
         ]
       },
       "geometryHash": "f83995e7",
-      "metadataHash": "3b0515d1",
+      "metadataHash": "128f3f09",
       "presentationAnchor": {
         "xM": -0.001,
         "zM": -0.0833
@@ -83068,8 +83068,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 1,
-      "tierNumeral": "I",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.56,
         "overallLength": 9.83,
@@ -84131,7 +84131,7 @@
         ]
       },
       "geometryHash": "a5d9ab29",
-      "metadataHash": "9804b630",
+      "metadataHash": "0432a96a",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.0269
@@ -85602,8 +85602,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 8.32,
         "overallLength": 11.5,
@@ -86565,7 +86565,7 @@
         ]
       },
       "geometryHash": "712e1c2d",
-      "metadataHash": "7b144dc7",
+      "metadataHash": "f77da70d",
       "presentationAnchor": {
         "xM": -0.01,
         "zM": 0.2
@@ -86736,8 +86736,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.0634,
         "overallLength": 10.8297,
@@ -92507,7 +92507,7 @@
         ]
       },
       "geometryHash": "555dcd71",
-      "metadataHash": "43411f62",
+      "metadataHash": "327c50d6",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": 0.1457
@@ -92675,8 +92675,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 8.33,
         "overallLength": 11.5,
@@ -94094,7 +94094,7 @@
         ]
       },
       "geometryHash": "a66f2630",
-      "metadataHash": "0f3261bd",
+      "metadataHash": "cfff2f40",
       "presentationAnchor": {
         "xM": -0.0004,
         "zM": 0.0749
@@ -94264,8 +94264,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 8.33,
         "overallLength": 11.5,
@@ -98505,7 +98505,7 @@
         ]
       },
       "geometryHash": "bb5d2f85",
-      "metadataHash": "9f0747e8",
+      "metadataHash": "7ce047c9",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0837
@@ -105709,8 +105709,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 9.16,
         "overallLength": 12.65,
@@ -106854,7 +106854,7 @@
         ]
       },
       "geometryHash": "62c911b2",
-      "metadataHash": "d78f1977",
+      "metadataHash": "cbe3037a",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0058
@@ -107024,8 +107024,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.3887,
         "overallLength": 10.8037,
@@ -107901,7 +107901,7 @@
         ]
       },
       "geometryHash": "6231886a",
-      "metadataHash": "9cd00733",
+      "metadataHash": "88f74151",
       "presentationAnchor": {
         "xM": 0.0065,
         "zM": 0.151
@@ -108069,8 +108069,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.52,
         "overallLength": 10.79,
@@ -108946,7 +108946,7 @@
         ]
       },
       "geometryHash": "c1b5b45d",
-      "metadataHash": "cb37a590",
+      "metadataHash": "947cf456",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.013
@@ -111309,8 +111309,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 5.904,
         "overallLength": 6.57,
@@ -112427,7 +112427,7 @@
         ]
       },
       "geometryHash": "143639a6",
-      "metadataHash": "00bfef40",
+      "metadataHash": "1d6db174",
       "presentationAnchor": {
         "xM": 0.0038,
         "zM": -0.1583
@@ -112601,8 +112601,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.622,
         "overallLength": 6.8324,
@@ -114466,7 +114466,7 @@
         ]
       },
       "geometryHash": "ff25ade7",
-      "metadataHash": "aa3336c4",
+      "metadataHash": "4ce51d38",
       "presentationAnchor": {
         "xM": -0.0349,
         "zM": 0.0375
@@ -114638,8 +114638,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.282,
         "overallLength": 7.596,
@@ -115923,7 +115923,7 @@
         ]
       },
       "geometryHash": "785caea5",
-      "metadataHash": "5877608d",
+      "metadataHash": "e3c58371",
       "presentationAnchor": {
         "xM": -0.0004,
         "zM": -0.1596
@@ -116094,8 +116094,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.6605,
         "overallLength": 8.0905,
@@ -117779,7 +117779,7 @@
         ]
       },
       "geometryHash": "307f20ff",
-      "metadataHash": "bba2a1d0",
+      "metadataHash": "931118ef",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": 0.007
@@ -117947,8 +117947,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 7,
@@ -120467,7 +120467,7 @@
         ]
       },
       "geometryHash": "75125363",
-      "metadataHash": "ea1d9f7d",
+      "metadataHash": "9a8e03ef",
       "presentationAnchor": {
         "xM": 0.0004,
         "zM": -0.0053
@@ -120636,8 +120636,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.71,
         "overallLength": 6.71,
@@ -123149,7 +123149,7 @@
         ]
       },
       "geometryHash": "e3399e0e",
-      "metadataHash": "0b5cde2f",
+      "metadataHash": "a1231e67",
       "presentationAnchor": {
         "xM": -0.0011,
         "zM": 0.0188
@@ -123316,8 +123316,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 8.33,
         "overallLength": 11.5,
@@ -124769,7 +124769,7 @@
         ]
       },
       "geometryHash": "860d4723",
-      "metadataHash": "8e6a6a8e",
+      "metadataHash": "ea19776e",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0771
@@ -124938,8 +124938,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.34,
         "overallLength": 6.34,
@@ -125865,7 +125865,7 @@
         ]
       },
       "geometryHash": "4a8ad463",
-      "metadataHash": "f23c3be5",
+      "metadataHash": "c8f9286d",
       "presentationAnchor": {
         "xM": 0.0032,
         "zM": 0.0671
@@ -126036,8 +126036,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.34,
         "overallLength": 6.34,
@@ -127307,7 +127307,7 @@
         ]
       },
       "geometryHash": "ebcb195b",
-      "metadataHash": "889f3416",
+      "metadataHash": "7e1e04b3",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": 0.0996
@@ -127475,8 +127475,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.5393,
         "overallLength": 6.5393,
@@ -129690,7 +129690,7 @@
         ]
       },
       "geometryHash": "84a33a48",
-      "metadataHash": "b372ad6d",
+      "metadataHash": "79a9071e",
       "presentationAnchor": {
         "xM": -0.0016,
         "zM": 0.3406
@@ -130978,8 +130978,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.8,
         "overallLength": 7.3,
@@ -132279,7 +132279,7 @@
         ]
       },
       "geometryHash": "7d73605a",
-      "metadataHash": "e38cdcff",
+      "metadataHash": "63d812d1",
       "presentationAnchor": {
         "xM": -0.0007,
         "zM": -0.1163
@@ -135046,8 +135046,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.48,
         "overallLength": 9.71,
@@ -136033,7 +136033,7 @@
         ]
       },
       "geometryHash": "caa6ee2c",
-      "metadataHash": "c0e2a65d",
+      "metadataHash": "011c3003",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.0273
@@ -137744,8 +137744,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.866,
         "overallLength": 6.866,
@@ -138734,7 +138734,7 @@
         ]
       },
       "geometryHash": "b64243ef",
-      "metadataHash": "68f20400",
+      "metadataHash": "71b954b0",
       "presentationAnchor": {
         "xM": -0.0012,
         "zM": -0.1243
@@ -140241,8 +140241,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.0086,
         "overallLength": 7.7881,
@@ -141800,7 +141800,7 @@
         ]
       },
       "geometryHash": "d49b78e7",
-      "metadataHash": "e4142b5e",
+      "metadataHash": "efe8696b",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": 0.0361
@@ -158373,8 +158373,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.88,
         "overallLength": 9.87,
@@ -161976,7 +161976,7 @@
         ]
       },
       "geometryHash": "4132997e",
-      "metadataHash": "d34e91ae",
+      "metadataHash": "c5a6bb8e",
       "presentationAnchor": {
         "xM": 0.0084,
         "zM": 0.1056
@@ -162147,8 +162147,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.88,
         "overallLength": 9.87,
@@ -163110,7 +163110,7 @@
         ]
       },
       "geometryHash": "b4782bb8",
-      "metadataHash": "dadfbc0c",
+      "metadataHash": "28640b23",
       "presentationAnchor": {
         "xM": 0.002,
         "zM": 0.0947
@@ -163281,8 +163281,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.88,
         "overallLength": 9.87,
@@ -164745,7 +164745,7 @@
         ]
       },
       "geometryHash": "7af211d0",
-      "metadataHash": "0bbe754b",
+      "metadataHash": "6c769f58",
       "presentationAnchor": {
         "xM": 0.0051,
         "zM": 0.0768
@@ -164916,8 +164916,8 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 7.1303,
         "overallLength": 9.8044,
@@ -174136,7 +174136,7 @@
         ]
       },
       "geometryHash": "0713f56d",
-      "metadataHash": "cae644bf",
+      "metadataHash": "607a32d0",
       "presentationAnchor": {
         "xM": -0.0026,
         "zM": 0.0017
@@ -174305,8 +174305,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 7.09,
         "overallLength": 9.54,
@@ -176008,7 +176008,7 @@
         ]
       },
       "geometryHash": "ce584744",
-      "metadataHash": "83faafd5",
+      "metadataHash": "809dfd5d",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0125
@@ -180318,8 +180318,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -181722,7 +181722,7 @@
         ]
       },
       "geometryHash": "95bcf8bf",
-      "metadataHash": "96fb962d",
+      "metadataHash": "ace2b939",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0699
@@ -181896,8 +181896,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -183360,7 +183360,7 @@
         ]
       },
       "geometryHash": "6cfb5d36",
-      "metadataHash": "94673302",
+      "metadataHash": "ae30bd06",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.1004
@@ -183529,8 +183529,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.12,
@@ -184480,7 +184480,7 @@
         ]
       },
       "geometryHash": "7b508e8d",
-      "metadataHash": "7afb7f34",
+      "metadataHash": "a624cca5",
       "presentationAnchor": {
         "xM": 0.0082,
         "zM": -0.0176
@@ -184653,8 +184653,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.67,
@@ -185604,7 +185604,7 @@
         ]
       },
       "geometryHash": "92ce9520",
-      "metadataHash": "5d701ab0",
+      "metadataHash": "6c4c7ef0",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.0146
@@ -185775,8 +185775,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
@@ -187024,7 +187024,7 @@
         ]
       },
       "geometryHash": "bd70bb84",
-      "metadataHash": "eb660719",
+      "metadataHash": "205575b9",
       "presentationAnchor": {
         "xM": 0.0023,
         "zM": 0.0034
@@ -187198,8 +187198,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
@@ -194888,7 +194888,7 @@
         ]
       },
       "geometryHash": "2fd4d273",
-      "metadataHash": "920f36df",
+      "metadataHash": "e0cf372e",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": 0.0413
@@ -195060,8 +195060,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -196340,7 +196340,7 @@
         ]
       },
       "geometryHash": "cd733cb7",
-      "metadataHash": "4c310638",
+      "metadataHash": "9bbd9f54",
       "presentationAnchor": {
         "xM": -0.0082,
         "zM": 0.0882
@@ -196515,8 +196515,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -199727,7 +199727,7 @@
         ]
       },
       "geometryHash": "e0b376c4",
-      "metadataHash": "b3301196",
+      "metadataHash": "0e0f234f",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0101
@@ -199902,8 +199902,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.96,
@@ -200853,7 +200853,7 @@
         ]
       },
       "geometryHash": "923e5088",
-      "metadataHash": "534d85ba",
+      "metadataHash": "5ee53d1e",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0171
@@ -201024,8 +201024,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -203056,7 +203056,7 @@
         ]
       },
       "geometryHash": "c9248022",
-      "metadataHash": "99bce650",
+      "metadataHash": "4605896d",
       "presentationAnchor": {
         "xM": 0.0018,
         "zM": 0.1377
@@ -203226,8 +203226,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.96,
@@ -204762,7 +204762,7 @@
         ]
       },
       "geometryHash": "9de46d5e",
-      "metadataHash": "d84cb5ae",
+      "metadataHash": "3de27d61",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0323
@@ -204931,8 +204931,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6305,
         "overallLength": 10.9548,
@@ -206447,7 +206447,7 @@
         ]
       },
       "geometryHash": "68a95f6c",
-      "metadataHash": "73ea7e5c",
+      "metadataHash": "b2a952c7",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0228
@@ -206617,8 +206617,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
@@ -213885,7 +213885,7 @@
         ]
       },
       "geometryHash": "cc55b3df",
-      "metadataHash": "6e61829b",
+      "metadataHash": "8ef40992",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.028
@@ -214056,8 +214056,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
@@ -216510,7 +216510,7 @@
         ]
       },
       "geometryHash": "4ff15d6e",
-      "metadataHash": "3a2cf9ba",
+      "metadataHash": "5e845343",
       "presentationAnchor": {
         "xM": 0.0004,
         "zM": -0.0413
@@ -216678,8 +216678,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
@@ -218667,7 +218667,7 @@
         ]
       },
       "geometryHash": "0a00a714",
-      "metadataHash": "53dfaede",
+      "metadataHash": "9455b29b",
       "presentationAnchor": {
         "xM": 0.0052,
         "zM": -0.0941
@@ -218839,8 +218839,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.67,
@@ -219898,7 +219898,7 @@
         ]
       },
       "geometryHash": "3540a78e",
-      "metadataHash": "6e02e014",
+      "metadataHash": "243cf261",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0071
@@ -220071,8 +220071,8 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.0086,
         "overallLength": 7.29,
@@ -221666,7 +221666,7 @@
         ]
       },
       "geometryHash": "8244ef02",
-      "metadataHash": "6fa79d83",
+      "metadataHash": "907f53d8",
       "presentationAnchor": {
         "xM": 0.0022,
         "zM": 0.0647
@@ -221832,8 +221832,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.92,
         "overallLength": 9.77,
@@ -223174,7 +223174,7 @@
         ]
       },
       "geometryHash": "5dcd3ca8",
-      "metadataHash": "3c5acd38",
+      "metadataHash": "200770a2",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": 0.0253
@@ -223345,8 +223345,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.93,
         "overallLength": 9.77,
@@ -227370,7 +227370,7 @@
         ]
       },
       "geometryHash": "00a81879",
-      "metadataHash": "3842fb4b",
+      "metadataHash": "0f4f313d",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.034
@@ -232693,8 +232693,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.93,
         "overallLength": 9.77,
@@ -237276,7 +237276,7 @@
         ]
       },
       "geometryHash": "0af81ac8",
-      "metadataHash": "2d873be3",
+      "metadataHash": "40648fd1",
       "presentationAnchor": {
         "xM": 0.0031,
         "zM": 0.0072
@@ -237448,8 +237448,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.93,
         "overallLength": 9.77,
@@ -241757,7 +241757,7 @@
         ]
       },
       "geometryHash": "63033b1d",
-      "metadataHash": "7ad9e75a",
+      "metadataHash": "f57bac3e",
       "presentationAnchor": {
         "xM": 0.0011,
         "zM": -0.004
@@ -241929,8 +241929,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.92,
         "overallLength": 9.77,
@@ -243331,7 +243331,7 @@
         ]
       },
       "geometryHash": "073c5c7d",
-      "metadataHash": "43a20433",
+      "metadataHash": "7250e1c3",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.2511
@@ -243504,8 +243504,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.9539,
         "overallLength": 9.8243,
@@ -317853,7 +317853,7 @@
         ]
       },
       "geometryHash": "c0507be5",
-      "metadataHash": "a5e725ef",
+      "metadataHash": "dae546cc",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.0119
@@ -318018,8 +318018,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.9539,
         "overallLength": 9.8243,
@@ -473519,7 +473519,7 @@
         ]
       },
       "geometryHash": "d60cf712",
-      "metadataHash": "4c6fcc54",
+      "metadataHash": "eb4a0515",
       "presentationAnchor": {
         "xM": -0.0009,
         "zM": 0.1977
@@ -473685,8 +473685,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 7.9539,
         "overallLength": 9.8243,
@@ -555370,7 +555370,7 @@
         ]
       },
       "geometryHash": "07c47efb",
-      "metadataHash": "398f1387",
+      "metadataHash": "9e5346cb",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0309
@@ -555537,8 +555537,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.9539,
         "overallLength": 9.8243,
@@ -646894,7 +646894,7 @@
         ]
       },
       "geometryHash": "85c503d4",
-      "metadataHash": "aeb0b21f",
+      "metadataHash": "de52f6cc",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0093
@@ -649861,8 +649861,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.55,
         "overallLength": 6.55,
@@ -650997,7 +650997,7 @@
         ]
       },
       "geometryHash": "763e25df",
-      "metadataHash": "078a0cbf",
+      "metadataHash": "6cbceec6",
       "presentationAnchor": {
         "xM": 0.0113,
         "zM": -0.0941
@@ -651171,8 +651171,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.55,
         "overallLength": 6.55,
@@ -655277,7 +655277,7 @@
         ]
       },
       "geometryHash": "9d3497aa",
-      "metadataHash": "f8db1dde",
+      "metadataHash": "433599ba",
       "presentationAnchor": {
         "xM": 0.0127,
         "zM": -0.0923
@@ -658080,8 +658080,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.87,
         "overallLength": 9.31,
@@ -659127,7 +659127,7 @@
         ]
       },
       "geometryHash": "44d36114",
-      "metadataHash": "3317506b",
+      "metadataHash": "454de293",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.0287
@@ -659301,8 +659301,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.3,
         "overallLength": 6.3,
@@ -662197,7 +662197,7 @@
         ]
       },
       "geometryHash": "711f6824",
-      "metadataHash": "63bf9cc4",
+      "metadataHash": "2cee0ecd",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -0.0984
@@ -662371,8 +662371,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.16,
         "overallLength": 7.16,
@@ -667597,7 +667597,7 @@
         ]
       },
       "geometryHash": "4275faab",
-      "metadataHash": "d5a253d6",
+      "metadataHash": "ff5057b2",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.2216
@@ -667769,8 +667769,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.71,
         "overallLength": 6.71,
@@ -669841,7 +669841,7 @@
         ]
       },
       "geometryHash": "b4c95f28",
-      "metadataHash": "7d9e9220",
+      "metadataHash": "4fb2ec54",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.057
@@ -670011,8 +670011,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.946,
         "overallLength": 9.436,
@@ -671010,7 +671010,7 @@
         ]
       },
       "geometryHash": "aa6667a7",
-      "metadataHash": "7f0c85ea",
+      "metadataHash": "924ba8d2",
       "presentationAnchor": {
         "xM": 0.0081,
         "zM": -0.0213
@@ -671182,8 +671182,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.95,
         "overallLength": 7.27,
@@ -672124,7 +672124,7 @@
         ]
       },
       "geometryHash": "03d3f6e0",
-      "metadataHash": "c4a97277",
+      "metadataHash": "c4a2eaa2",
       "presentationAnchor": {
         "xM": 0.0004,
         "zM": -0.0994
@@ -672294,8 +672294,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.946,
         "overallLength": 9.436,
@@ -674457,7 +674457,7 @@
         ]
       },
       "geometryHash": "b46bff28",
-      "metadataHash": "eae98366",
+      "metadataHash": "bd16f87f",
       "presentationAnchor": {
         "xM": -0.0026,
         "zM": -0.0032
@@ -674632,8 +674632,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.88,
         "overallLength": 6.88,
@@ -675603,7 +675603,7 @@
         ]
       },
       "geometryHash": "f1b157c8",
-      "metadataHash": "352b5831",
+      "metadataHash": "ee4f4d5c",
       "presentationAnchor": {
         "xM": 0.0495,
         "zM": -0.0337
@@ -675776,8 +675776,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 7.31,
         "overallLength": 8.5345,
@@ -677490,7 +677490,7 @@
         ]
       },
       "geometryHash": "3a0709ec",
-      "metadataHash": "ba952aa0",
+      "metadataHash": "6ae21dbc",
       "presentationAnchor": {
         "xM": -0.0009,
         "zM": -0.0528
@@ -677658,8 +677658,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.42,
         "overallLength": 9.37,
@@ -678970,7 +678970,7 @@
         ]
       },
       "geometryHash": "a4f77845",
-      "metadataHash": "fd07e1f8",
+      "metadataHash": "edab5579",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.1184
@@ -679138,8 +679138,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.63,
@@ -680731,7 +680731,7 @@
         ]
       },
       "geometryHash": "e297997a",
-      "metadataHash": "511489dd",
+      "metadataHash": "431bfa79",
       "presentationAnchor": {
         "xM": -0.0013,
         "zM": -0.753
@@ -680902,8 +680902,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.78,
@@ -682631,7 +682631,7 @@
         ]
       },
       "geometryHash": "3c09843b",
-      "metadataHash": "f7977b42",
+      "metadataHash": "1633e1cf",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.6398
@@ -682801,8 +682801,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 8.78,
@@ -684840,7 +684840,7 @@
         ]
       },
       "geometryHash": "764108ea",
-      "metadataHash": "767b284d",
+      "metadataHash": "f5255306",
       "presentationAnchor": {
         "xM": 0.0012,
         "zM": -0.527
@@ -685011,8 +685011,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -687236,7 +687236,7 @@
         ]
       },
       "geometryHash": "aa34d85e",
-      "metadataHash": "3b5d1dd3",
+      "metadataHash": "91673f0d",
       "presentationAnchor": {
         "xM": -0.0053,
         "zM": -0.8152
@@ -687407,8 +687407,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -689608,7 +689608,7 @@
         ]
       },
       "geometryHash": "c10ac105",
-      "metadataHash": "debd21d6",
+      "metadataHash": "ea93c44a",
       "presentationAnchor": {
         "xM": -0.0006,
         "zM": -0.8042
@@ -689780,8 +689780,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.9645,
         "overallLength": 8.8382,
@@ -691451,7 +691451,7 @@
         ]
       },
       "geometryHash": "7df713df",
-      "metadataHash": "744e6b05",
+      "metadataHash": "9dbd7599",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0039
@@ -691622,8 +691622,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 8.705,
@@ -692862,7 +692862,7 @@
         ]
       },
       "geometryHash": "4cac32a3",
-      "metadataHash": "c68836ba",
+      "metadataHash": "f9aaf683",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": -0.0078
@@ -693033,8 +693033,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 8.8297,
@@ -694237,7 +694237,7 @@
         ]
       },
       "geometryHash": "65241150",
-      "metadataHash": "70f27be4",
+      "metadataHash": "3b64777f",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": 0.01
@@ -695818,8 +695818,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 9.04,
@@ -697738,7 +697738,7 @@
         ]
       },
       "geometryHash": "954dd30f",
-      "metadataHash": "35909692",
+      "metadataHash": "bef21c53",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.38
@@ -697909,8 +697909,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.32,
         "overallLength": 7.4825,
@@ -698903,7 +698903,7 @@
         ]
       },
       "geometryHash": "ed7b802a",
-      "metadataHash": "019875a4",
+      "metadataHash": "10b4f000",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0149
@@ -715627,8 +715627,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.95,
         "overallLength": 9.67,
@@ -718433,7 +718433,7 @@
         ]
       },
       "geometryHash": "04036904",
-      "metadataHash": "79e5a102",
+      "metadataHash": "54793010",
       "presentationAnchor": {
         "xM": -0.0192,
         "zM": 0.0669
@@ -718604,8 +718604,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.3434,
         "overallLength": 10.3477,
@@ -730537,7 +730537,7 @@
         ]
       },
       "geometryHash": "b8b23f48",
-      "metadataHash": "4c1ca186",
+      "metadataHash": "c658b5e6",
       "presentationAnchor": {
         "xM": -0.0059,
         "zM": 0.0001
@@ -730706,8 +730706,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 7.6,
@@ -732416,7 +732416,7 @@
         ]
       },
       "geometryHash": "9ce6fe78",
-      "metadataHash": "3cd8a4a6",
+      "metadataHash": "cfef317e",
       "presentationAnchor": {
         "xM": 0.0026,
         "zM": -0.0645
@@ -734269,8 +734269,8 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.01,
         "overallLength": 9.0379,
@@ -735471,7 +735471,7 @@
         ]
       },
       "geometryHash": "0223f69e",
-      "metadataHash": "f33cfb12",
+      "metadataHash": "24d5a1c1",
       "presentationAnchor": {
         "xM": 0.0009,
         "zM": -0.0714
@@ -735642,8 +735642,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 7.6,
@@ -736647,7 +736647,7 @@
         ]
       },
       "geometryHash": "d1a0e67b",
-      "metadataHash": "7345df1d",
+      "metadataHash": "9015fe19",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.0773
@@ -736821,8 +736821,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.84,
         "overallLength": 6.84,
@@ -738121,7 +738121,7 @@
         ]
       },
       "geometryHash": "abf3c091",
-      "metadataHash": "bf835ec2",
+      "metadataHash": "dcefe42a",
       "presentationAnchor": {
         "xM": 0.0017,
         "zM": -0.059
@@ -738292,8 +738292,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.7,
         "overallLength": 9.2,
@@ -739533,7 +739533,7 @@
         ]
       },
       "geometryHash": "da234437",
-      "metadataHash": "9cedfd42",
+      "metadataHash": "5dcc697a",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -0.04
@@ -739705,8 +739705,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.04,
         "overallLength": 8.99,
@@ -740365,7 +740365,7 @@
         ]
       },
       "geometryHash": "0956b3b8",
-      "metadataHash": "5dc0d587",
+      "metadataHash": "c43c4726",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.0104
@@ -740538,8 +740538,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.04,
         "overallLength": 8.99,
@@ -741198,7 +741198,7 @@
         ]
       },
       "geometryHash": "1f12d045",
-      "metadataHash": "c52248fd",
+      "metadataHash": "cd49e2ac",
       "presentationAnchor": {
         "xM": 0.0199,
         "zM": -0.287
@@ -741372,8 +741372,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.97,
@@ -742760,7 +742760,7 @@
         ]
       },
       "geometryHash": "5c1a72b6",
-      "metadataHash": "e0171e3d",
+      "metadataHash": "b20563d8",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": 0.0842
@@ -742932,8 +742932,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.524,
         "overallLength": 9.3095,
@@ -764282,7 +764282,7 @@
         ]
       },
       "geometryHash": "953ae287",
-      "metadataHash": "4bfb2275",
+      "metadataHash": "e9c4a1e0",
       "presentationAnchor": {
         "xM": 0.0026,
         "zM": -0.0229
@@ -773392,8 +773392,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 2,
-      "tierNumeral": "II",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.63,
         "overallLength": 9.34,
@@ -774379,7 +774379,7 @@
         ]
       },
       "geometryHash": "4f58dd63",
-      "metadataHash": "d82e3f9d",
+      "metadataHash": "70b17179",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.03
@@ -774549,8 +774549,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 6.63,
         "overallLength": 9.7922,
@@ -796482,7 +796482,7 @@
         ]
       },
       "geometryHash": "efabf7ff",
-      "metadataHash": "dcdb7e5f",
+      "metadataHash": "1ff33c7d",
       "presentationAnchor": {
         "xM": -0.0014,
         "zM": 0.031
@@ -796654,8 +796654,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.3563,
         "overallLength": 9.6708,
@@ -825431,7 +825431,7 @@
         ]
       },
       "geometryHash": "c75d434f",
-      "metadataHash": "25164b82",
+      "metadataHash": "246d6f22",
       "presentationAnchor": {
         "xM": 0.0093,
         "zM": -0.1332
@@ -854545,8 +854545,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.7203,
         "overallLength": 9.5343,
@@ -860538,7 +860538,7 @@
         ]
       },
       "geometryHash": "46889452",
-      "metadataHash": "757eca96",
+      "metadataHash": "a4760402",
       "presentationAnchor": {
         "xM": -0.0021,
         "zM": -0.0631
@@ -860707,8 +860707,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.7371,
         "overallLength": 9.703,
@@ -915612,7 +915612,7 @@
         ]
       },
       "geometryHash": "6c3419b0",
-      "metadataHash": "7526e93c",
+      "metadataHash": "524fa021",
       "presentationAnchor": {
         "xM": 0.0088,
         "zM": -0.2263
@@ -915777,8 +915777,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.3563,
         "overallLength": 9.6708,
@@ -919730,7 +919730,7 @@
         ]
       },
       "geometryHash": "90b7561d",
-      "metadataHash": "d601982e",
+      "metadataHash": "e0b22006",
       "presentationAnchor": {
         "xM": 0.0109,
         "zM": -0.1283
@@ -919897,8 +919897,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.9204,
         "overallLength": 9.6258,
@@ -939952,7 +939952,7 @@
         ]
       },
       "geometryHash": "2afde3f0",
-      "metadataHash": "fa5d8a0c",
+      "metadataHash": "5d30d673",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0563
@@ -940122,8 +940122,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.8784,
         "overallLength": 10.1769,
@@ -960027,7 +960027,7 @@
         ]
       },
       "geometryHash": "0fdf88ed",
-      "metadataHash": "ba0c7dc9",
+      "metadataHash": "326cc402",
       "presentationAnchor": {
         "xM": 0.001,
         "zM": -0.0486
@@ -960198,8 +960198,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.8784,
         "overallLength": 9.2379,
@@ -1017078,7 +1017078,7 @@
         ]
       },
       "geometryHash": "fc311674",
-      "metadataHash": "adf8d473",
+      "metadataHash": "2ca47aae",
       "presentationAnchor": {
         "xM": 0.0011,
         "zM": 0.044
@@ -1017248,8 +1017248,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.9504,
         "overallLength": 10.014,
@@ -1073806,7 +1073806,7 @@
         ]
       },
       "geometryHash": "3b25c7b3",
-      "metadataHash": "d5ae70d1",
+      "metadataHash": "585b4fca",
       "presentationAnchor": {
         "xM": -0.0028,
         "zM": 0.0698
@@ -1073976,8 +1073976,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.9403,
         "overallLength": 10.009,
@@ -1254408,7 +1254408,7 @@
         ]
       },
       "geometryHash": "a1a1f767",
-      "metadataHash": "aa0ef4ad",
+      "metadataHash": "a1ed0aca",
       "presentationAnchor": {
         "xM": 0.0013,
         "zM": 0.0678
@@ -1254578,8 +1254578,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.684,
         "overallLength": 10.2675,
@@ -1266331,7 +1266331,7 @@
         ]
       },
       "geometryHash": "d3983be9",
-      "metadataHash": "357ba982",
+      "metadataHash": "c35001dc",
       "presentationAnchor": {
         "xM": -0.0034,
         "zM": -0.0121
@@ -1266499,8 +1266499,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.684,
         "overallLength": 10.1372,
@@ -1284581,7 +1284581,7 @@
         ]
       },
       "geometryHash": "24aeb179",
-      "metadataHash": "5c233f02",
+      "metadataHash": "35f5ff6c",
       "presentationAnchor": {
         "xM": -0.0033,
         "zM": 0.0167
@@ -1284752,8 +1284752,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.31,
         "overallLength": 9.8693,
@@ -1307001,7 +1307001,7 @@
         ]
       },
       "geometryHash": "9a4155fc",
-      "metadataHash": "07abb306",
+      "metadataHash": "e6296771",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0441
@@ -1307172,8 +1307172,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.31,
         "overallLength": 10.2425,
@@ -1366892,7 +1366892,7 @@
         ]
       },
       "geometryHash": "87e1222c",
-      "metadataHash": "7f7afd7c",
+      "metadataHash": "08a657d5",
       "presentationAnchor": {
         "xM": -0.002,
         "zM": 0.1188
@@ -1367062,8 +1367062,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.509,
         "overallLength": 10.342,
@@ -1423327,7 +1423327,7 @@
         ]
       },
       "geometryHash": "c85d9dcb",
-      "metadataHash": "1e48cd8f",
+      "metadataHash": "7b072c0c",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.042
@@ -1423498,8 +1423498,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.31,
         "overallLength": 10.4414,
@@ -1439399,7 +1439399,7 @@
         ]
       },
       "geometryHash": "fe367dda",
-      "metadataHash": "fe1b82fc",
+      "metadataHash": "41133be6",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0062
@@ -1439569,8 +1439569,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.31,
         "overallLength": 9.8693,
@@ -1553566,7 +1553566,7 @@
         ]
       },
       "geometryHash": "b24d4f8c",
-      "metadataHash": "138da93a",
+      "metadataHash": "bdedacf4",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.1178
@@ -1553736,8 +1553736,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.3434,
         "overallLength": 10.3477,
@@ -1557987,7 +1557987,7 @@
         ]
       },
       "geometryHash": "0900cd3a",
-      "metadataHash": "90d8cdb8",
+      "metadataHash": "d4f74101",
       "presentationAnchor": {
         "xM": -0.013,
         "zM": -0.006
@@ -1558153,8 +1558153,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.3434,
         "overallLength": 10.3477,
@@ -1562416,7 +1562416,7 @@
         ]
       },
       "geometryHash": "0358cb4e",
-      "metadataHash": "69be4e17",
+      "metadataHash": "8e914b70",
       "presentationAnchor": {
         "xM": -0.0053,
         "zM": 0.0162
@@ -1562586,8 +1562586,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.3563,
         "overallLength": 9.6708,
@@ -1569899,7 +1569899,7 @@
         ]
       },
       "geometryHash": "fe2b6809",
-      "metadataHash": "0f173703",
+      "metadataHash": "555ea5d7",
       "presentationAnchor": {
         "xM": 0.0108,
         "zM": -0.1259
@@ -1570067,8 +1570067,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 3,
+      "tierNumeral": "III",
       "dimensionsM": {
         "hullLength": 6.78,
         "overallLength": 9.66,
@@ -1571090,7 +1571090,7 @@
         ]
       },
       "geometryHash": "89896cb1",
-      "metadataHash": "264f5c69",
+      "metadataHash": "1d7f2504",
       "presentationAnchor": {
         "xM": -0.0003,
         "zM": -0.0527
@@ -1571261,8 +1571261,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.78,
         "overallLength": 9.66,
@@ -1572284,7 +1572284,7 @@
         ]
       },
       "geometryHash": "e35b3188",
-      "metadataHash": "222711ed",
+      "metadataHash": "eb45d71f",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": -0.0356
@@ -1572455,8 +1572455,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.78,
         "overallLength": 9.66,
@@ -1577341,7 +1577341,7 @@
         ]
       },
       "geometryHash": "c227fcf1",
-      "metadataHash": "9b6c6792",
+      "metadataHash": "0373d344",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0269
@@ -1577512,8 +1577512,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.7203,
         "overallLength": 9.5343,
@@ -1580145,7 +1580145,7 @@
         ]
       },
       "geometryHash": "039aede8",
-      "metadataHash": "14cc17d3",
+      "metadataHash": "c76762fd",
       "presentationAnchor": {
         "xM": -0.0018,
         "zM": -0.0813
@@ -1600716,8 +1600716,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.82,
         "overallLength": 9.5819,
@@ -1708495,7 +1708495,7 @@
         ]
       },
       "geometryHash": "595f3d67",
-      "metadataHash": "762a8783",
+      "metadataHash": "72576f02",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.0476
@@ -1712358,8 +1712358,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.72,
         "overallLength": 10.104,
@@ -1735395,7 +1735395,7 @@
         ]
       },
       "geometryHash": "3f8a45e4",
-      "metadataHash": "769be639",
+      "metadataHash": "7f05a5d9",
       "presentationAnchor": {
         "xM": -0.0017,
         "zM": -0.132
@@ -1735564,8 +1735564,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 6.72,
         "overallLength": 9.5319,
@@ -1784195,7 +1784195,7 @@
         ]
       },
       "geometryHash": "20b1a477",
-      "metadataHash": "0e968f14",
+      "metadataHash": "e6d6d185",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": -0.0541
@@ -1784363,8 +1784363,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "cold-war",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.7203,
         "overallLength": 9.5343,
@@ -1787008,7 +1787008,7 @@
         ]
       },
       "geometryHash": "1fa43ec0",
-      "metadataHash": "448f75d5",
+      "metadataHash": "f58d8c3d",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": -0.081
@@ -1787176,8 +1787176,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.684,
         "overallLength": 8.7363,
@@ -1798450,7 +1798450,7 @@
         ]
       },
       "geometryHash": "2222d54a",
-      "metadataHash": "4b6720a7",
+      "metadataHash": "84d79039",
       "presentationAnchor": {
         "xM": -0.0215,
         "zM": 0.0288
@@ -1798622,8 +1798622,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.788,
         "overallLength": 10.074,
@@ -1801405,7 +1801405,7 @@
         ]
       },
       "geometryHash": "166953ab",
-      "metadataHash": "663098b4",
+      "metadataHash": "9ba1f4aa",
       "presentationAnchor": {
         "xM": 0.0042,
         "zM": -0.0081
@@ -1817712,8 +1817712,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 10.4586,
@@ -1830779,7 +1830779,7 @@
         ]
       },
       "geometryHash": "104d5ab4",
-      "metadataHash": "b7c3fe5a",
+      "metadataHash": "38448ecd",
       "presentationAnchor": {
         "xM": 0.0011,
         "zM": -0.1228
@@ -1830947,8 +1830947,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 9.53,
@@ -1835902,7 +1835902,7 @@
         ]
       },
       "geometryHash": "bae04321",
-      "metadataHash": "fad463e6",
+      "metadataHash": "a6001ffb",
       "presentationAnchor": {
         "xM": -0.0035,
         "zM": -0.0005
@@ -1836075,8 +1836075,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.203,
         "overallLength": 10.0065,
@@ -1841073,7 +1841073,7 @@
         ]
       },
       "geometryHash": "5f30275f",
-      "metadataHash": "28b31a1c",
+      "metadataHash": "f8d5a8b3",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -1.255
@@ -1841244,8 +1841244,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.3633,
         "overallLength": 10.063,
@@ -1843883,7 +1843883,7 @@
         ]
       },
       "geometryHash": "0dfa6879",
-      "metadataHash": "b55ac532",
+      "metadataHash": "a90ede6b",
       "presentationAnchor": {
         "xM": 0.003,
         "zM": 0.1247
@@ -1844050,8 +1844050,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.203,
         "overallLength": 10.248,
@@ -1848564,7 +1848564,7 @@
         ]
       },
       "geometryHash": "f350258c",
-      "metadataHash": "7516ea71",
+      "metadataHash": "8c04bc76",
       "presentationAnchor": {
         "xM": 0.0011,
         "zM": 0.0599
@@ -1848737,8 +1848737,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 10.7863,
@@ -1852988,7 +1852988,7 @@
         ]
       },
       "geometryHash": "913cd839",
-      "metadataHash": "d4032743",
+      "metadataHash": "5b4e5890",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": -0.0887
@@ -1853155,8 +1853155,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.9233,
         "overallLength": 10.4717,
@@ -1861933,7 +1861933,7 @@
         ]
       },
       "geometryHash": "8c50eb3a",
-      "metadataHash": "eb2e38ba",
+      "metadataHash": "7c72a5fb",
       "presentationAnchor": {
         "xM": 0.0046,
         "zM": -0.1629
@@ -1862103,8 +1862103,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 10.3513,
@@ -1870594,7 +1870594,7 @@
         ]
       },
       "geometryHash": "446e829e",
-      "metadataHash": "bf41268b",
+      "metadataHash": "7751b9d7",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.0769
@@ -1880424,8 +1880424,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.203,
         "overallLength": 10.0065,
@@ -1885012,7 +1885012,7 @@
         ]
       },
       "geometryHash": "5bdb36ff",
-      "metadataHash": "dcd1edd7",
+      "metadataHash": "d1fbd2f2",
       "presentationAnchor": {
         "xM": -0.0014,
         "zM": -0.0326
@@ -1885184,8 +1885184,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.3653,
         "overallLength": 10.0967,
@@ -1899913,7 +1899913,7 @@
         ]
       },
       "geometryHash": "ad6a1fbf",
-      "metadataHash": "83567973",
+      "metadataHash": "0c768ac8",
       "presentationAnchor": {
         "xM": 0.0038,
         "zM": -0.0115
@@ -1900080,8 +1900080,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 11.1371,
@@ -1908676,7 +1908676,7 @@
         ]
       },
       "geometryHash": "77cfe4e5",
-      "metadataHash": "2f7e67b4",
+      "metadataHash": "5d5f8547",
       "presentationAnchor": {
         "xM": -0.0068,
         "zM": -0.0127
@@ -1908844,8 +1908844,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.203,
         "overallLength": 10.1115,
@@ -1911009,7 +1911009,7 @@
         ]
       },
       "geometryHash": "ef960091",
-      "metadataHash": "f0970148",
+      "metadataHash": "24d32b9d",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.0778
@@ -1911182,8 +1911182,8 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.3653,
         "overallLength": 7.4785,
@@ -1928845,7 +1928845,7 @@
         ]
       },
       "geometryHash": "5fb00745",
-      "metadataHash": "7181e325",
+      "metadataHash": "f155ec55",
       "presentationAnchor": {
         "xM": -0.0021,
         "zM": 0.0296
@@ -2035040,8 +2035040,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.7,
         "overallLength": 9.42,
@@ -2036149,7 +2036149,7 @@
         ]
       },
       "geometryHash": "78fcc102",
-      "metadataHash": "d033711a",
+      "metadataHash": "1296d711",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.0681
@@ -2036321,8 +2036321,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.7918,
         "overallLength": 6.7918,
@@ -2039068,7 +2039068,7 @@
         ]
       },
       "geometryHash": "b34b3d52",
-      "metadataHash": "179dd1f2",
+      "metadataHash": "d49a208b",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.0001
@@ -2039235,8 +2039235,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.7988,
         "overallLength": 9.8,
@@ -2040966,7 +2040966,7 @@
         ]
       },
       "geometryHash": "b1baadfd",
-      "metadataHash": "90dd1c30",
+      "metadataHash": "4fabc8bc",
       "presentationAnchor": {
         "xM": 0.0023,
         "zM": -0.0433
@@ -2041139,8 +2041139,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "cold-war",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.45,
         "overallLength": 9.76,
@@ -2042126,7 +2042126,7 @@
         ]
       },
       "geometryHash": "2e8c493e",
-      "metadataHash": "76af755a",
+      "metadataHash": "81e68412",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.223
@@ -2042299,8 +2042299,8 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "cold-war",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.55,
         "overallLength": 9.8,
@@ -2043358,7 +2043358,7 @@
         ]
       },
       "geometryHash": "38c5be0b",
-      "metadataHash": "855e4aa2",
+      "metadataHash": "38ff5fea",
       "presentationAnchor": {
         "xM": 0.0027,
         "zM": -0.2197
@@ -2043529,8 +2043529,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 6,
-      "tierNumeral": "VI",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.3563,
         "overallLength": 9.9159,
@@ -2049168,7 +2049168,7 @@
         ]
       },
       "geometryHash": "2c080c2a",
-      "metadataHash": "f39e56b7",
+      "metadataHash": "0935446f",
       "presentationAnchor": {
         "xM": 0.0122,
         "zM": -0.1259
@@ -2049336,8 +2049336,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.684,
         "overallLength": 10.1284,
@@ -2058545,7 +2058545,7 @@
         ]
       },
       "geometryHash": "b24466dc",
-      "metadataHash": "94e17b21",
+      "metadataHash": "f83c3ded",
       "presentationAnchor": {
         "xM": -0.0057,
         "zM": 0.0089
@@ -2058714,8 +2058714,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.7203,
         "overallLength": 10.1041,
@@ -2060813,7 +2060813,7 @@
         ]
       },
       "geometryHash": "c7da00c1",
-      "metadataHash": "8a43fb9c",
+      "metadataHash": "550b3768",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.116
@@ -2060983,8 +2060983,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.0473,
         "overallLength": 10.0045,
@@ -2062654,7 +2062654,7 @@
         ]
       },
       "geometryHash": "f65d88e6",
-      "metadataHash": "c9e56af1",
+      "metadataHash": "e00b9ef1",
       "presentationAnchor": {
         "xM": 0.0051,
         "zM": -0.1012
@@ -2062826,8 +2062826,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 8.33,
         "overallLength": 11.5,
@@ -2067067,7 +2067067,7 @@
         ]
       },
       "geometryHash": "45ca617d",
-      "metadataHash": "6eaa0da8",
+      "metadataHash": "ea0f788d",
       "presentationAnchor": {
         "xM": 0.001,
         "zM": 0.0554
@@ -2067240,8 +2067240,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.92,
         "overallLength": 9.77,
@@ -2068666,7 +2068666,7 @@
         ]
       },
       "geometryHash": "9e54ccd0",
-      "metadataHash": "f6d037a6",
+      "metadataHash": "3b17778f",
       "presentationAnchor": {
         "xM": -0.0083,
         "zM": 0.2303
@@ -2068840,8 +2068840,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.9539,
         "overallLength": 9.8243,
@@ -2142557,7 +2142557,7 @@
         ]
       },
       "geometryHash": "2b875891",
-      "metadataHash": "725ef851",
+      "metadataHash": "0a5022ca",
       "presentationAnchor": {
         "xM": 0.007,
         "zM": 0.1821
@@ -2142728,8 +2142728,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 4,
+      "tierNumeral": "IV",
       "dimensionsM": {
         "hullLength": 6.55,
         "overallLength": 6.55,
@@ -2143864,7 +2143864,7 @@
         ]
       },
       "geometryHash": "32e99a0e",
-      "metadataHash": "6b895569",
+      "metadataHash": "e6dcb0ad",
       "presentationAnchor": {
         "xM": 0.0105,
         "zM": -0.0858
@@ -2144037,8 +2144037,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.78,
         "overallLength": 9.66,
@@ -2148551,7 +2148551,7 @@
         ]
       },
       "geometryHash": "fe630eaa",
-      "metadataHash": "5e24c3ae",
+      "metadataHash": "7e6ba4a2",
       "presentationAnchor": {
         "xM": -0.0046,
         "zM": -0.0764
@@ -2148724,8 +2148724,8 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 5.91,
         "overallLength": 7.65,
@@ -2149372,7 +2149372,7 @@
         ]
       },
       "geometryHash": "891b0380",
-      "metadataHash": "dd69e0db",
+      "metadataHash": "c9827953",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0263
@@ -2149541,8 +2149541,8 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "next-generation",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 5.665,
         "overallLength": 5.83,
@@ -2156225,7 +2156225,7 @@
         ]
       },
       "geometryHash": "5ec49145",
-      "metadataHash": "ccadf195",
+      "metadataHash": "71027d63",
       "presentationAnchor": {
         "xM": 0.0029,
         "zM": -0.08
@@ -2156396,8 +2156396,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "cold-war",
-      "tier": 3,
-      "tierNumeral": "III",
+      "tier": 2,
+      "tierNumeral": "II",
       "dimensionsM": {
         "hullLength": 7.92,
         "overallLength": 9.79,
@@ -2157261,7 +2157261,7 @@
         ]
       },
       "geometryHash": "735955d1",
-      "metadataHash": "13b4e9f2",
+      "metadataHash": "cfe5b320",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0629
@@ -2157434,8 +2157434,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 11,
@@ -2160052,7 +2160052,7 @@
         ]
       },
       "geometryHash": "15e8e76c",
-      "metadataHash": "bc2f8c9e",
+      "metadataHash": "ed1d9c01",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.4323
@@ -2160228,8 +2160228,8 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 5,
+      "tierNumeral": "V",
       "dimensionsM": {
         "hullLength": 6.7793,
         "overallLength": 6.7793,
@@ -2161420,7 +2161420,7 @@
         ]
       },
       "geometryHash": "7be30066",
-      "metadataHash": "5396dffe",
+      "metadataHash": "3afc6e8a",
       "presentationAnchor": {
         "xM": -0.0088,
         "zM": 0.1471
@@ -2161590,8 +2161590,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.5,
         "overallLength": 8.9525,
@@ -2162815,7 +2162815,7 @@
         ]
       },
       "geometryHash": "d89c34df",
-      "metadataHash": "43d6e34e",
+      "metadataHash": "4694de00",
       "presentationAnchor": {
         "xM": -0.0035,
         "zM": -0.1193
@@ -2164623,8 +2164623,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "next-generation",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.94,
         "overallLength": 7.825,
@@ -2167988,7 +2167988,7 @@
         ]
       },
       "geometryHash": "0919e46b",
-      "metadataHash": "d12d9c72",
+      "metadataHash": "fd554fdc",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.272
@@ -2168156,8 +2168156,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "cold-war",
-      "tier": 4,
-      "tierNumeral": "IV",
+      "tier": 1,
+      "tierNumeral": "I",
       "dimensionsM": {
         "hullLength": 6.4,
         "overallLength": 10.28,
@@ -2169095,7 +2169095,7 @@
         ]
       },
       "geometryHash": "157a598d",
-      "metadataHash": "71d61924",
+      "metadataHash": "40c70ab9",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.7852
@@ -2169271,8 +2169271,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.76,
         "overallLength": 11.66,
@@ -2176859,7 +2176859,7 @@
         ]
       },
       "geometryHash": "19aa4fd8",
-      "metadataHash": "d6b13e55",
+      "metadataHash": "40fdb401",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.2606
@@ -2177032,8 +2177032,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 11,
@@ -2179674,7 +2179674,7 @@
         ]
       },
       "geometryHash": "b6ec7380",
-      "metadataHash": "d81ca318",
+      "metadataHash": "87003b99",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.4341
@@ -2179846,8 +2179846,8 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 7.6,
         "overallLength": 11,
@@ -2182619,7 +2182619,7 @@
         ]
       },
       "geometryHash": "52afce1e",
-      "metadataHash": "bd24d8d2",
+      "metadataHash": "4b5e56fb",
       "presentationAnchor": {
         "xM": 0.006,
         "zM": -0.4393
