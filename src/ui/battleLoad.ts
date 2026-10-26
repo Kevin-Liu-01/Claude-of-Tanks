@@ -15,10 +15,12 @@
 import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { datumAttr, datumGlyph } from './dom.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { t } from './i18n.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
@@ -489,12 +491,12 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div></div>` +
     `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
-    `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
-    `<div class="rules"><span class="cot-c-chip mode"><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
-    `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
-    `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v num"></span></span>` +
+    `<main class="briefing"><div class="cap"><h1 class="mapname"${datumAttr('map-name')}></h1>` +
+    `<div class="rules"><span class="cot-c-chip mode"${datumAttr('mode-name')}><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
+    `<span class="cot-c-chip sides" hidden${datumAttr('team-counts')}><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
+    `<span class="cot-c-chip clock" hidden${datumAttr('clock')}><span class="gi">${datumGlyph('clock', 16)}</span><span class="v num"></span></span>` +
     `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
-    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
+    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -502,7 +504,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta">` +
+    `<div class="foot" aria-live="polite"><div class="fmeta"${datumAttr('load-progress')}>` +
     `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st">${t('battleLoad.loading')}</span></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
     `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
@@ -576,15 +578,19 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
-  const objCanvas = requiredElement<HTMLCanvasElement>(root, '.map .obj');
-  let objectivesPass = 0;
+  // the objectives over the plan: a uiCanvas the Deploy screen's lazy drawer draws (deployObjectives.ts)
+  const objCanvas = createUiCanvas(requiredElement<HTMLElement>(root, '.map .mp'), 'obj').canvas;
+  objCanvas.setAttribute('aria-hidden', 'true');
+  let objectivesPass = 0, objectivesDrawn = false;
   /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
    *  laid out); a later entry supersedes this one, and an entry without a mode clears them. */
   function drawObjectives(mapId: string | undefined, modeId: string | undefined): void {
     const pass = ++objectivesPass;
-    if (!mapId || !modeId) { objCanvas.getContext?.('2d')?.clearRect(0, 0, objCanvas.width, objCanvas.height); return; }
+    // (an entry without a mode clears the plan through the same drawing: empty, it draws nothing at any box)
+    if ((!mapId || !modeId) && !objectivesDrawn) return;
+    objectivesDrawn = true;
     void import('./deployObjectives.ts').then(({ drawDeployObjectives }) => {
-      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId, modeId); };
+      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId ?? '', modeId ?? ''); };
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw); else draw();
     }, () => { /* the plan stays bare */ });
   }

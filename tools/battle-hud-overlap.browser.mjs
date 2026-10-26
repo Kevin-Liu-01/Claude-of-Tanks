@@ -8,13 +8,15 @@
 // signal-loss veil) and the world-space markers over tanks are the scene's, not instruments, and are not measured.
 // One datum, one place (owner 2026-10-25: "prevent things like that silly double ping indicator from happening again";
 // UI-LOCKDOWN part C): in every state, a networked battle's host and client among them, two visible readouts of one
-// [data-datum] fail, and so does a visible link or frame-rate figure outside any [data-datum].
+// [data-datum] fail, and so does a datum with no row in src/ui/surfaceRegistry.ts or a visible link or frame-rate figure
+// outside any [data-datum] (tools/datum-census.mjs, shared with the gauntlet captures).
 // The full rendered regression (tools/battle-hud-layout.browser.mjs, Playwright) covers more windows and locales; this
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
 //     [--out=outputs/battle-hud-overlap]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { datumProblems } from './datum-census.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { default: puppeteer } = await import('puppeteer');
@@ -56,27 +58,6 @@ function measure(instruments) {
     .map(({ el, selector, x, y, right, bottom }) => ({ selector, name: `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`, x, y, right, bottom }));
 }
 
-/** One datum, one place (UI-LOCKDOWN part C): the visible [data-datum] readouts, two of one datum a failure, and a visible
- *  link or frame-rate readout (a "42 ms", an "fps") outside any [data-datum] an unregistered one. */
-function datums() {
-  const shown = (el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
-    && el.getBoundingClientRect().width >= 1 && el.getBoundingClientRect().height >= 1;
-  const named = new Map();
-  for (const el of document.querySelectorAll('[data-datum]')) {
-    if (!shown(el) || el.parentElement?.closest('[data-datum]')?.dataset.datum === el.dataset.datum) continue;
-    const list = named.get(el.dataset.datum) ?? [];
-    list.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`);
-    named.set(el.dataset.datum, list);
-  }
-  const duplicates = [...named].filter(([, list]) => list.length > 1).map(([datum, list]) => `${datum}: ${list.join(', ')}`);
-  const unregistered = [];
-  for (const el of document.querySelectorAll('.cot-hud *, .cot-mp-status *')) {
-    if (el.childElementCount || !/^\s*(\d+\s*ms|fps)\s*$/i.test(el.textContent ?? '') || el.closest('[data-datum]') || !shown(el)) continue;
-    unregistered.push(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')} "${el.textContent.trim()}"`);
-  }
-  return { duplicates, unregistered };
-}
-
 const allowed = (a, b) => ALLOWED.find(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
 const browser = await puppeteer.launch({ headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
 const report = [];
@@ -109,9 +90,8 @@ try {
           if (w > 1 && h > 1 && !allowed(a, b)) problems.push(`${a.name} overlaps ${b.name} (${Math.round(w)} x ${Math.round(h)} px)`);
         }
       }
-      const { duplicates, unregistered } = await page.evaluate(datums);
-      for (const d of duplicates) problems.push(`duplicate datum ${d}`);
-      for (const u of unregistered) problems.push(`unregistered readout ${u}`);
+      // one datum, one place (tools/datum-census.mjs, the registry's runtime half)
+      problems.push(...await datumProblems(page, { scope: '.cot-hud, .cot-mp-status' }));
       for (const e of errors) problems.push(`page error: ${e}`);
       failures += problems.length;
       report.push({ case: name, state, problems, rects });

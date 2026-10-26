@@ -1,4 +1,5 @@
 import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
+import { createUiCanvas, scratchCanvas } from './uiCanvas.ts';
 // src/ui/damagePanel.ts — bottom-left player damage panel, WoT panel
 // language. r9 REBUILD (owner: "reflect the actual top down view of the tank,
 // and make the hull move correctly"): the plan view is now the REAL vehicle —
@@ -26,6 +27,7 @@ import { ensureFonts } from './fonts.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { formatNumber, t } from './i18n.ts';
+import { datumAttr, markDatum } from './dom.ts';
 import {
   getTopDownMasks,
   prepareTopDownMasks,
@@ -225,9 +227,7 @@ function isFullCombatState(
 
 /** White mask canvas -> solid-tint copy (r9: layers are tinted per state). */
 function tintCanvas(src: HTMLCanvasElement, color: string): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = src.width;
-  c.height = src.height;
+  const c = scratchCanvas(src.width, src.height);
   const x = canvas2d(c);
   x.drawImage(src, 0, 0);
   x.globalCompositeOperation = 'source-in';
@@ -510,7 +510,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   root.className = 'cot-dp';
   // the hull points over the direction's 20-cell bar (brand-ui H4): each cell 5 % of the hull, lit while it stands
   root.innerHTML =
-    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num" data-datum="hp">—</span><small class="hpmax num"></small></div>` +
+    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num"${datumAttr('hp')}>—</span><small class="hpmax num"></small></div>` +
     `<div class="hptrack" aria-hidden="true"></div>` +
     `<div class="fire">${t('damagePanel.onFire')}</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
@@ -524,19 +524,18 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   // muzzle sweep: the barrel may reach the canvas edge, while the hull and
   // internal module map stay large enough to read.
   const CW = 142, CH = 138;
-  const dprC = 2; // fixed 2x internal resolution — crisp at devicePixelRatio 1
-  const canvas = document.createElement('canvas');
-  canvas.width = CW * dprC; canvas.height = CH * dprC;
-  canvas.style.width = `${CW}px`; canvas.style.height = `${CH}px`;
-  root.appendChild(canvas);
+  // (UI-LOCKDOWN A) the plan draws in its CW x CH design space; uiCanvas stretches it over the canvas's box (142 x 138,
+  // smaller on the touch layouts) at min(DPR, 2), redraws it on a box or ratio change and holds no store while hidden
+  // (it was a fixed 2x store: 284 x 276 at DPR 1)
+  const stage = createUiCanvas(root, '', { box: [CW, CH], units: [CW, CH], draw: () => paintPlan() });
   root.style.width = `${CW + 18}px`; // padding 8+8 + 1px borders
-  const ctx = canvas2d(canvas);
-  ctx.setTransform(dprC, 0, 0, dprC, 0, 0);
+  const ctx = stage.context;
   const cx = CW / 2, cy = CH / 2;
 
   // EQUIPMENT SYSTEM: loadout readout row (populated via setEquipment)
   const equipRow = document.createElement('div');
   equipRow.className = 'equiprow';
+  markDatum(equipRow, 'equipment');
   root.appendChild(equipRow);
 
   let spec: DamagePanelTankSpec | null = null;
@@ -994,7 +993,11 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     }
   }
 
+  /** Repaint the plan (now while it is shown, else when its box returns). */
   function draw(): void {
+    stage.redraw();
+  }
+  function paintPlan(): void {
     ctx.clearRect(0, 0, CW, CH);
     lastMarkerCount = 0;
     if (!spec || !masks || !tints) return;

@@ -154,6 +154,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 }
 .inset{left:16px;bottom:16px;width:150px;margin:0;padding:var(--s2)}
 .inset canvas{display:block;width:100%;height:auto;aspect-ratio:134/96}
+.inset__human{position:absolute;left:calc(var(--s2) + 6px);top:calc(var(--s2) + 6px);font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3);pointer-events:none}
 /* the legend stands above the bottom row, so the turntable and photo bar in the middle never sit under it */
 #viewport .legend:not(:empty){right:16px;bottom:64px;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s2);
   max-width:min(340px,46%);padding:var(--s3) var(--s3)}

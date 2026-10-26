@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { bakeSchematicSteps, validSchematicSize, type SchematicRequest } from './shotSchematic.ts';
 import type { SchematicMessage, SchematicReply } from './shotSchematicWorker.ts';
+import { scratchCanvas } from './uiCanvas.ts';
 
 export interface SchematicWorkerPort {
   onmessage: ((event: { data: RuntimeValue }) => void) | null;
@@ -176,7 +177,7 @@ export async function prepareSchematicFallback(request: SchematicRequest, signal
   const image = await loadImage(request.url, signal);
   const yieldWork = createOpaqueLoadingYielder(2, 16);
   const steps = bakeSchematicSteps(image, image.naturalWidth, image.naturalHeight, request, (width, height) => {
-    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; return canvas;
+    return scratchCanvas(width, height);
   });
   let target: HTMLCanvasElement | null = null;
   try {

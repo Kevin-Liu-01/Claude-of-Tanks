@@ -2,7 +2,7 @@
 // .sectors), over the recording DOM: a pip a tank on its side, the player's ringed, a destroyed tank's struck, a departed
 // tank's gone, a team too large for the strip left to the rosters; a chip a capture zone, drawn by the shared glyph set
 // from the shared markers (a contested zone's ring dashed in the contested ink), repainted only when its zone moves.
-import { created } from './hudDomHarness.test-support.mjs';
+import { created, resizeObserved } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createTeamPips } from './hudTeamPips.ts';
@@ -45,8 +45,20 @@ const zones = [{ x: -150, z: 90, control: 1, owner: 'alpha', contested: false },
   { x: 0, z: 0, control: 0.4, owner: null, contested: true }, { x: 150, z: -90, control: -1, owner: 'bravo', contested: false }];
 const markers = objectiveMarkers({ id: 'zone_control', perspectiveTeam: 'alpha', zones });
 strip.updateSectors(markers);
-const chips = () => created.filter((node) => node.tagName === 'CANVAS' && node.parentNode?.classes.has('cot-pips-sectors'));
+// (each chip a span in the strip holding its uiCanvas and its letter, DOM over it: UI-LOCKDOWN A)
+const chipNodes = () => created.filter((node) => node.classes.has('chip') && node.parentNode?.classes.has('cot-pips-sectors'));
+const chips = () => chipNodes().map((node) => node.children.find((child) => child.tagName === 'CANVAS'));
 assert.equal(chips().length, 3, 'a chip for every capture zone');
+// (UI-LOCKDOWN A) each chip is a uiCanvas: it draws once its box is laid out (the wide plate's 38 x 42)
+for (const chip of chips()) assert.equal(chip.getContext('2d').ops.length, 0, 'no chip draws before its box is measured');
+for (const chip of chips()) resizeObserved(chip, 38, 42);
+assert.ok(chips().every((chip) => chip.dataset.uiCanvas === ''), 'every chip is a uiCanvas');
+// its letter is DOM over it (the kit's type and the 11 px floor), never canvas text
+const chipLetters = chipNodes().map((node) => node.children.find((child) => child.classes.has('cot-ctext'))?.children[0]?.textContent);
+assert.deepEqual(chipLetters, markers.filter((marker) => marker.kind === 'zone' || marker.kind === 'sector').map((marker) => marker.label),
+  'each chip\'s letter is a DOM run over it');
+assert.ok(chips().every((chip) => !chip.getContext('2d').ops.some((op) => op.op === 'fillText' || op.op === 'strokeText')),
+  'no chip paints text');
 assert.equal(strip.root.classes.has('show'), true, 'the chips show the strip on their own');
 const contested = chips()[1].getContext('2d').ops;
 assert.ok(contested.some((op) => op.op === 'stroke' && op.dash.length && op.style === sideColor('contested')),

@@ -15,6 +15,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
@@ -28,6 +29,7 @@ import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
+import { coverImage, createUiCanvas, drawImageFit } from './uiCanvas.ts';
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -460,7 +462,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const mark = el('span', 'st');
   mark.innerHTML = STUDIO_GLYPHS.mark;
   mark.append(el('span', 'wd', t('studio.ws.title')));
-  const projectName = el('span', 'pn', '');
+  const projectName = markDatum(el('span', 'pn', ''), 'map-name');
   // the scene's safety (09-studio header .sv and the undo/redo pair): its autosave, and the steps either side
   const savedState = el('span', 'sv');
   savedState.hidden = true;
@@ -596,14 +598,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const lensChip = chipButton('', 'optics');
   lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
   vpTools.append(guidesChip, lensChip);
-  const frameCounter = el('span', 'st-fc');
+  const frameCounter = markDatum(el('span', 'st-fc'), 'playhead');
   // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
   // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
   const selBox = el('div', 'st-sel');
   selBox.hidden = true;
   selBox.setAttribute('aria-hidden', 'true');
   // the name tag sits on the outline's top edge, kept inside the picture and below the chips
-  const selTag = el('span', 'st-sel-tag');
+  const selTag = markDatum(el('span', 'st-sel-tag'), 'tank-name');
   selTag.hidden = true;
   selTag.setAttribute('aria-hidden', 'true');
   const selTagText = el('span');
@@ -1107,7 +1109,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     swatch.setAttribute('aria-pressed', 'false');
     swatch.setAttribute('aria-label', cid);
     swatch.dataset.camo = cid;
-    swatch.appendChild(document.createElement('canvas'));
+    createUiCanvas(swatch, '', { draw: coverImage });
     swatch.addEventListener('click', () => patchSel({ camo: cid }));
     swatchButtons.set(cid, swatch);
     swatches.appendChild(swatch);
@@ -1635,8 +1637,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmVeil.setAttribute('role', 'dialog');
   filmVeil.setAttribute('aria-modal', 'true');
   filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
-  const veilPreview = document.createElement('canvas');
-  veilPreview.className = 'fvPreview';
+  // (UI-LOCKDOWN A) the frame's preview: a uiCanvas sized by its CSS box (the film's aspect, --fv-aspect), the latest
+  // frame fitted into it at min(DPR, 2)
+  const veilSurface = createUiCanvas(null, 'fvPreview', {
+    draw: (ctx, width, height, surface) => {
+      ctx.clearRect(0, 0, width, height);
+      if (surface.image) drawImageFit(ctx, surface.image, width, height, 'contain');
+    },
+  });
+  const veilPreview = veilSurface.canvas;
+  let veilAspect = 0;
   const veilBar = el('div', 'fvBar');
   const veilFill = el('i');
   veilBar.appendChild(veilFill);
@@ -1663,10 +1673,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   function drawFilmPreview(canvas: HTMLCanvasElement): void {
     const aspect = canvas.width / Math.max(1, canvas.height);
-    const width = aspect >= 1 ? 640 : Math.round(480 * aspect);
-    const height = Math.round(width / aspect);
-    if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
-    veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
+    if (aspect !== veilAspect) { veilAspect = aspect; veilPreview.style.setProperty('--fv-aspect', String(aspect)); }
+    veilSurface.setImage(canvas);
   }
   /** One film through the veil (Export film and the queue): resolves with its size; an AbortError when cancelled. */
   function renderFilm(options: { resolution: number; fps: number; samples: number; shake: number; name?: string },

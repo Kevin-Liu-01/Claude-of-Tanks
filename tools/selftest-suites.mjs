@@ -2292,6 +2292,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
+    // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
+    // that fails on any on-screen canvas built outside it
+    'src/ui/uiCanvas.selftest.mjs',
+    'src/ui/uiCanvasCensus.selftest.mjs',
+    // a canvas's words and figures as DOM runs over it (the sight's readouts, the glyphs' letters)
+    'src/ui/canvasText.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
     'src/ui/hudNotices.selftest.mjs',
@@ -2334,6 +2340,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
+    // again"): one row a datum, placed only by its owner, its glyph through the registry
+    'src/ui/surfaceRegistry.selftest.mjs',
     // 2026-10-14 (owner, Kestrel: "water spots by spawn even though you can't actually see any water"): the tactical
     // map paints water only where the world draws it — all 33 maps, Kestrel's pads, the liquid maps' wet discs
     'src/ui/minimapLiquidWater.selftest.mjs',

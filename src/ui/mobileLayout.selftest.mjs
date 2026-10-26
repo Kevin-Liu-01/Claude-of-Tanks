@@ -203,14 +203,14 @@ assert.match(hud,
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
 assert.match(hud,
-  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*strokeText\(label, x, y\)[\s\S]*fillText\(label, x, y\)/,
-  'incoming result labels must sit beyond the wedge instead of inside its glow');
+  /const valueRadius = frame\.radius \+ paint\.thickness \+ \(indicator\.numeric \? 14 : 16\)[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx, ctx\.lineWidth\)/,
+  'incoming result labels must sit beyond the wedge instead of inside its glow (DOM over the sight, haloed: UI-LOCKDOWN A)');
 assert.match(hud, /directionalHitAmount\(hit, kind === 'bounce' && outcome\.blocked\)/,
   'gray direction wedges must source blocked damage from the authoritative hit outcome');
 assert.match(hud,
   /function mergeIncomingHitDirection[\s\S]*existing\.kind !== kind \|\| existing\.mergeKey !== mergeKey[\s\S]*incomingHitFeedbackFor\(hit\)[\s\S]*mergeIncomingHitDirection\([\s\S]*feedback\.mergeKey/,
   'nearby hits may merge only when their canonical outcomes match');
-assert.match(hud, /fillStyle = indicator\.labelColor[\s\S]*fillText\(label, x, y\)/,
+assert.match(hud, /fillStyle = indicator\.labelColor;[\s\S]*sightText\.placeAs\(slot, label, x, y, ctx/,
   'direction labels must retain the canonical damage, splash, and outcome colors');
 assert.match(shotInfo,
   /function recordOutgoingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)[\s\S]*function recordIncomingHit\(ev: ShotHitEvent\)[\s\S]*const outcome = hitOutcomeFor\(ev\)/,
