@@ -106,6 +106,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-out .it .cot-c-sil{width:34px;height:11px}
 .st-out .it .cot-i{width:16px;height:16px}
 .st-out .it .th{width:44px;height:25px;flex:none;border-radius:var(--r1);object-fit:cover;box-shadow:var(--ring-2)}
+/* a group's rows stand indented under its head, their labels on one edge: a row's glyph keeps the thumbnail's 44 px (the
+   s17 critic: "Map" started 28 px right of "Time of day", neither under "Scene") */
+.st-out .og-rows .it{padding-left:calc(var(--s2) + 24px)}
+.st-out .og-rows .it>button:first-child>.cot-i:first-child{flex:none;margin-inline:14px}
 .st-out .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-out .it .e{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-3)}
 .st-out .it .e .cot-i{width:14px;height:14px}
@@ -170,7 +174,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp>[data-group]{display:flex;flex-direction:column;gap:var(--s4)}
 .st-insp .sec,.director>section{display:flex;flex-direction:column;gap:var(--s2);min-width:0}
 .st-insp :is(.sh,.director h3){display:flex;align-items:center;gap:var(--s2);margin:0;color:var(--ink-2);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
-.st-insp .sh .cot-i{width:15px;height:15px;color:var(--ink-3)}
+.st-insp :is(.sh,.director h3) .cot-i{width:15px;height:15px;flex:none;color:var(--ink-3)}
 .st-insp .sh .cot-info-trigger{margin-left:auto}
 .st-insp .row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
 .st-insp .col{display:flex;flex-direction:column;gap:var(--s2)}
@@ -318,7 +322,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:3px;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);background:transparent;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
-.cot-studio .sunPresets .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
+/* every pressed chip in the Studio wears the segmented control's chosen state: one selected style beside the segments (the
+   s17 critic: Headlights, Auto and Guides in amber beside Day and Map in grey) */
+.cot-studio .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
 /* the effects: the stack, the board, the selected layer's parameters */
 .cot-studio .fxstack{display:grid;gap:2px;max-height:188px;overflow-y:auto;scrollbar-width:thin}
 .cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:var(--s2);min-height:34px;padding:0 var(--s1) 0 var(--s2);
@@ -422,7 +428,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-shelf .production-card{grid-row:1/span 2;grid-template-rows:subgrid;min-height:0}
 /* a shelf caption keeps its names whole and takes at most two lines, so the stills above keep their height (the s15
    critic: a three-line caption at 1280 crushed every still to a strip) */
-.cot-studio .production-card .nobr{white-space:nowrap}
+/* a name too long for its card's line gives way to an ellipsis (its title holds it whole), never runs under the
+   duration (the s17 critic: zh "M1A2 Abrams TU" under "6.6 秒") */
+.cot-studio .production-card .nobr{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
@@ -553,7 +561,8 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
   box-shadow:var(--e4);color:var(--ink-1);font-family:var(--font-ui)}
 .cot-studio-archive::backdrop{background:var(--scrim)}
 .cot-studio-archive>header{display:flex;align-items:center;justify-content:space-between;gap:var(--s5);padding:var(--s4) var(--s5);border-bottom:1px solid var(--line-1)}
-.cot-studio-archive>header strong{font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase}
+/* the dialog's title in the overlays' one title style (the render queue's, the map sheet's) */
+.cot-studio-archive>header strong{font:600 max(var(--fs-floor-11),var(--fs-16))/1 var(--font-display);text-transform:none}
 .cot-studio-archive>header :is(small,span){display:none}
 .cot-studio-archive .archiveBody{padding:var(--s5) var(--s5) var(--s5)}
 /* the count is a plain stat, not an eyebrow */
@@ -629,7 +638,8 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head{gap:var(--s2);padding:0 var(--s3)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r [data-scene-link-copy]{display:none}
 /* the queue keeps to the frame's row on a phone, clear of the transport under it */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{max-height:calc(40dvh - var(--s2))}
+/* a phone's queue spans the header's width, so no control's edge peeks past it, and takes most of the window's height */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{left:var(--s2);right:var(--s2);width:auto;max-height:calc(75dvh - var(--s2))}
 /* a queue cut to the viewport's room shows a drawn scrollbar, the cue that presets wait below (the s15 critic: on a phone
    and at 844 x 390 the fifth preset was cut with no cue) */
 .st-queue{scrollbar-width:auto;scrollbar-color:auto}

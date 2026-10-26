@@ -430,7 +430,7 @@ const MAP_POP_GAP = 12;
 /** Under this much room below the card the picker cannot show its bar and two rows of cards: it opens as a sheet over
  * the inspector instead, grown to MAP_SHEET px where the screen has it (the s16 critic: on a phone, at 844 x 390, 1024 x
  * 600 and 1280 x 720 the popover cut its cards and the card above scrolled under the tab bar). */
-const MAP_POP_SHEET_BELOW = 360;
+const MAP_POP_SHEET_BELOW = Number.POSITIVE_INFINITY; // the sheet at every size: one form (the s17 critic: a nested box at 1440 and up)
 const MAP_SHEET = 520;
 const MAP_SHEET_TOP = 56;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
