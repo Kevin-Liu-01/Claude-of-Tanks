@@ -50,8 +50,12 @@ const MENU_MAX_H = 420;
 /** Its distance from the trigger and from the window's edges. */
 const MENU_GAP = 4;
 const MENU_EDGE = 8;
-/** Below this window width a coarse pointer gets a bottom sheet. */
+/** Below this window width or height a coarse pointer gets a bottom sheet; a short window's sheet leaves this much of the
+ *  window above it. */
 const SHEET_BELOW = 520;
+const SHEET_TOP_SHORT = 48;
+/** A scrolling panel under this height is no bound: the menu takes the window's room. */
+const BOUNDS_MIN_H = 240;
 
 interface MenuPlace {
   readonly sheet: boolean;
@@ -66,9 +70,11 @@ interface MenuPlace {
 /**
  * Where the popover stands for a trigger at `anchor` in a `view` window: under the trigger, or above it when the room below
  * is short of what it needs and the room above is larger; as wide as the trigger within 280-480 px and inside the window;
- * at most min(60 % of the window, 420 px) tall and no taller than its side's room. A coarse pointer on a window under 520 px
- * wide gets a bottom sheet across it. `height` is the popover's natural height (its content at full room); `wide` (a set of
- * picture cards) takes the widest room, so its pictures stand two abreast. Pure.
+ * at most min(60 % of the window, 420 px) tall and no taller than its side's room. The room is the window's, or `bounds`
+ * (the trigger's scrolling panel: a dossier, a readout column), so the menu never runs over a site header or out of its
+ * panel. A coarse pointer on a window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's
+ * natural height (its content at full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand
+ * two abreast. Pure.
  */
 export function placeMenu(
   anchor: { readonly left: number; readonly top: number; readonly bottom: number; readonly width: number },
@@ -76,16 +82,17 @@ export function placeMenu(
   height: number,
   coarse: boolean,
   wide = false,
+  bounds: { readonly top: number; readonly bottom: number } = { top: 0, bottom: view.height },
 ): MenuPlace {
   const cap = Math.min(view.height * 0.6, MENU_MAX_H);
-  if (coarse && view.width < SHEET_BELOW) {
-    const maxHeight = Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
+  if (coarse && (view.width < SHEET_BELOW || view.height < SHEET_BELOW)) {
+    const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
   }
   const width = Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
   const left = Math.max(MENU_EDGE, Math.min(anchor.left, view.width - MENU_EDGE - width));
-  const below = view.height - anchor.bottom - MENU_GAP - MENU_EDGE;
-  const aboveRoom = anchor.top - MENU_GAP - MENU_EDGE;
+  const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
+  const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
   const want = Math.min(height, cap);
   const above = below < want && aboveRoom > below;
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
@@ -123,9 +130,15 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   pop.id = popId;
   pop.className = 'cot-c-menu__pop';
   pop.setAttribute('popover', 'manual');
+  // a sheet's head: the set's name and a close (a popover's trigger names it; a sheet stands apart from its trigger)
+  const head = doc.createElement('div');
+  head.className = 'cot-c-menu__head';
+  head.innerHTML = `<span class="cot-c-menu__title">${esc(options.label)}</span>`
+    + `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-c-menu__close" aria-label="${esc(options.text.close ?? options.label)}">`
+    + `${icon('close', { size: 18 })}</button>`;
   const pickerHost = doc.createElement('div');
   pickerHost.className = 'cot-c-menu__picker';
-  pop.append(pickerHost);
+  pop.append(head, pickerHost);
   doc.body.append(pop);
 
   const itemOf = (id: string | null): PickerItem | null => (id === null ? null : items.find((item) => item.id === id) ?? null);
@@ -145,16 +158,31 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
 
   const isOpen = (): boolean => trigger.getAttribute('aria-expanded') === 'true';
   const coarse = (): boolean => typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
+  /** The trigger's scrolling panel, the room the menu stays in (the window when there is none, or it is too short). */
+  const boundsOf = (from: HTMLElement): { top: number; bottom: number } => {
+    for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
+      if (!/auto|scroll/.test(win.getComputedStyle(node).overflowY)) continue;
+      const box = node.getBoundingClientRect();
+      const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
+      return bottom - top >= BOUNDS_MIN_H ? { top, bottom } : { top: 0, bottom: win.innerHeight };
+    }
+    return { top: 0, bottom: win.innerHeight };
+  };
   const place = (): void => {
     if (!isOpen()) return;
-    const rect = (openFrom?.isConnected ? openFrom : trigger).getBoundingClientRect();
+    const anchorEl = openFrom?.isConnected ? openFrom : trigger;
+    const rect = anchorEl.getBoundingClientRect();
     pop.style.maxHeight = '';
+    pop.classList.remove('is-sheet');
     const natural = pop.scrollHeight;
-    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards');
+    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards',
+      boundsOf(anchorEl));
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
     pop.style.left = `${spot.left}px`;
-    pop.style.top = `${spot.top}px`;
+    // a sheet stands on the window's foot whatever its head adds to the measured height
+    pop.style.top = spot.sheet ? 'auto' : `${spot.top}px`;
+    pop.style.bottom = spot.sheet ? '0' : '';
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
   };
@@ -232,6 +260,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     open();
   };
   // Esc restores and closes in one press (the picker's own Esc would only restore first), before any surface hears it
+  const onClose = (): void => close(true);
   const onPopKey = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -246,6 +275,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   };
   trigger.addEventListener('click', onTrigger);
   trigger.addEventListener('keydown', onTriggerKey);
+  head.querySelector('.cot-c-menu__close')?.addEventListener('click', onClose);
   pop.addEventListener('keydown', onPopKey, true);
   pop.addEventListener('focusout', onPopFocusOut);
   paint(null);
@@ -276,6 +306,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       trigger.removeEventListener('keydown', onTriggerKey);
       pop.removeEventListener('keydown', onPopKey, true);
       pop.removeEventListener('focusout', onPopFocusOut);
+      head.querySelector('.cot-c-menu__close')?.removeEventListener('click', onClose);
       picker?.dispose();
       picker = null;
       pop.remove();

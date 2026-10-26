@@ -1000,6 +1000,9 @@ diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hi
 const diagramFigure = diagramImage.closest('figure')!;
 const setDiagramZoom = (on: boolean): void => {
   diagramFigure.classList.toggle('is-zoomed', on);
+  // the dossier's scroll fade is a mask, which masks a fixed descendant to the column too: it lifts while a drawing is
+  // zoomed (the g13 critic: the zoom showed only through the dossier, its drawing under the stage)
+  diagramFigure.closest('.dossier-scroll')?.classList.toggle('has-zoom', on);
   diagramImage.setAttribute('aria-expanded', String(on));
   mountDiagramLabels();
 };

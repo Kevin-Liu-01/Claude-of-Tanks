@@ -45,6 +45,8 @@ export interface PickerText {
   readonly clear: string;
   /** The chip row's overflow button: it steps the row on, and turns back at its end. */
   readonly more: string;
+  /** A picker menu's sheet's close (pickerMenu.ts). */
+  readonly close?: string;
 }
 
 interface PickerOptions {
