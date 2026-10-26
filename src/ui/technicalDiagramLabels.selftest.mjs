@@ -1,9 +1,13 @@
 // The technical diagrams' DOM labels (253): the text is composed from the sidecar's values in each locale (no baked
 // string, the unit through the catalog), the two rails pack inside the band between the header and the legend at any box
 // size with no two rows closer than the row pitch, every leader starts at its callout, and a malformed sidecar is
-// refused. The sidecars themselves are tank-assets-check's (schema, hash, anchors on the raster).
+// refused. The tones are tokens: every colour a shipped sidecar records names one (data-tone), every tone has its token
+// and its rule in the sheet, and the static markup writes no colour. The sidecars themselves are tank-assets-check's
+// (schema, hash, anchors on the raster).
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { getLocale, setLocale } from './i18n.ts';
+import { technicalToneHex, technicalToneOf } from './technicalDiagramLegend.ts';
 import {
   layoutTechnicalCallouts, parseTechnicalLabels, technicalKindOfView, technicalLabelText, technicalLabelsMarkup, TECHNICAL_LEGENDS,
 } from './technicalDiagramLabels.ts';
@@ -49,18 +53,39 @@ try {
   assert.equal(layoutTechnicalCallouts(armor, 'armor', { width: 512, height: 256 }, { rowPx: 14 }).filter((r) => r.side === 'left').length, 6);
   assert.equal(layoutTechnicalCallouts(armor, 'armor', { width: 1280, height: 640 }, { rowPx: 20 }).filter((r) => r.side === 'left').length, 10);
 
-  // the static markup (a Node prerender) carries the same rows, escaped, with the tones and places as custom properties
+  // the static markup (a Node prerender) carries the same rows, escaped, the tones as data-tone and the places as
+  // custom properties: no colour is written into the page (style-literal-census)
   const markup = technicalLabelsMarkup({ schema: 1, id: 'x', size: [1024, 512], armor, modules: [], crew: [] }, 'armor', { width: 512, height: 256 }, { rowPx: 18 });
   assert.equal((markup.match(/class="cot-tdl-chip/g) || []).length, layoutTechnicalCallouts(armor, 'armor', { width: 512, height: 256 }, { rowPx: 18 }).length);
-  assert.ok(markup.includes('H01 · 400 mm') && markup.includes('--tdl-tone:#e96959') && markup.includes('cot-tdl-legend'));
+  assert.ok(markup.includes('H01 · 400 mm') && markup.includes('data-tone="armor-ke-0"') && markup.includes('cot-tdl-legend'));
+  assert.ok(!/#[0-9a-f]{3,8}\b|rgb\(|--tdl-tone/i.test(markup), 'the static markup writes no colour');
   // its places are percentages of the fluid box, every one inside it
   const places = [...markup.matchAll(/--tdl-[xy]:(-?[\d.]+)%/g)].map((m) => Number(m[1]));
   assert.ok(places.length >= 4 && places.every((v) => v >= 0 && v <= 100), 'static places are percentages inside the box');
-  assert.ok(!/<script|on[a-z]+=/i.test(technicalLabelsMarkup({ schema: 1, id: 'x', size: [1024, 512], modules: [callout('M1', .2, .5, .1, { module: 'x', title: '<script>' })], armor: [], crew: [] }, 'modules', { width: 512, height: 256 })), 'text is escaped');
+  assert.ok(!/<script|\son[a-z]+=/i.test(technicalLabelsMarkup({ schema: 1, id: 'x', size: [1024, 512], modules: [callout('M1', .2, .5, .1, { module: 'x', title: '<script>' })], armor: [], crew: [] }, 'modules', { width: 512, height: 256 })), 'text is escaped');
   assert.equal(technicalKindOfView('armor_side'), 'armor');
   assert.equal(technicalKindOfView('modules_side'), 'modules');
   assert.equal(technicalKindOfView('angle'), null);
   assert.equal(TECHNICAL_LEGENDS.armor.length, 6);
+  // every tone: a token, a rule in the sheet; every colour a shipped sidecar records: a tone
+  const sheet = readFileSync(new URL('./technicalDiagramLabels.css', import.meta.url), 'utf8');
+  const tones = JSON.parse(readFileSync(new URL('./tokens/tokens.json', import.meta.url), 'utf8')).component['surface-diagram'];
+  assert.ok(sheet.includes("@import url('./tokens/surface-diagram.css')"), 'the sheet imports the diagrams\' tone tokens');
+  for (const key of Object.keys(tones).filter((k) => k.startsWith('diagram-'))) {
+    const tone = key.slice(8);
+    assert.equal(technicalToneHex(tone), tones[key].value, `${tone}: its token resolves to its value`);
+    assert.equal(technicalToneOf(tones[key].value), tone);
+    assert.ok(sheet.includes(`[data-tone='${tone}']{--tdl-tone:var(--diagram-${tone})}`), `${tone}: the sheet maps it`);
+  }
+  for (const [, tone] of Object.values(TECHNICAL_LEGENDS).flat()) assert.ok(technicalToneHex(tone), `legend tone ${tone}`);
+  const icons = new URL('../../public/icons/', import.meta.url);
+  const shipped = new Set();
+  for (const file of readdirSync(icons).filter((f) => f.endsWith('_technical.json'))) {
+    const data = JSON.parse(readFileSync(new URL(file, icons), 'utf8'));
+    for (const kind of ['armor', 'modules', 'crew']) for (const c of data[kind]) shipped.add(c.color);
+  }
+  const untoned = [...shipped].filter((color) => !technicalToneOf(color));
+  assert.deepEqual(untoned, [], 'every colour the shipped sidecars record names a tone');
   const good = { schema: 1, id: 'm1a1', size: [1024, 512], armor: [], modules: [], crew: [] };
   assert.equal(parseTechnicalLabels(good, 'm1a1'), good);
   for (const bad of [null, { ...good, schema: 2 }, { ...good, id: 'leo2a4' }, { ...good, crew: undefined }]) {
@@ -69,4 +94,4 @@ try {
 } finally {
   await setLocale(original);
 }
-console.log('technicalDiagramLabels: en/zh label text from the sidecar values, rails packed inside the band at 360-1920 px, leaders from their callouts, the static markup escaped, malformed sidecars refused PASS');
+console.log('technicalDiagramLabels: en/zh label text from the sidecar values, rails packed inside the band at 360-1920 px, leaders from their callouts, the static markup escaped and colour-free, every tone a token, malformed sidecars refused PASS');

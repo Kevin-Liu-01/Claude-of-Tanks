@@ -1,13 +1,49 @@
 /* The technical diagrams' DOM labels (src/ui/technicalDiagramLabels.ts mountTechnicalDiagramLabels builds the markup):
    the callout chips on their rails, the leader lines, the header and the legend over a 2:1 diagram image. Every value
-   reads a token; the inline values are custom properties only: each callout's and swatch's tone (--tdl-tone), each
-   chip's place (--tdl-x, --tdl-y) and the image's content box (--tdl-box-*). The sheet
+   reads a token. A callout's or swatch's tone is its data-tone, mapped below to the diagrams' tone token (tokens.json
+   component.surface-diagram, imported here; the inspection overlay's palette) as --tdl-tone; the inline values are custom properties only:
+   each chip's place (--tdl-x, --tdl-y) and the image's content box (--tdl-box-*). The sheet
    declares into the components layer, so a surface restyles it without !important (src/ui/styleLayers.ts).
    First-party: Kevin B. Liu (NOTICE.md). */
+/* the tokens only the technical diagrams read (tokens.json surface-diagram) */
+@import url('./tokens/surface-diagram.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer components{
 .cot-tdl{position:absolute;left:var(--tdl-box-x,0);top:var(--tdl-box-y,0);width:var(--tdl-box-w,100%);height:var(--tdl-box-h,100%);
-  pointer-events:none;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data)}
+  pointer-events:none;color:var(--ink-1);--tdl-tone:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data)}
+/* the tones (a sidecar colour no tone has keeps the ink default) */
+.cot-tdl [data-tone='armor-ke-0']{--tdl-tone:var(--diagram-armor-ke-0)}
+.cot-tdl [data-tone='armor-ke-1']{--tdl-tone:var(--diagram-armor-ke-1)}
+.cot-tdl [data-tone='armor-ke-2']{--tdl-tone:var(--diagram-armor-ke-2)}
+.cot-tdl [data-tone='armor-ke-3']{--tdl-tone:var(--diagram-armor-ke-3)}
+.cot-tdl [data-tone='armor-ke-4']{--tdl-tone:var(--diagram-armor-ke-4)}
+.cot-tdl [data-tone='armor-era']{--tdl-tone:var(--diagram-armor-era)}
+.cot-tdl [data-tone='armor-spaced']{--tdl-tone:var(--diagram-armor-spaced)}
+.cot-tdl [data-tone='armor-external']{--tdl-tone:var(--diagram-armor-external)}
+.cot-tdl [data-tone='module-engine']{--tdl-tone:var(--diagram-module-engine)}
+.cot-tdl [data-tone='module-fuel-tank']{--tdl-tone:var(--diagram-module-fuel-tank)}
+.cot-tdl [data-tone='module-ammo-rack']{--tdl-tone:var(--diagram-module-ammo-rack)}
+.cot-tdl [data-tone='module-roof-gun']{--tdl-tone:var(--diagram-module-roof-gun)}
+.cot-tdl [data-tone='module-missile-rack']{--tdl-tone:var(--diagram-module-missile-rack)}
+.cot-tdl [data-tone='module-autoloader']{--tdl-tone:var(--diagram-module-autoloader)}
+.cot-tdl [data-tone='module-feed-system']{--tdl-tone:var(--diagram-module-feed-system)}
+.cot-tdl [data-tone='module-turret-ring']{--tdl-tone:var(--diagram-module-turret-ring)}
+.cot-tdl [data-tone='module-gun-mount']{--tdl-tone:var(--diagram-module-gun-mount)}
+.cot-tdl [data-tone='module-radio']{--tdl-tone:var(--diagram-module-radio)}
+.cot-tdl [data-tone='module-optics']{--tdl-tone:var(--diagram-module-optics)}
+.cot-tdl [data-tone='module-gun']{--tdl-tone:var(--diagram-module-gun)}
+.cot-tdl [data-tone='module-transmission']{--tdl-tone:var(--diagram-module-transmission)}
+.cot-tdl [data-tone='module-drivetrain']{--tdl-tone:var(--diagram-module-drivetrain)}
+.cot-tdl [data-tone='crew-driver']{--tdl-tone:var(--diagram-crew-driver)}
+.cot-tdl [data-tone='crew-gunner']{--tdl-tone:var(--diagram-crew-gunner)}
+.cot-tdl [data-tone='crew-commander']{--tdl-tone:var(--diagram-crew-commander)}
+.cot-tdl [data-tone='crew-loader']{--tdl-tone:var(--diagram-crew-loader)}
+.cot-tdl [data-tone='crew-radio-operator']{--tdl-tone:var(--diagram-crew-radio-operator)}
+.cot-tdl [data-tone='crew-assistant-driver']{--tdl-tone:var(--diagram-crew-assistant-driver)}
+.cot-tdl [data-tone='crew-assistant-loader']{--tdl-tone:var(--diagram-crew-assistant-loader)}
+.cot-tdl [data-tone='crew-weapon-operator-left']{--tdl-tone:var(--diagram-crew-weapon-operator-left)}
+.cot-tdl [data-tone='crew-weapon-operator-right']{--tdl-tone:var(--diagram-crew-weapon-operator-right)}
+.cot-tdl [data-tone='crew-other']{--tdl-tone:var(--diagram-crew-other)}
 .cot-tdl-leaders{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .cot-tdl-leader{color:var(--tdl-tone);fill:none;stroke:currentColor;stroke-width:1}
 .cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}

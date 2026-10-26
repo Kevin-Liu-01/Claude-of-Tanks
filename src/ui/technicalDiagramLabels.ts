@@ -7,7 +7,7 @@
 // mountTechnicalDiagramLabels touches the DOM.
 // First-party: Kevin B. Liu (NOTICE.md).
 import { formatNumber, onLocaleChange, t } from './i18n.ts';
-import { TECHNICAL_LEGENDS, type TechnicalKind } from './technicalDiagramLegend.ts';
+import { TECHNICAL_LEGENDS, technicalToneOf, type TechnicalKind } from './technicalDiagramLegend.ts';
 
 export { TECHNICAL_LEGENDS, type TechnicalKind };
 
@@ -199,15 +199,16 @@ export function technicalLabelsMarkup(
   const { width, height } = reference;
   const rows = layoutTechnicalCallouts(data[kind], kind, reference, { rowPx, ...(legend ? { bottom: height - 2.5 * rowPx } : {}) });
   const pct = (value: number, of: number): string => `${(100 * value / of).toFixed(2)}%`;
-  const tone = (color: string): string => `--tdl-tone:${escapeHtml(color)}`;
-  const lines = rows.map((row) => `<polyline class="cot-tdl-leader" style="${tone(row.callout.color)}" vector-effect="non-scaling-stroke" points="${
+  // each callout's tone is a token the stylesheet maps (data-tone), never a colour written into the page
+  const tone = (name: string | null): string => (name ? ` data-tone="${escapeHtml(name)}"` : '');
+  const lines = rows.map((row) => `<polyline class="cot-tdl-leader"${tone(technicalToneOf(row.callout.color))} vector-effect="non-scaling-stroke" points="${
     row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/>`).join('');
-  const dots = rows.map((row) => `<span class="cot-tdl-pin" style="${tone(row.callout.color)};--tdl-x:${pct(row.leader[0]![0], width)};--tdl-y:${
+  const dots = rows.map((row) => `<span class="cot-tdl-pin"${tone(technicalToneOf(row.callout.color))} style="--tdl-x:${pct(row.leader[0]![0], width)};--tdl-y:${
     pct(row.leader[0]![1], height)}"></span>`).join('');
-  const chips = rows.map((row) => `<span class="cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}" style="${tone(row.callout.color)};--tdl-x:${
+  const chips = rows.map((row) => `<span class="cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}"${tone(technicalToneOf(row.callout.color))} style="--tdl-x:${
     pct(row.edgeX, width)};--tdl-y:${pct(row.y, height)}">${escapeHtml(row.text)}</span>`).join('');
-  const legendRow = legend ? `<div class="cot-tdl-legend">${TECHNICAL_LEGENDS[kind].map(([key, color]) =>
-    `<span><i class="cot-tdl-swatch" style="${tone(color)}"></i>${escapeHtml(t(key))}</span>`).join('')}</div>` : '';
+  const legendRow = legend ? `<div class="cot-tdl-legend">${TECHNICAL_LEGENDS[kind].map(([key, name]) =>
+    `<span><i class="cot-tdl-swatch"${tone(name)}></i>${escapeHtml(t(key))}</span>`).join('')}</div>` : '';
   return `<div class="cot-tdl" aria-hidden="true"><svg class="cot-tdl-leaders" xmlns="${SVG}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${
     lines}</svg>${dots}${chips}${legendRow}</div>`;
 }
@@ -239,6 +240,10 @@ export function mountTechnicalDiagramLabels(
   root.className = 'cot-tdl';
   root.setAttribute('aria-hidden', 'true');
   host.append(root);
+  const setTone = (element: Element, color: string): void => {
+    const tone = technicalToneOf(color);
+    if (tone) element.setAttribute('data-tone', tone);
+  };
   const place = (element: HTMLElement | SVGElement, x: number, y: number): void => {
     element.style.setProperty('--tdl-x', `${x.toFixed(1)}px`);
     element.style.setProperty('--tdl-y', `${y.toFixed(1)}px`);
@@ -279,11 +284,11 @@ export function mountTechnicalDiagramLabels(
     if (showLegend) {
       const legend = doc.createElement('div');
       legend.className = 'cot-tdl-legend';
-      for (const [key, color] of TECHNICAL_LEGENDS[kind]) {
+      for (const [key, tone] of TECHNICAL_LEGENDS[kind]) {
         const item = doc.createElement('span');
         const swatch = doc.createElement('i');
         swatch.className = 'cot-tdl-swatch';
-        swatch.style.setProperty('--tdl-tone', color);
+        swatch.setAttribute('data-tone', tone);
         item.append(swatch, doc.createTextNode(t(key)));
         legend.append(item);
       }
@@ -298,13 +303,13 @@ export function mountTechnicalDiagramLabels(
       const line = doc.createElementNS(SVG, 'polyline');
       line.setAttribute('class', 'cot-tdl-leader');
       line.setAttribute('points', row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
-      line.style.setProperty('--tdl-tone', row.callout.color);
+      setTone(line, row.callout.color);
       const dot = doc.createElementNS(SVG, 'circle');
       dot.setAttribute('class', 'cot-tdl-dot');
       dot.setAttribute('cx', row.leader[0]![0].toFixed(1));
       dot.setAttribute('cy', row.leader[0]![1].toFixed(1));
       dot.setAttribute('r', '2');
-      dot.style.setProperty('--tdl-tone', row.callout.color);
+      setTone(dot, row.callout.color);
       svg.append(line, dot);
     }
     root.prepend(svg);
@@ -312,7 +317,7 @@ export function mountTechnicalDiagramLabels(
       const chip = doc.createElement('span');
       chip.className = `cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}`;
       place(chip, row.edgeX, row.y);
-      chip.style.setProperty('--tdl-tone', row.callout.color);
+      setTone(chip, row.callout.color);
       chip.textContent = row.text;
       root.append(chip);
     }
