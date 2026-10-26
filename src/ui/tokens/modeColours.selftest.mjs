@@ -82,9 +82,9 @@ assert.deepEqual(leaks.map((path) => relative(ROOT, join(ROOT, path))), [], 'mod
 // 5. the registered call sites paint the mode's hue
 const SITES = [
   ['src/ui/playMenu.ts', 'glyph: rule.icon as IconId, tone: rule.id,', "Rooms' mode cards carry their mode"],
-  ['src/ui/components/components.css', '.cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "a picker card's glyph paints its mode"],
+  ['src/ui/components/pickers.css', '.cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "a picker card's glyph paints its mode"],
   ['src/ui/modePicker.ts', 'if (next?.tone) glyph.dataset.modeTone = next.tone;', "the mode picker's rules card carries its mode"],
-  ['src/ui/components/components.css', '.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}', "the rules card's glyph paints the mode"],
+  ['src/ui/components/pickers.css', '.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}', "the rules card's glyph paints the mode"],
   ['src/ui/playMenu.ts', 'modeGlyph.dataset.modeTone = selectedGameMode;', "Rooms' Mode trigger carries its mode"],
   ['src/ui/playMenu.ts', '.cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "Rooms' Mode trigger glyph paints the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],

@@ -151,9 +151,10 @@ assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
 // stays out of the boot script.
 // The kit's sheets: components.css (every page that uses the kit), figures.css (the stat chips, stat tiles, empty states
-// and swatches the data surfaces draw) and notices.css (the notifications), each tokens-only in the components layer.
+// and swatches the data surfaces draw), notices.css (the notifications) and pickers.css (the picker and its consumers:
+// the game's alone, so the landing, the docs and the 404 never load it), each tokens-only in the components layer.
 const tokensCss = readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8');
-for (const file of ['./components.css', './figures.css', './notices.css']) {
+for (const file of ['./components.css', './figures.css', './notices.css', './pickers.css']) {
   const sheet = readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
     `${file} declares into the components layer, below every surface`);
@@ -170,8 +171,11 @@ for (const file of ['./components.css', './figures.css', './notices.css']) {
   }
 }
 const mainSource = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
-assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';/,
-  'the game imports the three sheets');
+assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';\nimport '\.\/ui\/components\/pickers\.css';/,
+  'the game imports the four sheets');
+for (const page of ['../../presentation/home.css', '../../presentation/notFound.css', '../../docs/docs.css']) {
+  assert.doesNotMatch(readFileSync(new URL(page, import.meta.url), 'utf8'), /pickers\.css/, `${page} carries no picker`);
+}
 for (const page of ['../../gallery/gallery.css', '../../docs/docs.css']) {
   assert.match(readFileSync(new URL(page, import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/notices\.css'\);/, `${page} imports the notifications`);
 }
@@ -233,4 +237,4 @@ assert.match(keycap('↑'), /data-icon="moveForward"/, 'the up arrow key draws t
 assert.doesNotMatch(keycap('→'), /→/, 'no typed arrow in a key cap');
 assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
 
-console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); three tokens-only sheets in the components layer');
+console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); four tokens-only sheets in the components layer');
