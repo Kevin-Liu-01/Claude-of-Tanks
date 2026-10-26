@@ -696,6 +696,34 @@ function watchMaskSourceLifetime(root: THREE.Object3D): MaskSourceLifetime {
   };
 }
 
+/**
+ * (battle-spikes-253) Start linking the mask passes' coverage programs for this tank now, against the mask's own target and
+ * a light-less scene, as a mask pass compiles them (compileMaskPass) — nothing is drawn or waited for. A covered entry
+ * calls it when its warm starts, so the player panel's stage finds the programs linked: on a loaded multiplayer guest the
+ * links outlasted the mask wait's 2 s stall when they began at that stage (top_mask_program_timeout, "still linking at
+ * reveal"; nav-perf's rooms census). Its stand-ins are the ones the clone's passes take (shared by three's program key).
+ */
+export function warmTopMaskPrograms(root: THREE.Object3D | null | undefined): boolean {
+  const renderer = maskEngineCtx?.renderer;
+  if (!renderer || !root) return false;
+  const { target } = ensureMaskRenderResources('hull');
+  const previousTarget = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  const visible = root.visible;
+  const restoreMaterials = applyTopMaskCoverage(root);
+  try {
+    root.visible = true;
+    renderer.setRenderTarget(target);
+    renderer.compile(root, new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100), new THREE.Scene());
+    return true;
+  } catch {
+    return false; // the panel's own stage compiles them
+  } finally {
+    renderer.setRenderTarget(previousTarget, face, mip);
+    root.visible = visible;
+    restoreMaterials();
+  }
+}
+
 function ensureMaskRenderResources(layer: 'hull' | 'turret'): MaskRenderResources {
   if (!maskRT) {
     maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {

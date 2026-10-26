@@ -304,7 +304,7 @@ function mapFixture(fine, fail = false) {
     async buildTerrainMeshesAsync(actual) { assert.equal(actual, field); events.push('terrain'); return { userData: {} }; },
     async createVegetationAsync(actual) { assert.equal(actual, field); events.push('vegetation'); return {}; },
     async createPropsAsync(actual) { assert.equal(actual, field); events.push('props'); return {}; },
-    assembleWorld(_engine, _config, actual) { assert.equal(actual, field); events.push('assembled'); return {}; },
+    async assembleWorldPaced(_engine, _config, actual) { assert.equal(actual, field); events.push('assembled'); return {}; },
     // (2026-10-07, the time-to-battle lane) the planned wreck bakes and fixed-input prints the wrapper starts beside the
     // terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts): none here
     startPlannedWreckBakes: () => null, startSurfacePaints: () => null, plannedSurfacePaints: () => [],

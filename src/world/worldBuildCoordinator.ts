@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import {
-  createFrameBudgetYielder,
   createOpaqueLoadingYielder,
+  type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
   disposeObject3DResources,
@@ -138,6 +138,15 @@ function isMaterial(resource: DisposableResource): resource is THREE.Material {
     && resource !== null
     && 'isMaterial' in resource
     && resource.isMaterial === true;
+}
+
+/** The background yielder (engine/backgroundYield.ts), its module loaded with the build's first background slice. */
+function lazyBackgroundYielder(): WorkYielder {
+  let yielder: WorkYielder | null = null;
+  return async (force = false) => {
+    yielder ??= (await import('../engine/backgroundYield.ts')).createBackgroundYielder(4);
+    return yielder(force);
+  };
 }
 
 /**
@@ -277,7 +286,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         // slices; individual construction checkpoints can still overrun either budget.
         ?? createOpaqueLoadingYielder(6, 16);
       const yieldBackground = dependencies.backgroundYielder?.()
-        ?? createFrameBudgetYielder(4);
+        // (battle-spikes-253) behind the live Garage: 4 ms slices that wait out a press until its paint and resume as
+        // background-priority tasks between frames (engine/backgroundYield.ts, loaded with the first background slice)
+        ?? lazyBackgroundYielder();
 
       const throwIfCancelled = (): void => {
         if (!created.cancelled) return;

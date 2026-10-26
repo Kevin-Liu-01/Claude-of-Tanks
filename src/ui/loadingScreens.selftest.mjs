@@ -101,6 +101,11 @@ assert.match(bootSource, /if \(root && !bootGateSkipped\(\)\)/,
   'auto-skipped cold-load probes must not fetch decorative splash imagery');
 assert.doesNotMatch(bootHtml, /#cot-boot::after/,
   'the first-paint boot surface must not restore the requested-removed grid');
+// a stop notice's glyph by the kit's severity: the alert for offline and failure, the clock for slow. Its CSS shows the
+// first or the second, so a third glyph would show beside one of them (253's integration note)
+const bootAlert = bootHtml.match(/<span class="cot-boot-alert" aria-hidden="true">([\s\S]*?)<\/span>/)?.[1] ?? '';
+assert.equal((bootAlert.match(/<svg /g) || []).length, 2, 'the boot stop notice holds exactly its alert and clock glyphs');
+assert.match(bootHtml, /#cot-boot\[data-stop='slow'\] \.cot-boot-alert svg \+ svg \{ display: inline-block; \}/, 'the slow stop shows the clock');
 assert.match(bootHtml,
   /id="cot-boot" class="cot-boot-enter" data-entrance-state="playing"/,
   'boot chrome must start its one-shot entrance in the inline first paint');

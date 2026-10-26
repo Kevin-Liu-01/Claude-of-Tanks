@@ -69,6 +69,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
+  'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),

@@ -795,6 +795,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
     'tools/battle-spike-budget.selftest.mjs', // battle-spikes-253: the spike-budget receipt's judge and the shipped budget
     'tools/battle-memory-probe.selftest.mjs', // battle-spikes-253: the memory receipt's growth across battles and its judge
+    'tools/heap-retainers.selftest.mjs', // battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot
     'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
@@ -981,6 +982,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanelWreckPose.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
+    'src/ui/topMaskEntryKick.selftest.mjs', // battle-spikes-253: the panel's mask programs link from the covered warm's start
     'src/ui/tankThumbs.selftest.mjs',
     'src/ui/topMaskCoverage.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
@@ -1399,7 +1401,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
+    'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/syncCrypto.selftest.mjs',
+    'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
@@ -1473,6 +1478,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/matchActorPause.selftest.mjs', // step 5: a solo match's pause, its unpaused twin's state
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
@@ -1936,6 +1942,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/plasterBaseMemo.selftest.mjs', // 2026-10-08: the render families paint one untoned base per build
     'src/world/nearMeshVertexMemo.selftest.mjs', // 2026-10-08: the near mesh's vertex heights asked once per props build
     'src/world/propsScheduling.selftest.mjs',
+    'src/world/worldAssemblySteps.selftest.mjs', // battle-spikes-253: the world's assembly paced in steps, the seal per grass mesh
+    'src/world/worldBuildLazyKits.selftest.mjs', // battle-spikes-253: a page's world build under lazy kits through the prefetch path
+    'src/world/footprintPointIndex.selftest.mjs', // battle-spikes-253: the binned footprint query answers as the scan
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round

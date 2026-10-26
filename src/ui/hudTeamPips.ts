@@ -34,7 +34,7 @@ const chipStyle: CanvasTextStyle = {
 const chipFonts = new Map<number, string>();
 
 const CSS = `
-.cot-pips{position:absolute;z-index:var(--hud-layer-score);left:50%;top:var(--hud-pips-top,82px);transform:translateX(-50%);
+.cot-pips{position:absolute;z-index:var(--hud-layer-score);left:var(--hud-pips-left,50%);top:var(--hud-pips-top,82px);transform:translateX(var(--hud-pips-shift,-50%));
   display:none;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
 /* (the strip holds the zone chips alone, the pips riding the score plate: it shows at every size, its chips smaller where
    the top is not wide, hung under the objective there (battleHudLayout.ts): gauntlet r3 found zone state on the map's

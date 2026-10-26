@@ -180,21 +180,6 @@
   "public/docs/phone/inpMs": {
    "value": 176,
    "owner": "premiere-site"
-  },
-  "bundle/game/any/brotliBytes": {
-   "value": 1073131,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 254: the riding-parts trigger in fleetFactory (253's ruling, relabelled) and stage 2b pass 1, the decor worker's plan/attach split and planner; measured against main 253 built the same way (85baffe121 vs c43292400e, both local after npm ci): +477 B game br, +477 B cn br, +526 B Gallery br, -26 B entry br; pinned as main 253's release pins plus those deltas"
-  },
-  "bundle/cn/any/brotliBytes": {
-   "value": 1116260,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 254: the riding-parts trigger in fleetFactory (253's ruling, relabelled) and stage 2b pass 1, the decor worker's plan/attach split and planner; measured against main 253 built the same way (85baffe121 vs c43292400e, both local after npm ci): +477 B game br, +477 B cn br, +526 B Gallery br, -26 B entry br; pinned as main 253's release pins plus those deltas"
-  },
-  "bundle/gallery/any/brotliBytes": {
-   "value": 665916,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 254: the riding-parts trigger in fleetFactory (253's ruling, relabelled) and stage 2b pass 1, the decor worker's plan/attach split and planner; measured against main 253 built the same way (85baffe121 vs c43292400e, both local after npm ci): +477 B game br, +477 B cn br, +526 B Gallery br, -26 B entry br; pinned as main 253's release pins plus those deltas"
   }
  }
 }

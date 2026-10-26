@@ -49,7 +49,7 @@ assert.doesNotMatch(css, /::(?:before|after)\{[^}]*height:(?:12|15|16)px/, 'no d
 assert.deepEqual(viewportQueryViolations(css, 'gallery.css'), [],
   'Gallery layout keeps the one viewport contract (the bands of responsiveLayout.ts) as media queries');
 // Short landscape viewports keep the shell inside the visual viewport below the shorter navigation.
-assert.match(css, /@media \(\(height < 520px\) or \(width < 900px\) or \(\(width < 1440px\) and \(\(pointer: coarse\) or \(hover: none\)\)\)\)\{\s*\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - 56px\)\}/);
+assert.match(css, /@media \(\(height < 520px\) or \(width < 900px\) or \(\(width < 1440px\) and \(\(pointer: coarse\) or \(hover: none\)\)\)\)\{\s*\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - var\(--shell-nav-h\)\)\}/);
 
 console.log('modeDockLayout.selftest: three panes, the direction page\'s structure, the stage plates in its places, layer names kept '
   + 'as accessible names, the scrolling and stacked layouts on the responsiveLayout bands pass');
