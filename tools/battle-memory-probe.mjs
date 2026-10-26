@@ -14,7 +14,7 @@
 // worlds are alive (current, cached, or LEAKED); --retainers (implies it) prints a leaked world's shortest strong
 // retainer paths from a heap snapshot parsed as it streams (tools/heap-retainers.mjs).
 // --gate judges the returns against tools/battle-memory-budget.json: the growth from the first return to the last, a
-// battle, and the peak.
+// battle, the peak, and (with --leak-check) the released worlds still alive.
 //
 //   node tools/battle-memory-probe.mjs [--scenarios=urban:zone_control] [--size=14] [--battles=3] [--seconds=30]
 //        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--leak-check] [--retainers] [--gate] [--viewport=1920x1080] [--preset=high]
@@ -409,6 +409,10 @@ export function judgeMemory(record, budget) {
     jsHeapGrowthPerBattleMB: g.jsHeapMB?.perBattle, nodesGrowthPerBattle: g.nodes?.perBattle, listenersGrowthPerBattle: g.listeners?.perBattle,
     texturesGrowthPerBattle: g.textures?.perBattle, geometriesGrowthPerBattle: g.geometries?.perBattle, rssGrowthPerBattleMB: g.rssMB?.perBattle,
     peakRssMB: record.peakRss?.total,
+    // (--leak-check) the most worlds alive after a return that are neither the current nor a cached one (released, held)
+    leakedWorlds: (record.returns ?? []).some((row) => row.worldsAlive)
+      ? Math.max(0, ...(record.returns ?? []).map((row) => (row.worldsAlive ?? []).filter((w) => w.alive && !w.current && !w.cached).length))
+      : undefined,
   };
   return Object.entries(budget.limits ?? {}).map(([name, limit]) => {
     const value = readings[name];
