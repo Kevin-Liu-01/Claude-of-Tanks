@@ -211,7 +211,8 @@ function parseBases() {
 const PROBE = `(() => {
   if (window.__navProbe) return;
   Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
-  const probe = window.__navProbe = { shifts: [], contentAt: null, readyAt: null, inputAt: null, spec: window.__navSpec || null, lcp: null };
+  const probe = window.__navProbe = { shifts: [], contentAt: null, readyAt: null, inputAt: null, spec: window.__navSpec || null, lcp: null,
+    longtasks: [], interactions: [] };
   // A prerendered page (tools/viteSpeculationRules.ts) was built before the click and shown at its activation; the probe
   // reaches it only once it is shown (late), and its content counts from the activation.
   const navigation = performance.getEntriesByType('navigation')[0];
@@ -233,6 +234,12 @@ const PROBE = `(() => {
       .observe({ type: 'largest-contentful-paint', buffered: true });
     new PerformanceObserver((list) => { for (const e of list.getEntries()) if (e.name === 'first-contentful-paint') probe.fcp = performance.timeOrigin + e.startTime; })
       .observe({ type: 'paint', buffered: true });
+    // (UI-LOCKDOWN E) the long tasks (total blocking time) and the interactions (INP) of the document
+    new PerformanceObserver((list) => { for (const e of list.getEntries()) probe.longtasks.push({ at: performance.timeOrigin + e.startTime, duration: e.duration }); })
+      .observe({ type: 'longtask', buffered: true });
+    new PerformanceObserver((list) => { for (const e of list.getEntries()) if (e.interactionId) probe.interactions.push({
+      at: performance.timeOrigin + e.startTime, duration: e.duration, id: e.interactionId, name: e.name }); })
+      .observe({ type: 'event', durationThreshold: 16, buffered: true });
   } catch (_) {}
   const check = (source) => { try { return Boolean((0, eval)(source)); } catch (_) { return false; } };
   const tick = () => {
@@ -356,7 +363,8 @@ async function startTrace(page) {
   return stop;
 }
 
-async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
+async function recordStep({ page, helper, step, ctx, profile, stem, outDir, group = null }) {
+  const consoleFrom = page.__consoleLog?.length ?? 0;
   const spec = { content: step.content, ready: step.ready || null };
   const specScript = await page.evaluateOnNewDocument((value) => { window.__navSpec = value; }, spec);
   if (step.act.before) await step.act.before(page, ctx).catch(() => {});
@@ -414,8 +422,9 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     await new Promise((r) => setTimeout(r, 150));
   }
   const final = await page.evaluate(() => ({ shifts: window.__navProbe?.shifts || [], lcp: window.__navProbe?.lcp ?? null,
-    fcp: window.__navProbe?.fcp ?? null, activation: window.__navProbe?.activation ?? null, path: location.pathname + location.search }))
-    .catch(() => ({ shifts: [], lcp: null, fcp: null, activation: null, path: null }));
+    fcp: window.__navProbe?.fcp ?? null, activation: window.__navProbe?.activation ?? null, path: location.pathname + location.search,
+    longtasks: window.__navProbe?.longtasks || [], interactions: window.__navProbe?.interactions || [] }))
+    .catch(() => ({ shifts: [], lcp: null, fcp: null, activation: null, path: null, longtasks: [], interactions: [] }));
   // An activated prerender painted before it was shown: a visitor sees its paints and shifts from the activation on.
   if (final.activation) {
     final.shifts = final.shifts.filter((entry) => entry.at >= final.activation);
@@ -464,13 +473,21 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   const result = {
     // `blocked`: how long the old view stayed up. A new document's first contentful paint ends it (the trace's frames
     // can trail the compositor by a second under load); within a document, the first frame that changed.
-    step: step.id, path: final.path, error, prerendered: !!final.activation || lateProbe, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
+    step: step.id, group, path: final.path, error, prerendered: !!final.activation || lateProbe, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
     response, content, ready, settled,
     fcp: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : null,
     lcp: final.lcp && final.lcp > clickAt ? Math.round(final.lcp - clickAt) : null,
     cls: Number(cls.toFixed(4)), shift: Number(shift.toFixed(4)),
+    // total blocking time: each long task's time past 50 ms, from the first contentful paint (or the press, within a
+    // document) on; inp: the step's slowest interaction (the input to the next paint)
+    tbt: Math.round(final.longtasks.filter((t) => t.at >= (final.fcp && final.fcp > clickAt ? final.fcp : clickAt))
+      .reduce((sum, t) => sum + Math.max(0, t.duration - 50), 0)),
+    longTasks: final.longtasks.filter((t) => t.at >= clickAt - 5).length,
+    inp: final.interactions.filter((e) => e.at >= clickAt - 5).reduce((worst, e) => Math.max(worst, Math.round(e.duration)), 0) || null,
     shifts: after.map((s) => ({ t: Math.round(s.at - clickAt), value: Number(s.value.toFixed(4)), recent: s.recent, sources: s.sources })),
     abrupt, frames: shots.length, wallMs: Date.now() - wallStart,
+    consoleErrors: (page.__consoleLog ?? []).slice(consoleFrom).filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
+    consoleWarnings: (page.__consoleLog ?? []).slice(consoleFrom).filter((m) => m.type === 'warn').map((m) => m.text).slice(0, 8),
   };
   const end = Math.max(1000, (settled ?? 3000) + 1000, (result.blocked ?? 0) + 1000);
   // A new document's content counts once it has painted: the strip marks it no earlier than the first paint.
@@ -509,8 +526,8 @@ async function runJourney({ page, helper, journey, profile, profileName, cacheNa
   for (const step of journey.steps) {
     if (over()) break;
     const stem = `${step.id}.${profileName}.${cacheName}`;
-    const result = await recordStep({ page, helper, step, ctx, profile, stem, outDir })
-      .catch((error) => ({ step: step.id, error: String(error?.message || error).split('\n')[0] }));
+    const result = await recordStep({ page, helper, step, ctx, profile, stem, outDir, group: journey.group })
+      .catch((error) => ({ step: step.id, group: journey.group, error: String(error?.message || error).split('\n')[0] }));
     results.push(result);
     console.log(`${outDir.split('/').at(-1).padEnd(6)} ${step.id.padEnd(22)} ${profileName.padEnd(7)} ${cacheName.padEnd(4)} `
       + `response ${String(result.response ?? '-').padStart(6)}  content ${String(result.content ?? '-').padStart(6)}  `
@@ -625,6 +642,20 @@ async function main() {
           try {
             const page = await context.newPage();
             page.setDefaultTimeout(180000);
+            // (UI-LOCKDOWN E) the console census: every error and warning a step's documents log; Chrome's notice that
+            // it ignores COOP on a plain-http origin is the preview's (the deployment is https)
+            page.__consoleLog = [];
+            page.on('console', (message) => {
+              const type = message.type();
+              // a document's own status is its step's, not a console error: the 404 page answers 404 by design
+              const documentStatus = /^Failed to load resource/.test(message.text())
+                && message.location()?.url === page.mainFrame().url();
+              if ((type === 'error' || type === 'warn') && !documentStatus
+                && !/Cross-Origin-Opener-Policy header has been ignored/.test(message.text())) {
+                page.__consoleLog.push({ type, text: message.text().slice(0, 240) });
+              }
+            });
+            page.on('pageerror', (error) => { page.__consoleLog.push({ type: 'error', text: `pageerror: ${String(error?.message || error).split('\n')[0]}`.slice(0, 240) }); });
             await page.evaluateOnNewDocument(PROBE);
             await applyProfile(page, profile);
             for (const cacheName of caches) {

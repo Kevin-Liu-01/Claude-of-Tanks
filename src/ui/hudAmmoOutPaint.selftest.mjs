@@ -292,6 +292,19 @@ function readReticle(ops) {
     dryCount: ops.filter((op) => op.op === 'fillText' && op.style === INK.dry).map((op) => op.text.trim()),
   };
 }
+/** (UI-LOCKDOWN A) the sight's words and figures are DOM runs over it (canvasText.ts): a repaint's runs join its ops as the
+ *  fillText ops the canvas drew, each with the box this context gives a fillText at the same anchor (a reused frame
+ *  repainted nothing and adds none). */
+function sightTextOps(ops) {
+  if (!ops.length) return;
+  for (const run of hud.sightText.placed()) {
+    const width = run.text.length * 7;
+    const size = Number(/(\d+(?:\.\d+)?)px/.exec(run.font)?.[1] || 10);
+    const x0 = run.align === 'center' ? run.x - width / 2 : run.align === 'right' || run.align === 'end' ? run.x - width : run.x;
+    ops.push({ op: 'fillText', text: run.text, style: run.color, x: run.x, y: run.y,
+      box: { x0, y0: run.y - size * 0.74, x1: x0 + width, y1: run.y + size * 0.08 } });
+  }
+}
 /** One battle frame: the aim controller composes, the HUD updates and paints. */
 function frame(tank, { advance = 0, mode = 'battle' } = {}) {
   current = tank;
@@ -301,6 +314,7 @@ function frame(tank, { advance = 0, mode = 'battle' } = {}) {
   timeS += DT;
   hud.update({ timeS, mode, player: tank, tanks: [tank], spotting: { isSpotted: () => true }, aim, camera,
     auxiliaryKeyLabels: { missile: 'E' } });
+  sightTextOps(ctx.ops);
   const view = readReticle(ctx.ops);
   view.trayCooldown = traySlots[aim.shellSlot].querySelector('.cool').style.height;
   view.trayEmpty = traySlots[aim.shellSlot].classes.has('empty');

@@ -246,7 +246,9 @@ const SETTINGS_CSS = `
   transition:color var(--dur-fast) var(--ease-enter);}
 .cot-set-tab:hover{color:var(--ink-2);}
 .cot-set-tab.sel{color:var(--ink-1);}
-.cot-set-tab.sel::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+/* the underline is the label's: a tab's box may be wider (the touch floor) and its label keeps the gutter */
+.cot-set-tab>span{position:relative;align-self:stretch;display:flex;align-items:center;}
+.cot-set-tab.sel>span::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
 /* scrolling rows: a thin scrollbar and overflow-gated fade masks (.fade-top/.fade-bot set from the scroll position) */
 .cot-set-body{flex:1;overflow-y:auto;padding:var(--s1) var(--s5) var(--s4);min-height:280px;
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;}
@@ -267,10 +269,9 @@ const SETTINGS_CSS = `
 .cot-set-group:first-child{margin-top:var(--s3);}
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
-  box-shadow:var(--e1);}
-/* the heading's label starts on the rows' inset (at the row glyphs); its (i) button ends at the card's edge, so the
-   glyph centred in it lines up with the controls' edge */
-.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2) 0;}
+  box-shadow:var(--e1-flush);}
+/* the heading sits on the rows' inset: its label starts at the row glyphs and its (i) ends at the controls' edge */
+.cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2);}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
@@ -281,7 +282,8 @@ const SETTINGS_CSS = `
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
 /* a setting's glyph: one grey, the accent only on a shell slot's number */
-.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;color:var(--ink-3);}
+/* a row's glyph starts on its box's edge, so the glyph, the heading's label and the control under it share one edge */
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--ink-3);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
 .cot-setting-label-text{min-width:0;}
 /* the rows in a conflict: the notice's warning tone, no stripe */
@@ -289,12 +291,12 @@ const SETTINGS_CSS = `
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
-.cot-set-colhdr span{width:calc(92px * var(--cot-type-scale,1));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
+.cot-set-colhdr span{width:max(92px,calc(92px * var(--cot-type-scale,1)));text-align:center;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-set-colhdr span.act{width:auto;flex:1;padding-left:calc(24px + var(--s2));text-align:left;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
-.cot-chip{width:calc(92px * var(--cot-type-scale,1));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
+.cot-chip{width:max(92px,calc(92px * var(--cot-type-scale,1)));height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
@@ -314,7 +316,7 @@ const SETTINGS_CSS = `
 .cot-set-conflict.show{display:flex;}
 .cot-set-conflict b{color:var(--text-warn);font-weight:600;}
 /* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
-.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
+.cot-set-ftr{display:flex;align-items:center;justify-content:flex-end;gap:var(--s3);padding:var(--s3) var(--s5);border-top:1px solid var(--line-1);}
 /* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
 .cot-set-btn[hidden]{display:none;}
@@ -334,14 +336,14 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--ink-2);}
 .cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
   background:var(--ink-1);}
-.cot-set-slider input[type=number]{width:62px;height:36px;padding:0 var(--s2);text-align:right;
+.cot-set-slider input[type=number]{width:72px;height:36px;padding:0 22px 0 var(--s2);text-align:right;
   font:500 max(13px,var(--fs-13))/1 var(--font-data);color:var(--ink-1);background:var(--surface-page);border:0;
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;text-align:end;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
-/* a multiplier has no unit, so its field ends on the controls' edge */
-.cot-set-slider .unit:empty{display:none;}
+/* the unit sits inside its field's end (a multiplier's is empty), so every value field ends on the controls' edge */
+.cot-set-slider .unit{width:20px;margin-left:calc(-1 * (var(--s3) + 20px));pointer-events:none;text-align:start;
+  font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
    (components.css .cot-c-seg) on the panel's own state class; every inline control is 36 px tall */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
@@ -371,16 +373,24 @@ const SETTINGS_CSS = `
 .cot-set-preview{margin:var(--s3) var(--s2) var(--s1);aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
-.cot-set-note{margin:var(--s3) 0 var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
+.cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
-.cot-set-note.keep{text-wrap:balance;}
+.cot-set-note.keep{text-wrap:pretty;}
+:lang(zh-CN) .cot-set-note{word-break:keep-all;overflow-wrap:break-word;}
 .cot-set-note.folded{display:none;}
-.cot-set-body>.cot-set-note{margin-inline:var(--s3);}
+.cot-set-body>.cot-set-note{margin-inline:calc(var(--s3) + var(--s2));}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
 /* a card's notes button: the kit's ghost icon button at the control floor (44 px on touch), bleeding evenly into its
    heading's line so every heading keeps one height */
-.cot-set-info{--h:var(--cot-control-floor,36px);order:2;flex:none;margin-block:calc((1em - var(--h)) / 2);color:var(--ink-3);}
+/* the (i) is its glyph's size on the line (so it ends where the controls end); its hit area reaches the control floor */
+.cot-set-info{--h:16px;order:2;flex:none;margin-block:calc(var(--h) / -2);color:var(--ink-3);}
+/* the touch floors size the (i)'s hit area, never its box: a heading with an (i) is as tall as one without */
+body.cot-touch-layout .cot-settings .cot-set-info.cot-c-btn,body[data-cot-input='coarse'] .cot-settings .cot-set-info.cot-c-btn{min-height:0;}
+.cot-set-info::after{content:'';position:absolute;inset:calc((16px - var(--cot-control-floor,36px)) / 2) calc(-1 * var(--s1));}
+/* touch: the 44 px hit area reaches left and stays inside the heading's end padding (nothing drawn past its box) */
+body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-control-floor,44px)) / 2) calc(-1 * var(--s2))
+  calc((16px - var(--cot-control-floor,44px)) / 2) calc(16px - var(--cot-control-floor,44px) + var(--s2));}
 .cot-set-info svg{width:16px;height:16px;}
 .cot-set-info[aria-expanded='true']{color:var(--accent);}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
@@ -437,7 +447,7 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
-.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s1) var(--s2) var(--s2);padding:var(--s2) var(--s3);
+.cot-a11y-preview{display:flex;align-items:center;gap:var(--s4);margin:var(--s3) var(--s2) var(--s2);padding:var(--s2) var(--s3);
   border-radius:var(--plate-radius);background:var(--surface-page);box-shadow:var(--ring-1);color:var(--ink-1);}
 .cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
 .cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
@@ -452,10 +462,18 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* each custom colour beside its team's shape (a team is shape plus colour) */
 .cot-a11y-shape{font-size:var(--fs-16);line-height:1;}
 .cot-a11y-shape.own{color:var(--team-own);}.cot-a11y-shape.enemy{margin-left:var(--s2);color:var(--team-enemy);}
-.cot-set-refused{margin:var(--s2) var(--s2) 0;}
+/* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
+   label columns */
+.cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
+/* the refusal is the Custom row's inline notice: its glyph on the rows' glyph column, its text on their label column */
+.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 0 var(--s1);}
+/* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
+.cot-set-refused .cot-c-notice__glyph{width:24px;place-items:center start;}
+.cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
+body[data-cot-input='coarse'] .cot-settings .cot-c-btn{min-height:var(--cot-control-floor,44px);}
 body.cot-touch-layout .cot-set-close{width:44px;height:44px;}
 `;
 
@@ -547,12 +565,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
-    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel">${t('settings.tab.controls')}</button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.gameplay')}</button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.sound')}</button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.graphics')}</button>` +
-    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.accessibility')}</button>` +
-    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
+    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.controls')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.gameplay')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.sound')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.graphics')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.accessibility')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.language')}</span></button>` +
     `</div>` +
     // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
     `<div class="cot-set-conflict cot-c-notice"${datumAttr('notices')} data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
@@ -561,7 +579,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button">${t('settings.reset')}</button>` +
     // one close control, the header's (the lead's 250 ruling); Esc and the backdrop close the panel too
     `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--36 cot-c-btn--danger" type="button" hidden>${t('settings.leave')}</button></div>` +
     `</div>`;
@@ -1100,7 +1118,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const iface = groupCard(body, t('settings.interface.title'));
     const hudLayoutRow = el('div', 'cot-set-row', iface);
     settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
-    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36', hudLayoutRow);
+    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
       editHud.disabled = true;
@@ -1480,7 +1498,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
     // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
-    const refused = el('div', 'cot-c-notice cot-set-refused', vision);
+    const refused = el('div', 'cot-c-notice cot-c-notice--inline cot-set-refused', customRow);
     refused.dataset.severity = 'error';
     refused.setAttribute('role', 'alert');
     refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`

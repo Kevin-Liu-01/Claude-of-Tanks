@@ -35,6 +35,8 @@ const ready = (video: HTMLVideoElement): boolean => video.readyState >= HTMLMedi
 export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): HeroReel | null {
   const clips = [...hero.querySelectorAll<HTMLVideoElement>('video[data-reel-clip]')];
   const toggle = hero.querySelector<HTMLButtonElement>('[data-reel-toggle]');
+  // each clip's caption (tools/home-premiere.mjs): the one on screen names its shot; the poster's shows until the first turn
+  const shots = [...hero.querySelectorAll<HTMLElement>('[data-reel-shot]')];
   if (!clips.length || !autoplayAllowed()) return null;
 
   let current = -1;
@@ -95,6 +97,7 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
       if (stopped) return;
       video.style.zIndex = String(++layer);
       video.classList.add('is-on');
+      for (const shot of shots) shot.classList.toggle('is-on', shot.dataset.reelShot === video.dataset.shot);
       current = index;
       if (previous && previous !== video) window.setTimeout(() => { if (clips[current] !== previous) release(previous); }, FADE_MS);
       if (toggle) toggle.hidden = false;

@@ -79,7 +79,8 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   {
     const tank = spec(registry, 'challenger3');
     Object.assign(tank, { hp: 2780, topSpeedKmh: 60, reverseSpeedKmh: 24 });
-    Object.assign(tank.gun, { reloadS: 5.7, baseAccuracy: 0.22, aimTimeS: 1.5 });
+    // 2026-10-25: aim 1.5 -> 1.65 s, inside the modern Tier X fire-control ceiling, still a step over the prototype
+    Object.assign(tank.gun, { reloadS: 5.7, baseAccuracy: 0.22, aimTimeS: 1.65 });
     primary(registry, 'challenger3', { pen100: 900, pen1000: 820, pen2000: 740 });
   }
 
@@ -346,4 +347,30 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
 
   // Last, over every armour scale above: the turret shapes 235 corrected keep their frontal protection.
   for (const [id, factor] of Object.entries(TURRET_FRONT_COMPENSATION)) turretFront(registry, id, factor);
+}
+
+/** Sets a cannon's cadence: the gun's reload and every unguided round's. */
+function cannonReload(registry: TankSpecRegistry, id: string, reloadS: number): void {
+  const gun = spec(registry, id).gun;
+  gun.reloadS = reloadS;
+  for (const round of gun.shells) if (!round.guided) round.reloadS = reloadS;
+}
+
+/**
+ * 2026-10-25 (owner: "properly label next gen vs modern"; taxonomy.ts): the IFVs relabelled modern leave the
+ * next-generation envelope for their modern Tier X peers (balanceAudit.ts). The KF41 Lynx, the CV90 Mk IV and the Type 89
+ * took the Raijū's next-generation cannon package by combat-donor synchronization: they keep its rounds at the modern
+ * IFV cadence, the KF41's 35 mm pierces like the SPz Wotan's, and the Type 89's older 35 mm KDE round and the Borsuk's and
+ * LRMV's 30 mm pierce like the Marder 2's. The CV90 Mk IV concept's 50 mm cycles slower and pierces a little less, still
+ * the modern group's strongest round. Runs after the donor synchronization (fleetRegistration.ts), which would copy the
+ * Raijū's package back, and before the tactical role balance.
+ */
+export function applyModernEraFold(registry: TankSpecRegistry): void {
+  for (const id of ['kf41_lynx', 'cv90_mk4', 'type89']) cannonReload(registry, id, 0.55);
+  cannonReload(registry, 'cv90_mk4_concept', 0.66);
+  primary(registry, 'cv90_mk4_concept', { pen100: 280, pen1000: 258, pen2000: 236 });
+  primary(registry, 'kf41_lynx', { pen100: 210, pen1000: 192, pen2000: 174 });
+  for (const id of ['type89', 'lrmv_lynx', 'borsuk']) primary(registry, id, { pen100: 185, pen1000: 170, pen2000: 155 });
+  // no longer the Raijū's tuning, so no longer its balance peer
+  delete spec(registry, 'type89').balancePeerOf;
 }

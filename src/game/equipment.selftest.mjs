@@ -12,11 +12,12 @@
  * the spotting view/camo tables (sim/spotting.ts).
  */
 import {
-  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
+  EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS,
   sanitizeLoadout, computeEquipMults, applyEquipmentToCombat,
-  defaultLoadoutFor, AI_DEFAULT_LOADOUTS, equipEligible, equipModifiedStats, equipIneligibility, EQUIP_LIMITS,
-  equipmentPicker,
-} from './equipment.ts';
+  defaultLoadoutFor, AI_DEFAULT_LOADOUTS, equipEligible, equipIneligibility, EQUIP_LIMITS,
+} from '../sim/equipmentRules.ts';
+import * as garageEquipment from './equipment.ts';
+const { EQUIP_CATEGORIES, equipModifiedStats, equipmentPicker } = garageEquipment;
 import { matchRulesetFor, rulesetAllowsEquipment, rulesetLoadout } from '../sim/matchRuleset.ts';
 import {
   createCombatState, startReload, tickFire, resolveShellHit,
@@ -341,6 +342,21 @@ console.log('[10] garage stat helper');
       assert(short.length > 0 && short.length <= max, `${item.id}: the ${locale} short "${short}" fits the slot`);
     }
   }
+}
+
+// ----------------------------- one source of truth (2026-10-25, item 253) --
+// the rules live in the DOM-free slice the rooms Worker's rulesets reach; the Garage module re-exports its objects
+{
+  const { readFileSync } = await import('node:fs');
+  for (const name of ['EQUIPMENT_CATALOG', 'EQUIPMENT_BY_ID', 'EQUIP_SLOTS', 'sanitizeLoadout', 'computeEquipMults',
+    'applyEquipmentToCombat', 'defaultLoadoutFor']) {
+    assert(garageEquipment[name] === { EQUIPMENT_CATALOG, EQUIPMENT_BY_ID, EQUIP_SLOTS, sanitizeLoadout, computeEquipMults,
+      applyEquipmentToCombat, defaultLoadoutFor }[name], `game/equipment.ts re-exports the slice's ${name}`);
+  }
+  const rules = readFileSync(new URL('../sim/equipmentRules.ts', import.meta.url), 'utf8');
+  const imports = [...rules.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+  assert(imports.every((spec) => !/\/(game|vehicles)\//.test(spec) && !spec.startsWith('../')),
+    `sim/equipmentRules.ts imports only sim-local modules (${imports.join(', ')})`);
 }
 
 if (failures) {

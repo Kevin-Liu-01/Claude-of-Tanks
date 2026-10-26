@@ -20,6 +20,7 @@ import { tierNumeral } from '../techTree/tiers.ts';
 import { t } from './i18n.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
@@ -168,7 +169,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
    scale set them 10 px at 900x700, gauntlet r4) */
 .cot-bl .rules .cot-c-chip{font-size:max(var(--battle-fs-12),var(--fs-13));}
 .cot-bl .rules .cot-c-chip :is(.kicker,.sv,.v){font-size:inherit;}
-.cot-bl .rules .gi{display:flex;color:var(--accent);}
+.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
@@ -495,7 +496,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<span class="cot-c-chip sides" hidden${datumAttr('team-counts')}><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
     `<span class="cot-c-chip clock" hidden${datumAttr('clock')}><span class="gi">${datumGlyph('clock', 16)}</span><span class="v num"></span></span>` +
     `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
-    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
+    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -577,15 +578,19 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
-  const objCanvas = requiredElement<HTMLCanvasElement>(root, '.map .obj');
-  let objectivesPass = 0;
+  // the objectives over the plan: a uiCanvas the Deploy screen's lazy drawer draws (deployObjectives.ts)
+  const objCanvas = createUiCanvas(requiredElement<HTMLElement>(root, '.map .mp'), 'obj').canvas;
+  objCanvas.setAttribute('aria-hidden', 'true');
+  let objectivesPass = 0, objectivesDrawn = false;
   /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
    *  laid out); a later entry supersedes this one, and an entry without a mode clears them. */
   function drawObjectives(mapId: string | undefined, modeId: string | undefined): void {
     const pass = ++objectivesPass;
-    if (!mapId || !modeId) { objCanvas.getContext?.('2d')?.clearRect(0, 0, objCanvas.width, objCanvas.height); return; }
+    // (an entry without a mode clears the plan through the same drawing: empty, it draws nothing at any box)
+    if ((!mapId || !modeId) && !objectivesDrawn) return;
+    objectivesDrawn = true;
     void import('./deployObjectives.ts').then(({ drawDeployObjectives }) => {
-      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId, modeId); };
+      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId ?? '', modeId ?? ''); };
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw); else draw();
     }, () => { /* the plan stays bare */ });
   }
@@ -798,14 +803,22 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // (the mode's own glyph, as every chip beside it wears one: gauntlet r4)
       const modeGlyph = info.modeId ? GAME_MODE_DEFINITIONS[normalizeGameMode(info.modeId)]?.icon : '';
       modeGlyphEl.innerHTML = modeGlyph ? uiIconSVG(modeGlyph, 16) : '';
+      // (the glyph in the mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+      const modeChip = modeGlyphEl.parentElement;
+      if (modeChip && info.modeId) modeChip.dataset.modeTone = normalizeGameMode(info.modeId);
+      else if (modeChip) delete modeChip.dataset.modeTone;
       // the art a covered entry already staged stays (the loading owner's first show names the same battlefield)
       const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
       if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
       stagedArt = artKey;
-      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
+      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next). A room whose map is
+      // not chosen yet names it 'none' (the art's own word for no map): its slot keeps its frame and asks for nothing
+      // until the map is known (2026-10-25: /minimaps/none.webp was a 404 and a console error in every room).
+      const planId = info.biome && info.biome !== 'none' ? info.biome : undefined;
       mapEl.hidden = !info.biome;
-      if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
-      drawObjectives(info.biome, info.modeId);
+      if (planId) mapImg.src = minimapAssetUrl(planId);
+      else mapImg.removeAttribute('src');
+      drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);

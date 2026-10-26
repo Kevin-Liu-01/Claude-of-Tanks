@@ -35,6 +35,9 @@ interface GaragePedestalPreloaderOptions {
     stillValid: () => boolean,
     protectedIds: readonly string[],
   ) => Promise<boolean>) | null;
+  /** UI-LOCKDOWN E: the riding stations' prebuild (ridingPartsPrebuild.ts), started once the Garage has a tank, the
+   *  selected and nearest tanks first. */
+  prebuildRidingParts?: ((order: readonly string[]) => void) | null;
 }
 
 interface GaragePedestalPreloader {
@@ -71,6 +74,7 @@ export function createGaragePedestalPreloader({
   neighborDelayMs = 1000,
   getSpeculativeIds = () => [],
   buildSpeculative = null,
+  prebuildRidingParts = null,
 }: GaragePedestalPreloaderOptions): GaragePedestalPreloader {
   const required = [getPhase, isBootComplete, getSelectedId, getNeighborIds,
     hasCachedVisual, ensureTankBuilder, ensureTankBuilders, getSpec,
@@ -97,6 +101,7 @@ export function createGaragePedestalPreloader({
     // wait for a genuine quiet window so family evaluation and canvas paint
     // cannot land immediately after a cold hero reveal.
     scheduleDelay(() => {
+      if (active(token)) prebuildRidingParts?.([selectedId, ...ids, ...getSpeculativeIds()]);
       void (async () => {
         if (!active(token)) return;
         const lease = await acquireBackgroundWork(

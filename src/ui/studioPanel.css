@@ -504,7 +504,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
   gap:var(--s4);padding:var(--s5) var(--s4);pointer-events:auto;background:var(--scrim)}
 .cot-studio .filmVeil.on{display:flex}
 .cot-studio .filmVeil .fvTitle{font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase}
-.cot-studio .filmVeil .fvPreview{display:block;max-width:min(78vw,960px);max-height:58vh;border-radius:var(--r1);background:var(--surface-scene);
+.cot-studio .filmVeil .fvPreview{display:block;width:min(78vw,960px,calc(58vh * var(--fv-aspect,1.7778)));aspect-ratio:var(--fv-aspect,1.7778);height:auto;border-radius:var(--r1);background:var(--surface-scene);
   box-shadow:var(--ring-3)}
 .cot-studio .filmVeil .fvBar{width:min(78vw,560px);height:3px;background:var(--fill-scale)}
 .cot-studio .filmVeil .fvBar i{display:block;width:0;height:100%;background:var(--accent)}

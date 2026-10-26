@@ -7,7 +7,7 @@
 :root{
   --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;--graphite-750:#161b21;
   --graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
-  --modehue-standard:#efb258;--modehue-drone:#34eee5;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
+  --modehue-standard:#efb258;--modehue-drone:#9d8cff;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
   --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
   --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
   --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
@@ -61,6 +61,7 @@
   --sys-crew:#ece6d8;
   --role-commander:#9ec9ff;--role-gunner:#ff9e7a;--role-loader:#c6a2ff;--role-driver:#7ee0b5;--role-radio:var(--paper-100);
   --e0:none;--e1:0 1px 0 rgba(255,255,255,.04) inset,0 0 0 1px var(--line-1);--e2:0 1px 0 rgba(255,255,255,.05) inset,0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
+  --e1-flush:0 1px 0 rgba(255,255,255,.04) inset,inset 0 0 0 1px var(--line-1);--e2-flush:0 1px 0 rgba(255,255,255,.05) inset,inset 0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
   --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);--e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
   --e5:0 1px 0 rgba(255,255,255,.07) inset,inset 2px 0 0 var(--accent),0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
   --z-scene:0;--z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;--z-shell:100;
@@ -80,9 +81,9 @@
   --ring-accent:inset 0 0 0 1px var(--accent);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
   --btn-secondary-ring-hover:inset 0 0 0 1px var(--ink-2);--ring-ok:inset 0 0 0 1px var(--ok);--ring-warn:inset 0 0 0 1px var(--warn);
   --ring-danger:inset 0 0 0 1px var(--danger);--z-lift:1;--fill-faint:rgba(246,243,236,.03);--fill-quiet:rgba(246,243,236,.04);
-  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 12px 32px rgba(0,0,0,.35);
+  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 12px 32px rgba(0,0,0,.35);
   --btn-media-fill:rgba(5,6,8,.55);--kbd-on-accent-ink:rgba(20,13,3,.78);--kbd-on-accent-ring:inset 0 0 0 1px oklch(from var(--ink-on-accent) l c h / .35);
-  --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
+  --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,inset 0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
   --sil-shadow:drop-shadow(0 1px 0 rgba(0,0,0,.5));--glyph-plate:rgba(5,6,8,.86);--row-plate:rgba(17,21,26,.88);
   --side-plate:rgba(11,14,17,.92);--media-fade:linear-gradient(0deg,rgba(5,6,8,.95) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 62%);
   --media-fade-soft:linear-gradient(0deg,rgba(5,6,8,.92),rgba(5,6,8,0) 55%);--media-fade-full:linear-gradient(0deg,rgba(5,6,8,.95),rgba(5,6,8,.2) 70%);

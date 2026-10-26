@@ -15,6 +15,7 @@ import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
 import { notify } from './components/notice.ts';
 import { t } from './i18n.ts';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 
 type CustomCamoDraft = CustomCamo;
 
@@ -66,10 +67,10 @@ export function createCustomCamoStudio({
   const drawWrap = document.createElement('div');
   drawWrap.className = 'cot-custom-draw-wrap';
   drawWrap.dataset.tipOff = '';
-  const drawCanvas = document.createElement('canvas');
-  drawCanvas.className = 'cot-custom-draw';
-  drawCanvas.width = 512;
-  drawCanvas.height = 256;
+  // (UI-LOCKDOWN A) the tile's drawing surface: its store is its box × min(DPR, 2) (it was a fixed 512 x 256 stretched over
+  // the box), the strokes painted in its own pixels from their 0-100 coordinates, redrawn on a box or ratio change
+  const drawSurface = createUiCanvas(null, 'cot-custom-draw', { units: 'device', draw: () => paintTile() });
+  const drawCanvas = drawSurface.canvas;
   drawCanvas.tabIndex = 0;
   drawCanvas.setAttribute('aria-label', t('customCamo.canvasAria'));
   drawCanvas.setAttribute('role', 'application');
@@ -80,9 +81,9 @@ export function createCustomCamoStudio({
   const tools = document.createElement('div');
   tools.className = 'cot-custom-tools';
 
-  const drawTile = () => {
-    const ctx = drawCanvas.getContext('2d');
-    if (!ctx) return;
+  const drawTile = () => drawSurface.redraw();
+  const paintTile = () => {
+    const ctx = drawSurface.context;
     const { width, height } = drawCanvas;
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = draft.base;
@@ -92,7 +93,8 @@ export function createCustomCamoStudio({
     });
   };
 
-  const previewCanvas = document.createElement('canvas');
+  // the pattern on the selected tank's swatch: garage.ts's swatch drawing (paintPreview) takes this surface
+  const previewCanvas = createUiCanvas(null, '').canvas;
   const repaintPreview = () => {
     drawTile();
     const spec = selectedSpec();

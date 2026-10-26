@@ -10,6 +10,7 @@ import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 
 /**
  * Each operation's briefing plate (public/media/deploy-r1/op-0N-1280.webp, the media lane's Scene Studio stills from
@@ -126,6 +127,16 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
+    // the mode's own settings open under the pickers and nothing above them moves (deploy.css holds the battlefield at
+    // its resting height); a phone's page scrolls them into view
+    options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
+    // the further options and the battlefield picker take one place: opening one closes the other
+    if (open && menu.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
+      menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
+    }
+    if (open && document.body.dataset.cotPanels === 'overlay') {
+      requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
+    }
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
@@ -141,18 +152,16 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   // the Deploy bar's estimate beside its key, and the objective map over the tactical map
   const estimate = document.createElement('span');
   menu.querySelector('.cot-deploy-end')?.prepend(estimate);
-  const objectives = document.createElement('canvas');
-  objectives.className = 'cot-deploy-field-obj';
-  objectives.width = objectives.height = 256;
-  menu.querySelector('.cot-deploy-field-mm')?.append(objectives);
+  // (a uiCanvas: its lazy drawer, deployObjectives.ts, sizes it to the map's box at the capped ratio)
+  const objectives = createUiCanvas(menu.querySelector('.cot-deploy-field-mm'), 'cot-deploy-field-obj').canvas;
 
   // the keys the screen answers (the direction's .hints), for a keyboard
   const keys = document.createElement('footer');
   keys.className = 'cot-deploy-keys';
   markDatum(keys, 'hints');
   keys.setAttribute('aria-hidden', 'true');
-  keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>` +
-    `<span>${keycap(t('garage.key.enter'))}${t('garage.battle')}</span><span>${keycap('Esc')}${t('garage.nav.garage')}</span>`;
+  // the arrows only: Enter and Esc wear their key caps on Deploy and on the Garage control already
+  keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>`;
   menu.append(keys);
 
   // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right
@@ -172,6 +181,24 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     }
   }
   new MutationObserver(placeDetails).observe(document.body, { attributes: true, attributeFilter: ['data-cot-panels'] });
+
+  // a column that scrolls says so (deploy.css .is-scrollable fades both its ends and keeps room under each fade), so a
+  // column that fits shows every edge whole
+  const scrollers = [...menu.querySelectorAll<HTMLElement>('.cot-battle-details,.cot-battle-mode-list,.cot-deploy-campaign')];
+  // the battlefield's and the rules' resting heights (read here, after layout, never in a press): an open picker or the
+  // further options take exactly that room, so nothing under them moves
+  const markScrollers = (): void => {
+    for (const el of scrollers) el.classList.toggle('is-scrollable', el.scrollHeight > el.clientHeight + 1);
+    if (!details || details.classList.contains('is-picking') || details.classList.contains('is-more')) return;
+    const field = details.querySelector<HTMLElement>('.cot-deploy-field');
+    const rules = details.querySelector<HTMLElement>('.cot-deploy-rules');
+    if (field) details.style.setProperty('--field-rest', `${field.offsetHeight}px`);
+    if (rules) details.style.setProperty('--rules-rest', `${rules.offsetHeight}px`);
+  };
+  if (typeof ResizeObserver === 'function') {
+    const sizes = new ResizeObserver(markScrollers);
+    for (const el of scrollers) { sizes.observe(el); for (const child of el.children) sizes.observe(child); }
+  }
 
   function renderTiers(): void {
     const control = host.difficulty();
@@ -194,6 +221,9 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   function brief(id = plateBrief?.dataset.op || ''): void {
     const op = plateBrief ? host.operation(id) : null;
     if (!plateBrief || !op) { plateBrief?.replaceChildren(); return; }
+    // the briefed operation's row wears the selection (the accent ring), as a picked mode or battlefield does
+    const at = host.operationIds.indexOf(op.id);
+    [...host.ops.children].forEach((row, index) => row.classList.toggle('is-briefed', index === at));
     if (plateBrief.dataset.op === op.id && plateBrief.dataset.status === op.status && plateBrief.firstChild) return;
     plateBrief.dataset.op = op.id;
     plateBrief.dataset.status = op.status;
@@ -209,14 +239,15 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-head"><span class="cot-deploy-brief-ix" aria-hidden="true">${String(op.index).padStart(2, '0')}</span>` +
       `<h3 class="cot-deploy-brief-name">${t(`campaign.op.${op.id}.title`)}</h3></div>` +
       `<p class="cot-deploy-brief-text">${t(`campaign.op.${op.id}.brief`)}</p>` +
-      `<div class="cot-deploy-brief-facts">${host.flag(op.enemy)}${host.rules([['map', t(`map.${op.mapId}`)], ['clock', op.clock]])}` +
+      `<div class="cot-deploy-brief-facts">${host.rules([['clock', op.clock]])}` +
+      `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span>` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
-      `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span></div>` +
-      `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async">` +
-      `<canvas width="256" height="256"></canvas></div>` +
+      `${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div>` +
+      `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async"></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;
-    const canvas = plateBrief.querySelector('canvas');
-    if (!canvas) return;
+    const mm = plateBrief.querySelector('.cot-deploy-brief-mm');
+    if (!mm) return;
+    const canvas = createUiCanvas(mm, '').canvas;
     // the frontline's opening objectives (the drawer and its data load with the first map to draw)
     drawer ??= import('./deployObjectives.ts');
     void drawer.then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
