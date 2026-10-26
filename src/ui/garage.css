@@ -873,9 +873,17 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 /* the readout keeps one height whatever it shows, so the panel never jumps under the pointer */
 .cot-eqpreview{flex:none;block-size:9.5rem;margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-2);
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+.cot-eqpreview{container-type:inline-size}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.cot-eqpreview :is(.metrics-heading,.summary:empty){display:none}
+/* the summary says again what the action line says ("Adds X to Slot 1"), and the heading names the tank in view */
+.cot-eqpreview :is(.metrics-heading,.summary){display:none}
 .cot-eqpreview .cot-eqtip[data-shut] .action{color:var(--ink-2)}
+/* a wide readout sets the values beside the item's words, so one fixed height holds them (stacked, they ran past it) */
+@container (width >= 560px){
+  .cot-eqpreview .cot-eqtip{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);column-gap:var(--s4);align-items:start}
+  .cot-eqpreview .cot-eqtip>:not(.metrics){grid-column:1}
+  .cot-eqpreview .cot-eqtip>.metrics{grid-column:2;grid-row:1/span 4;margin-top:0}
+}
 
 /* the readout's body (the item, what it does, its projected values and what a press does) */
 .cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));

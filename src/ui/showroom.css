@@ -384,6 +384,10 @@ body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__name{display:block
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__facts{display:none;}
 /* the docked readout is two lines lower: the band's room goes to the cards */
 body[data-cot-panels='persistent'] .cot-eqpreview{block-size:7.5rem}
+/* the docked picker's search and chips share one row, as the paint sheet's do: the panel stands lower over the tank */
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{flex-wrap:nowrap}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__search{flex:0 1 220px;height:var(--btn-h-s)}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__filters{flex:1 1 auto;min-width:0}
 /* a short window's tiles stand lower (a smaller glyph, a slimmer pad), so as few rows as can be are left to scroll */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-c-picker__opt{padding:var(--s1) 2px;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-eq-glyph svg{width:22px;height:22px;}
