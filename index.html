@@ -498,7 +498,7 @@
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: center; justify-self: center; display: none;
-      height: 44px; margin: 2px 0 0; padding: 0 18px; white-space: nowrap;
+      height: 44px; margin: 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -545,8 +545,10 @@
     }
     .cot-boot-notice.on { opacity: 1; }
     @keyframes cot-gate { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
+    /* the version stands on the foot labels' baseline: theirs, 13 px centred in a 36 px button (44 on touch), falls on a half
+       pixel, so the version's bottom carries the same half (boot r21: 1 px high at every 1x size) */
     .cot-boot-foot {
-      position: absolute; right: 16px; bottom: 22px; z-index: 2;
+      position: absolute; right: 16px; bottom: 21.5px; z-index: 2;
       font-family: var(--font-ui);
       font-size: 12px; font-weight: 500; line-height: 16px; color: var(--ink-3); text-align: right;
     }
@@ -559,10 +561,14 @@
       .cot-boot-tip { height: 144px; }
       .cot-boot-retry { justify-self: stretch; align-self: start; margin-top: 32px; }
     }
-    @media (pointer: coarse) { .cot-boot-foot { bottom: 26px; } }
+    @media (pointer: coarse) { .cot-boot-foot { bottom: 25.5px; } }
     /* a narrow phone: the version stands over the foot row's right end */
     @media (width < 480px) { .cot-boot-foot { bottom: 64px; } }
-    @media (width >= 2200px) and (height >= 1200px) { .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; } }
+    @media (width >= 2200px) and (height >= 1200px) {
+      .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; }
+      /* zoomed, the labels' baseline lands 0.24 px under the whole pixel: the version keeps its whole bottom */
+      .cot-boot-foot { bottom: 22px; }
+    }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
       .cot-boot-mark { --boot-mark: min(36vh, 150px); }
