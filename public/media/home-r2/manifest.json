@@ -539,8 +539,8 @@
     "fleet": {
       "id": "fleet-montage",
       "title": {
-        "en": "Nine vehicles from eight nations in quick cuts, each on its own battlefield: Merkava Mk 4, Type 10, Stridsvagn 122, M1A2 Abrams, ZTZ-99A2, KV-2, Leclerc, CV90 and KF51 Panther",
-        "zh": "八个国家的九辆战车快速剪辑，各在自己的战场上：Merkava Mk 4、Type 10、Stridsvagn 122、M1A2 Abrams、ZTZ-99A2、KV-2、Leclerc、CV90 与 KF51 Panther"
+        "en": "Nine vehicles from eight nations in quick cuts, each on its own battlefield: Merkava Mk 4 Trophy, Type 10 (TK-X), Stridsvagn 121, M1A1 Abrams HC, ZTZ-99A2, KV-2, Leclerc S2, CV90 and KF51 EVO",
+        "zh": "八个国家的九辆战车快速剪辑，各在自己的战场上：Merkava Mk 4 Trophy、Type 10 (TK-X)、Stridsvagn 121、M1A1 Abrams HC、ZTZ-99A2、KV-2、Leclerc S2、CV90 与 KF51 EVO"
       },
       "poster": {
         "rungs": [
@@ -588,5 +588,286 @@
         "rung": "phone"
       }
     }
-  }
+  },
+  "fleetStrip": [
+    {
+      "specId": "merkava4_trophy",
+      "map": "copper_mesa",
+      "hour": "day",
+      "title": {
+        "en": "The Merkava Mk 4 Trophy on Copper Mesa Mine, day",
+        "zh": "铜台地矿场，白天：Merkava Mk 4 Trophy"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-merkava4_trophy-640.webp",
+          "bytes": 31646
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-merkava4_trophy-1280.webp",
+          "bytes": 113250
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-merkava4_trophy-1920.webp",
+          "bytes": 264372
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-merkava4_trophy-3840.webp",
+          "bytes": 688640
+        }
+      ]
+    },
+    {
+      "specId": "leclerc_s2",
+      "map": "orchard",
+      "hour": "day",
+      "title": {
+        "en": "The Leclerc S2 on Orchard Valley, day",
+        "zh": "果园谷，白天：Leclerc S2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-leclerc_s2-640.webp",
+          "bytes": 40884
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-leclerc_s2-1280.webp",
+          "bytes": 147068
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-leclerc_s2-1920.webp",
+          "bytes": 344692
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-leclerc_s2-3840.webp",
+          "bytes": 832570
+        }
+      ]
+    },
+    {
+      "specId": "m1a1_abrams_hc",
+      "map": "airfield",
+      "hour": "morning",
+      "title": {
+        "en": "The M1A1 Abrams HC on Kestrel Airfield, morning",
+        "zh": "红隼机场，上午：M1A1 Abrams HC"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-640.webp",
+          "bytes": 28958
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-1280.webp",
+          "bytes": 88430
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-1920.webp",
+          "bytes": 189466
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-m1a1_abrams_hc-3840.webp",
+          "bytes": 444828
+        }
+      ]
+    },
+    {
+      "specId": "kv2",
+      "map": "alpine",
+      "hour": "day",
+      "title": {
+        "en": "The KV-2 on Glacier Pass, day",
+        "zh": "冰川关，白天：KV-2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-kv2-640.webp",
+          "bytes": 29508
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-kv2-1280.webp",
+          "bytes": 96662
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-kv2-1920.webp",
+          "bytes": 222146
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-kv2-3840.webp",
+          "bytes": 556862
+        }
+      ]
+    },
+    {
+      "specId": "strv121",
+      "map": "winter",
+      "hour": "morning",
+      "title": {
+        "en": "The Stridsvagn 121 on Frosthollow, morning",
+        "zh": "霜谷，上午：Stridsvagn 121"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-strv121-640.webp",
+          "bytes": 39686
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-strv121-1280.webp",
+          "bytes": 118690
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-strv121-1920.webp",
+          "bytes": 248670
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-strv121-3840.webp",
+          "bytes": 556064
+        }
+      ]
+    },
+    {
+      "specId": "type10_tk_x",
+      "map": "mangrove",
+      "hour": "morning",
+      "title": {
+        "en": "The Type 10 (TK-X) on Mangrove Reach, morning",
+        "zh": "红树林水道，上午：Type 10 (TK-X)"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-type10_tk_x-640.webp",
+          "bytes": 33580
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-type10_tk_x-1280.webp",
+          "bytes": 107618
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-type10_tk_x-1920.webp",
+          "bytes": 246094
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-type10_tk_x-3840.webp",
+          "bytes": 583616
+        }
+      ]
+    },
+    {
+      "specId": "ztz99a2",
+      "map": "monsoon",
+      "hour": "day",
+      "title": {
+        "en": "The ZTZ-99A2 on Monsoon Ridge, day",
+        "zh": "季风雨脊，白天：ZTZ-99A2"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-ztz99a2-640.webp",
+          "bytes": 26942
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-ztz99a2-1280.webp",
+          "bytes": 86686
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-ztz99a2-1920.webp",
+          "bytes": 196266
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-ztz99a2-3840.webp",
+          "bytes": 470592
+        }
+      ]
+    },
+    {
+      "specId": "cv90",
+      "map": "fjord",
+      "hour": "sunset",
+      "title": {
+        "en": "The CV90 on Nordhavn Fjord, sunset",
+        "zh": "诺德港峡湾，日落：CV90"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-cv90-640.webp",
+          "bytes": 21522
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-cv90-1280.webp",
+          "bytes": 67694
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-cv90-1920.webp",
+          "bytes": 155664
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-cv90-3840.webp",
+          "bytes": 365302
+        }
+      ]
+    },
+    {
+      "specId": "kf51_evo",
+      "map": "longleaf",
+      "hour": "day",
+      "title": {
+        "en": "The KF51 EVO on Longleaf Crossing, day",
+        "zh": "长叶渡口，白天：KF51 EVO"
+      },
+      "rungs": [
+        {
+          "width": 640,
+          "path": "/media/home-r2/fleet-kf51_evo-640.webp",
+          "bytes": 34470
+        },
+        {
+          "width": 1280,
+          "path": "/media/home-r2/fleet-kf51_evo-1280.webp",
+          "bytes": 121472
+        },
+        {
+          "width": 1920,
+          "path": "/media/home-r2/fleet-kf51_evo-1920.webp",
+          "bytes": 287858
+        },
+        {
+          "width": 3840,
+          "path": "/media/home-r2/fleet-kf51_evo-3840.webp",
+          "bytes": 665404
+        }
+      ]
+    }
+  ]
 }
