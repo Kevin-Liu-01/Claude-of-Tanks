@@ -1311,7 +1311,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // by the smaller move down: the later lane to the next row, or the earlier onto the later's; their rows sat 2-14 px
     // apart in one band, gauntlet r5)
     if (slotChip && systemsSlot === 'top') leftAnchor = Math.max(leftAnchor, systemsTop + systemsHeight + TOUCH_NOTICE_GAP + TOUCH_ONE_ROW.h + 8);
-    const pitchOff = touch ? Math.abs(leftAnchor - rightAnchor) % 29 : 0;
+    // (not where the global feed is bound to stack, beside the map or in its half: its rows' 41 px pitch never meets the
+    // personal lane's 29, and the step only cost the personal lane its one row in zh at 320x568, gauntlet r13)
+    const rightStacks = touch && sideWidth < FEED_STACK_W && (!map || width - map.right - 8 < FEED_STACK_W);
+    const pitchOff = touch && !rightStacks ? Math.abs(leftAnchor - rightAnchor) % 29 : 0;
     if (pitchOff) {
       const leftLater = leftAnchor >= rightAnchor;
       if (29 - pitchOff <= pitchOff) { if (leftLater) leftAnchor += 29 - pitchOff; else rightAnchor += 29 - pitchOff; }
@@ -1371,8 +1374,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rightRoomBottom = rightAnchor + Math.max(0, rightRoomRows * rightPitch - 3);
     const leftAlone = touch && width < height && !wideFeed && killRowsLeft > 0
       && (rightRoomRows === 0 || rightRoomBottom <= leftAnchor - 8 || rightAnchor >= leftKillBottom);
-    const leftLaneWidth = wideFeed ? wideLeftFeed : leftAlone ? Math.floor(Math.min(besideColumn, KILL_LANE_MAX_W)) : sideWidth;
-    if (leftAlone) setBodyVar('--hud-kill-left-width', `${leftLaneWidth}px`);
+    // ... and beside the global feed's lane it runs to 8 px short of it, not to the half: two half lanes left a 48 px gap
+    // between them and cut its victims to "Commander…" at 320x568 in a flight, gauntlet r13.
+    const leftBeside = touch && width < height && !wideFeed && !leftAlone && killRowsLeft > 0
+      ? Math.floor(Math.min(besideColumn, width - sideWidth - 8, KILL_LANE_MAX_W)) : 0;
+    const leftLaneWidth = wideFeed ? wideLeftFeed : leftAlone ? Math.floor(Math.min(besideColumn, KILL_LANE_MAX_W))
+      : Math.max(sideWidth, leftBeside);
+    if (leftAlone || leftBeside > sideWidth) setBodyVar('--hud-kill-left-width', `${leftLaneWidth}px`);
     const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
     let noticeTop: number, alertTop: number;

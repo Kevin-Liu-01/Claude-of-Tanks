@@ -282,12 +282,14 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:var(--battle-fs-11)}
 /* (every tile of the console set from its left edge, its key cap in its top-right corner, as the weapons are: gauntlet r4
    read the weapons set left over a centred second row) */
-.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center}
-.cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
+/* (its level bar on the tile's foot as the weapon cards' ready bars, so its word stands on the row's centre line with AMMO's
+   and HEALTH's: in a grid row of its own the bar lifted the word 4 px over theirs, gauntlet r13) */
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto;column-gap:7px;align-content:center}
+.cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
 .cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
 .cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
-.cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;grid-column:2;grid-row:2;gap:var(--s1);height:3px}
+.cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;position:absolute;left:var(--s3);right:var(--s3);bottom:5px;gap:var(--s1);height:3px}
 .cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:flex-start;gap:7px}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=ammo]{grid-column:2}
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
@@ -300,7 +302,9 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::before{background:var(--ink-1)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::after{inset:3px}
 .gunship-solution{position:absolute;top:50%;left:50%;width:220px;transform:translate(-50%,-50%);color:var(--flight-accent);text-shadow:0 1px 2px var(--surface-scene),0 0 6px var(--surface-scene);pointer-events:none}
-.gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.01em;white-space:nowrap}
+/* (one 14 px line in both scripts: zh's taller line box raised its top 5 px and took the personal lane's one row at 320x568,
+   gauntlet r13) */
+.gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:var(--battle-fs-11);font-weight:700;line-height:14px;letter-spacing:.01em;white-space:nowrap}
 /* (the consoles' control words in the kit's capitals, as their weapon cards, the vision plate and DRIVE: "Return to tank",
    "Infrared", "Ammo" and a lowercase "30 mm cannon" over the sight mixed three casings in one console, gauntlet r8) */
 :is(.cot-drone-return>span,.flight-view-switch .flight-feed>span:first-child,.flight-supply small,.gunship-solution-label){
@@ -312,7 +316,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  html[data-flight=drone] .cot-flight-hud[data-kind=drone] .cot-drone-return>span{letter-spacing:var(--battle-track-control)}
 }
 .gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
-.gunship-solution .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1)}
+.gunship-solution .flight-instrument{font-size:var(--battle-fs-11);line-height:14px;gap:var(--s1)}
 .gunship-solution .flight-icon{color:inherit}
 .cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship][data-weapon='0'] .flight-sight{width:28px;height:28px}
