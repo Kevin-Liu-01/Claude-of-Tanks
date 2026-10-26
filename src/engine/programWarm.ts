@@ -211,7 +211,8 @@ interface ProgramWarmLifetime {
   /**
    * (battle-spikes-253) The context's link-poll gate (gpuCatchUp.ts), shared by every drain on it: a drain after
    * another finds the last mark already signalled instead of spending its first poll placing one (one per wreck visual
-   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns.
+   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns. A drain that starts
+   * past the mark's age re-marks it first (beginDrain: a Garage return's link drain met a mark from before the battle).
    */
   catchUp?: GpuCatchUpGate;
 }
@@ -858,6 +859,8 @@ function* initializeMaterialProgramSteps(
   // a query behind a deep queue blocked a Garage return 1.3 s. A held poll takes no round, and a GPU still behind is
   // not a stalled cohort; the wall-clock budget still ends the drain.
   const gate = extension ? (context.lifetime.catchUp ??= createGpuCatchUpGate(context.gl)) : null;
+  // a mark a drain long past left vouches for nothing since (gpuCatchUp.ts beginDrain)
+  gate?.beginDrain();
   try {
     for (;;) {
       if (gate && entries.some((entry) => !entry.initialized && !entry.failed) && !gate.caughtUp()) {
@@ -1359,6 +1362,7 @@ export function createForwardProgramWarmOwner({
       const context = { renderer, gl, valid, now, timing, existingPrograms, lifetime };
       // (battle-spikes-253) a slice asks only once the GPU has caught up to the previous slice (gpuCatchUp.ts)
       const gate = lifetime.catchUp ??= createGpuCatchUpGate(gl);
+      gate.beginDrain();
       for (let slice = 0; slice < maxSlices; slice += 1) {
         if (!valid()) return;
         if (gate.caughtUp()) {
