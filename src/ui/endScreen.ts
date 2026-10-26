@@ -394,6 +394,9 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-score-side.ally .sl{color:var(--text-own)}.cot-es .es-score-side.foe .sl{color:var(--text-enemy)}
 .cot-es .es-score-side .ss{margin-top:5px;font-size:var(--battle-fs-11);color:var(--ink-3);}
 .cot-es .es-score-side .sn{font:700 38px ${FONT_COND};color:var(--ink-1);line-height:1;}
+/* (each side's figure in its team's ink, as the headline's score: bone white in the card beside a blue and red headline
+   at the other sizes, gauntlet r8) */
+.cot-es .es-score-side.ally .sn{color:var(--team-own)}.cot-es .es-score-side.foe .sn{color:var(--team-enemy)}
 .cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:var(--ink-4);}
 .cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);flex:1;min-height:0;padding:var(--s3);}
 .cot-es .es-roster{display:flex;min-width:0;min-height:0;flex-direction:column;}

@@ -601,6 +601,8 @@ interface ShellSlotButton extends HTMLButtonElement {
 }
 
 interface AlertOptions { tone?: string; icon?: string }
+/** A name in Latin type alone (the kill feed's .lat: Chinese's lifted label sizes are for Chinese text, gauntlet r8). */
+const LATIN_CALLSIGN = /^[\x20-\x7e\u00a0-\u024f]+$/;
 /** An alert's tone as the kit's notice severities name it (components/notice.ts). */
 const ALERT_SEVERITY: Readonly<Record<string, 'info' | 'success' | 'warning' | 'error'>> = {
   danger: 'error', warning: 'warning', success: 'success', info: 'info',
@@ -7201,8 +7203,12 @@ export function initHud(bus: EventBus): HudRuntime {
     // both silhouettes take their side's team ink from the lane (.cot-kill-lane.l / .r)
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', 'currentColor');
     if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', 'currentColor');
-    requireElement<HTMLElement>(item, '.k').textContent = killer;
-    requireElement<HTMLElement>(item, '.v').textContent = victim;
+    const killerEl = requireElement<HTMLElement>(item, '.k'), victimEl = requireElement<HTMLElement>(item, '.v');
+    killerEl.textContent = killer;
+    victimEl.textContent = victim;
+    // (a callsign in Latin type keeps the Latin size in Chinese: battleHudLayout.css .lat)
+    killerEl.classList.toggle('lat', LATIN_CALLSIGN.test(killer));
+    victimEl.classList.toggle('lat', LATIN_CALLSIGN.test(victim));
     lane.prepend(item);
     while (lane.children.length > MAX_BATTLE_NOTIFICATIONS) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);

@@ -890,18 +890,30 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // row's dividers are the rack's, gauntlet r4; otherwise the tiles share the rack's width evenly)
     const tiles: HTMLElement[] = [];
     const slots: DOMRect[] = [];
+    let shellSlots = 0, conSlots = 0;
     if (fillRack) {
       for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) if (node.checkVisibility()) tiles.push(node);
       for (const node of document.querySelectorAll<HTMLElement>('.cot-shell,.cot-con')) {
         const box = shownBox(node);
-        if (box) slots.push(box);
+        if (!box) continue;
+        slots.push(box);
+        if (node.classList.contains('cot-con')) conSlots++; else shellSlots++;
       }
       slots.sort((a, b) => a.left - b.left);
     }
     // (fewer tiles than slots stand over the middle slots, one a slot: three or five tiles sharing six slots' width set
-    // their dividers mid-slot, gauntlet r5)
+    // their dividers mid-slot, gauntlet r5; tiles of one group alone keep their group's side of the divider, the
+    // equipment's over the consumables and the ammunition's over the shells: a loadout without F, Q and C set G and N
+    // over the shells and B alone past the divider, gauntlet r8)
     const overSlots = fillRack && tiles.length > 0 && tiles.length <= slots.length;
-    const firstSlot = overSlots ? Math.floor((slots.length - tiles.length) / 2) : 0;
+    const row = overSlots ? tiles[0].parentElement : null;
+    const split = row ? [...row.children].findIndex((node) => node.classList.contains('cot-drone-control')) : -1;
+    const group = (node: HTMLElement) => (split < 0 ? 0 : [...row!.children].indexOf(node) > split ? 1 : -1);
+    const oneGroup = split >= 0 && tiles.every((node) => group(node) === group(tiles[0])) ? group(tiles[0]) : 0;
+    const firstSlot = !overSlots ? 0
+      : oneGroup > 0 && tiles.length <= conSlots ? slots.length - tiles.length
+        : oneGroup < 0 && tiles.length <= shellSlots ? 0
+          : Math.floor((slots.length - tiles.length) / 2);
     if (overSlots || tilesOverSlots) {
       for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) {
         if (!node.style) continue;

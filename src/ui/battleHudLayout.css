@@ -337,6 +337,9 @@ body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 10
    at 136 px, 320x568) */
 @container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:var(--battle-fs-11);letter-spacing:0}
+/* (a Latin callsign at the Latin 11 px in Chinese, whose 13 px lift is for Chinese labels: zh callsigns ran about 15 %
+   larger and were cut sooner than en's, gauntlet r8; hud.ts marks them .lat, as the battle load and the end report do) */
+:lang(zh-CN) body[data-cot-battle-layout] .cot-kill-lane .cot-kf .lat{font-size:var(--battle-fs-fig-11)}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 8px))}
