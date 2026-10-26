@@ -31,6 +31,8 @@ const NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X
 const PAD_Y = 12;
 const END_Y = 12;
 const GAP_X = 18;
+/** A fitted tree's gutters may narrow to this rather than overrun the right gutter by a few pixels. */
+const MIN_GAP_X = 14;
 const GAP_Y = 14;
 const SPECIAL_GAP = 24;
 const HEAD_H = 40;
@@ -251,17 +253,18 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     item.addEventListener('click', () => showTree(entry.id));
     rail.append(item);
   }
-  /** A rail narrower than its flags ends half way across one: the flag it cuts, fading, says the rail scrolls. */
+  /** A rail narrower than its flags fills its room, its flags spread so the room ends half way across one: the flag it
+   *  cuts, fading, says the rail scrolls. */
   function fitRail(): void {
-    rail.style.maxWidth = '';
+    rail.style.removeProperty('--tt-rail-gap');
+    if (rail.scrollWidth <= rail.clientWidth + 2) return;
     const style = getComputedStyle(rail);
     const room = rail.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    if (rail.scrollWidth <= rail.clientWidth + 2) return;
     const [first, second] = [...rail.children].map((item) => item.getBoundingClientRect());
-    const pitch = second.left - first.left;
     const lead = first.left + rail.scrollLeft - rail.getBoundingClientRect().left - rail.clientLeft - parseFloat(style.paddingLeft);
-    const whole = Math.floor((room - lead - first.width / 2) / pitch);
-    rail.style.maxWidth = `${Math.max(0, lead + whole * pitch + first.width / 2)}px`;
+    const reach = room - lead - first.width / 2;
+    const whole = Math.max(1, Math.floor(reach / (second.left - first.left)));
+    rail.style.setProperty('--tt-rail-gap', `${reach / whole - first.width}px`);
   }
   /** The rail scrolls on narrow screens: it fades at the edges it scrolls toward. */
   function markRail(): void {
@@ -393,12 +396,14 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     const room = shapeCol - CARD_EDGES - m.inset;
     const fits = Math.min(nameScale(shapeCol), room / m.text);
     const label = m.floor * (NAME_STEPS.filter((step) => step <= fits).pop() ?? 1);
-    const fitCol = Math.max(shapeCol, Math.ceil(m.text * label / m.floor + m.inset + CARD_EDGES));
-    // the gutters take the width the columns leave, so a fitted tree spans the page gutter to gutter
-    const spread = Math.max(GAP_X, (span - count * fitCol) / Math.max(1, count - 1));
+    // (whole pixels: a fraction rounded away in every column would leave the tree short of the right gutter)
+    const fitCol = Math.round(Math.max(shapeCol, Math.ceil(m.text * label / m.floor + m.inset + CARD_EDGES)));
+    // the gutters take the width the columns leave (down to MIN_GAP_X), so a fitted tree spans the page gutter to gutter
+    const share = (span - count * fitCol) / Math.max(1, count - 1);
+    const spread = share >= MIN_GAP_X ? share : GAP_X;
     const col = Math.round(fitCol * zoom);
     const row = Math.round(fitRow * zoom);
-    const gapX = Math.max(GAP_X, spread * zoom);
+    const gapX = Math.max(Math.min(GAP_X, spread), spread * zoom);
     const named = Math.max(m.floor, label * zoom);
     const compact = m.text * named / m.floor + m.inset + CARD_EDGES > col + 0.5;
     const width = Math.floor(pad * 2 + count * col + (count - 1) * gapX);

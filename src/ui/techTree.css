@@ -29,17 +29,19 @@
 .cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-ui);letter-spacing:var(--track-display);
   white-space:nowrap}
 /* The nation picker: the kit's single choice, the same raised plate as the zoom plate beside it (its highlight, ring
-   and drop), as wide as its flags: the header's free space stays outside it. A picker wider than its room scrolls, and
-   its flags fade into the plate at the edges they scroll toward (overlays, so the plate's own edge stays whole). */
-.cot-tt .tt-rail{--tt-rail-fade:48px;display:flex;align-items:center;gap:2px;flex:0 1 auto;min-width:0;max-width:100%;padding:2px;
-  margin:0 auto 0 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
+   and drop), as wide as its flags: the header's free space stays outside it. A picker wider than its room fills it and
+   scrolls, its flags spread so the room's edge cuts one in half (techTree.ts fitRail), and they fade into the plate at
+   the edges they scroll toward (overlays, so the plate's own edge stays whole). */
+.cot-tt .tt-rail{--tt-rail-fade:48px;box-sizing:border-box;display:flex;align-items:center;gap:var(--tt-rail-gap, 2px);
+  flex:0 1 auto;min-width:0;max-width:100%;padding:2px;margin:0 auto 0 1px;border-radius:var(--r2);background:var(--surface-raised);box-shadow:var(--e2);overflow-x:auto;
   scrollbar-width:none}
 .cot-tt .tt-rail::-webkit-scrollbar{display:none}
 .cot-tt .tt-rail::before,.cot-tt .tt-rail::after{content:'';position:sticky;z-index:var(--z-lift);flex:none;align-self:stretch;
   width:var(--tt-rail-fade);pointer-events:none;opacity:0}
-.cot-tt .tt-rail::before{left:0;margin-right:calc(-1 * var(--tt-rail-fade) - 2px);
+/* (a sticky box stops at its scroller's padding: the fades run on through the plate's 2 px inset to its edge) */
+.cot-tt .tt-rail::before{left:-2px;margin-right:calc(-1 * var(--tt-rail-fade) - var(--tt-rail-gap, 2px));
   background:linear-gradient(270deg,transparent,var(--surface-raised))}
-.cot-tt .tt-rail::after{right:0;margin-left:calc(-1 * var(--tt-rail-fade) - 2px);
+.cot-tt .tt-rail::after{right:-2px;margin-left:calc(-1 * var(--tt-rail-fade) - var(--tt-rail-gap, 2px));
   background:linear-gradient(90deg,transparent,var(--surface-raised))}
 .cot-tt .tt-rail.is-more-left::before,.cot-tt .tt-rail.is-more-right::after{opacity:1}
 .cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:calc(44px * var(--tt-ui));
@@ -225,7 +227,7 @@
    one row, so the board keeps the height. */
 @media (max-height:640px) and (orientation:landscape){
   .cot-tt{--tt-detail-art-w:200px;--tt-gutter:var(--s4);grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr)}
-  .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
+  .cot-tt .tt-head{grid-column:1 / -1;flex-wrap:nowrap;gap:var(--tt-gutter);padding:var(--tt-gutter) var(--tt-gutter) var(--s2)}
   .cot-tt .tt-nation{margin-right:0}
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-24)}
