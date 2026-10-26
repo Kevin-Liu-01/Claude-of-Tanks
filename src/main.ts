@@ -62,7 +62,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
+  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow, warmSceneProbePrograms,
   battleProbeRadianceScale, setSceneProbeTargetSource, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
@@ -100,7 +100,7 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
+import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -748,6 +748,23 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 // instance before any consumer can emit an effect. The typed owner keeps code
 // intent separate from GPU construction and makes either failure retryable
 // without a page refresh.
+/**
+ * (battle-spikes-253) The scene's visible lights at a named moment (the MP entry's compile, its watchdog): three keys every
+ * program on the counts of visible lights by kind, and nav-perf's program log found the depth programs compiled with 7
+ * point lights and drawn with 8. Read as window.__LIGHT_CENSUS[label]; diagnostics only, a few hundred objects walked.
+ */
+function recordLightCensus(label: string): void {
+  if (typeof window === 'undefined') return;
+  const counts: Record<string, number> = {};
+  const lights: string[] = [];
+  scene.traverseVisible((object) => {
+    const light = object as THREE.Light;
+    if (!light.isLight) return;
+    counts[light.type] = (counts[light.type] ?? 0) + 1;
+    if (lights.length < 40) lights.push(`${light.type}:${light.name || '?'}<${light.parent?.name || light.parent?.type || '-'}`);
+  });
+  (window.__LIGHT_CENSUS ??= {})[label] = { counts, lights };
+}
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
@@ -2813,9 +2830,14 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 // Keep the actual compositor path and its pooled FX atomic.
                 // Pass measurements locate indivisible first-use work before
                 // deciding where a cooperative preparation boundary is safe.
-                const rendered = renderCoveredComposerWarm(post.composer);
-                timing.openingRenderMs = rendered.totalMs;
-                timing.openingPasses = rendered.passes;
+                // (battle-spikes-253) No shadow pass, as the solo deployment's warm: this render drew every caster's depth
+                // program at the battle's light counts in one task (nav-perf's root-r room: 1.6 s), ahead of finalShadows'
+                // prime, which makes them a batch at a time between painted frames.
+                renderWithoutShadowUpdates(lighting.csm?.lights ?? [], () => {
+                  const rendered = renderCoveredComposerWarm(post.composer);
+                  timing.openingRenderMs = rendered.totalMs;
+                  timing.openingPasses = rendered.passes;
+                });
               },
             });
             return { ...timing };
@@ -2846,13 +2868,23 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 },
               },
             });
+            // (battle-spikes-253) and the post chain's first frame under the cover, as the solo deployment warms it (nav-perf's
+            // program log: LateFxPass.Copy and its pass programs linked in the first live frame of a room)
+            let postPasses: RuntimeValue = null;
+            try {
+              postPasses = await post.warmFirstFrame(async () => { await nextPaintFrame(); signal?.throwIfAborted(); }) as RuntimeValue;
+            } catch (error) {
+              if (signal?.aborted) throw error;
+              postPasses = { failed: String((error as Error)?.message ?? error) };
+            }
             return { cascadeCount: cascadeMs.length,
               totalMs: cascadeMs.reduce((total, ms) => total + ms, 0),
               maxMs: Math.max(0, ...cascadeMs),
               casterWarmup: { batches: casterBatchMs.length, casterCount,
                 batchMs: casterBatchMs,
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
-                maxMs: Math.max(0, ...casterBatchMs) } };
+                maxMs: Math.max(0, ...casterBatchMs) },
+              postPasses };
           },
           // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
           // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;
@@ -2876,6 +2908,24 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // preparation compiles them: patched after (the opening effects' warm), every structure bucket re-keyed and
             // the black watchdog's render linked twelve masked variants synchronously (nav-perf's room entry, 1.4 s)
             fxRuntimeAccess.current?.prepareWorldMaterials();
+            recordLightCensus('compile');
+            // (battle-spikes-253) and the black watchdog's readback copy, linked with the rest rather than at the watchdog
+            warmSceneProbePrograms(renderer);
+            // (battle-spikes-253) and the far trees' impostor atlas, as the solo loading bakes it: the room's world is built
+            // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
+            // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
+            // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            try {
+              const world = currentWorld();
+              if (world?.warmImpostorsAsync) {
+                await world.warmImpostorsAsync(async () => {
+                  for (const _ of forwardProgramWarm.linkerBreathingSlices(90)) {
+                    signal?.throwIfAborted();
+                    await nextPaintFrame();
+                  }
+                });
+              } else world?.warmImpostors?.();
+            } catch (error) { if (signal?.aborted) throw error; /* the first update bakes lazily */ }
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
@@ -2917,9 +2967,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             setGarageSpots(active);
             setGarageSunTrim(active);
           },
-          runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
+          runBlackWatchdog: (signal?: AbortSignal) => (recordLightCensus('watchdog'), runSceneBlackWatchdogAsync(
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
-          ),
+          )),
         },
       activation: {
         game,

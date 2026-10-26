@@ -255,6 +255,71 @@ the obstacle, collider, crushable, loose, wreck-spot, utility, grounding and fea
 state and boxes; the carts' seating receipt) is hashed before (HEAD, through a load hook) and after on Alpine and
 Steinburg. The scheduling receipts (propsScheduling) walk the new slices against a synchronous control.
 
+## A room's first live frames (the MP cover)
+
+nav-perf's program log of a room (root-p, 1f58a4460e) recorded each program made after the cover lifts, with its
+drawer and the cache-key difference from the nearest program of the same shader. The first live seconds still had a
+1.2 s task of eight links.
+
+- **Five depth programs** (the horizon ring's rocks, far vegetation, two baked prop buckets and a rock pool's
+  shadow-only proxy) differed from their warmed twins only at key index 34, the point-light count: 8 live, 7 warmed.
+  The light census (`window.__LIGHT_CENSUS`) read 8 point lights at both the compile and the watchdog, so the 7-light
+  programs came from the Garage's background build. Under the cover these casters never drew at 8: the caster warm-up
+  (`engine/shadowPrime.ts`) renders cascade 0 with the shadow map's frustum cull, and they stand outside its box. The
+  shadow-only proxy was not batched at all: the warm-up filtered on the camera's layers, which leave out layer 29, so
+  the proxy sat unmuted in every batch. Each batch now draws its own casters unculled, and shadow-only casters join the
+  batches. A batched caster (the field boundary works' BatchedMesh) culls its items again in its own shadow hook, so in
+its batch its per-item cull is off too and its draw list is rebuilt. The batch count is unchanged; a batch's draws are
+its own eight casters wherever they stand.
+- **`LateFxPass.Copy`** never compiled at the post warm: the late pass draws nothing while no effect is live, and none
+  is live under the cover. It now has the post warm's `warmGated` switch, as the sun shafts and the lens flare do, and
+  draws its active path (input copy, depth copy, the FX layer, output copy) with the image unchanged.
+- **The impostor atlas's bake programs** (the two `COT_BAKE_BILLBOARD` materials) linked at the first live frame that
+  showed the far tier. The room's world is built without activation's precompile, so nothing baked it. The MP compile
+  now calls `warmImpostors()`, as the solo loading does.
+
+Receipts: `shadowPrime.selftest` (a far caster, a far proxy and a far batch each draw in their own batch; the final cascades keep
+their cull), `lateFxColorHandoff.selftest` (no copy without the switch, both copies and the depth copy with it, live
+counts untouched), `worldMaterialsBeforeCompile.selftest` (the MP compile bakes the impostors before its strict
+compile). Each case fails against the previous source.
+
+**root-r** (nav-perf, load 31-33) confirmed the leave and `LateFxPass.Copy`, and named the rest's callers:
+
+- The depth variants were still made, by the opening effects' warm: its covered composer render drew the shadow pass
+  at the battle's light counts before `finalShadows` ran (one 1.6 s task on each page). It now renders without shadow
+  updates (`renderWithoutShadowUpdates`, exported from `deploymentWarm.ts`, where the solo deployment's warm already used
+  it), so the prime's batches, a painted frame apart, are the first drawers.
+- The impostor bake did run under the cover (the MP compile), but linked its two programs inside its first draw: a
+  1.1 s task. `ensureBakedAsync` submits them against the atlas with no draw, the compile waits for their links between
+  painted frames (`linkerBreathingSlices`), and the draws follow.
+- Page B's leave (1.3 s) and its watchdog stage (1.3 s) were single `getProgramParameter` calls: a completion query is
+  a synchronous round trip behind the GPU process's whole queue. `engine/gpuCatchUp.ts` gives each link poll a fence:
+  a poll asks only once the fence its previous poll left has signalled (Blink answers `clientWaitSync(sync, 0, 0)` from a
+  cached status, no round trip). The first-use rounds, `linkerBreathingSlices` and the watchdog's link wait use it; a
+  held poll takes no round and does not count as a stalled cohort.
+- The panel stage (2.0-3.2 s) was its mask programs' link wait (`hullCompile` 1.9 s): kicked at the warm's start, they
+  linked behind the scene's programs submitted at the WELCOME. The panel stage now follows the strict compile, by which
+  time they are linked.
+
+**root-s** (load 12-18): no battle long task makes a program; the panel stage is 35 ms (it ran 2.0-3.2 s); compile
+910/951 ms (root-r: 2829/4090). Two costs of the gate: the wreck warm doubled (2.2 -> 4.3 s), one uniform drain per
+wreck visual each spending its first poll placing a mark, so the gate is now one per context (a drain after another
+finds the last mark signalled). And guest B's leave still had one 1.4 s query in `linkerBreathingSlices`, after its own
+fence had signalled: the census's two pages share one GPU process, and B's query can wait behind A's simultaneous
+Garage restore, which no fence of B's context sees. The env validity probe's synchronous 1x1 read (88 ms at B's leave)
+stays synchronous: the sky's install decides on its answer, and a provisional answer would show the poisoned-PMREM
+iPhones black frames before the rescue; its per-call relink is nav-perf's (4cae8e9c43, the probe kept for the session).
+
+**The room's leave** (root-p, Garage return): one 661 ms task, all `getBufferSubData`, under `beginRgba8Readback`.
+The stack named the `tankThumbs` chunk only because `rgba8Readback.ts` is bundled there. Its one synchronous starter
+was the clouds' `updateSunMean`, a 32² readback every 30 frames in every battle and Garage with clouds. Chromium serves
+`getBufferSubData` as `GetBufferSubDataCHROMIUM` + `WaitForCmd`: a synchronous round trip behind every command queued
+before it, even after the fence signals. perf-245's readback-shadow reading was wrong: Blink's getBufferSubData never
+takes the client's shadow path. Behind the Garage's first frames that queue was 661 ms deep. Nothing has read the
+sun mean since Clouds 2.0, so it now refreshes only while a reader asks (`watchSunMean()`), and `rgba8Readback.ts`
+states the copy's cost. A lane-local micro-probe (`tools/tmp-readback-shadow-probe.mjs`) could not load the M5 Max's
+queue (its heavy draws drained in under 2 ms), so the evidence is the Chromium source and the field profile.
+
 ## Memory across battles
 
 `tools/battle-memory-probe.mjs` plays N battles in one page (the census's battle driver) and measures the garage after

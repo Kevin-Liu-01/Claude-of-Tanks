@@ -108,9 +108,10 @@ const quality = readFileSync(new URL('./quality.ts', import.meta.url), 'utf8');
 // fixed at the root). The pass, jitter and RCAS floor stay wired (pins above) — a preset re-enables
 // it with `taa: true`. Comment lines may sit between msaaSamples and the flag.
 for (const label of ['Ultra', 'High', 'Medium']) {
-  assert.match(quality, new RegExp(`label: '${label}',\\n\\s*msaaSamples: \\d,\\n(\\s*//[^\\n]*\\n)*\\s*taa: false,`), `${label}: temporal AA off by default`);
+  // (2026-10-22, the map's air: an `ambience` line may sit between the label and msaaSamples)
+  assert.match(quality, new RegExp(`label: '${label}',\\n(\\s*ambience: [^\\n]*\\n)?\\s*msaaSamples: \\d,\\n(\\s*//[^\\n]*\\n)*\\s*taa: false,`), `${label}: temporal AA off by default`);
 }
-assert.doesNotMatch(quality, /label: 'Low',\n\s*msaaSamples: \d,\n\s*taa: (true|false),/, 'Low never carried the flag');
+assert.doesNotMatch(quality, /label: 'Low',\n(\s*ambience: [^\n]*\n)?\s*msaaSamples: \d,\n\s*taa: (true|false),/, 'Low never carried the flag');
 assert.equal((quality.match(/taa: true,/g) ?? []).length, 0, 'no preset enables temporal AA by default');
 assert.equal((quality.match(/taa: false,/g) ?? []).length, 3, 'the three desktop presets carry the explicit off flag; mobile presets have none');
 console.log('temporalAA.selftest: jitter sequence, projection jitter, blend policy, resolve contract, lifecycle, wiring and preset gating PASS');

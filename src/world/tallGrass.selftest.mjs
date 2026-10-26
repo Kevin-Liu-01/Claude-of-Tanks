@@ -285,6 +285,35 @@ for (const ring of [grass.mid, grass.far]) {
   live.dispose();
 }
 
+// (battle-spikes-253) A cold update is capped in time (coldUpdateMs), each ring still taking one chunk: the carpet built
+// is the one an exact budget builds, at every settled pose, however starved the updates (a cell resumes where it
+// stopped). nearPending counts the near ring's cells still to build (the covered opening waits for it).
+{
+  const realNow = performance.now.bind(performance);
+  const build = (starved) => {
+    let fake = 0;
+    if (starved) performance.now = () => (fake += 1000);
+    try {
+      const g = createTallGrass(field, { seed: 11, tier: 'desktop', biome: meadow, blocked, qualityScale: () => 1,
+        ...(starved ? {} : { candidatesPerUpdate: TALL_GRASS.coldCandidatesPerUpdate }) });
+      const out = [];
+      let firstNear = null;
+      for (const cam of [new THREE.Vector3(0, 2, 0), new THREE.Vector3(40, 2, -25)]) {
+        g.update(1 / 60, cam, null, null);
+        if (firstNear === null) firstNear = { built: g.getState().near.builds, pending: g.nearPending() };
+        settle(g, cam, 4000);
+        out.push([g.near, g.mid, g.far].map((m) => Array.from(m.instanceMatrix.array.subarray(0, m.count * 16)).join()).join('|'));
+      }
+      assert.equal(g.nearPending(), 0, 'a settled near ring has nothing pending');
+      return { out, firstNear };
+    } finally { performance.now = realNow; }
+  };
+  const exact = build(false), starved = build(true);
+  assert.ok(starved.firstNear.pending > 0 && starved.firstNear.pending >= exact.firstNear.pending, 'a starved cold update leaves near cells pending');
+  assert.deepEqual(starved.out, exact.out, 'the capped cold fill builds the exact carpet at every pose');
+  assert.equal(TALL_GRASS.coldChunk > 0 && TALL_GRASS.coldUpdateMs > 0, true);
+}
+
 // 6. Streaming: one cell east builds one column; the return trip is served from the cache; the cache is bounded.
 {
   const before = grass.getState().near.builds;

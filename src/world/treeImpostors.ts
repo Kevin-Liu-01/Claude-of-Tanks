@@ -107,6 +107,8 @@ export interface TreeImpostorRenderer {
   autoClear: boolean;
   shadowMap: { autoUpdate: boolean };
   xr?: { enabled: boolean };
+  /** Three's compile: the bake's programs submitted with no draw (ensureBakedAsync). */
+  compile?(scene: THREE.Object3D, camera: THREE.Camera): unknown;
 }
 
 interface TreeImpostorOptions {
@@ -151,6 +153,12 @@ export interface TreeImpostorLibrary {
   quadGeometry(species: string, mirror: boolean): THREE.BufferGeometry;
   /** Bake when a renderer is present and the atlas is not baked; true when the atlas is baked after the call. */
   ensureBaked(): boolean;
+  /**
+   * (battle-spikes-253) The same bake with its programs linked first: they are submitted with no draw, `waitLinks`
+   * waits for them between tasks, and the draws follow. ensureBaked links them inside its first draw, synchronously:
+   * a 1.1 s task under a loaded room's cover (nav-perf's root-r program log, the two COT_BAKE_BILLBOARD materials).
+   */
+  ensureBakedAsync(waitLinks: () => Promise<void>): Promise<boolean>;
   /** A digest of every bake input: the layout, the geometry bytes, the leaf atlases' pixels. */
   digest(): string;
 }
@@ -514,6 +522,16 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
   }
 
   function bake(renderer: TreeImpostorRenderer): void {
+    const rig = buildBakeRig();
+    try { drawBakeRig(renderer, rig); } finally { disposeBakeRig(rig); }
+  }
+
+  interface BakeRig {
+    materials: THREE.ShaderMaterial[];
+    rings: Array<{ scene: THREE.Scene; camera: THREE.OrthographicCamera }>;
+  }
+
+  function buildBakeRig(): BakeRig {
     // one scene per capture ring, each seen by its own tilted orthographic camera over the WHOLE atlas grid (the
     // target is the whole atlas, so every camera must map the full row range — a per-ring frustum would stretch its
     // rows over the target); a ring's copies sit at their own rows, the other ring's scene is not in view
@@ -555,6 +573,15 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
     };
     ringOf(TREE_IMPOSTOR_ELEVATION_RAD, 0, groundRows);
     ringOf(TREE_IMPOSTOR_ELEVATED_RAD, groundRows, rows.length);
+    return { materials, rings };
+  }
+
+  function disposeBakeRig({ materials, rings }: BakeRig): void {
+    for (const bakeMaterial of materials) bakeMaterial.dispose();
+    for (const ring of rings) ring.scene.clear();
+  }
+
+  function drawBakeRig(renderer: TreeImpostorRenderer, { materials, rings }: BakeRig): void {
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(new THREE.Color());
     const previousAlpha = renderer.getClearAlpha();
@@ -582,8 +609,6 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       renderer.autoClear = previousAutoClear;
       renderer.shadowMap.autoUpdate = previousShadowUpdate;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
-      for (const bakeMaterial of materials) bakeMaterial.dispose();
-      for (const ring of rings) ring.scene.clear();
     }
   }
 
@@ -629,6 +654,29 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       baked = true;
       bakes++;
       return true;
+    },
+    async ensureBakedAsync(waitLinks) {
+      if (baked) return true;
+      const renderer = options.renderer;
+      if (!renderer || typeof renderer.setRenderTarget !== 'function' || typeof renderer.render !== 'function') return false;
+      if (typeof renderer.compile !== 'function') return this.ensureBaked();
+      const rig = buildBakeRig();
+      try {
+        // submitted against the atlas, as the draws bind it (both atlases share one format, so one program key)
+        const previousTarget = renderer.getRenderTarget();
+        try {
+          renderer.setRenderTarget(albedo);
+          for (const ring of rig.rings) renderer.compile(ring.scene, ring.camera);
+        } finally { renderer.setRenderTarget(previousTarget); }
+        await waitLinks();
+        if (baked) return true; // a lazy bake (a frame's update) took it meanwhile
+        const started = performance.now();
+        drawBakeRig(renderer, rig);
+        bakeMs = performance.now() - started;
+        baked = true;
+        bakes++;
+        return true;
+      } finally { disposeBakeRig(rig); }
     },
     digest() {
       let h = 0x811c9dc5;

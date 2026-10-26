@@ -196,8 +196,8 @@ export interface WorldRuntime {
   layoutTier: 'mobile' | 'desktop';
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
-  /** Readiness snapshot only; never performs streaming work. */
-  getGrassWorkState: VegetationRuntime['getGrassWorkState'];
+  /** Readiness snapshot only; never performs streaming work. (battle-spikes-253: with the tall grass's near ring.) */
+  getGrassWorkState(): ReturnType<VegetationRuntime['getGrassWorkState']> & { swardNearPending: number };
   /** (b17) The field walls' stone forms still to build near the camera (0 when every wanted cell has its stones):
    *  a readiness snapshot only, as the grass's. */
   getFieldWallWorkState(): { pending: number };
@@ -322,6 +322,8 @@ export interface WorldRuntime {
   setTerrainStreamFocus(position: THREE.Vector3 | null): void;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
+  /** (battle-spikes-253) The same, its bake programs linked first between tasks (the network entry's compile). */
+  warmImpostorsAsync?(waitLinks: () => Promise<void>): Promise<boolean>;
   setWindTime(timeSeconds: number): void;
   /**
    * The props' own clock (hinge topples, loose bodies, pole LOD) advanced by `deltaSeconds`, as `update` does it. A frame
@@ -1049,7 +1051,7 @@ function* assembleWorldSteps(
     layoutTier: getDeviceTier(),
     minimapTextureState,
     // Checkpoint-only diagnostics; never force streaming or alter readiness.
-    getGrassWorkState: () => vegetation.getGrassWorkState(),
+    getGrassWorkState: () => ({ ...vegetation.getGrassWorkState(), swardNearPending: tallGrass.nearPending() }),
     getFieldWallWorkState: () => ({ pending: (props.group.userData.fieldWallLod as { pending?: number } | undefined)?.pending ?? 0 }),
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
@@ -1234,6 +1236,7 @@ function* assembleWorldSteps(
       (terrain.userData.setStreamFocus as ((p: THREE.Vector3 | null) => void) | undefined)?.(position);
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
+    warmImpostorsAsync: (waitLinks) => { bakePanorama(); return vegetation.warmImpostorsAsync(waitLinks); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     updateProps(dt: number, cameraPos: THREE.Vector3) { if (props.updateProps) props.updateProps(dt, cameraPos); },

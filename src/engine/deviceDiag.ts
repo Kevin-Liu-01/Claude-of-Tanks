@@ -28,6 +28,7 @@ import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
+import { createGpuCatchUpGate } from './gpuCatchUp.ts';
 
 interface DeviceDiagResult {
   basic: boolean;
@@ -766,6 +767,24 @@ function sceneProbeCopyPass(): SceneProbeCopyPass {
   return sceneProbeCopy;
 }
 
+/**
+ * (battle-spikes-253) The probe's readback copy program compiled ahead, against a render target as the probe draws it (an
+ * RGBA8 target: the same key). nav-perf's program log: the MP watchdog's 1.8 s task made this one program and waited on its
+ * link behind the GPU process's queue. Called with the entry's compile; nothing is drawn.
+ */
+export function warmSceneProbePrograms(renderer: THREE.WebGLRenderer): void {
+  const target = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false });
+  const previous = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  try {
+    const pass = sceneProbeCopyPass();
+    renderer.setRenderTarget(target);
+    renderer.compile(pass.scene, pass.camera);
+  } catch { /* the probe compiles it at its draw */ } finally {
+    try { renderer.setRenderTarget(previous, face, mip); } catch { /* restored by the next frame */ }
+    target.dispose();
+  }
+}
+
 function createSceneProbeTargets(width: number, height: number): SceneProbeTargets {
   let production: THREE.WebGLRenderTarget | null | undefined = null;
   try { production = sceneProbeTargetSource?.(); } catch { production = null; }
@@ -1157,15 +1176,21 @@ async function awaitProgramLinks(
   // synchronous round trip that waits behind the GPU process's queued links, and asking every pending program in one
   // poll was one 1.2 s task (nav-perf's profiled room, isReady → getProgramParameter). Linked programs answer from
   // three's cache, so the cursor passes them without a query.
+  // And a poll asks only once the GPU has caught up to the previous poll (gpuCatchUp.ts): the first query behind a deep
+  // queue was itself the long task (nav-perf's root-r room B: 1.3 s in the watchdog stage).
   let cursor = 0;
+  const context = renderer.getContext?.();
+  const gate = context ? createGpuCatchUpGate(context) : null;
   try {
     while (cursor < pending.length && sceneProbeClock() < deadline) {
       await new Promise<void>((resolve) => { setTimeout(resolve, PROBE_LINK_POLL_MS); });
       assertSceneWatchdogOwner(signal, isCurrent);
       if (renderer.getContext?.()?.isContextLost?.()) break;
+      if (gate && !gate.caughtUp()) continue;
       while (cursor < pending.length && pending[cursor].isReady!()) cursor++;
     }
   } finally {
+    gate?.dispose();
     receipt.linkWaitMs = sceneProbeClock() - startedAt;
     receipt.linkLeft = pending.length - cursor;
   }
