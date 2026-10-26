@@ -4,7 +4,9 @@
 // accessibility choices, chunk recovery, base title, Gallery recovery), the speculation rules and the responsive seed
 // the build inlines (tools/viteSpeculationRules.ts, tools/viteResponsiveSeed.ts). Same-origin modules and workers load
 // from 'self'; gtag.js from Google Tag Manager on the public pages (src/googleAnalytics.ts); blob: workers for the
-// capability probe (src/engine/capabilityGate.ts). JSON-LD blocks are data, not script, and need no hash.
+// capability probe (src/engine/capabilityGate.ts). JSON-LD blocks are data, not script, and need no hash. The world
+// kernels compile WebAssembly (src/world/wasmWorldKernels.ts, on since 252): 'wasm-unsafe-eval' allows that and nothing
+// else (never 'unsafe-eval'; Main 2026-10-25: production filed a report for every kernels compile).
 //
 // vercel.json sends it report-only for one round (deploy 243), then enforced. When an inline script changes:
 //   node tools/contentSecurityPolicy.mjs --write     rewrites the header value in vercel.json
@@ -47,7 +49,7 @@ export async function contentSecurityPolicy(root = ROOT) {
     hashes.add(inlineScriptHashes(`<script type="speculationrules">${JSON.stringify(speculationRulesFor(eagerness))}</script>`)[0]);
   }
   hashes.add(inlineScriptHashes(`<script>${await bundleSeed(root)}</script>`)[0]);
-  const scriptSrc = ["'self'", 'https://www.googletagmanager.com', ...[...hashes].sort().map((hash) => `'${hash}'`)];
+  const scriptSrc = ["'self'", "'wasm-unsafe-eval'", 'https://www.googletagmanager.com', ...[...hashes].sort().map((hash) => `'${hash}'`)];
   return [`script-src ${scriptSrc.join(' ')}`, "worker-src 'self' blob:", "object-src 'none'", "base-uri 'self'"].join('; ');
 }
 

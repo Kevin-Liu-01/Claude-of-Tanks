@@ -100,6 +100,22 @@ try {
     recorder.engineCtx.releaseShadowMaterial(leaked);
   }
 
+  // --- 1b. (battle-spikes-253) the unlit tag leaves a colourless material alone: the shared shadow-proxy material stays
+  // three's own, so battle builds after the first still install their articulated shadow batch (one draw a cascade, not three)
+  {
+    const recorder = createCascadeRecorder();
+    const proxyLike = new THREE.MeshBasicMaterial({ name: 'proxy', colorWrite: false, depthWrite: false });
+    tagUnlitVehicleMaterials(recorder.engineCtx, new THREE.Group().add(meshOf(proxyLike, 'procShadow_hull')));
+    assert.ok(!Object.prototype.hasOwnProperty.call(proxyLike, 'onBeforeCompile'), 'a material that writes no colour is not tagged');
+    const batched = [];
+    for (const id of ['m1a2_abrams_sepv3', 'leclerc_xlr']) {
+      await ensureTankBuilder(id);
+      const visual = createTank(id, recorder.engineCtx, { quality: 'low', batchStatic: true, battleDetailLod: true, eraVisualBindingReceipt: false });
+      batched.push(visual.root.children.some((child) => child.name === 'articulatedShadowBatch'));
+      visual.dispose();
+    }
+    assert.deepEqual(batched, [true, true], 'two battle builds with the cascades both take their shadow batch');
+  }
   // --- 2. a renderer stub compiles the profiles' registered clones as it compiled their hand re-hooks
   {
     const stub = { anisotropy: 1 }; // no cascade setup: the Gallery's, the boards' path

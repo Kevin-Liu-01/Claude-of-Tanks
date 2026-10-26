@@ -90,7 +90,7 @@ export const spectatorSwitcherStyles = `
  box-shadow:var(--ring-1);font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2);text-align:center;white-space:nowrap}
 .cot-spec :is(.cycle,.gar){position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;margin:0;
  padding:var(--s1) var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);color:var(--ink-1);
- font:inherit;cursor:pointer;pointer-events:auto;transition:box-shadow var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
+ font:inherit;cursor:pointer;pointer-events:auto;transition:transform var(--dur-fast) var(--ease-enter);}
 /* (the chevron and its key cap side by side, the Watch bar's cycle pair's form and its 20 px cap: stacked under the
    chevron here and beside it there read as two kits, gauntlet r5) */
 .cot-spec .cycle{flex-direction:row;gap:var(--s2);min-width:44px;padding-inline:var(--s3)}

@@ -130,16 +130,18 @@ body[data-cot-width='phone'] .cot-mp-banner{width:calc(100vw - (var(--cot-edge) 
    reader; an outage is announced and also named on the button itself. */
 body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
   left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
-body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:11px}
+/* (a column sized to its widest line, 44 px at least: zh's "42 毫秒" broke 秒 out of the fixed 44 px tile, gauntlet r8;
+   the notice takes the tile's width, never widens it) */
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;min-width:44px;height:44px;padding:3px;gap:2px;flex-direction:column;justify-content:center;font-size:11px}
 body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping){display:none}
 /* (the touch tile on the HUD's plate with the touch tiles' ring, its ping with its unit: a bare "42" floated beside the map,
    gauntlet r7) */
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);text-shadow:none}
-body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:1px}
+body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:1px;white-space:nowrap}
 body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:var(--battle-fs-11);color:var(--ink-2)}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
-body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:0;min-width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
 body.cot-touch-layout .cot-mp-banner.battle{position:fixed;width:1px!important;height:1px;min-width:0;padding:0;border:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body.cot-touch-layout .cot-mp-banner.battle .leave{display:none}

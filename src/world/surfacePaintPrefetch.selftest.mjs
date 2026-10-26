@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { HAY_PRINT_SEED, paintHayBuffers } from './hayPrint.ts';
 import { FIELD_STONE_PRINT_SEED, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { FIELD_MUD_PRINT_SEED, paintFieldMudBuffers } from './fieldMudSurface.ts';
+import { paintLimeRender, paintLimewash } from './regionalSurfaces.ts';
 import { registerPaintNoise, settledPaint, startSurfacePaints, surfacePaintKey } from './surfacePaintPrefetch.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { paintRockDetailBuffers } from './rockDressing.ts';
@@ -38,6 +39,9 @@ const jobs = [
   { kind: 'fieldStone', size: 256, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' },
   // (battle-spikes-253) a mud-walled map's render
   { kind: 'fieldMud', size: 256, seed: FIELD_MUD_PRINT_SEED },
+  // (battle-spikes-253) a regional kit's render: the franconian lime render's two seeds, the khatas' limewash
+  { kind: 'limeRender', size: 256, seed: 0x5e1b }, { kind: 'limeRender', size: 256, seed: 0x5e1c },
+  { kind: 'limewash', size: 256, seed: 0x4e21 },
   ...LITHOLOGIES.map((lithology) => ({ kind: 'rockDetail', lithology, noiseSeed: 2009 })),
   ...['wood', 'canvas', 'steel'].map((detail) => ({ kind: 'structureDetail', detail, noiseSeed: 2009 })),
 ].map((job, i) => ({ ...job, id: i + 1 }));
@@ -48,6 +52,8 @@ const inline = (job) => {
     case 'hay': return drain(paintHayBuffers(job.size, job.seed));
     case 'fieldStone': return drain(paintFieldStoneBuffers(job.size, job.seed, job.lithology));
     case 'fieldMud': return drain(paintFieldMudBuffers(job.size, job.seed));
+    case 'limeRender': return paintLimeRender(job.size, job.seed);
+    case 'limewash': return paintLimewash(job.size, job.seed);
     case 'rockDetail': return drain(paintRockDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.lithology));
     default: return paintStructureDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.detail);
   }
@@ -87,6 +93,37 @@ assert.deepEqual(digest(drain(paintFieldMudBuffers(256))), digest(drain(paintFie
   assert.deepEqual([p.stats.planned, p.stats.taken, p.stats.missed, p.stats.failed], [2, 2, 2, 1]);
 }
 assert.equal(startSurfacePaints([], () => { throw new Error('no worker for nothing'); }), null);
+
+// (battle-spikes-253) a kit's render prints are added once the map's kits have loaded: planned with the fixed prints, a
+// lazily loaded architecture style failed the whole world build in the browser ("Architecture style franconian is not
+// loaded"; Node had loaded it). The fixed plan reads no style; the kit plan is added to the same worker after kitsReady.
+{
+  const posted = [];
+  let port;
+  const p = startSurfacePaints([{ kind: 'hay', size: 512, seed: HAY_PRINT_SEED }],
+    () => (port = { postMessage: (job) => posted.push(job), terminate() {}, onmessage: null, onerror: null }), () => 0);
+  p.add([{ kind: 'limeRender', size: 256, seed: 0x5e1b }, { kind: 'hay', size: 512, seed: HAY_PRINT_SEED }]);
+  assert.deepEqual(posted.map((job) => job.kind), ['hay', 'limeRender'], 'added prints go to the same worker, once each');
+  const lime = p.take(surfacePaintKey({ kind: 'limeRender', size: 256, seed: 0x5e1b }));
+  port.onmessage({ data: { id: posted[1].id, ok: true, buffers: { marker: 'lime' } } });
+  assert.equal((await lime).marker, 'lime');
+  p.dispose();
+  p.add([{ kind: 'limewash', size: 256, seed: 1 }]);
+  assert.equal(posted.length, 2, 'nothing is posted after disposal');
+}
+{
+  const propsSource = (await import('node:fs')).readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  const fixed = propsSource.slice(propsSource.indexOf('export function plannedSurfacePaints('), propsSource.indexOf('export function plannedKitRenderPaints('));
+  assert.ok(fixed.length > 0 && !fixed.includes('resolveRegionalArchitecture'), 'the fixed plan resolves no architecture style');
+  const mapSource = (await import('node:fs')).readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  assert.match(mapSource, /if \(surfacePrefetch\) void kitsReady\.then\(\(\) => surfacePrefetch\.add\(plannedKitRenderPaints\(config\)\)\)/,
+    'the kit plan joins the prefetch once the kits are loaded');
+  assert.deepEqual(props.plannedKitRenderPaints({ id: 'nowhere', props: { architecture: 'no-such-style' } }), [], 'a style not loaded: none');
+  const { loadRegionalArchitectures } = await import('./maps/regional/index.ts');
+  await loadRegionalArchitectures(['franconian']);
+  assert.deepEqual(props.plannedKitRenderPaints({ id: 'urban', props: { architecture: 'franconian' } }).map((r) => surfacePaintKey(r)),
+    ['limeRender|256|24091', 'limeRender|256|24092'], 'Steinburg\'s render on its two seeds');
+}
 
 // a settled tile: taken synchronously, once, and only by the noise registered with its seed; a tile still painting, or
 // an unregistered noise, is painted where it stands; disposal releases the settled tiles nobody took
@@ -131,4 +168,4 @@ for (const id of ['verdant', 'urban', 'desert', 'fjord']) {
 }
 assert.deepEqual(plannedSurfacePaints({ id: 'verdant', props: {} }, 1337).filter((r) => r.noiseSeed !== undefined).map((r) => r.noiseSeed),
   [1344, 1344, 1344, 1344], 'another props seed, another noise');
-console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');
+console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, the kit lime render and limewash, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');

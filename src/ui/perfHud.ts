@@ -159,7 +159,7 @@ const PERF_HUD_CSS = `
   place-items:center;border:0;border-left:1px solid rgba(177,196,210,.2);background:transparent;
   color:#ffd27a;cursor:pointer;pointer-events:auto}
 #cot-perfhud .ph-mobile-toggle::before{content:"";width:9px;height:9px;border-right:2px solid currentColor;
-  border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform 120ms ease}
+  border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform var(--dur-fast) ease}
 #cot-perfhud.mobile-expanded .ph-mobile-toggle::before{transform:translateY(2px) rotate(225deg)}
 #cot-perfhud .ph-mobile-toggle:focus-visible{outline:2px solid #ffd27a;outline-offset:-3px}
 #cot-perfhud.has-error .ph-state{color:#ff9b91}#cot-perfhud.has-error .ph-state::before{background:#ef6157}
@@ -175,7 +175,7 @@ const PERF_HUD_CSS = `
 #cot-perfhud .ph-action{min-height:44px;padding:7px;border:1px solid rgba(240,176,74,.34);border-radius:2px;
   background:linear-gradient(180deg,rgba(240,160,48,.12),rgba(240,160,48,.045));color:#ffd796;
   font:700 11px/1 ${FONT_COND};letter-spacing:.04em;cursor:pointer;
-  transition:transform 90ms ease-out,border-color 90ms ease,background-color 90ms ease}
+  transition:transform var(--dur-instant) ease-out}
 #cot-perfhud .ph-action:active{transform:scale(.97)}
 #cot-perfhud .ph-action:focus-visible{outline:2px solid #ffd27a;outline-offset:2px}
 #cot-perfhud .ph-action-status{grid-column:1/-1;min-height:14px;color:#8eaaa5;text-align:right}

@@ -534,7 +534,7 @@ assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 
 // in fixed columns. They change on a kill, never per frame, so proportional figures move nothing beside them.
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');
 assert.match(hud, /<b class="fe">0<\/b>/, 'the enemy score is a display numeral');
-assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
+assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
 // The end screen's headline tallies and team scores are display numerals too: they count up once (1.05 s ease-out) and
 // settle, and the settled frame is what reads (Plex Mono's full-cell comma printed "8 , 420"). Live gauges keep .num.
 const endScreen = read('src/ui/endScreen.ts');

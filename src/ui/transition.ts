@@ -33,9 +33,9 @@ import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { waitForOpaqueTransition } from './transitionCover.ts';
 
-const FADE_IN_MS = 190;
+// The fades run on the motion tokens (tokens.css; 1 ms under reduced motion): in on --dur-base, out on --dur-fast, the
+// quick pace on --dur-instant both ways. hide() waits out the fade-out on these mirrors of the out tokens.
 const FADE_OUT_MS = 140;
-const QUICK_FADE_IN_MS = 90;
 const QUICK_FADE_OUT_MS = 80;
 
 type TransitionPace = 'standard' | 'quick';
@@ -72,17 +72,17 @@ interface TransitionScreen {
 const CSS = `
 .cot-trans{position:fixed;inset:0;z-index:170;display:none;align-items:center;
   justify-content:center;flex-direction:column;background:#05080b;opacity:0;
-  transition:opacity ${FADE_IN_MS}ms var(--cot-ease-out);font-family:${FONT_STACK};color:#e6edf3;
+  transition:opacity var(--dur-base) var(--cot-ease-out);font-family:${FONT_STACK};color:#e6edf3;
   -webkit-user-select:none;user-select:none;cursor:default;overflow:hidden;}
 .cot-trans.on{display:flex;}
 .cot-trans.lit{opacity:1;}
-.cot-trans.out{opacity:0;pointer-events:none;transition:opacity ${FADE_OUT_MS}ms var(--cot-ease-out);}
-.cot-trans.quick{transition-duration:${QUICK_FADE_IN_MS}ms;}
-.cot-trans.quick.out{transition-duration:${QUICK_FADE_OUT_MS}ms;}
+.cot-trans.out{opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--cot-ease-out);}
+.cot-trans.quick{transition-duration:var(--dur-instant);}
+.cot-trans.quick.out{transition-duration:var(--dur-instant);}
 .cot-trans *{box-sizing:border-box;margin:0;padding:0;}
 .cot-trans .bg{position:absolute;inset:-2%;background-size:cover;
   background-position:center;filter:saturate(.88) contrast(1.04);
-  transform:scale(1.02);transition:transform 6s var(--cot-ease-soft);}
+  transform:scale(1.02);transition:transform calc(var(--dur-stage) * 8) var(--cot-ease-soft);}
 .cot-trans.lit .bg{transform:scale(1.07);}
 .cot-trans .scrim{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(5,8,11,.78) 0%,rgba(5,8,11,.46) 46%,rgba(5,8,11,.9) 100%);}
@@ -112,9 +112,9 @@ const CSS = `
 .cot-trans .mpct{font-size:15px;font-weight:700;color:#ffd27a;}
 .cot-trans .mbar{position:relative;height:4px;background:rgba(255,255,255,.07);
   box-shadow:inset 0 0 0 1px rgba(146,164,180,.22);}
-.cot-trans .mfill{position:absolute;left:0;top:0;bottom:0;width:0%;
+.cot-trans .mfill{position:absolute;left:0;top:0;bottom:0;width:100%;transform:scaleX(0);transform-origin:0 50%;
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
-  box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .16s linear;}
+  box-shadow:0 0 14px rgba(240,160,48,.5);transition:transform var(--dur-fast) linear;}
 @media (prefers-reduced-motion:reduce){
   .cot-trans .bg,.cot-trans .core{transform:none!important;}
 }
@@ -239,7 +239,7 @@ export function createTransition(): TransitionScreen {
     /** Real progress. @param {number} f 0..1 @param {string} [label] */
     progress(f: number, label?: string) {
       const v = Math.max(0, Math.min(1, f));
-      fillEl.style.width = `${(v * 100).toFixed(1)}%`;
+      fillEl.style.transform = `scaleX(${v.toFixed(3)})`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
       if (label) stageEl.textContent = label;
     },

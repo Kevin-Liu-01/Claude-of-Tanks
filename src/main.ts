@@ -127,7 +127,7 @@ import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
-  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
+  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders, offThreadDecorPlanner,
 } from './vehicles/fleetFactory.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -161,12 +161,12 @@ import {
 } from './game/garageVariants.ts';
 import {
   createGarageEnvironmentPresentationRuntime,
-  GARAGE_CAMERA_LOOK_HEIGHT_M,
   type GarageEnvironmentPresentationRuntime,
 } from './game/garageEnvironmentPresentationRuntime.ts';
 import {
   GARAGE_CAMERA_AZIMUTH_RAD,
   GARAGE_CAMERA_PITCH_RAD,
+  GARAGE_PLATFORM_GEOMETRY,
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
@@ -1043,7 +1043,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  preloadSoloBattle: () => preloadSoloBattleRuntime(),
+  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
+  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -1062,7 +1064,8 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, options),
+  // stage 2b: the pedestal's stepped builds plan their decoration in the decor worker (it awaits the waits)
+  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined }),
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
@@ -1197,11 +1200,6 @@ await bootStage('vehicle', async () => {
 // own fullscreen-pass compiles, which compileAsync(scene, camera) does not
 // cover), and compileAsync carries a known disposal race (camo_spotting r5).
 
-// Canonical hero box (half-extents, metres) the showroom frames INSTEAD of
-// each hull's own measured box — sized to the M1A2 reference (≈3.9 × 2.5 ×
-// 9.9 m). Keeping it constant is the whole point: every vehicle is viewed
-// from the same eye.
-const GARAGE_FRAME_BOX = { hw: 1.95, hh: 1.25, hd: 4.95 };
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
 function prepareBattleWorldServices(next = currentWorld()) {
@@ -1645,19 +1643,16 @@ const showroom = createGarageShowroomRuntime({
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
   // Canonical front-right three-quarter camera: glacis toward the viewer,
-  // bow and gun toward screen-left. All dimensions and camera
-  // math remain owned by the existing engine solver; this root supplies only
-  // scene anchors and the canonical vehicle-independent frame.
+  // bow and gun toward screen-left. All dimensions and camera math remain owned by the existing engine solver, which
+  // frames the hero's own box, centred in the Garage's free stage (owner 10-25 via Main: "closer to center and showing
+  // stuff off better"), easing from one hero to the next; this root supplies the scene anchors and a mode preview's
+  // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  fixedFrame: () => ({
-    x: GARAGE_POS.x,
-    y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    z: GARAGE_POS.z,
-    hw: GARAGE_FRAME_BOX.hw,
-    hh: GARAGE_FRAME_BOX.hh + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    hd: GARAGE_FRAME_BOX.hd,
-  }),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
+    r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
+  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();
@@ -1777,6 +1772,12 @@ const battleAmbienceTime = () => battleAtmosphere.current?.weather?.timeOfDay ??
 /** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
 function deferredPanelMasks(specId: string): void {
   console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
+}
+/** (battle-spikes-253) The panel's mask programs start linking when a covered warm starts (tankThumbs warmTopMaskPrograms). */
+function kickPanelMaskPrograms(root: THREE.Object3D | null | undefined): void {
+  if (!root) return;
+  void import('./ui/tankThumbs.ts').then(({ warmTopMaskPrograms }) => { warmTopMaskPrograms(root); })
+    .catch(() => { /* the panel's stage compiles them */ });
 }
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
@@ -2214,6 +2215,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    kickPlayerPanel: () => {
+      if (game.player?.aerial?.kind !== 'gunship') kickPanelMaskPrograms(game.player?.visual?.root);
+    },
     preparePlayerPanel: async () => {
       const player = game.player;
       if (player?.aerial?.kind === 'gunship') return;
@@ -2762,6 +2766,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
+          playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
+            kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
+          },
           playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;
@@ -2969,6 +2976,15 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
+  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
+  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
+  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
+    const chosen = specId ?? garage.getSelected();
+    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    }, beginMultiplayerV2Battle));
+  }
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3388,6 +3404,8 @@ const battleFrame = createBattleFrameRuntime({
   network: {
     isActive: networkMatchActive,
     pump: networkPump.pump,
+    // a solo battle on a local host holds its authority as the page's solo simulation holds (soloHostEntry.ts)
+    setHeld: (held: boolean) => { multiplayerV2.current?.setPaused(held); },
   },
   countdown: {
     isWarmPending: () => battleWarmPending,

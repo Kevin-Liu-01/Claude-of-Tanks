@@ -35,6 +35,7 @@ import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
   createProps,
   createPropsAsync,
+  plannedKitRenderPaints,
   plannedSurfacePaints,
   preloadPropModels,
 } from './props.ts';
@@ -437,6 +438,8 @@ export async function createMapAsync(
   const wreckPrefetch = seed === 1337 ? startPlannedWreckBakes(mapId, terrainVariant) : null;
   // (and the props build's fixed-input prints — the straw's, the dry-stone walls' — in the surface paint worker)
   const surfacePrefetch = typeof Worker === 'undefined' ? null : startSurfacePaints(plannedSurfacePaints(config));
+  // (battle-spikes-253) and its architecture kit's render prints once the kits have loaded (the style resolves only then)
+  if (surfacePrefetch) void kitsReady.then(() => surfacePrefetch.add(plannedKitRenderPaints(config))).catch(() => {});
   // (and the horizon ring's geometry pipeline in its own worker, supplied to the terrain build through the ring's hook and
   // taken after its chunks; a rematch on the same map takes the kept ring instead — horizonRingPrefetch.ts)
   // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland in its worker instead of the ring: its
@@ -515,7 +518,8 @@ export async function createMapAsync(
     if (ringSource) terrain.userData.horizonRingLoad = ringSource.stats;
     if (hinterlandSource) terrain.userData.hinterlandLoad = hinterlandSource.stats;
     if (earthLandReady) await earthLandReady;
-    const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+    const world = await assembleWorldPaced(engineCtx, config, heightField, terrain, vegetation, props,
+      fineSlices ? () => step('Sealing the battlefield', 0.99) : null);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,
       terrain: terrain.userData.streamingStats || null,
@@ -575,6 +579,64 @@ function assembleWorld(
   vegetation: VegetationRuntime,
   props: PropsRuntime,
 ): WorldRuntime {
+  const steps = assembleWorldSteps(engineCtx, config, heightField, terrain, vegetation, props, false);
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return next.value;
+  }
+}
+
+/**
+ * The assembly paced between its steps by `pace` (createMapAsync's fine slices; none: in one go). Pacing that throws (a
+ * cancelled build) ends the pacing and the assembly finishes at once, so a real world owns every resource it wired: the
+ * coordinator releases a cancelled build's world.
+ */
+async function assembleWorldPaced(
+  engineCtx: EngineContext,
+  config: BuildMapConfig,
+  heightField: WorldHeightField,
+  terrain: TerrainRoot,
+  vegetation: VegetationRuntime,
+  props: PropsRuntime,
+  pace: (() => Promise<void>) | null,
+): Promise<WorldRuntime> {
+  const steps = assembleWorldSteps(engineCtx, config, heightField, terrain, vegetation, props, !!pace);
+  let paced = pace;
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return next.value;
+    if (paced) {
+      try { await paced(); } catch { paced = null; }
+    }
+  }
+}
+
+/** A step generator's work time, summed into `into` (the waits between its steps left out). */
+function* timedSteps(steps: Iterator<void, void, void>, into: { ms: number }): Generator<void, void, void> {
+  for (;;) {
+    const startedAt = performance.now();
+    const next = steps.next();
+    into.ms += performance.now() - startedAt;
+    if (next.done) return;
+    yield;
+  }
+}
+
+/**
+ * The assembly in steps (battle-spikes-253: one 164 ms task on a desktop entry, the ground cover's seal 94 of it, about
+ * four times that on a phone's Garage background build). createMap drains them in one go; createMapAsync paces a
+ * sliced build between them. A sliced assembly keeps its group hidden until its last step, as the coordinator keeps a
+ * built world, so no frame draws it half assembled.
+ */
+function* assembleWorldSteps(
+  engineCtx: EngineContext,
+  config: BuildMapConfig,
+  heightField: WorldHeightField,
+  terrain: TerrainRoot,
+  vegetation: VegetationRuntime,
+  props: PropsRuntime,
+  sliced: boolean,
+): Generator<void, WorldRuntime, void> {
   const layout = heightField._layout;
   // The tactical map's water split (minimapWaterPatches.ts), sampled on the first getMinimapFeatures and kept: the
   // authored discs and the liquid mask are fixed for the world's life.
@@ -594,6 +656,7 @@ function assembleWorld(
   group.add(terrain, vegetation.group, props.group);
   bindRockBeds(terrain, props.group);
   engineCtx.scene.add(group);
+  if (sliced) group.visible = false;
   // Round 77c: where the world baked an impostor atlas (desktop, a renderer) the horizon ring's forest over the red
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
   // mobile tier and the receipts keep the ring's lobes.
@@ -650,6 +713,7 @@ function assembleWorld(
   if (horizonPanorama && panoramaRenderer && !horizonPanorama.baked) {
     try { horizonPanorama.prepareBake(panoramaRenderer); } catch { /* the bake compiles them itself */ }
   }
+  yield;
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
@@ -690,6 +754,7 @@ function assembleWorld(
     ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale, aureoleSun,
       aureoleGroundAt: aureoleSun ? (x, z) => heightField.getHeightAt(x, z) : null }) : null;
   if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
+  yield;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
   // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
@@ -708,6 +773,7 @@ function assembleWorld(
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
+  yield;
   // the scenery lane (2026-10-03): no grass, litter or tall grass grows up through a pavement's clints or a scree fan
   const groundCoverHoles = [
     ...((props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles ?? []),
@@ -727,10 +793,11 @@ function assembleWorld(
   const queryGroundCover = rockGroundCover.length || coverSolids.length !== obstacles.length
     ? createObstacleGrid([...coverSolids, ...rockGroundCover]) : queryObstacles;
   const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryGroundCover), groundCoverHoles);
-  // Keep the synchronous seal visible in load diagnostics: it runs after the
+  // Keep the seal's work visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
-  const groundCoverSealStarted = performance.now();
-  vegetation.setGroundCoverClearance(groundCoverClearance());
+  const groundCoverSeal = { ms: 0 };
+  yield* timedSteps(vegetation.groundCoverSealSteps(groundCoverClearance()), groundCoverSeal);
+  const shrubClearanceStarted = performance.now();
   // the scenery lane (b12; Fjord, wave 74: foliage cards through a boulder): and no shrub stands inside a boulder or a
   // structure the props placed after it — cosmetic, its cover disc stays (shrubClearance.ts)
   group.userData.shrubsCleared = clearShrubsFromSolids(vegetation.group, groundCoverClearance());
@@ -742,7 +809,8 @@ function assembleWorld(
     group.userData.shrubsClearedFromVehicles = clearShrubsFromSolids(vegetation.group,
       createGroundCoverClearance(createObstacleGrid(parkedVehicles)), 1);
   }
-  group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
+  group.userData.groundCoverSealMs = groundCoverSeal.ms + performance.now() - shrubClearanceStarted;
+  yield;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
   // footprints as the grass carpet.
@@ -762,6 +830,7 @@ function assembleWorld(
     rockChipTint: (props.group.userData.rockChipTint as [number, number, number] | null | undefined) ?? null,
   });
   group.add(litter.group);
+  yield;
   // Round 73 (2026-09-25, the ground redux): the tall-grass tier — blades in a camera-centred ring, bent by the
   // world-anchored pressure field every hull stamps (groundPressure.ts), kept out of the same sealed footprints;
   // null field on the mobile tier and without a renderer (receipts), where the sward is absent or stands still
@@ -776,6 +845,7 @@ function assembleWorld(
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
   group.add(tallGrass.group);
+  yield;
   // item 45 (2026-10-22; the ground lane's track marks of 2026-10-08 re-cut): the ruts behind the tanks — a ring of strips
   // that modulate the drawn ground, laid from the simulation's tank poses (stampTrackMarks), sized by the quality preset
   // and cleared with the destructibles at every battle's start
@@ -948,11 +1018,13 @@ function assembleWorld(
     return bodyQuery;
   };
   const unregisterDestructibles = props.registerDestructibles();
+  yield;
   // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
   // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
   // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
   const programVariants = splitProgramVariants(props.group);
   group.userData.programVariants = programVariants;
+  if (sliced) group.visible = true;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
