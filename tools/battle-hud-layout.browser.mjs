@@ -597,18 +597,23 @@ try {
           result.failures.push(result.seat==='side'?'detection must keep 6px from the side-seated objective':'detection must clear the objective by at least 7px');
       }
       if(state.startsWith('notifications')) {
-        const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
-        if(hexagons.length!==2||hexagons.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)) result.failures.push('status notices must have six-sided outlines');
+        // (each notice's edge and fill are the long hexagon's two layers under the words, owner 2026-10-25: its ::before
+        // and ::after carry --notice-cut, the element itself no clip; hud.ts, hudNotices.selftest.mjs)
+        const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>
+          [getComputedStyle(node,'::before').clipPath,getComputedStyle(node,'::after').clipPath]));
+        if(hexagons.length!==2||hexagons.some(layers=>layers.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)))
+          result.failures.push('status notices must have six-sided outlines');
       }
       if(state!=='settings'&&state!=='ended'){
         const decoration=await page.evaluate(()=>{
           const notice=document.querySelector('.cot-kill-lane.r .cot-kf');
           const style=notice?getComputedStyle(notice):null;
-          return {left:style?.borderLeftWidth,right:style?.borderRightWidth,
+          return {left:style?.borderLeftWidth,right:style?.borderRightWidth,justify:style?.justifyContent,
             mode:document.querySelector('.cot-mode-status')?.dataset.mode};
         });
-        if(decoration.left&& (parseFloat(decoration.left)!==0||parseFloat(decoration.right)<=0))
-          result.failures.push('enemy kill notice must use the right border');
+        // (one plate ringed all round, never a one-sided coloured border, owner 2026-10-25; the enemy's lane mirrored)
+        if(decoration.left&&(parseFloat(decoration.left)!==parseFloat(decoration.right)||decoration.justify!=='flex-end'))
+          result.failures.push('enemy kill notice must be one plate, mirrored to its lane');
         if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
           result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
       }
