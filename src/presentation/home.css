@@ -14,9 +14,10 @@
 :root{--home-h1:clamp(var(--fs-44),min(5.4vw,9.5svh),var(--fs-88));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
-/* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
-   reading and data voices read it, so the head stays inside its type budget */
-body{--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* the page declares the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below), which the kit's display
+   and reading voices read, and IBM Plex Mono for its readouts (the counts and the clocks, bar line 4), loaded when one
+   shows, with no preload, so the head stays inside its type budget */
+body{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
 img{display:block;max-width:100%}
 /* the page's own focus outline; the kit's controls draw their ring (components.css), so they take no second outline */
@@ -197,7 +198,7 @@ img{display:block;max-width:100%}
 /* the posts (owner, 2026-10-26: the Reddit posts prominent again, the Three.js post its own card): Three.js's feature
    first and largest, two rows tall beside the four quoted posts, each over its battle photo; then the five Reddit
    launch posts on the same card */
-.press__posts{grid-area:posts;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
+.press__posts{grid-area:posts;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s3)}
 .press__posts>.v5-social-card--threejs{grid-column:span 2;grid-row:span 2}
 .press__reddit{grid-area:reddit;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
 /* one size for every quote, the last line never a lone word */
@@ -210,7 +211,7 @@ img{display:block;max-width:100%}
 .press__posts .v5-social-card__body{justify-content:flex-start}
 .v5-social-card--reddit{min-height:240px}
 .v5-social-card--reddit>a{padding:var(--s5);background:none}
-.v5-social-card__avatar--reddit{display:grid;place-items:center;width:42px;height:42px;background:var(--surface-hover);box-shadow:var(--ring-2);outline:0}
+.v5-social-card .v5-social-card__avatar--reddit{display:grid;place-items:center;width:42px;height:42px;background:var(--surface-hover);box-shadow:var(--ring-2);outline:0}
 .v5-social-card__avatar--reddit .v5-social-platform-icon{width:22px;height:22px}
 .v5-social-card__title{margin:0;color:var(--ink-1);font:600 var(--fs-18)/1.3 var(--font-display);text-wrap:pretty}
 .press__reddit .v5-social-card__body{justify-content:flex-start;padding:var(--s5) 0}
@@ -359,7 +360,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play-tile__nm .cot-i{width:20px;height:20px}
   .press__stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .press__stats dd{font-size:var(--fs-28)}
-  .press__posts{grid-template-columns:minmax(0,1fr)}
+  .press__posts{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto}
   .press__posts>.v5-social-card--threejs{grid-column:auto}
   /* the Reddit posts are a rail of whole cards on a phone, the next one showing at the edge */
   .press__reddit{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:80%;overflow-x:auto;overscroll-behavior-x:contain;

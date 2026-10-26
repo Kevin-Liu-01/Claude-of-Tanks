@@ -303,8 +303,9 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // raw / +66 brotli on the game page), the readouts' plain zero (+29 raw) and the accents face (three unicode-range rules
 // and its stack name, +494 raw / +47 brotli). Measured with the two preload links: the game head is 4,361 raw / 868
 // brotli. The cascade-layer wrapper (brand-ui BUI-F3: the order statement and @layer surfaces{}) adds 82 raw / 27
-// brotli: the game head measures 4,443 raw / 895 brotli.
-const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 905 } });
+// brotli: the game head measures 4,443 raw / 895 brotli. A public page that shows readouts declares the mono face too
+// (bar line 4: the landing's counts and clocks, 2026-10-26, without a preload): /home measures 3,538 raw / 921 brotli.
+const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 925 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])

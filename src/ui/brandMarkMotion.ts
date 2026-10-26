@@ -98,7 +98,7 @@ export const BRAND_MARK_LIVE_CSS = (() => {
 .mkl-wheel{position:absolute;width:${(2 * WHEEL_R / MW * 100).toFixed(3)}%;aspect-ratio:1;animation:mkl-turn var(--mk-loop) linear infinite}
 .mkl-links{position:absolute;left:${px(RUN_X[0])};width:${(runW / MW * 100).toFixed(3)}%;height:${(1.5 / MH * 100).toFixed(3)}%;overflow:hidden}
 .mkl-links i{position:absolute;inset:0 auto 0 0;width:${(100 + PITCH / runW * 100).toFixed(3)}%;
-  background:linear-gradient(90deg,var(--mk-ground,#0b0e11) 42%,transparent 42%) 0 0/${step.toFixed(3)}% 100% repeat-x}
+  background:linear-gradient(90deg,var(--mk-ground,var(--surface-scene)) 42%,transparent 42%) 0 0/${step.toFixed(3)}% 100% repeat-x}
 .mkl-links--top i{animation:mkl-top var(--mk-loop) linear infinite}
 .mkl-links--low i{animation:mkl-low var(--mk-loop) linear infinite}
 .mkl-hull{animation:mkl-bob calc(var(--mk-loop) / 2) ease-in-out infinite}
