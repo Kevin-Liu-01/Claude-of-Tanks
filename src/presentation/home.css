@@ -140,7 +140,7 @@ img{display:block;max-width:100%}
 .play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
 .play-tile__nm a:focus-visible{outline:none}
 /* a mode wears its Deploy glyph, in ink: the accent stays with the primary and the selection */
-.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--ink-2)}
+.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}
 /* a long name takes a second line, never an ellipsis */
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
@@ -243,7 +243,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__trailer :is(.hero__thumb,.hero__dur){display:none}
   /* in the picture's lower right, above the counts: the hero's own box ends with them */
   .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
-  .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
+  .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s2);height:auto;margin:0;padding:0;border:0}
   .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
