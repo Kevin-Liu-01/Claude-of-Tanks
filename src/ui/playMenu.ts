@@ -293,7 +293,7 @@ const CSS = `
 body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
-.cot-play .arrange-sides{margin-bottom:var(--s2)}
+.cot-play .arrange-sides{margin-bottom:var(--s3)}
 .cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
@@ -345,7 +345,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
-.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,
+.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
 .cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}

@@ -19,8 +19,8 @@
 .cot-c-picker__more{flex:none}
 .cot-c-picker__more[hidden]{display:none}
 .cot-c-picker__more.is-back svg{transform:scaleX(-1)}
-/* a short screen gives the cards the height: the search and the filters share one row */
-@media (height < 520px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
+/* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row */
+@media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
 .cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;padding-inline-end:var(--s6);overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;
   -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent);
@@ -78,7 +78,7 @@
 /* touch has no hover: the star shows on the chosen card and on favourites, at the 44 px target */
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
-  .cot-c-picker--list .cot-c-picker__opt{min-height:52px}
+  .cot-c-picker--list .cot-c-picker__opt{min-height:60px}
   .cot-c-picker__more{--h:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }
