@@ -5,7 +5,8 @@ import { createCanvas, Path2D, DOMMatrix, ImageData } from '@napi-rs/canvas';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
-import { CAMO_UV_REPEATS_PER_M, CAMO_TILE_SPAN_M, camoPatchWorldScale } from './camoWorldScale.ts';
+import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M, CAMO_TILE_SPAN_M, camoPatchWorldScale } from './camoWorldScale.ts';
+import { combatAnatomyCalibration, registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.ts';
 import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from './materials.ts';
 import { createMaterialPainter } from './materialPainter.ts';
 import { paintMaterialBase } from './materialPainterWorker.ts';
@@ -37,7 +38,11 @@ const AXIS = { x: (p, i) => [p.getZ(i), p.getY(i)], y: (p, i) => [p.getX(i), p.g
 // 2026-10-11 (r4c): every hull projects per triangle (faceBoxUV): the axis comes from the triangle's face normal, so a
 // rounded box's blended bevel normals cannot smear one block to a flat tone.
 const FACE_PROJECTED = { has: () => true };
-function measureUvDensity(mesh, faceAxes = false) {
+// 2026-10-22 (polish-240): a thin-part id (CAMO_THIN_PART_PROJECTION_IDS, the M1A1 HC) projects a plate-like part whole
+// along its thin axis (thinPartBoxUV), so a vertex there is exact along that box axis, not its face's: still the tile at
+// the fleet density, which is this contract. 253: a turret the seat lifted (turretSeatRace.ts) keeps it exact: the seat
+// re-projects what it moved (factoryGeometry.ts reprojectMovedFaceBoxUV).
+function measureUvDensity(mesh, faceAxes = false, anyBoxAxis = false) {
   const p = mesh.geometry.attributes.position, n = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv;
   assert.ok(p && n && uv, `${mesh.name}: position, normal and uv`);
   assert.ok(!faceAxes || !mesh.geometry.index, `${mesh.name}: face projection runs on the non-indexed merge`);
@@ -51,7 +56,10 @@ function measureUvDensity(mesh, faceAxes = false) {
   };
   for (let i = 0; i < p.count; i++) {
     const [nx, ny, nz] = faceAxes ? faceAxis(i) : [Math.abs(n.getX(i)), Math.abs(n.getY(i)), Math.abs(n.getZ(i))];
-    const axis = ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
+    const exactOn = (candidate) => { const [cu, cv] = AXIS[candidate](p, i);
+      return uv.getX(i) === Math.fround(cu * CAMO_UV_REPEATS_PER_M) && uv.getY(i) === Math.fround(cv * CAMO_UV_REPEATS_PER_M); };
+    const faceAxisName = ny >= nx && ny >= nz ? 'y' : nx >= nz ? 'x' : 'z';
+    const axis = anyBoxAxis && !exactOn(faceAxisName) ? (['x', 'y', 'z'].find(exactOn) ?? faceAxisName) : faceAxisName;
     const [u, v] = AXIS[axis](p, i);
     // exact projection contract: uv = position * density along the box axes
     assert.equal(uv.getX(i), Math.fround(u * CAMO_UV_REPEATS_PER_M), `${mesh.name}: exact U at vertex ${i}`);
@@ -76,7 +84,7 @@ try {
       for (const name of ['hull', 'turret']) {
         const mesh = tank.root.getObjectByName(name);
         assert.ok(mesh?.isMesh, `${id}: merged ${name} mesh`);
-        const density = measureUvDensity(mesh, FACE_PROJECTED.has(id));
+        const density = measureUvDensity(mesh, FACE_PROJECTED.has(id), CAMO_THIN_PART_PROJECTION_IDS.has(id));
         near(density, CAMO_UV_REPEATS_PER_M, 0.01, `${id}: ${name} UV repeats per metre (authored camoScale ${authored[id]})`);
         projected++;
       }
@@ -93,6 +101,27 @@ try {
   }
 } finally { restoreFixture(); }
 assert.ok(new Set(Object.values(authored)).size >= 3, `the hulls really author different scales (${JSON.stringify(authored)})`);
+// 253: the exact contract above covers seated turrets: the seat lifted t90am's and type74's (their turret positions
+// differ from their builds with the ring receipt set aside)
+{
+  const restore = installCanvasFixture();
+  try {
+    for (const id of ['t90am', 'type74']) {
+      const options = { quality: 'low', camoPattern: 'factory', materialMode: 'rendered', proceduralOnly: true, geometryReceipt: true, batchStatic: false, camoSeed: 4242 };
+      const positions = (tank) => { const a = tank.root.getObjectByName('turret').geometry.attributes.position.array.slice(); tank.dispose?.(); return a; };
+      const seated = positions(createTank(id, null, options));
+      const committed = combatAnatomyCalibration(id);
+      assert.ok(committed?.turretRing, `${id}: carries its ring receipt`);
+      const { turretRing: _ring, ...bare } = committed;
+      registerCombatAnatomyCalibrations({ [id]: bare });
+      let authoredTurret;
+      try { authoredTurret = positions(createTank(id, null, options)); } finally { registerCombatAnatomyCalibrations({ [id]: committed }); }
+      let lifted = 0;
+      for (let i = 1; i < seated.length; i += 3) if (seated[i] !== authoredTurret[i]) lifted++;
+      assert.ok(lifted > 0, `${id}: the seat lifted turret corners (${lifted}), which the exact projection above held`);
+    }
+  } finally { restore(); }
+}
 
 // --- native canvas from here on: pixels ---------------------------------------------------------------------------
 Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });

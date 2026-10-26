@@ -212,6 +212,20 @@ for (const [collision, observer] of [[false, false], [true, false], [false, true
   assert.equal(updates, 3);
   assert.deepEqual(camera.position.toArray(), expected.toArray(), 'warming never moves the rig camera');
 }
+// (battle-spikes-253) the prime also waits for the tall grass's near ring, whose cold fill is capped per update
+{
+  let updates = 0;
+  await primeOpeningTerrainPresentation({
+    game: { tanks: [{ state: { pos: new Vector3(0, 0, 0) } }], player: { state: { pos: new Vector3(0, 0, 0) } } },
+    camera: new PerspectiveCamera(),
+    world: {
+      update() { updates++; },
+      getGrassWorkState: () => ({ disposed: false, carpet: { cold: updates < 2, pending: updates < 2 }, swardNearPending: Math.max(0, 5 - updates) }),
+    },
+    yieldForBudget: async () => {},
+  });
+  assert.equal(updates, 5, 'the carpet done at 2, the near sward at 5: the prime waits for both');
+}
 const coverAbort = new AbortController();
 let abortedUpdates = 0;
 await assert.rejects(primeOpeningTerrainPresentation({

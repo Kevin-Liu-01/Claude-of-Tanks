@@ -12,7 +12,7 @@ import {
 } from './specs.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount, metadataFingerprint,
-  requiredTankAssetFiles, tankAssetMetadata,
+  requiredTankAssetFiles, tankAssetMetadata, technicalLabelsFile,
 } from './tankAssets.ts';
 import { VEHICLE_ERA_META } from './taxonomy.ts';
 import {
@@ -39,26 +39,31 @@ export function createTankAssetsAudit() {
     new URL('../../tools/tank-assets-check.mjs', import.meta.url),
     'utf8',
   );
+  const technicalLabels = readFileSync(
+    new URL('../ui/technicalDiagramLabels.ts', import.meta.url),
+    'utf8',
+  );
   assert.match(technicalGenerator, /const overlayMode = kind === 'modules' \|\| kind === 'crew' \? kind : 'armor'/,
     'each technical card selects its matching live Studio/Gallery diagnostic layer');
   assert.match(technicalGenerator, /createInspectionOverlay\(spec, visual, overlayMode\)/,
     'technical cards render through the shared Studio/Gallery overlay implementation');
-  assert.match(technicalGenerator, /tankAssetFile\(id, 'modulesSide'\).*'modules'/s,
-    'module cards render only recognizable canonical module models');
-  assert.match(technicalGenerator, /tankAssetFile\(id, 'crewSide'\).*'crew'/s,
-    'crew cards render only canonical seated crew models');
+  assert.match(technicalGenerator, /\[\['armor', 'armorSide'\], \['modules', 'modulesSide'\], \['crew', 'crewSide'\]\]/,
+    'each technical view renders its own overlay kind: armour, canonical module models, seated crew models');
   assert.match(technicalGenerator,
     /orthoCam\(center, size, \[-1, 0, 0\], \[0, 1, 0\], halfHeight \* 2, halfHeight\)/,
     'technical diagrams preserve the established exact side projection');
-  assert.match(technicalGenerator,
-    /packCalloutYs\(candidates, 56, 210, 14\)/,
+  // 253: the technical rasters carry no text; their callouts ship in a JSON sidecar that the UI draws as DOM text
+  // (src/ui/technicalDiagramLabels.ts) at the displayed size, in the reader's language
+  assert.match(technicalGenerator, /files\[technicalLabelsFile\(id\)\] = technicalLabelData\(id, stages\)/,
+    'every technical render writes its callout sidecar');
+  const technicalRaster = technicalGenerator.match(/function technicalDiagram\(stage\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(technicalRaster, 'the technical raster drawer is present');
+  assert.doesNotMatch(technicalRaster, /fillText|strokeText|\.font\b/, 'technical diagram rasters carry no text');
+  assert.match(technicalLabels, /function packRows\(desired: readonly number\[\], minY: number, maxY: number, gap: number\)/,
     'technical callouts use deterministic minimum-displacement row packing');
-  assert.match(technicalGenerator,
+  assert.match(technicalLabels,
     /left\.total \/ left\.count <= right\.total \/ right\.count/,
     'technical callout packing balances colliding rows around their projected anchors');
-  assert.match(technicalGenerator,
-    /TIER \$\{metadata\.tierNumeral\}|LIVE EFFECTIVE THICKNESS|LIVE DAMAGE MODULES|LIVE CREW ANATOMY/,
-    'generated technical diagrams retain the established embedded schematic header');
   assert.doesNotMatch(technicalGenerator,
     /drawPlateDiagram|drawModuleDiagram|sideProjection|plate\.verts\.map|hitZonesSide|hit_zones_side|kind === 'zones'/,
     'retired metadata reconstruction and redundant hit-zone rendering are absent');
@@ -110,8 +115,10 @@ export function createTankAssetsAudit() {
   for (const id of DEVELOPMENT_TANK_IDS) {
     const record = assetManifest.tanks?.[id] || {};
     const assets = record.assets || {};
-    assert.deepEqual(Object.keys(assets).sort(), Object.keys(TANK_ASSET_VIEWS).sort(),
+    assert.deepEqual(Object.keys(assets).filter((key) => key !== 'technicalLabels').sort(), Object.keys(TANK_ASSET_VIEWS).sort(),
       `${id}: all nine local-development presentation assets are indexed`);
+    assert.equal(assets.technicalLabels?.file, technicalLabelsFile(id),
+      `${id}: the technical diagrams' callout sidecar is indexed`);
     assert.ok(Number.isFinite(record.presentationAnchor?.xM)
       && Number.isFinite(record.presentationAnchor?.zM),
     `${id}: generated assets record their rendered-body presentation center`);

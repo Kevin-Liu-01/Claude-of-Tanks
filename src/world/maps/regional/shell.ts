@@ -12,6 +12,7 @@
 // 2026-10-07: destructible buildings "need to look just as good as everything else"). A body the reading cannot close
 // into four walls round a floor (a gantry, a stall, a ramada, a ruin's broken walls) gets no reading.
 import type { BufferGeometry } from 'three';
+import { rawFloats, rawIndices } from '../../rawAttributes.ts';
 import type { FaceName, Vec3 } from '../../destructionKit.ts';
 
 type Rgb = [number, number, number];
@@ -136,10 +137,14 @@ function trianglesOf(parts: ShellParts): Tri[] {
       if (!P) { part++; continue; }
       const index = geometry.getIndex();
       const count = index ? index.count : P.count;
-      const at = (k: number): number => (index ? index.getX(k) : k);
+      // (battle-spikes-253) a plain float array read where it stands, as getX/getY/getZ read it (Verdant's church: the
+      // getters were a third of its 285 ms describe); an interleaved, normalized or half-float attribute through them
+      const raw = rawFloats(P), rawIndex = index ? rawIndices(index) : null;
+      const at = (k: number): number => (index ? (rawIndex ? rawIndex[k] : index.getX(k)) : k);
+      const point = (i: number): Vec3 => (raw ? [raw[i * 3], raw[i * 3 + 1], raw[i * 3 + 2]] : [P.getX(i), P.getY(i), P.getZ(i)]);
       for (let k = 0; k + 2 < count; k += 3) {
         const ia = at(k), ib = at(k + 1), ic = at(k + 2);
-        const a: Vec3 = [P.getX(ia), P.getY(ia), P.getZ(ia)], b: Vec3 = [P.getX(ib), P.getY(ib), P.getZ(ib)], c: Vec3 = [P.getX(ic), P.getY(ic), P.getZ(ic)];
+        const a: Vec3 = point(ia), b: Vec3 = point(ib), c: Vec3 = point(ic);
         const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
         const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
         const len = Math.hypot(nx, ny, nz);

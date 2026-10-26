@@ -232,7 +232,8 @@ presentation:
    seats' `camo`); after WELCOME wait for `rosterReady()`, seat the ground
    sampler, enable prediction with `predictionWorld()`;
 3. on the first frame: the covered warm order v1 proved (atmosphere, night
-   lighting, terrain, wrecks, player panel, program compile, opening effects,
+   lighting, terrain, wrecks, program compile, player panel (after the compile
+   since battle-spikes-253: its mask programs link behind the scene's), opening effects,
    shot cards), `activate` (world/HUD/FX reset, phase `battle`, camera
    ownership, Garage shutdown), the opening ground cover, final shadows, the
    black watchdog, `primeReveal`, the loader fade;

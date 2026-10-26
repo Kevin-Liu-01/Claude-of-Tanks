@@ -112,7 +112,9 @@ function restoreShadows(states: readonly SavedShadowState[]): void {
   }
 }
 
-function renderWithoutShadowUpdates(lights: readonly ShadowLight[], render: () => void): void {
+/** One warm render with every cascade's shadow update off (both battle entries' covered composer warms): its shadow
+ *  pass would make the first draws of every caster's depth program in one task, ahead of the shadow prime's batches. */
+export function renderWithoutShadowUpdates(lights: readonly ShadowLight[], render: () => void): void {
   const states = disableShadows(lights);
   try { render(); } finally { restoreShadows(states); }
 }

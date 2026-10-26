@@ -15,8 +15,9 @@ assert.match(main, /isReady:\s*isSoloBattleRuntimeReady/,
   'non-battle world activation uses the typed readiness contract');
 assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
   'solo authority must be demand-loaded behind its typed boundary');
-// (integ 254: rust-support-solve 14357f5225 warms the network composition beside it under ?soloAuthority=host)
-assert.match(main, /preloadSoloBattle: \(\) => (?:\(\/\[\?&\]soloAuthority=host\\b\/\.test\(location\.search\)\n\s+\? Promise\.all\(\[preloadSoloBattleRuntime\(\), multiplayerV2\.preload\(\)\]\) : )?preloadSoloBattleRuntime\(\)/,
+// (integ 254: rust-support-solve 14357f5225 warms the network composition beside it under ?soloAuthority=host; from 255 a
+// free sortie's default: it also prepares the host thread, main.ts soloAuthorityFor)
+assert.match(main, /preloadSoloBattle: \(\) => (?:\(soloAuthorityFor\('standard'\)\.authority === 'host'\n\s+\? Promise\.all\(\[preloadSoloBattleRuntime\(\), multiplayerV2\.preload\(\), prepareSoloHost\(\)\]\) : )?preloadSoloBattleRuntime\(\)/,
   'main must give Battle intent the solo authority loader');
 assert.match(intent, /const preload = \([\s\S]{0,700}ignoreFailure\(preloadSoloBattle\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');

@@ -86,6 +86,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
   // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
+  // 255 (triangle 253 item A): every shipped diagram label sidecar's colours name a tone
+  'src/ui/technicalDiagramLabels.selftest.mjs': lists('public/icons/*_technical.json'),
   // release 230 type package: the shipped faces, every shipped source and document, and no Monument font file anywhere
   'src/ui/typeSystem.selftest.mjs': lists('public/**/*.{woff2,woff,ttf,otf}', 'tools/**/*.{woff2,woff,ttf,otf}',
     'src/**/*.{ts,css,js,mjs}', 'site/**/*.html', 'tools/fixtures/*.html'),

@@ -1,7 +1,9 @@
 // The match actor's pause (RUST-ENGINE-DECISION §7 step 5, a solo battle on a local host): a solo match paused at a tick
 // boundary runs no tick while its clock moves on, resumes from the same tick on a rebased clock, and reaches the state an
 // unpaused twin reaches at every tick — the pause changes when ticks run, never what they compute. A match with two human
-// seats refuses it; so do a stopped actor, a second pause and a resume without one.
+// seats refuses it; so do a stopped actor, a second pause and a resume without one. A solo match's held countdown
+// (holdCountdown: the page releases it at its reveal) stands while its ticks run and starts its full length on release;
+// a match with two human seats never holds.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createMatchActor } from './matchActor.ts';
@@ -17,11 +19,11 @@ const bots = Array.from({ length: 7 }, (_, index) => ({
   specId: ['t90am', 'leo2_improved', 'merkava4', 'leclerc_sxxi'][index % 4], difficulty: ['easy', 'normal', 'hard'][index % 3],
 }));
 
-function twin(seats = solo) {
+function twin(seats = solo, options = {}) {
   const clock = { ms: 80_000 };
   const actor = createMatchActor({
     roomId: 'pause', mapId: 'verdant', seed: 11, seats, bots, world: 'terrain', countdownS: 1,
-    now: () => clock.ms, schedule: () => () => {}, autoStart: false,
+    now: () => clock.ms, schedule: () => () => {}, autoStart: false, ...options,
   });
   actor.start();
   return { actor, clock, step: (ms) => { clock.ms += ms; return actor.advance(clock.ms); } };
@@ -72,4 +74,22 @@ assert.equal(steady.actor.pause(), false, 'a stopped actor does not pause');
 paused.actor.stop();
 pair.actor.stop();
 
-console.log(`matchActorPause.selftest: a solo match paused at tick 400 for 12 s resumes on the same tick and matches its unpaused twin at all ${checks} checks; two seats and a stopped actor refuse the pause`);
+// the held countdown: 10 s of ticks in the countdown, then its full second from the release
+const held = twin(solo, { holdCountdown: true });
+for (let n = 0; n < 600; n++) held.step(TICK_MS);
+assert.ok(held.actor.tick >= 600, 'the held match ticks');
+assert.equal(held.actor.authority.phase, 'countdown', 'the countdown holds');
+assert.equal(held.actor.holdCountdown(false), true, 'the page releases it');
+for (let n = 0; n < 59; n++) held.step(TICK_MS);
+assert.equal(held.actor.authority.phase, 'countdown', 'the full countdown runs from the release');
+held.step(TICK_MS * 2);
+assert.equal(held.actor.authority.phase, 'playing', 'and the battle starts');
+held.actor.stop();
+// two human seats: the boot's hold is ignored and the page's refused
+const heldPair = twin([...solo, { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am' }], { holdCountdown: true });
+for (let n = 0; n < 70; n++) heldPair.step(TICK_MS);
+assert.equal(heldPair.actor.authority.phase, 'playing', 'a match with two human seats never holds its countdown');
+assert.equal(heldPair.actor.holdCountdown(true), false);
+heldPair.actor.stop();
+
+console.log(`matchActorPause.selftest: a solo match paused at tick 400 for 12 s resumes on the same tick and matches its unpaused twin at all ${checks} checks; two seats and a stopped actor refuse the pause; a held countdown stands 10 s and runs its full length from the release`);

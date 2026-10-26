@@ -62,14 +62,15 @@ const GARAGES = Object.freeze([
 ]);
 /** A Garage whose map has no still of its own shows its sister map's (Redrock shares the Sirocco desert still). */
 const MEDIA_ALIASES = Object.freeze({ badlands: 'desert' });
-/** Monitor readouts: the five exhibits' own armour and module sheets. */
+/** Monitor readouts: the five exhibits' own armour and module sheets (253: 2x WebP with no text; DOM labels cannot
+ * reach a 3D monitor and at monitor scale the baked ones were never legible). */
 const READOUTS = Object.freeze([
-  ['readout.armor.abrams', 'm1a1_abrams_hc_armor_side.png'],
-  ['readout.modules.abrams', 'm1a1_abrams_hc_modules_side.png'],
-  ['readout.armor.leopard', 'leo2a4m_armor_side.png'],
-  ['readout.modules.t90', 't90am_modules_side.png'],
-  ['readout.armor.k2', 'xk2_black_panther_armor_side.png'],
-  ['readout.modules.burlak', 't90a_burlak_proto_modules_side.png'],
+  ['readout.armor.abrams', 'm1a1_abrams_hc_armor_side.webp'],
+  ['readout.modules.abrams', 'm1a1_abrams_hc_modules_side.webp'],
+  ['readout.armor.leopard', 'leo2a4m_armor_side.webp'],
+  ['readout.modules.t90', 't90am_modules_side.webp'],
+  ['readout.armor.k2', 'xk2_black_panther_armor_side.webp'],
+  ['readout.modules.burlak', 't90a_burlak_proto_modules_side.webp'],
 ]);
 const PICTOGRAMS = Object.freeze([
   'extinguisher', 'callpoint', 'ear', 'eye', 'head', 'gloves', 'overhead', 'forklift', 'electric', 'flammable',

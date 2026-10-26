@@ -604,6 +604,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   }
   // --- mask retry (2026-09-25) ------------------------------------------------
   let maskAttempt = 0;                 // builds requested for the current tank
+  let maskFailureCode: string | null = null; // the last attempt's failure, for the next attempt's source
   let maskRetryHandle: unknown = null; // pending backoff timer
   let maskRequestSerial = 0;           // setTank generation: stale callbacks are ignored
 
@@ -661,13 +662,20 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     const requestSpec = spec;
     const serial = maskRequestSerial;
     const attempt = ++maskAttempt;
-    // Later attempts drop the borrowed live visual: a source disposed
-    // mid-build (the battle-start race) resolves without caching, and the
-    // factory build path owns every resource it renders.
-    const source = attempt === 1 ? maskSourceVisual : null;
+    // A later attempt drops the borrowed live visual when that source was
+    // disposed mid-build (the battle-start race), and the last attempt always
+    // does: the factory build path owns every resource it renders.
+    // (battle-spikes-253) Any other failure — a mask pass's links outlasting its
+    // wait under load (top_mask_program_timeout) — retries on the live visual's
+    // clone: the factory build was one 700-1,000 ms task of a whole tank
+    // (decorations, a ghillie suit's raycasts) in a loaded room's last seconds.
+    const keepSource = attempt === 1
+      || (maskFailureCode !== 'top_mask_source_disposed' && attempt < DAMAGE_PANEL_MASK_RETRY.maxAttempts);
+    const source = keepSource ? maskSourceVisual : null;
     const entry = maskSource.get(requestSpec, (ready, failure) => {
       if (serial !== maskRequestSerial || spec !== requestSpec) return; // an older tank's build
       if (!ready) {
+        maskFailureCode = failure?.code ?? null;
         scheduleMaskRetry(requestSpec, attempt, failure ?? null);
         return;
       }
@@ -1143,6 +1151,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       cancelMaskRetry();
       maskRequestSerial += 1;
       maskAttempt = 0;
+      maskFailureCode = null;
       refreshDom();
       requestMasks();
       draw();
