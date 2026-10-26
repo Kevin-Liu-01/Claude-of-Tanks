@@ -46,10 +46,10 @@ export const STEP_PATHS = Object.freeze([
     id: 'equip-item',
     doc: 'game',
     steps: [
-      { name: 'slot', press: '.eqslot[data-slot]', shown: `shown('.cot-eqtile')` },
-      { name: 'item', press: '.cot-eqtile[data-eq]:not([aria-disabled=true]):not([aria-pressed=true])', shown: `!shown('.cot-eqtile')` },
+      { name: 'slot', press: '.eqslot[data-slot]', shown: `shown('.cot-eqpick .cot-c-picker__opt')` },
+      { name: 'item', press: '.cot-eqpick .cot-c-picker__opt:not([aria-disabled=true]):not([aria-selected=true]):not([data-id=empty])', shown: `!shown('.cot-eqpick .cot-c-picker__opt')` },
     ],
-    done: `!shown('.cot-eqtile')`,
+    done: `!shown('.cot-eqpick .cot-c-picker__opt')`,
     reset: 'escape',
   },
   {

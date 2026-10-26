@@ -25,7 +25,9 @@ interface CustomCamoOptions {
 }
 
 interface CustomCamoStudioOptions {
-  button: HTMLButtonElement;
+  /** Its trigger as it stands (the camo picker's "Make your own" swatch, redrawn with the picker): told when the studio
+   *  opens and closes, and given the focus back. */
+  button: () => HTMLElement | null;
   camo: CustomCamoOptions;
   selectedId: () => string | null;
   selectedSpec: () => RuntimeValue;
@@ -54,8 +56,8 @@ export function createCustomCamoStudio({
   const modal = createModal({
     title: t('customCamo.title'),
     size: 'wide',
-    onOpen: () => button.setAttribute('aria-expanded', 'true'),
-    onClose: () => button.setAttribute('aria-expanded', 'false'),
+    onOpen: () => button()?.setAttribute('aria-expanded', 'true'),
+    onClose: () => button()?.setAttribute('aria-expanded', 'false'),
     unsaved: () => JSON.stringify(draft) !== JSON.stringify(savedDraft()),
   });
   const root = document.createElement('div');
@@ -424,7 +426,7 @@ export function createCustomCamoStudio({
   return {
     open() {
       syncSelected();
-      modal.open({ trigger: button });
+      modal.open({ trigger: button() ?? undefined });
     },
     syncSelected,
     close: (options) => modal.close(options),

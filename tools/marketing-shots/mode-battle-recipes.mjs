@@ -1457,11 +1457,13 @@ Object.assign(RECIPES, {
       await ctx.sleep(800);
       await ctx.snap('equipment picker on slot 3', { opened });
       for (const cat of ['survival', 'recon', 'mobility']) {
-        const chip = await ctx.page.$(`.cot-eqpick .chip[data-cat="${cat}"]`);
+        // the picker's category chips narrow together: the last category's chip lets go first
+        for (const on of await ctx.page.$$('.cot-eqpick [data-chip][aria-pressed="true"]')) await on.click();
+        const chip = await ctx.page.$(`.cot-eqpick [data-chip="tag:${cat}"]`);
         if (!chip) continue;
         await chip.click();
         await ctx.sleep(500);
-        const tile = await ctx.page.$('.cot-eqpick .cot-eqtile:not(.remove)');
+        const tile = await ctx.page.$('.cot-eqpick .cot-c-picker__opt:not([data-id="empty"])');
         if (tile) { await tile.hover(); await ctx.sleep(900); }
         await ctx.snap(`equipment picker ${cat} with a tile hovered`);
       }

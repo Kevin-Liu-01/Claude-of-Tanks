@@ -36,6 +36,9 @@ interface BattlefieldPickerOptions {
   readonly filters?: readonly PickerFilter[];
   readonly text: PickerText;
   readonly onChoose: (id: string) => void;
+  /** The card under the pointer or the focus, or null when it leaves: a caller whose space hides the preview (a narrow
+   *  host, under 520 px) shows it in its own place (the Studio's battlefield card). */
+  readonly onPreview?: (card: BattlefieldCard | null) => void;
 }
 
 export interface BattlefieldPicker {
@@ -128,7 +131,7 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     filters: options.filters,
     randomId: options.randomId,
     memory: MEMORY,
-    onPreview: (item) => { previewed = item as BattlefieldCard | null; show(previewed); loop(previewed); },
+    onPreview: (item) => { previewed = item as BattlefieldCard | null; show(previewed); loop(previewed); options.onPreview?.(previewed); },
     onChoose: (item) => {
       value = item.id;
       previewed = null;

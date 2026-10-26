@@ -1343,7 +1343,11 @@ export function setCamoBiome(mapId: string): void {
 
 /** Concrete pattern id for a tank right now ('auto' resolved per biome). */
 function resolveCamoPattern(specId: string): MaterialPatternId {
-  const sel = CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
+  return resolveSelectionPattern(specId, CAMO_OVERRIDE.get(specId) || getCamoSelection(specId));
+}
+
+/** Concrete pattern id for one selection on a tank: its custom paint, the biome's pick for 'auto', or the pattern. */
+function resolveSelectionPattern(specId: string, sel: string): MaterialPatternId {
   if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(specId));
   if (sel !== 'auto') return sel;
   // camo r2: deterministic per-(spec, biome) pick from the biome pool — the
@@ -1452,6 +1456,28 @@ function applySharedCamoVisual(
     rainK: undefined,
     catalogPattern: fleetCamoArtId(recipe.scheme),
   };
+}
+
+/** The try-on's albedo carries no plate features: the worn normal map it keeps draws the panel lines, welds and bolts. */
+const TRY_ON_FEATURES: PlateFeatures = Object.freeze({ hLines: [], vLines: [], rings: [], chips: [], streaks: [] }) as PlateFeatures;
+
+/**
+ * The camo try-on (INTERACTION-REDESIGN B: hovering a paint tries it on the Garage tank): `selection` painted as the
+ * hull whose albedo is `texture` would wear it (its recipe and pattern stream, the picker swatch's own tile), into a
+ * canvas the caller owns and sizes. A 256 px tile paints in about the 4.5 ms of a picker swatch (camoSwatchPainter.ts;
+ * the hull's plate features tripled it, and the worn normal map shows them anyway). False when `texture` is no
+ * repaintable albedo the cache holds.
+ */
+export function paintCamoTryOn(texture: THREE.Texture, selection: string, canvas: HTMLCanvasElement): boolean {
+  let entry: SharedTextureEntry | null = null;
+  for (const candidate of TEX_CACHE.values()) if (candidate.camoTex === texture) { entry = candidate; break; }
+  if (!entry || entry.fixedPattern) return false;
+  const patternId = resolveSelectionPattern(entry.spec.id, selection);
+  const visual = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
+  const stream = camoPatternStreamSeed(visual, camoPatternIdHash(patternId));
+  paintCamo(canvas, visual, mulberry32(stream), TRY_ON_FEATURES, stream);
+  exposureTrim(canvas);
+  return true;
 }
 
 /** Round 32: the noise stream a camo pattern paints with — keyed by the visible recipe and the pattern id, never the

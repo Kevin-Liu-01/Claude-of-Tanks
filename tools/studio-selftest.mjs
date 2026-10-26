@@ -187,10 +187,11 @@ try {
       groups: [...panel.querySelectorAll('.pgroup')].map((node) => node.dataset.group),
       hiddenSections: [...panel.querySelectorAll('.pgroup .sec')]
         .filter((node) => getComputedStyle(node).display === 'none').length,
-      mapCards: panel.querySelectorAll('.mapCard').length,
-      selectedMap: panel.querySelector('.mapCard[aria-selected="true"]')?.dataset.mapId,
+      // the battlefield picker's cards (battlefieldPicker.ts), built on the first open
+      mapCards: panel.querySelectorAll('.mapPop .cot-c-picker__opt[data-id]').length,
+      selectedMap: panel.querySelector('.mapPop .cot-c-picker__opt[aria-selected="true"]')?.dataset.id,
       hero: panel.querySelector('.mapBtn .mhero')?.getAttribute('src'),
-      previewsHydrated: [...panel.querySelectorAll('.mapCard img')]
+      previewsHydrated: [...panel.querySelectorAll('.mapPop .cot-c-picker__opt img')]
         .filter((image) => image.getAttribute('src')).length,
     };
     mapButton?.click();
@@ -365,12 +366,12 @@ try {
   // scene. This proves the card routes to the same real setMap() path as the API.
   await page.evaluate(() => {
     document.querySelector('.mapBtn')?.click();
-    const winter = document.querySelector('.mapCard[data-map-id="winter"]');
+    const winter = document.querySelector('.mapPop .cot-c-picker__opt[data-id="winter"]');
     if (!winter) throw new Error('winter map card missing');
     winter.click();
   });
   await page.waitForFunction(
-    "window.__STUDIO.mapId === 'winter' && document.querySelector('.mapCard[data-map-id=\"winter\"]')?.getAttribute('aria-selected') === 'true'",
+    "window.__STUDIO.mapId === 'winter' && document.querySelector('.mapPop .cot-c-picker__opt[data-id=\"winter\"]')?.getAttribute('aria-selected') === 'true'",
     { timeout: 120000 },
   );
   const winterPicker = await page.evaluate(() => ({
