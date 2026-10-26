@@ -74,6 +74,36 @@ assert.equal(timings.postPassMax, 5);
 assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 
 {
+  // (2026-10-26, the boot census) an owner that can submit the scene a slice at a time does, against the visible scene,
+  // before the shadow state's update: the one-task submission was 100-150 ms of a cold desktop's boot
+  const order = [];
+  const sliced = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() { order.push('light'); }, async primeShadowMaps() { return [1]; } },
+    forwardPrograms: {
+      compile() { assert.fail('the sliced submission replaces the one-task compile'); },
+      *compileSceneSteps(options) {
+        assert.ok(options.visibleRoot === scene, 'the visible scene, as compile() selects it');
+        assert.equal(options.sliceMs, 8);
+        for (let slice = 0; slice < 3; slice++) { order.push('slice'); yield; }
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: sliced,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => { order.push('yield'); },
+    warmScene: async () => [1],
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 6), ['slice', 'yield', 'slice', 'yield', 'slice', 'yield'], 'a yield between submission slices');
+  assert.ok(order.indexOf('light') > order.lastIndexOf('slice'), 'shadow state follows the whole submission');
+  assert.equal(sliced.postCompileSlices, 3);
+  assert.equal(order.at(-1), 'render');
+}
+
+{
   const restoreCalls = [];
   let restoreClock = 0;
   const receipt = await restoreGarageGpuPipeline({

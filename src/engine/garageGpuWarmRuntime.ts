@@ -35,6 +35,8 @@ interface GarageLightingRestorePort extends GarageLightingWarmPort {
 
 interface ForwardProgramCompilePort {
   compile(root: Object3D): void;
+  /** The same submission a slice at a time (programWarm.ts compileSceneSteps); the boot's warm prefers it. */
+  compileSceneSteps?(options: { visibleRoot?: Object3D; sliceMs?: number }): Generator<void, void, void>;
 }
 
 type ForwardProgramRestorePort = Pick<
@@ -56,6 +58,7 @@ interface GaragePostWarmPort extends GaragePostRenderPort {
 
 interface GarageGpuWarmTimings {
   postCompile?: number;
+  postCompileSlices?: number;
   shadowPassMax?: number;
   shadowPasses?: number[];
   sceneUpload?: number;
@@ -318,17 +321,28 @@ export async function warmGarageGpuPipeline({
   now = () => performance.now(),
   awaitProgramLinks,
 }: GarageGpuWarmOptions): Promise<void> {
-  const compileAt = now();
-  try { forwardPrograms.compile(scene); } catch { /* first real render is fallback */ }
-  timings.postCompile = Math.round(now() - compileAt);
-
-  lighting.update(true);
   const yieldGpuFrame = createYielder(16);
   let pulse = 0;
   const yieldGpuWarm: WarmYield = async (force = false) => {
     reportProgress(Math.min(0.94, 0.04 + pulse++ * 0.035));
     return yieldGpuFrame(force);
   };
+  // (2026-10-26, the boot census) the visible scene's submission a slice at a time when the owner can (one task of
+  // 100-150 ms on a cold desktop otherwise), against the same production target
+  const compileAt = now();
+  let compileSlices = 0;
+  try {
+    if (forwardPrograms.compileSceneSteps) {
+      for (const _ of forwardPrograms.compileSceneSteps({ visibleRoot: scene, sliceMs: 8 })) {
+        compileSlices += 1;
+        await yieldGpuWarm();
+      }
+    } else forwardPrograms.compile(scene);
+  } catch { /* first real render is fallback */ }
+  timings.postCompile = Math.round(now() - compileAt);
+  timings.postCompileSlices = compileSlices;
+
+  lighting.update(true);
 
   await yieldGpuWarm(true);
   if (awaitProgramLinks) {
