@@ -369,9 +369,11 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .lat{letter-spacing:var(--ba
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 8px))}
-/* (level with the systems slot right of it, 7 px under the touch chrome's 48 px, the slot's own gap (battleHudLayout.ts
-   SLOT_GAP): under the score at 108 px it stood 17.5 px over the slot's rows, gauntlet r12 at 320x568) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'][data-systems-slot='top']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 63px))}
+/* (where the systems take the top slot right of the map (a portrait phone under 720 px tall, battleHudLayout.ts
+   data-map-slot), level with that slot: 7 px under the touch chrome's 48 px, the slot's own gap (SLOT_GAP); under the
+   score at 108 px it stood 17.5 px over the slot's rows, gauntlet r12 at 320x568. Spectating, Watch and a flight keep
+   the map under the score: lower, it set their feeds onto the sight) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'][data-map-slot]:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 63px))}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
 

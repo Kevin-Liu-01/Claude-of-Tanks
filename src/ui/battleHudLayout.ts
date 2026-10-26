@@ -786,6 +786,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // On touch the HUD's controls are pressed and held mid-fight: the kit's hover tip (components/hoverTip.ts, a 500 ms
     // hold) stays off them there, and shows on a free mouse cursor's rest.
     if (typeof root.toggleAttribute === 'function' && root.hasAttribute('data-tip-off') !== touch) root.toggleAttribute('data-tip-off', touch);
+    // (a portrait phone under PORTRAIT_SIGHT_ROOM_H tall whose systems row shows: the row takes the top slot right of the
+    // map, and the map drops level with it (battleHudLayout.css data-map-slot), marked before the map is measured so this
+    // pass places everything off its new edges)
+    const mapSlot = touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && !!read('.cot-vehicle-controls')?.height;
+    if ((document.body.dataset.mapSlot === '') !== mapSlot) {
+      if (mapSlot) document.body.dataset.mapSlot = '';
+      else delete document.body.dataset.mapSlot;
+    }
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
@@ -1004,10 +1012,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // an objective panel the chrome drops under it, and the slot is as high as the row already was: compact there, it
     // no longer runs off the screen). Its buttons keep the 44 px touch target, as many a row as the slot's width holds,
     // the rows balanced (a five-control kit at 320 wide takes two), 7 px under the chrome (at 8 px a 44 px row left the
-    // scope's notices no clear band under it at 360x640). The map shares its top edge (battleHudLayout.css drops it to the
-    // slot's while the slot holds the row) and the slot keeps the map's when the chrome stands down (a scope): hung from the
-    // chrome 4 px under it, the row stood 17.5 px off the map's top and foot, and 12.5 px over the map in a scope,
-    // gauntlet r12 at 320x568.
+    // scope's notices no clear band under it at 360x640). The map shares its top edge (data-map-slot, above: 7 px under the
+    // chrome) and the slot keeps the map's when the chrome stands down (a scope): hung from the chrome 4 px under it, the
+    // row stood 17.5 px off the map's top and foot, and 12.5 px over the map in a scope, gauntlet r12 at 320x568.
     let systemsSlot = '';
     let systemsPerRow = 0;
     if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
@@ -1050,8 +1057,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if ((document.body.dataset.systemsSlot ?? '') !== systemsSlot) {
       if (systemsSlot) document.body.dataset.systemsSlot = systemsSlot;
       else delete document.body.dataset.systemsSlot;
-      // (the map moves with the slot: what this pass placed off its old edges is placed again off its new ones)
-      schedule();
     }
     if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
