@@ -149,7 +149,7 @@
 .cot-c-menu__trigger[aria-expanded=true]{background:var(--surface-hover);box-shadow:var(--ring-accent)}
 .cot-c-menu__trigger:disabled{opacity:.55;cursor:default}
 .cot-c-menu__media{flex:none;width:40px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--r1);box-shadow:var(--ring-1)}
-.cot-c-menu__media img{display:block;width:100%;height:100%;object-fit:cover}
+.cot-c-menu__media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .cot-c-menu__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-c-menu__words{display:flex;flex:1 1 auto;align-items:baseline;gap:var(--s2);min-width:0}
 .cot-c-menu__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

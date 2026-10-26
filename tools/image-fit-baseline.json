@@ -51,10 +51,8 @@
       ".cot-garage .cot-deploy-field-mm img"
     ],
     "src/ui/garage.css": [
-      ".cot-garage-variant-card>img",
       ".cot-garage .stats .sub .cot-flag",
       ".cot-card .flag .cot-flag",
-      ".cot-camo-collection .cot-flag",
       ".cot-featured .fleet-take-video"
     ],
     "src/ui/settings.ts": [
@@ -66,9 +64,7 @@
     "src/ui/studioPanel.css": [
       ".st-load__art",
       ".st-out .it .th",
-      ".st-insp .sw button canvas",
       ".cot-studio .mapBtn .mhero",
-      ".cot-studio .mapCard img",
       ".cot-studio .production-card img",
       ".st-tl .clip .th"
     ],
