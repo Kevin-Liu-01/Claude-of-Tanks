@@ -9,6 +9,7 @@
       "id": "vs03-reservoir-k2-vt4a1",
       "map": "reservoir",
       "mode": "standard",
+      "hour": "golden",
       "tanks": [
         "k2_black_panther",
         "vt4a1"
@@ -71,6 +72,7 @@
         "t90a_2004"
       ],
       "mode": "standard",
+      "hour": "dawn",
       "title": {
         "en": "A Leclerc SXXI bears down on a low lens across Frontier Basin at dawn, its gun firing at a T-90A",
         "zh": "黎明时分，一辆 Leclerc SXXI 在边境盆地朝低机位驶来，主炮向一辆 T-90A 开火"
@@ -125,6 +127,7 @@
       "id": "wadi-abrams-t90m",
       "map": "desert",
       "mode": "standard",
+      "hour": "day",
       "tanks": [
         "m1a2_abrams_sepv3",
         "t90m"
@@ -187,6 +190,7 @@
         "t14_armata"
       ],
       "mode": "standard",
+      "hour": "sunset",
       "title": {
         "en": "The lens circles a Leopard 2A6 as it knocks out a T-14 Armata at the Sunscar Oasis caravanserai at sunset",
         "zh": "日落时分，镜头环绕日痕绿洲的商队驿站，一辆 Leopard 2A6 击毁一辆 T-14 Armata"
@@ -245,6 +249,7 @@
         "ztz99a2"
       ],
       "mode": "standard",
+      "hour": "morning",
       "title": {
         "en": "Tracking alongside a Type 10 as it races a ZTZ-99A2 along Saltmere Bay in the morning, trading fire",
         "zh": "清晨，镜头在盐沼湾与一辆 Type 10 并行跟拍，它与一辆 ZTZ-99A2 并驾齐驱并交火"
@@ -303,6 +308,7 @@
         "t80u"
       ],
       "mode": "standard",
+      "hour": "dusk",
       "title": {
         "en": "Over a T-80U's shoulder as a Challenger 3 Prototype comes down the snowy village street at dusk and knocks it out",
         "zh": "黄昏时分，从一辆 T-80U 的肩后望去，一辆 Challenger 3 Prototype 沿积雪的村道驶来并将其击毁"
@@ -362,6 +368,7 @@
         "t80b"
       ],
       "mode": "standard",
+      "hour": "night",
       "title": {
         "en": "An AbramsX fights a BMPT Terminator 2 and a T-80B across a lamplit Steinburg square at night",
         "zh": "夜晚，一辆 AbramsX 在灯火映照的斯泰因堡广场与一辆 BMPT Terminator 2 和一辆 T-80B 交战"
