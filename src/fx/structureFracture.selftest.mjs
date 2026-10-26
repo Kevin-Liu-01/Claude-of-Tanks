@@ -16,6 +16,7 @@ import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture } from './structureFracture.ts';
 import { shadowCasterProfileOf } from '../engine/renderLayers.ts';
+import { evaluateShadowCasterMask } from '../engine/shadowCasterProfiles.ts';
 // every body's drawn corners inside its box parts (the fracture's own check, on here): a corner outside one would sink
 // into the ground or float over it
 globalThis.__fractureDebug = true;
@@ -189,6 +190,22 @@ assert.equal(log(), log(), 'deterministic');
     const planar = Math.hypot(p.x - view.x, p.z - view.z);
     assert.ok(profile.reachM >= planar - profile.heightM && profile.reachM <= planar + profile.heightM + 0.01,
       `${m.name}: reach ${profile.reachM.toFixed(2)} m about its planar distance ${planar.toFixed(2)} m`);
+  }
+  // the mask the frame's evaluator gives them (a desktop layout: cascades sampled from 0, 12, 40 and 120 m, their
+  // texels 2, 5, 15 and 50 cm, the sun at 34 degrees): ~32 m from the view, never the far cascade, which drew them before
+  const cascadesAt = [[0.02, 0], [0.05, 12], [0.15, 40], [0.5, 120]]
+    .map(([texelM, sampledFromM]) => ({ scheduled: true, frustum: null, texelM, sampledFromM }));
+  const evaluation = { cascades: cascadesAt, sunElevationRad: 0.6 };
+  for (const m of bodies) {
+    const mask = evaluateShadowCasterMask(m, shadowCasterProfileOf(m), evaluation, 0xf);
+    assert.equal(mask & 8, 0, `${m.name}: out of the far cascade at ${shadowCasterProfileOf(m).reachM.toFixed(1)} m`);
+    assert.ok(mask & 7, `${m.name}: still in a near cascade`);
+  }
+  // the view among them: the two outer cascades drop them both
+  view.x = bodies[0].matrixWorld.elements[12]; view.z = bodies[0].matrixWorld.elements[14];
+  q.step(1 / 30);
+  for (const m of flying(q).filter((mesh) => shadowCasterProfileOf(mesh))) {
+    assert.equal(evaluateShadowCasterMask(m, shadowCasterProfileOf(m), evaluation, 0xf) & 12, 0, `${m.name}: near the view, only the near cascades`);
   }
   q.step(12);
   const rested = bodies.filter((m) => !flying(q).includes(m) || q.fracture.stats().bodies === 0);
