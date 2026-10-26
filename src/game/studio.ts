@@ -76,8 +76,9 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
-  setCamoBiome,
+  setCamoBiome, paintCamoTryOn,
 } from '../vehicles/materials.ts';
+import { createGarageCamoTryOn } from './garageCamoTryOn.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
 import { createStudioPanel } from '../ui/studioPanel.ts';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
@@ -810,6 +811,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     frameDirty = true;
     if (!historyTimer && !restoringHistory) historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
   }
+  // the paint picker's try-on (INTERACTION-REDESIGN B, the Garage's): the selected tank wears the paint under the pointer
+  // or the focus as a tile, and leaving puts its paint back. A frame, never a history step or a save.
+  const camoTryOn = createGarageCamoTryOn({ paint: paintCamoTryOn, onChange: () => { frameDirty = true; } });
+  function previewActorCamo(ref: ActorRef, selection: string | null): void {
+    const a = selection ? findActor(ref) : null;
+    camoTryOn.preview(a && !recording ? a.visual.root : null, a ? selection : null);
+  }
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
@@ -1371,6 +1379,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function removeActor(ref: ActorRef, opts: RemoveActorOptions = {}): boolean {
     const a = findActor(ref);
     if (!a) return false;
+    camoTryOn.preview(null, null);
     const actorKey = actorRefOut(a);
     const hadEffects = effectLog.length > 0;
     for (let i = effectLog.length - 1; i >= 0; i--) {
@@ -1397,6 +1406,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function clearActors() {
+    camoTryOn.preview(null, null);
     effectLog.length = 0;
     effectUidSeq = 1;
     selectedEffect = null;
@@ -1489,6 +1499,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       bindStoryboardTracks();
     }
     if (patch.camo === undefined) return;
+    // a chosen paint replaces the try-on: the worn bake repaints in place, so the tile gives way to it
+    camoTryOn.preview(null, null);
     a.camo = patch.camo || null;
     if (!a.camo) return;
     setCamoOverride(a.specId, a.camo);
@@ -1527,6 +1539,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // --- selection / mouse ------------------------------------------------------
   let selected: StudioActor | null = null;
   function selectActor(ref: ActorRef): StudioActor | null {
+    camoTryOn.preview(null, null);
     selected = findActor(ref);
     if (selected && selectedEffect) {
       selectedEffect = null;
@@ -5759,6 +5772,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let exiting = false;
   let exitRun: Promise<unknown> | null = null;
   function exit() {
+    camoTryOn.preview(null, null);
     commitHistory(); // the last edit reaches the autosave before the Studio closes
     if (!active || exiting) return;
     exiting = true;
@@ -6060,6 +6074,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     setActorState: (ref: ActorRef, state: string, ageS: number | null = null) => (
       recording ? false : setActorState(ref, state, ageS)
     ),
+    previewActorCamo,
     selectActor: (ref: ActorRef) => { const a = selectActor(ref); return a ? a.uid : null; },
     clearActors: () => { if (!recording) clearActors(); },
     // effects + time

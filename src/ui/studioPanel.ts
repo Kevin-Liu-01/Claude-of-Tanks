@@ -257,6 +257,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   removeActor(actor: StudioActor): RuntimeValue;
   updateActor(actor: StudioActor, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   setActorState(actor: StudioActor, state: string, ageS?: number | null): RuntimeValue;
+  /** The paint picker's try-on: `actor` wears `patternId` as a tile until null puts its paint back (no history). */
+  previewActorCamo(actor: StudioActor | null, patternId: string | null): void;
   selectActor(uid: string): RuntimeValue;
   effect(recipe: StudioEffectRecipe): RuntimeValue;
   clearEffects(): RuntimeValue;
@@ -1128,8 +1130,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     text: pickerText(), custom: false,
     createSwatch: () => createUiCanvas(null, '', { draw: coverImage }).canvas,
     paintSwatch: (canvas, specId, patternId) => { swatchQueue.push([canvas, specId, patternId]); pumpSwatches(); },
-    // the scene's tank rebuilds its paint on a press; its swatch is the preview
-    onPreview: () => {},
+    // the selected tank tries the paint under the pointer or the focus on (the Garage's try-on), and a press wears it
+    onPreview: (patternId) => S.previewActorCamo(S._internal.selected, patternId),
     onChoose: (patternId) => patchSel({ camo: patternId }),
     onMakeOwn: () => {},
   });
