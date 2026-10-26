@@ -382,8 +382,9 @@ const SI_CSS = `
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
 /* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
-   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis) */
-@container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
+   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis; from 210 px both
+   fit, and the 900x700 card's 220 kept neither glyph in either script, r12) */
+@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
    gauntlet r7) */

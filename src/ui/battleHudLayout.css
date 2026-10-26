@@ -552,8 +552,10 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:92px}
 }
+/* (84 px under 300 px tall: the parked chip under it keeps the marks' 4 px from it and from the joystick under it, at 88
+   it had 2 px of each at 568x256, gauntlet r12) */
 @media (max-height:299px) and (orientation:landscape){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:88px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:84px}
 }
 
 @media (max-height:549px) and (orientation:landscape){

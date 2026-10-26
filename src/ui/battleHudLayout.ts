@@ -1396,9 +1396,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // network button where that stands there. Its place is written before the touch plan measures it (a chip the last pass
     // left elsewhere had the alert set onto its new seat at 568x320, the layout receipt).
     const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : touch && map ? Math.round(map.left) : 8;
-    // (2 px under the map under 300 px tall, so the 24 px chip keeps 2 px off the stick's crown: at 4 its border met it
-    // at 568x256, gauntlet r9)
-    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + (height < 300 ? 2 : 4) : height * .5 + 48;
+    // (4 px under the map: under 300 px tall the map's 84 px step leaves the 24 px chip 4 px off the stick's crown too,
+    // battleHudLayout.css --mm-tiny; at 88 px it had 2 of each at 568x256, gauntlet r9 and r12)
+    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
     if (side) {
       chipTop = side.top;
       if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
