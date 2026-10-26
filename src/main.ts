@@ -1043,7 +1043,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  preloadSoloBattle: () => preloadSoloBattleRuntime(),
+  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
+  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -2982,6 +2984,15 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
+  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
+  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
+  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
+    const chosen = specId ?? garage.getSelected();
+    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    }, beginMultiplayerV2Battle));
+  }
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3401,6 +3412,8 @@ const battleFrame = createBattleFrameRuntime({
   network: {
     isActive: networkMatchActive,
     pump: networkPump.pump,
+    // a solo battle on a local host holds its authority as the page's solo simulation holds (soloHostEntry.ts)
+    setHeld: (held: boolean) => { multiplayerV2.current?.setPaused(held); },
   },
   countdown: {
     isWarmPending: () => battleWarmPending,
