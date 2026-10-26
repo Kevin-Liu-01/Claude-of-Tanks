@@ -1952,6 +1952,14 @@ export class LateFxPass extends Pass {
   sceneMatrixSource: SceneAAPass | null = null;
   /** Also the Studio cinema lens's FX coverage view (cinemaPost.ts): one stateless view of the same scene. */
   readonly renderSceneView: LateFxSceneView;
+  /**
+   * The post warm's switch (battle-spikes-253; postLazyPasses.ts warmGated): the pass draws its active path with no
+   * effect live, so its copies' and depth copy's programs and pipelines are made under the loading cover. A frame with
+   * no effect active draws nothing here, and nav-perf's MP program log found LateFxPass.Copy linked at the first live
+   * effect of a room. The image is unchanged: the input copied out and back with nothing drawn between.
+   */
+  private warming = false;
+  warmGated(on: boolean): void { this.warming = on; }
 
   constructor(
     scene: THREE.Scene,
@@ -2058,7 +2066,7 @@ export class LateFxPass extends Pass {
     const directColor = this.directColorSource?.consumeDirectColor(this.target, readBuffer) === true;
     const reuseMatrices = this.sceneMatrixSource?.consumeMatrixFrame(renderer, this.scene, this.camera) === true;
     const softState = this.softState;
-    if (!softState || !softState.isActive()) {
+    if ((!softState || !softState.isActive()) && !this.warming) {
       this.needsSwap = false;
       // Activity can disappear after Aerial prepared color. Restore the normal
       // unswapped composer input instead of exposing its previous-frame color.
@@ -2092,10 +2100,12 @@ export class LateFxPass extends Pass {
         this.copyQuad.render(renderer);
       }
       copyResolvedDepth(renderer, this.sceneTarget, this.target);
-      this.softDepthCopies++;
-      softState.uSceneDepth.value = this.sceneDepth;
-      softState.uCameraNear.value = this.camera.near;
-      softState.uCameraFar.value = this.camera.far;
+      if (!this.warming) this.softDepthCopies++;
+      if (softState) {
+        softState.uSceneDepth.value = this.sceneDepth;
+        softState.uCameraNear.value = this.camera.near;
+        softState.uCameraFar.value = this.camera.far;
+      }
 
       const oldBackground = this.scene.background;
       const oldMatrixWorldAutoUpdate = this.scene.matrixWorldAutoUpdate;

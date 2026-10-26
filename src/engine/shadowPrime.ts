@@ -3,13 +3,14 @@ import {
   type BufferGeometry, type Camera, type DirectionalLight, type Material,
   type Object3D, type Scene, type WebGLRenderer,
 } from 'three';
+import { SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 const SHADOW_PRIME_LAYER = 31;
 
 interface ShadowCasterWarmBatch {
   cascadeIndex: number;
   batchIndex: number;
-  /** Candidate counts before the production shadow renderer's frustum cull. */
+  /** Candidate counts; a batch's casters draw without the frustum cull. */
   casterCount: number;
   vertexCount: number;
 }
@@ -82,6 +83,7 @@ interface CasterState {
   object: Object3D;
   castShadow: boolean;
   receiveShadow: boolean;
+  frustumCulled: boolean;
   vertexCount: number;
 }
 
@@ -96,9 +98,12 @@ function isShadowDrawable(object: Object3D): object is ShadowDrawable {
 function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
   const casters: CasterState[] = [];
   const vsm = state.shadowMap.type === VSMShadowMap;
+  // (battle-spikes-253) The shadow router exposes the shadow-only proxies while the shadow map traverses: batch them with
+  // the rest, or they sit in every batch and their own depth programs wait for a live frame (nav-perf's RockDepth).
+  const casterMask = state.cameraMask | (1 << SHADOW_ONLY_LAYER);
   scene.traverseVisible(object => {
     if (!isShadowDrawable(object)) return;
-    if (!(object.layers.mask & state.cameraMask)) return;
+    if (!(object.layers.mask & casterMask)) return;
     if (!object.castShadow && !(vsm && object.receiveShadow)) return;
     const { geometry, material } = object;
     const vertexCount = geometry.getAttribute('position')?.count ?? 0;
@@ -111,7 +116,7 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
         && Math.min(end, group.start + group.count) > Math.max(start, group.start))
       : material.visible;
     if (draws) casters.push({ object, castShadow: object.castShadow,
-      receiveShadow: object.receiveShadow, vertexCount });
+      receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled, vertexCount });
   });
   return casters;
 }
@@ -145,6 +150,7 @@ function restoreWarmCasters(casters: readonly CasterState[]): void {
   for (const prior of casters) {
     cleanup.run(() => { prior.object.castShadow = prior.castShadow; });
     cleanup.run(() => { prior.object.receiveShadow = prior.receiveShadow; });
+    cleanup.run(() => { prior.object.frustumCulled = prior.frustumCulled; });
   }
   cleanup.finish();
 }
@@ -205,8 +211,11 @@ function renderWarmBatch(
   try {
     const vsm = state.shadowMap.type === VSMShadowMap;
     for (let index = 0; index < casters.length; index++) {
-      if (index >= start && index < end) continue;
       const object = casters[index]!.object;
+      // (battle-spikes-253) The batch's own casters draw wherever they stand: a caster outside the first cascade's box
+      // (the horizon ring, far vegetation, the baked prop buckets) otherwise links its depth program in the first live
+      // frame that frames it, at the battle's light counts (nav-perf's program log, root-p: five such programs at 1.2 s).
+      if (index >= start && index < end) { object.frustumCulled = false; continue; }
       // Never hide a parent: eligible child casters must still be traversed.
       // VSM also submits receive-only objects, so mute both eligibility flags.
       object.castShadow = false;
@@ -267,8 +276,9 @@ function releasePrimeState(
 }
 
 /** Quality and cascade selection remain with lighting. Optional first-use
- * cohorts visit only the first production cascade, with its normal culling;
- * later cascades may still have first-use cost. The same complete cascades
+ * cohorts visit only the first production cascade, without frustum culling, so
+ * every visible caster's depth program compiles there; later cascades'
+ * per-cascade state may still have first-use cost. The same complete cascades
  * always render afterwards, and only those final render timings are returned.
  */
 export async function primeShadowCascades(request: ShadowPrimeRequest): Promise<number[]> {

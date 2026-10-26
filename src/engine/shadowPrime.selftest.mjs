@@ -36,8 +36,11 @@ function fixture() {
     const cohort = [];
     scene.traverseVisible((object) => {
       if (!(object.isMesh || object.isLine || object.isPoints)) return;
-      if (!object.layers.test(activeCamera.layers)) return;
+      // the production router (renderLayers routeShadowOnlyLayer) exposes the shadow-only layer while the map traverses
+      if (!(object.layers.mask & (activeCamera.layers.mask | (1 << 29)))) return;
       if (!object.castShadow && !(renderer.shadowMap.type === THREE.VSMShadowMap && object.receiveShadow)) return;
+      // three's frustum test against the cascade's box, for casters a case places outside it
+      if (object.frustumCulled && object.userData.outsideCascade) return;
       const geometry = object.geometry;
       const positionCount = geometry.getAttribute('position')?.count ?? 0;
       const rangeStart = geometry.drawRange.start;
@@ -98,14 +101,17 @@ function fixture() {
     object.receiveShadow = options.receiveShadow ?? false;
     if (options.layer !== undefined) object.layers.set(options.layer);
     (options.parent ?? scene).add(object);
-    casters.push({ object, visible: object.visible, cast: object.castShadow, receive: object.receiveShadow });
+    if (options.outsideCascade) object.userData.outsideCascade = true;
+    casters.push({ object, visible: object.visible, cast: object.castShadow, receive: object.receiveShadow,
+      culled: object.frustumCulled });
     return object;
   };
   const casterFlagsRestored = () => {
-    for (const { object, visible, cast, receive } of casters) {
+    for (const { object, visible, cast, receive, culled } of casters) {
       assert.equal(object.visible, visible, `${object.name}: visible restored`);
       assert.equal(object.castShadow, cast, `${object.name}: castShadow restored`);
       assert.equal(object.receiveShadow, receive, `${object.name}: receiveShadow restored`);
+      assert.equal(object.frustumCulled, culled, `${object.name}: frustumCulled restored`);
     }
   };
   const bindingsRestored = () => {
@@ -412,6 +418,22 @@ await withFixture(async (f) => {
     'visible Mesh/Line/Points and camera shadow layers participate without suppressing child traversal');
   assert.deepEqual(batches.map((batch) => batch.vertexCount), [3, 4, 5, 6, 7, 8],
     'upload weight includes the entire position buffer even for a partial visible draw');
+  f.restored(true);
+});
+
+// (battle-spikes-253) nav-perf's root-p program log: the horizon ring, far vegetation, the baked prop buckets and a rock
+// pool's shadow-only proxy linked their depth programs in the first live frames, outside the first cascade's box at the
+// warm and (the proxy) never batched. Each batch's casters draw unculled; shadow-only casters batch with the rest.
+await withFixture(async (f) => {
+  f.addCaster('near', 3);
+  f.addCaster('far', 4, { outsideCascade: true });
+  f.addCaster('proxy', 5, { layer: 29 });
+  f.addCaster('far-proxy', 6, { layer: 29, outsideCascade: true });
+  await f.run({ casterWarmup: { maxCastersPerBatch: 1,
+    yieldBeforeBatch() { f.bindingsRestored(); }, onBatch() { f.bindingsRestored(); },
+  } });
+  assert.deepEqual(f.cohorts, [['near'], ['far'], ['proxy'], ['far-proxy'], ['near', 'proxy'], ['near', 'proxy']],
+    'every caster draws in its own batch wherever it stands; the cascades after keep their cull');
   f.restored(true);
 });
 

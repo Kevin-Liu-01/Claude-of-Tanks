@@ -19,6 +19,9 @@ assert.ok(patchAt > 0 && patchAt < compileBody.indexOf('forwardProgramWarm.prepa
 // (and the black watchdog's readback copy goes with the compile: its link at the watchdog waited behind the GPU queue)
 const probeAt = compileBody.indexOf('warmSceneProbePrograms(renderer)');
 assert.ok(probeAt > 0 && probeAt < compileBody.indexOf('forwardProgramWarm.prepareSceneSteps('), 'the MP compile warms the probe copy');
+// (and bakes the far trees' impostor atlas, as the solo loading does: the room's world skips activation's precompile)
+const impostorsAt = compileBody.indexOf('currentWorld()?.warmImpostors?.()');
+assert.ok(impostorsAt > 0 && impostorsAt < compileBody.indexOf('forwardProgramWarm.prepareSceneSteps('), 'the MP compile bakes the impostors');
 
 // (and the MP finalShadows warm draws the post chain's first frame under the cover, as the solo deployment does)
 const shadowsAt = main.indexOf('finalShadows: async (signal?: AbortSignal) => {');
@@ -33,4 +36,4 @@ const body = warm.slice(hidden, warm.indexOf('\nfunction', hidden + 10));
 const solo = body.indexOf('context.fx.prepareWorldMaterials?.()');
 assert.ok(solo > 0 && solo < body.indexOf('yield* compileAll(entity.visual.root)') && solo < body.indexOf('yield* compileAll(world.group)'),
   'the solo combat warm patches the world before it compiles it');
-console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it; the probe copy warms with the MP compile; its finalShadows warms the post chain');
+console.log('worldMaterialsBeforeCompile.selftest: the fx patches the world when asked; the MP compile and the solo combat warm ask before they compile it; the probe copy and the impostor bake go with the MP compile; its finalShadows warms the post chain');

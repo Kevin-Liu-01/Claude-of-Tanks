@@ -2899,6 +2899,10 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             recordLightCensus('compile');
             // (battle-spikes-253) and the black watchdog's readback copy, linked with the rest rather than at the watchdog
             warmSceneProbePrograms(renderer);
+            // (battle-spikes-253) and the far trees' impostor atlas, as the solo loading bakes it: the room's world is built
+            // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
+            // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials)
+            try { currentWorld()?.warmImpostors?.(); } catch { /* the first update bakes lazily */ }
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
