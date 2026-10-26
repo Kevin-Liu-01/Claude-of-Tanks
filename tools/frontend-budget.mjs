@@ -66,12 +66,23 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - Main: the owner's Garage asks, accepted and re-pinned at the release build (brand-ui-garage-redesign-245
   //   64ca0557d5: the hero on the measured free stage, the roster as one kit row; with integ's equipment-tip fix):
   //   +1,376 B game, +1,077 B entry, +473 B Gallery, home -25 B. Requests unchanged.
-  game: { brotliBytes: 1076898, requests: 129, entryBrotliBytes: 237860 },
-  cn: { brotliBytes: 1119906, requests: 130, entryBrotliBytes: 237860 },
-  gallery: { brotliBytes: 666853, requests: 75 },
-  home: { brotliBytes: 25962, requests: 8 },
-  docs: { brotliBytes: 32951, requests: 12 },
-  notFound: { brotliBytes: 16339, requests: 7 },
+  // 2026-10-26 (integrator 255, re-pinned at the release build of f015b17209; shares as 254's, main 254 local within 107 B):
+  // - battle-spikes-253 c8f5bdb152 (the memory fixes, the MP entry's structure mask before the compile): +606 B game, +566 B
+  //   entry; its forward dc4c2df7b3 (the MP opening warm batches, gated link polls, the impostor bake under the cover):
+  //   +848 B game, +529 B entry;
+  // - decor-worker-254 c496fd9a45 (the Studio's first-frame links): -37 B game, -187 B entry;
+  // - Main's step 5 flip, rust-support-solve-253 b0bf08e3df (a free sortie on a local host Worker): +626 B game, +613 B entry;
+  // - vehicles-diagrams-camo-253 365ade19dc (the diagrams' DOM labels; their tones a lazy token module): +180 B game,
+  //   +331 B cn, +344 B Gallery, home +9 B, docs +7 B, 404 +3 B; media-maps-r1-254 -3 B; integ's fleet wall +99 B game;
+  // - Main: "owner map/camo picker (interaction redesign A)" (interaction-picker-254 2c11b57f98): game -69 B, entry -311 B,
+  //   Gallery +261 B, home +173 B, docs +272 B, 404 +311 B; no extra request (its sheet in the game's CSS, its facts' tags
+  //   in the playMode chunk). Requests unchanged.
+  game: { brotliBytes: 1079169, requests: 129, entryBrotliBytes: 238976 },
+  cn: { brotliBytes: 1122356, requests: 130, entryBrotliBytes: 238976 },
+  gallery: { brotliBytes: 667458, requests: 75 },
+  home: { brotliBytes: 26144, requests: 8 },
+  docs: { brotliBytes: 33230, requests: 12 },
+  notFound: { brotliBytes: 16652, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
