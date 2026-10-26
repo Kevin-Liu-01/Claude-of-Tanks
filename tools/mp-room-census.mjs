@@ -15,6 +15,7 @@
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
+//     [--program-log]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -50,6 +51,10 @@ const noConvolver = argv.includes('--no-convolver');
 // --battle-eval=<expression>: evaluated in both pages once the battle has settled, kept in the battle stage's sample
 // (battleEval) and printed (a lane's entry probe: the black watchdog's newPrograms, say)
 const battleEval = option('battle-eval', '');
+// --program-log: every three program each page's renderer acquires (its name or type and its cache key), so each long
+// task of the battle stage names the programs it made and the key parts that differ from the nearest program of that
+// name made before it (a program released and made again reads "same key")
+const programLog = argv.includes('--program-log');
 const profiling = { armed: false, live: [], workers: [] };
 const profileWorker = async (url, session) => {
   await session.send('Profiler.enable');
@@ -82,13 +87,28 @@ function portFree(port) {
 function observe(page, name, log) {
   // (Main 2026-10-25) a CSP report is counted on its own, from the page console, the page's securitypolicyviolation
   // events and each worker's Log domain (a report-only refusal in the match host's Worker never reaches the page)
-  page.evaluateOnNewDocument((passThroughConvolver) => {
+  page.evaluateOnNewDocument((passThroughConvolver, logPrograms) => {
     // each page's long tasks (the entry's longest is the perf lane's question), read and cleared per stage; their spans
     // place them in a CPU profile
     window.__censusLongTasks = [];
     window.__censusLongSpans = [];
-    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) { window.__censusLongTasks.push(Math.round(e.duration)); window.__censusLongSpans.push([e.startTime, e.duration]); } })
+    window.__censusTaskSpans = [];
+    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) { window.__censusLongTasks.push(Math.round(e.duration)); window.__censusLongSpans.push([e.startTime, e.duration]); window.__censusTaskSpans.push([e.startTime, e.duration]); } })
       .observe({ type: 'longtask', buffered: true }); } catch { /* no long task timing */ }
+    if (logPrograms) {
+      window.__censusPrograms = [];
+      const logProgram = (t, program) => window.__censusPrograms.length < 8000 && window.__censusPrograms.push({ t, name: program.name || program.type || '?',
+        parts: String(program.cacheKey ?? '').split(',').map((part) => part.slice(0, 80)) });
+      const install = () => {
+        const programs = window.__DEBUG?.renderer?.info?.programs;
+        if (!programs) return false;
+        for (const program of programs) logProgram(0, program);
+        const push = programs.push;
+        programs.push = function (...made) { for (const program of made) logProgram(performance.now(), program); return push.apply(this, made); };
+        return true;
+      };
+      const timer = setInterval(() => { if (install()) clearInterval(timer); }, 50);
+    }
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.disposition} ${e.effectiveDirective} ${e.blockedURI}`));
     if (passThroughConvolver) {
@@ -97,7 +117,7 @@ function observe(page, name, log) {
       }
       if (window.ConvolverNode) window.ConvolverNode = function ConvolverNode(context) { return context.createGain(); };
     }
-  }, noConvolver).catch(() => {});
+  }, noConvolver, programLog).catch(() => {});
   page.on('workercreated', async (worker) => {
     try {
       const session = worker.client;
@@ -290,6 +310,8 @@ try {
   await stage('ready', at);
 
   at = performance.now();
+  // (each page's own clock)
+  const stageFrom = await Promise.all([pageA, pageB].map((page) => page.evaluate(() => performance.now())));
   let cdpA = null, profiledFrom = 0;
   if (cpuProfile) {
     cdpA = await pageA.createCDPSession();
@@ -324,11 +346,38 @@ try {
     for (const task of entryProfile.page) console.log(`host entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 20).join('\n    ')}`);
     for (const w of entryProfile.workers) console.log(`host worker ${w.url}: ${w.ms} ms profiled, ${w.samples} busy samples\n  self:\n    ${w.self.join('\n    ')}`);
   }
+  // each long task of the battle stage (300 ms or more) and the programs it made, against the nearest made before it
+  const programTasks = programLog ? await Promise.all([pageA, pageB].map((page, index) => page.evaluate((from) => {
+    const rows = window.__censusPrograms ?? [];
+    return (window.__censusTaskSpans ?? []).filter(([start, ms]) => start >= from && ms >= 300).map(([start, ms]) => {
+      const made = rows.filter((r) => r.t >= start && r.t <= start + ms), prior = rows.filter((r) => r.t < start);
+      const lines = made.map((r) => {
+        let best = null;
+        for (const o of prior) {
+          if (o.name !== r.name || o.parts.length !== r.parts.length) continue;
+          const d = [];
+          for (let i = 0; i < r.parts.length; i++) if (r.parts[i] !== o.parts[i]) d.push(`${i}:${r.parts[i].slice(0, 60)} / ${o.parts[i].slice(0, 60)}`);
+          if (!best || d.length < best.length) best = d;
+        }
+        return `${r.name}: ${best ? (best.length ? best.slice(0, 5).join(' | ') : 'same key') : 'no prior program of that name and key length'}`;
+      });
+      return { startMs: Math.round(start), ms: Math.round(ms), made: made.length, programs: lines.slice(0, 80) };
+    });
+  }, stageFrom[index]).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })))) : null;
   const evaluated = battleEval ? await Promise.all([pageA, pageB].map((page) => page.evaluate((expression) => {
     try { return { value: JSON.parse(JSON.stringify((0, eval)(expression) ?? null)) }; } catch (error) { return { error: String(error?.message || error) }; }
   }, battleEval).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })))) : null;
   await stage('battle', at);
   if (entryProfile) samples.at(-1).profile = entryProfile;
+  if (programTasks) {
+    samples.at(-1).programTasks = programTasks;
+    for (const [i, tasks] of programTasks.entries()) {
+      for (const task of Array.isArray(tasks) ? tasks : [tasks]) {
+        console.log(`programs ${'AB'[i]}: task at ${task.startMs} ms, ${task.ms} ms: ${task.made} made${task.error ? ` (${task.error})` : ''}`);
+        for (const line of task.programs ?? []) console.log(`    ${line}`);
+      }
+    }
+  }
   if (evaluated) {
     samples.at(-1).battleEval = { expression: battleEval, pages: evaluated };
     for (const [i, result] of evaluated.entries()) console.log(`battle eval ${'AB'[i]}: ${JSON.stringify(result).slice(0, 6000)}`);
