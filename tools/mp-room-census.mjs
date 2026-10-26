@@ -15,7 +15,7 @@
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
-//     [--program-log]
+//     [--program-log] [--profile-leave]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -55,6 +55,8 @@ const battleEval = option('battle-eval', '');
 // task of the battle stage names the programs it made and the key parts that differ from the nearest program of that
 // name made before it (a program released and made again reads "same key")
 const programLog = argv.includes('--program-log');
+// --profile-leave: a CPU profile of the host commander's page through the leave to the Garage, each long task attributed
+const profileLeave = argv.includes('--profile-leave');
 const profiling = { armed: false, live: [], workers: [] };
 const profileWorker = async (url, session) => {
   await session.send('Profiler.enable');
@@ -97,11 +99,38 @@ function observe(page, name, log) {
       .observe({ type: 'longtask', buffered: true }); } catch { /* no long task timing */ }
     if (logPrograms) {
       window.__censusPrograms = [];
+      let drawing = null;
+      const path = (object) => {
+        const names = [];
+        for (let o = object, i = 0; o && i < 5; o = o.parent, i++) names.push(`${o.name || o.type || '?'}${o.visible === false ? '(hidden)' : ''}`);
+        return names.join('<');
+      };
+      const drawer = () => {
+        if (!drawing) return 'compile or setup (no draw)';
+        const { object, material, scene } = drawing;
+        return `${scene ? 'forward' : 'shadow'} ${path(object)} [${material?.name || material?.type || '?'}]`;
+      };
+      // the calling chunks past three's own frames (its module, core and the render-layer wrapper)
+      const stack = () => {
+        const limit = Error.stackTraceLimit;
+        Error.stackTraceLimit = 60; // V8 keeps 10 frames, all of them three's inside a draw
+        try { return new Error().stack || ''; } finally { Error.stackTraceLimit = limit; }
+      };
+      const chunks = () => stack().split('\n').slice(3, 60).map((line) => (line.match(/([\w.-]+\.js):(\d+)/) || [])[0] || '')
+        .filter((frame) => frame && !/^(three\.(module|core)|renderLayers)-/.test(frame))
+        .filter((frame, i, all) => all.indexOf(frame) === i).slice(0, 6).join(' ');
       const logProgram = (t, program) => window.__censusPrograms.length < 8000 && window.__censusPrograms.push({ t, name: program.name || program.type || '?',
-        parts: String(program.cacheKey ?? '').split(',').map((part) => part.slice(0, 80)) });
+        parts: String(program.cacheKey ?? '').split(',').map((part) => part.slice(0, 80)), drawer: t ? drawer() : null, stack: t ? chunks() : null });
       const install = () => {
-        const programs = window.__DEBUG?.renderer?.info?.programs;
+        const renderer = window.__DEBUG?.renderer;
+        const programs = renderer?.info?.programs;
         if (!programs) return false;
+        const direct = renderer.renderBufferDirect;
+        renderer.renderBufferDirect = function (camera, scene, geometry, material, object, group) {
+          const outer = drawing;
+          drawing = { object, material, scene };
+          try { return direct.call(this, camera, scene, geometry, material, object, group); } finally { drawing = outer; }
+        };
         for (const program of programs) logProgram(0, program);
         const push = programs.push;
         programs.push = function (...made) { for (const program of made) logProgram(performance.now(), program); return push.apply(this, made); };
@@ -359,7 +388,8 @@ try {
           for (let i = 0; i < r.parts.length; i++) if (r.parts[i] !== o.parts[i]) d.push(`${i}:${r.parts[i].slice(0, 60)} / ${o.parts[i].slice(0, 60)}`);
           if (!best || d.length < best.length) best = d;
         }
-        return `${r.name}: ${best ? (best.length ? best.slice(0, 5).join(' | ') : 'same key') : 'no prior program of that name and key length'}`;
+        return `${r.name}: ${best ? (best.length ? best.slice(0, 5).join(' | ') : 'same key') : 'no prior program of that name and key length'}`
+          + `\n        drawn by ${r.drawer}\n        from ${r.stack}`;
       });
       return { startMs: Math.round(start), ms: Math.round(ms), made: made.length, programs: lines.slice(0, 80) };
     });
@@ -384,12 +414,30 @@ try {
   }
 
   at = performance.now();
+  let leaveCdp = null, leaveFrom = 0;
+  if (profileLeave) {
+    leaveCdp = await pageA.createCDPSession();
+    await leaveCdp.send('Profiler.enable');
+    await leaveCdp.send('Profiler.setSamplingInterval', { interval: 500 });
+    leaveFrom = await pageA.evaluate(() => performance.now());
+    await leaveCdp.send('Profiler.start');
+  }
   for (const page of [pageB, pageA]) {
     await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
     await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'garage', { timeout: 60_000, polling: 100 });
   }
   await new Promise((r) => setTimeout(r, 2000));
+  let leaveProfile = null;
+  if (leaveCdp) {
+    const { profile } = await leaveCdp.send('Profiler.stop');
+    const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= leaveFrom && ms >= 200);
+    mkdirSync(join(out, label), { recursive: true });
+    writeFileSync(join(out, label, 'host-leave.cpuprofile'), JSON.stringify(profile));
+    leaveProfile = attribute(profile, spans, profile.startTime / 1000 - leaveFrom);
+    for (const task of leaveProfile) console.log(`host leave task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 24).join('\n    ')}`);
+  }
   await stage('leave', at);
+  if (leaveProfile) samples.at(-1).profile = { page: leaveProfile };
 } catch (error) {
   // where each page stood when the stage gave up, and the stage's console so far
   const state = await Promise.all(pages.map((page) => page.evaluate(() => {
