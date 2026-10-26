@@ -4007,6 +4007,9 @@ if (STUDIO_BOOT_INTENT) {
   });
 }
 
+// (2026-10-26, the boot census) every program the boot submitted links between frames before the first live frame:
+// three's first use of a program still linking reads its log inside that frame (1.3-1.5 s on a cold desktop)
+try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
