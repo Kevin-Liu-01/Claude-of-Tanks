@@ -3123,7 +3123,6 @@
   "docs.filming.viewer.take": "Take {n}",
   "docs.filming.viewer.openStudio": "Open in the Studio",
   "docs.filming.viewer.sceneJson": "Scene JSON",
-  "docs.filming.viewer.sceneNote": "The take's scene as the Studio saves it, from the shot library. Open it in the Studio, or save the file and load it there with Load JSON.",
   "docs.filming.time.day": "day",
   "docs.filming.time.night": "night",
   "docs.filming.time.sunset": "sunset",

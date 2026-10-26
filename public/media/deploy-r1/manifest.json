@@ -4,13 +4,13 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them); and the Campaign tab's briefing plates, op-0N-1280, one Scene Studio still per operation.",
- "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py)",
+ "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them); and the Campaign tab's briefing plates, op-0N-1280, one Scene Studio still per operation; and each mode's plate background on the Deploy screen, <id>-1600 (1600x900, the `-panel` rows: the core modes' a cut of their card stills, the others the media lane's HUD-free battle frames; owner 2026-10-26).",
+ "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py); the core plate backgrounds: ffmpeg (scale lanczos) + cwebp -q 70 -m 6",
  "dimensions": {
   "width": 640,
   "height": 360
  },
- "count": 29,
+ "count": 33,
  "items": [
   {
    "id": "standard",
@@ -19,10 +19,28 @@
    "source": "public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
   },
   {
+   "id": "standard-panel",
+   "file": "standard-1600.webp",
+   "mode": "standard",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 75368
+  },
+  {
    "id": "zone_control",
    "file": "zone_control-640.webp",
    "mode": "zone_control",
    "source": "public/media/versus-r1/f7-t90m-column-r5.webp"
+  },
+  {
+   "id": "zone_control-panel",
+   "file": "zone_control-1600.webp",
+   "mode": "zone_control",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/f7-t90m-column-r5.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 127994
   },
   {
    "id": "capture_the_flag",
@@ -31,10 +49,28 @@
    "source": "public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp"
   },
   {
+   "id": "capture_the_flag-panel",
+   "file": "capture_the_flag-1600.webp",
+   "mode": "capture_the_flag",
+   "source": "a 1600x900 cut of the still its card shows (public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 76752
+  },
+  {
    "id": "frontline_assault",
    "file": "frontline_assault-640.webp",
    "mode": "frontline_assault",
    "source": "public/media/site50-r14/stills/s225-verdant-duel.webp"
+  },
+  {
+   "id": "frontline_assault-panel",
+   "file": "frontline_assault-1600.webp",
+   "mode": "frontline_assault",
+   "source": "a 1600x900 cut of the still its card shows (public/media/site50-r14/stills/s225-verdant-duel.webp)",
+   "width": 1600,
+   "height": 900,
+   "bytes": 75576
   },
   {
    "id": "turbo_ball-tile",

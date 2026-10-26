@@ -5,7 +5,7 @@
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer tokens{
 :root{
-  --docs-banner-fade:linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,0) 52%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%);
+  --docs-banner-fade:linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,.3) 42%,rgba(11,14,17,.1) 50%,rgba(11,14,17,0) 58%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%);
   --docs-side-edge:1px 0 0 var(--line-1);--docs-side-on:0 1px 0 rgba(255,255,255,.06) inset,inset 0 0 0 1px var(--line-2);
   --docs-toc-on:none;--docs-hc-flag-mask:radial-gradient(ellipse 70% 84% at 96% 0%,rgba(0,0,0,1) 0.0%,rgba(0,0,0,1) 40.0%,rgba(0,0,0,0.957) 47.5%,rgba(0,0,0,0.8438) 55.0%,rgba(0,0,0,0.6836) 62.5%,rgba(0,0,0,0.5) 70.0%,rgba(0,0,0,0.3164) 77.5%,rgba(0,0,0,0.1563) 85.0%,rgba(0,0,0,0.043) 92.5%,rgba(0,0,0,0) 100.0%);
   --docs-banner-z:2;
