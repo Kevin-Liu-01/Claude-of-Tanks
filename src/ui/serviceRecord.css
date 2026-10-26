@@ -139,9 +139,11 @@
 .cot-record-medal-art svg{max-width:100%;height:auto}
 .cot-record-medal-inspect{display:grid;place-items:center;width:100%;min-width:0;padding:0;border:0;background:none;color:inherit;cursor:help}
 .cot-record-medal-inspect::after{content:'';position:absolute;inset:0}
-.cot-record-medal-copy{width:100%;min-width:0;overflow-wrap:break-word}
-.cot-record-medal-copy strong{display:block;min-height:2.7em;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.35;color:var(--ink-1);text-wrap:balance}
-.cot-record-medal-count{display:block;margin-top:6px;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-2)}
+/* the names start on one line and the counts end on one line, however the names wrap: a row keeps a wrapped name's
+   room only when one of its names wraps (as the Overview's medal rows do) */
+.cot-record-medal-copy{display:flex;flex:1;flex-direction:column;width:100%;min-width:0;overflow-wrap:break-word}
+.cot-record-medal-copy strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.35;color:var(--ink-1);text-wrap:balance}
+.cot-record-medal-count{display:block;margin-top:auto;padding-top:6px;font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-2)}
 .cot-record-medal-count small{display:block;margin-top:2px;font-size:max(var(--fs-floor-11),var(--fs-11));color:var(--ink-3)}
 
 /* achievements: the tier's art, the goal and a bar to the next tier */
