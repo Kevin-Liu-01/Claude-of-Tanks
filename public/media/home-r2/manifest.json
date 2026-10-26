@@ -8,6 +8,11 @@
     {
       "id": "vs03-reservoir-k2-vt4a1",
       "map": "reservoir",
+      "mode": "standard",
+      "tanks": [
+        "k2_black_panther",
+        "vt4a1"
+      ],
       "title": {
         "en": "A K2 Black Panther races a VT-4A1 past a farmhouse on Highland Reservoir at golden hour, both guns firing",
         "zh": "黄金时刻，一辆 K2 Black Panther 在高地水库的农舍旁与一辆 VT-4A1 并驾齐驱，双方炮火交错"
@@ -59,61 +64,71 @@
       }
     },
     {
-      "id": "frosthollow-cv90-bmp3",
-      "map": "winter",
+      "id": "frontier-leclerc-t90a",
+      "map": "frontier",
+      "tanks": [
+        "leclerc_sxxi",
+        "t90a_2004"
+      ],
+      "mode": "standard",
       "title": {
-        "en": "A CV90 Mk 4 races a BMP-3 across the snow at Frosthollow by day, both firing as they go",
-        "zh": "白天，一辆 CV90 Mk 4 在霜谷的雪地上与一辆 BMP-3 并驾齐驱，双方边行进边开火"
+        "en": "A Leclerc SXXI bears down on a low lens across Frontier Basin at dawn, its gun firing at a T-90A",
+        "zh": "黎明时分，一辆 Leclerc SXXI 在边境盆地朝低机位驶来，主炮向一辆 T-90A 开火"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/home-r2/frosthollow-cv90-bmp3-960.webp",
+            "path": "/media/home-r2/frontier-leclerc-t90a-960.webp",
             "width": 960,
             "height": 540,
-            "bytes": 68590
+            "bytes": 58074
           },
           {
-            "path": "/media/home-r2/frosthollow-cv90-bmp3-1440.webp",
+            "path": "/media/home-r2/frontier-leclerc-t90a-1440.webp",
             "width": 1440,
             "height": 810,
-            "bytes": 134716
+            "bytes": 109998
           },
           {
-            "path": "/media/home-r2/frosthollow-cv90-bmp3-1920.webp",
+            "path": "/media/home-r2/frontier-leclerc-t90a-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 210302
+            "bytes": 175314
           },
           {
-            "path": "/media/home-r2/frosthollow-cv90-bmp3-2560.webp",
+            "path": "/media/home-r2/frontier-leclerc-t90a-2560.webp",
             "width": 2560,
             "height": 1440,
-            "bytes": 323210
+            "bytes": 265560
           }
         ]
       },
       "film": {
-        "path": "/media/home-r2/frosthollow-cv90-bmp3.mp4",
+        "path": "/media/home-r2/frontier-leclerc-t90a.mp4",
         "type": "video/mp4",
         "width": 1920,
         "height": 1080,
         "seconds": 6.6,
-        "bytes": 3675192
+        "bytes": 3736799
       },
       "mobile": {
-        "path": "/media/home-r2/frosthollow-cv90-bmp3-960.mp4",
+        "path": "/media/home-r2/frontier-leclerc-t90a-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
         "seconds": 6.6,
-        "bytes": 1185623,
+        "bytes": 1195764,
         "rung": "phone"
       }
     },
     {
       "id": "wadi-abrams-t90m",
       "map": "desert",
+      "mode": "standard",
+      "tanks": [
+        "m1a2_abrams_sepv3",
+        "t90m"
+      ],
       "title": {
         "en": "An M1A2 Abrams SEPv3 races a T-90M down Sirocco Wadi by day, firing across the sand",
         "zh": "白天，一辆 M1A2 Abrams SEPv3 在西罗科干谷与一辆 T-90M 并驾齐驱，隔着沙地开火"
@@ -165,108 +180,235 @@
       }
     },
     {
-      "id": "oasis-night-merkava-t72b3",
+      "id": "oasis-leo2a6-t14",
       "map": "oasis",
+      "tanks": [
+        "leo2a6",
+        "t14_armata"
+      ],
+      "mode": "standard",
       "title": {
-        "en": "A Merkava Mk 4 races a T-72B3 over the dunes of Sunscar Oasis at night, muzzle flashes under the stars",
-        "zh": "夜晚，一辆 Merkava Mk 4 在日痕绿洲的沙丘上与一辆 T-72B3 并驾齐驱，星空下炮口火光闪烁"
+        "en": "The lens circles a Leopard 2A6 as it knocks out a T-14 Armata at the Sunscar Oasis caravanserai at sunset",
+        "zh": "日落时分，镜头环绕日痕绿洲的商队驿站，一辆 Leopard 2A6 击毁一辆 T-14 Armata"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/home-r2/oasis-night-merkava-t72b3-960.webp",
+            "path": "/media/home-r2/oasis-leo2a6-t14-960.webp",
             "width": 960,
             "height": 540,
-            "bytes": 50734
+            "bytes": 111838
           },
           {
-            "path": "/media/home-r2/oasis-night-merkava-t72b3-1440.webp",
+            "path": "/media/home-r2/oasis-leo2a6-t14-1440.webp",
             "width": 1440,
             "height": 810,
-            "bytes": 90974
+            "bytes": 223212
           },
           {
-            "path": "/media/home-r2/oasis-night-merkava-t72b3-1920.webp",
+            "path": "/media/home-r2/oasis-leo2a6-t14-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 129798
+            "bytes": 358488
           },
           {
-            "path": "/media/home-r2/oasis-night-merkava-t72b3-2560.webp",
+            "path": "/media/home-r2/oasis-leo2a6-t14-2560.webp",
             "width": 2560,
             "height": 1440,
-            "bytes": 188586
+            "bytes": 556354
           }
         ]
       },
       "film": {
-        "path": "/media/home-r2/oasis-night-merkava-t72b3.mp4",
+        "path": "/media/home-r2/oasis-leo2a6-t14.mp4",
         "type": "video/mp4",
         "width": 1920,
         "height": 1080,
         "seconds": 6.6,
-        "bytes": 3763910
+        "bytes": 3839200
       },
       "mobile": {
-        "path": "/media/home-r2/oasis-night-merkava-t72b3-960.mp4",
+        "path": "/media/home-r2/oasis-leo2a6-t14-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
         "seconds": 6.6,
-        "bytes": 1215548,
+        "bytes": 1218408,
         "rung": "phone"
       }
     },
     {
-      "id": "glacier-strv122-t80bv",
-      "map": "alpine",
+      "id": "saltmere-type10-ztz99a2",
+      "map": "coastal",
+      "tanks": [
+        "type10",
+        "ztz99a2"
+      ],
+      "mode": "standard",
       "title": {
-        "en": "A Stridsvagn 122 races a T-80BV over the snow of Glacier Pass by day, the peaks behind",
-        "zh": "白天，一辆 Stridsvagn 122 在冰川关的雪地上与一辆 T-80BV 并驾齐驱，身后是雪峰"
+        "en": "Tracking alongside a Type 10 as it races a ZTZ-99A2 along Saltmere Bay in the morning, trading fire",
+        "zh": "清晨，镜头在盐沼湾与一辆 Type 10 并行跟拍，它与一辆 ZTZ-99A2 并驾齐驱并交火"
       },
       "poster": {
         "rungs": [
           {
-            "path": "/media/home-r2/glacier-strv122-t80bv-960.webp",
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-960.webp",
             "width": 960,
             "height": 540,
-            "bytes": 40740
+            "bytes": 79162
           },
           {
-            "path": "/media/home-r2/glacier-strv122-t80bv-1440.webp",
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-1440.webp",
             "width": 1440,
             "height": 810,
-            "bytes": 77636
+            "bytes": 160892
           },
           {
-            "path": "/media/home-r2/glacier-strv122-t80bv-1920.webp",
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-1920.webp",
             "width": 1920,
             "height": 1080,
-            "bytes": 122890
+            "bytes": 261448
           },
           {
-            "path": "/media/home-r2/glacier-strv122-t80bv-2560.webp",
+            "path": "/media/home-r2/saltmere-type10-ztz99a2-2560.webp",
             "width": 2560,
             "height": 1440,
-            "bytes": 190402
+            "bytes": 415960
           }
         ]
       },
       "film": {
-        "path": "/media/home-r2/glacier-strv122-t80bv.mp4",
+        "path": "/media/home-r2/saltmere-type10-ztz99a2.mp4",
         "type": "video/mp4",
         "width": 1920,
         "height": 1080,
         "seconds": 6.6,
-        "bytes": 3763745
+        "bytes": 3757191
       },
       "mobile": {
-        "path": "/media/home-r2/glacier-strv122-t80bv-960.mp4",
+        "path": "/media/home-r2/saltmere-type10-ztz99a2-960.mp4",
         "type": "video/mp4",
         "width": 960,
         "height": 540,
         "seconds": 6.6,
-        "bytes": 1212001,
+        "bytes": 1215531,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "church-challenger3-t80u",
+      "map": "winter",
+      "tanks": [
+        "challenger3_proto",
+        "t80u"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "Over a T-80U's shoulder as a Challenger 3 Prototype comes down the snowy village street at dusk and knocks it out",
+        "zh": "黄昏时分，从一辆 T-80U 的肩后望去，一辆 Challenger 3 Prototype 沿积雪的村道驶来并将其击毁"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 42436
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 79490
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 121160
+          },
+          {
+            "path": "/media/home-r2/church-challenger3-t80u-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 190358
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/church-challenger3-t80u.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.6,
+        "bytes": 3736413
+      },
+      "mobile": {
+        "path": "/media/home-r2/church-challenger3-t80u-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.6,
+        "bytes": 1212908,
+        "rung": "phone"
+      }
+    },
+    {
+      "id": "steinburg-abramsx-night",
+      "map": "urban",
+      "tanks": [
+        "abramsx",
+        "bmpt_terminator2",
+        "t80b"
+      ],
+      "mode": "standard",
+      "title": {
+        "en": "An AbramsX fights a BMPT Terminator 2 and a T-80B across a lamplit Steinburg square at night",
+        "zh": "夜晚，一辆 AbramsX 在灯火映照的斯泰因堡广场与一辆 BMPT Terminator 2 和一辆 T-80B 交战"
+      },
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-960.webp",
+            "width": 960,
+            "height": 540,
+            "bytes": 103296
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-1440.webp",
+            "width": 1440,
+            "height": 810,
+            "bytes": 205652
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 328428
+          },
+          {
+            "path": "/media/home-r2/steinburg-abramsx-night-2560.webp",
+            "width": 2560,
+            "height": 1440,
+            "bytes": 491426
+          }
+        ]
+      },
+      "film": {
+        "path": "/media/home-r2/steinburg-abramsx-night.mp4",
+        "type": "video/mp4",
+        "width": 1920,
+        "height": 1080,
+        "seconds": 6.2,
+        "bytes": 3600010
+      },
+      "mobile": {
+        "path": "/media/home-r2/steinburg-abramsx-night-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.2,
+        "bytes": 1165220,
         "rung": "phone"
       }
     }
