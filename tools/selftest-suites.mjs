@@ -751,6 +751,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
+    // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
+    'tools/media-r5/duels.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
