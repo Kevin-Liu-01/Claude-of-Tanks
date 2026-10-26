@@ -4632,6 +4632,14 @@ export function* attachDecorationPlanSteps(
   return (yield* decorationSteps(a, {}, { plan })) as DecorSummary | null;
 }
 
+/** Whether the decoration attaches to this tank now (the pass's own first check): a planner elsewhere is asked only for
+ *  a tank the in-line pass would dress. */
+export function decorationWanted(a: DecorationAttachmentArgs): boolean {
+  if (!a.root || a.root.userData.__decorApplied) return false;
+  if (!resolveDecorMode(a.opts, a.engineCtx)) return false;
+  return !(a.isDestroyed && a.isDestroyed());
+}
+
 function* decorationSteps(
   a: DecorationAttachmentArgs,
   work: DecorationWorkOptions,
@@ -4646,12 +4654,7 @@ function* decorationSteps(
     if (parts.coarse) disposePartList(parts.coarse);
   }
   try {
-    function shouldSkipAttachment(): boolean {
-      if (!root || root.userData.__decorApplied) return true;
-      if (!resolveDecorMode(opts, engineCtx)) return true;
-      return !!(a.isDestroyed && a.isDestroyed());
-    }
-    if (shouldSkipAttachment()) return null;
+    if (!decorationWanted(a)) return null;
     root.userData.__decorApplied = true;
     claimed = true;
     // the plan alone makes no material (a worker has no renderer); a given plan goes straight to its attachment

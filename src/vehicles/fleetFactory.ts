@@ -10,6 +10,8 @@ import {
   createTankSteps as createTankCoreSteps,
   registerCanonicalBuilders,
   registerProfiledBuilders,
+  type DecorPlanner,
+  type TankBuildStep,
 } from './tankFactoryCore.ts';
 import { FLEET_GROUP_BY_ID, type FleetGroup } from './fleetManifest.ts';
 import {
@@ -45,6 +47,8 @@ export interface CreateTankOptions {
   batchStatic?: boolean;
   battleDetailLod?: boolean;
   decor?: boolean;
+  /** stage 2b: where a stepped build's decoration plans (offThreadDecorPlanner); its driver awaits the yielded waits */
+  decorPlanner?: DecorPlanner;
   deferStaticBatch?: boolean;
   geometryQuality?: 'high' | 'low';
   geometryReceipt?: boolean;
@@ -312,11 +316,21 @@ export function createTankSteps(
   specId: string,
   engineCtx: RuntimeValue,
   opts: CreateTankOptions = {},
-): Generator<void, TankVisual, void> {
+): Generator<TankBuildStep, TankVisual, void> {
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
   return createTankCoreSteps(specId, engineCtx, opts);
+}
+
+/**
+ * Stage 2b pass 1 (UI-LOCKDOWN E): the decor worker's planner, for a stepped build whose driver awaits the waits it
+ * yields (the Garage pedestal, the battle streamer); null where no Worker runs (the Node tools). The client chunk loads
+ * with the first plan; a failed load or worker falls back to the in-line pass for that tank.
+ */
+export function offThreadDecorPlanner(): DecorPlanner | null {
+  if (typeof Worker !== 'function') return null;
+  return (args) => import('./decorPlanClient.ts').then(({ planDecoration }) => planDecoration(args));
 }
 
 export { KIT } from './tankFactoryCore.ts';

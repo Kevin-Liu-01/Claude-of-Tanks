@@ -127,7 +127,7 @@ import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
-  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
+  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders, offThreadDecorPlanner,
 } from './vehicles/fleetFactory.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -1062,7 +1062,8 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, options),
+  // stage 2b: the pedestal's stepped builds plan their decoration in the decor worker (it awaits the waits)
+  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined }),
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
