@@ -402,10 +402,15 @@ const CANVAS_CHECK = `(() => {
     checked++;
     const box = canvas.getBoundingClientRect();
     const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
-    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    // (canvas-ui, 2026-10-25) the store is sized to the element's own layout box (clientWidth/Height, what uiCanvas
+    // measures), never a transform's: a collapsing touch tray scales its slots to .94 while they fade out
+    const layoutW = canvas.clientWidth, layoutH = canvas.clientHeight;
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [layoutW, layoutH], dpr };
     if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
     if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
-    const wantW = box.width * scale, wantH = box.height * scale;
+    // a canvas at opacity 0 is still composited (a fade-in needs its store): neither held nor sized against
+    if (canvas.checkVisibility && !canvas.checkVisibility({ checkOpacity: true })) continue;
+    const wantW = layoutW * scale, wantH = layoutH * scale;
     if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
     else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
   }
