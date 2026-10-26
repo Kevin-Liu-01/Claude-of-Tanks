@@ -647,7 +647,11 @@ async function main() {
             page.__consoleLog = [];
             page.on('console', (message) => {
               const type = message.type();
-              if ((type === 'error' || type === 'warn') && !/Cross-Origin-Opener-Policy header has been ignored/.test(message.text())) {
+              // a document's own status is its step's, not a console error: the 404 page answers 404 by design
+              const documentStatus = /^Failed to load resource/.test(message.text())
+                && message.location()?.url === page.mainFrame().url();
+              if ((type === 'error' || type === 'warn') && !documentStatus
+                && !/Cross-Origin-Opener-Policy header has been ignored/.test(message.text())) {
                 page.__consoleLog.push({ type, text: message.text().slice(0, 240) });
               }
             });

@@ -106,7 +106,17 @@ try {
   stage('boot', at);
 
   at = performance.now();
-  await pageA.click('.cot-multiplayer-entry');
+  // the rooms open from Deploy's room tabs on every layout (the Garage's own entry button hides where the panels persist)
+  const visible = (selector) => pageA.evaluate((sel) => [...document.querySelectorAll(sel)].some((el) => el.checkVisibility?.() ?? el.offsetParent !== null), selector);
+  if (await visible('.cot-multiplayer-entry')) await pageA.click('.cot-multiplayer-entry');
+  else {
+    await pageA.evaluate(() => {
+      const open = [...document.querySelectorAll('[data-nav=deploy], .cot-battle-mode')].find((el) => el.checkVisibility?.() ?? el.offsetParent !== null);
+      open?.click();
+    });
+    await pageA.waitForSelector('#cot-battle-menu.open [data-deploy-room="lan"]', { timeout: 30_000 });
+    await pageA.evaluate(() => document.querySelector('#cot-battle-menu [data-deploy-room="lan"]')?.click());
+  }
   await pageA.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
   await pageA.click('.cot-play .modes [data-mode="lan"]');
   await pageA.evaluate(() => {
