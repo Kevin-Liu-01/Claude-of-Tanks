@@ -500,6 +500,12 @@
       transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate calc(var(--dur-stage)*2) ease-in-out infinite; }
+    /* the prompt's key is the kit's key cap (components.css .cot-c-kbd), drawn here so the boot loads no kit */
+    .cot-boot-key {
+      display: inline-flex; align-items: center; height: 22px; margin-inline: 4px; padding: 0 6px; vertical-align: middle;
+      border-radius: var(--control-radius); box-shadow: var(--ring-3);
+      font: 500 max(var(--fs-floor-11), var(--fs-11))/1 var(--font-data); color: var(--ink-1);
+    }
     /* Retry takes the tip's slot: a failure shows it without re-centring the card */
     .cot-boot-retry {
       grid-area: slot; align-self: center; justify-self: center; display: none;
@@ -1163,7 +1169,7 @@
           <span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.7 1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.5l-3.8 2 .7-4.3-3.1-3 4.3-.6Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count" data-datum="github-stars"></span></span>
         </a>
       </div>
-      <div class="cot-boot-gate" id="cot-boot-gate" data-i18n="boot.gate.prompt">Press any key to enter</div>
+      <div class="cot-boot-gate" id="cot-boot-gate"></div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button" data-i18n="boot.retry">Retry loading</button>
     </div>
     <div class="cot-boot-foot num" data-datum="version">{{COT_APP_VERSION}}</div>

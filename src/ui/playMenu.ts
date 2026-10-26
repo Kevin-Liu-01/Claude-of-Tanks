@@ -294,10 +294,6 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .cot-play .arrange-sides{margin-bottom:var(--s2)}
 .cot-play .arrange-sides-label{margin-right:var(--s1)}
-.cot-play :is(.arrange-sides,.brain-row) button{height:32px;padding:0 var(--s3);border:0;border-radius:var(--chip-radius);
-  background:var(--chip-fill);box-shadow:var(--chip-edge);color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.cot-play :is(.arrange-sides,.brain-row) button[aria-pressed='true']{background:var(--chip-fill-on);box-shadow:var(--chip-edge-on);color:var(--ink-1)}
-.cot-play :is(.arrange-sides,.brain-row) button:disabled{opacity:.55;cursor:default}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
 .cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
@@ -381,7 +377,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
-.cot-play :is(.menu-select-trigger,.mode,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
+.cot-play :is(.menu-select-trigger,.mode,.op-launch):focus-visible{
   outline:none;box-shadow:var(--focus-ring)}
 /* the vehicle picker opens in the foot above its trigger: the fleet's cards, each tank's own angle render centred on its
    ink (the render's ink sits --icon-ink-y of its width down a square), two to a phone's row, a short screen's sized to
@@ -815,11 +811,11 @@ export function createPlayMenu({
     <div class="teams-host" data-teams-host></div>
     <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
       <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note></span></div>
-      <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
+      <div class="arrange-sides" data-arrange-sides hidden>
         <span class="arrange-sides-label">${t('playMenu.arrange.sides')}</span>
-        <button type="button" data-sides="7v7" aria-pressed="true">${t('playMenu.arrange.sides7')}</button>
-        <button type="button" data-sides="14v14" aria-pressed="false">${t('playMenu.arrange.sides14')}</button>
-        <button type="button" data-sides="custom" aria-pressed="false">${t('playMenu.arrange.sidesCustom')}</button>
+        ${segmented({ label: t('playMenu.arrange.sides'), value: '7v7', className: 'sides-seg', options: [
+          { value: '7v7', label: t('playMenu.arrange.sides7') }, { value: '14v14', label: t('playMenu.arrange.sides14') },
+          { value: 'custom', label: t('playMenu.arrange.sidesCustom') }] })}
         <b class="arrange-readout" data-sides-readout></b>
       </div>
       <div class="arrange-fields">
@@ -838,9 +834,9 @@ export function createPlayMenu({
     </section>
     <section class="brain" data-brain aria-label="${t('playMenu.brain.heading')}">
       <div class="arrange-head"><b>${t('playMenu.brain.heading')}</b></div>
-      <div class="brain-row" role="group" aria-label="${t('playMenu.brain.heading')}">
-        <button type="button" data-brain-opponent="classic" aria-pressed="true">${t('playMenu.brain.classic')}</button>
-        <button type="button" data-brain-opponent="jev" aria-pressed="false">${t('playMenu.brain.jev')}</button>
+      <div class="brain-row">
+        ${segmented({ label: t('playMenu.brain.heading'), value: 'classic', className: 'brain-seg', options: [
+          { value: 'classic', label: t('playMenu.brain.classic') }, { value: 'jev', label: t('playMenu.brain.jev') }] })}
         <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
       </div>
       <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
@@ -1219,7 +1215,8 @@ export function createPlayMenu({
   }
   // ---- sides (owner 2026-09-18): 7v7 / 14v14 / custom for the symmetric modes ---------------------------
   const sidesGroup = arrangeSection.querySelector<HTMLElement>('[data-arrange-sides]')!;
-  const sidesButtons = [...sidesGroup.querySelectorAll<HTMLButtonElement>('button[data-sides]')];
+  const sidesSeg = requiredElement<HTMLElement>(sidesGroup, '.sides-seg');
+  const sidesButtons = [...sidesSeg.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
   const sidesReadout = sidesGroup.querySelector<HTMLElement>('[data-sides-readout]')!;
   const capNote = arrangeSection.querySelector<HTMLElement>('[data-arrange-cap]')!;
   const arrangeField = (name: string): HTMLElement => arrangeSection.querySelector<HTMLElement>(`[data-arrange-field="${name}"]`)!;
@@ -1255,7 +1252,7 @@ export function createPlayMenu({
       const sides = rulesetSides({ allies: arranged?.allies ?? null, enemies: arranged?.enemies ?? null });
       const preset = sidesPresetOf(sides);
       const custom = sidesCustomOpen || preset === 'custom';
-      for (const button of sidesButtons) button.setAttribute('aria-pressed', String(button.dataset.sides === (custom ? 'custom' : preset)));
+      setRoving(sidesSeg, custom ? 'custom' : preset);
       arrangeField('alliesCount').hidden = asymmetric ? defaults.allies === 0 : !custom;
       arrangeField('enemiesCount').hidden = asymmetric ? defaults.enemies === 1 : !custom;
       const allies = arrangeInput('alliesCount'), enemies = arrangeInput('enemiesCount');
@@ -1331,8 +1328,7 @@ export function createPlayMenu({
       ? normalizeTeamArrangement(selectedGameMode, { teamNations: 'random' }) : null;
     applyArrangement(teams);
   });
-  for (const button of sidesButtons) button.addEventListener('click', () => {
-    const id = button.dataset.sides;
+  wireRoving(sidesSeg, (id) => {
     if (id === 'custom') { sidesCustomOpen = true; renderArrangement(selectedGameMode, !!state); return; }
     if (id !== '7v7' && id !== '14v14') return;
     sidesCustomOpen = false;
@@ -1342,20 +1338,20 @@ export function createPlayMenu({
 
   // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
   const brainSection = root.querySelector<HTMLElement>('[data-brain]')!;
-  const brainButtons = [...brainSection.querySelectorAll<HTMLButtonElement>('button[data-brain-opponent]')];
+  const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
   const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
     // rooms keep the classic brain on the host for now (docs/JEV-COMMANDER.md): the setting is solo-only
     brainSection.hidden = fromLobby;
     const settings = readBrainSettings();
-    for (const button of brainButtons) button.setAttribute('aria-pressed', String(button.dataset.brainOpponent === settings.opponent));
+    setRoving(brainSeg, settings.opponent);
     brainAllies.checked = settings.opponent === 'jev' && settings.allies;
     brainAllies.disabled = settings.opponent !== 'jev';
     brainNote.hidden = settings.opponent !== 'jev';
   }
-  for (const button of brainButtons) button.addEventListener('click', () => {
-    writeBrainSettings({ opponent: button.dataset.brainOpponent });
+  wireRoving(brainSeg, (opponent) => {
+    writeBrainSettings({ opponent });
     renderBrain(!!state);
   });
   brainAllies.addEventListener('change', () => {

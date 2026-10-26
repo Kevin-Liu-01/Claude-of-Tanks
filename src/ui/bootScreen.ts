@@ -273,9 +273,17 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const elGate = $('cot-boot-gate');
   const elRetry = $('cot-boot-retry');
   // 2026-09-14 (outside QA): phone players read keyboard-only copy on their first screen; a
-  // coarse pointer gets the touch prompt.
+  // coarse pointer gets the touch prompt. A keyboard's prompt names its key as a key cap, as every control label does
+  // (INTERACTION-REDESIGN line 6): the boot sheet draws the kit's cap without loading the kit.
   const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
-  if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
+  if (elGate && coarsePointer) elGate.textContent = t('boot.gate.promptTouch');
+  else if (elGate) {
+    const [before, after = ''] = t('boot.gate.prompt', { key: '\u0001' }).split('\u0001');
+    const cap = document.createElement('kbd');
+    cap.className = 'cot-boot-key';
+    cap.textContent = t('boot.gate.anyKey');
+    elGate.replaceChildren(before, cap, after);
+  }
   const tips = coarsePointer ? TIP_KEYS.filter(([, fine]) => !fine) : TIP_KEYS;
   if (elRetry) elRetry.textContent = t('boot.retry');
   mountGitHubStars(document);
