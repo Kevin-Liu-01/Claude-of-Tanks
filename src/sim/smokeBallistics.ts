@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 
+import * as detMath from './detMath.ts';
 /**
  * Match-owned launch receipts. The first seven numbers are the launch (position, velocity) and the time the canister
  * comes to rest (s after launch). A canister that struck a wall carries one more group of SMOKE_SEGMENT numbers per
@@ -82,7 +83,7 @@ function wallStrike(world: SmokeWorld, a: SmokePoint, b: SmokePoint): typeof _wa
   const hit = world.raycast(_rayFrom, _rayDir, reach);
   if (!hit || hit.kind === 'terrain' || !(hit.dist <= reach)) return null;
   let nx = hit.normal?.x ?? 0, ny = hit.normal?.y ?? 0, nz = hit.normal?.z ?? 0;
-  const n = Math.hypot(nx, ny, nz);
+  const n = detMath.hypot(nx, ny, nz);
   if (n > 1e-9) { nx /= n; ny /= n; nz /= n; } else { nx = -_rayDir.x; ny = -_rayDir.y; nz = -_rayDir.z; }
   if (nx * _rayDir.x + ny * _rayDir.y + nz * _rayDir.z > 0) { nx = -nx; ny = -ny; nz = -nz; }
   _wall.f = Math.max(0, Math.min(1, (hit.dist - SMOKE_CANISTER_RADIUS_M) / length));
@@ -97,7 +98,7 @@ function wallStrike(world: SmokeWorld, a: SmokePoint, b: SmokePoint): typeof _wa
 export function createSmokeCanister(
   origin: SmokePoint, direction: SmokePoint, ground: (x: number, z: number) => number, world?: SmokeWorld | null,
 ): SmokeCanister {
-  const speed = SMOKE_LAUNCH_SPEED_MPS / (Math.hypot(direction.x, direction.y, direction.z) || 1);
+  const speed = SMOKE_LAUNCH_SPEED_MPS / (detMath.hypot(direction.x, direction.y, direction.z) || 1);
   const shot: number[] = [origin.x, origin.y, origin.z, direction.x * speed, direction.y * speed, direction.z * speed, FLIGHT_MAX_S];
   const receipt = shot as unknown as SmokeCanister;
   const point = { x: 0, y: 0, z: 0 };
@@ -159,7 +160,7 @@ export function smokeCloudBanks(shots: readonly SmokeCanister[]): number[] {
     smokeCanisterPosition(shot,shot[6],point);
     if(banks.some(index=>{
       const previous=shots[index]!;smokeCanisterPosition(previous,previous[6],other);
-      return Math.hypot(point.x-other.x,point.y-other.y,point.z-other.z)<2.5 && Math.abs(shot[6]-previous[6])<.4;
+      return detMath.hypot(point.x-other.x,point.y-other.y,point.z-other.z)<2.5 && Math.abs(shot[6]-previous[6])<.4;
     }))continue;
     banks.push(i);
   }

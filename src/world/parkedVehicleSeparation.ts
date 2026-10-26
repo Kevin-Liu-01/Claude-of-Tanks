@@ -210,8 +210,18 @@ interface CartSeatReceipt {
  * with no clear seat within reach is dropped. It draws nothing from any stream.
  */
 export function seatCartsClear<T extends ParkedVehicle>(carts: readonly T[], o: CartSeatOptions<T>): CartSeatReceipt {
+  const steps = seatCartsClearSteps(carts, o);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/** seatCartsClear a cart a step (battle-spikes-253: the props build yields between the carts, each a seat search). */
+export function* seatCartsClearSteps<T extends ParkedVehicle>(carts: readonly T[], o: CartSeatOptions<T>): Generator<void, CartSeatReceipt, void> {
   const receipt: CartSeatReceipt = { carts: carts.length, blocked: 0, slid: [], dropped: [] };
   for (const cart of carts) {
+    yield;
     if (!o.blocked(cart, cart.x, cart.z)) continue;
     receipt.blocked++;
     const away = o.away(cart);

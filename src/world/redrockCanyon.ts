@@ -1,4 +1,5 @@
 /** Redrock's single authored drainage system, shared by playable ground and outland. */
+import * as detMath from '../sim/detMath.ts';
 const REDROCK_CANYON = Object.freeze({
   centerX: 8, axisSlope: 0.16, floorHalfWidth: 210, mouthHalfWidth: 330,
   flareStart: 230, flareEnd: 430, floorY: 4, floorGrade: 0.004,
@@ -198,7 +199,7 @@ function domeField(d: number, s: number, H: number, cell: number, r0: number, rv
     const r2 = ((d - cd) ** 2 + (s - cs) ** 2) / (radius * radius);
     if (r2 >= 1) continue;
     const height = Math.min(H * (h0 + hv * hash(key, salt + 34)), capR * radius);
-    const hd = height * Math.cos(1.5708 * r2 ** 0.8);
+    const hd = height * detMath.cos(1.5708 * detMath.pow(r2, 0.8));
     if (hd > best) { second = best; best = hd; } else if (hd > second) second = hd;
   }
   // (round 10, the gauntlet's wave 270: "a sawtooth crest of near-identical small teeth" — the two highest domes' union a
@@ -220,7 +221,7 @@ function domes(u: number, v: number, back: number, H: number, detail: number): n
   // domes taller, and banded in rounded 4 m steps)
   const h = Math.max(rim > 0 ? rim * domeField(u, v, H, 34, 11, 18, 0.06, 0.2, 0.6, 401) : 0,
     massif > 0 ? massif * domeField(u, v, H, 68, 24, 22, 0.06, 0.15, 0.5, 406) : 0);
-  return h - BEEHIVE_A * 0.5 * (1 - Math.cos((2 * Math.PI * h) / BEEHIVE_P));
+  return h - BEEHIVE_A * 0.5 * (1 - detMath.cos((2 * Math.PI * h) / BEEHIVE_P));
 }
 /** The beehive bands on the domes (round 11): their period (m) and their amplitude (m, under P / pi: monotonic). */
 const BEEHIVE_P = 4, BEEHIVE_A = 1.0;
@@ -256,7 +257,7 @@ function jebelSection(d: number, s: number, H: number, detail: number, apron: nu
   // (in front of the bench the lip lies further in whatever it is: no dome stands there)
   sectionLip = Infinity; sectionCrownLip = Infinity;
   if (d <= 0) return 0;
-  if (d <= talusW) return talusH * (d / talusW) ** 1.6;
+  if (d <= talusW) return talusH * detMath.pow(d / talusW, 1.6);
   // (round 9, the gauntlet's wave 261: "a row of white spiky blades along its toe like fence stakes" — the base's
   // runnels, every 20 m and 2.4 m deep, laid each groove's floor below the sand's angle: the Disi base runs smooth)
   if (d <= disiEnd) {
@@ -321,17 +322,17 @@ function recessAt(z: number, west: boolean): number {
   // Unequal buttresses, talus shelves and side washes continue through the
   // whole region. Fading this sculpture out at |z|=300 made the boundary
   // flanks become smooth ramps. Recesses only cut away from the valley floor.
-  const sculpt = 0.94 + 0.06 * Math.sin(z * 0.007 + (west ? 0.5 : 2.4));
+  const sculpt = 0.94 + 0.06 * detMath.sin(z * 0.007 + (west ? 0.5 : 2.4));
   const mouthApron = ramp(330, 430, Math.abs(z)) * (1 - ramp(560, 720, Math.abs(z)));
   return 32 * mouthApron + sculpt * (24
-    + 12 * Math.sin(z * 0.029 + (west ? 0.8 : 2.5))
-    + 6 * Math.sin(z * 0.071 + (west ? 2.1 : 0.3)));
+    + 12 * detMath.sin(z * 0.029 + (west ? 0.8 : 2.5))
+    + 6 * detMath.sin(z * 0.071 + (west ? 2.1 : 0.3)));
 }
 
 function canyonWall(across: number, along: number, z: number, toeDistance: number, detail: number,
   ravines: boolean, lift = 0): number {
   const west = across < 0;
-  const sculpt = 0.94 + 0.06 * Math.sin(z * 0.007 + (west ? 0.5 : 2.4));
+  const sculpt = 0.94 + 0.06 * detMath.sin(z * 0.007 + (west ? 0.5 : 2.4));
   const depth = toeDistance - recessAt(z, west);
   if (depth <= 0) return 0;
   // (the mouths' walls lay their feet out wider; the heads past them close the basin on their own, compact feet)
@@ -339,7 +340,7 @@ function canyonWall(across: number, along: number, z: number, toeDistance: numbe
   const height = west
     ? REDROCK_CANYON.westHeight + 6 * ramp(-380, -40, z) - 12 * ramp(170, 360, z)
     : REDROCK_CANYON.eastHeight - 2 * ramp(-280, -40, z) + 6 * ramp(100, 380, z);
-  const bedding = 1 + sculpt * (0.035 * Math.sin(z * 0.031) + 0.018 * Math.sin(z * 0.067));
+  const bedding = 1 + sculpt * (0.035 * detMath.sin(z * 0.031) + 0.018 * detMath.sin(z * 0.067));
   const H = height * bedding + lift, salt = west ? 101 : 211;
   // The side ravines are sand-floored siqs cut through the wall: their own jebel walls rise from each bed's edge (the bed
   // keeps the floor's datum all the way through). Round 9: where a ravine's wall meets the canyon's, both distances ease
@@ -359,7 +360,7 @@ function canyonWall(across: number, along: number, z: number, toeDistance: numbe
       // cornerRoundM, a 40 degree fin more than twice it, so its nose is as broad)
       const so = off < 0 ? -1 : 1, slope = k === 0 ? 0.035 : 0.24 * Math.sign(across);
       const bx = -so * slope, bz = so + REDROCK_CANYON.axisSlope * so * slope;
-      const cosPhi = (sa * bx + az * bz) / (Math.hypot(sa, az) * Math.hypot(bx, bz));
+      const cosPhi = (sa * bx + az * bz) / (detMath.hypot(sa, az) * detMath.hypot(bx, bz));
       const sinHalf = Math.sqrt(Math.max(0.04, (1 + cosPhi) / 2));
       const K = REDROCK_CANYON.cornerRoundM * Math.max(0.8, Math.min(2.6, 0.7071 / sinHalf));
       const q = Math.max(K - Math.abs(depth - d), 0) / K, e = q * q * K * 0.25;
@@ -416,10 +417,10 @@ export function sampleRedrockCanyon(x: number, z: number): number {
   // the fine rock (flutes, chimneys, runnels, ledges, domes) is the playable terrain's: the coarse ring past the square
   // draws the jebels' masses alone, and the walls hand over to it before the playable terrain's edge
   const detail = 1 - ramp(470, 505, Math.max(Math.abs(x), Math.abs(z)));
-  const wx = x + regional * (65 * Math.sin(z * 0.008) + 24 * Math.sin(z * 0.019 + 2));
-  const wz = z + regional * (70 * Math.sin(x * 0.007 + 1) + 24 * Math.sin(x * 0.018));
-  const upland = regional * (9 * Math.sin(x * 0.008) * Math.sin(z * 0.006)
-    + 2 * Math.sin(x * 0.023 + z * 0.011));
+  const wx = x + regional * (65 * detMath.sin(z * 0.008) + 24 * detMath.sin(z * 0.019 + 2));
+  const wz = z + regional * (70 * detMath.sin(x * 0.007 + 1) + 24 * detMath.sin(x * 0.018));
+  const upland = regional * (9 * detMath.sin(x * 0.008) * detMath.sin(z * 0.006)
+    + 2 * detMath.sin(x * 0.023 + z * 0.011));
   x = wx; z = wz;
   const floor = REDROCK_CANYON.floorY + REDROCK_CANYON.floorGrade * Math.max(-600, Math.min(600, z));
   const across = x - redrockCanyonCenter(z);
@@ -429,8 +430,8 @@ export function sampleRedrockCanyon(x: number, z: number): number {
   if (Math.abs(z) <= REDROCK_CANYON.closureStart - 132) return open + upland;
   // Broad alcoves and offset promontories break up the former straight dam.
   // Both walls remain outside the playable floor and carry the same bedding.
-  const meander = 100 * Math.sin(x * 0.008 + (z > 0 ? 0.4 : 2.1))
-    + 32 * Math.sin(x * 0.029 + 1.1);
+  const meander = 100 * detMath.sin(x * 0.008 + (z > 0 ? 0.4 : 2.1))
+    + 32 * detMath.sin(x * 0.029 + 1.1);
   // Round 9 (the gauntlet's wave 261: "a continuous grey-brown terraced escarpment that wraps the valley like an arena
   // wall, with no gaps or long views"): two wadis leave through each head, sand floors winding out between its massifs
   // (the head's toe set back along them, widening outward), so the views down the mouths run on to the far country.
@@ -440,7 +441,7 @@ export function sampleRedrockCanyon(x: number, z: number): number {
   const gapSide = z < 0 ? 1 : -1, reach = Math.max(0, Math.abs(z) - 560), inner = 1 - ramp(840, 945, Math.abs(z));
   let gap = 0;
   for (const at of REDROCK_CANYON.headWadis) {
-    const w = 105 + 0.1 * reach, u = (across - gapSide * at - 18 * Math.sin(z * 0.006 + at)) / w;
+    const w = 105 + 0.1 * reach, u = (across - gapSide * at - 18 * detMath.sin(z * 0.006 + at)) / w;
     if (u * u < 1) gap = Math.max(gap, (1 - u * u) ** 2 * inner);
   }
   const headToe = Math.abs(z) - REDROCK_CANYON.closureStart + meander - 640 * gap;

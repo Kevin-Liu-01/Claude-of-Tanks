@@ -10,6 +10,7 @@
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig } from './cloudscapes.ts';
 import { ATMO_GROUND_KM, ATMO_MEDIUM, ATMO_STEPS, ATMO_TOP_KM, type AtmosphereParams } from './atmosphere.ts';
 
+import * as detMath from '../sim/detMath.ts';
 export type Rgb = readonly [number, number, number];
 
 /** The per-map lighting block (a map's sky preset may carry it; every field is optional). */
@@ -162,7 +163,7 @@ export const luminance = (c: Rgb): number => 0.2126 * c[0] + 0.7152 * c[1] + 0.0
 export function hexToLinear(hex: number): Rgb {
   const ch = (v: number): number => {
     const s = v / 255;
-    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    return s <= 0.04045 ? s / 12.92 : detMath.pow((s + 0.055) / 1.055, 2.4);
   };
   return [ch((hex >> 16) & 255), ch((hex >> 8) & 255), ch(hex & 255)];
 }

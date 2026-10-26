@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import * as THREE from 'three';
+import * as detMath from '../sim/detMath.ts';
 
 const contextOptions = [];
 const loadedImageUrls = [];
@@ -147,7 +148,8 @@ assert.equal(buildingLayer.surface.disposeCount, 1,
 // treatment — with its occlusion in the albedo (no surface map); the terrain's rock photograph where that layer is
 // procedural or not stone; one receipt for the map's readiness; the stone's linear mean to the material
 {
-  const lin = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  // the source's pow is detMath's (sourcedTextures.ts is in the authority's import graph: tools/det-math-lint.mjs)
+  const lin = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : detMath.pow((x + 0.055) / 1.055, 2.4); };
   // the composer's order: colour × AO × tint, then desaturation toward Rec. 601 luminance (sourcedTextureComposer.ts)
   const expectTexel = (tint, desat = 0) => {
     const c = [100, 150, 200].map((v, i) => v * (100 / 255) * (tint ? tint[i] : 1));

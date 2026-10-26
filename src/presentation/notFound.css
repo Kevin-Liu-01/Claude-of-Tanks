@@ -28,34 +28,39 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 /* the search: the fleet's field (home.css .fleet-search) at reading size, its hits a plate under it */
 .not-found__search{position:relative;width:100%}
 .nf-field{display:flex;align-items:center;gap:var(--s3);height:52px;padding:0 var(--s4);border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--ring-2);color:var(--ink-3)}
-.nf-field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.nf-field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.nf-field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.nf-field:has(input:focus-visible){outline:none;box-shadow:var(--focus-ring)}
 .nf-field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-16)/1 var(--font-body);color:var(--ink-1);outline:none}
 .nf-field input::placeholder{color:var(--ink-3)}
 .nf-field input::-webkit-search-cancel-button{display:none}
-.nf-hits{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:var(--z-lift);margin:0;padding:var(--s2);list-style:none;border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--nf-plate-shadow)}
+.nf-hits{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:var(--z-lift);margin:0;padding:var(--s2);list-style:none;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--nf-plate-shadow)}
 .nf-hits[hidden],.nf-empty[hidden]{display:none}
-.nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:var(--s3);padding:var(--s3) var(--s3);border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
+.nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:var(--s3);min-height:44px;padding:var(--s3) var(--s3);border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
 .nf-hit:hover,.nf-hit:focus-visible{background:var(--surface-hover);outline:none}
-.nf-hit .cot-i{width:18px;height:18px;color:var(--accent)}
+.nf-hit .cot-i{width:18px;height:18px;color:var(--ink-2)}
 .nf-hit b{overflow:hidden;font:600 var(--fs-15)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.nf-hit small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
-.nf-empty{margin:var(--s2) 0 0;font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2)}
-.not-found__report{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none}
+.nf-hit small{font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+/* the hits and the empty line open over the page under the field (a picker's list), so nothing above them moves; the
+   report link sits above the field, so they never cut it */
+.nf-empty{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:var(--z-lift);margin:0;padding:var(--s3) var(--s4);border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--nf-plate-shadow);font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2)}
+.not-found__report{display:inline-flex;align-items:center;gap:var(--s2);min-height:44px;font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none}
 .not-found__report:hover,.not-found__report:focus-visible{color:var(--ink-1);text-decoration:underline;text-underline-offset:3px}
 .not-found__report .cot-i{width:16px;height:16px}
 /* the destinations: Play in the accent, then each page over its own picture */
 .not-found__go{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(4,minmax(0,1fr));gap:var(--s3)}
-.nf-go{display:flex;align-items:flex-end;aspect-ratio:16/9;padding:var(--s4) var(--s4);border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
+.nf-go{isolation:isolate;display:flex;align-items:flex-end;aspect-ratio:16/9;padding:var(--s4) var(--s4);border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
 .nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .nf-go__nm{display:inline-flex;align-items:center;gap:var(--s3)}
-.nf-go__nm .cot-i{width:18px;height:18px;color:var(--accent)}
+.nf-go__nm .cot-i{width:18px;height:18px;color:var(--ink-2)}
 .nf-go b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase}
-.nf-go--play{flex-direction:column;align-items:flex-start;justify-content:space-between;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
-.nf-go--play .cot-i{width:30px;height:30px;fill:currentColor}
-.nf-go--play b{font-size:var(--fs-24)}
+/* Play: the other tiles' shape and name, on the accent plate; its wider column takes the row's height, not its own 16:9 */
+.nf-go--play{gap:var(--s3);aspect-ratio:auto;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
+.nf-go--play .cot-i{width:18px;height:18px;fill:currentColor}
 .nf-go--play:hover,.nf-go--play:focus-visible{background:var(--accent-hi);box-shadow:var(--e2)}
 :lang(zh-CN) .not-found h1,:lang(zh-CN) .not-found__line{line-height:1.15}
 @media (width < 1100px){
+  .not-found__content{width:100%}
+  /* the words take most of a narrow screen: the grade darkens the whole of their side */
+  .not-found__grade{background:linear-gradient(var(--scrim),var(--scrim)),var(--home-closing-grade)}
   .not-found__go{grid-template-columns:repeat(2,minmax(0,1fr))}
   .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--s3);aspect-ratio:auto;min-height:64px}
 }

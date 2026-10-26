@@ -28,6 +28,8 @@ import {
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
 import { rememberAuthoredRig } from './combatGunRigSeat.ts';
+import { convexArmorTraceBounds } from './convexArmorTraceBounds.ts';
+import { turretSeatPlane, type TurretSeatRaceReceipt } from './turretSeatPlane.ts';
 import type {
   InternalCrewStation,
   InternalLayoutRecord,
@@ -56,6 +58,11 @@ interface ArmorPlate {
   moduleLink?: string | null;
   gunFollow?: boolean;
   roofGunFollow?: boolean;
+  /** A face authored on the drawn stock (the source-X auxiliary courses); convex, with open edges and trace bounds. */
+  surfaceGroup?: string;
+  convexPolygon?: boolean;
+  openEdges?: number[];
+  traceBounds?: { min: Vec3; max: Vec3 };
 }
 
 interface AnatomyShapeEllipsoid {
@@ -1589,6 +1596,61 @@ export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undef
   if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
 }
 
+/**
+ * 252: a turret face authored on the drawn stock (a surfaceGroup face) follows the turret seat (turretSeatRace.ts) as the
+ * drawn turret does: the corners under the seat plane come up onto it at their radius, so the gameplay face stays on the
+ * drawn skin (the Strv 122's fore-cheek undersides came 2-6.6 cm under it). A face no longer flat is split into a fan of
+ * flat triangles, each diagonal open on the later one so a hit on it counts once. Legacy turret plates (boxes reaching
+ * into the hull) keep their authored corners: their cells already follow the seated turret.
+ */
+function seatAuthoredTurretPlates(armor: ArmorAnatomy, receipt: TurretSeatRaceReceipt | undefined): void {
+  const seat = turretSeatPlane(receipt);
+  if (!seat || !receipt) return;
+  const [ox, oy, oz] = receipt.seat;
+  const radius = ([x, , z]: Vec3): number => Math.hypot(x + ox - seat.cx, z + oz - seat.cz);
+  const flat = (verts: Vec3[]): boolean => {
+    const [a, b, c] = verts;
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const length = Math.hypot(n[0], n[1], n[2]);
+    return length > 1e-12 && verts.every((p) => Math.abs(((p[0] - a[0]) * n[0] + (p[1] - a[1]) * n[1] + (p[2] - a[2]) * n[2]) / length) < 1e-7);
+  };
+  const withVerts = (plate: ArmorPlate, verts: Vec3[], openEdges?: number[]): ArmorPlate => {
+    const next: ArmorPlate = { ...plate, verts };
+    delete next.openEdges;
+    if (openEdges?.length) next.openEdges = openEdges;
+    const bounds = plate.convexPolygon ? convexArmorTraceBounds(verts as [number, number, number][]) : undefined;
+    if (bounds) next.traceBounds = { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 };
+    else delete next.traceBounds;
+    return next;
+  };
+  const seated: ArmorPlate[] = [];
+  for (const plate of armor.turretPlates) {
+    if (!plate.surfaceGroup || !plate.verts.some((p) => radius(p) > seat.keepR)) { seated.push(plate); continue; }
+    let lifted = false;
+    const verts = plate.verts.map((p): Vec3 => {
+      const y = seat.planeAt(Math.max(seat.keepR, radius(p))) - oy;
+      if (!(p[1] < y)) return [p[0], p[1], p[2]];
+      lifted = true;
+      return [p[0], y, p[2]];
+    });
+    if (!lifted) { seated.push(plate); continue; }
+    if (verts.length === 3 || flat(verts)) { seated.push(withVerts(plate, verts, plate.openEdges)); continue; }
+    const last = verts.length - 1;
+    for (let k = 1; k < last; k++) {
+      const fan: Vec3[] = [verts[0], verts[k], verts[k + 1]];
+      if (!flat(fan)) continue;
+      const open = [
+        ...(k > 1 || plate.openEdges?.includes(0) ? [0] : []),
+        ...(plate.openEdges?.includes(k) ? [1] : []),
+        ...(k + 1 === last && plate.openEdges?.includes(last) ? [2] : []),
+      ];
+      seated.push(withVerts(plate, fan, open));
+    }
+  }
+  armor.turretPlates = seated;
+}
+
 export function finalizeCombatAnatomy<T>(
   spec: T,
   calibration?: CombatAnatomyCalibration | null,
@@ -1604,6 +1666,7 @@ export function finalizeCombatAnatomy(
   const armor = spec.armor;
   applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
+  seatAuthoredTurretPlates(armor, calibration?.turretRing);
   // Non-playable comparison/authoring specs are intentionally outside the
   // 122-vehicle evidence registry. Keep their authored anatomy usable without
   // diluting the playable-fleet exact-coverage gate.

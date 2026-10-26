@@ -372,4 +372,23 @@ assert.equal(equipmentDamageStats().activeVehicles, 0);
     else delete globalThis.document;
   }
 }
-console.log('equipmentDamage.selftest: ownership, locality, duplicate, bounded pool, restoration and same-run fleet rest passed');
+// 251: the turret seat draws a mesh on its own copy of its geometry (turretSeatRace.ts onSeated); the lid ranges follow
+// the copy, so a hit folds the lid the turret draws and a reset restores that copy, not the detached built buffer.
+{
+  const f = fixture({ yaw: 0.43 });
+  const seated = f.geometry.clone();
+  seated.computeBoundingBox();
+  seated.computeBoundingSphere();
+  f.damage.follow(f.geometry, seated);
+  assert.equal(f.damage.ownsGeometry(seated), true, 'the seated copy is the owned buffer');
+  assert.equal(f.damage.ownsGeometry(f.geometry), false, 'the built buffer is let go');
+  const before = seated.getAttribute('position').array.slice();
+  assert.equal(f.damage.apply(hit()), true);
+  assert.notDeepEqual(seated.getAttribute('position').array, before, 'the hit folds the drawn (seated) lid');
+  f.restored();
+  f.damage.reset();
+  assert.deepEqual(seated.getAttribute('position').array, before, 'a reset restores the seated copy byte-exactly');
+  seated.dispose();
+  f.dispose();
+}
+console.log('equipmentDamage.selftest: ownership, locality, duplicate, bounded pool, restoration, seat hand-over and same-run fleet rest passed');

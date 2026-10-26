@@ -2513,6 +2513,143 @@ The remedy waits for the next migration-format change. It is a per-generation ke
 `sha256(MATCH_SEAT_SECRET:matchId:generation)`, plus a successor that opens the previous generation's blob with a
 key the room hands only to the newly elected host. Log the change here when it lands.
 
+### 13.30 Scaling with the player count (mp-scale-251, 2026-10-24)
+
+**The ask.** The owner's "being able to support various amounts of multiplayers", through the coordinator: measure how
+the cost grows with the players and make it scale, with the sim deterministic, the client never authoritative, every
+mode rule in `matchRuleset.ts`, the rooms Worker on Workers Free and `MATCH_SEAT_SECRET` untouched.
+
+**How it is measured.** `tools/mp-scale-bench.mjs` runs the real match actor in Node on a map's dedicated collision, on
+a virtual clock, for rooms written `<team size>v<team size>:<humans>` (bots fill each side). Each seated player drives,
+turns, fires and acknowledges its snapshots in its INPUT as the shipped client does. Per room it reports:
+- the host per tick: the authority's step and, within it, the spotting update; the event fan-out; and per viewer frame
+  the authority's view, the build, the encode and the send (`MatchActorOptions.profile`, read only by the bench; the
+  authority's spotting time comes through an injected clock, so `src/sim` still reads no clock);
+- every viewer's downlink, split into keyframes, deltas and events, beside the same frames encoded whole;
+- one viewer's client decode, assembly and interpolation;
+- the host's uplink per tick and the interest tiers' populations;
+- `--views` A/Bs the frame view in one process, and `--uplink` sets the budget's target.
+
+**Baseline** (Verdant, 20 Hz, 2026-10-24 on 5010f76522):
+- The host's CPU is the authority's step (bots and physics): 1.9 ms a tick at 14v14, 4.6 at a 32v32 test room.
+  Spotting is 0.02 ms. A viewer frame's build and encode took 40-80 µs, about 60% of it the authority's full viewer
+  snapshot.
+- The scaling limit is the uplink: 3.6 Mbit/s at 14v14 with 28 viewers, 129 kbit/s each, a 37 kbit/s share of it
+  events. Every viewer's 2 s keyframe landed on one tick (a 122 KB tick every cycle).
+- A client applied a snapshot in 44-135 µs.
+
+**What changed.**
+- **Keyframe slots** (`publisher.ts keyframeSlotFor`): each viewer's periodic keyframe lands on its own slot of the
+  cycle, the seats spread by the golden ratio. A snapshot skipped on the slot puts it on the next one; a forced
+  keyframe off the slot costs at most one more.
+- **The viewer keyframe every 6 s** (was 2): a delta against the acknowledged frame is exact, and a viewer without its
+  baseline asks for a keyframe at once (`NO_TICK`). The room's 2 s keyframe contract is the host's sealed migration
+  keyframe (`matchHostCore`), which is unchanged.
+- **The per-viewer snapshot budget** (`interestTiers.ts snapshotRowBudgetBytes`): the host's uplink target
+  (`HOST_UPLINK_TARGET_BPS`, 4 Mbit/s: §13.9's line) shared by its viewers.
+  - Always fresh: the own hull, entities engaged with the viewer, and an entity that has just come into view.
+  - Every other due row is refreshed most stale first, the nearer tier first among equals, while the share lasts.
+  - A row the share cannot carry is held a snapshot and is due again on the next. It is refreshed whatever the budget
+    once it has waited twice its cadence (`MAX_DEFERRED_STALENESS`), so at worst a near row runs at 10 Hz, a mid row at
+    5 and a far row at 3.3.
+  - Rows are weighed by `rows.ts writeEntityRowDelta` without a writer (exact).
+  - With the share unspent the frames are what they were: every room of 28 viewers or fewer in the bench.
+- **Binary event payloads** (wire 8, `eventPayload.ts`): a tagged value with keys from a fixed table and numbers as
+  varints at four decimals. It decodes to exactly what `JSON.parse` gives for the payload serialized at that scale, and
+  is encoded once per event for every viewer that receives it. Before, each viewer's copy was `JSON.stringify`'d anew,
+  doubles and all.
+- **Viewer frames from the authority's view** (`observeForViewer`, `snapshotMeta`):
+  - the same spotting filter before anything is serialized, without the per-entity capture of `snapshot()`, which the
+    actor never used;
+  - the meta's shared part is built once a tick, and the frame meta is captured once a tick for every viewer.
+  - A world snapshot stopped at 32 entities (v1's bound), so a viewer of a room past 32 hulls saw the first 32 it may
+    observe, its own only if it came early. Now the wire's 64.
+- **The snapshot encoded straight from the frames** (`codec.ts encodeSnapshotFrame`): the same bytes as the packet
+  path, with sorted rows walked against the baseline's. No map, no patch objects, and no set of the whole destroyed
+  list per viewer per snapshot (an unchanged list is the same array). 13.3 → 5.5 µs a frame on recorded 14v14 frames.
+- **The client's apply** (`applySnapshotPacket`, `readSnapshot`):
+  - patches, removals and baseline rows merged in one walk in every host's order;
+  - the baseline row found by a cursor;
+  - the destroyed list and the destruction log are the baseline's own arrays when a packet adds nothing (was a
+    set-and-sort of the whole list and a log copy every snapshot).
+  - The same frames.
+- **Room size as each mode's ruleset** (`matchRuleset.ts roomSizeRulesFor`): the sides, the team sizes a room may set,
+  the default, and the co-op modes' seven commanders. The room policy reads it where it held literals; behaviour is
+  unchanged and bots fill each side to the team size. The LAN service's dev override `COT_ROOM_DEV_MAX_TEAM_SIZE`
+  (`RoomPolicyGuards.maxTeamSize`, at most `ROOM_DEV_MAX_TEAM_SIZE` = 32 a side) seats bot-filled versus test rooms up
+  to 64 hulls over the real room path. The rooms Worker never sets it.
+
+**After** (the same bench and seed; host uplink / per viewer = snapshots + events / the worst tick):
+
+| Room | Before | After |
+|---|---|---|
+| 1v1, 2 viewers | 88 kbit/s, 41.0 + 3.2 | 83 kbit/s, 40.4 + 1.1, 0.8 KB |
+| 7v7, 14 viewers | 1,147 kbit/s, 63.2 + 18.7 | 928 kbit/s, 59.6 + 6.6, 9.1 KB |
+| 14v14, 14 viewers | 1,618 kbit/s, 86.0 + 29.6 | 1,258 kbit/s, 79.2 + 10.6, 11.7 KB |
+| 14v14, 28 viewers | 3,609 kbit/s, 92.3 + 36.6, 122.5 KB | 2,739 kbit/s, 85.0 + 12.8, 33.5 KB |
+| 32v32 (dev), 28 viewers | 5,344 kbit/s, 144.2 + 46.6 | 4,066 kbit/s, 128.7 + 16.5, 39.6 KB |
+| 32v32 (dev), 63 viewers | 13,730 kbit/s with the first two cuts alone, 162.1 + 55.8 | 8,160 kbit/s, 105.7 + 23.8, 76.3 KB |
+
+- The host's build and encode per tick: 0.45 → 0.12 ms at 14v14 with 28 viewers, 0.76 → 0.21 at 32v32 with 28.
+- The client's apply: 12-27 µs a snapshot (was 44-135).
+- Spotting stays at 0.01-0.02 ms.
+- The authority's own step (the bots, the physics) is now the host's whole cost: 0.9 ms at 14v14 and 2.2 at 32v32 on
+  this machine. In a browser host thread, a heavy map and a slower machine multiply it.
+
+**The rooms Worker's requests** (Workers Free: 100,000 Worker and 100,000 Durable Object requests a day, shared with
+telemetry). The room double now keeps the accounting (`billing()`): socket upgrades, handled messages by type, and
+keepalive frames, which are the hibernation auto-response and never billed. `mp-p2p-headless`'s three-seat flow,
+through a migration and a rejoin, cost 4 upgrades and 33 handled messages. A peer link signals with an offer and an
+answer, its candidates in the SDP. While a match plays, only the host's reports reach the room: a report a phase and one
+every 30 s. Nothing is billed per seat per minute. A room's cost is therefore linear in its seats, at about 6N + 26
+requests for a 10-minute match:
+- N upgrades;
+- about 2N + 4 lobby commands;
+- N relay grants;
+- 2(N − 1) signals;
+- about 24 reports.
+
+That is about 38 for 1v1, 110 for 14 seats and 194 for 28: some 500 full 28-seat matches a day. A migration costs two
+signals a peer. No Worker code was needed for scale; the Worker bundle changes only because `roomPolicy` and `protocol`
+now read the room size rules (same behaviour).
+
+**Invariants kept.**
+- Spotting still decides a viewer's entities before anything is serialized: the view is the same filter as
+  `snapshot()`. `frameView.selftest` shows the frames are byte-identical either way.
+- The sim reads no clock: the profile's clock is injected and only a bench passes it, and the determinism audit is
+  unchanged.
+- The client stays a viewer: the budget and the codec only change how often and how compactly the authority's rows
+  travel.
+- Room sizes live in the ruleset.
+- `MATCH_SEAT_SECRET` and the sealed migration keyframe are untouched.
+- `WIRE_VERSION` moves 7 → 8, so seats and hosts of the other layout meet the build check's "refresh" refusal. The
+  `PROTOCOL_VERSION` bump is the coordinator's.
+
+**Receipts.**
+- `eventPayload.selftest` (new): edge cases and a battle's events decode to their JSON, at 40% of its bytes.
+- `snapshotBudget.selftest` (new):
+  - the weigher equals the codec's patch;
+  - thirty viewers under a tight target: the own row is always fresh, waits stay within the bounds and the
+    visibility set is exact;
+  - with the budget off, the cadences are exact;
+  - at most two periodic keyframes on one snapshot.
+- `frameView.selftest` (new): both views give the same bytes, and a viewer past 32 hulls gets all of them.
+- `roomSizeRules.selftest` (new): the table against the protocol, the policy as before, and the dev override in
+  versus LAN rooms only.
+- `wire.selftest`: the direct encoder and the merged apply against the general paths, on random chains.
+- `mp-p2p-headless.selftest`: the room's billed requests stay linear (two signals a peer link, only reports while
+  playing).
+- Updated: `matchActor` and `forcedKeyframes` read the viewer's slot (the bucket's bound is a silent viewer under 1.25×
+  an honest one, whose own keyframes thinned); the client soak counts a keyframe a cycle; `hostFleet`'s bound moves to
+  8 MB (main already read 7.23).
+
+**Owed.**
+- Live multi-browser rooms on the built site: 2, 4, 8 and 14 seats, and a 14v14 soak (`tools/mp-p2p-soak.mjs`) with
+  wire 8 and the 6 s viewer keyframe. Check the host's uplink, desync and migration figures against §13.9.7.
+- A browser host's tick at 14v14 on a mid-tier laptop.
+- The rooms Worker's `npm run typecheck:rooms` with its node_modules installed.
+- The coordinator's `PROTOCOL_VERSION` bump.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

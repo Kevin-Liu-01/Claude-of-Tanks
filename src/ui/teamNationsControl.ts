@@ -28,19 +28,12 @@ interface TeamNationsControlOptions {
 export function createTeamNationsControl(options: TeamNationsControlOptions): { root: HTMLElement; render(): void } {
   ensureStyle('cot-team-nations-style', `
 .cot-teams{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
-.cot-teams>b{min-width:54px;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);
-  text-transform:uppercase;color:var(--ink-3)}
-.cot-teams [role=radiogroup]{display:inline-flex;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-.cot-teams button{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);height:30px;padding:0 var(--s3);border:0;
-  border-radius:var(--control-radius);background:transparent;color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer}
-.cot-teams button[aria-checked=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
-.cot-teams button:disabled{cursor:default;color:var(--ink-4)}
-.cot-teams button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-teams>b{min-width:54px;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
+.cot-teams .cot-c-seg__opt{padding-inline:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .cot-flag{border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
-@media(pointer:coarse){.cot-teams button{height:auto;min-height:var(--cot-control-floor,44px)}}
 `, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-teams';
@@ -49,11 +42,12 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
   label.textContent = t('teams.label');
   const group = document.createElement('div');
   group.setAttribute('role', 'radiogroup');
+  group.className = 'cot-c-seg';
   group.setAttribute('aria-label', t('teams.label'));
   const mono = document.createElement('button');
-  mono.type = 'button'; mono.dataset.teamNations = 'mono'; mono.setAttribute('role', 'radio');
+  mono.type = 'button'; mono.className = 'cot-c-seg__opt'; mono.dataset.teamNations = 'mono'; mono.setAttribute('role', 'radio');
   const random = document.createElement('button');
-  random.type = 'button'; random.dataset.teamNations = 'random'; random.setAttribute('role', 'radio');
+  random.type = 'button'; random.className = 'cot-c-seg__opt'; random.dataset.teamNations = 'random'; random.setAttribute('role', 'radio');
   group.append(mono, random);
   root.append(label, group);
   const globe = (): string => `<span class="globe" aria-hidden="true">${uiIconSVG('globe')}</span>`;

@@ -16,6 +16,7 @@
 // water cuts them, the ridges between them become spurs and arêtes, flat floors stay smooth. maps/horizon.ts multiplies
 // the ring's own composition (its ranges, smoothed along each row) by this landform normalised to a mean of one, so the
 // authored layout keeps its tall sectors and its passes while every mass in it is carved into ridges and valleys.
+import * as detMath from '../sim/detMath.ts';
 
 export interface MassifSettings {
   /** Wavelength (m) of the smooth base the drainage is cut into. */
@@ -125,11 +126,11 @@ export function erosionOctave(px: number, pz: number, dirx: number, dirz: number
     for (let i = -2; i <= 1; i++) {
       const cx = ix - i, cz = iz - j;
       const ppx = fx + i - hash2(cx, cz, seed) * 0.5, ppz = fz + j - hash2(cx, cz, seed ^ 0x5bd1e995) * 0.5;
-      const w = Math.exp(-(ppx * ppx + ppz * ppz) * 2);
+      const w = detMath.exp(-(ppx * ppx + ppz * ppz) * 2);
       wt += w;
       const mag = (ppx * dirx + ppz * dirz) * 6.283185307179586;
-      va += Math.cos(mag) * w;
-      const sn = -Math.sin(mag) * w;
+      va += detMath.cos(mag) * w;
+      const sn = -detMath.sin(mag) * w;
       gx += sn * dirx; gz += sn * dirz;
     }
   }
@@ -187,24 +188,24 @@ export function createMassifField(seed: number, settings: MassifSettings, annulu
     const NR = 16, NA = 128;
     for (let j = 0; j < NR; j++) for (let i = 0; i < NA; i++) {
       const theta = ((i + 0.5 * (j & 1)) / NA) * Math.PI * 2, r = annulus[0] + (j + 0.5) / NR * (annulus[1] - annulus[0]);
-      values.push(landform(Math.cos(theta) * r, Math.sin(theta) * r));
+      values.push(landform(detMath.cos(theta) * r, detMath.sin(theta) * r));
     }
     const sorted = values.slice().sort((a, b) => a - b);
     lo = sorted[Math.floor(sorted.length * 0.04)];
     hi = sorted[Math.floor(sorted.length * 0.97)];
     let sum = 0;
-    for (const v of values) sum += Math.pow(clamp((v - lo) / Math.max(1e-6, hi - lo), 0, 1.15), s.concavity);
+    for (const v of values) sum += detMath.pow(clamp((v - lo) / Math.max(1e-6, hi - lo), 0, 1.15), s.concavity);
     mean = Math.max(1e-3, sum / values.length);
     // the knee's own mean over the same samples, so the multiplier still averages one
     let kneeSum = 0;
-    for (const v of values) kneeSum += kneeMultiplier(Math.pow(clamp((v - lo) / Math.max(1e-6, hi - lo), 0, 1.15), s.concavity) / mean, s.contrast);
+    for (const v of values) kneeSum += kneeMultiplier(detMath.pow(clamp((v - lo) / Math.max(1e-6, hi - lo), 0, 1.15), s.concavity) / mean, s.contrast);
     kneeMean = Math.max(1e-3, kneeSum / values.length);
   }
   const span = Math.max(1e-6, hi - lo);
   return {
     settings: s,
     multiplier(x, z) {
-      const u = Math.pow(clamp((landform(x, z) - lo) / span, 0, 1.15), s.concavity) / mean; // mean one
+      const u = detMath.pow(clamp((landform(x, z) - lo) / span, 0, 1.15), s.concavity) / mean; // mean one
       return kneeMultiplier(u, s.contrast) / kneeMean;
     },
   };
@@ -237,7 +238,7 @@ export function* carveMassifRingSteps(input: MassifRingInput, field: MassifField
     if (w <= 0) continue;
     const off = row * n;
     // the composition, smoothed along the row by a box filter of about smoothM (three passes ~ a Gaussian)
-    const r = Math.hypot(p[off * 3], p[off * 3 + 2]);
+    const r = detMath.hypot(p[off * 3], p[off * 3 + 2]);
     const radius = Math.max(0, Math.round((s.smoothM / Math.max(1, (2 * Math.PI * r) / n)) / 1.7));
     for (let k = 0; k < n; k++) comp[k] = Math.max(0, h[off + k] - floors[row]);
     for (let pass = 0; pass < 3 && radius > 0; pass++) {
@@ -275,7 +276,7 @@ export function suppressNeedles(h: Float32Array, p: Float32Array, off: number, n
   for (let k = 0; k < n; k++) {
     const i = off + k, a = off + (k + n - 1) % n, b = off + (k + 1) % n;
     if (mask && mask[i] <= 0) continue;
-    const arc = Math.hypot(p[b * 3] - p[a * 3], p[b * 3 + 2] - p[a * 3 + 2]) * 0.5;
+    const arc = detMath.hypot(p[b * 3] - p[a * 3], p[b * 3 + 2] - p[a * 3 + 2]) * 0.5;
     const top = Math.max(h[a], h[b]) + arc;
     if (h[i] > top && Math.min(h[i] - h[a], h[i] - h[b]) > arc) h[i] = top;
   }

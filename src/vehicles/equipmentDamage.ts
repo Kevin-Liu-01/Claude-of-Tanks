@@ -270,6 +270,21 @@ export class EquipmentDamage {
     return clone;
   }
 
+  /** The turret seat drew a mesh on its own copy of its geometry (turretSeatRace.ts onSeated): the lid ranges over the
+   * built buffers follow the copy. Bound before any damage, so no lid holds an original yet. */
+  follow(built: THREE.BufferGeometry, seated: THREE.BufferGeometry): void {
+    const owner = this.owners.find((candidate) => candidate.geometry === built);
+    if (!owner) return;
+    const position = ownFloatPosition(seated, 'position'), normal = ownFloatPosition(seated, 'normal');
+    if (!position || !normal) throw new Error('a seated equipment buffer lost its float position or normal');
+    owner.geometry = seated;
+    for (const range of this.ranges) {
+      if (range.owner !== owner) continue;
+      range.position = position;
+      range.normal = normal;
+    }
+  }
+
   /** One bounded nearest-part buckle per hit; no frame-loop work or mesh copies. */
   apply(event: EquipmentDamageEvent): boolean {
     if (this.disposed || !isLocalEquipmentHit(event)) return false;

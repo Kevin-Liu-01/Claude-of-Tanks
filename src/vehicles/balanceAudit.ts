@@ -39,7 +39,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   m60a2: 'normalize the Shillelagh burst cycle and ammunition reserve',
   t80: 'make the base T-80 a mobile sidegrade instead of a strict T-80U downgrade',
   t80b: 'make the T-80B the mobile alternative to the protected T-80BV',
-  type90_kyumaru: 'make the base Type 90 the mobility alternative to the protected Type 90A',
+  type90_kyumaru: 'make the STC-1 the mobility alternative to the protected STC-2',
   t90a_2004: 'give the base T-90A handling value beside the faster Vladimir package',
   m1a1: 'make the base M1A1 the mobile alternative to the protected HA package',
   amx30: 'restore the AMX-30 mobility and fire-control sidegrade',
@@ -100,6 +100,17 @@ function balanceValues(spec: FleetTankSpec): BalanceValues {
   };
 }
 
+/**
+ * Vehicles relabelled modern on 2026-10-25 (taxonomy.ts) keep the next-generation envelope they were balanced to: the
+ * audit still measures them against those peers until a balance pass folds them into the modern ones.
+ */
+const BALANCED_AS_NEXT_GENERATION: ReadonlySet<string> = new Set([
+  't72b3m_hetman_ii', 't72b3_zubr_ii', 't80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk',
+  't72b3_zubr', 't80u_yun', 't72b3m_kunlun', 't72b3_qilin', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
+  'challenger3_proto', 'challenger3', 'c2_ariete_proto', 'type10b', 'cv90_mk4', 'cv90_mk4_concept', 'kf41_lynx',
+  'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
+]);
+
 function groupFleetBalanceRows(
   ids: readonly string[],
   specs: TankSpecRegistry,
@@ -110,7 +121,8 @@ function groupFleetBalanceRows(
     const spec = specs[id];
     if (!spec) continue;
     const cohort = spec.balanceCohort ? `/${spec.balanceCohort}` : '';
-    const key = `${spec.era}/${tierOf(id)}/${spec.role}${cohort}`;
+    const era = BALANCED_AS_NEXT_GENERATION.has(id) ? 'next-generation' : spec.era;
+    const key = `${era}/${tierOf(id)}/${spec.role}${cohort}`;
     const group = groups.get(key) || [];
     group.push({ id, spec });
     groups.set(key, group);

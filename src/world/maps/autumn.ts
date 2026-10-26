@@ -31,6 +31,7 @@ import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
+import * as detMath from '../../sim/detMath.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: SW -> NE. Stations follow the low ground of the seed-1337 field
@@ -82,13 +83,13 @@ const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map(station => ({ ...stati
   for (const ford of CROSSINGS) {
     const index = RIVER_STATIONS.indexOf(ford);
     const previous = RIVER_STATIONS[index - 1], next = RIVER_STATIONS[index + 1];
-    const length = Math.hypot(next.x - previous.x, next.z - previous.z);
+    const length = detMath.hypot(next.x - previous.x, next.z - previous.z);
     const tx = (next.x - previous.x) / length, tz = (next.z - previous.z) / length;
     const dx = station.x - ford.x, dz = station.z - ford.z;
     const along = Math.abs(dx * tx + dz * tz);
     if (along >= r) continue;
     const across = Math.max(0, ford.r - Math.abs(-dx * tz + dz * tx));
-    r = Math.min(r, Math.hypot(along, across));
+    r = Math.min(r, detMath.hypot(along, across));
   }
   return r === station.r ? station : { ...station, r };
 });
@@ -134,7 +135,7 @@ function streetVillage(): Array<{ structure: string; x: number; z: number; yawDe
   const inTown = (x: number, z: number, m: number) => x > TOWN.x0 + m && x < TOWN.x1 - m && z > TOWN.z0 + m && z < TOWN.z1 - m;
   for (const [ai, arm] of STREET_ARMS.entries()) {
     const cum = [0];
-    for (let i = 1; i < arm.length; i++) cum.push(cum[i - 1] + Math.hypot(arm[i][0] - arm[i - 1][0], arm[i][1] - arm[i - 1][1]));
+    for (let i = 1; i < arm.length; i++) cum.push(cum[i - 1] + detMath.hypot(arm[i][0] - arm[i - 1][0], arm[i][1] - arm[i - 1][1]));
     const at = (d: number): [number, number, number, number] => {
       let i = 1;
       while (i < cum.length - 1 && cum[i] < d) i++;
@@ -156,11 +157,11 @@ function streetVillage(): Array<{ structure: string; x: number; z: number; yawDe
         const nx = tz * side, nz = -tx * side; // this side's normal, away from the road
         const front = USOIR_FRONT_M[0] + villageHash(rx, rz) * (USOIR_FRONT_M[1] - USOIR_FRONT_M[0]);
         const x = rx + nx * (front + depth / 2), z = rz + nz * (front + depth / 2);
-        const reach = Math.hypot(w, depth) / 2;
-        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || Math.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach
-          || SQUARE_SEATS.some((seat) => Math.hypot(x - seat.x, z - seat.z) < seat.r + reach)) { d += w; continue; }
+        const reach = detMath.hypot(w, depth) / 2;
+        if (!inTown(x, z, GATE_CLEAR_M + reach * 0.6) || detMath.hypot(x - SQUARE.x, z - SQUARE.z) < SQUARE.r + reach
+          || SQUARE_SEATS.some((seat) => detMath.hypot(x - seat.x, z - seat.z) < seat.r + reach)) { d += w; continue; }
         // the front (local +z) faces the road: yaw turns +z onto (-nx, -nz)
-        const yawDeg = Math.atan2(-nx, -nz) * 180 / Math.PI;
+        const yawDeg = detMath.atan2(-nx, -nz) * 180 / Math.PI;
         sites.push({ structure: farm ? 'farmhouse' : 'rowhouse', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: +yawDeg.toFixed(1),
           plot: { w: +w.toFixed(2), d: +depth.toFixed(2) }, terrace: true });
         d += w + 0.25;

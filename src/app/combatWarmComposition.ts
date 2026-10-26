@@ -13,13 +13,14 @@ import {
   type DeploymentShadowWarmOwner,
 } from '../engine/deploymentShadowWarm.ts';
 import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
+import type { WorkYielder } from '../engine/frameScheduler.ts';
 import type { BattleWarmAccess } from '../game/battleWarmAccess.ts';
 import type { CombatWarmRuntimeContext } from '../game/battleWarmRuntime.ts';
 import {
   createCombatWarmCoordinator,
   type CombatWarmCoordinator,
 } from '../game/combatWarmCoordinator.ts';
-import type { DeferredCombatWarmRuntime } from '../game/deferredCombatWarmRuntime.ts';
+import type { DeferredCombatWarmRuntime, FirstBattleWarmTrace } from '../game/deferredCombatWarmRuntime.ts';
 import type { BattleVisualStreamer } from '../game/battleVisualStreamer.ts';
 import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
 import type {
@@ -70,6 +71,12 @@ interface CombatWarmCompositionOptions {
 
 interface CombatWarmComposition {
   thermalVehicles: ReturnType<typeof createThermalVehicles>;
+  /**
+   * (battle-spikes-253; the owner via the coordinator, 2026-10-25: "a few seconds' longer entry once per session is far
+   * better than 0.1-1.1 s stalls in the first seconds of play") A session's first battle finishes the GPU-heavy warm
+   * stages behind the entry veil; later battles (the renderer's programs and pipelines warm) skip it.
+   */
+  warmFirstBattleCovered(yieldForBudget: WorkYielder, onProgress?: ((fraction: number) => void) | null): Promise<FirstBattleWarmTrace>;
   warmVisionSteps(): Generator<void>;
   combatWarm: CombatWarmCoordinator;
   warmRender: OffscreenSceneWarmer;
@@ -123,6 +130,9 @@ export function createCombatWarmComposition({
 }: CombatWarmCompositionOptions): CombatWarmComposition {
   const thermalVehicles = createThermalVehicles();
   let destructionWarmed = false;
+  // a session's first battle warms its GPU-heavy stages behind the veil once (warmFirstBattleCovered); a lost context
+  // (resetRendererWarmState) takes the programs and pipelines with it, so the next battle warms them again
+  let firstBattleWarmed = false;
   const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { samples: () => post.msaaSamples ?? 0 });
   const deploymentShadowWarm = createDeploymentShadowWarmOwner({
     renderer,
@@ -270,8 +280,29 @@ export function createCombatWarmComposition({
     return deferred.schedule(generation);
   };
 
+  /** A session's first battle's covered warm (the deferred module's runFirstBattleCoveredWarm), once a renderer. */
+  const warmFirstBattleCovered = async (
+    yieldForBudget: WorkYielder,
+    onProgress: ((fraction: number) => void) | null = null,
+  ): Promise<FirstBattleWarmTrace> => {
+    if (firstBattleWarmed) {
+      const skipped: FirstBattleWarmTrace = { ran: false, stages: {}, totalMs: 0 };
+      (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = skipped;
+      return skipped;
+    }
+    const module = await loadDeferred();
+    const trace = await module.runFirstBattleCoveredWarm({
+      renderer: renderer as unknown as Parameters<typeof module.runFirstBattleCoveredWarm>[0]['renderer'],
+      getBattleVisuals, combatWarm, warmVisionSteps, devTrace,
+    }, yieldForBudget, onProgress);
+    // once a renderer, whatever it met: a stage it could not finish is the deferred warm's, never another entry's cost
+    firstBattleWarmed = true;
+    return trace;
+  };
+
   return {
     thermalVehicles,
+    warmFirstBattleCovered,
     warmVisionSteps,
     combatWarm,
     warmRender,
@@ -282,6 +313,7 @@ export function createCombatWarmComposition({
     setDestructionWarmed: (warmed) => { destructionWarmed = warmed; },
     isDestructionWarmed: () => destructionWarmed,
     resetRendererWarmState() {
+      firstBattleWarmed = false;
       thermalVehicles.invalidateWarm();
       destructionWarmed = false;
       battleWarm.invalidate();

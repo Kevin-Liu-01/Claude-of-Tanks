@@ -113,10 +113,11 @@ try {
     enhancedSkirtPanels: 18,
     skirtHangers: 18,
     glacisEraCassettes: 40,
-    skirtEraCassettes: 78,
+    // (release 240: the profile skirt keeps the 28 cassettes a side that lie on it, clear of its raked ends: 78 -> 56)
+    skirtEraCassettes: 56,
     cheekEraCassettes: 32,
     turretSideEraCassettes: 48,
-    totalEraCassettes: 198,
+    totalEraCassettes: 176,
     autocannonStations: 0,
     radarArrays: 1,
     searchlights: 1,

@@ -301,25 +301,28 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk',
     't84', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
     't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tos1a_tagil', 'type10', 'type100',
-    'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type90_kyumaru', 'type96b', 'ua_challenger2', 'ua_m1a1',
+    'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type96b', 'ua_challenger2', 'ua_m1a1',
     'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'ztz100',
     'ztz99a', 'ztz99a2',
   ]),
-  // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form.
+  // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form. (owner
+  // 2026-10-25: the procedural Type 90 pair are the TK-X first-series prototypes STC-1 and STC-2, tankLabels.ts; the K2B
+  // and the Type 10B are the K2's and the Type 10's prototype versions.)
   prototype: Object.freeze([
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'cv90105_tml', 'fv4034',
-    'griffin50mm', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
+    'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
     'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't90a_burlak',
-    't90a_burlak_proto', 'type10_tk_x', 'udes03', 'xk2_black_panther', 'ztz100_prototype', 'ztz85_iii',
+    't90a_burlak_proto', 'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther',
+    'ztz100_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
-  // (Upiór, Object 695, Griffin Viper, Longwei, K2B, Raijū) and the unbuilt studies.
+  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies.
   concept: Object.freeze([
-    'carro45t', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'k2b', 'm1a3', 'object695', 'pl01', 'pl01_105',
+    'carro45t', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105',
     'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
-    't80u_husarz', 't80u_yun', 't80u_zoria', 'type10b', 'type90a', 'type96_72_long', 'type96_72m_lei',
+    't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'upior', 'ztz99_longwei',
   ]),
 });

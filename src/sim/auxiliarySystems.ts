@@ -11,6 +11,7 @@ import type { SpottingTank } from './spotting.ts';
 
 export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 import type { SmokeScreen } from './smokeScreen.ts';
+import * as detMath from './detMath.ts';
 export type { SmokeScreen } from './smokeScreen.ts';
 export { SMOKE_DURATION_S, smokeBlocks, smokeWindForMap } from './smokeScreen.ts';
 /** One extra roof station's own aim and bursts (stations after the first; VH.02, the M551A1 TTS's roof M2). */
@@ -76,7 +77,7 @@ export function thinnestVerticalArmourMm(spec: { armor?: AuxiliaryArmour | null 
     if (!v || v.length < 3 || (plate.kind && plate.kind !== 'main') || !Number.isFinite(mm)) continue;
     const ux = v[1]![0]! - v[0]![0]!, uy = v[1]![1]! - v[0]![1]!, uz = v[1]![2]! - v[0]![2]!;
     const wx = v[2]![0]! - v[0]![0]!, wy = v[2]![1]! - v[0]![1]!, wz = v[2]![2]! - v[0]![2]!;
-    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx, length = Math.hypot(nx, ny, nz);
+    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx, length = detMath.hypot(nx, ny, nz);
     if (length > 1e-12 && Math.abs(ny) / length < .5) thinnest = Math.min(thinnest, mm!);
   }
   if (thinnest === Infinity) thinnest = 0;
@@ -99,7 +100,7 @@ function mainPlates(armour: AuxiliaryArmour): Float64Array {
       const a = v[i]!, b = v[(i + 1) % v.length]!;
       ax += a[1]! * b[2]! - a[2]! * b[1]!; ay += a[2]! * b[0]! - a[0]! * b[2]!; az += a[0]! * b[1]! - a[1]! * b[0]!;
     }
-    const twice = Math.hypot(ax, ay, az);
+    const twice = detMath.hypot(ax, ay, az);
     if (twice > 1e-12) rows.push(ax / twice, az / twice, mm!, owner, twice / 2);
   }
   const table = Float64Array.from(rows);
@@ -119,11 +120,11 @@ export function defeatableShare(target: AuxiliaryEntity, fromX: number, fromZ: n
   const armour = target.spec.armor;
   if (!armour) return 1;
   const plates = mainPlates(armour);
-  const s = target.state, dx = fromX - s.pos.x, dz = fromZ - s.pos.z, reach = Math.hypot(dx, dz);
+  const s = target.state, dx = fromX - s.pos.x, dz = fromZ - s.pos.z, reach = detMath.hypot(dx, dz);
   if (!plates.length || reach < 1e-6) return thinnestVerticalArmourMm(target.spec) <= penMm ? 1 : 0;
   let presented = 0, defeated = 0;
   for (let owner = 0; owner < 2; owner++) {
-    const yaw = s.yaw + (owner ? s.turretYaw : 0), c = Math.cos(yaw), n = Math.sin(yaw);
+    const yaw = s.yaw + (owner ? s.turretYaw : 0), c = detMath.cos(yaw), n = detMath.sin(yaw);
     // the shooter's bearing in the plate owner's frame (the inverse of the owner's yaw about +Y)
     const lx = (dx * c - dz * n) / reach, lz = (dx * n + dz * c) / reach;
     for (let i = 0; i < plates.length; i += 5) {
@@ -164,12 +165,12 @@ function attitudeRates(s: AuxiliaryEntity['state']): void {
  * and seats it on the ground. */
 function climbOver(s: AuxiliaryEntity['state'], travel: number): number {
   const grade = s._terr?.pitch ?? 0;
-  return grade ? travel * Math.tan(Math.max(-CLIMB_PITCH_MAX, Math.min(CLIMB_PITCH_MAX, grade))) : 0;
+  return grade ? travel * detMath.tan(Math.max(-CLIMB_PITCH_MAX, Math.min(CLIMB_PITCH_MAX, grade))) : 0;
 }
 function poseAtArrival(target: AuxiliaryEntity, flightS: number): TankArmorPose {
   const s = target.state, turn = (s.yawRate ?? 0) * arrivalTurn * flightS, heading = s.yaw + turn * .5, travel = (s.speed ?? 0) * flightS;
   attitudeRates(s);
-  arrivalPose.pos.set(s.pos.x + Math.sin(heading) * travel, s.pos.y + climbOver(s, travel), s.pos.z + Math.cos(heading) * travel);
+  arrivalPose.pos.set(s.pos.x + detMath.sin(heading) * travel, s.pos.y + climbOver(s, travel), s.pos.z + detMath.cos(heading) * travel);
   arrivalPose.yaw = s.yaw + turn;
   arrivalPose.pitch = (s.visualPitch || 0) + attitudePitchRate * arrivalAttitude * flightS;
   arrivalPose.roll = (s.visualRoll || 0) + attitudeRollRate * arrivalAttitude * flightS;
@@ -189,11 +190,11 @@ const meetS = (flightS: number): number => Math.max(0, Math.ceil(flightS / PASS_
 function hullPoint(pos: { x: number; y: number; z: number }, yaw: number, pitch: number, roll: number, scale: number,
   x: number, y: number, z: number, out: Vector3): Vector3 {
   if (pitch || roll) {
-    const cr = Math.cos(roll), sr = Math.sin(roll), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cr = detMath.cos(roll), sr = detMath.sin(roll), cp = detMath.cos(pitch), sp = detMath.sin(pitch);
     const rx = x * cr - y * sr, ry = x * sr + y * cr;
     y = ry * cp + z * sp; z = -ry * sp + z * cp; x = rx;
   }
-  const c = Math.cos(yaw), n = Math.sin(yaw);
+  const c = detMath.cos(yaw), n = detMath.sin(yaw);
   return out.set(pos.x + (x * c + z * n) * scale, pos.y + y * scale, pos.z + (-x * n + z * c) * scale);
 }
 /** The point `share` of the way up a vehicle's height along its hull's up axis (its centre at a half; the spec's dims
@@ -265,7 +266,7 @@ function robustHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, p
   if (!moving && sum >= need) return sum / lines;
   const reach = ROBUST_M + ROBUST_SPEED * Math.abs(s.speed ?? 0) * flight;
   robustSide.set(at.z - from.z, 0, from.x - at.x);
-  const side = Math.hypot(robustSide.x, robustSide.z);
+  const side = detMath.hypot(robustSide.x, robustSide.z);
   if (side > 1e-6) robustSide.multiplyScalar(1 / side);
   for (let i = 0; i < lines - 1; i++) {
     let chance: number;
@@ -330,13 +331,13 @@ function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: 
 /** One pass of aimSearch over the grid's core, its outer points or its fine rows (`pass`). */
 function aimPass(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
   from: Vector3, context: GunContext, pass: number): boolean {
-  const s = target.state, dims = target.spec.dims, dx = from.x - s.pos.x, dz = from.z - s.pos.z, reach = Math.hypot(dx, dz);
+  const s = target.state, dims = target.spec.dims, dx = from.x - s.pos.x, dz = from.z - s.pos.z, reach = detMath.hypot(dx, dz);
   if (reach < 1e-6) return false;
-  const c = Math.cos(s.yaw), n = Math.sin(s.yaw), lx = (dx * c - dz * n) / reach, lz = (dx * n + dz * c) / reach;
+  const c = detMath.cos(s.yaw), n = detMath.sin(s.yaw), lx = (dx * c - dz * n) / reach, lz = (dx * n + dz * c) / reach;
   // the spec's dims carry the mode's scale already (sim/juggernautScale.ts); arrivalPoint scales hull-frame points
   const scale = s.modeScale ?? 1;
   const halfWidth = (dims?.widthM ?? 3.4) * .5 / scale, halfLength = (dims?.hullLengthM ?? 6.6) * .5 / scale, height = (dims?.heightM ?? 2.5) / scale;
-  const flight = meetS(Math.hypot(dx, s.pos.y - from.y, dz) / profile.shell.velocityMps);
+  const flight = meetS(detMath.hypot(dx, s.pos.y - from.y, dz) / profile.shell.velocityMps);
   aimRows.length = 0;
   if (pass === AIM_FINE) {
     aimRows.push(...AIM_UP_FINE);
@@ -471,7 +472,7 @@ interface GunContext {
    * strikeDrone): `chance`, the round's share of a strike at its range (weapon profile, droneStrikeChance). */
   droneHit?(carrier: AuxiliaryEntity, chance: number, shooter: AuxiliaryEntity): void;
 }
-const wrap = (v:number) => Math.atan2(Math.sin(v), Math.cos(v));
+const wrap = (v:number) => detMath.atan2(detMath.sin(v), detMath.cos(v));
 type RoofGunMount = AuxiliaryInventory['guns'][number];
 /** A target's centre for the station's lay test (module scratch). */
 const arcLocal = new Vector3();
@@ -495,7 +496,7 @@ let scanStation: AuxiliaryStationState | null = null, scanShooter: AuxiliaryEnti
 let scanContext: GunContext | null = null;
 /** The station's penetration at a target's range over the profile's engagePenRatio (from the mount, `origin`). */
 function engagePenMm(profile: AuxiliaryWeaponProfile, target: AuxiliaryEntity): number {
-  const distance = Math.hypot(target.state.pos.x - origin.x, target.state.pos.z - origin.z);
+  const distance = detMath.hypot(target.state.pos.x - origin.x, target.state.pos.z - origin.z);
   return penAtDistanceMm(profile.shell, distance) / profile.engagePenRatio;
 }
 /** selectRoofTarget's filter for a station: a target its round can hurt from here (at least the weapon profile's
@@ -521,10 +522,10 @@ const layPoint = new Vector3(), boreEnd = new Vector3(), layLocal = new Vector3(
  * mount allows at that yaw and the weapon's elevation (aimAndFire's own law, from the mount's frame `inverse`). */
 function stationLay(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, point: Vector3): boolean {
   layPoint.copy(point).applyMatrix4(inverse);
-  const bearing = Math.atan2(layPoint.x, layPoint.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
+  const bearing = detMath.atan2(layPoint.x, layPoint.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
   if (Number.isNaN(yaw)) return false;
   layPoint.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
-  const pitch = Math.atan2(layPoint.y, Math.hypot(layPoint.x, layPoint.z));
+  const pitch = detMath.atan2(layPoint.y, detMath.hypot(layPoint.x, layPoint.z));
   return pitch >= -depressionAt(gun, yaw, profile.depressionRad) && pitch <= profile.elevationRad;
 }
 /** The line a round laid on `point` would fly once the station has settled on it (aimAndFire's lay and bore: the yaw
@@ -534,12 +535,12 @@ function stationLay(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, point: V
 function laidLine(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, point: Vector3, from: Vector3,
   arrive: Vector3): boolean {
   layLocal.copy(point).applyMatrix4(inverse);
-  const bearing = Math.atan2(layLocal.x, layLocal.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
+  const bearing = detMath.atan2(layLocal.x, layLocal.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
   if (Number.isNaN(yaw)) return false;
   layLocal.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
-  const pitch = Math.atan2(layLocal.y, Math.hypot(layLocal.x, layLocal.z));
+  const pitch = detMath.atan2(layLocal.y, detMath.hypot(layLocal.x, layLocal.z));
   if (pitch < -depressionAt(gun, yaw, profile.depressionRad) || pitch > profile.elevationRad) return false;
-  layDir.set(0, Math.sin(pitch), Math.cos(pitch)).multiply(mountScale).applyAxisAngle(yAxis, yaw).transformDirection(base);
+  layDir.set(0, detMath.sin(pitch), detMath.cos(pitch)).multiply(mountScale).applyAxisAngle(yAxis, yaw).transformDirection(base);
   from.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis, -pitch).add(pivot).multiply(mountScale).applyAxisAngle(yAxis, yaw)
     .applyMatrix4(base);
   const range = from.distanceTo(point), flight = range / profile.shell.velocityMps;
@@ -572,8 +573,8 @@ let holdHull = 0, holdTurret = 0, holdRange = 0;
 /** The shooter's bearing in the target's hull and turret frames and its range (module scratch holdHull/Turret/Range). */
 function holdGeometry(shooter: AuxiliaryEntity, target: AuxiliaryEntity): void {
   const s = target.state, dx = shooter.state.pos.x - s.pos.x, dz = shooter.state.pos.z - s.pos.z;
-  const bearing = Math.atan2(dx, dz);
-  holdHull = wrap(bearing - s.yaw); holdTurret = wrap(bearing - s.yaw - s.turretYaw); holdRange = Math.hypot(dx, dz);
+  const bearing = detMath.atan2(dx, dz);
+  holdHull = wrap(bearing - s.yaw); holdTurret = wrap(bearing - s.yaw - s.turretYaw); holdRange = detMath.hypot(dx, dz);
 }
 const judgeCentre = new Vector3(), judgeFrom = new Vector3(), judgeArrive = new Vector3();
 /** A lapsed hold judged again in place, without laying on the target: the round the station would fire at its centre
@@ -690,7 +691,7 @@ function planSegmentGap(a: Vector3, b: Vector3, c: Vector3, d: Vector3): number 
   let t = C > 1e-12 ? Math.min(1, Math.max(0, (B * s + E) / C)) : 0;
   s = A > 1e-12 ? Math.min(1, Math.max(0, (B * t - D) / A)) : 0;
   const dx = wx + s * ux - t * vx, dz = wz + s * uz - t * vz;
-  return Math.hypot(dx, dz);
+  return detMath.hypot(dx, dz);
 }
 /** VH.02 traverse interlock on a multi-station roof: a station never turns its barrel across another station's barrel
  * in plan (their radii plus 4 cm), whatever either one's pitch, so two working stations cannot sweep through each other
@@ -760,7 +761,7 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   }
   const aim = !!hold?.aim;
   if (hold?.aim) arrivalPoint(target, hold.x, hold.y, hold.z,
-    meetS(Math.hypot(target.state.pos.x - origin.x, target.state.pos.y - origin.y, target.state.pos.z - origin.z) / profile.shell.velocityMps), aimPoint);
+    meetS(detMath.hypot(target.state.pos.x - origin.x, target.state.pos.y - origin.y, target.state.pos.z - origin.z) / profile.shell.velocityMps), aimPoint);
   else hullCentre(target, .5, aimPoint);
   return aimAndFire(entity, gun, state, profile, aimPoint, target, damage, now, dt, handling, context, aim);
 }
@@ -803,10 +804,10 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   const arc = gun.yawArc;
   direction.copy(point).sub(origin);
   localTarget.copy(origin).add(direction).applyMatrix4(inverse);
-  const bearing=Math.atan2(localTarget.x,localTarget.z), desiredYaw=arc?arcYaw(arc,bearing):bearing;
+  const bearing=detMath.atan2(localTarget.x,localTarget.z), desiredYaw=arc?arcYaw(arc,bearing):bearing;
   if(Number.isNaN(desiredYaw))return false;
   localTarget.applyAxisAngle(yAxis,-bearing).divide(mountScale).sub(pivot);
-  const desiredPitch=Math.atan2(localTarget.y,Math.hypot(localTarget.x,localTarget.z));
+  const desiredPitch=detMath.atan2(localTarget.y,detMath.hypot(localTarget.x,localTarget.z));
   if(desiredPitch < -depressionAt(gun,desiredYaw,profile.depressionRad) || desiredPitch > profile.elevationRad)return false;
   const turn=arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw), pitch=desiredPitch-state.gunPitch;
   const step=state.gunYaw+Math.max(-dt*handling*profile.yawRateRadS,Math.min(dt*handling*profile.yawRateRadS,turn));
@@ -819,10 +820,10 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   // crossing the shallow sector depressed, the barrel lifts clear of the roof first
   if(gun.depressionByYaw)state.gunPitch=Math.max(state.gunPitch,-depressionAt(gun,state.gunYaw,profile.depressionRad));
   if(Math.abs(turn)>.035||Math.abs(pitch)>.035||now<state.nextShot)return false;
-  const cp=Math.cos(state.gunPitch);
+  const cp=detMath.cos(state.gunPitch);
   // THREE applies local scale before the animated yaw. Doing the reverse
   // displaced the stretched Challenger mount muzzle by over 12 cm.
-  direction.set(0,Math.sin(state.gunPitch),cp).multiply(mountScale)
+  direction.set(0,detMath.sin(state.gunPitch),cp).multiply(mountScale)
     .applyAxisAngle(yAxis,state.gunYaw).transformDirection(base);
   bore.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis,-state.gunPitch).add(pivot);
   bore.multiply(mountScale).applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
@@ -923,14 +924,14 @@ function segmentMeetsHull(other:AuxiliaryEntity,a:Vector3,b:Vector3):boolean{
   // the spec's dims carry the mode's scale already (sim/juggernautScale.ts)
   const s=other.state, dims=other.spec.dims;
   const hw=(dims?.widthM??3.4)*.5, hl=(dims?.hullLengthM??6.6)*.5, h=dims?.heightM??2.5;
-  const c=Math.cos(s.yaw), n=Math.sin(s.yaw);
+  const c=detMath.cos(s.yaw), n=detMath.sin(s.yaw);
   const ax=a.x-s.pos.x, az=a.z-s.pos.z, bx=b.x-s.pos.x, bz=b.z-s.pos.z;
   let lax=ax*c-az*n, laz=ax*n+az*c, lbx=bx*c-bz*n, lbz=bx*n+bz*c;
   slabEnter=0; slabExit=1;
   const pitch=s.visualPitch||0, roll=s.visualRoll||0;
   if(!pitch&&!roll)return clipSlab(lax,lbx,-hw,hw)&&clipSlab(laz,lbz,-hl,hl)&&clipSlab(a.y,b.y,s.pos.y,s.pos.y+h)&&slabExit>0&&slabEnter<1;
   // 2026-10-22, lane 235: a hull on a slope (the inverse of hullPoint's pitch and roll after its yaw)
-  const cp=Math.cos(pitch), sp=Math.sin(pitch), cr=Math.cos(roll), sr=Math.sin(roll);
+  const cp=detMath.cos(pitch), sp=detMath.sin(pitch), cr=detMath.cos(roll), sr=detMath.sin(roll);
   let lay=a.y-s.pos.y, lby=b.y-s.pos.y;
   const pay=lay*cp-laz*sp, paz=lay*sp+laz*cp, pby=lby*cp-lbz*sp, pbz=lby*sp+lbz*cp;
   laz=paz; lbz=pbz;
@@ -965,7 +966,7 @@ function hullsClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity,context:GunCo
     // the sphere the vehicle sweeps over the flight: its armour's bound (the spec's, carrying the mode's scale), or the
     // gun barrel's reach from the turret ring at any traverse (armour units, times the scale), and its travel
     const s=other.state,scale=s.modeScale??1,pivot=armor.turretPivot,drive=s.speed??0;
-    const reach=Math.max(armor.boundingRadiusM??6,((armor.gunBarrel?.lengthM??0)+Math.hypot(pivot?.[0]??0,pivot?.[2]??0)+2.5)*scale);
+    const reach=Math.max(armor.boundingRadiusM??6,((armor.gunBarrel?.lengthM??0)+detMath.hypot(pivot?.[0]??0,pivot?.[2]??0)+2.5)*scale);
     const cy=s.pos.y+(other.spec.dims?.heightM??2.5)*.5;
     let reachM=ally?(Number.isNaN(stopM)?range+CARRY_ON_M:stopM):range,flight=reachM/speed,drop=.5*gravity*flight*flight;
     let radius=reach+drop+Math.abs(drive)*flight;
@@ -985,7 +986,7 @@ function hullsClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity,context:GunCo
     for(let t=Math.floor(t0/PASS_DT)*PASS_DT;t<t1;t+=PASS_DT){
       // the segment the tick from t sweeps meets the vehicle's pose of that tick (meetS)
       const u=Math.min(flight,t+PASS_DT),turn=(s.yawRate??0)*t,heading=s.yaw+turn*.5;
-      passPose.pos.set(s.pos.x+Math.sin(heading)*drive*t,s.pos.y+climbOver(s,drive*t),s.pos.z+Math.cos(heading)*drive*t);
+      passPose.pos.set(s.pos.x+detMath.sin(heading)*drive*t,s.pos.y+climbOver(s,drive*t),s.pos.z+detMath.cos(heading)*drive*t);
       passPose.yaw=s.yaw+turn;passPose.turretYaw=(s.turretYaw||0)+(s.turretYawRate??0)*t;
       passPose.pitch=(s.visualPitch||0)+attitudePitchRate*t;passPose.roll=(s.visualRoll||0)+attitudeRollRate*t;
       passA.copy(from).addScaledVector(dir,speed*t);passA.y-=.5*gravity*t*t;

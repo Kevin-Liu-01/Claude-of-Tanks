@@ -1,4 +1,5 @@
 /** Authored axes replace individual tactical forms, never the base noise field. */
+import * as detMath from '../sim/detMath.ts';
 export interface PlayableRelief {
   kind: 'spur' | 'glacial' | 'terrace';
   startX: number;
@@ -30,7 +31,7 @@ export function preparePlayableRelief(form: PlayableRelief): PreparedPlayableRel
     if (!bounded(coordinate, -480, 480)) throw new Error('Playable relief axis outside authored bounds');
   }
   const dx = form.endX - form.startX, dz = form.endZ - form.startZ;
-  const lengthM = Math.hypot(dx, dz);
+  const lengthM = detMath.hypot(dx, dz);
   if (!bounded(lengthM, 80, 900)) throw new Error('Playable relief axis length must be80–900m');
   if (!bounded(form.leftWidthM, 24, 180) || !bounded(form.rightWidthM, 24, 180)) {
     throw new Error('Playable relief shoulder width must be24–180m');

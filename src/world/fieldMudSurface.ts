@@ -103,7 +103,10 @@ function wearAt(v: number): number {
  * Paint the mud print (`size` px square; 512 on desktop, 256 on phones). Deterministic; sixteen rows a slice.
  * `withLosses` paints the old tile's patches and stains (the receipt's courses); the game's print has none.
  */
-export function* paintFieldMudBuffers(size = 512, seed = 0xad0b3, withLosses = false):
+/** The game's mud print's seed (the surface paint worker paints it ahead with the same: surfacePaintWorker.ts). */
+export const FIELD_MUD_PRINT_SEED = 0xad0b3;
+
+export function* paintFieldMudBuffers(size = 512, seed = FIELD_MUD_PRINT_SEED, withLosses = false):
   Generator<FieldMudSlice, FieldMudBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), loss = new Uint8Array(size * size);
   const k = size / 512;

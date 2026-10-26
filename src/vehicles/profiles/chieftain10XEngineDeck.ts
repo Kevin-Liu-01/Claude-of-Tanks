@@ -20,11 +20,20 @@ function strip(side: number, x0: number, x1: number, z0: number, z1: number,
   })));
 }
 
+/** Release 240 (the owner: "some turrets faced regressions as a result of lifts: cheiftain mk 5 and mk 10. fix"): the
+ *  turret's lower casting (1.635-1.65, its front corners 1.5 m off the ring's axis) turns over the forward engine deck,
+ *  so the deck's forward covers and shoulders keep outside this circle round the ring's axis (hull frame), as the source's
+ *  own diagonal relief keeps clear of the bearing; the seat had lifted the casting 30 cm over them and crushed its band. */
+const TURRET_SWEEP_R = 1.62, RING_Z = .595241;
+const sweepX = (z: number): number => Math.sqrt(Math.max(0, TURRET_SWEEP_R ** 2 - (z - RING_Z) ** 2));
+
 function shoulder(P: TankBuilderPort, side: number): void {
   const roof = (x: number, z: number) => 1.946819 - .23107658 * x + .011245 * z;
-  const sections: SolidSection[] = [-2.029, -.49].map(z => {
-    return { z, ring: sided([[.918, 1.50], [1.43, 1.50],
-      [1.43, roof(1.43, z)], [.918, roof(.918, z)]], side) };
+  // its inner front corner cut on the sweep circle (two chords from 0.918 at -0.740 to 1.203 at the front edge)
+  const sections: SolidSection[] = ([[-2.029, .918], [-.740, .918], [-.615, sweepX(-.615)], [-.49, sweepX(-.49)]] as const)
+    .map(([z, inner]) => {
+    return { z, ring: sided([[inner, 1.50], [1.43, 1.50],
+      [1.43, roof(1.43, z)], [inner, roof(inner, z)]], side) };
   });
   // The source has a permanent outward-falling shoulder, not floating panel
   // feet. Its concealed lower closure overlaps the existing closed hull.
@@ -34,14 +43,16 @@ function shoulder(P: TankBuilderPort, side: number): void {
 function forwardCover(P: TankBuilderPort, side: number): void {
   const top: Height = z => side > 0 ? 1.732922 + .010906 * z : 1.74336 + .0218197 * z;
   const bottom: Height = z => 1.7280 + .06665 * z;
-  const edge = (z: number) => Math.max(.410857, .4536 + 1.75 * (z + .75));
-  const stations = [-.929374, -.774425, -.490164];
+  // the source's diagonal relief, widened to the turret's sweep circle: the cover ends where that circle meets its outer
+  // edge (z -0.7486)
+  const edge = (z: number) => Math.min(.905, Math.max(.410857, .4536 + 1.75 * (z + .75), sweepX(z)));
+  const stations = [-.929374, -.85, -.7486];
   const sections: SolidSection[] = stations.map(z => {
     return { z, ring: sided([[edge(z), top(z) - .006], [.908487, top(z) - .006],
       [.908487, top(z)], [edge(z), top(z)]], side) };
   });
   P.addEquipment('hullDetail', sectionSolid(sections));
-  P.addEquipment('hullDetail', strip(side, .908487, .918977, stations[0], -.4835,
+  P.addEquipment('hullDetail', strip(side, .908487, .918977, stations[0], stations[stations.length - 1],
     bottom, z => top(z) + .005405));
   // Two straight inside walls describe the corner and diagonal, rather than
   // a rectangle filled across the source's genuine turret-clearance notch.
@@ -104,7 +115,9 @@ function louverBank(P: TankBuilderPort, side: number, z0: number, count: number,
 function hinges(P: TankBuilderPort, side: number): void {
   const tops = side > 0 ? [1.75943, 1.756136, 1.754450, 1.751350, 1.750617, 1.747507]
     : [1.761953, 1.756184, 1.752814, 1.746874, 1.752398, 1.746368];
-  for (const [i, z] of [-.7118, -.969884, -1.121702, -1.377482, -1.44184, -1.70664].entries()) {
+  // (release 240: the forward cover's hinge at -0.80, on the cover the turret's sweep circle leaves; at -0.71 it stood
+  // 1.59 m off the ring's axis under the turret's front corners)
+  for (const [i, z] of [-.80, -.969884, -1.121702, -1.377482, -1.44184, -1.70664].entries()) {
     const y = tops[i] - .0158;
     P.addEquipment('hullDetail', cylZ(.0158, .0324, 16), side * .9344, y, z);
     // The source outer wall has localized raised ears at the actual hinge
@@ -120,10 +133,11 @@ export function addChieftain10XEngineDeck(P: TankBuilderPort): void {
     forwardCover(P, side);
     // Port's longer panel is one physical bank. Starboard has a separate
     // short bank immediately behind the front cover, with a real seam aft.
-    if (side < 0) louverBank(P, side, -1.42778, 10, 1.68072, .02182);
+    // (release 240: both end at -1.036, two louvers short, outside the turret's sweep circle)
+    if (side < 0) louverBank(P, side, -1.42778, 8, 1.68072, .02182);
     else {
       louverBank(P, side, -1.428337, 7, 1.685890, .010906);
-      louverBank(P, side, -1.092254, 3, 1.689616, .010906);
+      louverBank(P, side, -1.092254, 1, 1.689616, .010906);
     }
     louverBank(P, side, -1.764405, 7, side > 0 ? 1.682317 : 1.68134, .010906);
     hinges(P, side);

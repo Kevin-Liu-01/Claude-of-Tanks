@@ -35,6 +35,7 @@
 // from its six lattice segments and 13.5 m from the nearest node, in front of the oak rows, facing the crossing.
 import type { CivicPlan } from '../types.ts';
 
+import * as detMath from '../../../sim/detMath.ts';
 const ROOM = { x0: -92.4, x1: -8.7, z0: -40.3, z1: 40.2 } as const;
 const NW = { x0: -83.4, x1: -59.0, z0: 9.5, z1: 31.0 } as const;
 const SW = { x0: -83.4, x1: -59.0, z0: -31.0, z1: -9.5 } as const;
@@ -45,7 +46,7 @@ const MID_X = -71.2, NW_Z = 20.25, SW_AXIS = -19.8;
 const COLUMN = { x: -62.5, z: -19.8 } as const;
 
 /** Each bench's front turned to face (tx, tz) from (x, z), degrees (0 = +z, 90 = +x). */
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
+const facing = (x: number, z: number, tx: number, tz: number): number => +(detMath.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 /** A pair of bollards at a mouth: either side of the path, on the granite band outside the bed. */
 function bollards(side: 'n' | 's' | 'e' | 'w', rect: { x0: number; x1: number; z0: number; z1: number }, at: number, half = 2.2) {

@@ -59,8 +59,8 @@ const DOCS: readonly string[] = [
 /** The landing page (src/presentation/home.css). */
 const HOME: readonly string[] = [
   ...PUBLIC_NAV,
-  '.btn', '.v5-social-proof__signals dt', '.hero__stats li', '.vs-where', '.fleet-facts dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
-  '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
+  '.btn', '.hero__stats li', '.press__stats dt', '.v5-social-card__identity em', '.v5-social-card__identity small', '.v5-social-metrics',
+  '.press__date',
 ];
 
 /** The 404 page (src/presentation/notFound.css): the search hits' chapter line (12 px); its other labels are 14 px and up. */

@@ -75,8 +75,10 @@ assert.deepEqual({
   reloadS: 8.6,
   count: 14,
 }, 'dedicated Shillelagh channel is competitive at Tier IX');
-assert.equal(garageStatGroup(spec), '9/cold-war',
-  'garage compares Sheridan against its actual Tier IX peers');
+// 252 (tech-tree-view-252: the Garage's stat bars compare within the tier the Garage shows, the national tree's column):
+// the M551 shows Tier III; matchmaking keeps tankTier IX.
+assert.equal(garageStatGroup(spec), '3/cold-war',
+  'garage compares Sheridan against its shown Tier III peers');
 const starship = getSpec('m60a2');
 const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
 assert.ok(spec.hp < starship.hp, 'Sheridan remains less durable than the M60A2 Starship');
@@ -88,7 +90,8 @@ assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'damageable combat anatomy includes the missile stowage');
 assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
 assert.equal(ttsSpec.variantOf, spec.id);
-assert.equal(ttsSpec.era, 'next-generation');
+// 2026-10-25 (owner: "properly label next gen vs modern"): a 1989 Sheridan upgrade is modern, not next generation.
+assert.equal(ttsSpec.era, 'modern');
 // 2026-10-01: the same scout doctrine layer (0e5fc79e2) applies to the TTS's authored 0.24 accuracy / 1.25 s aim.
 assert.equal(VEHICLE_ROLE_PROFILES.m551a1_tts.doctrine, 'scout', 'TTS keeps its scout doctrine');
 const ttsHandling = tacticalRoleHandling({ hullTraverseDegS: ttsSpec.hullTraverseDegS,
@@ -160,7 +163,7 @@ for (const slot of [1, 2]) {
   stepShell(projectile, 1 / 60);
   assert.ok(projectile.vel.y < 0, `${round.name} follows normal ballistic gravity`);
 }
-assert.equal(garageStatGroup(ttsSpec), '10/next-generation');
+assert.equal(garageStatGroup(ttsSpec), '6/modern'); // the TTS shows Tier VI in the US tree (tankTier stays X)
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
   'm551a1_tts_turret_era_R', 'm551a1_tts_turret_era_L', 'm551a1_tts_turret_roof_era',
@@ -350,11 +353,12 @@ try {
     remoteAutocannonCaliberMm: 30,
     remoteAutocannonBarrelDiameterM: 0.094,
     largeGunRightSearchlight: true,
-    additionalEraCassettes: 80,
+    additionalEraCassettes: 72,
     skirtArmorPanelsPerSide: 6,
     skirtEraRows: 2,
-    skirtEraCassettesPerSide: 24,
-    skirtCageStations: 8,
+    skirtEraCassettesPerSide: 20,
+    // (release 240: the profile skirts' courses and cage, the raked ends leave out four cassettes and a station a side)
+    skirtCageStations: 7,
     turretCheekEraCassettesPerSide: 6,
     turretCheekContactEmbedM: 0.012,
     bustleConstruction: 'armored-core-open-cage',
@@ -506,10 +510,12 @@ try {
   const era = ttsTank.root.userData.eraFinishReceipt;
   assert.equal(era?.camoProjection, 'vehicle-scale-box-uv');
   assert.equal(era?.bodyAndCoverUseVehiclePaint, true);
-  assert.equal(era?.layeredCassettes, 118,
+  // (release 240: the profile skirts' two courses keep 20 of their 24 cassettes a side: 118 -> 110)
+  assert.equal(era?.layeredCassettes, 110,
     'TTS adds two full-length skirt courses without changing the donor running gear');
-  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_L, 48);
-  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_R, 48);
+  // (release 240: 20 profile-skirt cassettes a side, two parts each)
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_L, 40);
+  assert.equal(era?.partsBySector?.m551a1_tts_hull_era_R, 40);
   assert.equal(era?.partsBySector?.m551a1_tts_turret_era_L, 12);
   assert.equal(era?.partsBySector?.m551a1_tts_turret_era_R, 12);
   assert.deepEqual(new Set(era?.gameplaySectors), new Set([

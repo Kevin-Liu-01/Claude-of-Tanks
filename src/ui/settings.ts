@@ -404,19 +404,26 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
   background:var(--surface-plate);box-shadow:var(--ring-2);color:var(--ink-3);pointer-events:auto;
   transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
 .cot-gear:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-/* The strip clears the HUD's bottom stack (the shell tray and the vehicle-controls row above it end 120 px up). A fixed
-   box at left:50% shrinks to half the viewport, so max-content keeps one row until the edge clamps it. */
-.cot-hints{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:45;width:max-content;
-  display:none;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);pointer-events:none;
-  background:var(--hud-plate);box-shadow:var(--e1);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+/* The strip's seat (owner 2026-10-25: "fix the wasd bar ... above stuff"): the band over the vehicle-controls row, which
+   battleHudLayout.ts writes as --hud-systems-top (the tray's top less the row), on the centre line; under the sight's
+   notices, which the planner keeps over the reticle. A fixed box at left:50% shrinks to half the viewport, so
+   max-content keeps one row until the edge clamps it. */
+.cot-hints{position:fixed;left:var(--hud-hints-x,50%);top:var(--hud-hints-bottom,calc(var(--hud-systems-top,calc(100vh - 132px)) - var(--s2)));
+  transform:translate(-50%,-100%);z-index:45;width:max-content;max-width:var(--hud-hints-width,calc(100vw - 32px));
+  display:none;flex-wrap:wrap;justify-content:center;align-items:center;gap:var(--s2) var(--s5);padding:var(--s2) var(--s4);
+  pointer-events:none;background:var(--hud-plate);box-shadow:var(--e1);
+  font:600 var(--battle-fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
   text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
 .cot-hints.show{display:flex;}
 .cot-hints.fade{opacity:0;}
-.cot-hints .hg{display:flex;align-items:center;gap:var(--s2);}
+.cot-hints .hg{display:flex;align-items:center;gap:var(--s2);transition:opacity var(--dur-base) var(--ease-exit);}
+.cot-hints .hg.done{opacity:0;}
 .cot-hints .hk{display:flex;gap:2px;}
-/* a flight (a drone, the gunship) flies on other keys (the class: hud.ts) */
-body.cot-hud-aerial .cot-hints{display:none;}
+/* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
+.cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
+/* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
+   spectated battle (owner 2026-10-25) */
+body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
@@ -428,6 +435,10 @@ body.cot-hud-aerial .cot-hints{display:none;}
 .cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
   text-transform:uppercase;}
 .cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
+/* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
+   the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
+.cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+.cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
@@ -480,13 +491,22 @@ export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[strin
     [t('settings.group.fire'), ['fire']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
     [t('settings.group.sniper'), ['sniperToggle']],
-    [t('settings.group.menu'), ['settingsMenu']],
+    // (ESC opens the settings: the pause veil's cap names the same word, gauntlet r1)
+    [t('settings.title'), ['settingsMenu']],
   ];
 }
 
-/** A player's first battles show the controls strip as the tanks roll out; the count is the browser's. */
-const HINTS_KEY = 'cot.battle.hints.v1';
+/** The strip's groups by id, in battleControlHintGroups' order (each one leaves the strip once its control is used). */
+const HINT_GROUP_IDS = ['move', 'fire', 'aim', 'sniper', 'menu'] as const;
+type HintGroupId = typeof HINT_GROUP_IDS[number];
+/** A keyboard player's first HINT_BATTLES battles show the controls strip as the tanks roll out, while a group's control
+ *  is still unused (owner 2026-10-25: "only make it come up when its needed"). The browser keeps the count and what was
+ *  learned (v1 kept the count alone, read as the count here). */
+const HINTS_KEY = 'cot.battle.hints.v2';
+const HINTS_KEY_V1 = 'cot.battle.hints.v1';
 const HINT_BATTLES = 3;
+/** The strip's longest stay when its controls are not all used (it leaves sooner at the first engagement). */
+const HINT_STAY_MS = 30000;
 
 /**
  * Create the settings panel + garage gear button + battle controls-hint strip.
@@ -2060,6 +2080,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
     bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
     bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
+    // the player's first hit given or taken this battle (hud.ts): the strip has done its work
+    bus.on('ui:playerEngaged', () => fadeHints());
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react
@@ -2069,6 +2091,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus.on('killcam:begin', () => {
       kcReplay = true;
       hideResumeVeil();
+      hideHints();
       // never relock out of this close — the cursor must stay free for the
       // replay (and a gesture-less requestLock denial would falsely latch
       // the cursor-aim fallback)
@@ -2094,44 +2117,89 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   updateGear();
 
   // --- controls hint strip -----------------------------------------------------------
-  function hintGroup(label: string, actionIds: readonly ActionId[]): string {
+  function hintGroup(label: string, actionIds: readonly ActionId[], id: HintGroupId): string {
     const kbds = actionIds
-      .map((id) => `<kbd class="cot-c-kbd">${bindLabel(id)}</kbd>`)
+      .map((action) => `<kbd class="cot-c-kbd">${bindLabel(action)}</kbd>`)
       .join('');
-    return `<span class="hg"><span class="hk">${kbds}</span><span>${label}</span></span>`;
+    return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;
   }
 
-  // First-battle hints (247): a keyboard and mouse player's first HINT_BATTLES battles show the strip at the rollout,
-  // solo and network alike. A touch layout and a connected pad show none (the caps name keyboard keys), and a storage
-  // the browser refuses keeps the count for this page.
-  let hintBattles: number | null = null;
+  // First-battle hints (247; owner 2026-10-25): a keyboard and mouse player's first HINT_BATTLES battles show the strip at
+  // the rollout, solo and network alike, while any group's control is still unused. Each group leaves as its control is
+  // pressed (and stays learned), the strip once every group has, at the player's first engagement (hud.ts
+  // ui:playerEngaged), a kill cam, the battle's end, or after HINT_STAY_MS. A touch layout and a connected pad show none
+  // (the caps name keyboard keys); a storage the browser refuses keeps the record for this page. Its seat is the band
+  // over the vehicle-controls row (battleHudLayout.ts --hud-systems-top), and the scope, a flight, Watch and a
+  // spectated battle hide it (the sheet above).
+  let hintRecord: { battles: number; learned: Set<HintGroupId> } | null = null;
+  function hintsRecord(): { battles: number; learned: Set<HintGroupId> } {
+    if (hintRecord) return hintRecord;
+    hintRecord = { battles: 0, learned: new Set() };
+    try {
+      const raw = window.localStorage.getItem(HINTS_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw) as { battles?: number; learned?: string[] };
+        hintRecord.battles = Math.max(0, Number(stored.battles) || 0);
+        for (const id of stored.learned ?? []) if ((HINT_GROUP_IDS as readonly string[]).includes(id)) hintRecord.learned.add(id as HintGroupId);
+      } else {
+        hintRecord.battles = Math.max(0, Number(window.localStorage.getItem(HINTS_KEY_V1)) || 0);
+      }
+    } catch { /* a refused or unreadable record starts fresh for this page */ }
+    return hintRecord;
+  }
+  function saveHintsRecord(): void {
+    const record = hintsRecord();
+    try { window.localStorage.setItem(HINTS_KEY, JSON.stringify({ battles: record.battles, learned: [...record.learned] })); } catch { /* the record lasts this page */ }
+  }
   function takeFirstBattleHint(): boolean {
     if (input.isTouchLayout?.() || input.isPadConnected()) return false;
-    if (hintBattles === null) {
-      try { hintBattles = Math.max(0, Number(window.localStorage.getItem(HINTS_KEY)) || 0); } catch { hintBattles = 0; }
-    }
-    if (hintBattles >= HINT_BATTLES) return false;
-    hintBattles += 1;
-    try { window.localStorage.setItem(HINTS_KEY, String(hintBattles)); } catch { /* the count lasts this page */ }
+    const record = hintsRecord();
+    if (record.battles >= HINT_BATTLES || HINT_GROUP_IDS.every((id) => record.learned.has(id))) return false;
+    record.battles += 1;
+    saveHintsRecord();
     return true;
   }
 
+  let hintListeners: Array<() => void> = [];
   function hideHints() {
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
     if (hintFadeTimer) { clearTimeout(hintFadeTimer); hintFadeTimer = null; }
+    for (const off of hintListeners.splice(0)) off();
     hints.classList.remove('show', 'fade');
+  }
+  function fadeHints() {
+    if (!hints.classList.contains('show')) return;
+    for (const off of hintListeners.splice(0)) off();
+    hints.classList.add('fade');
+    hintFadeTimer = setTimeout(() => { hints.classList.remove('show', 'fade'); }, 400);
+  }
+  /** A group's control was used: it leaves the strip (and the record), and the strip with the last of them. */
+  function learnHint(id: HintGroupId) {
+    const record = hintsRecord();
+    if (!record.learned.has(id)) { record.learned.add(id); saveHintsRecord(); }
+    const group = hints.querySelector<HTMLElement>(`.hg[data-group="${id}"]`);
+    if (group && !group.classList.contains('done')) {
+      group.classList.add('done');
+      setTimeout(() => group.remove(), 240);
+    }
+    if (!hints.querySelector('.hg:not(.done)')) fadeHints();
   }
 
   function showHints() {
     hideHints();
-    hints.innerHTML = battleControlHintGroups(input.getSettings().rmbMode)
-      .map(([label, actionIds]) => hintGroup(label, actionIds))
-      .join('');
+    // its caps name keyboard keys: a touch layout never shows it, whoever asks (takeFirstBattleHint guards the rollout)
+    if (input.isTouchLayout?.()) return;
+    const record = hintsRecord();
+    const groups = battleControlHintGroups(input.getSettings().rmbMode)
+      .map(([label, actionIds], index) => ({ id: HINT_GROUP_IDS[index], label, actionIds }))
+      .filter(({ id }) => !record.learned.has(id));
+    if (!groups.length) return;
+    hints.innerHTML = groups.map(({ id, label, actionIds }) => hintGroup(label, actionIds, id)).join('');
+    for (const { id, actionIds } of groups) {
+      for (const action of actionIds) hintListeners.push(input.onAction(action, () => learnHint(id)));
+    }
     hints.classList.add('show');
-    hintTimer = setTimeout(() => {
-      hints.classList.add('fade');
-      hintFadeTimer = setTimeout(() => { hints.classList.remove('show', 'fade'); }, 400);
-    }, 8000);
+    hintTimer = setTimeout(fadeHints, HINT_STAY_MS);
   }
 
   const api = {
@@ -2142,7 +2210,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     toggle() { if (open) closePanel(); else openPanel(); },
     /** @returns {boolean} panel currently open (battle pauses while true) */
     isOpen: () => open,
-    /** Show the controls hint strip (current bindings); fades after 8 s. */
+    /** Show the controls hint strip: its groups not yet used, with the current bindings (each leaves as its control is
+     *  pressed; the strip at the first engagement or after HINT_STAY_MS). */
     showHints,
   };
 

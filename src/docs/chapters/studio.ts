@@ -51,7 +51,7 @@ function takesStrip(): string {
 function openSection(): string {
   const ways: Array<[IconId, string, string]> = [
     ['studio', 'docs.studio.way.bar.title', 'docs.studio.way.bar'],
-    ['gallery', 'home.hero.openScene', 'docs.studio.way.take'],
+    ['gallery', 'docs.studio.way.openScene', 'docs.studio.way.take'],
     ['copy', 'studio.sceneLink.copyButton', 'docs.studio.way.link'],
   ];
   const workspace = existsSync(join(ROOT, 'public', WORKSPACE_STILL))

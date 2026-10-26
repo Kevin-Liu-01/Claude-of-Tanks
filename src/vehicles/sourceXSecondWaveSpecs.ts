@@ -199,6 +199,10 @@ function armorFitDimensions(id: string, dims: FleetDimensions): FleetDimensions 
     ? { ...dims, widthM: LECLERC_CLASSIC_X_DATUMS.dims.widthM } : dims;
 }
 
+// A donor that is itself a named prototype hands its clone that prototype's designation (owner 2026-10-25: the procedural
+// type90_kyumaru became the STC-1 and carries 'STC-1' as its number); the production study keeps its service number.
+const PRODUCTION_NUMBERS: Readonly<Record<string, string>> = Object.freeze({ type90: '73' });
+
 const specs: Record<string, FleetTankSpec> = {};
 for (const [id, donorId, name] of entries) {
   // Registered donors first, then the unregistered templates (t72b_1987, t72b3,
@@ -210,6 +214,7 @@ for (const [id, donorId, name] of entries) {
   delete spec.publicVisualFallback;
   delete spec.label;
   delete spec.roster;
+  if (PRODUCTION_NUMBERS[id]) spec.visual.number = PRODUCTION_NUMBERS[id];
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   const previous = { ...spec.dims };

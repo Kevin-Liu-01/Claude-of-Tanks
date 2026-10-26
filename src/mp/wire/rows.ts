@@ -5,7 +5,7 @@
  * groups that differ from the viewer's acknowledged baseline row.
  */
 import type { ByteReader, ByteWriter } from './bytes.ts';
-import { WireError } from './bytes.ts';
+import { WireError, utf8ByteLength } from './bytes.ts';
 import {
   ENTITY_FLAG_BITS, MAX_ENTITIES, MAX_ERA_PER_ROW, MAX_POS_REL_MM, MAX_TILT_REL_UNITS, ROW_GROUP, ROW_GROUP_MASK_MAX,
   STATUS_FLAGS_SHIFT, STATUS_GUN_RELOAD_KIND_SHIFT, STATUS_GUN_RELOAD_MIRRORS, STATUS_RELOAD_KIND_SHIFT,
@@ -168,6 +168,154 @@ export function diffEntityRow(row: EntityRow, base: EntityRow | null, packetTick
   }
   if (mask !== 0) mask |= ageGroup(row, packetTick);
   return { entityId: row.entityId, mask, fields, mirrors, era };
+}
+
+function varintBytes(value: number): number {
+  let bytes = 1;
+  while (value >= 0x80) { value = Math.floor(value / 0x80); bytes++; }
+  return bytes;
+}
+
+/** Whether `next` holds every index of `base` (both strictly increasing): its additions are then an ERA_ADD list. */
+function eraSuperset(base: readonly number[], next: readonly number[]): boolean {
+  if (next.length < base.length) return false;
+  let cursor = 0;
+  for (const index of next) if (cursor < base.length && base[cursor] === index) cursor++;
+  return cursor === base.length;
+}
+
+/** An index list's bytes (writeIndexList): the count, then each gap. `skip` leaves out `base`'s members (an ERA_ADD list). */
+function indexListBytes(indices: readonly number[], skip: readonly number[] | null): number {
+  let count = 0, bytes = 0, previous = -1, cursor = 0;
+  for (const index of indices) {
+    if (skip && cursor < skip.length && skip[cursor] === index) { cursor++; continue; }
+    bytes += varintBytes(index - previous - 1);
+    previous = index;
+    count++;
+  }
+  return varintBytes(count) + bytes;
+}
+
+/** writeIndexList over `indices` without `skip`'s members, without building the list. */
+function writeIndexListSkipping(writer: ByteWriter, indices: readonly number[], skip: readonly number[] | null, max: number): void {
+  const count = skip ? indices.length - skip.length : indices.length;
+  if (count > max) throw new WireError('too_many', `index list exceeds ${max}`);
+  writer.varint(count);
+  let previous = -1, cursor = 0;
+  for (const index of indices) {
+    if (skip && cursor < skip.length && skip[cursor] === index) { cursor++; continue; }
+    if (!Number.isInteger(index) || index <= previous) throw new WireError('range', 'index list must be strictly increasing non-negative integers');
+    writer.varint(index - previous - 1);
+    previous = index;
+  }
+}
+
+/**
+ * One row against `base` (null: a keyframe row) in a packet at `packetTick`, written straight into `writer` with the
+ * groups diffEntityRow chooses and the bytes writeEntityRowPatch writes, without building the patch (mp-scale-251: the
+ * host encodes every viewer's frame on every snapshot). A delta row whose fields equal its baseline's writes nothing.
+ * With a null writer it writes nothing and returns the bytes the row takes: the snapshot budget's weigher.
+ */
+export function writeEntityRowDelta(writer: ByteWriter | null, row: EntityRow, base: EntityRow | null, packetTick: number): number {
+  const status = packStatus(row);
+  const mirrors = (status & STATUS_GUN_RELOAD_MIRRORS) !== 0;
+  const auxiliary = row.auxiliaryJson || '';
+  let mask = 0;
+  let eraAdd = false;
+  if (auxiliary !== (base?.auxiliaryJson || '')) mask |= ROW_GROUP.AUXILIARY;
+  if (base ? !sameWreckBody(row.wreckBody, base.wreckBody) : !!row.wreckBody) mask |= ROW_GROUP.WRECK_BODY;
+  if (!base) {
+    mask |= KEYFRAME_GROUPS | ageGroup(row, packetTick);
+    if (!mirrors) mask |= ROW_GROUP.GUN_RELOAD;
+    if (row.eraSpent.length) mask |= ROW_GROUP.ERA_RESET;
+  } else {
+    if (row.x !== base.x || row.y !== base.y || row.z !== base.z) {
+      mask |= Math.abs(row.x - base.x) <= MAX_POS_REL_MM && Math.abs(row.y - base.y) <= MAX_POS_REL_MM && Math.abs(row.z - base.z) <= MAX_POS_REL_MM
+        ? ROW_GROUP.POS_REL : ROW_GROUP.POS_ABS;
+    }
+    if (row.speed !== base.speed || row.verticalSpeed !== base.verticalSpeed) mask |= ROW_GROUP.VEL;
+    if (row.yaw !== base.yaw) mask |= ROW_GROUP.YAW;
+    if (row.pitch !== base.pitch || row.roll !== base.roll) {
+      mask |= Math.abs(angleUnitsDelta(base.pitch, row.pitch)) <= MAX_TILT_REL_UNITS && Math.abs(angleUnitsDelta(base.roll, row.roll)) <= MAX_TILT_REL_UNITS
+        ? ROW_GROUP.TILT_REL : ROW_GROUP.TILT_ABS;
+    }
+    if (row.turretYaw !== base.turretYaw || row.gunPitch !== base.gunPitch) mask |= ROW_GROUP.TURRET;
+    if (row.hp !== base.hp) mask |= ROW_GROUP.HP;
+    if (row.maxHp !== base.maxHp) mask |= ROW_GROUP.MAX_HP;
+    if (row.reload !== base.reload || row.reloadTotal !== base.reloadTotal) mask |= ROW_GROUP.RELOAD;
+    if (!mirrors && (row.gunReload !== base.gunReload || row.gunReloadTotal !== base.gunReloadTotal)) mask |= ROW_GROUP.GUN_RELOAD;
+    if (row.magazineRounds !== base.magazineRounds || row.magazineCapacity !== base.magazineCapacity) mask |= ROW_GROUP.MAGAZINE;
+    if (row.ammo0 !== base.ammo0 || row.ammo1 !== base.ammo1 || row.ammo2 !== base.ammo2) mask |= ROW_GROUP.AMMO;
+    if (status !== packStatus(base)) mask |= ROW_GROUP.STATUS;
+    if (!sameEra(row.eraSpent, base.eraSpent)) {
+      eraAdd = eraSuperset(base.eraSpent, row.eraSpent);
+      mask |= eraAdd ? ROW_GROUP.ERA_ADD : ROW_GROUP.ERA_RESET;
+    }
+    if (mask === 0) return 0;
+    mask |= ageGroup(row, packetTick);
+  }
+  if (!Number.isInteger(row.entityId) || row.entityId < 1 || row.entityId > MAX_ENTITIES) throw new WireError('range', `entity id out of range: ${row.entityId}`);
+  if (mask > ROW_GROUP_MASK_MAX) throw new WireError('range', 'row mask exceeds 19 bits');
+  if (!writer) {
+    let bytes = 1 + varintBytes(mask);
+    if (mask & ROW_GROUP.POS_ABS) bytes += 12;
+    if (mask & ROW_GROUP.POS_REL) bytes += 6;
+    if (mask & ROW_GROUP.VEL) bytes += 4;
+    if (mask & ROW_GROUP.YAW) bytes += 2;
+    if (mask & ROW_GROUP.TILT_ABS) bytes += 4;
+    if (mask & ROW_GROUP.TILT_REL) bytes += 2;
+    if (mask & ROW_GROUP.TURRET) bytes += 4;
+    if (mask & ROW_GROUP.HP) bytes += 2;
+    if (mask & ROW_GROUP.MAX_HP) bytes += 2;
+    if (mask & ROW_GROUP.RELOAD) bytes += 4;
+    if (mask & ROW_GROUP.GUN_RELOAD) bytes += 4;
+    if (mask & ROW_GROUP.MAGAZINE) bytes += 2;
+    if (mask & ROW_GROUP.AMMO) bytes += varintBytes(row.ammo0) + varintBytes(row.ammo1) + varintBytes(row.ammo2);
+    if (mask & ROW_GROUP.STATUS) bytes += 2;
+    if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) bytes += indexListBytes(row.eraSpent, eraAdd ? base!.eraSpent : null);
+    if (mask & ROW_GROUP.AGE) bytes += varintBytes(packetTick - row.tick!);
+    if (mask & ROW_GROUP.AUXILIARY) { const length = utf8ByteLength(auxiliary); bytes += varintBytes(length) + length; }
+    if (mask & ROW_GROUP.WRECK_BODY) bytes += row.wreckBody ? 21 : 1;
+    return bytes;
+  }
+  const start = writer.length;
+  writer.u8(row.entityId);
+  writer.varint(mask);
+  if (mask & ROW_GROUP.POS_ABS) { writer.i32(row.x); writer.i32(row.y); writer.i32(row.z); }
+  if (mask & ROW_GROUP.POS_REL) { writer.i16(row.x - base!.x); writer.i16(row.y - base!.y); writer.i16(row.z - base!.z); }
+  if (mask & ROW_GROUP.VEL) { writer.i16(row.speed); writer.i16(row.verticalSpeed); }
+  if (mask & ROW_GROUP.YAW) writer.u16(row.yaw);
+  if (mask & ROW_GROUP.TILT_ABS) { writer.u16(row.pitch); writer.u16(row.roll); }
+  if (mask & ROW_GROUP.TILT_REL) { writer.i8(angleUnitsDelta(base!.pitch, row.pitch)); writer.i8(angleUnitsDelta(base!.roll, row.roll)); }
+  if (mask & ROW_GROUP.TURRET) { writer.u16(row.turretYaw); writer.u16(row.gunPitch); }
+  if (mask & ROW_GROUP.HP) writer.u16(row.hp);
+  if (mask & ROW_GROUP.MAX_HP) writer.u16(row.maxHp);
+  if (mask & ROW_GROUP.RELOAD) { writer.u16(row.reload); writer.u16(row.reloadTotal); }
+  if (mask & ROW_GROUP.GUN_RELOAD) { writer.u16(row.gunReload); writer.u16(row.gunReloadTotal); }
+  if (mask & ROW_GROUP.MAGAZINE) { writer.u8(row.magazineRounds); writer.u8(row.magazineCapacity); }
+  if (mask & ROW_GROUP.AMMO) { writer.varint(row.ammo0); writer.varint(row.ammo1); writer.varint(row.ammo2); }
+  if (mask & ROW_GROUP.STATUS) writer.u16(status);
+  if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) writeIndexListSkipping(writer, row.eraSpent, eraAdd ? base!.eraSpent : null, MAX_ERA_PER_ROW);
+  if (mask & ROW_GROUP.AGE) writer.varint(packetTick - row.tick!);
+  if (mask & ROW_GROUP.AUXILIARY) writer.string(auxiliary, 512);
+  if (mask & ROW_GROUP.WRECK_BODY) {
+    const body = row.wreckBody;
+    writer.u8(body ? (1 | (body.asleep ? 2 : 0)) : 0);
+    if (body) {
+      writer.i32(body.x); writer.i32(body.y); writer.i32(body.z);
+      writer.i16(body.qx); writer.i16(body.qy); writer.i16(body.qz); writer.i16(body.qw);
+    }
+  }
+  return writer.length - start;
+}
+
+/**
+ * The bytes `row` takes against `base` (null: a keyframe row), exactly what writeEntityRowDelta writes (mp-scale-251:
+ * the snapshot budget weighs each due row before the frame is encoded, against the row the viewer holds, which its
+ * acknowledged baseline may trail).
+ */
+export function estimateEntityRowBytes(row: EntityRow, base: EntityRow | null): number {
+  return writeEntityRowDelta(null, row, base, row.tick ?? 0);
 }
 
 function statusFields(status: number): Pick<EntityRow, 'reloadKind' | 'gunReloadKind' | 'shellSlot' | 'flags'> {

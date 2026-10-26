@@ -476,7 +476,7 @@ const SPECS: FleetTankSpec[] = [
       // field. It does not carry the donor Proryv skirt or turret-flank kit.
       armor: armorWithoutEra('t90am', (_owner, name) => /skirt|side/i.test(name)),
       dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 } }),
-  make('type10_tk_x', 'type90_kyumaru', 'Type 90 Kyu-maru', 'Japan',
+  make('type10_tk_x', 'type90_kyumaru', 'STC-1', 'Japan',
     // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
     // object148_proto/type99a precedent): heightM = the P95 envelope including mandatory
     // roof kit, NOT the bare 2.34 turret roof (Wikipedia infobox) and NOT the

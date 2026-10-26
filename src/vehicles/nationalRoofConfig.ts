@@ -46,10 +46,9 @@ export interface NationalRoofLoadout {
 // Round 3 (critic D6: the emplacement stands no taller than 0.46 m, foot to leaf sight). Round 4 (critics D10, S1: the
 // pintles move off the hatch lids into rim sockets, nationalDonorTurrets.ts): the Kunlun's 36 mm, with its socket's
 // collar at 0.91 m, keeps its spade grips 35 mm over the 96B lid's forward latch with the gun facing forward-inboard at
-// full elevation and in recoil (at 0.90 m, 25.7 mm), 458 mm tall; the Qilin's socket clears the 99A2 cupola's periscope
-// and needs none (45.5 mm at worst over its arc).
+// full elevation and in recoil (at 0.90 m, 25.7 mm), 458 mm tall. 252: the Qilin's QJC-88 stands in the same socket on
+// the same Type 96B cupola, so on the same riser.
 const KUNLUN_RISER_M=.036;
-const QILIN_RISER_M=0;
 export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>={
  t80u_zoria:{name:'Bureviy open cradle',caliber:12.7,mount:'fork',feedSide:1,axisHeight:.62,muzzleZ:1.04,eyes:'monocle-left',eyeRadius:.145,roof:'split-panels',roofZ:-.12,lamp:'round'},
  t72b3m_hetman:{name:'Hetman command cannon',caliber:30,mount:'shield',feedSide:1,axisHeight:.75,muzzleZ:1.13,eyes:'monocle-right',eyeRadius:.16,roof:'radome',roofZ:-.20,lamp:'square'},
@@ -79,21 +78,11 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  t72b3m_kunlun:{name:'Kunlun cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+KUNLUN_RISER_M,muzzleZ:1.321,
   emplacement:{cls:'qjc88',shield:true,riserM:KUNLUN_RISER_M,crewServed:true},
   eyes:'twin',eyeRadius:.145,roof:'scanner',roofZ:-.16,lamp:'square'},
- // Release 227: the Qilin's QJC-88 on the ZTZ-99A2 commander's cupola behind the 99A2's own standard shield. Round 4:
- // its pintle stands in the rim socket at the cupola's front-left rim (nationalDonorTurrets.ts) with no race ring.
- t72b3_qilin:{name:'Qilin cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+QILIN_RISER_M,muzzleZ:1.321,
-  emplacement:{cls:'qjc88',shield:true,riserM:QILIN_RISER_M,crewServed:true},
-  // Measured 2026-10-17, round 4, in the rim socket (cn-rim measure.mjs: cnClearance check 4's poses, both ways with
-  // 15 mm samples at recoil 0 and 0.025 m, 28 mm kept, every whole degree; each degree's depression the smallest of it
-  // and its neighbours): the arc leaves out the commander's stabilised sight and its base (blocked -94..-74 deg; the arc
-  // stops a degree short each side, 336 deg); the barrel depresses less over the split-panel sensor's two panels on its
-  // central seat (yaw -73..-37 deg).
-  yawArc:[-1.2566,4.6077],
-  depressionByYaw:[[-1.2566,.04],[-1.2392,.039],[-1.2217,.039],[-1.2043,.039],[-1.1868,.039],[-1.1694,.039],[-1.1519,.039],
-   [-1.1345,.039],[-1.117,.039],[-1.0996,.041],[-1.0821,.045],[-1.0647,.051],[-1.0472,.057],[-1.0297,.056],[-1.0123,.056],
-   [-.9948,.053],[-.9774,.053],[-.9599,.053],[-.9425,.052],[-.925,.052],[-.9076,.05],[-.8901,.05],[-.8727,.049],
-   [-.8552,.048],[-.8378,.047],[-.8203,.046],[-.8029,.046],[-.7854,.045],[-.7679,.044],[-.7505,.043],[-.733,.043],
-   [-.7156,.043],[-.6981,.044],[-.6807,.045],[-.6632,.051],[-.6458,.065],[-.6283,.087],[4.5902,.087],[4.6077,.071]],
+ // Release 227: the Qilin's QJC-88 behind the class's standard light shield. 252 (owner: "redesign the qilin around a type
+ // 96b inspired Yun like turret"): its pintle stands in the Kunlun's rim socket on the same Type 96B cupola
+ // (nationalDonorTurrets.ts), on the Kunlun's riser.
+ t72b3_qilin:{name:'Qilin cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+KUNLUN_RISER_M,muzzleZ:1.321,
+  emplacement:{cls:'qjc88',shield:true,riserM:KUNLUN_RISER_M,crewServed:true},
   eyes:'flat',eyeRadius:.10,roof:'split-panels',roofZ:-.12,lamp:'round'},
  t80u_bars_m:{name:'Bastion drum-fed gun',caliber:12.7,mount:'drum',feedSide:-1,axisHeight:.67,muzzleZ:1.09,eyes:'twin',eyeRadius:.17,roof:'radome',roofZ:-.16,lamp:'round'},
  t72b3m_bulat_m:{name:'Grom heavy cannon',caliber:30,mount:'shield',feedSide:-1,axisHeight:.79,muzzleZ:1.18,eyes:'twin',eyeRadius:.18,roof:'spine',roofZ:-.16,lamp:'square'},

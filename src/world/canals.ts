@@ -6,6 +6,7 @@
 // lies on it at the level: a strip at one level, not a chain of lake circles. A road keeps its ground over a canal (a
 // culvert: the carve fades out across the road's band, as the wetness already dries under a road). Pure functions, no
 // map knowledge: a map with no canals compiles to null and every caller skips it, so its terrain is byte-identical.
+import * as detMath from '../sim/detMath.ts';
 
 /** One canal as a map authors it. */
 export interface CanalConfig {
@@ -85,7 +86,7 @@ function canalDistance(c: CompiledCanal, x: number, z: number): number {
     const along = (px * c.dx[0] + pz * c.dz[0]) / len;
     const across = Math.abs(px * c.dz[0] - pz * c.dx[0]) / len;
     const out = along < 0 ? -along : along > len ? along - len : 0;
-    if (out > 0) return c.half + Math.hypot(Math.max(0, across - c.half), out);
+    if (out > 0) return c.half + detMath.hypot(Math.max(0, across - c.half), out);
     return across < c.half ? c.half - Math.min(c.half - across, along, len - along) : across;
   }
   let best = Infinity;

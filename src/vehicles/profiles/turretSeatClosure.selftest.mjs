@@ -9,9 +9,11 @@ const CASES = [
   { id: 'leo2a4', y: [-0.050, -0.034], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
   { id: 'leo2a4_otco', y: [-0.068, -0.052], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
   { id: 'leo2a4m_can', y: [0.022, 0.038], samples: [[0.82, 0.48], [-0.82, 0.48], [0.82, -0.72], [-0.82, -0.72]] },
-  { id: 'm2a2_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
-  { id: 'm3a3_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
-  { id: 'ua_m2a3_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
+  // 252: the Bradleys hold ring receipts since the 248 refresh: their pans are seated too, on the deck's plane + 3 cm and
+  // the swept deck's rise (0.054, the M3A3's rear 0.070), no longer buried 6 cm in the deck
+  { id: 'm2a2_bradley', y: [0.050, 0.075], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
+  { id: 'm3a3_bradley', y: [0.050, 0.075], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
+  { id: 'ua_m2a3_bradley', y: [0.050, 0.075], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
 ];
 
 for (const { id, y: [minY, maxY], samples } of CASES) {

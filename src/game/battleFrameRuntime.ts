@@ -1,5 +1,6 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
+import { FRAME_STAGE, frameStages } from './stateCore.ts';
 
 interface BattlePauseInfo {
   paused: boolean;
@@ -168,6 +169,7 @@ export function createBattleFrameRuntime({
     countdown.second?.(whole);
   };
 
+  // hot-path: every battle frame
   const applyPauseEdge = (livePaused: boolean, dtSeconds: number): number => {
     let appliedDtSeconds = dtSeconds;
     if (livePaused === pauseInfo.paused) return appliedDtSeconds;
@@ -181,6 +183,7 @@ export function createBattleFrameRuntime({
     return appliedDtSeconds;
   };
 
+  // hot-path: every battle frame
   const pollFrameInput = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -198,6 +201,7 @@ export function createBattleFrameRuntime({
     input.poll(inputSample);
   };
 
+  // hot-path: every countdown frame
   const advanceCountdown = (wallDtSeconds: number): void => {
     // armed, not yet opened: a new battle's count
     if (game.preBattleS === Infinity) { resetCountdownEdges(); return; }
@@ -220,6 +224,7 @@ export function createBattleFrameRuntime({
    * rolls the battle out; a battle first seen already at 0 was joined after its count and rolls out late. Infinity is a
    * round armed before its first snapshot.
    */
+  // hot-path: every networked countdown frame
   const followNetworkCountdown = (): void => {
     const seconds = game.preBattleS;
     if (seconds === Infinity) { resetCountdownEdges(); return; }
@@ -228,6 +233,7 @@ export function createBattleFrameRuntime({
     if (!rolledOut) rollout(!countSeen);
   };
 
+  // hot-path: every solo battle frame
   const advanceSoloSimulation = (appliedDtSeconds: number): void => {
     simulationAccumulator = Math.min(
       simulationAccumulator + appliedDtSeconds,
@@ -235,11 +241,13 @@ export function createBattleFrameRuntime({
     );
     while (simulationAccumulator >= simulationDt) {
       stepSimulation();
+      frameStages?.stage(FRAME_STAGE.pose);
       presentation.captureSoloPose();
       simulationAccumulator -= simulationDt;
     }
   };
 
+  // hot-path: every battle frame
   const advanceLiveBattle = (
     appliedDtSeconds: number,
     wallDtSeconds: number,
@@ -250,14 +258,17 @@ export function createBattleFrameRuntime({
       followNetworkCountdown();
       simulationAccumulator = 0;
     } else if (game.preBattleS > 0) {
+      frameStages?.stage(FRAME_STAGE.countdown);
       advanceCountdown(wallDtSeconds);
       simulationAccumulator = 0;
     } else {
       advanceSoloSimulation(appliedDtSeconds);
     }
+    frameStages?.stage(FRAME_STAGE.pose);
     presentation.updateResult();
   };
 
+  // hot-path: every battle frame
   const updatePresentation = (
     appliedDtSeconds: number,
     networkActive: boolean,
@@ -265,10 +276,12 @@ export function createBattleFrameRuntime({
     livePaused: boolean,
   ): number => {
     const alpha = networkActive ? 1 : simulationAccumulator / simulationDt;
+    frameStages?.stage(FRAME_STAGE.presentation);
     if (!killcamActive && !livePaused) presentation.update(appliedDtSeconds, alpha);
     return alpha;
   };
 
+  // hot-path: every frame
   const writeReceipt = (
     appliedDtSeconds: number,
     inBattle: boolean,
@@ -286,6 +299,7 @@ export function createBattleFrameRuntime({
     return receipt;
   };
 
+  // hot-path: every frame (the battle frame owner)
   const advance = (
     dtSeconds: number,
     wallDtSeconds: number,
@@ -302,10 +316,12 @@ export function createBattleFrameRuntime({
     const livePaused = paused && inBattle && !killcamActive && !game.result;
     const appliedDtSeconds = applyPauseEdge(livePaused, dtSeconds);
     pauseInfo.lastDtR = appliedDtSeconds;
+    frameStages?.stage(FRAME_STAGE.input);
     pollFrameInput(appliedDtSeconds, inBattle, paused, killcamActive, cameraLocked);
 
     // A persistent Garage room is pumped before the event-paced early return
     // in main. Every other phase reaches this owner and pumps exactly once.
+    frameStages?.stage(FRAME_STAGE.network);
     if (game.phase !== 'garage') network.pump(appliedDtSeconds, nowMs);
     const networkActive = network.isActive();
     if (inBattle && networkActive) networkBattleOwned = true;

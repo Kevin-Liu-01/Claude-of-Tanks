@@ -103,7 +103,7 @@ import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ks
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
-import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
+import { FIELD_MUD_PLAIN_V, FIELD_MUD_PRINT_SEED, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { brickPierCapFor, buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { buildBuildingDrifts, buildPloughBanks } from './maps/buildingSnowDrifts.ts'; // (the map-revival lane, round 2b; maps-stalled 240's port)
 import { structureCollisionOpenIds } from './maps/structureCollision.ts';
@@ -134,7 +134,7 @@ import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } fro
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
 import { streetLampFormOf } from './maps/streetKit.ts';
 import { checkKitFracture, type KitFractureAnatomy } from './fractureAnatomy.ts';
-import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind, prepareCivilianVehicleFootprints } from './maps/civilianVehicleKit.ts';
 import { CART_RECEIPTS } from './maps/cartKit.ts';
 import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
@@ -147,7 +147,7 @@ import {
   buildVehicleContactShadows, vehicleShadowCaster,
 } from './maps/vehicleContactShadow.ts';
 import {
-  CART_RELOCATE_MAX_M, CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
+  CART_RELOCATE_MAX_M, CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClearSteps, separateParkedVehicles, shapePolygons,
   VEHICLE_RELOCATE_MAX_M, VEHICLE_SLIDE_MAX_M,
   type FootprintPolygon,
 } from './parkedVehicleSeparation.ts';
@@ -164,7 +164,7 @@ import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
 import { roadLifeFor } from './civic/roadLife.ts'; // (229) every map's road life
 import { civicStyle } from './civic/styles.ts';
 import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
-import { buildPathwayNetwork } from './civic/pathwayKit.ts';
+import { buildPathwayNetworkSteps } from './civic/pathwayKit.ts';
 import { CIVIC_RECORDS, CIVIC_STALL_FORMS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
 import type { CivicRect } from './civic/types.ts';
 import { fieldWorkMatrix, fieldWorkSeat, shearedOutlines, shearRiseRange } from './fieldWorkSeat.ts'; // (229) terrain-seated breastworks
@@ -1584,6 +1584,8 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
   if (!(wallStyle === 'adobe' || sourcedStoneIsBrick(mapId))) {
     requests.push({ kind: 'fieldStone', size, seed: FIELD_STONE_PRINT_SEED, lithology: rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone' });
   }
+  // (battle-spikes-253) and a mud-walled map's mud render (makeFieldMud), after the field stone as the build reaches it
+  if (wallStyle === 'adobe') requests.push({ kind: 'fieldMud', size, seed: FIELD_MUD_PRINT_SEED });
   return requests;
 }
 
@@ -1684,7 +1686,9 @@ function* makeFieldMud(
   size: number,
   earth: readonly [number, number, number] | null,
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
-  const { px, hgt } = yield* paintFieldMudBuffers(size);
+  // (battle-spikes-253) painted ahead by the surface paint worker when the prefetch holds it (plannedSurfacePaints)
+  const { px, hgt } = yield* paintedAhead(surfacePaintKey({ kind: 'fieldMud', size, seed: FIELD_MUD_PRINT_SEED }),
+    () => paintFieldMudBuffers(size));
   applyTone(px, tone);
   if (earth) tintFieldMudToEarth(px, size, earth); // (wave 34: the walls and the mud at their feet are the map's earth)
   yield { fine: true, stage: 'field-mud-tone' };
@@ -4656,6 +4660,8 @@ ${snowCap ? `
     }
     return out;
   }
+  // (battle-spikes-253) the vehicle roles' collision a role a slice, ahead of the table below, which reads it cached
+  for (const _ of prepareCivilianVehicleFootprints(mapId)) yield { fine: true, progress: false, stage: 'vehicle-footprints' };
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     // (b45; the coordinator, launch night: some two thousand triangles a stack is a desktop prop) a phone keeps the
     // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
@@ -4892,19 +4898,31 @@ ${snowCap ? `
   // fixed-seed build, outside every placement stream.
   const destructibleFootprints = new Map<string, readonly [number, number]>();
   function destructibleFootprint(kind: string): readonly [number, number] {
-    let extents = destructibleFootprints.get(kind);
-    if (!extents) {
-      const meta = resolveDestructibleMeta(destructibleContext, kind);
-      // (the fortifications lane: a pillbox's seat is its whole work's ground, the bank round the destructible body)
-      const geometry = meta.footprintBuild ? meta.footprintBuild() : meta.build(mulberry32(0x0f0f7));
-      const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
+    const known = destructibleFootprints.get(kind);
+    if (known) return known;
+    const steps = destructibleFootprintSteps(kind);
+    for (let step = steps.next(); ; step = steps.next()) if (step.done) return step.value;
+  }
+  /** destructibleFootprint with a step between the kind's build and its contact band (battle-spikes-253: the props
+   *  build measures the pillbox's ahead of the field works, a step a slice). */
+  function* destructibleFootprintSteps(kind: string): Generator<void, readonly [number, number], void> {
+    const known = destructibleFootprints.get(kind);
+    if (known) return known;
+    const meta = resolveDestructibleMeta(destructibleContext, kind);
+    // (the fortifications lane: a pillbox's seat is its whole work's ground, the bank round the destructible body)
+    const geometry = meta.footprintBuild ? meta.footprintBuild() : meta.build(mulberry32(0x0f0f7));
+    let band: StructureCollisionRuntimeBand;
+    try {
+      yield;
+      band = deriveRuntimeStructureContactBand({ baked: [geometry] });
+    } finally {
       geometry.dispose();
-      const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
-      extents = band.parts.length
-        ? [Math.max(-bounds.min[0], bounds.max[0]), Math.max(-bounds.min[2], bounds.max[2])]
-        : [meta.hw ?? meta.r, meta.hl ?? meta.r];
-      destructibleFootprints.set(kind, extents);
     }
+    const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
+    const extents: readonly [number, number] = band.parts.length
+      ? [Math.max(-bounds.min[0], bounds.max[0]), Math.max(-bounds.min[2], bounds.max[2])]
+      : [meta.hw ?? meta.r, meta.hl ?? meta.r];
+    destructibleFootprints.set(kind, extents);
     return extents;
   }
   /** Whether a destructible's whole contact footprint at this seat stays out of the road core (roadFootprint.ts). */
@@ -8819,6 +8837,18 @@ ${snowCap ? `
       placed++;
     }
   }
+  // (battle-spikes-253; nav-perf's entry census: Steinburg's field works one 304 ms task) the pillbox's footprint — its
+  // whole work's build, then its contact band — measured a step a slice before the works ask for it
+  // (only where the works will be laid: placeFieldWorks' own conditions — spawns 120 m apart, works to place)
+  const worksSpawn = L.spawns.player, worksEnemies = L.spawns.enemies;
+  const worksAxis = worksSpawn && worksEnemies.length ? Math.hypot(
+    worksEnemies.reduce((sum, enemy) => sum + enemy.x, 0) / worksEnemies.length - worksSpawn.x,
+    worksEnemies.reduce((sum, enemy) => sum + enemy.z, 0) / worksEnemies.length - worksSpawn.z) : 0;
+  if (worksAxis >= 120 && richCount(P.fieldWorks, 3) + (heightField.assaultTrenchLines?.lines.length ? 2 : 0) > 0) {
+    for (let steps = destructibleFootprintSteps('bunker'), step = steps.next(); !step.done; step = steps.next()) {
+      yield { fine: true, progress: false, stage: 'pillbox-footprint' };
+    }
+  }
   placeFieldWorks();
   group.userData.fieldWorks = fieldWorkSeats;
 
@@ -9647,7 +9677,7 @@ ${snowCap ? `
     return mapId === 'reservoir' && P.reservoirWaterworks ? [] : null;
   }
   const waterworksRubble = beginWaterworksRubbleCapture();
-  function placeStreetRubble(): void {
+  function* placeStreetRubble(): Generator<PropsBuildSlice, void, void> {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
     const balance = createRubbleBalance(P.rubbleHalvesAbout, L.spawns, obstacles); // (round 3: Blackglass's banded halves)
@@ -9689,15 +9719,18 @@ ${snowCap ? `
       return true;
     };
     for (let i = 0, placed = 0; i < P.rubblePiles * 14 && placed < P.rubblePiles; i++) {
-      if (placeRubbleCandidate(i)) placed++;
+      if (!placeRubbleCandidate(i)) continue;
+      placed++;
+      // (battle-spikes-253) a slice a pile: a pile's collision is its slabs' (Steinburg's rubble was one 141 ms task)
+      yield { fine: true, progress: false, stage: 'street-rubble' };
     }
   }
-  placeStreetRubble();
+  yield* placeStreetRubble();
   yield { fine: true, progress: false, stage: 'street-rubble' };
 
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
-  function placeStreetCurbs(): void {
+  function* placeStreetCurbs(): Generator<PropsBuildSlice, void, void> {
     // (229) a civic plan's pathways run on a map that never laid the legacy kerbs too (its draws then none to spend)
     if (!P.curbs && !civicPlan?.pathways) return;
     const decks = heightField.bridgeDecks ?? [];
@@ -9767,10 +9800,13 @@ ${snowCap ? `
       }
       const solidAt = (x: number, z: number, m: number): boolean => (solidGrid.get(`${cellOf(x)},${cellOf(z)}`) ?? []).some((o) =>
         x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m && collisionFootprintContainsPoint(o, x, z, m));
-      const built = buildPathwayNetwork(civicPlan.pathways, civicStyle(civicPlan.style), {
+      const pathwaySteps = buildPathwayNetworkSteps(civicPlan.pathways, civicStyle(civicPlan.style), {
         roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: civicPlots(), rng, town, distToOtherRoads,
         tier: mobileProps ? 'mobile' : 'desktop', solidAt, onDeck: decks.length ? onDeckSpan : undefined, legacy: !!P.curbs,
       });
+      let pathwayStep = pathwaySteps.next();
+      for (; !pathwayStep.done; pathwayStep = pathwaySteps.next()) yield { fine: true, progress: false, stage: 'street-pathways' };
+      const built = pathwayStep.value;
       if (built.geometry) buckets.baked.push(built.geometry);
       // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the kit's kerbs and
       // pavements are flush dressing, no seat blocker; the parked vehicles' and carts' seat passes (streetKerbFootprints
@@ -9873,7 +9909,7 @@ ${snowCap ? `
       }
     }
   }
-  placeStreetCurbs();
+  yield* placeStreetCurbs();
   yield { fine: true, progress: false, stage: 'street-curbs' };
 
   // --- central-square monument (town maps): stepped stone obelisk ---
@@ -10336,13 +10372,17 @@ ${snowCap ? `
       if (r > 3.2) addCraterClods(x, z, r);
       return true;
     }
-    function placeBattleScars(corridors: DriveCorridor[]): void {
+    function* placeBattleScars(corridors: DriveCorridor[]): Generator<PropsBuildSlice, void, void> {
       const craterDiscs: THREE.BufferGeometry[] = [];
       const burnDiscs: THREE.BufferGeometry[] = [];
       // 2026-09-14 campaign flavour: desktop tiers carry 35 % more shell craters and burn scars.
       const craterCap = richCount(P.craters);
       for (let i = 0, placed = 0; i < craterCap * 14 && placed < craterCap; i++) {
-        if (tryPlaceBattleScar(corridors, craterDiscs, burnDiscs)) placed++;
+        if (!tryPlaceBattleScar(corridors, craterDiscs, burnDiscs)) continue;
+        placed++;
+        // (battle-spikes-253) a slice a scar: a big hole's ring of ejecta bodies made the scars one 1-4 s task (its discs
+        // stay private till the decal meshes below take them)
+        yield { fine: true, progress: false, stage: 'ground-scars' };
       }
       for (const [wx, wz] of wreckScorch) {
         burnDiscs.push(conformedDisc(wx, wz, 5.6, [0.03, 0.04, 0.05, 0.02]));
@@ -10395,7 +10435,7 @@ ${snowCap ? `
     // Yield only after a complete family transfers its meshes to the props
     // group. Foundation inputs above stay private until collection completes.
     yield { fine: true, progress: false, stage: 'ground-foundations' };
-    placeBattleScars(corridors);
+    yield* placeBattleScars(corridors);
     yield { fine: true, progress: false, stage: 'ground-scars' };
     placeTrackTears(corridors);
   }
@@ -10967,7 +11007,7 @@ ${snowCap ? `
   // lampposts, the sandbag emplacements, the hulks, the street rubble and the kerbs are placed after the roadside
   // traffic and never looked for it (a lamp post through a Ruinspires box truck, a flatbed 3 m into rubble, a Verdant
   // truck 0.9 m into sandbags); this pass runs after all of them.
-  function seatCartRecords(): void {
+  function* seatCartRecords(): Generator<PropsBuildSlice, void, void> {
     const cartKinds = new Set(Object.keys(CART_RECEIPTS));
     const vehicleKinds = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
     const carts = destructibles.filter((record) => (cartKinds.has(record.kind) || vehicleKinds.has(record.kind)) && record.state === 0
@@ -11058,7 +11098,36 @@ ${snowCap ? `
       return [{ ob: ob ?? { min: [sx0, seat.y, sz0], max: [sx1, top, sz1] }, poly: poly as FootprintPolygon, sx0, sx1, sz0, sz1 }];
     };
     // (the stones that keep their legacy records here too: the census's Alpine sled met one past its record)
-    const stones = rockSeats.flatMap((seat) => stonePlan(seat, seat.rec));
+    // (battle-spikes-253; nav-perf's entry census named stonePlan a long-task source) a stone's plan is drawn when a cart's
+    // reach first meets the box its form's corners make at its seat — every vertex the plan reads stands inside that
+    // box, so the reach test on it passes every stone the plan's own box would — not for every stone on the map up front
+    const formBoxes = new Map<number, Float64Array>();
+    const formBox = (vv: number): Float64Array => {
+      let box = formBoxes.get(vv);
+      if (box) return box;
+      const p = rockForms[vv].positions;
+      box = new Float64Array([Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]);
+      for (let v = 0; v + 2 < p.length; v += 3) {
+        for (let a = 0; a < 3; a++) { box[a] = Math.min(box[a], p[v + a]); box[a + 3] = Math.max(box[a + 3], p[v + a]); }
+      }
+      formBoxes.set(vv, box);
+      return box;
+    };
+    const stoneReach = rockSeats.map((seat) => {
+      const b = formBox(seat.vv), e = seat.placement.elements;
+      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
+      for (let k = 0; k < 8; k++) {
+        const lx = b[k & 1 ? 3 : 0], ly = b[k & 2 ? 4 : 1], lz = b[k & 4 ? 5 : 2];
+        const wx = e[0] * lx + e[4] * ly + e[8] * lz + e[12], wz = e[2] * lx + e[6] * ly + e[10] * lz + e[14];
+        sx0 = Math.min(sx0, wx); sx1 = Math.max(sx1, wx); sz0 = Math.min(sz0, wz); sz1 = Math.max(sz1, wz);
+      }
+      return { sx0, sx1, sz0, sz1 };
+    });
+    const stonePlans: (ReturnType<typeof stonePlan>[number] | null | undefined)[] = new Array(rockSeats.length);
+    const stoneAt = (k: number) => {
+      if (stonePlans[k] === undefined) stonePlans[k] = stonePlan(rockSeats[k], rockSeats[k].rec)[0] ?? null;
+      return stonePlans[k];
+    };
     const nearOf = new Map<DestructibleRecord, Near[]>();
     const crushRecords = crushableFootprints();
     // (Lane C, 2026-10-14) what stands within a cart's reach, gathered again over a further reach for its relocation
@@ -11074,8 +11143,11 @@ ${snowCap ? `
           near.push({ ob, polys: owner ? null : buildings.has(ob) ? buildingPolys(ob) : prop ? bandPolys(ob, prop) : shapePolygons(ob), parked: owner });
         }
       }
-      for (const stone of stones) {
-        if (stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
+      for (let k = 0; k < rockSeats.length; k++) {
+        const box = stoneReach[k];
+        if (box.sx1 < x0 || box.sx0 > x1 || box.sz1 < z0 || box.sz0 > z1) continue;
+        const stone = stoneAt(k);
+        if (!stone || stone.sx1 < x0 || stone.sx0 > x1 || stone.sz1 < z0 || stone.sz0 > z1) continue;
         near.push({ ob: stone.ob, polys: [stone.poly], parked: null, stone: true });
       }
       for (const ob of crushRecords) {
@@ -11084,7 +11156,11 @@ ${snowCap ? `
       }
       nearOf.set(cart, near);
     };
-    for (const cart of carts) gatherNear(cart, slideOf(cart));
+    // (battle-spikes-253) a slice a cart: Alpine's seating was one 3.5 s task
+    for (const cart of carts) {
+      gatherNear(cart, slideOf(cart));
+      yield { fine: true, progress: false, stage: 'cart-seats' };
+    }
     // the cart's body at a seat against what stands near it: a vehicle or a cart keeps the parked clearance, the rest
     // a hand's breadth; `seen` collects each meeting's way out
     // round 5 (wave 278: the Frosthollow horn sled "jammed against the birch trunk where it couldn't have been drawn"): a
@@ -11202,7 +11278,7 @@ ${snowCap ? `
       if (groundBad(cart, cart.x, cart.z)) out.add('ground (steep or humped)');
       return [...out];
     };
-    group.userData.cartSeats = seatCartsClear(carts, {
+    const seating = seatCartsClearSteps(carts, {
       blocked: (cart, x, z) => meets(cart, x, z) || groundBad(cart, x, z),
       away: (cart) => {
         let ax = 0, az = 0;
@@ -11241,8 +11317,12 @@ ${snowCap ? `
         : vehicleKinds.has(cart.kind) ? VEHICLE_RELOCATE_MAX_M : CART_RELOCATE_MAX_M),
       prepareRelocation: (cart, reach) => gatherNear(cart, reach),
     });
+    for (let step = seating.next(); ; step = seating.next()) {
+      if (step.done) { group.userData.cartSeats = step.value; break; }
+      yield { fine: true, progress: false, stage: 'cart-seats' };
+    }
   }
-  seatCartRecords();
+  yield* seatCartRecords();
   // (sealed lane 2026-10-10) the parked vehicles' and carts' obstacles, for the world's shrub seal: no shrub's crown
   // stands inside a parked vehicle (map.ts; the core rule left a bush's cards through a Reservoir truck's cab)
   group.userData.parkedVehicleObstacles = destructibles.filter((record) => record.ob && !record.dropped
@@ -11862,6 +11942,8 @@ ${snowCap ? `
     const geoI = pool.meta.build(drng);
     let transferred = false;
     try {
+      // (battle-spikes-253) the build and the refit in their own slices (Steinburg's pillbox pool was one 182 ms task)
+      yield { fine: true, progress: false, stage: 'pool-refit-' + kind };
       const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
       let fitted = 0;
       for (let index = 0; index < pool.records.length; index++) {
@@ -11978,6 +12060,8 @@ ${snowCap ? `
       };
     }
     if (meta.broken) {
+      // (battle-spikes-253) the broken form in its own slice: the legacy build and a settled heap (lightWreck) or a fracture
+      yield { fine: true, progress: false, stage: 'pool-broken-' + kind };
       // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
       // the destructible stream and every later pool builds from the stream it always did
