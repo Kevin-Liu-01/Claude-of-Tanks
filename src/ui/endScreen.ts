@@ -956,12 +956,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details = rosterRowDetails(result, revives);
     // (a Latin callsign keeps the Latin size in zh: .lat)
     const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
+    // (and so does a Latin vehicle name: zh's lift cut "M1A1 Abrams HC" at 320x568, gauntlet r10)
+    const vehicleClass = LATIN_NAME.test(vehicle) ? 'vt lat' : 'vt';
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
-      `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
+      `<span class="veh"><span class="${vehicleClass}">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +

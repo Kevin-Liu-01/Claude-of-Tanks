@@ -184,9 +184,12 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6) */
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
-/* (a watched battle's two rosters at a reading width on the widest windows: 1,230 px rows set the callsigns 750 px from
-   their figures at 2560, gauntlet r6; on the title's and the chips' edge, not centred off it, r8) */
-body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:2000px;margin-inline:0;width:100%;box-sizing:border-box}
+/* (a watched battle's two rosters at a reading width on the widest windows, each table 1,000 px at most: 1,230 px rows set
+   the callsigns 750 px from their figures at 2560, gauntlet r6; the sides on the plate's two edges, the title's and the
+   far one, r10: the pair capped as one stopped 560 px short of the far edge) */
+body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{width:100%;box-sizing:border-box}
+body[data-cot-width] .cot-es.cot-es--record.watched .es-roster{width:100%;max-width:1000px;box-sizing:border-box}
+body[data-cot-width] .cot-es.cot-es--record.watched .es-roster.foe{justify-self:end}
 /* (the widest windows: the two teams side by side once the teams' column holds two whole rosters, 1,100 px, the record
    column narrower: stacked, the enemy's ran under the panel's foot beside 570 px of record plate at 2560, gauntlet r7;
    at 1600 and a narrower column the vehicles' names were cut, r5) */
@@ -197,6 +200,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debri
 body[data-cot-width] .cot-es.cot-es--record .es-tr .nm .rode{display:inline-flex;vertical-align:-2px;margin-right:5px;color:var(--accent-hi)}
 /* (a Latin callsign keeps the Latin size in Chinese, whose lift is for Chinese labels: endScreen.ts marks it .lat) */
 :lang(zh-CN) .cot-es .es-tr .nm.lat{--battle-fs-12:12px}
+:lang(zh-CN) .cot-es .es-tr .vt.lat{font-size:calc(1em * 11 / 13)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
 /* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
    Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
