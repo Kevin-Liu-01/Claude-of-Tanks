@@ -207,6 +207,9 @@ interface StudioFxRuntime {
   cinematicPort(): FxCinematicPort;
   /** (fx 8n) The battle's smoke presentation on the Studio's clock (effects.ts setAuxiliaryClock); resetAll clears it. */
   setAuxiliaryClock?(clock: (() => number) | null): boolean;
+  /** (battle-spikes-253) Patch the world's structure materials with the damage mask now (effects.ts attachWorld), so the
+   *  first view's programs are the patched ones. */
+  prepareWorldMaterials?(): void;
 }
 
 interface StudioLightingRuntime {
@@ -5716,6 +5719,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cam.orbit.target.copy(_v2);
       cam.orbit.dist = 24;
       lighting.updateFrustums();
+      // (2026-10-26) the structure mask re-keys every structure material when the fx first meets the world: before this
+      // warm, or the first frame linked the patched variants (16 lit programs of a cold entry's 29)
+      try { fx.prepareWorldMaterials?.(); } catch { /* the first fx update patches them as before */ }
       // the programs the first view draws, linked before it
       await prepareFirstViewPrograms(owns);
       stillOwned();
