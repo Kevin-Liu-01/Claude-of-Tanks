@@ -46,6 +46,7 @@ import {
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
+import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import type { CustomSelectController } from './customSelect.ts';
@@ -576,11 +577,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.accessibility')}</span></button>` +
     `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.language')}</span></button>` +
     `</div>` +
-    // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
-    `<div class="cot-set-conflict cot-c-notice"${datumAttr('notices')} data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
-    `<span class="cot-c-notice__body"><span class="cot-c-notice__text msg"></span></span><span class="cot-c-notice__acts">` +
-    `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
-    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
+    // a binding conflict: the kit's warning notice with its two actions (its text is set when it shows)
+    notice({ severity: 'warning', text: '', className: 'cot-set-conflict', actions: [
+      { label: t('settings.conflict.swap'), primary: true, attrs: { 'data-conflict': 'swap' } },
+      { label: t('settings.conflict.cancel'), attrs: { 'data-conflict': 'cancel' } },
+    ] }) +
     `<div class="cot-set-body" id="cot-set-tabpanel" role="tabpanel" aria-labelledby="cot-set-tab-controls"></div>` +
     `<div class="cot-set-ftr">` +
     `<button class="cot-set-btn reset cot-c-btn cot-c-btn--36 cot-c-btn--secondary" type="button">${t('settings.reset')}</button>` +
@@ -590,8 +591,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   document.body.appendChild(root);
 
   const body = requiredElement<HTMLDivElement>(root, '.cot-set-body');
-  const conflictBar = requiredElement<HTMLDivElement>(root, '.cot-set-conflict');
-  const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.msg');
+  const conflictBar = markDatum(requiredElement<HTMLDivElement>(root, '.cot-set-conflict'), 'notices');
+  const conflictMsg = requiredElement<HTMLSpanElement>(conflictBar, '.cot-c-notice__text');
   const resetBtn = requiredElement<HTMLButtonElement>(root, '.reset');
   const leaveBtn = requiredElement<HTMLButtonElement>(root, '.leave');
 
@@ -1501,12 +1502,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     enemyPick.type = 'color';
     enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
-    // a refused pair: the kit's error notice (glyph and tone), its text set when it shows
-    const refused = el('div', 'cot-c-notice cot-c-notice--inline cot-set-refused', customRow);
-    refused.dataset.severity = 'error';
-    refused.setAttribute('role', 'alert');
-    refused.innerHTML = `<span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>`
-      + '<span class="cot-c-notice__body"><span class="cot-c-notice__text"></span></span>';
+    // a refused pair: the kit's inline error notice, its text set when it shows
+    customRow.insertAdjacentHTML('beforeend', notice({ severity: 'error', text: '', className: 'cot-c-notice--inline cot-set-refused' }));
+    const refused = customRow.lastElementChild as HTMLDivElement;
     const refusedText = requiredElement<HTMLSpanElement>(refused, '.cot-c-notice__text');
     const syncCustom = (): void => {
       ownPick.value = prefs().customOwn;
@@ -1783,14 +1781,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     for (const { row } of rowByAction.values()) row.classList.remove('conflict');
   }
 
-  requiredElement<HTMLButtonElement>(conflictBar, '.swap').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(conflictBar, '[data-conflict="swap"]').addEventListener('click', () => {
     if (!conflict) return;
     if (conflict.pad) input.swapPadBindings(conflict.actionId, conflict.otherId, conflict.code);
     else input.swapBindings(conflict.actionId, conflict.slot, conflict.otherId, conflict.otherSlot, conflict.code);
     clearConflict();
     bindingsMutated();
   });
-  requiredElement<HTMLButtonElement>(conflictBar, '.dismiss').addEventListener('click', () => {
+  requiredElement<HTMLButtonElement>(conflictBar, '[data-conflict="cancel"]').addEventListener('click', () => {
     clearConflict();
     emit('ui:click', {});
   });
