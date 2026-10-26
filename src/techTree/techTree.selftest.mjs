@@ -58,13 +58,16 @@ assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolve
 
 // ------------------------------------------------------------------------------------------------ the 251 order
 // Owner 2026-10-25 (253): "order we had before for all tanks was good we just need em re tiered". The shown tier keeps
-// the order of the matchmaking tiers as they stood at release 251 (src/vehicles/tier.ts, unchanged since), the era
+// the order of the matchmaking tiers as they stood at release 251 (src/vehicles/tier.ts; AT_251 below), the era
 // breaking ties: a tank never shows below one that ranked lower, a T-72/T-80/T-90 lineage never steps down, and a
 // prototype never shows above its production type. The owner's Japan placements (the Type 10 and its dozer at X, the
-// TK-X and 10B at IX) sit inside their bands; his Korean orders are relative and hold inside the bands too.
+// TK-X and 10B at IX) sit inside their bands; the owner's Korean orders are relative and hold inside the bands too.
 const ERA = { ww2: 0, 'cold-war': 1, modern: 2, 'next-generation': 3 };
 const OWNER_RULED = new Set(['type10', 'type10_dozer', 'type10_tk_x', 'type10b']);
-const rank = (id) => [tankTier(id), ERA[TANK_SPECS[id].era]];
+// 257 moved the T-90 obr. 1992 and the T-90A Burlak Prototype from X to IX in tier.ts (their lineage stepped down); the
+// order kept here is the 251 one the owner approved, so those two rank where they stood then.
+const AT_251 = Object.freeze({ t90_1992: 10, t90a_burlak_proto: 10 });
+const rank = (id) => [AT_251[id] ?? tankTier(id), ERA[TANK_SPECS[id].era]];
 const below = (a, b) => rank(a)[0] < rank(b)[0] || (rank(a)[0] === rank(b)[0] && rank(a)[1] < rank(b)[1]);
 const inversions = [];
 for (const a of drawn) {
