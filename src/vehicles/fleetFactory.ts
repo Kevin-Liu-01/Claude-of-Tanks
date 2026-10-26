@@ -325,12 +325,15 @@ export function createTankSteps(
 
 /**
  * Stage 2b pass 1 (UI-LOCKDOWN E): the decor worker's planner, for a stepped build whose driver awaits the waits it
- * yields (the Garage pedestal, the battle streamer); null where no Worker runs (the Node tools). The client chunk loads
- * with the first plan; a failed load or worker falls back to the in-line pass for that tank.
+ * yields (the Garage pedestal, the battle streamer); null where no Worker runs (the Node tools). Asking for it starts the
+ * client and the worker, so they load while the core builds ahead of its decoration; a failed load or worker falls
+ * back to the in-line pass for that tank.
  */
 export function offThreadDecorPlanner(): DecorPlanner | null {
   if (typeof Worker !== 'function') return null;
-  return (args) => import('./decorPlanClient.ts').then(({ planDecoration }) => planDecoration(args));
+  const client = import('./decorPlanClient.ts');
+  client.then(({ startDecorWorker }) => startDecorWorker(), () => {});
+  return (args) => client.then(({ planDecoration }) => planDecoration(args));
 }
 
 export { KIT } from './tankFactoryCore.ts';

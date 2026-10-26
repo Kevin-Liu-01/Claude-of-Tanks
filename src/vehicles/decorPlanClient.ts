@@ -34,6 +34,11 @@ function decorWorker(): Worker {
   return worker;
 }
 
+/** Start the worker ahead of its first request (it loads the decoration's chunks in its own realm); never throws. */
+export function startDecorWorker(): void {
+  try { decorWorker(); } catch { /* the first plan reports it */ }
+}
+
 /** The decoration's plan for this tank, made off the main thread (null: the tank takes no decoration). */
 export function planDecoration(args: DecorationAttachmentArgs): Promise<DecorPlan | null> {
   const { request, transfer } = decorPlanRequest(args);
