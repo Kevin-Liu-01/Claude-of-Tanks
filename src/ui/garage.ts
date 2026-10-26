@@ -4582,6 +4582,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return;
     }
     if (deployOpen && e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
+    // a control that took the key (a station's or a chip row's roving, the camo picker's grid) keeps it: its arrows never
+    // also switch the tank (the interaction census)
+    if (e.defaultPrevented) return;
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
