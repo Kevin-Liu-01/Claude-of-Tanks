@@ -61,8 +61,10 @@ const profileLeave = argv.includes('--profile-leave');
 // --leave-first=A|B and --leave-gap-ms=<ms>: who leaves first (B by default) and how long the other waits after that
 // page's Garage is back (0 by default): two pages share the census's GPU process, so a gap keeps one page's Garage
 // restore out of the other's round trips
-// --profile-solo: with --solo, a CPU profile of the host page's solo battle entry, each long task (300 ms or more) attributed
+// --profile-solo: with --solo, a CPU profile of the host page's solo battle entry, each long task attributed (300 ms or
+// more, or --profile-solo-min-ms=<ms>)
 const profileSolo = argv.includes('--profile-solo');
+const profileSoloMinMs = Number(option('profile-solo-min-ms', '300')) || 300;
 // --solo-eval=<expression>: with --solo, evaluated in the host page once its solo battle has settled (its loading trace,
 // window.__BATTLE_LOAD, say), kept on the solo stage's sample (soloEval) and printed
 const soloEval = option('solo-eval', '');
@@ -307,7 +309,7 @@ try {
     let soloEntryProfile = null;
     if (soloEntryCdp) {
       const { profile } = await soloEntryCdp.send('Profiler.stop');
-      const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= soloEntryFrom && ms >= 300);
+      const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= soloEntryFrom && ms >= profileSoloMinMs);
       mkdirSync(join(out, label), { recursive: true });
       writeFileSync(join(out, label, 'solo-entry-A.cpuprofile'), JSON.stringify(profile));
       soloEntryProfile = attribute(profile, spans, profile.startTime / 1000 - soloEntryFrom);
