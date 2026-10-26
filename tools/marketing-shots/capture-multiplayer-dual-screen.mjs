@@ -526,9 +526,9 @@ async function bootGarage(page, origin, label) {
 async function openLanMenu(page, label) {
   await page.waitForSelector('.cot-multiplayer-entry', { visible: true, timeout: 60_000 });
   await page.click('.cot-multiplayer-entry');
-  await page.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-  await page.click('.cot-play .modes [data-mode="lan"]');
-  await waitFor(page, () => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), `${label} LAN mode`, 10_000);
+  await page.waitForSelector('.cot-play.show .modes [data-value="lan"]', { timeout: 30_000 });
+  await page.click('.cot-play .modes [data-value="lan"]');
+  await waitFor(page, () => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', `${label} LAN mode`, 10_000);
 }
 
 /** A lobby control (the play menu's custom select): set its value and announce the change as a pick would. */

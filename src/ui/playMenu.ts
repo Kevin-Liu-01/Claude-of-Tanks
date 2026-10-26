@@ -249,20 +249,14 @@ const CSS = `
 .cot-play .lead:empty{display:none}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:var(--s2)}
 
-/* the two ways in: a private room and the local network */
-.cot-play .modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4)}
-.cot-play .mode{position:relative;display:flex;align-items:center;gap:var(--s3);min-height:64px;padding:var(--s3) var(--s4);
-  border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);
-  text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
-.cot-play .mode:hover{background:var(--surface-hover)}
-.cot-play .mode.on{background:var(--accent-wash);box-shadow:var(--ring-accent)}
-.cot-play .mode b{display:block;margin:0;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-transform:uppercase}
-.cot-play .mode-icon{display:grid;flex:none;place-items:center;color:var(--ink-2)}
-.cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
-.cot-play .mode-icon svg{display:block}
-.cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body)}
-.cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
+/* the two ways in, a private room and the local network, on the kit's segmented control (.modes, styled with the room's
+   other settings below); the solo link under the room */
+.cot-play .modes{margin-top:var(--s4)}
+.cot-play .mode{display:flex;align-items:center;gap:var(--s2);order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
+  border:0;background:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer;
+  transition:color var(--dur-fast) var(--ease-enter)}
+.cot-play .mode:hover{color:var(--ink-1)}
+.cot-play.lobby-active .mode,.cot-play:not(.multiplayer-entry) .mode{display:none}
 
 /* labels: 12 px at the label tracking */
 .cot-play :is(.rule-heading b,.arrange-head b,.campaign-heading b,.field-label,.roommeta,.arrange-sides-label){
@@ -472,8 +466,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .format-field[hidden]{display:none}
 /* a room's small settings (battle format, deployment) are the kit's segmented control, as wide as their field and as
    tall as its other controls; a guest still reads the format the host chose */
-.cot-play :is(.create-size,.room-size,.room-team){display:flex;width:100%}
-.cot-play :is(.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
+.cot-play :is(.modes,.create-size,.room-size,.room-team){display:flex;width:100%}
+.cot-play :is(.modes,.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
 .cot-play :is(.room-size,.room-team) .cot-c-seg__opt[aria-checked=true]:disabled{color:var(--ink-2)}
 /* the five formats are mono numbers: they need little air to fit the rules column */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt{padding-inline:var(--s1)}
@@ -539,8 +533,6 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .close{to
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.show .controls{
   margin:var(--s3) calc(-1 * var(--s4)) 0;padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:minmax(0,1fr)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s4)}
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
   .cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
@@ -742,10 +734,9 @@ export function createPlayMenu({
       <span class="cot-c-notice__acts"><button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button></span>
     </section></header>
     <p class="lead"></p>
-    <div class="modes">
-      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><b>${t('playMenu.private.title')}</b></button>
-      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><b>${t('playMenu.lan.title')}</b></button>
-    </div>
+    ${segmented({ label: t('playMenu.kind'), value: 'private', className: 'modes', options: [
+      { value: 'private', label: t('playMenu.private.title'), icon: 'battlePrivate' },
+      { value: 'lan', label: t('playMenu.lan.title'), icon: 'battleLan' }] })}
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
@@ -871,6 +862,8 @@ export function createPlayMenu({
   const garageBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="garage"]');
   const nameInput = requiredElement<HTMLInputElement>(root, '[data-field="name"]');
   const codeInput = requiredElement<HTMLInputElement>(root, '[data-field="code"]');
+  /** The room's kind, private or the local network (the kit's segmented control). */
+  const kindSeg = requiredElement<HTMLElement>(root, '.modes');
   const createSizeSelect = requiredElement<MenuSelectElement>(root, '[data-field="create-size"]');
   const vehicleSelect = requiredElement<MenuSelectElement>(root, '[data-control="vehicle"]');
   const teamSelect = requiredElement<MenuSelectElement>(root, '[data-control="team"]');
@@ -1595,10 +1588,7 @@ export function createPlayMenu({
     mode = normalizePlayMode(requestedMode) === 'lan' ? 'lan' : 'private';
     revealMenu();
     room.classList.add('show');
-    for (const item of root.querySelectorAll<HTMLButtonElement>('.mode')) {
-      item.classList.toggle('on', item.dataset.mode === mode);
-      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item.dataset.mode === mode));
-    }
+    setRoving(kindSeg, mode);
     setConnecting(false);
     showFailure(reason);
   }
@@ -2029,8 +2019,6 @@ export function createPlayMenu({
   });
 
   function selectMode(nextMode: PlayMode): void {
-    const button = root.querySelector<HTMLButtonElement>(`.mode[data-mode="${nextMode}"]`);
-    if (!button) return;
     closePicks();
     if (nextMode === 'solo') {
       closeCurrentSession('mode_changed');
@@ -2054,19 +2042,14 @@ export function createPlayMenu({
     closeCurrentSession('mode_changed');
     clearFailure();
     mode = nextMode;
-    for (const item of root.querySelectorAll<HTMLElement>('.mode')) {
-      item.classList.toggle('on', item === button);
-      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item === button));
-    }
+    setRoving(kindSeg, mode);
     room.classList.add('show');
     setConnecting(false);
     if (!menuRoomsUrl()) showFailure('room_unconfigured');
     else setStatus('');
   }
-  root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {
-    const requested = button.dataset.mode;
-    selectMode(normalizePlayMode(requested));
-  }));
+  wireRoving(kindSeg, (requested) => selectMode(normalizePlayMode(requested)));
+  requiredElement<HTMLButtonElement>(root, '.mode[data-mode="solo"]').addEventListener('click', () => selectMode('solo'));
   createBtn.addEventListener('click', () => { void requestRoom('create'); });
   joinBtn.addEventListener('click', () => { void requestRoom('join'); });
   retryBtn.addEventListener('click', () => {
