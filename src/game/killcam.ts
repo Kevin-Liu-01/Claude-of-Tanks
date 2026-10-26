@@ -77,7 +77,6 @@ import { killcamCameraFloor } from './killcamGround.ts';
  */
 import * as THREE from 'three';
 import { createWheelNotcher } from './wheelNotches.ts';
-import { labelForCode } from './input.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
@@ -1513,7 +1512,8 @@ export function createKillCam(deps: KillcamDeps) {
     skipText.textContent = t('killcam.skipReplay');
     const skipKey = el('kbd', 'cot-c-kbd', skip);
     skipKey.setAttribute('aria-hidden', 'true');
-    skipKey.textContent = labelForCode('Escape');
+    // (the key's own cap, as input.ts labels Escape: importing input.ts here split a boot chunk into a request of its own)
+    skipKey.textContent = 'ESC';
     const annot = el('div', 'cot-kc-annot', root);
     const hd = el('div', 'hd', annot);
     const hdMeta = el('div', 'm', hd);
