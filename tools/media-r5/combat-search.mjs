@@ -8,7 +8,7 @@
 //   every candidate, not the best six)
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { COMBAT_TABLE, DUEL, combatTake, siteScene } from './site50.mjs';
+import { COMBAT_TABLE, DUEL, DUEL_TABLE, combatTake, siteScene } from './site50.mjs';
 import { combatVerdict, fightFaults } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -62,7 +62,8 @@ function placeFight(row) {
   return { shift: null, tried };
 }
 
-for (const row of COMBAT_TABLE.filter((r) => !only || only.includes(r[0]))) {
+// (the duel wall's takes 234-245 too: DUEL_TABLE, same row format)
+for (const row of [...COMBAT_TABLE, ...DUEL_TABLE].filter((r) => !only || only.includes(r[0]))) {
   const [n, id, , , , format] = row;
   const placed = placeFight(row);
   if (!placed.shift) { console.log(`== s${n} ${id}: no clear placement — ${placed.tried.length} tried, first: ${placed.tried.slice(0, 4).join(' | ')}`); continue; }
