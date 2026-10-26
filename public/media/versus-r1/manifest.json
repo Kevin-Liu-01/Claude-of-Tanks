@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 26,
+ "count": 27,
  "featured": [
   "f6-leo2a6-steinburg-r7",
   "vs09-alpine-strv122-t80bv-r7",
@@ -24,7 +24,7 @@
   "vs05-oasis-merkava-t72b3-r6",
   "vs02-verdant-challenger-t80u-r6",
   "vs10-steppe-chieftain-t64-r7",
-  "f7-t90m-column-r5",
+  "f7-type90-column-r8",
   "vs07-autumn-ariete-t62-r6"
  ],
  "items": [
@@ -1455,6 +1455,84 @@
      "width": 3840,
      "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-3840.webp",
      "bytes": 1045890
+    }
+   ]
+  },
+  {
+   "id": "f7-type90-column-r8",
+   "round": 8,
+   "map": "frontier",
+   "hour": "day",
+   "view": "side",
+   "title": {
+    "en": "Frontier Basin, day: Type 90 v T-72BU",
+    "zh": "边疆盆地，白天：Type 90 对 T-72BU"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type90",
+     "displayName": "Type 90",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t72bu",
+     "displayName": "T-72BU",
+     "paint": "factory"
+    },
+    {
+     "role": "ally",
+     "id": "type90",
+     "displayName": "Type 90",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "t72bu",
+     "displayName": "T-72BU",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "t80",
+     "displayName": "T-80",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "bmp2",
+     "displayName": "BMP-2",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/f7-type90-column-r8.json",
+   "path": "/media/versus-r1/f7-type90-column-r8.webp",
+   "bytes": 395012,
+   "sha256": "f688e0fac6202e816aeed855b41af87515b1b8d1d531fe11d81b738ede395d1d",
+   "width": 1920,
+   "height": 1080,
+   "source": "f7-type90-column-r8-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f7-type90-column-r8-640.webp",
+     "bytes": 35766
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f7-type90-column-r8-1280.webp",
+     "bytes": 120770
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f7-type90-column-r8.webp",
+     "bytes": 395012
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f7-type90-column-r8-3840.webp",
+     "bytes": 759046
     }
    ]
   }

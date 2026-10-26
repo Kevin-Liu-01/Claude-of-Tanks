@@ -751,22 +751,22 @@
         {
           "width": 640,
           "path": "/media/home-r2/fleet-merkava4_trophy-640.webp",
-          "bytes": 31646
+          "bytes": 28584
         },
         {
           "width": 1280,
           "path": "/media/home-r2/fleet-merkava4_trophy-1280.webp",
-          "bytes": 113250
+          "bytes": 85960
         },
         {
           "width": 1920,
           "path": "/media/home-r2/fleet-merkava4_trophy-1920.webp",
-          "bytes": 264372
+          "bytes": 192170
         },
         {
           "width": 3840,
           "path": "/media/home-r2/fleet-merkava4_trophy-3840.webp",
-          "bytes": 688640
+          "bytes": 457462
         }
       ]
     },
@@ -844,22 +844,22 @@
         {
           "width": 640,
           "path": "/media/home-r2/fleet-kv2-640.webp",
-          "bytes": 29508
+          "bytes": 24578
         },
         {
           "width": 1280,
           "path": "/media/home-r2/fleet-kv2-1280.webp",
-          "bytes": 96662
+          "bytes": 85606
         },
         {
           "width": 1920,
           "path": "/media/home-r2/fleet-kv2-1920.webp",
-          "bytes": 222146
+          "bytes": 220278
         },
         {
           "width": 3840,
           "path": "/media/home-r2/fleet-kv2-3840.webp",
-          "bytes": 556862
+          "bytes": 584594
         }
       ]
     },
