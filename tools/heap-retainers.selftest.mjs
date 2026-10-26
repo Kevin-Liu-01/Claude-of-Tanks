@@ -1,7 +1,7 @@
 // heap-retainers.mjs on a synthetic snapshot fed in awkward chunks: the strong retainer path from a root to a marker,
 // weak edges skipped, the shortest path first.
 import assert from 'node:assert/strict';
-import { createSnapshotParser, retainerPaths } from './heap-retainers.mjs';
+import { createSnapshotParser, retainerPaths, snapshotIsWhole } from './heap-retainers.mjs';
 
 const strings = ['', '(GC roots)', 'Window', 'cache', 'World', 'marker', 'LeakMarker_1', 'weakRefs', 'Holder', 'held'];
 const meta = {
@@ -28,6 +28,10 @@ for (let at = 0; at < json.length; at += 7) parser.feed(json.slice(at, at + 7));
 const snapshot = parser.finish();
 assert.equal(snapshot.nodes.length, nodes.length, 'every node field parsed across chunk splits');
 assert.equal(snapshot.edges.length, edges.length);
+assert.ok(snapshotIsWhole(snapshot), 'whole: every declared node and edge, the strings read whole');
+const short = createSnapshotParser();
+short.feed(json.replace('"nodes":[2,1,0,8,2,', '"nodes":[')); // a node's fields lost in transit
+assert.equal(snapshotIsWhole(short.finish()), false, 'a stream that lost a node is not whole');
 const [paths] = retainerPaths(snapshot, 'LeakMarker_1', 3);
 assert.deepEqual(paths, [['(GC roots) .Window', 'Window .cache', 'World .marker', 'LeakMarker_1']],
   'the strong path; the weakly held Holder does not retain it');

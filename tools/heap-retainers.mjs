@@ -66,8 +66,9 @@ export function createSnapshotParser() {
         fault.realigned = missing;
       }
     }
-    const meta = JSON.parse(metaText.replace(/^\s*\{\s*"snapshot"\s*:\s*/, '').replace(/,\s*$/, '')).meta;
-    return { meta, nodes: nodes.a.subarray(0, nodes.n), edges: edges.a.subarray(0, edges.n), strings, fault };
+    const head = JSON.parse(metaText.replace(/^\s*\{\s*"snapshot"\s*:\s*/, '').replace(/,\s*$/, ''));
+    return { meta: head.meta, declared: { nodes: head.node_count, edges: head.edge_count },
+      nodes: nodes.a.subarray(0, nodes.n), edges: edges.a.subarray(0, edges.n), strings, fault };
   }
   let fault = null;
   return { feed, finish };
@@ -106,6 +107,13 @@ export function readStringArray(text) {
     expectValue = false;
   }
   return { strings, gaps };
+}
+
+/** A parsed snapshot holds every node and edge its meta declares, and a string table read whole. */
+export function snapshotIsWhole(snapshot) {
+  const { meta, declared, nodes, edges, fault } = snapshot;
+  return !fault && !!declared && nodes.length === declared.nodes * meta.node_fields.length
+    && edges.length === declared.edges * meta.edge_fields.length;
 }
 
 /** The highest string index a node's name or a named edge reads. */
@@ -191,12 +199,27 @@ export async function heapObjectIdOf(cdp, expression) {
  *  a marker's name reads it by in the page, whose heap snapshot object id (asked once the snapshot has assigned ids, the
  *  handle released) finds it where the string table may have misnamed it. */
 export async function snapshotRetainerPaths(cdp, markerNames, max = 3, locate = {}) {
-  const parser = createSnapshotParser();
-  const onChunk = ({ chunk }) => parser.feed(chunk);
-  cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
-  try { await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }); }
-  finally { cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk); }
-  const snapshot = parser.finish();
+  // (2026-10-26: the game page's snapshots arrived with stretches missing — in the string table, once its very mark —
+  // so the graph is checked against the counts its meta declares and the snapshot taken again, three times at most)
+  let snapshot = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const parser = createSnapshotParser();
+    let chunks = 0, chars = 0;
+    const onChunk = ({ chunk }) => { chunks++; chars += chunk.length; parser.feed(chunk); };
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
+    try { await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }); }
+    finally { cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk); }
+    let taken = null, whole = false, why = '';
+    try {
+      taken = parser.finish();
+      whole = snapshotIsWhole(taken);
+      why = whole ? 'whole' : `nodes ${taken.nodes.length / taken.meta.node_fields.length} of ${taken.declared?.nodes}, edges ${taken.edges.length / taken.meta.edge_fields.length} of ${taken.declared?.edges}, gaps ${taken.fault?.gaps ?? 0}`;
+    } catch (error) { why = String(error?.message ?? error); }
+    console.error(`[heap-retainers] snapshot ${attempt}: ${chunks} chunks, ${chars} chars, ${why}`);
+    if (taken) snapshot = taken;
+    if (whole) break;
+  }
+  if (!snapshot) return Object.fromEntries(markerNames.map((name) => [name, []]));
   if (snapshot.fault) console.error(`[heap-retainers] the string table read string by string: ${JSON.stringify(snapshot.fault)}`);
   const ids = {};
   for (const name of markerNames) {
