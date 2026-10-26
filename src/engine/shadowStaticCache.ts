@@ -671,7 +671,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
   /** Hash the static world (every caster's signature, in traversal order) and run the promotion bookkeeping. */
   function hashStaticContent(): number {
     dirtySpheres.length = 0;
-    dirtyAll = !hashedOnce;
+    dirtyAll = !hashedOnce || (typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.noScopedRebuild);
     // the promoted casters first: back to the static layer once still (hashed below this same frame), out of the
     // set once gone from the world
     for (const object of promoted) {

@@ -112,6 +112,8 @@ export function parseCensusArgs(argv) {
         return { label: pair.slice(0, at), root: path.resolve(pair.slice(at + 1)) };
       }); break;
       case 'governor': o.governor = value; break;
+      // (battle-spikes-253) engine/lighting.ts's __SHADOW_DEBUG switches set before boot (a same-build A/B): noScopedRebuild,noPoseHold
+      case 'shadow-debug': o.shadowDebug = Object.fromEntries(value.split(',').filter(Boolean).map((key) => [key, true])); break;
       default: throw new Error(`${TOOL}: unknown flag --${key}`);
     }
   }
@@ -606,6 +608,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
     page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 300)));
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument(installCensusObservers, { preset: options.preset, allies, enemies });
+    if (options.shadowDebug) await page.evaluateOnNewDocument((flags) => { window.__SHADOW_DEBUG = { ...(window.__SHADOW_DEBUG ?? {}), ...flags }; }, options.shadowDebug);
     const bootAt = Date.now();
     await page.goto(`http://127.0.0.1:${side.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
@@ -637,6 +640,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
       record.browserPeakRssMB = Math.round(rss.peakKb / 1024);
       record.label = side.label;
       record.governor = options.governor;
+      record.shadowDebug = options.shadowDebug ?? null;
       played = true;
       record.bootMs = bootMs;
       record.errors = errors.splice(0);
