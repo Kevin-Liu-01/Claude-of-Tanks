@@ -25,21 +25,27 @@ export interface HinterlandSupply {
   buildSteps(context: HinterlandBuildContext): Generator<void, unknown, void>;
 }
 
-let supplied: HinterlandSupply | null = null;
+/**
+ * One supply a map and trench variant (battle-spikes-253): a world build that starts while another runs supplies its own
+ * beside the other's. A single slot handed the later build's to both, and the earlier migrated map's terrain build,
+ * finding none of its own, built the old ring in its Hinterland's place (horizonRingHook.ts, the same law).
+ */
+const supplied = new Map<string, HinterlandSupply>();
+const supplyKey = (mapId: string | undefined, trenches: boolean): string => `${mapId}|${trenches}`;
 
-/** The world build's supply (null withdraws it). */
+/** The world build's supply (null withdraws every supply). */
 export function supplyHinterland(supply: HinterlandSupply | null): void {
-  supplied = supply;
+  if (!supply) { supplied.clear(); return; }
+  supplied.set(supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches'), supply);
 }
 
 /** Withdraw a supply when its world build ends — only if it is still the one supplied. */
 export function withdrawHinterland(supply: HinterlandSupply): void {
-  if (supplied === supply) supplied = null;
+  const key = supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches');
+  if (supplied.get(key) === supply) supplied.delete(key);
 }
 
 /** The supply for a terrain build of this config (its map and trench variant), else null: the old ring. */
 export function hinterlandSupplyFor(cfg: { readonly id?: string; readonly assaultTrenches?: boolean } | null): HinterlandSupply | null {
-  if (!supplied || !cfg) return null;
-  const { mapId, terrainVariant } = supplied.request;
-  return mapId === cfg.id && (terrainVariant === 'assault-trenches') === !!cfg.assaultTrenches ? supplied : null;
+  return cfg ? supplied.get(supplyKey(cfg.id, !!cfg.assaultTrenches)) ?? null : null;
 }

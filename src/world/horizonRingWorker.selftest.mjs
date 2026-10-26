@@ -335,7 +335,16 @@ assert.equal(horizonRing().horizonRingGeometrySteps, horizonRingGeometrySteps, '
   assert.equal(horizonRingSupplyFor(null), null);
   const later = startHorizonRingBuild({ mapId: 'coastal', terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
   supplyHorizonRing(later);
+  // (battle-spikes-253) two builds at once (the Garage's background build, a deploy's battlefield): each keeps its own
+  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply, 'a later build of another map leaves the earlier its supply');
+  assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), later);
+  const trenches = startHorizonRingBuild({ mapId: 'verdant', terrainVariant: 'assault-trenches', fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false }, null);
+  supplyHorizonRing(trenches);
+  assert.equal(horizonRingSupplyFor(worldBuildConfig('verdant', 'assault-trenches')), trenches, 'the trench variant keeps its own');
+  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), supply);
+  withdrawHorizonRing(trenches);
   withdrawHorizonRing(supply);
+  assert.equal(horizonRingSupplyFor(getMapConfig('verdant')), null);
   assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), later, 'an ended build withdraws only its own supply');
   withdrawHorizonRing(later);
   assert.equal(horizonRingSupplyFor(getMapConfig('coastal')), null);
