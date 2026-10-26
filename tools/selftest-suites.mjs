@@ -2373,6 +2373,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
     // again"): one row a datum, placed only by its owner, its glyph through the registry
     'src/ui/surfaceRegistry.selftest.mjs',
+    // 2026-10-26 (owner, the battle load: "there are still black bars above and below the images here!!! fix that!!! no more
+    // object containns"): contain only on registered transparent cutouts, every cover rule's focal point declared (a
+    // shrinking baseline), and the letterbox-band judge the browser check runs on the load, end and media pages
+    'tools/image-fit-lint.selftest.mjs',
+    'tools/letterbox-bands.selftest.mjs',
     // 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and systems"):
     // every choose-one registered against the kit picker, failing sites only in a shrinking baseline, common-path presses
     // that only fall; the keyboard and touch judge the gauntlet and click-timeline captures run

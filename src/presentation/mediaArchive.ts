@@ -116,7 +116,6 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
       className: 'media-archive-recipe',
       image: {
         src: shot.src,
-        fit: 'contain',
         alt: shot.alt || t('mediaArchive.recipe.fallbackAlt', { title: shot.title }),
         caption: `${shot.title} // ${shot.map}`,
       },
