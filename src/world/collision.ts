@@ -933,6 +933,82 @@ export function collisionFootprintContainsPoint(
 }
 
 /**
+ * (battle-spikes-253) `records.some((q) => !q.dead && collisionFootprintContainsPoint(q, x, z, margin))` for many points:
+ * each record binned on an 8 m grid by a box its footprint cannot pass at any margin up to `maxMargin` — a circle's
+ * radius, an obb's corner, a convex part's mitred corners (each vertex's reach margin / sin(θ/2)) — so a point is tested
+ * against the records whose box holds it. A part no box bounds (a needle, a reflex turn, a degenerate ring) is tested at
+ * every point; a wider margin scans them all. The same answer as the scan (Suzhou Creek's station forecourt fit: 5 s of
+ * one page task testing its cells against every record on the map).
+ */
+export function createFootprintPointIndex(records: readonly CollisionRecord[], maxMargin: number) {
+  const CELL = 8;
+  const cells = new Map<number, CollisionRecord[]>();
+  const everywhere: CollisionRecord[] = [];
+  const key = (cx: number, cz: number) => (cx + 4096) * 8192 + (cz + 4096);
+  const grow = (box: number[], x0: number, z0: number, x1: number, z1: number) => {
+    box[0] = Math.min(box[0], x0); box[1] = Math.min(box[1], z0); box[2] = Math.max(box[2], x1); box[3] = Math.max(box[3], z1);
+  };
+  /** The part's reach at maxMargin into `box`; false when no box bounds it. */
+  const partBox = (part: SimpleCollisionShape, box: number[]): boolean => {
+    if (part.kind === 'circle') {
+      const r = Math.max(0, part.r + maxMargin);
+      grow(box, part.cx - r, part.cz - r, part.cx + r, part.cz + r);
+      return true;
+    }
+    if (part.kind === 'obb') {
+      const r = Math.hypot(Math.abs(part.hw) + maxMargin, Math.abs(part.hl) + maxMargin);
+      grow(box, part.cx - r, part.cz - r, part.cx + r, part.cz + r);
+      return true;
+    }
+    const points = part.points, n = points.length / 2;
+    if (n < 3 || points.length % 2) return false;
+    const winding = convexWinding(points);
+    let reach = maxMargin, x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const a = ((i + n - 1) % n) * 2, b = i * 2, c = ((i + 1) % n) * 2;
+      const e1x = points[b] - points[a], e1z = points[b + 1] - points[a + 1];
+      const e2x = points[c] - points[b], e2z = points[c + 1] - points[b + 1];
+      const l1 = Math.hypot(e1x, e1z), l2 = Math.hypot(e2x, e2z);
+      if (!(l1 > 0) || !(l2 > 0)) return false;
+      // a reflex or degenerate turn: no mitre bounds the half-planes' intersection there
+      if (winding * (e1x * e2z - e1z * e2x) < 0) return false;
+      const cos = -(e1x * e2x + e1z * e2z) / (l1 * l2);
+      const sinHalf = Math.sqrt(Math.max(0, (1 - cos) / 2));
+      if (!(sinHalf > 1e-3)) return false;
+      reach = Math.max(reach, maxMargin / sinHalf);
+      x0 = Math.min(x0, points[b]); z0 = Math.min(z0, points[b + 1]); x1 = Math.max(x1, points[b]); z1 = Math.max(z1, points[b + 1]);
+    }
+    grow(box, x0 - reach, z0 - reach, x1 + reach, z1 + reach);
+    return true;
+  };
+  for (const record of records) {
+    const box = [Infinity, Infinity, -Infinity, -Infinity];
+    const shape = record.shape2;
+    let bounded = true;
+    if (!shape) grow(box, record.min[0] - maxMargin, record.min[2] - maxMargin, record.max[0] + maxMargin, record.max[2] + maxMargin);
+    else if (shape.kind !== 'compound') bounded = partBox(shape, box);
+    else for (const part of shape.parts) if (!partBox(part, box)) { bounded = false; break; }
+    if (!bounded || !box.every(Number.isFinite) || (box[2] - box[0]) / CELL * ((box[3] - box[1]) / CELL) > 1e5) {
+      everywhere.push(record);
+      continue;
+    }
+    // (a centimetre past it: the tests' own rounding never reaches that far)
+    for (let cx = Math.floor((box[0] - 0.01) / CELL); cx <= Math.floor((box[2] + 0.01) / CELL); cx++) {
+      for (let cz = Math.floor((box[1] - 0.01) / CELL); cz <= Math.floor((box[3] + 0.01) / CELL); cz++) {
+        const k = key(cx, cz);
+        const list = cells.get(k);
+        if (list) list.push(record); else cells.set(k, [record]);
+      }
+    }
+  }
+  return (x: number, z: number, margin: number): boolean => {
+    const holds = (q: CollisionRecord) => !q.dead && collisionFootprintContainsPoint(q, x, z, margin);
+    if (!(margin <= maxMargin)) return records.some(holds);
+    return (cells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)))?.some(holds) ?? false) || everywhere.some(holds);
+  };
+}
+
+/**
  * The bots' clearance query: collisionFootprintContainsPoint with each corner sharper than CLEARANCE_MITER_LIMIT
  * bevelled at the margin (clearanceBevelAt), so a sliver grows no needle. Identical at margin 0.
  */

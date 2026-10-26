@@ -338,8 +338,24 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
     seed) are steps or the surface paint worker's now. Props output identical in Node on Alpine+Urban (the queue
     drained), Autumn and Delta (civic; Autumn's destructible records differ only in three's random UUIDs), Coastal and
     Desert (lime render).
-  - Open: a road wreck's commit (150 ms; its geometry's three transforms are one bake each), a planned building
-    (100-150 ms), a landmark's halves, the rock variants, the yards.
+  - a road wreck's commit (150 ms) is steps: a step after each of its hulk's three transforms (a hulk ~50k vertices, a
+    transform ~6.5 ms in desktop Node), its bounds computed once after the last, its debris its own step, its own
+    quaternion (another world build may run between the steps). A planned building is three steps: its base build and
+    pose, its region's rebuild, its collision and merge. A set piece's collision derives a height band a step
+    (structureCollision.ts deriveRuntimeStructureCollisionProfileSteps; Verdant's worst landmark slice was 444 ms in Node).
+    Props output identical in Node on Airfield, Urban, Steinburg (wrecks), Steinburg, Suzhou Creek, Mangrove, Verdant
+    (buildings), Suzhou Creek, Verdant, Orchard and Delta (landmarks, the station below).
+  - Open: a set piece's damage anatomy (describeStructure: Verdant's church 285 ms in Node, its kit's describe reading
+    every triangle) and the church builder itself (261 ms, its openings' dressing); the yards (42 ms) are under budget.
+
+- **Suzhou Creek's entry: one 3.6-5.1 s task** (blackglass solo, lane and main 252 alike; the profiled entry with the
+  reverb's convolver a pass-through, `--no-convolver`): the Shanghai kit's North Station forecourt fit
+  (shanghaiStreets.ts dressNorthStation) shrank its rectangle a metre a try and tested every 1 m cell of each try against
+  every record on the map (collisionFootprintContainsPoint). On a multiplayer host that is a page that forwards no link
+  pressure for 5 s (the rooms census's server 9). The records are binned now (collision.ts createFootprintPointIndex):
+  each by a box its footprint cannot pass at the largest margin asked (a convex part's mitred corners, margin /
+  sin(θ/2), included; a needle, a reflex or a degenerate ring is tested at every point), the same answers as the scan
+  (footprintPointIndex.selftest: 60,000 points over 600 seeded records of every kind).
 
 ## Draw count (the engine ruling's lever)
 

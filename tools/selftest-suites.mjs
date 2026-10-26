@@ -1934,6 +1934,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsScheduling.selftest.mjs',
     'src/world/worldAssemblySteps.selftest.mjs', // battle-spikes-253: the world's assembly paced in steps, the seal per grass mesh
     'src/world/worldBuildLazyKits.selftest.mjs', // battle-spikes-253: a page's world build under lazy kits through the prefetch path
+    'src/world/footprintPointIndex.selftest.mjs', // battle-spikes-253: the binned footprint query answers as the scan
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
