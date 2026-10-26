@@ -213,9 +213,13 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team{--bl-row-min:min(16px,var(--bl-row-height));position:relative;}
 .cot-bl .team.scrolls:not(.cards) .rows{align-self:start;box-sizing:border-box;height:calc(var(--bl-row-inset) - var(--bl-row-gap)
   + round(down,100% - var(--bl-row-inset) + var(--bl-row-gap),var(--bl-row-min) + var(--bl-row-gap)));}
+/* (the cue on a strip of its own under the last whole row, kept while the list scrolls so its end moves nothing: a fade
+   over the rows' foot dimmed a whole 14 px row under the chevron, which read as a row cut mid-glyph at 568x256 and
+   320x568, gauntlet r14) */
 .cot-bl .bl-more{display:none;}
-.cot-bl .team.more:not(.cards) .rows{mask-image:linear-gradient(#000 calc(100% - 14px),transparent);}
-.cot-bl .team.more:not(.cards) .bl-more{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;color:var(--ink-2);pointer-events:none;}
+.cot-bl .team.scrolls:not(.cards){grid-template-rows:auto minmax(0,1fr) 14px;}
+.cot-bl .team.scrolls:not(.cards) .bl-more{display:flex;justify-content:center;height:14px;color:var(--ink-2);visibility:hidden;pointer-events:none;}
+.cot-bl .team.more:not(.cards) .bl-more{visibility:visible;}
 .cot-bl .rows::-webkit-scrollbar{display:none}
 /* A sheet row on the HUD's strong plate (the art behind it is busy, and showed through a glass row, gauntlet r5): the
    side's ink on its outer edge, the nation's flag, the vehicle's own side render facing the other side, its name, and
@@ -225,7 +229,9 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team.foe .row{flex-direction:row-reverse;}
 .cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
-.cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
+/* (an open seat on the rows' own plate, its side's edge kept and no ring: a glass seat over the art nearly vanished into
+   the terrain at 1920 and 2560, gauntlet r14) */
+.cot-bl .row.slot{background:var(--hud-plate-strong);box-shadow:none;}
 .cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
   box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
 /* (the player's ring takes the side's edge too: the side's rule outranked it, and a blue edge sat inside the orange ring,
@@ -381,7 +387,7 @@ ${WIDE} .cot-bl .team.ally.cards .row.card{border:0;border-bottom:2px solid var(
 ${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(--team-enemy);}
 ${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
 /* (a seat not yet named holds its card's place, the card's frame and the side's foot over an empty ground) */
-${WIDE} .cot-bl .team.cards .row.card.slot{background:var(--fill-faint);}
+${WIDE} .cot-bl .team.cards .row.card.slot{background:var(--hud-plate-strong);}
 /* (the player's card's foot in the ring's accent: the side's blue foot sat inside its gold frame at 1920 and 2560, gauntlet r11) */
 ${WIDE} .cot-bl .team.ally.cards .row.card.me{border-bottom-color:var(--accent);}
 ${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;

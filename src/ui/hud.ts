@@ -840,12 +840,13 @@ const TOUCH_WARNING_W = 180;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
  *  the column or beside the line), the zoom plate left out; the last flag marks a place only a chip makes different.
- *  rowBeside sets the chip over the sight whenever there is one (under the column it would push the row under it). */
+ *  rowBeside sets the chip over the sight whenever there is one (under the column it would push the row under it). Over
+ *  the ring the row is the line alone: the zoom plate beside it set the row 96 px off the sight's axis at 568x256, the
+ *  countdown under the line and the range tag by the ring between them (gauntlet r14). */
 const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, boolean])[] = [
   ['stack', false, false, false], ['zoomBeside', false, false, false], ['chipBeside', false, false, true],
   ['stack', true, false, true], ['zoomBeside', true, false, true], ['rowBeside', false, false, false],
-  ['rowAbove', false, false, false], ['rowAbove', true, false, true], ['stack', false, true, false], ['stack', true, true, true],
-  ['rowAbove', false, true, false], ['rowAbove', true, true, true],
+  ['rowAbove', false, true, false], ['rowAbove', true, true, true], ['stack', false, true, false], ['stack', true, true, true],
 ];
 /** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
 const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;

@@ -76,6 +76,8 @@ const player = tanks[0];
 const homes = tanks.map((tank) => tank.state.pos.clone());
 const MARKER_SEATS = [[8, 0, 150], [9, -38, 200], [10, 44, 240], [2, -26, 80], [3, 30, 104]];
 const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
+const flightCamera = new PerspectiveCamera(55, 1, 0.5, 6000);
+flightCamera.userData.thermalFlight = true;
 hud.setDamagePanel(panel);
 panel.setTank(player.spec);
 panel.setState(player.combat);
@@ -264,6 +266,11 @@ function state(name) {
     frame.matchModeState={...frame.matchModeState,id:name==='gunship'?'ac130':'drone'};
     // (the gunship flown from its gimbal, its airframe hidden: the lens's sight and solution show, gauntlet r4)
     player.visual=name==='gunship'?{root:{visible:false}}:undefined;
+    // (the flight's own camera, in its thermal view as a battle's flight camera is: without one the vision switch stood
+    // disabled and read as greyed out, gauntlet r14)
+    flightCamera.aspect=innerWidth/innerHeight;flightCamera.position.set(player.aerial.x,player.aerial.y,player.aerial.z);
+    flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
+    frame.camera=flightCamera;
     for(let i=0;i<5;i++)hud.update(frame);
   }
   if(name==='markers')markers();
