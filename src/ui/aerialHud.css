@@ -56,7 +56,6 @@
 .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--btn-primary-fill)}
 .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::after{background:var(--btn-primary-fill)}
 .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){color:var(--btn-primary-ink);text-shadow:none}
-@keyframes drone-recall-open{0%{filter:drop-shadow(0 0 0 transparent) brightness(1)}30%{filter:drop-shadow(0 0 10px var(--flight-accent)) brightness(1.35)}100%{filter:drop-shadow(0 0 0 transparent) brightness(1)}}
 /* The tank row while a recalled drone flies home and lands (data-phase=returning, ui/droneControlState.ts): busy rather
    than refused, so it keeps full strength in the amber of a drone in use, and its drone keeps settling down onto the pad
    while the countdown runs to the relaunch. */
@@ -68,7 +67,7 @@
    droneReturningCascade.selftest.mjs resolves the winning declarations on desktop, the touch strip and the dock. */
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;color:var(--accent-hi);border-bottom-color:var(--accent-hi);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 10px oklch(from var(--accent-hi) l c h / .32)}
 body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning] .si{opacity:1}
-.cot-drone-control[data-phase=returning] .si svg{animation:drone-homing 1.2s cubic-bezier(.3,.6,.4,1) infinite}
+.cot-drone-control[data-phase=returning] .si svg{animation:drone-homing calc(var(--dur-stage) * 1.7) cubic-bezier(.3,.6,.4,1) infinite}
 @keyframes drone-homing{0%{transform:translateY(-3px);opacity:.45}70%,100%{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){
  .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){animation:none;filter:none}
@@ -300,7 +299,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
 .gunship-solution .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1)}
 .gunship-solution .flight-icon{color:inherit}
-.cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent);transition:width var(--dur-instant),height var(--dur-instant)}
+.cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship][data-weapon='0'] .flight-sight{width:28px;height:28px}
 .cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight{width:52px;height:52px;border:1px solid var(--line-control);border-radius:50%;background:none}
 .cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight::before{content:'';position:absolute;inset:8px;border:1px solid currentColor;border-radius:50%;opacity:.5}
@@ -340,12 +339,11 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){outline:1px solid ButtonText}
  .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:3px solid Highlight}
 }
-@media(prefers-reduced-motion:reduce){.cot-flight-hud[data-kind=gunship] .flight-sight{transition:none}}
 
 .cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:var(--surface-menu);color:var(--ink-1);font-size:var(--battle-fs-12);letter-spacing:.18em;text-shadow:0 2px 4px var(--surface-scene);isolation:isolate}
 /* the grain moves as a layer (a transform the compositor runs), not by repainting its background's position (249) */
 .cot-drone-signal-loss{overflow:hidden}
-.cot-drone-signal-loss::before{content:'';position:absolute;inset:-48px;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;will-change:transform;animation:drone-signal-grain .16s steps(2) infinite}
+.cot-drone-signal-loss::before{content:'';position:absolute;inset:-48px;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;will-change:transform;animation:drone-signal-grain var(--dur-fast) steps(2) infinite}
 .cot-drone-signal-loss::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,oklch(from var(--surface-scene) l c h / .2) 3px 4px);pointer-events:none}
 .cot-drone-signal-loss[hidden],.cot-scope-vision[hidden]{display:none!important}
 @keyframes drone-signal-grain{to{transform:translate(41px,27px)}}

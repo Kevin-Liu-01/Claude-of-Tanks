@@ -1611,7 +1611,7 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 .cot-drive .arc circle{fill:none;stroke-width:3;}
 .cot-drive .arc-track{stroke:var(--fill-scale);stroke-dasharray:75 25;}
 .cot-drive .arc-value{stroke:var(--ink-1);stroke-dasharray:0 100;
-  transition:stroke-dasharray .065s linear;}
+  }
 .cot-drive .arc-red{stroke:var(--danger);stroke-dasharray:15 85;stroke-dashoffset:-60;}
 .cot-drive .ticks{position:absolute;z-index:2;inset:0;border-radius:50%;}
 .cot-drive .ticks i{position:absolute;left:calc(50% - .5px);top:8px;width:1px;height:6px;
@@ -1621,7 +1621,7 @@ body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 .cot-drive .ticks i:nth-last-child(-n + 5){background:var(--danger);}
 .cot-drive .needle{position:absolute;z-index:2;left:50%;top:50%;width:2px;height:35px;
   margin:-35px 0 0 -1px;transform-origin:50% 100%;rotate:-135deg;
-  transition:rotate .05s linear;will-change:transform;
+  transition:rotate var(--dur-instant) linear;will-change:transform;
   background:var(--danger);}
 .cot-drive .hub{position:absolute;z-index:4;left:50%;top:50%;width:8px;height:8px;
   margin:-4px 0 0 -4px;border-radius:50%;background:var(--ink-1);border:2px solid var(--danger);}
@@ -1819,9 +1819,10 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
   letter-spacing:-.02em;color:var(--accent-hi);white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
-  animation:cotFloat 1.7s cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
+  animation:cotFloat calc(var(--dur-stage) * 2.4) cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
 .cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
-.cot-dmgnum.burst-ending{animation:cotBurstFade 1s ease-out forwards;}
+.cot-dmgnum.burst-ending{animation:cotBurstFade calc(var(--dur-stage) * 1.4) ease-out forwards;}
+@media (prefers-reduced-motion:reduce){.cot-dmgnum,.cot-dmgnum.burst-ending{animation:none}}
 @keyframes cotBurstFade{from{opacity:1;transform:translate(-50%,-30%)}to{opacity:0;transform:translate(-50%,-190%)}}
 .cot-dmgnum.miss{color:var(--ink-2);font-size:var(--battle-fs-13);font-weight:700;letter-spacing:.1em;}
 .cot-dmgnum .crit{position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);
@@ -1884,10 +1885,10 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-prebattle .n.tick-alt{animation:cot-pb-pop-alt var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.tick~.ring .arc{animation:cot-pb-drain 1s linear both;}
 .cot-prebattle .n.tick-alt~.ring .arc{animation:cot-pb-drain-alt 1s linear both;}
-.cot-prebattle.preparing .arc{stroke-dasharray:18 82;animation:cot-pb-chase 1.2s linear infinite;}
+.cot-prebattle.preparing .arc{stroke-dasharray:18 82;animation:cot-pb-chase calc(var(--dur-stage) * 1.7) linear infinite;}
 .cot-prebattle .n.go{font-size:60px;letter-spacing:.04em;text-indent:.04em;color:var(--pb-ink);}
 .cot-prebattle.rollout .n~.ring .arc{animation:none;stroke-dashoffset:0;}
-.cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:cot-pb-burst 900ms var(--cot-ease-out) both;}
+.cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:cot-pb-burst calc(var(--dur-screen) * 2.5) var(--cot-ease-out) both;}
 .cot-prebattle.waiting{grid-template-columns:auto;grid-template-rows:auto;}
 .cot-prebattle.waiting::before,.cot-prebattle.waiting .ring{display:none;}
 .cot-prebattle.waiting .n{font-size:40px;letter-spacing:var(--track-label-s);text-indent:.08em;}
@@ -1925,7 +1926,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-3);border-radius:var(--r1);
   box-shadow:0 5px 16px oklch(from var(--surface-scene) l c h / .42);
   font-family:${FONT_COND};text-transform:uppercase;
-  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,background-color var(--dur-instant) ease;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-special.show{display:grid;}
 .cot-special:hover{border-color:var(--accent);color:var(--accent-hi);}
 .cot-special:active{transform:translateX(-50%) scale(.97);}
@@ -1933,8 +1934,9 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
   background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);box-shadow:inset 0 0 0 1px var(--accent);}
 .cot-special.empty{color:var(--ink-4);border-color:var(--line-1);background:var(--hud-plate);box-shadow:none;}
 .cot-special.empty .si{filter:grayscale(1);opacity:.42;}
-.cot-special.deny{animation:cotAmmoDeny .34s ease-out 2;}
-.cot-special.pending .si{animation:cotSpecialPulse .8s ease-in-out infinite alternate;}
+.cot-special.deny{animation:cotAmmoDeny var(--dur-screen) ease-out 2;}
+.cot-special.pending .si{animation:cotSpecialPulse var(--dur-stage) ease-in-out infinite alternate;}
+@media (prefers-reduced-motion:reduce){.cot-special.deny,.cot-special.pending .si{animation:none}}
 .cot-special .si{display:flex;align-items:center;justify-content:center;}
 .cot-special .si svg{width:22px;height:22px;display:block;}
 .cot-special .sl{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:var(--battle-track-status);white-space:nowrap;text-align:left;}
@@ -1953,7 +1955,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
   box-shadow:var(--hud-plate-ring);
-  transition:border-color var(--dur-instant),background var(--dur-instant),transform var(--dur-instant) ease-out;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-shell:active{transform:scale(.97);}
 .cot-shell.sel .ty{color:var(--accent);}
 .cot-shell .tchev{display:none;}
@@ -1969,10 +1971,11 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-shell.empty canvas,.cot-shell.empty .ty,.cot-shell.empty .clr{filter:grayscale(1);opacity:.34;}
 .cot-shell.empty .key{color:var(--ink-4);border-color:var(--line-1);}
 .cot-shell.empty .cnt{color:var(--hud-danger);}
-.cot-shell.deny{animation:cotAmmoDeny .34s ease-out 2;}
-@keyframes cotAmmoDeny{0%,100%{border-color:var(--line-control);box-shadow:none}
-  45%{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),var(--hud-plate-strong));
-    color:var(--danger);box-shadow:0 0 18px oklch(from var(--danger) l c h / .58)}}
+.cot-shell.deny{animation:cotAmmoDeny var(--dur-screen) ease-out 2;}
+:is(.cot-special,.cot-shell).deny{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),var(--hud-plate-strong));
+  color:var(--danger)}
+@keyframes cotAmmoDeny{0%,100%{transform:translateX(0)}30%{transform:translateX(-2px)}70%{transform:translateX(2px)}}
+@media (prefers-reduced-motion:reduce){.cot-shell.deny{animation:none}}
 /* (the slot's type reads in its label's ink: the r6-2 class underline under it, silver or olive under an amber HE, said the
    same in a second colour and was a coloured edge, gauntlet r2) */
 .cot-shell .clr{display:none;}
@@ -2031,7 +2034,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
   box-shadow:var(--hud-plate-ring);
-  transition:border-color var(--dur-instant),transform var(--dur-instant) ease-out;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){.cot-con:hover{border-color:var(--line-control);}}
@@ -2047,8 +2050,9 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-con.sugg:not(.cooling){border-color:var(--accent);}
 .cot-con.cooling{border-color:var(--line-1);cursor:not-allowed;}
 .cot-con.used{opacity:.35;filter:grayscale(1);}
-.cot-con.deny{animation:cotConDeny .3s;}
-@keyframes cotConDeny{0%,100%{border-color:var(--line-2);}50%{border-color:var(--danger);}}
+.cot-con.deny{border-color:var(--danger);animation:cotConDeny var(--dur-screen);}
+@keyframes cotConDeny{0%,100%{transform:translateX(0)}30%{transform:translateX(-2px)}70%{transform:translateX(2px)}}
+@media (prefers-reduced-motion:reduce){.cot-con.deny{animation:none}}
 .aerial-drone .cot-shells{visibility:hidden}
 .cot-shell[hidden]{display:none!important}
 .cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:var(--ink-1);font:700 var(--battle-fs-11) var(--font-mono);letter-spacing:var(--track-label-s);text-align:center;pointer-events:none;text-shadow:0 1px 3px var(--surface-scene)}
@@ -2073,7 +2077,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb .nm span{min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
 .cot-hpb .tr{height:6px;margin:0 7px;background:var(--hud-plate-strong);border:1px solid oklch(from var(--surface-scene) l c h / .9);
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
-.cot-hpb .fl{height:100%;background:var(--hud-enemy);transition:width var(--dur-fast) linear;}
+.cot-hpb .fl{height:100%;width:100%;transform-origin:0 50%;background:var(--hud-enemy);transition:transform var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
 .cot-hpb::after{content:"";display:block;width:0;height:0;margin:1px auto 0;
   border-left:4px solid transparent;border-right:4px solid transparent;
@@ -5731,7 +5735,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateHpBarFill(bar: HpBar, combat: CombatState): void {
     const fraction = Math.max(0, Math.min(1, combat.hp / combat.maxHp));
     if (Math.abs(fraction - bar.lastFrac) <= 0.001) return;
-    bar.fill.style.width = `${(fraction * 100).toFixed(1)}%`;
+    bar.fill.style.transform = `scaleX(${fraction.toFixed(3)})`;
     bar.lastFrac = fraction;
   }
 

@@ -442,7 +442,7 @@ const SI_CSS = `
   background-position:center;background-repeat:no-repeat;opacity:.86;
   filter:grayscale(1) brightness(1.5) contrast(1.4);}
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
-.cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
+.cot-si-diag svg.ov .wdg{animation:cotSiWedge calc(var(--dur-stage) * 2.3) ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
 .cot-si-zone{min-width:0;font-size:var(--battle-fs-11);color:var(--accent-hi);font-weight:700;letter-spacing:0em;
   text-transform:uppercase;font-family:${FONT_COND};text-align:right;line-height:1.3;}
