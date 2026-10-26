@@ -25,7 +25,7 @@
 .media-library-viewer::backdrop{background:var(--scrim);backdrop-filter:blur(10px)}
 .media-library-viewer figure{margin:0;display:grid;grid-template-rows:minmax(0,1fr) auto;max-height:94vh}
 .media-library-stage{position:relative;display:grid;place-items:center;min-height:min(40vh,320px);background:var(--surface-scene)}
-.media-library-stage img{display:block;width:auto;max-width:100%;height:auto;max-height:82vh;object-fit:contain}
+.media-library-stage img{display:block;width:100%;height:auto;min-height:min(40vh,320px);max-height:82vh;object-fit:cover;object-position:center}
 .media-library-stage .media-library-wait{position:absolute;inset:auto 0 0;padding:14px 18px;text-align:center}
 .media-library-viewer figcaption{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border-top:1px solid var(--library-line);background:var(--library-panel)}
 .media-library-viewer figcaption div:first-child{min-width:0}
