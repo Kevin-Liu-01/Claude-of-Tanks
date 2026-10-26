@@ -471,7 +471,8 @@ function cjkTitleMarkup(title: string, phrases: readonly string[]): string {
   }
   const phrase = marked ? ' class="dm-phrases"' : '';
   const span = (voice: readonly string[], hollow: boolean): string => `<span${hollow ? ` class="t-hollow${marked ? ' dm-phrases' : ''}"` : phrase}>${voice.join('<wbr>')}</span>`;
-  return voices.map((voice, index) => span(voice, index > 0)).join(' ');
+  // no space between the voices: the first ends on its full-width mark, and a phone sets them on one line
+  return voices.map((voice, index) => span(voice, index > 0)).join('');
 }
 
 function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {

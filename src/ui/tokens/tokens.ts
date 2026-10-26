@@ -312,7 +312,7 @@ export const TOKENS = {
   'home-closing-grade': 'linear-gradient(90deg,rgba(5,6,8,.86) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 56%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,.5) 22%,rgba(11,14,17,0) 48%)',
   'home-reddit': '#ff4208',
   'home-card-z': '3',
-  'docs-banner-fade': 'linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,0) 52%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%)',
+  'docs-banner-fade': 'linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,.3) 42%,rgba(11,14,17,.1) 50%,rgba(11,14,17,0) 58%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%)',
   'docs-side-edge': '1px 0 0 rgba(246,243,236,.07)',
   'docs-side-on': '0 1px 0 rgba(255,255,255,.06) inset,inset 0 0 0 1px rgba(246,243,236,.13)',
   'docs-toc-on': 'none',
