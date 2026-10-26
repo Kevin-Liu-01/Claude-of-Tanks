@@ -5,7 +5,7 @@
 //   radio group or listbox, a hand-rolled selection) is claimed by one registry row or exemption, so a new bespoke grid,
 //   select or swatch list fails here until it is built on the picker and registered;
 // - every mark a row claims is still in its owner (a row cannot outlive its site);
-// - a createPicker() id is a picker row's, and a picker row's owner builds it;
+// - a createPicker() (or shared consumer's) id is the id of the picker row that claims it: one stamp a surface;
 // - the rows that fail the bar are exactly the ratchet baseline's (tools/interaction-baseline.json): a new failing row
 //   fails, and a row that now passes must leave the baseline, so it only shrinks;
 // - each common path's presses (the step-count receipt replays them, tools/interaction-steps.mjs) are at most the
@@ -25,6 +25,9 @@ const baseline = JSON.parse(readFileSync(new URL('../../tools/interaction-baseli
 // --- the scanner's own laws (one fixture a kind) ---
 const marks = (path, text) => scanSource(path, text).map((mark) => `${mark.kind}:${mark.key}`);
 assert.deepEqual(marks('a.ts', "const p = createPicker(host, { id: 'battlefield', label })"), ['picker:battlefield']);
+assert.deepEqual(marks('a.ts', "export function createMapPicker(host, o) { return createPicker(host, { id: o.id }); }"), [],
+  "a shared consumer's own call takes its caller's id");
+assert.deepEqual(marks('a.ts', "picker = createBattlefieldPicker(pick, {\n  id: 'rooms-battlefield', label })"), ['picker:rooms-battlefield']);
 assert.deepEqual(marks('a.ts', '`<select data-rival aria-label="x"><option value="${o.id}"${o.id === v ? \' selected\' : \'\'}>`'), ['select:[data-rival]'],
   'an <option> belongs to its <select>');
 assert.deepEqual(marks('a.ts', "const format = document.createElement('select');"), ['select:format']);
@@ -41,17 +44,19 @@ assert.deepEqual(marks('a.ts', '// b.setAttribute(\'aria-pressed\', String(b.dat
 assert.deepEqual(marks('a.html', '<!-- <select id="x"> -->\n<div class="cot-c-seg peer-switch" role="radiogroup">'), ['segmented:.peer-switch']);
 
 // --- the table's own laws ---
-const PICKER_ID = /^[a-z][a-z0-9-]*$/;
 for (const [id, row] of Object.entries(INTERACTION_SITES)) {
-  assert.match(id, /^[a-z][a-z0-9-]*$/, `${id}: a site id is kebab-case`);
+  assert.match(id, /^[a-z][a-z0-9-]*$/, `${id}: a site id (its data-picker stamp) is kebab-case`);
   assert.ok(existsSync(`${root}${row.owner}`), `${id}: owner ${row.owner} exists`);
   assert.ok(DATUM_SCREENS.includes(row.screen), `${id}: ${row.screen} is a registered screen`);
   assert.ok(INTERACTION_LANES.includes(row.lane), `${id}: ${row.lane} is a lane`);
   assert.ok(SITE_BUILDS.includes(row.build), `${id}: ${row.build} is a build`);
-  assert.match(row.picker, PICKER_ID, `${id}: names the picker id it is or becomes`);
   assert.ok(row.chooses, `${id}: says what it chooses`);
   assert.ok(row.marks.length > 0, `${id}: claims at least one census mark`);
-  if (row.build === 'picker') assert.ok(row.marks.some((mark) => mark.endsWith(`picker:${row.picker}`)), `${id}: a picker row claims its createPicker('${row.picker}')`);
+  if (row.build === 'picker') assert.ok(row.marks.some((mark) => mark.endsWith(`picker:${id}`)), `${id}: a picker row claims the picker stamped with its id`);
+  for (const mark of row.marks) {
+    const key = /(?:^|\s)picker:(.+)$/.exec(mark)?.[1];
+    if (key) assert.equal(key, id, `${id}: claims picker:${key}, another surface's stamp (one picker id a surface)`);
+  }
   for (const mark of row.marks) {
     const at = mark.indexOf(' ');
     if (at > 0) assert.ok(existsSync(`${root}${mark.slice(0, at)}`), `${id}: ${mark.slice(0, at)} exists`);

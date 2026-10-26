@@ -4,7 +4,8 @@
 //
 // scanChoiceSites(root) reads every source a player meets (src/**/*.ts, site/**/*.html, index.html) and returns each
 // "choose one of a set" it builds, as a mark `<kind>:<key>` per file:
-// - picker: a createPicker() call (the kit's one choose-one), keyed by its registry id;
+// - picker: a createPicker() call (the kit's one choose-one) or a shared consumer's (createBattlefieldPicker), keyed by
+//   the registry id it stamps as data-picker;
 // - select: a raw <select> in markup, or one made by a call (document.createElement('select'), el('select'));
 // - custom-select: a createCustomSelect() dropdown (the pre-Premiere select skin);
 // - segmented: a hand-built .cot-c-seg radio group (the kit's look without the kit's builder);
@@ -114,10 +115,15 @@ export function scanSource(path, raw) {
   const marks = [];
   const add = (kind, key, index) => marks.push({ kind, key: key ?? `@${lineOf(text, index)}`, line: lineOf(text, index) });
 
-  for (const match of text.matchAll(/\bcreatePicker\(/g)) {
+  // createPicker, or a shared consumer built on it (createBattlefieldPicker): keyed by the id its caller stamps. A
+  // consumer's own createPicker takes its caller's id, so that call is not a site.
+  const consumer = /export function create\w+Picker\(/.test(text);
+  for (const match of text.matchAll(/\b(create\w*Picker)\(/g)) {
     if (/function\s+$/.test(text.slice(Math.max(0, match.index - 12), match.index))) continue;
     const head = text.slice(match.index, match.index + 800);
-    add('picker', /\bid:\s*['"`]([\w-]+)['"`]/.exec(head)?.[1] ?? /\bid:\s*([\w$.]+)/.exec(head)?.[1], match.index);
+    const literal = /\bid:\s*['"`]([\w-]+)['"`]/.exec(head)?.[1];
+    if (!literal && match[1] === 'createPicker' && consumer) continue;
+    add('picker', literal ?? /\bid:\s*([\w$.]+)/.exec(head)?.[1], match.index);
   }
   for (const match of text.matchAll(/<select\b/g)) add('select', tagKey(tagAt(text, match.index)), match.index);
   // a <select> made by a call: document.createElement('select'), or a module's own el('select', …) / node('select')

@@ -2,12 +2,13 @@
 // selection much more intituitve, as well as camo, i really mean update all legacy interaction surfaces and systems").
 // Copyright © 2026 Kevin B. Liu.
 //
-// One row per "choose one of a set" site, the way src/ui/surfaceRegistry.ts is one row per on-screen datum. A row names
-// what the site chooses, its screen and owner module, how it is built today, the picker id it is (or becomes), the lane
-// that owns its redesign and the common path it lies on. Choosing one item from a set is one kit primitive everywhere
-// (src/ui/components/picker.ts, which stamps data-picker="<id>"); a row passes the bar's line 1 only when it is built on
-// it, or when it holds two to five values of a setting, a view, a side count, a difficulty, a team or the language on the
-// kit's segmented control.
+// One row per "choose one of a set" site, the way src/ui/surfaceRegistry.ts is one row per on-screen datum. A row's id is
+// the picker id the site stamps (data-picker="<id>", one per surface), or will once it is built on the picker; the row
+// names what the site chooses, its screen and owner module, how it is built today, the lane that owns its redesign and
+// the common path it lies on. Choosing one item from a set is one kit primitive everywhere (src/ui/components/picker.ts,
+// and the shared consumers built on it: src/ui/battlefieldPicker.ts); a row passes the bar's line 1 only when it is
+// built on it, or when it holds two to five values of a setting, a view, a side count, a difficulty, a team or the
+// language on the kit's segmented control.
 //
 // `marks` are the census's names for the site's constructs (tools/interaction-census.mjs: `picker:<id>`, `select:<tag>`,
 // `custom-select:<name>`, `segmented:<tag>`, `radio-group:<tag>`, `listbox:<tag>`, `bespoke:<what it compares>`), in
@@ -47,10 +48,8 @@ interface InteractionSite {
   /** The module that builds it (repo-relative). */
   readonly owner: string;
   readonly build: Build;
-  /** The census marks it claims: in its owner, or in the file a mark names first. */
+  /** The census marks it claims: in its owner, or in the file a mark names first. A picker row claims `picker:<its id>`. */
   readonly marks: readonly string[];
-  /** The picker id it is built on, or will be (its data-picker stamp). */
-  readonly picker: string;
   readonly lane: Lane;
   /** The common path it lies on. */
   readonly path?: CommonPathId;
@@ -91,109 +90,112 @@ const BATTLEFIELDS = 34;
 /** The rows. A new choose-one gets one here, built on the picker, before it renders anywhere. */
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
-  'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById'], picker: 'nation', lane: 'premiere-gallery-studio' },
-  'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], picker: 'rival', lane: 'premiere-gallery-studio' },
-  'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], picker: 'equipment', lane: 'premiere-gallery-studio', path: 'equip-item' },
-  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:fittedAt===openSlot'], picker: 'equipment', lane: 'premiere-gallery-studio', path: 'equip-item' },
-  'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], picker: 'camo', lane: 'premiere-gallery-studio' },
-  'garage-camo': { chooses: 'camo', options: 173, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:patternId===selectedPatternId'], picker: 'camo', lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-collection': { chooses: 'filter', options: 14, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===activeCamoCollection'], picker: 'camo', lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-tag': { chooses: 'filter', options: 13, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:tagId===activeCamoTag'], picker: 'camo', lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], picker: 'camo-lab-tool', lane: 'premiere-gallery-studio' },
-  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:#cot-garage-variant-menu', 'bespoke:id===selected.id'], picker: 'environment', lane: 'premiere-gallery-studio' },
-  'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], picker: 'featured-still', lane: 'premiere-gallery-studio' },
-  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:view===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], picker: 'guide-step', lane: 'premiere-gallery-studio' },
-  'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], picker: 'guide-step', lane: 'premiere-gallery-studio' },
-  'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'bespoke', marks: ["bespoke:id==='hero'", 'bespoke:dataset.view'], picker: 'photo-framing', lane: 'premiere-gallery-studio' },
-  'tech-tree-node': { chooses: 'tank', options: 40, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:node.id'], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'tech-tree-nation': { chooses: 'nation', options: 13, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:dataset.tree'], picker: 'nation', lane: 'premiere-gallery-studio' },
-  'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], picker: 'tech-tree-build', lane: 'premiere-gallery-studio' },
+  'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
+  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById'], lane: 'premiere-gallery-studio' },
+  'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
+  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
+  'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:fittedAt===openSlot'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
+  'garage-camo': { chooses: 'camo', options: 173, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:patternId===selectedPatternId'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
+  'garage-camo-collection': { chooses: 'filter', options: 14, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===activeCamoCollection'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
+  'garage-camo-tag': { chooses: 'filter', options: 13, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:tagId===activeCamoTag'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
+  'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], lane: 'premiere-gallery-studio' },
+  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:#cot-garage-variant-menu', 'bespoke:id===selected.id'], lane: 'premiere-gallery-studio' },
+  'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
+  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:view===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
+  'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },
+  'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'bespoke', marks: ["bespoke:id==='hero'", 'bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
+  'tech-tree-node': { chooses: 'tank', options: 40, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:node.id'], lane: 'premiere-gallery-studio' },
+  'tech-tree-nation': { chooses: 'nation', options: 13, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:dataset.tree'], lane: 'premiere-gallery-studio' },
+  'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], lane: 'premiere-gallery-studio' },
 
   // ---- Deploy (premiere-site)
-  'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:dataset.gameMode'], picker: 'mode', lane: 'premiere-site' },
-  'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===mapId'], picker: 'battlefield', lane: 'premiere-site', path: 'map-deploy' },
-  'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.sides'], picker: 'sides', lane: 'premiere-site' },
-  'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'bespoke', marks: ['bespoke:dataset.diff'], picker: 'difficulty', lane: 'premiere-site' },
-  'deploy-mars': { chooses: 'setting', options: 3, screen: 'deploy', owner: GARAGE, build: 'custom-select', marks: ['select:[data-mars-field]', 'custom-select:marsDropdowns'], picker: 'mars-world', lane: 'premiere-site' },
-  'deploy-arrangement': { chooses: 'setting', options: 6, screen: 'deploy', owner: 'src/ui/battleArrangementPanel.ts', build: 'custom-select', marks: ['select:select', 'custom-select:field.select'], picker: 'arrangement', lane: 'premiere-site' },
-  'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:group', 'bespoke:dataset.teamNations'], picker: 'team-nations', lane: 'premiere-site' },
-  'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'custom-select', marks: ['custom-select:select'], picker: 'nation', lane: 'premiere-site' },
+  'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:dataset.gameMode'], lane: 'premiere-site' },
+  'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===mapId'], lane: 'premiere-site', path: 'map-deploy' },
+  'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'premiere-site' },
+  'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'bespoke', marks: ['bespoke:dataset.diff'], lane: 'premiere-site' },
+  'deploy-mars': { chooses: 'setting', options: 3, screen: 'deploy', owner: GARAGE, build: 'custom-select', marks: ['select:[data-mars-field]', 'custom-select:marsDropdowns'], lane: 'premiere-site' },
+  'deploy-arrangement': { chooses: 'setting', options: 6, screen: 'deploy', owner: 'src/ui/battleArrangementPanel.ts', build: 'custom-select', marks: ['select:select', 'custom-select:field.select'], lane: 'premiere-site' },
+  'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:group', 'bespoke:dataset.teamNations'], lane: 'premiere-site' },
+  'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'custom-select', marks: ['custom-select:select'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)
-  'settings-right-click': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.mode'], picker: 'settings-right-click', lane: 'premiere-site' },
-  'settings-difficulty': { chooses: 'difficulty', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.tier'], picker: 'difficulty', lane: 'premiere-site' },
-  'settings-brain': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent', 'bespoke:dataset.brainAllies'], picker: 'settings-brain', lane: 'premiere-site' },
-  'settings-crew-voice': { chooses: 'nation', options: 14, screen: 'settings', owner: SETTINGS, build: 'select', marks: ['select:crewSelect'], picker: 'nation', lane: 'premiere-site' },
-  'settings-quality': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.name'], picker: 'graphics-quality', lane: 'premiere-site' },
-  'settings-accessibility': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.value'], picker: 'team-colours', lane: 'premiere-site' },
-  'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.locale'], picker: 'language', lane: 'premiere-site' },
-  'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:key===id', 'bespoke:dataset.part', 'bespoke:part.id'], picker: 'hud-part', lane: 'premiere-site' },
-  'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:profile===id'], picker: 'hud-profile', lane: 'premiere-site' },
+  'settings-right-click': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-site' },
+  'settings-difficulty': { chooses: 'difficulty', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.tier'], lane: 'premiere-site' },
+  'settings-brain': { chooses: 'setting', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent', 'bespoke:dataset.brainAllies'], lane: 'premiere-site' },
+  'settings-crew-voice': { chooses: 'nation', options: 14, screen: 'settings', owner: SETTINGS, build: 'select', marks: ['select:crewSelect'], lane: 'premiere-site' },
+  'settings-quality': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.name'], lane: 'premiere-site' },
+  'settings-accessibility': { chooses: 'setting', options: 6, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.value'], lane: 'premiere-site' },
+  'settings-language': { chooses: 'language', options: 2, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.locale'], lane: 'premiere-site' },
+  'hud-editor-part': { chooses: 'part', options: 25, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:key===id', 'bespoke:dataset.part', 'bespoke:part.id'], lane: 'premiere-site' },
+  'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'bespoke', marks: ['bespoke:profile===id'], lane: 'premiere-site' },
 
   // ---- Rooms (the lead)
-  'room-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], picker: 'room-kind', lane: 'lead', path: 'start-room' },
-  'room-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], picker: 'room-size', lane: 'lead' },
-  'room-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-map-list', 'bespoke:item===option'], picker: 'battlefield', lane: 'lead' },
-  'room-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], picker: 'operation', lane: 'lead' },
-  'room-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-vehicle-list'], picker: 'tank', lane: 'lead' },
-  'room-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-team-list'], picker: 'room-team', lane: 'lead' },
-  'room-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-size-list'], picker: 'room-size', lane: 'lead' },
-  'room-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.gameMode'], picker: 'mode', lane: 'lead' },
-  'room-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.sides'], picker: 'sides', lane: 'lead' },
-  'room-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent'], picker: 'settings-brain', lane: 'lead' },
-  'room-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-arrange]', 'custom-select:select'], picker: 'arrangement', lane: 'lead' },
+  'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
+  'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], lane: 'lead' },
+  'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead' },
+  /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
+  'rooms-battlefield-list': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-map-list'], lane: 'lead' },
+  'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },
+  'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-vehicle-list'], lane: 'lead' },
+  'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-team-list'], lane: 'lead' },
+  // the lobby's hand-rolled dropdown (bindMenuSelect) writes every list's selection: claimed here
+  'rooms-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-size-list', 'bespoke:item===option'], lane: 'lead' },
+  'rooms-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.gameMode'], lane: 'lead' },
+  'rooms-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'lead' },
+  'rooms-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent'], lane: 'lead' },
+  'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-arrange]', 'custom-select:select'], lane: 'lead' },
 
   // ---- the battle (premiere-battle)
-  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], picker: 'scope-vision', lane: 'premiere-battle' },
+  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
 
   // ---- the Studio (premiere-gallery-studio)
-  'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], picker: 'studio-format', lane: 'premiere-gallery-studio' },
-  'studio-controls': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:modeSeg', 'bespoke:dataset.value'], picker: 'studio-controls', lane: 'premiere-gallery-studio' },
-  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:mapPop', 'bespoke:cardId===id'], picker: 'battlefield', lane: 'premiere-gallery-studio' },
-  'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], picker: 'hour', lane: 'premiere-gallery-studio' },
-  'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], picker: 'studio-snap', lane: 'premiere-gallery-studio' },
-  'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], picker: 'actor-state', lane: 'premiere-gallery-studio' },
-  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'bespoke', marks: ["bespoke:a.camo||'inherit'"], picker: 'camo', lane: 'premiere-gallery-studio' },
-  'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], picker: 'effect', lane: 'premiere-gallery-studio' },
-  'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], picker: 'studio-camera', lane: 'premiere-gallery-studio' },
-  'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:select'], picker: 'studio-output', lane: 'premiere-gallery-studio' },
-  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:transition'], picker: 'shot-transition', lane: 'premiere-gallery-studio' },
-  'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], picker: 'picture-look', lane: 'premiere-gallery-studio' },
-  'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], picker: 'studio-command', lane: 'premiere-gallery-studio' },
-  'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], picker: 'studio-sequence', lane: 'premiere-gallery-studio' },
-  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:frame'], picker: 'studio-format', lane: 'premiere-gallery-studio' },
-  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:tanks'], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'studio-lens': { chooses: 'setting', options: 3, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:lens'], picker: 'studio-lens', lane: 'premiere-gallery-studio' },
-  'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], picker: 'take', lane: 'premiere-gallery-studio' },
-  'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], picker: 'take', lane: 'premiere-gallery-studio' },
+  'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], lane: 'premiere-gallery-studio' },
+  'studio-controls': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:modeSeg', 'bespoke:dataset.value'], lane: 'premiere-gallery-studio' },
+  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:mapPop', 'bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
+  'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], lane: 'premiere-gallery-studio' },
+  'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], lane: 'premiere-gallery-studio' },
+  'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], lane: 'premiere-gallery-studio' },
+  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'bespoke', marks: ["bespoke:a.camo||'inherit'"], lane: 'premiere-gallery-studio' },
+  'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], lane: 'premiere-gallery-studio' },
+  'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
+  'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:select'], lane: 'premiere-gallery-studio' },
+  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:transition'], lane: 'premiere-gallery-studio' },
+  'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], lane: 'premiere-gallery-studio' },
+  'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
+  'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
+  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:frame'], lane: 'premiere-gallery-studio' },
+  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:tanks'], lane: 'premiere-gallery-studio' },
+  'studio-lens': { chooses: 'setting', options: 3, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:lens'], lane: 'premiere-gallery-studio' },
+  'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
+  'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the Tank Gallery (premiere-gallery-studio)
-  'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'gallery-facets': { chooses: 'filter', options: 23, screen: 'gallery', owner: 'src/gallery/galleryFacets.ts', build: 'bespoke', marks: ['bespoke:selected===code', 'bespoke:selected===id', `${GALLERY} bespoke:browse.era`, `${GALLERY} bespoke:browse.role`], picker: 'tank', lane: 'premiere-gallery-studio' },
-  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#gallerySort'], picker: 'gallery-sort', lane: 'premiere-gallery-studio' },
-  'gallery-layout': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.layout-switch', `${GALLERY} bespoke:dataset.value`], picker: 'gallery-layout', lane: 'premiere-gallery-studio' },
-  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#rivalSelect'], picker: 'rival', lane: 'premiere-gallery-studio' },
-  'gallery-peer-scale': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.peer-switch'], picker: 'gallery-peer-scale', lane: 'premiere-gallery-studio' },
-  'gallery-drawing': { chooses: 'view', options: 3, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#diagramSwitch', `${GALLERY} bespoke:view===diagram`], picker: 'gallery-drawing', lane: 'premiere-gallery-studio' },
-  'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.mode'], picker: 'gallery-layer', lane: 'premiere-gallery-studio' },
-  'gallery-camera-view': { chooses: 'view', options: 8, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.view'], picker: 'gallery-camera-view', lane: 'premiere-gallery-studio' },
-  'gallery-armor-metric': { chooses: 'view', options: 3, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'segmented', marks: ['segmented:seg', 'bespoke:metric===value'], picker: 'armor-metric', lane: 'premiere-gallery-studio' },
-  'gallery-part': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'bespoke', marks: ['bespoke:dataset.anatomyPart'], picker: 'anatomy-part', lane: 'premiere-gallery-studio' },
-  'damage-lab-kind': { chooses: 'filter', options: 4, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:kind===value'], picker: 'damage-target', lane: 'premiere-gallery-studio' },
-  'damage-lab-target': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:lab!.selected'], picker: 'damage-target', lane: 'premiere-gallery-studio' },
-  'markup-operation': { chooses: 'setting', options: 4, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.markup-operation-grid', 'src/gallery/surfaceMarkup.ts bespoke:dataset.markupOperation'], picker: 'markup-operation', lane: 'premiere-gallery-studio' },
-  'markup-scope': { chooses: 'setting', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupScope'], picker: 'markup-scope', lane: 'premiere-gallery-studio' },
-  'markup-primitive': { chooses: 'setting', options: 6, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupPrimitive'], picker: 'markup-primitive', lane: 'premiere-gallery-studio' },
-  'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], picker: 'markup-annotation', lane: 'premiere-gallery-studio' },
+  'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], lane: 'premiere-gallery-studio' },
+  'gallery-facets': { chooses: 'filter', options: 23, screen: 'gallery', owner: 'src/gallery/galleryFacets.ts', build: 'bespoke', marks: ['bespoke:selected===code', 'bespoke:selected===id', `${GALLERY} bespoke:browse.era`, `${GALLERY} bespoke:browse.role`], lane: 'premiere-gallery-studio' },
+  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#gallerySort'], lane: 'premiere-gallery-studio' },
+  'gallery-layout': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.layout-switch', `${GALLERY} bespoke:dataset.value`], lane: 'premiere-gallery-studio' },
+  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#rivalSelect'], lane: 'premiere-gallery-studio' },
+  'gallery-peer-scale': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.peer-switch'], lane: 'premiere-gallery-studio' },
+  'gallery-drawing': { chooses: 'view', options: 3, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#diagramSwitch', `${GALLERY} bespoke:view===diagram`], lane: 'premiere-gallery-studio' },
+  'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-gallery-studio' },
+  'gallery-camera-view': { chooses: 'view', options: 8, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
+  'gallery-armor-metric': { chooses: 'view', options: 3, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'segmented', marks: ['segmented:seg', 'bespoke:metric===value'], lane: 'premiere-gallery-studio' },
+  'gallery-part': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/anatomyView.ts', build: 'bespoke', marks: ['bespoke:dataset.anatomyPart'], lane: 'premiere-gallery-studio' },
+  'damage-lab-kind': { chooses: 'filter', options: 4, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:kind===value'], lane: 'premiere-gallery-studio' },
+  'damage-lab-target': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:lab!.selected'], lane: 'premiere-gallery-studio' },
+  'markup-operation': { chooses: 'setting', options: 4, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.markup-operation-grid', 'src/gallery/surfaceMarkup.ts bespoke:dataset.markupOperation'], lane: 'premiere-gallery-studio' },
+  'markup-scope': { chooses: 'setting', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupScope'], lane: 'premiere-gallery-studio' },
+  'markup-primitive': { chooses: 'setting', options: 6, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupPrimitive'], lane: 'premiere-gallery-studio' },
+  'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
-  'home-rail': { chooses: 'view', options: 4, screen: 'site', owner: 'site/home.html', build: 'segmented', marks: ['segmented:~play-title', 'src/presentation/homePage.ts bespoke:other===option'], picker: 'home-rail', lane: 'lead' },
-  'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'bespoke', marks: ['bespoke:index===0', 'bespoke:buttonIndex===index'], picker: 'take', lane: 'premiere-site' },
-  'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'bespoke', marks: ['bespoke:own===stage'], picker: 'filming-stage', lane: 'premiere-site' },
-  'docs-archive-filter': { chooses: 'filter', options: 11, screen: 'site', owner: 'src/presentation/mediaArchive.ts', build: 'bespoke', marks: ['bespoke:dataset.feature', 'bespoke:feature===active'], picker: 'media-frame', lane: 'premiere-site' },
-  'docs-media-collection': { chooses: 'media', options: 8, screen: 'site', owner: 'src/presentation/mediaLibrary.ts', build: 'bespoke', marks: ['bespoke:dataset.collection'], picker: 'media-collection', lane: 'premiere-site' },
+  'home-rail': { chooses: 'view', options: 4, screen: 'site', owner: 'site/home.html', build: 'segmented', marks: ['segmented:~play-title', 'src/presentation/homePage.ts bespoke:other===option'], lane: 'lead' },
+  'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'bespoke', marks: ['bespoke:index===0', 'bespoke:buttonIndex===index'], lane: 'premiere-site' },
+  'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'bespoke', marks: ['bespoke:own===stage'], lane: 'premiere-site' },
+  'docs-archive-filter': { chooses: 'filter', options: 11, screen: 'site', owner: 'src/presentation/mediaArchive.ts', build: 'bespoke', marks: ['bespoke:dataset.feature', 'bespoke:feature===active'], lane: 'premiere-site' },
+  'docs-media-collection': { chooses: 'media', options: 8, screen: 'site', owner: 'src/presentation/mediaLibrary.ts', build: 'bespoke', marks: ['bespoke:dataset.collection'], lane: 'premiere-site' },
 } as const satisfies Readonly<Record<string, InteractionSite>>);
 
 /** A census mark that is not a choose-one, with why. */
