@@ -2318,7 +2318,7 @@
   "playMenu.versionRefusal.title": "刷新页面后加入本场比赛",
   "playMenu.versionRefusal.refresh": "刷新页面",
   "playMenu.entryRefusal.matchEnded": "你加入时比赛已经结束。",
-  "playMenu.entryRefusal.buildMismatch": "请刷新页面后加入：你的游戏版本与主机不同。",
+  "playMenu.entryRefusal.buildMismatch": "你的游戏版本与主机不同。",
   "playMenu.entryRefusal.buildHostOlder": "主机运行的是旧版本，也需要刷新页面。",
   "playMenu.entryRefusal.buildHostNewer": "游戏已有新版本。",
   "app.titleJoinPrefix": "加入 ",
