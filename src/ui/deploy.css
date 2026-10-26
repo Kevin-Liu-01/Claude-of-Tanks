@@ -186,6 +186,37 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 /* the plate's 18 px snaps down to 16, not up to 24: at 24 its time and team-size row wraps and clips at 1280 */
 .cot-garage .cot-deploy-plate{container:deploy-plate/inline-size;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:var(--s4);gap:var(--s3);
   border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--e2-flush);}
+/* the mode's picture behind the plate (owner 2026-10-26; deployScreen.ts showMode), or behind a folded layout's block of
+   rules under the mode picker: cover from each picture's subject, edge to edge, under the grade that keeps the words at
+   4.5:1 and the glyphs at 3:1 over every mode's picture, with the plate's frame on top; the tiles and controls stay plates
+   over it. The incoming layer fades in over the outgoing on the motion tokens; the campaign tab's plate is its operation */
+/* (a folded plate keeps no stacking context: its docked foot stands over the column it scrolls) */
+body:not([data-cot-panels='overlay']) .cot-garage .cot-deploy-plate,body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details.is-inline{position:relative;isolation:isolate;}
+.cot-garage .cot-deploy-art{position:absolute;inset:0;z-index:var(--z-under);overflow:hidden;border-radius:inherit;pointer-events:none;}
+.cot-garage .cot-deploy-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;
+  transition:opacity var(--dur-screen) var(--ease-move);}
+.cot-garage .cot-deploy-art img.is-front{z-index:var(--z-lift);}
+.cot-garage .cot-deploy-art img.is-on{opacity:1;}
+.cot-garage .cot-deploy-art img.is-snap{transition:none;}
+.cot-garage .cot-deploy-art::after{content:'';position:absolute;inset:0;z-index:var(--z-lift);background:var(--plate-art-grade);box-shadow:var(--e2-flush);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-art::after{box-shadow:none;}
+.cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-deploy-art{display:none;}
+/* over the picture the rule tiles, the pickers' tracks, the tank card and Watch are plates: their quiet fills take the plate */
+body:not([data-cot-panels='overlay']) .cot-garage .cot-battle-menu.open:not([data-deploy-tab='campaign']) .cot-deploy-plate,
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details.is-inline{--fill-quiet:var(--surface-plate);--fill-faint:var(--surface-plate);--btn-secondary-fill:var(--surface-plate);}
+.cot-garage .cot-deploy-art img[data-mode='standard']{object-position:72% 45%;}
+.cot-garage .cot-deploy-art img[data-mode='drone']{object-position:68% 60%;}
+.cot-garage .cot-deploy-art img[data-mode='zone_control']{object-position:55% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='capture_the_flag']{object-position:36% 60%;}
+.cot-garage .cot-deploy-art img[data-mode='frontline_assault']{object-position:72% 50%;}
+.cot-garage .cot-deploy-art img[data-mode='turbo_ball']{object-position:55% 35%;}
+.cot-garage .cot-deploy-art img[data-mode='mars']{object-position:53% 45%;}
+.cot-garage .cot-deploy-art img[data-mode='endless_horde']{object-position:45% 50%;}
+.cot-garage .cot-deploy-art img[data-mode='gun_game']{object-position:45% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='juggernaut']{object-position:35% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='infected']{object-position:45% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='realistic']{object-position:45% 50%;}
+.cot-garage .cot-deploy-art img[data-mode='ac130']{object-position:42% 60%;}
 .cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:var(--s3);
   padding:0;border:0;background:none;scrollbar-width:thin;}
 /* the selected mode (.sel-h) */

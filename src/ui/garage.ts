@@ -3707,7 +3707,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           const meta = battleRuleMeta[mode];
           return meta ? { mode, label: meta.label } : null;
         },
-        selectedMap: () => selectedMapId, selectedMode: () => battleGameMode,
+        selectedMap: () => selectedMapId, selectedMode: () => battleGameMode, modeArt: deployModeArt,
         again(mode, mapId) {
           if (mode === 'standard') setBattleMode('solo'); else setBattleGameMode(mode);
           api.setSelectedMap(mapId);
@@ -3760,6 +3760,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     markTabbar('deploy');
     battleMenu.classList.add('open');
     deployScreen?.drawObjectives();
+    // the plate's picture loads on an open screen only (renderBattleOptions set the mode before the screen opened)
+    deployScreen?.showMode(battleGameMode);
     battleModeBtn.setAttribute('aria-expanded', 'true');
     battleMenuScroll.scrollTop = 0;
     // the mode picker takes the focus on the chosen mode (the screen's close until the picker has loaded)
@@ -4158,6 +4160,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       setupIcon.dataset.modeTone = battleGameMode;
       setupDescription.textContent = t(`garage.battle.${battleMode}SetupDescription`);
       renderDeployRules(battleGameMode);
+      deployScreen?.showMode(battleGameMode);
     }
     // the mode cards' rules follow the player's arrangement (sides, Mars)
     if (deployModes && deployModeCards) deployModes.setCards(deployModeCards(), battleGameMode);
@@ -4190,6 +4193,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupDescription.textContent = t(mode === 'mars' ? 'garage.battle.marsSetupDescription' : `playMenu.matchMode.${mode}.desc`,
       modeCopyValues(mode));
     renderDeployRules(mode);
+    deployScreen?.showMode(mode);
   }
   renderBattleOptions();
   // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
