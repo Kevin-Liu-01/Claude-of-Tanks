@@ -1,4 +1,81 @@
 {
   "note": "Measured exceptions to tools/motion-lint.mjs (UI-LOCKDOWN part D). A row covers the findings of one rule at one place: { rule, file, where (the selector, '@keyframes <name>', 'animate()', 'requestAnimationFrame(<name>)' or the media path), property? (one property; absent covers them all), reason, measured (the run and the number: dropped frames, layer size, LoAF) }. A row without a measurement, or one that no longer matches a finding, fails the receipt.",
-  "rows": []
+  "rows": [
+    {
+      "rule": "paint",
+      "file": "index.html",
+      "where": "@keyframes mk-links-top",
+      "property": "stroke-dashoffset",
+      "reason": "The mark's track links (owner 2026-10-24, the living mark): an inline SVG that repaints whole every frame anyway, since its wheels, hull, turret, crew and antenna move by transforms inside the SVG, which browsers paint rather than composite; the dash offset adds no area. Reduced motion stops it (the static frame).",
+      "measured": "Painted box: the boot card's mark is clamp(170px, 20vw, 270px) wide (270 px at 1440, 164 px under 768 px, height min(34vh, 150px) on short phones); a public page's mark is 24 to 46 px tall. One SVG, no layer of its own, no layout."
+    },
+    {
+      "rule": "paint",
+      "file": "index.html",
+      "where": "@keyframes mk-links-low",
+      "property": "stroke-dashoffset",
+      "reason": "The mark's track links (owner 2026-10-24, the living mark): an inline SVG that repaints whole every frame anyway, since its wheels, hull, turret, crew and antenna move by transforms inside the SVG, which browsers paint rather than composite; the dash offset adds no area. Reduced motion stops it (the static frame).",
+      "measured": "Painted box: the boot card's mark is clamp(170px, 20vw, 270px) wide (270 px at 1440, 164 px under 768 px, height min(34vh, 150px) on short phones); a public page's mark is 24 to 46 px tall. One SVG, no layer of its own, no layout."
+    },
+    {
+      "rule": "duration",
+      "file": "index.html",
+      "where": ".cot-mark--motion",
+      "property": "--mk-loop",
+      "reason": "The mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: one loop moves the links four pitches and the wheels two spoke steps, so it closes on itself. Reduced motion stops the loop.",
+      "measured": "LOOP_S 1.2 s; TRAVEL 240 degrees of a 5.4-unit wheel = 22.62 units, PITCH = TRAVEL / 4 = 5.655 units, the keyframes' dash offset."
+    },
+    {
+      "rule": "paint",
+      "file": "src/ui/brandMarkMotion.ts",
+      "where": "@keyframes mk-links-top",
+      "property": "stroke-dashoffset",
+      "reason": "The mark's track links (owner 2026-10-24, the living mark): an inline SVG that repaints whole every frame anyway, since its wheels, hull, turret, crew and antenna move by transforms inside the SVG, which browsers paint rather than composite; the dash offset adds no area. Reduced motion stops it (the static frame).",
+      "measured": "Painted box: the boot card's mark is clamp(170px, 20vw, 270px) wide (270 px at 1440, 164 px under 768 px, height min(34vh, 150px) on short phones); a public page's mark is 24 to 46 px tall. One SVG, no layer of its own, no layout."
+    },
+    {
+      "rule": "paint",
+      "file": "src/ui/brandMarkMotion.ts",
+      "where": "@keyframes mk-links-low",
+      "property": "stroke-dashoffset",
+      "reason": "The mark's track links (owner 2026-10-24, the living mark): an inline SVG that repaints whole every frame anyway, since its wheels, hull, turret, crew and antenna move by transforms inside the SVG, which browsers paint rather than composite; the dash offset adds no area. Reduced motion stops it (the static frame).",
+      "measured": "Painted box: the boot card's mark is clamp(170px, 20vw, 270px) wide (270 px at 1440, 164 px under 768 px, height min(34vh, 150px) on short phones); a public page's mark is 24 to 46 px tall. One SVG, no layer of its own, no layout."
+    },
+    {
+      "rule": "duration",
+      "file": "src/ui/brandMarkMotion.ts",
+      "where": ".cot-mark--motion",
+      "property": "--mk-loop",
+      "reason": "The mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: one loop moves the links four pitches and the wheels two spoke steps, so it closes on itself. Reduced motion stops the loop.",
+      "measured": "LOOP_S 1.2 s; TRAVEL 240 degrees of a 5.4-unit wheel = 22.62 units, PITCH = TRAVEL / 4 = 5.655 units, the keyframes' dash offset."
+    },
+    {
+      "rule": "raster",
+      "file": "404.html",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "site/home.html",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "src/presentation/publicShell.ts",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 16 x 16 CSS px in the footer credit (6x the box)."
+    },
+    {
+      "rule": "raster",
+      "file": "src/ui/garage.ts",
+      "where": "/brand/partners/general-translation.png",
+      "reason": "General Translation's mark, a third-party trademark supplied only as its official 96 px PNG export (docs/ATTRIBUTION.md); lossless and still, never animated, so nothing to lose. Swap it for an official SVG when one is supplied.",
+      "measured": "96 x 96 RGBA PNG, 4,538 bytes, lossless; drawn 30 x 30 CSS px in the Garage language credit (3.2x the box, crisp to DPR 3)."
+    }
+  ]
 }
