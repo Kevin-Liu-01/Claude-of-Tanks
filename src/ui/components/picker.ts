@@ -276,48 +276,17 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     for (const element of options$()) element.tabIndex = element === to ? 0 : -1;
     if (focus) to.focus({ preventScroll });
   };
-  /** A scrolling list never ends on a row's edge, which would hide that more rows follow (Rooms r34, r35): when the row its
-   *  foot cuts shows under 30 % of itself, or over 70 % (a row whose text stands whole reads as whole), the list gives up
-   *  height until 40 % of a row shows above the foot's fade band. It reads the rows as drawn at the list's scroll (they differ
-   *  in height: a mode's rules take two or three lines), so it runs after the list scrolls to its choice. Its host keeps its
-   *  own size, so the observer that calls this sees no change from it. (Cards and swatches stand beside a preview whose foot
-   *  they share.) */
-  const keepPeek = (): void => {
-    if (options.layout !== 'list') return;
-    grid.style.maxHeight = '';
-    if (grid.scrollHeight <= grid.clientHeight + 1) return;
-    const style = getComputedStyle(grid);
-    const padTop = parseFloat(style.paddingTop) || 0;
-    const padBottom = parseFloat(style.paddingBottom) || 0;
-    // the foot's padding band carries the fade, so a row shows only above it; at the list's end nothing follows
-    const foot = grid.scrollTop + grid.clientHeight - padBottom;
-    if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 1) return;
-    const origin = grid.getBoundingClientRect().top - grid.scrollTop;
-    const rows: { top: number; height: number }[] = [];
-    for (const element of options$()) {
-      const box = element.getBoundingClientRect();
-      const top = box.top - origin;
-      const row = rows.find((item) => Math.abs(item.top - top) <= 1);
-      if (row) row.height = Math.max(row.height, box.height); else rows.push({ top, height: box.height });
-    }
-    rows.sort((a, b) => a.top - b.top);
-    const cut = rows.findIndex((row) => row.top + row.height > foot);
-    if (cut < 0) return;
-    const shown = (foot - rows[cut].top) / rows[cut].height;
-    if (shown >= 0.3 && shown <= 0.7) return;
-    // the row to show 40 % of: the cut one when nearly whole, else the last whole row above it
-    const row = shown > 0.7 ? rows[cut] : rows[cut - 1];
-    if (!row || row.top <= grid.scrollTop + padTop) return;
-    const target = row.top + row.height * 0.4;
-    const height = grid.clientHeight - (foot - target);
-    grid.style.maxHeight = `${Math.round(height - (style.boxSizing === 'border-box' ? 0 : padTop + padBottom))}px`;
+  /** While rows lie below the grid's foot, the foot fades deeper (pickers.css [data-more]), so whatever row the foot cuts
+   *  reads as going on; the fade lifts at the list's end (Rooms r34-r36: a row ending on the foot read as the list's end, and
+   *  shortening the list to show part of the next row left a blank band in its plate). */
+  const markRowsBelow = (): void => {
+    grid.toggleAttribute('data-more', grid.scrollTop + grid.clientHeight < grid.scrollHeight - 1);
   };
-  const gridResize = new ResizeObserver(keepPeek);
-  gridResize.observe(host);
+  const gridResize = new ResizeObserver(markRowsBelow);
+  gridResize.observe(grid);
   // The grid opens with its choice in view on whole rows: the chosen row on top, or near the end the first row from which
   // the chosen one shows. A row cut under the bar would read as a loose caption (Rooms r25).
   const scrollToChosen = (): void => {
-    grid.style.maxHeight = '';
     const chosen = options$().find((element) => element.getAttribute('aria-selected') === 'true');
     if (!chosen || grid.scrollHeight <= grid.clientHeight) return;
     const style = getComputedStyle(grid);
@@ -330,7 +299,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     const rows = options$().map((element) => element.getBoundingClientRect().top - origin).filter((row) => row + view >= top + chosen.offsetHeight);
     grid.scrollTop = Math.min(end, rows.length ? Math.min(...rows) : end);
   };
-  const revealChosen = (): void => { scrollToChosen(); keepPeek(); };
+  const revealChosen = (): void => { scrollToChosen(); markRowsBelow(); };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);
     grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
@@ -338,6 +307,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     empty.hidden = shown.length > 0;
     grid.hidden = shown.length === 0;
     rove(options$().find((element) => element.getAttribute('aria-selected') === 'true') ?? options$()[0], false);
+    markRowsBelow();
   };
   const choose = (item: PickerItem | null): void => {
     if (!item || item.disabled) return;
@@ -444,6 +414,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   host.addEventListener('keydown', onKey);
   search.addEventListener('input', onInput);
   chipRow.addEventListener('scroll', syncMore, { passive: true });
+  grid.addEventListener('scroll', markRowsBelow, { passive: true });
   render();
   requestAnimationFrame(revealChosen);
 
@@ -475,6 +446,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       host.removeEventListener('keydown', onKey);
       search.removeEventListener('input', onInput);
       chipRow.removeEventListener('scroll', syncMore);
+      grid.removeEventListener('scroll', markRowsBelow);
       chipsResize.disconnect();
       gridResize.disconnect();
       host.replaceChildren();
