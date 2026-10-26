@@ -931,7 +931,6 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
-let lastGarageProgramRoot: THREE.Object3D | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -957,8 +956,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
   restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
-    const programRoot = pedestal.current?.root ?? scene;
-    const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
+    // (2026-10-26, the rooms A/B) every covered return links the Garage's programs before its frames: a hero a battle
+    // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
+    // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
+    const programsNeedWarm = true;
     const receipt = await restoreGarageGpuPipeline({
       renderer,
       scene,
@@ -971,7 +972,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       programsNeedWarm,
       isCurrent,
     });
-    lastGarageProgramRoot = programRoot;
     return receipt;
   },
 });
