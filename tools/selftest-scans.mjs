@@ -72,6 +72,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  'src/techTree/techTree.selftest.mjs': lists('src/techTree/*.ts', 'src/techTree/nations/*'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
@@ -214,6 +216,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/contentSecurityPolicy.selftest.mjs': outside('dist/, a finished build, when this checkout has one'),
   'tools/mode-aggression-harness.mjs': outside('the run directories its report and compare commands name (--dir, --base): ' +
     'its .qa-dev records, or the receipt\'s tmpdir fixtures'),
+  'tools/battle-spike-census.mjs': outside('the census folder its CLI writes (--out, under .qa-dev) and the tmpdir fixtures its receipts judge'),
+  'tools/battle-spike-budget.mjs': outside('the census folder it judges (--out under .qa-dev, or the selftest\'s tmpdir fixture)'),
   'tools/vercel-static-preview.mjs': outside('the build output it serves (dist/, or the fixture dist its caller passes)'),
 
   // ---- source digests for provenance records: no verdict depends on what they list

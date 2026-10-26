@@ -945,9 +945,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details = rosterRowDetails(result, revives);
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
+    // (a Latin name's class, held apart from the markup: i18n-literal-lint reads a class word in the template as copy)
+    const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm${LATIN_NAME.test(result.name || result.id) ? ' lat' : ''}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
