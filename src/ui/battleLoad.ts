@@ -454,6 +454,11 @@ export interface PendingBattlefield {
   readonly mapId: string;
   readonly mapName?: string;
   readonly thumb?: string;
+  /** The battle's planned teams (rosterState.planBattleSeats): the cover lists every seat on both sides from its first
+   *  frame, before the loading owner has even arrived (the owner, 2026-10-26: "fix team lists in loading state"). */
+  readonly allies?: readonly BattleLoadRosterRow[];
+  readonly enemies?: readonly BattleLoadRosterRow[];
+  readonly teams?: BattleLoadTeams | null;
 }
 
 /**
@@ -811,15 +816,17 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     showPending(map?: string | PendingBattlefield | null) {
       const pending = typeof map === 'string' ? { mapId: map } : map ?? null;
       const chosen: PendingBattlefield | null = pending?.mapId && pending.mapId !== 'random' ? pending : null;
+      const planned = pending?.allies?.length || pending?.enemies?.length ? pending : null;
       api.show({
         mapName: chosen?.mapName ?? '',
         mode: t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
-        allies: [],
-        enemies: [],
-        slots: PENDING_ROSTER_SLOTS,
+        allies: planned?.allies ?? [],
+        enemies: planned?.enemies ?? [],
+        ...(planned ? {} : { slots: PENDING_ROSTER_SLOTS }),
       });
+      if (planned?.teams) api.rosters(planned.allies ?? [], planned.enemies ?? [], planned.teams);
     },
 
     /**
