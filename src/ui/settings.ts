@@ -450,6 +450,9 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
    the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
 .cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+/* (the battle's primary, the end report's AGAIN and the bars' GARAGE and DRIVE: 48 px, its bevel for the kit's lifted shadow;
+   56 px and flat here, the same action read as two buttons, gauntlet r13) */
+.cot-resume .rz-go{box-shadow:var(--btn-primary-bevel);}
 .cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
@@ -667,8 +670,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   resume.innerHTML =
     `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
     '<div class="rz-actions">' +
-    `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--56 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--48 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--48 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
     '</div></div>';
   const resumeSettings = requiredElement<HTMLButtonElement>(resume, '.rz-set');
   const resumeSettingsKey = requiredElement<HTMLElement>(resume, '.rz-set kbd');

@@ -448,7 +448,8 @@ body[data-cot-height='short'] .cot-es .es-actions{
   /* (no rule of its own: the report's plate edge over it made two lines at 844x390, gauntlet r6, as r4 at 390) */
   background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .1),var(--hud-plate-strong) 28%);border-top:0;
 }
-body[data-cot-width='phone'] .cot-es .es-action{min-width:0;flex:1;padding:0 var(--s2);font-size:var(--battle-fs-11)}
+/* (the kit's 48 px button's own 12 px label, the pause veil's: at 11 the same action read a step smaller here, gauntlet r13) */
+body[data-cot-width='phone'] .cot-es .es-action{min-width:0;flex:1;padding:0 var(--s2)}
 body[data-cot-height='short'] .cot-es{justify-content:flex-start;overflow-y:auto;padding-bottom:78px}
 body[data-cot-height='short'] .cot-es .es-ban{font-size:clamp(24px,9vh,38px)}
 body[data-cot-height='short'] .cot-es .es-tal .v,
@@ -486,7 +487,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action
 }
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es .es-action,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-action,
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action{min-width:0;padding:0 var(--s4);font-size:var(--battle-fs-11)}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action{min-width:0;padding:0 var(--s4)}
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es .es-ph,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-ph,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:var(--s2);overflow:hidden}
