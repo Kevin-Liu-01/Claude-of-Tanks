@@ -21,6 +21,8 @@ export interface PickerItem {
   /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures. */
   readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[] };
   readonly glyph?: IconId;
+  /** A nation's flag (its image URL), drawn in the glyph's place at the flag's own 4:3. */
+  readonly flag?: string;
   /** A game mode id: the glyph wears that mode's hue (data-mode-tone). */
   readonly tone?: string;
   /** The filter tags it answers (a biome, a size, a kind). */
@@ -167,7 +169,8 @@ const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean, lay
       : item.media.poster ? `<img src="${esc(item.media.poster)}"`
         + `${item.media.srcset ? ` srcset="${esc(item.media.srcset)}" sizes="${esc(item.media.sizes ?? '240px')}"` : ''} alt="" loading="lazy" decoding="async">` : '';
   const media = picture ? `<span class="cot-c-picker__media cot-c-media cot-c-media--soft">${picture}</span>` : '';
-  const glyph = item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
+  const glyph = item.flag ? `<span class="cot-c-picker__glyph cot-c-picker__flag"><img src="${esc(item.flag)}" alt="" decoding="async"></span>`
+    : item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
   const facts = item.facts?.length ? `<span class="cot-c-picker__facts">${item.facts.slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('')}</span>` : '';
   const tip = item.disabled ? ` data-tip="${esc(item.disabled)}"` : '';
   return `<div class="cot-c-picker__cell" role="presentation">`

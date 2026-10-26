@@ -10,6 +10,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { flagIconHTML } from './flags.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { segmented, setRoving, wireRoving } from './components/components.ts';
 import { countryNation, type CountryId } from '../sim/countries.ts';
 import type { TeamNationsId } from '../sim/matchRuleset.ts';
 
@@ -40,16 +41,12 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
   root.dataset.teamNations = '';
   const label = document.createElement('b');
   label.textContent = t('teams.label');
-  const group = document.createElement('div');
-  group.setAttribute('role', 'radiogroup');
-  group.className = 'cot-c-seg';
-  group.setAttribute('aria-label', t('teams.label'));
-  const mono = document.createElement('button');
-  mono.type = 'button'; mono.className = 'cot-c-seg__opt'; mono.dataset.teamNations = 'mono'; mono.setAttribute('role', 'radio');
-  const random = document.createElement('button');
-  random.type = 'button'; random.className = 'cot-c-seg__opt'; random.dataset.teamNations = 'random'; random.setAttribute('role', 'radio');
-  group.append(mono, random);
-  root.append(label, group);
+  // the kit's segmented control; render() draws each option's flags (or the globe) over the builder's label
+  root.insertAdjacentHTML('beforeend', segmented({ label: t('teams.label'), className: 'cot-teams-seg', value: options.read(),
+    options: [{ value: 'mono', label: t('teams.monoLabel') }, { value: 'random', label: t('teams.randomLabel') }] }));
+  const group = root.querySelector<HTMLElement>('.cot-teams-seg')!;
+  const [mono, random] = group.querySelectorAll<HTMLButtonElement>('.cot-c-seg__opt');
+  root.prepend(label);
   const globe = (): string => `<span class="globe" aria-hidden="true">${uiIconSVG('globe')}</span>`;
   function render(): void {
     const value = options.read();
@@ -61,17 +58,12 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
     random.innerHTML = `${globe()}<span>${t('teams.random')}</span>`;
     mono.setAttribute('aria-label', t('teams.monoLabel'));
     random.setAttribute('aria-label', t('teams.randomLabel'));
-    for (const button of [mono, random]) {
-      button.setAttribute('aria-checked', String(button.dataset.teamNations === value));
-      button.disabled = locked;
-    }
+    mono.disabled = random.disabled = locked;
+    setRoving(group, value);
   }
-  group.addEventListener('click', (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-team-nations]');
-    if (!button || button.disabled) return;
-    const value = button.dataset.teamNations as TeamNationsId;
+  wireRoving(group, (value) => {
     if (value === options.read()) return;
-    options.write(value);
+    options.write(value as TeamNationsId);
     render();
   });
   render();

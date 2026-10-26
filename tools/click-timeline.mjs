@@ -605,7 +605,7 @@ export const PATHS = [
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', 0), ctx).catch(() => {});
       await closeDeploy(page, ctx); } },
   { id: 'deploy-sides', doc: 'game', reps: 4, setup: openDeploy,
-    press: (page, i) => target(page, `#cot-battle-menu .cot-sides-choice[data-sides="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
+    press: (page, i) => target(page, `#cot-battle-menu .cot-battle-sides .cot-c-seg__opt[data-value="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
   { id: 'deploy-time', doc: 'game', reps: 4, setup: openDeploy,
     press: (page, i) => target(page, '#cot-battle-menu .cot-time-choice', Math.floor(i / 2)), teardown: closeDeploy },
   { id: 'deploy-tab', doc: 'game', reps: 4, setup: openDeploy,

@@ -49,7 +49,7 @@ import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
-import type { CustomSelectController } from './customSelect.ts';
+import type { NationSelectController } from './nationSelect.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -747,7 +747,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab: SettingsTab = 'controls';
-  let crewSelectController: CustomSelectController | null = null;
+  let crewSelectController: NationSelectController | null = null;
   // A touch-only device has no keyboard to rebind, so the Controls
   // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
   // touch target). Hide the tab and land on Gameplay instead.
@@ -1592,7 +1592,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   function renderTab() {
-    crewSelectController?.close();
+    crewSelectController?.dispose();
     crewSelectController = null;
     cancelCapture();
     clearConflict();
@@ -1815,10 +1815,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (!e.repeat) finishCapture(e.code);
       return;
     }
-    // The dropdown consumes arrows, typeahead and its first Escape. Its field
+    // The crew voice's menu consumes arrows, Enter and its Escape: its popover sits in the body, and its field
     // contains bubbling keys so they still cannot reach the game behind us.
-    if (e.target instanceof Element && e.target.closest('.cot-set-crew-field') &&
-        (e.code !== 'Escape' || root.querySelector('.cot-custom-select-list:popover-open'))) return;
+    if (e.target instanceof Element && (e.target.closest('.cot-c-menu__pop')
+        || (e.target.closest('.cot-set-crew-field') && e.code !== 'Escape'))) return;
     if (isAnyModalOpen()) return; // The HUD editor owns focus and Escape above Settings.
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
     // shell hotkeys or the garage's Enter-to-battle handler behind it.

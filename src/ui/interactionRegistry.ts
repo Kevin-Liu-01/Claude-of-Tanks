@@ -115,12 +115,13 @@ export const INTERACTION_SITES = Object.freeze({
   // ---- Deploy (premiere-site)
   'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-mode'], lane: 'premiere-site' },
   'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-battlefield'], lane: 'premiere-site', path: 'map-deploy' },
-  'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'premiere-site' },
-  'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'bespoke', marks: ['bespoke:dataset.diff'], lane: 'premiere-site' },
-  'deploy-mars': { chooses: 'setting', options: 3, screen: 'deploy', owner: GARAGE, build: 'custom-select', marks: ['select:[data-mars-field]', 'custom-select:marsDropdowns'], lane: 'premiere-site' },
-  'deploy-arrangement': { chooses: 'setting', options: 6, screen: 'deploy', owner: 'src/ui/battleArrangementPanel.ts', build: 'custom-select', marks: ['select:select', 'custom-select:field.select'], lane: 'premiere-site' },
-  'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:group', 'bespoke:dataset.teamNations'], lane: 'premiere-site' },
-  'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'custom-select', marks: ['custom-select:select'], lane: 'premiere-site' },
+  'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'segmented', marks: ['segmented:.cot-battle-sides'], lane: 'premiere-site' },
+  'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'segmented', marks: ['segmented:.cot-deploy-tier'], lane: 'premiere-site' },
+  'deploy-mars': { chooses: 'setting', options: 3, screen: 'deploy', owner: GARAGE, build: 'segmented', marks: ['segmented:.cot-deploy-mars'], lane: 'premiere-site' },
+  // the counts and the winning score (up to 14 values) on the picker menu; the settings of two to five on the segmented control
+  'deploy-arrangement': { chooses: 'setting', options: 14, screen: 'deploy', owner: 'src/ui/battleArrangementPanel.ts', build: 'picker', marks: ['picker:deploy-arrangement', 'segmented:.cot-arrange-seg'], lane: 'premiere-site' },
+  'deploy-team-nations': { chooses: 'team', options: 2, screen: 'deploy', owner: 'src/ui/teamNationsControl.ts', build: 'segmented', marks: ['segmented:.cot-teams-seg'], lane: 'premiere-site' },
+  'nation-dropdown': { chooses: 'nation', options: 15, screen: 'deploy', owner: 'src/ui/nationSelect.ts', build: 'picker', marks: ['picker:nation-dropdown'], lane: 'premiere-site' },
 
   // ---- Settings and the HUD editor (premiere-site)
   'settings-right-click': { chooses: 'setting', options: 3, screen: 'settings', owner: SETTINGS, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-site' },

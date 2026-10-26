@@ -177,7 +177,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-main{min-width:0}
 .dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
 /* a short landscape phone keeps the chapter's first lines in its first view: the banner and its title step down */
-@media (max-height:500px) and (orientation:landscape){.dm-banner{height:clamp(140px,38vh,250px)}:root{--docs-banner-h1:var(--fs-36)}}
+@media (height < 520px){.dm-banner{height:clamp(140px,38vh,250px)}:root{--docs-banner-h1:var(--fs-36)}}
 .dm-banner>picture,.dm-banner>picture>img,.dm-banner>img,.dm-banner>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%}
 .dm-banner>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .dm-banner>video.has-frame{opacity:1}

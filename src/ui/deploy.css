@@ -255,6 +255,7 @@ body[data-cot-panels] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:no
 body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{flex:none;min-height:0;height:clamp(180px,min(62dvh,100dvh - 200px),560px);}
 @media (max-height:500px) and (orientation:landscape){
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__preview{display:none;}
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__in{grid-template-columns:minmax(0,1fr);}
 }
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */
@@ -325,32 +326,27 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head .cot-deploy-fie
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-3);}
 .cot-garage .cot-deploy-diff[hidden]{display:none;}
 .cot-garage .cot-deploy-diff>svg{width:16px;height:16px;margin-right:var(--s1);}
-/* 12, not 16: the same 34 px pill as the time and team-size choices below */
-.cot-garage .cot-deploy-diff button{height:34px;padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
-  cursor:pointer;font:500 var(--fs-13)/1 var(--font-body);}
-.cot-garage .cot-deploy-diff button[aria-pressed='true']{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+/* the tiers are the kit's segmented control on the bots' plate (one plate: the control's own steps aside) */
+.cot-garage .cot-deploy-diff .cot-c-seg{padding:0;background:none;box-shadow:none;}
 .cot-garage .cot-deploy-more{display:grid;place-items:center;width:40px;height:40px;margin-left:auto;padding:0;border:0;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-2);cursor:pointer;}
 .cot-garage .cot-deploy-more svg{width:18px;height:18px;}
 .cot-garage .cot-deploy-more[aria-expanded='true']{color:var(--ink-1);background:var(--surface-hover);}
-@media (hover:hover){.cot-garage :is(.cot-deploy-diff button,.cot-deploy-more):hover{color:var(--ink-1);}}
+@media (hover:hover){.cot-garage .cot-deploy-more:hover{color:var(--ink-1);}}
 .cot-garage .cot-battle-menu.open [data-team-options]>.cot-battle-menu-label,
 .cot-garage .cot-battle-menu.open .cot-battle-times legend,
 .cot-garage .cot-battle-menu.open .cot-mode-features{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-.cot-garage .cot-battle-menu.open .cot-battle-sides{display:inline-flex;gap:0;margin:0;padding:3px;border:0;
-  border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
 .cot-garage .cot-battle-menu.open .cot-battle-times{display:inline-flex;gap:var(--s1);margin:0;padding:0;border:0;}
 /* the 34 px pills snap their 13 px sides down to 12, not up to 16: at 16 the time and team-size rows wrap at 1440 */
-.cot-garage .cot-battle-menu.open :is(.cot-sides-choice,.cot-time-content){display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+.cot-garage .cot-battle-menu.open .cot-time-content{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
   min-height:34px;height:34px;padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
   font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;cursor:pointer;}
 .cot-garage .cot-battle-menu.open .cot-time-content{height:40px;min-height:40px;border-radius:var(--chip-radius);background:var(--chip-fill);box-shadow:var(--ring-2);color:var(--ink-2);}
 .cot-garage .cot-battle-menu.open .cot-time-choice{flex:none;min-width:0;}
 .cot-garage .cot-battle-menu.open .cot-time-content{flex-direction:row;}
 .cot-garage .cot-battle-menu.open .cot-time-content svg{width:16px;height:16px;flex:none;}
-/* a time in the draw is a pressed chip (the kit's); the chosen sides, the segmented control's slate plate */
+/* a time in the draw is a pressed chip (the kit's); the sides are the kit's segmented control */
 .cot-garage .cot-battle-menu.open .cot-time-choice input:checked+.cot-time-content{background:var(--chip-fill-on);color:var(--ink-1);box-shadow:var(--ring-accent);}
-.cot-garage .cot-battle-menu.open .cot-sides-choice[aria-pressed='true']{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
 .cot-garage .cot-battle-menu.open .cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
 .cot-garage .cot-battle-menu.open .cot-battle-times small,.cot-garage .cot-battle-menu.open .cot-time-check{display:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-sides-custom{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:end;}
@@ -362,19 +358,22 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head .cot-deploy-fie
 .cot-garage .cot-battle-menu.open .cot-battle-menu-label{padding:0 0 var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);}
 .cot-garage .cot-battle-menu.open .cot-battle-mars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);flex:1 1 100%;}
 .cot-garage .cot-battle-menu.open .cot-battle-mars[hidden],.cot-garage .cot-battle-menu.open [data-mars-label][hidden]{display:none;}
-.cot-garage .cot-battle-menu.open .cot-battle-mars label{display:grid;gap:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);color:var(--ink-3);}
+.cot-garage .cot-battle-menu.open .cot-battle-mars-field{display:grid;gap:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);color:var(--ink-3);}
 .cot-garage .cot-battle-menu.open .cot-battle-galaxy{display:flex;align-items:center;gap:var(--s3);height:34px;padding:0 var(--s3);border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);font:600 var(--fs-13)/1 var(--font-display);}
 .cot-garage .cot-battle-menu.open .cot-battle-galaxy[hidden]{display:none;}
 .cot-garage .cot-battle-menu.open .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:var(--s3);margin:0;flex:1 1 100%;}
-.cot-garage .cot-battle-menu.open .cot-mode-settings>label[hidden]{display:none;}
-.cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-mode-settings label>span){display:block;padding:0 0 var(--s2);color:var(--ink-3);
+.cot-garage .cot-battle-menu.open .cot-mode-settings>.cot-arrange-field[hidden]{display:none;}
+.cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-arrange-field>span){display:block;padding:0 0 var(--s2);color:var(--ink-3);
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
 .cot-garage .cot-battle-menu.open .cot-teams{flex-direction:column;align-items:flex-start;gap:0;}
 .cot-garage .cot-battle-menu.open .cot-teams button{height:34px;}
-.cot-garage .cot-battle-menu.open .cot-custom-select-trigger{min-height:40px;}
-body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-custom-select-trigger{min-height:var(--cot-control-floor);}
-.cot-garage .cot-battle-menu.open .cot-mode-settings label{gap:0;}
+.cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:40px;}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
+/* a segmented setting fills its cell, its values sharing the width (Respawn delay's five, the juggernaut's two roles) */
+.cot-garage .cot-battle-menu.open .cot-arrange-seg{display:flex;}
+.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;min-width:0;}
+.cot-garage .cot-battle-menu.open .cot-arrange-field[data-mode-field='juggernautRole']{grid-column:1/-1;}
 
 /* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{display:flex;flex-direction:column;gap:var(--s3);padding:0;border:0;background:none;}
@@ -399,9 +398,11 @@ body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-custom-sele
 @container deploy-plate (max-width:560px){
   .cot-garage .cot-deploy-tank .load .cot-c-statchip__label{display:none;}
 }
-/* a narrow plate's chips close up (their inner gap and padding) so the three rounds keep one row */
+/* a narrow plate's chips close up (their inner gap and padding) and drop the unit (millimetres: the tip names it) so the
+   three rounds keep one row in every locale */
 @container deploy-plate (max-width:360px){
   .cot-garage .cot-deploy-tank .load .cot-c-statchip{gap:3px;padding-inline:var(--s1);}
+  .cot-garage .cot-deploy-tank .load .cot-c-statchip small{display:none;}
 }
 @container deploy-plate (max-width:480px){
   .cot-garage .cot-deploy-tank .cot-card{display:none;}
@@ -524,7 +525,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
   .cot-garage .cot-deploy-brief-name{font-size:var(--fs-20);}
 }
 /* touch: the screen's tabs and option pickers meet the control floor (44 px) */
-body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tab,.cot-c-seg__opt,.cot-time-content,.cot-sides-choice,.cot-teams button){min-height:var(--cot-control-floor);}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-deploy-tab,.cot-c-seg__opt,.cot-time-content,.cot-teams button){min-height:var(--cot-control-floor);}
 body[data-cot-input='coarse'] .cot-garage .cot-deploy-more{width:var(--cot-control-floor);height:var(--cot-control-floor);}
 /* a phone's dock is fixed over the screen's foot: the battlefield picker keeps its height free, so it scrolls clear */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open{--deploy-dock-h:calc(58px + var(--s3) + max(10px,env(safe-area-inset-bottom)) + 1px);}
@@ -547,13 +548,13 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-me
 /* time of day takes its own row, its chips named; the sides and the options share the next (a narrow plate tightens
    the sides' padding so they stay one row) */
 .cot-garage .cot-battle-menu.open .cot-battle-times{flex:1 1 100%;}
-@container deploy-plate (max-width:420px){.cot-garage .cot-battle-menu.open .cot-sides-choice{padding:0 var(--s2);}}
+@container deploy-plate (max-width:420px){.cot-garage .cot-battle-menu.open .cot-battle-sides .cot-c-seg__opt{padding:0 var(--s2);}}
 /* a phone's pickers fill their rows: the three times, then the sides beside the options */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-times{flex:1 1 100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-choice{flex:1 1 0;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-content{width:100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-sides{flex:1 1 auto;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-sides-choice{flex:1 1 0;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-sides .cot-c-seg__opt{flex:1 1 0;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams{align-self:stretch;align-items:stretch;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams [role=radiogroup]{display:flex;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-teams button{flex:1 1 auto;white-space:nowrap;}
