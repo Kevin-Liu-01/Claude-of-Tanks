@@ -77,6 +77,10 @@
 .cot-record-outcomes{grid-auto-rows:auto}
 .cot-record-outcome{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:var(--s2);align-content:start;padding:var(--s4);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .cot-record-outcome strong{display:block;align-self:last baseline;margin:0;font:600 var(--fs-28)/1 var(--font-display);color:var(--ink-1)}
+/* beside the win rate's hero figure a count plate keeps its label on its figure, the two at its foot (the row's slack
+   above them), instead of the hero's baseline */
+.cot-record-outcome:not(.win-rate){display:flex;flex-direction:column;justify-content:flex-end;gap:var(--s2)}
+.cot-record-outcome:not(.win-rate) strong{align-self:auto}
 .cot-record-outcome.win strong{color:var(--text-ok)}
 .cot-record-outcome.loss strong{color:var(--text-danger)}
 .cot-record-outcome.win-rate strong{font-size:var(--fs-52)}
