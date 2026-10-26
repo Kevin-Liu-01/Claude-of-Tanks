@@ -238,7 +238,7 @@ const CSS = `
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
 .cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
-  --rules-col:max(320px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+  --rules-col:max(344px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -294,7 +294,7 @@ body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:r
 body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .cot-play .arrange-sides{margin-bottom:var(--s2)}
-.cot-play .arrange-sides-label{margin-right:var(--s1)}
+.cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
 .cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}

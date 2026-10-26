@@ -78,6 +78,7 @@
 /* touch has no hover: the star shows on the chosen card and on favourites, at the 44 px target */
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
+  .cot-c-picker--list .cot-c-picker__opt{min-height:52px}
   .cot-c-picker__more{--h:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }

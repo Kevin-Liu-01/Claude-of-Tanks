@@ -318,6 +318,8 @@ body[data-cot-width='compact'] .cot-play .battlefield-copy,
 body[data-cot-width='phone'] .cot-play .battlefield-copy{grid-column:auto;grid-template-columns:1fr;padding:var(--s4);gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .control-actions .action{flex:1 1 128px}
 body[data-cot-width='phone'] .cot-play .control-actions .action{flex:1 1 0;min-width:0;padding-inline:var(--s2)}
+/* Start carries the ready count (START 10/14): it takes the larger share of the row so its label keeps its padding */
+body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='start']{flex-grow:1.5}
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .room-actions{grid-template-columns:1fr}
 /* a short or compact screen: the lobby's controls end the roster, so the roster keeps the screen; the head is lower and stays */
 body:is([data-cot-height='short'],[data-cot-height='compact']) .cot-play .lobby.show .controls{position:static}
@@ -881,6 +883,12 @@ body[data-cot-input='coarse'] .cot-play button,
 body[data-cot-input='coarse'] .cot-play input,
 body[data-cot-input='coarse'] .cot-play .menu-select-trigger,
 body[data-cot-input='coarse'] .cot-play .menu-select-option{min-height:44px}
+/* the room's segmented settings are 44 px like its triggers, as Settings' are: the options sit inside the track's 3 px
+   inset and their hit areas reach its edge (a 50 px track put the foot's labels 6 px apart, Rooms r28) */
+body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
+  position:relative;min-height:0;height:calc(var(--cot-control-floor) - 6px)}
+body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
+  content:'';position:absolute;inset:-3px 0}
 
 @media (prefers-reduced-motion:reduce){
   body[data-cot-width] .cot-play *,body[data-cot-width] .cot-es *,body[data-cot-width] .cot-studio *{
