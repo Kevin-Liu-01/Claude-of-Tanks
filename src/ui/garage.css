@@ -511,40 +511,36 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-rail{--country-edge:34px;position:absolute;z-index:5;
   left:50%;bottom:186px;transform:translateX(-50%);
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
-  grid-template-columns:var(--country-edge) auto minmax(0,1fr) var(--country-edge);
+  grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
-.cot-country-chip.is-sliver{visibility:hidden;}
+/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows */
 .cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px calc(3px + var(--rail-end,0px)) var(--s1) 3px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-inline:0;touch-action:pan-x;
   scrollbar-width:none;-ms-overflow-style:none;}
 .cot-country-chips::-webkit-scrollbar{display:none;}
+.cot-country-rail.has-more-right .cot-country-chips{-webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);}
+.cot-country-rail.has-more-left .cot-country-chips{-webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px);
+  mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px);}
+.cot-country-rail.has-more-left.has-more-right .cot-country-chips{
+  -webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);
+  mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);}
 /* (a flag not wholly in the track hides, so the rail ends on whole flags; its edge arrow says it continues) */
-.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;justify-self:center;align-self:stretch;
-  width:26px;height:auto;margin:2px 0 var(--s1);
-  color:var(--ink-3);background:var(--surface-raised);
-  border:1px solid var(--line-3);cursor:pointer;opacity:.68;outline:none;
-  box-shadow:var(--e1);
-  transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast),
-    transform var(--dur-fast) ease-out;}
-.cot-country-edge.prev{grid-column:1;}
-.cot-country-edge.next{grid-column:4;}
-.cot-country-edge:hover,.cot-country-edge:focus-visible{color:var(--accent-hi);border-color:var(--accent);
-  background:linear-gradient(180deg,var(--accent-wash),var(--surface-nav));opacity:1;
-  box-shadow:var(--e1);}
-.cot-country-edge:active{transform:scale(.96);}
-.cot-country-edge.is-unavailable{opacity:.3;pointer-events:none;}
-.cot-country-chip{cursor:pointer;border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-plate);
-  color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-mono);padding:var(--s1) var(--s2);
+/* the roster row (owner 10-25 via Main: "completely fix and redesign this row"): every nation a quiet chip of the row's
+   one height and frame, a small rounded flag and its count in the data face; the chosen one on the kit's slate plate (the
+   segmented control's), never a gold edge */
+.cot-country-chip{cursor:pointer;border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);
+  color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);padding:0 var(--s2);height:var(--btn-h-s);
   display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;flex:0 0 auto;scroll-snap-align:start;
-  transition:color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);
+  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);
   outline:none;}
-.cot-country-chip .cot-flag{width:28px;height:21px;display:block;border-radius:var(--control-radius);}
-.cot-country-chip:hover{color:var(--ink-1);border-color:var(--line-3);}
-/* the chosen chip's wash over its own plate, as every selected chip reads (a bare wash showed the lit floor through it: a
-   tan chip beside the band's brown ones) */
-.cot-country-chip.sel{color:var(--ink-1);border-color:var(--accent);background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--surface-plate);}
+.cot-country-chip .cot-flag{width:20px;height:15px;display:block;border-radius:2px;box-shadow:var(--flag-ring);}
+.cot-country-chip .lbl{font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);}
+.cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
+.cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
+.cot-country-chip.sel{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--seg-on-shadow);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -1310,12 +1306,16 @@ body[data-cot-panels='overlay'] .cot-country-rail{
 }
 body[data-cot-panels='overlay'] .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise}
 body[data-cot-panels='overlay'] .cot-country-chips{height:var(--cot-country-height);gap:var(--s1);padding:2px calc(3px + var(--rail-end,0px)) 2px 3px}
-body[data-cot-panels='overlay'] .cot-country-edge{width:30px;height:42px}
-body[data-cot-panels='overlay'] .cot-country-chip{
-  min-height:42px;padding:var(--s1) 9px 3px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:0;gap:5px;
-}
-body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
-body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:var(--s1) 9px 3px;margin-block:2px}
+/* a phone's row: the filter and the nations, the track running to the row's end (its boxed arrows are gone) */
+body[data-cot-panels='overlay'] .cot-country-rail{--country-edge:0px;grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-country-rail .cot-facet-toggle{grid-column:1;}
+body[data-cot-panels='overlay'] .cot-country-rail .cot-country-chips{grid-column:2;justify-content:flex-start;padding-inline:0;}
+body[data-cot-panels='overlay'] .cot-country-chip{height:auto;min-height:40px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-11));
+  letter-spacing:0;gap:6px;}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:40px;min-width:44px;padding:0 10px;margin:0;align-self:center;
+  border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);}
+body[data-cot-panels='overlay'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);box-shadow:var(--ring-accent);}
+body[data-cot-input='coarse'] :is(.cot-country-chip,.cot-facet-toggle){min-height:44px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1488,7 +1488,6 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats .sub>span{
   position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay']:not([data-cot-input='coarse']) .cot-facet-toggle{min-height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
   min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:102px;padding:0;
@@ -1686,8 +1685,7 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
    picker is never a sheet half over another with two close buttons */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage.picker-open[data-garage-panel='equipment'] .stats{visibility:hidden;}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-garage{--cot-country-height:48px}
-body[data-cot-input='coarse'][data-cot-panels='overlay'] :is(.cot-country-chip,.cot-country-edge){min-height:44px;min-width:44px}
-body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-rail{--country-edge:44px}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-chip{min-height:44px;min-width:44px}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-width:44px;flex-basis:44px}
 
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}

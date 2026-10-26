@@ -778,8 +778,6 @@
   "garage.country.all": "全部",
   "garage.country.allAria": "显示所有国家的战车",
   "garage.country.filterAria": "按国家筛选战车",
-  "garage.country.scrollLeft": "向左滚动国家列表",
-  "garage.country.scrollRight": "向右滚动国家列表",
   "garage.carousel.prev": "上一辆战车",
   "garage.carousel.next": "下一辆战车",
   "garage.carousel.listAria": "战车目录",

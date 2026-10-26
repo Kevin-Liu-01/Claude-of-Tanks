@@ -384,9 +384,10 @@ assert.match(garageSource, /\.cot-country-chips::\-webkit-scrollbar\{display:non
 assert.match(garageSource,
   /\.cot-country-chips\{[^}]*justify-content:safe center;[^}]*width:100%;[^}]*overflow-x:auto;/,
   'the complete country list centers when it fits while retaining honest overflow');
-assert.match(garageSource,
-  /\.cot-country-edge\{position:relative;[^}]*align-self:stretch;[^}]*width:26px;height:auto;/,
-  'country overflow arrows use compact gutters as tall as the flags beside them (the gauntlet 10-25)');
+assert.doesNotMatch(garageSource, /cot-country-edge/,
+  'the nations reach every flag without boxed arrows: the track fades at its ends (owner 10-25 via Main)');
+assert.match(garageSource, /\.cot-country-rail\.has-more-right \.cot-country-chips\{-webkit-mask-image:/,
+  'a nation track with more beyond its end fades there');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
 assert.match(garageSource,

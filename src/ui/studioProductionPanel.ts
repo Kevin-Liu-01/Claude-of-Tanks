@@ -160,7 +160,7 @@ export function mountStudioProductionPanel(
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', `${Math.round(preset.durationMs / 1000)}s`), node('strong', '', presetText(preset.id, 'title', preset.title)),
+    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), node('strong', '', presetText(preset.id, 'title', preset.title)),
       node('small', '', `${S.getMapInfo(preset.map).name} · ${t('studio.director.ui.shotCount', { count: preset.shots.length })}`));
     cards.set(preset.id, card);
     library.append(card);
@@ -222,7 +222,7 @@ export function mountStudioProductionPanel(
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', `${((take.durationMs ?? 0) / 1000).toFixed(1)}s`),
+    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: ((take.durationMs ?? 0) / 1000).toFixed(1) })),
       node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
     takeCards.set(take.id, card);
     return card;
@@ -473,7 +473,7 @@ export function mountStudioProductionPanel(
         const entry = button('', () => { S.pause(); S.seek(shot.tMs); S.selectCameraShot(shot.id); refreshAll(); }, 'production-shot');
         entry.dataset.productionShot = shot.id;
         entry.dataset.productionKeys = run.keys.map((key) => key.id).join(' ');
-        entry.append(node('span', '', String(index + 1).padStart(2, '0')), node('span', '', shotLabel(shot.label)), node('span', '', `${(shot.tMs / 1000).toFixed(1)}s`));
+        entry.append(node('span', '', String(index + 1).padStart(2, '0')), node('span', '', shotLabel(shot.label)), node('span', '', t('studio.ws.seconds', { s: (shot.tMs / 1000).toFixed(1) })));
         shots.append(entry);
       });
     }

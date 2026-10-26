@@ -369,28 +369,31 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile{paddin
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile svg{width:22px;height:22px;margin-bottom:2px;}
 
 /* ---- the fleet: the roster tools over the cards, left of the column ---- */
+/* one kit row (owner 10-25 via Main): the search and its filter joined as one field, the nations, the favourites and the
+   count, every part one control height (--btn-h-s) on one frame, one gap apart */
 body[data-cot-panels='persistent'][data-cot-width] .cot-country-rail{left:var(--edge);right:var(--fleet-right);top:auto;
   bottom:calc(var(--edge) + var(--card-h) + var(--s2));height:var(--rtools-h);width:auto;transform:none;
-  grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge) auto auto;}
+  grid-template-columns:auto auto minmax(0,1fr) auto auto;column-gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-country-rail>*{grid-row:1;}
 body[data-cot-panels='persistent'] .cot-roster-search{grid-column:1;}
-body[data-cot-panels='persistent'] .cot-country-edge.prev{grid-column:2;}
-body[data-cot-panels='persistent'] .cot-facet-toggle{grid-column:3;}
-body[data-cot-panels='persistent'] .cot-country-chips{grid-column:4;justify-content:flex-start;}
-body[data-cot-panels='persistent'] .cot-country-edge.next{grid-column:5;}
+body[data-cot-panels='persistent'] .cot-facet-toggle{grid-column:2;align-self:center;height:var(--btn-h-s);min-width:var(--btn-h-s);margin:0 0 0 calc(-1 * var(--s2));
+  padding:0 var(--s3);border:1px solid var(--line-2);border-left:0;border-radius:0 var(--control-radius) var(--control-radius) 0;background:var(--plate-fill);}
+body[data-cot-panels='persistent'] .cot-facet-toggle:is(:hover,:focus-visible){color:var(--ink-1);border-color:var(--line-3);}
+body[data-cot-panels='persistent'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);border-color:var(--accent);}
+body[data-cot-panels='persistent'] .cot-country-chips{grid-column:3;justify-content:flex-start;align-items:center;gap:var(--s1);height:var(--rtools-h);
+  padding:0 calc(var(--rail-end,0px)) 0 0;}
 body[data-cot-panels='persistent'][data-cot-width] .cot-carousel{left:var(--edge);right:var(--fleet-right);bottom:var(--edge);
   height:var(--card-h);transform:none;max-width:none;}
 body[data-cot-panels='persistent'] .cot-country-rail{container:rail / inline-size;}
 @container rail (width < 900px){body[data-cot-panels='persistent'] .cot-roster-search{width:160px;}}
-.cot-roster-search{display:flex;align-items:center;gap:var(--s2);width:220px;height:var(--btn-h-m);margin-right:var(--s2);
-  padding:0 var(--s2) 0 var(--s3);border:1px solid var(--line-2);border-radius:var(--control-radius);
+.cot-roster-search{display:flex;align-items:center;gap:var(--s2);width:220px;height:var(--btn-h-s);
+  padding:0 var(--s2) 0 var(--s3);border:1px solid var(--line-2);border-radius:var(--control-radius) 0 0 var(--control-radius);
   background:var(--plate-fill);color:var(--ink-3);cursor:text;}
 .cot-roster-search:focus-within{border-color:var(--accent);}
 .cot-roster-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;color:var(--ink-1);outline:0;
   font:400 max(var(--fs-floor-11),var(--fs-14))/1 var(--font-ui);}
 .cot-roster-search input::-webkit-search-cancel-button{display:none;}
 body[data-cot-panels='overlay'] .cot-roster-search{display:none;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-roster-search{height:var(--btn-h-s);}
 
 /* ---- the battle card: the battlefield's picture with its name and the mode (one press opens the Deploy screen), over
    one tungsten Deploy with its key ---- */
@@ -440,13 +443,16 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-battle-contro
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
 body[data-cot-panels='persistent'][data-cot-width='tablet'] .cot-roster-count{display:none;}
-body[data-cot-panels='persistent']:not([data-cot-width='tablet']) .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
-  font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-data);color:var(--ink-3);white-space:nowrap;}
+/* the count stands at the row's end while a search, the filter or the favourites narrow the strip (the chosen nation's
+   chip already names its own count): one line of the control's height, so its figures sit on the chips' line */
+body[data-cot-panels='persistent']:not([data-cot-width='tablet']) .cot-roster-count{display:block;grid-column:5;align-self:center;padding:0 var(--s1);
+  font:500 max(var(--fs-floor-11),var(--fs-13))/var(--btn-h-s) var(--font-data);color:var(--ink-3);white-space:nowrap;}
+body[data-cot-panels='persistent'] .cot-roster-count[hidden]{display:none;}
 body[data-cot-panels='persistent'] .cot-roster-search input::placeholder{color:var(--ink-3);}
 
 /* the favourites chip and each favourite's star (the direction's star chip and card mark) */
 .cot-roster-fav{display:none;}
-body[data-cot-panels='persistent'] .cot-roster-fav{display:inline-flex;grid-column:6;align-self:center;margin-left:var(--s2);}
+body[data-cot-panels='persistent'] .cot-roster-fav{display:inline-flex;grid-column:4;align-self:center;height:var(--btn-h-s);}
 body[data-cot-panels='persistent'] .cot-roster-fav[hidden]{display:none;}
 .cot-card .cot-fav{display:none;}
 .cot-card.is-fav .cot-fav{position:absolute;z-index:var(--z-lift);right:8px;top:8px;display:grid;place-items:center;width:22px;height:22px;

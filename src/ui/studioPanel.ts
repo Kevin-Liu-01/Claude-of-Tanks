@@ -1952,8 +1952,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const tick = el('i', 'mj');
       tick.style.left = pct(at);
       marks.push(tick);
-      // the last label stays off the end, where it would run past the track
-      if (at < S.durationMs - step * 400) {
+      // the first label would sit under the playhead's thumb at rest and the last would run past the track: both keep
+      // their ticks alone
+      if (k > 0 && at < S.durationMs - step * 400) {
         const label = el('b', null, rulerClock(k * step));
         label.style.left = pct(at);
         marks.push(label);

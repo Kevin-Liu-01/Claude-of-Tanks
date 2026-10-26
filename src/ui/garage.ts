@@ -826,11 +826,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
-    `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="${t('garage.country.scrollLeft')}">${uiIconSVG('chevronLeft', 14)}</button>` +
     `<div class="cot-country-chips" role="group" aria-label="${t('garage.country.filterAria')}"></div>` +
-    `<button class="cot-country-edge next is-unavailable" type="button" disabled aria-hidden="true" ` +
-    `aria-label="${t('garage.country.scrollRight')}">${uiIconSVG('chevronRight', 14)}</button>` +
     `</div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.prev')}">` +
@@ -1077,8 +1073,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const cardsEl = requiredElement<HTMLElement>(root, '.cot-cards');
   const countryRailEl = requiredElement<HTMLElement>(root, '.cot-country-rail');
   const chipsEl = requiredElement<HTMLElement>(root, '.cot-country-chips');
-  const prevCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.prev');
-  const nextCountryBtn = requiredElement<HTMLButtonElement>(root, '.cot-country-edge.next');
   const prevVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.prev');
   const nextVehicleBtn = requiredElement<HTMLButtonElement>(root, '.cot-car-arrow.next');
   const battleControl = requiredElement<HTMLElement>(root, '.cot-battle-control');
@@ -1763,8 +1757,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }, 160);
   });
 
-  // Country flags use the same honest overflow contract as the vehicle strip:
-  // the edge buttons appear only where hidden content really exists.
+  // The nations fade at the track's ends where more lies beyond them (has-more-left / -right), the vehicle strip's
+  // honest overflow contract; the wheel, a swipe and the arrow keys reach every one of them (no boxed arrows).
   const syncCountryRailAffordances = () => {
     settleRailEnd(chipsEl);
     const { hasLeft, hasRight } = horizontalRailState(
@@ -1772,20 +1766,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     );
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
-    const affordances: Array<[HTMLButtonElement, boolean]> = [
-      [prevCountryBtn, hasLeft], [nextCountryBtn, hasRight],
-    ];
-    for (const [button, available] of affordances) {
-      button.disabled = !available;
-      button.classList.toggle('is-unavailable', !available);
-      button.setAttribute('aria-hidden', String(!available));
-    }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
-  const scrollCountries = (direction: number): void => {
-    const distance = Math.max(180, chipsEl.clientWidth * 0.72);
-    chipsEl.scrollBy({ left: direction * distance, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  };
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
     // ctrl+wheel is a trackpad pinch: the app-wide pinch guard owns it, so the rail never scrolls on one
@@ -1806,14 +1788,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     chipsEl.scrollLeft = target;
     syncCountryRailAffordances();
   }, { passive: false });
-  prevCountryBtn.addEventListener('click', () => {
-    emit('ui:click', {});
-    scrollCountries(-1);
-  });
-  nextCountryBtn.addEventListener('click', () => {
-    emit('ui:click', {});
-    scrollCountries(1);
-  });
   window.addEventListener('resize', queueCountryRailAffordances);
 
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
@@ -2721,20 +2695,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
-  // A flag not wholly inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside the
-  // Filter toggle; the gauntlet 10-25: a flag cut by the edge hid its count under the arrow). The edge arrow is the cue
-  // that the rail continues.
-  const chipSliverObserver = typeof IntersectionObserver === 'function'
-    ? new IntersectionObserver((entries) => {
-      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.98);
-    }, { root: chipsEl, threshold: [0.98] })
-    : null;
   function initializeCountryChips(): void {
     const all = document.createElement('button');
     all.type = 'button';
     all.className = 'cot-country-chip cot-country-all';
     all.dataset.country = ALL_COUNTRIES;
     all.setAttribute('aria-label', t('garage.country.allAria'));
+    all.dataset.tip = t('garage.country.allAria');
     all.innerHTML = `<span class="lbl">${t('garage.country.all')}</span><span class="ct num">${specs.length}</span>`;
     // every nation keeps the selected tank where it is
     all.addEventListener('click', () => {
@@ -2753,7 +2720,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.dataset.tip = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
       // The flag names the nation (owner UI rule 3); the chip keeps its name for assistive technology and its count.
-      chip.innerHTML = `${flagIconHTML(group.nation, 28, 21)}<span class="ct num">${count}</span>`;
+      chip.innerHTML = `${flagIconHTML(group.nation, 20, 15)}<span class="ct num">${count}</span>`;
       chip.addEventListener('click', () => {
         emit('ui:click', {});
         applyCountryFilter(group.id);
@@ -2768,10 +2735,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
-      chipSliverObserver?.observe(chip);
     }
   }
   initializeCountryChips();
+  // the arrows (and Home and End) move through the nations, the track following the focus; Enter or Space chooses one,
+  // so a pass over the row never re-filters the fleet at every step
+  chipsEl.addEventListener('keydown', (event) => {
+    const chips = [...chipsEl.querySelectorAll<HTMLButtonElement>('.cot-country-chip')];
+    const at = chips.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) return;
+    const to = event.key === 'ArrowRight' ? Math.min(chips.length - 1, at + 1) : event.key === 'ArrowLeft' ? Math.max(0, at - 1)
+      : event.key === 'Home' ? 0 : event.key === 'End' ? chips.length - 1 : -1;
+    if (to < 0) return;
+    event.preventDefault();
+    chips[to].focus({ preventScroll: true });
+    chips[to].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  });
 
   // --- ROSTER FILTER (class, role, era, search) -----------------------------
   // The Filter toggle leads the flag rail in its own slot, outside the scrolling flag track. Its panel and the fleet facet tables load on the first press
@@ -2841,6 +2820,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const updateRosterCount = (): void => {
     const shown = (specsByCountry.get(countryFilter) || []).filter((spec) => facetVisible(spec.id)).length;
     rosterCount.textContent = t('garage.roster.count', { shown, total: allSpecs.length });
+    // the count stands only while a search, the filter or the favourites narrow the strip: the chosen nation's chip and
+    // All already name the plain figures (one datum, one place)
+    rosterCount.hidden = !(rosterFacetMatch || rosterQuery || favouritesOnly);
     rosterEmptyEl.hidden = shown > 0;
     rosterEmptyEl.parentElement?.classList.toggle('is-empty', shown === 0);
   };
@@ -2913,6 +2895,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     updateRosterCount();
     if (previousCountry !== countryId) chipById.get(previousCountry || '')?.classList.remove('sel');
     chipById.get(countryId)?.classList.add('sel');
+    // the nations are one tab stop, the chosen one; the arrows move within them
+    for (const [id, chip] of chipById) {
+      chip.tabIndex = id === countryId ? 0 : -1;
+      chip.setAttribute('aria-pressed', String(id === countryId));
+    }
     // Programmatic tank selection can cross national groups. Keep the active
     // flag fully visible rather than leaving its highlight under an edge fade.
     const activeChip = chipById.get(countryId);
