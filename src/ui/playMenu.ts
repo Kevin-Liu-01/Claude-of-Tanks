@@ -297,11 +297,15 @@ const CSS = `
 .cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 
 /* host arrangement and the opponent brain: plates */
-.cot-play :is(.arrange,.brain){margin:var(--s5) 0 var(--s1);padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-play :is(.arrange,.brain){margin:var(--s3) 0 0;padding:var(--s4);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .brain[hidden]{display:none}
 .cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
 .cot-play .arrange-head b{color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-body);letter-spacing:normal;text-transform:none}
 .cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s3);align-items:end}
+/* Defaults ends the fields' row in its own column; the nation takes two columns only when the first wave leaves it room,
+   so a co-op room's four fields stand equal */
+.cot-play .arrange-fields>[data-arrange-reset]{grid-column:-2/-1}
+.cot-play .arrange-fields:has(>[data-arrange-wave]:not([hidden])) .cot-nation-field{grid-column:auto}
 .cot-play .arrange-fields label[hidden],.cot-play .arrange-cap[hidden],.cot-play .brain-note[hidden],.cot-play .arrange-sides[hidden],
 .cot-play .operation-picker[hidden]{display:none}
 body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
