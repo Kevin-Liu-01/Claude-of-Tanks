@@ -9,8 +9,10 @@ import { createHostPortPair } from './hostProtocol.ts';
 import { createMatchHostCore } from './matchHostCore.ts';
 import { planHostBoot } from './hostPlan.ts';
 import { createRoom, joinRoom } from '../room/roomPolicy.ts';
+import { readFileSync, readdirSync } from 'node:fs';
+import { COLLISION_MANIFEST_ROUTE, collisionManifestFileName } from './worldCollision.ts';
 
-const watchdog = setTimeout(() => { console.error('hostStandby.selftest: stuck'); process.exit(1); }, 30_000);
+const watchdog = setTimeout(() => { console.error('hostStandby.selftest: stuck'); process.exit(1); }, 60_000);
 watchdog.unref();
 const memoryGuard = setInterval(() => { if (process.memoryUsage().rss > 1.5e9) { console.error('hostStandby.selftest: RSS past 1.5 GB'); process.exit(1); } }, 200);
 memoryGuard.unref();
@@ -50,6 +52,7 @@ function standbyCore({ loadMs = 50, fail = () => false } = {}) {
   await until(() => posted.some((message) => message.type === 'ready'), 'ready');
   assert.deepEqual(builds, ['verdant'], 'the boot took the prepared world: no second build');
   assert.equal(core.bootedPrepared, true);
+  assert.deepEqual(posted.find((message) => message.type === 'ready').kernels, { mode: 'ts', reason: 'off' }, 'a boot that named no kernels says so');
   done();
 }
 
@@ -113,4 +116,40 @@ function standbyCore({ loadMs = 50, fail = () => false } = {}) {
 }
 await sleep(50);
 assert.ok(process.memoryUsage().rss < 1e9, 'bounded');
-console.log('hostStandby.selftest: a prepared host thread boots on its prepared world (one build), joins a preparation in flight, builds afresh for another battlefield or after a failed preparation, and never prepares after a boot or a stop');
+// ---- the world kernels' fallback is reported, never silent (world/simKernelsReport.ts): the core's own world build, the
+// manifests served as the build serves them, the kernels' module refused (HTTP 404) or served
+{
+  const directory = new URL('../../../server/world-collision-manifests/', import.meta.url);
+  const files = new Map();
+  for (const file of readdirSync(directory)) {
+    if (!file.endsWith('.json')) continue;
+    const bytes = readFileSync(new URL(file, directory));
+    const name = file === 'index.json' ? file : collisionManifestFileName(file.slice(0, -5), createHash('sha256').update(bytes).digest('hex'));
+    files.set(`${COLLISION_MANIFEST_ROUTE}/${name}`, bytes);
+  }
+  files.set('/assets/cot_sim_wasm.wasm', readFileSync(new URL('../../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm', import.meta.url)));
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const bytes = files.get(String(url));
+    if (!bytes) return { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0), json: async () => ({}) };
+    return { ok: true, status: 200, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), json: async () => JSON.parse(bytes.toString('utf8')) };
+  };
+  try {
+    for (const [url, expected] of [['/assets/missing.wasm', { mode: 'ts', reason: 'http_404' }], ['/assets/cot_sim_wasm.wasm', { mode: 'wasm' }]]) {
+      const pair = createHostPortPair();
+      const core = createMatchHostCore({ port: pair.worker, reportIntervalMs: 500 });
+      const posted = [];
+      pair.main.onMessage((message) => posted.push(message));
+      pair.main.post({ type: 'boot', config: { ...bootConfig('verdant'), manifestBase: COLLISION_MANIFEST_ROUTE, simKernelsUrl: url } });
+      await until(() => posted.some((message) => message.type === 'ready' || message.type === 'boot_failed'), `ready (${url})`, 20_000);
+      const ready = posted.find((message) => message.type === 'ready');
+      assert.ok(ready, `the core booted (${url})`);
+      assert.deepEqual(ready.kernels, expected, `the ready message names the kernels (${url})`);
+      core.dispose(); pair.main.close();
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+console.log('hostStandby.selftest: a prepared host thread boots on its prepared world (one build), joins a preparation in flight, builds afresh for another battlefield or after a failed preparation, never prepares after a boot or a stop, and names its world kernels on ready (off, a refused module\'s http_404, wasm)');

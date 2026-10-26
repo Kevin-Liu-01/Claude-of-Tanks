@@ -32,6 +32,7 @@ import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
 import { compileWorldKernels, type WorldKernelModule } from '../../world/wasmWorldKernels.ts';
+import { simKernelsFailureReason, type SimKernelsStatus } from '../../world/simKernelsStatus.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
 
@@ -89,6 +90,14 @@ function worldKernelModule(url: string): Promise<WorldKernelModule> {
   }
   return module;
 }
+/** Why a world was built without the kernels its boot named (simKernelsFailureReason): the fallback stays, observable. */
+const kernelsFailures = new WeakMap<object, string>();
+/** Whether a booted world steps on the kernels, and why not ('off': the boot named none; 'terrain': no collision world). */
+function kernelsStatusOf(world: ActorWorldCollision | 'terrain', config: WorldConfig): SimKernelsStatus {
+  if (world !== 'terrain' && world.kernelSupportField) return { mode: 'wasm' };
+  if (!config.simKernelsUrl) return { mode: 'ts', reason: 'off' };
+  return { mode: 'ts', reason: world === 'terrain' ? 'terrain' : kernelsFailures.get(world) ?? 'unknown' };
+}
 
 export interface MatchHostCore {
   readonly actor: MatchActor | null;
@@ -137,12 +146,18 @@ const rosterSpecIds = (config: HostBootConfig): string[] => [
 export function createMatchHostCore({
   port,
   // the mode's battlefield variant (Frontline's carved trenches) is the world the authority plays: its own manifest
-  buildWorld = async (config) => (config.manifestBase
-    ? loadCollisionWorld(config.mapId, config.manifestBase, {
-      variant: terrainVariantFor(config.mode),
-      // (a module that does not arrive or compile leaves this host's world on the TypeScript, the same match)
-      kernels: config.simKernelsUrl ? await worldKernelModule(config.simKernelsUrl).catch(() => null) : null,
-    }) : 'terrain'),
+  buildWorld = async (config) => {
+    if (!config.manifestBase) return 'terrain';
+    // a module that does not arrive or compile leaves this host's world on the TypeScript, the same match; its reason
+    // rides the boot's 'ready' (kernelsStatusOf), which the page reports (simKernelsReport.ts)
+    let failure: string | null = null;
+    const kernels = config.simKernelsUrl
+      ? await worldKernelModule(config.simKernelsUrl).catch((error: unknown) => { failure = simKernelsFailureReason(error); return null; })
+      : null;
+    const world = await loadCollisionWorld(config.mapId, config.manifestBase, { variant: terrainVariantFor(config.mode), kernels });
+    if (failure) kernelsFailures.set(world, failure);
+    return world;
+  },
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
   schedule,
@@ -501,7 +516,7 @@ export function createMatchHostCore({
     } else {
       created.start();
     }
-    post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
+    post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume, kernels: kernelsStatusOf(world, next) });
     log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const playerId of pendingRevokes) created.revokeSeat(playerId);

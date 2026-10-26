@@ -9,6 +9,7 @@ import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import type { SnapshotFrame } from '../wire/messages.ts';
 import type { TeamArrangement } from '../../sim/matchRuleset.ts';
+import type { SimKernelsStatus } from '../../world/simKernelsStatus.ts';
 
 export interface HostBootSeat {
   seat: number;
@@ -156,7 +157,8 @@ export type HostToWorkerMessage =
   | { type: 'stats' };
 
 export type WorkerToHostMessage =
-  | { type: 'ready'; tick: number; entities: number; resumed: boolean }
+  /** `kernels`: whether the booted world steps on the world kernels, and why not (the page reports it: simKernelsReport.ts). */
+  | { type: 'ready'; tick: number; entities: number; resumed: boolean; kernels?: SimKernelsStatus }
   /** A standby's preparation finished (`ok` false: the boot will build its own world); `ms` from the prepare to the end. */
   | { type: 'prepared'; ok: boolean; ms: number; error?: string }
   | { type: 'boot_failed'; error: string }

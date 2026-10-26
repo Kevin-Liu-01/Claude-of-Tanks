@@ -1501,6 +1501,7 @@
     "src/world/shoreline.selftest.mjs": 1000,
     "src/world/shrubClearance.selftest.mjs": 1000,
     "src/world/shrubGrowthPlacement.selftest.mjs": 75000,
+    "src/world/simKernelsReport.selftest.mjs": 1000,
     "src/world/skybridgeArmIsolation.selftest.mjs": 11000,
     "src/world/smallPropsDestructible.selftest.mjs": 84000,
     "src/world/snowDrifts.selftest.mjs": 2000,

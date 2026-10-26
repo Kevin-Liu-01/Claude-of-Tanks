@@ -18,6 +18,7 @@ import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../ma
 import { CLOSE_REASON } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
 type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
@@ -189,6 +190,8 @@ export function createMatchHost({
         for (const bytes of queuedLoopback.splice(0)) post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: bytes.buffer }, [bytes.buffer]);
         setState('live', message.resumed ? 'resumed' : 'started');
         onLog('info', 'host live', { tick: message.tick, entities: message.entities, resumed: message.resumed });
+        // what the host's authority steps on; a failed load of the kernels is reported, never silent
+        if (message.kernels) reportSimKernels('host', message.kernels);
         return;
       case 'boot_failed':
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
