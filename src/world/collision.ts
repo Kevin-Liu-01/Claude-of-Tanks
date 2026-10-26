@@ -960,78 +960,114 @@ export function collisionFootprintContainsPoint(
 }
 
 /**
- * (battle-spikes-253) `records.some((q) => !q.dead && collisionFootprintContainsPoint(q, x, z, margin))` for many points:
- * each record binned on an 8 m grid by a box its footprint cannot pass at any margin up to `maxMargin` — a circle's
- * radius, an obb's corner, a convex part's mitred corners (each vertex's reach margin / sin(θ/2)) — so a point is tested
- * against the records whose box holds it. A part no box bounds (a needle, a reflex turn, a degenerate ring) is tested at
- * every point; a wider margin scans them all. The same answer as the scan (Suzhou Creek's station forecourt fit: 5 s of
- * one page task testing its cells against every record on the map).
+ * (battle-spikes-253) `records.some((q) => !q.dead && collisionFootprintContainsPoint(q, x, z, margin))` for many points.
+ * Each part (a record's shape, a compound's every part, a shapeless record's box) has a box its footprint cannot pass at
+ * any margin up to `maxMargin`: a circle's radius, an obb's corner, a convex part's mitred corners (each vertex reaches
+ * margin / sin(θ/2) — a sliver's sharp corner tens of metres). An 8 m cell gathers the parts whose boxes meet it the first
+ * time a point lands in it, so a point is tested against those parts alone (a compound's deck parts left out as the scan
+ * leaves them). A part no box bounds (a needle, a reflex turn, a degenerate ring) is tested at every point; a wider
+ * margin scans them all. The same answer as the scan (Suzhou Creek's station forecourt fit: 5 s of one page task testing
+ * its cells against every record on the map; binned by record into every cell, 4.7 million entries and still 0.5 s).
+ * A query may leave out a set of records (the station's own).
  */
 export function createFootprintPointIndex(records: readonly CollisionRecord[], maxMargin: number) {
-  const CELL = 8;
-  const cells = new Map<number, CollisionRecord[]>();
-  const everywhere: CollisionRecord[] = [];
-  const key = (cx: number, cz: number) => (cx + 4096) * 8192 + (cz + 4096);
-  const grow = (box: number[], x0: number, z0: number, x1: number, z1: number) => {
-    box[0] = Math.min(box[0], x0); box[1] = Math.min(box[1], z0); box[2] = Math.max(box[2], x1); box[3] = Math.max(box[3], z1);
-  };
+  const CELL = 8, PAD = 0.01; // (a centimetre past each box: the tests' own rounding never reaches that far)
+  const partRecord: CollisionRecord[] = [];
+  const partShape: (SimpleCollisionShape | null)[] = [];
+  const partOfCompound: boolean[] = [];
+  const boxes: number[] = [];
+  /** Each part's own extent and how far its footprint reaches past it a metre of margin (a quick reject at the query's
+   *  own margin: a convex part's sharpest corner reaches margin / sin(θ/2) past its points, an obb's corner √2 · margin). */
+  const extents: number[] = [];
+  const grows: number[] = [];
+  const everywhere: number[] = [];
+  const box = [0, 0, 0, 0], extent = [0, 0, 0, 0];
+  let grow = 1;
   /** The part's reach at maxMargin into `box`; false when no box bounds it. */
-  const partBox = (part: SimpleCollisionShape, box: number[]): boolean => {
+  const partBox = (part: SimpleCollisionShape): boolean => {
     if (part.kind === 'circle') {
-      const r = Math.max(0, part.r + maxMargin);
-      grow(box, part.cx - r, part.cz - r, part.cx + r, part.cz + r);
+      const r = Math.max(0, part.r + maxMargin), own = Math.max(0, part.r);
+      box[0] = part.cx - r; box[1] = part.cz - r; box[2] = part.cx + r; box[3] = part.cz + r;
+      extent[0] = part.cx - own; extent[1] = part.cz - own; extent[2] = part.cx + own; extent[3] = part.cz + own; grow = 1;
       return true;
     }
     if (part.kind === 'obb') {
-      const r = Math.hypot(Math.abs(part.hw) + maxMargin, Math.abs(part.hl) + maxMargin);
-      grow(box, part.cx - r, part.cz - r, part.cx + r, part.cz + r);
+      const r = Math.hypot(Math.abs(part.hw) + maxMargin, Math.abs(part.hl) + maxMargin), own = Math.hypot(part.hw, part.hl);
+      box[0] = part.cx - r; box[1] = part.cz - r; box[2] = part.cx + r; box[3] = part.cz + r;
+      extent[0] = part.cx - own; extent[1] = part.cz - own; extent[2] = part.cx + own; extent[3] = part.cz + own; grow = Math.SQRT2;
       return true;
     }
     const points = part.points, n = points.length / 2;
     if (n < 3 || points.length % 2) return false;
     const winding = convexWinding(points);
-    let reach = maxMargin, x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    let sharp = 1, x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
     for (let i = 0; i < n; i++) {
       const a = ((i + n - 1) % n) * 2, b = i * 2, c = ((i + 1) % n) * 2;
       const e1x = points[b] - points[a], e1z = points[b + 1] - points[a + 1];
       const e2x = points[c] - points[b], e2z = points[c + 1] - points[b + 1];
-      const l1 = Math.hypot(e1x, e1z), l2 = Math.hypot(e2x, e2z);
+      const l1 = Math.sqrt(e1x * e1x + e1z * e1z), l2 = Math.sqrt(e2x * e2x + e2z * e2z);
       if (!(l1 > 0) || !(l2 > 0)) return false;
       // a reflex or degenerate turn: no mitre bounds the half-planes' intersection there
       if (winding * (e1x * e2z - e1z * e2x) < 0) return false;
       const cos = -(e1x * e2x + e1z * e2z) / (l1 * l2);
       const sinHalf = Math.sqrt(Math.max(0, (1 - cos) / 2));
       if (!(sinHalf > 1e-3)) return false;
-      reach = Math.max(reach, maxMargin / sinHalf);
+      sharp = Math.max(sharp, 1 / sinHalf);
       x0 = Math.min(x0, points[b]); z0 = Math.min(z0, points[b + 1]); x1 = Math.max(x1, points[b]); z1 = Math.max(z1, points[b + 1]);
     }
-    grow(box, x0 - reach, z0 - reach, x1 + reach, z1 + reach);
+    const reach = maxMargin * sharp;
+    box[0] = x0 - reach; box[1] = z0 - reach; box[2] = x1 + reach; box[3] = z1 + reach;
+    extent[0] = x0; extent[1] = z0; extent[2] = x1; extent[3] = z1; grow = sharp;
     return true;
   };
+  const add = (record: CollisionRecord, shape: SimpleCollisionShape | null, ofCompound: boolean, bounded: boolean): void => {
+    const k = partRecord.length;
+    partRecord.push(record); partShape.push(shape); partOfCompound.push(ofCompound);
+    if (bounded && box.every(Number.isFinite) && extent.every(Number.isFinite) && Number.isFinite(grow)) {
+      boxes.push(box[0] - PAD, box[1] - PAD, box[2] + PAD, box[3] + PAD);
+      extents.push(extent[0], extent[1], extent[2], extent[3]); grows.push(grow);
+    } else {
+      boxes.push(Infinity, Infinity, -Infinity, -Infinity); extents.push(-Infinity, -Infinity, Infinity, Infinity); grows.push(0);
+      everywhere.push(k);
+    }
+  };
   for (const record of records) {
-    const box = [Infinity, Infinity, -Infinity, -Infinity];
     const shape = record.shape2;
-    let bounded = true;
-    if (!shape) grow(box, record.min[0] - maxMargin, record.min[2] - maxMargin, record.max[0] + maxMargin, record.max[2] + maxMargin);
-    else if (shape.kind !== 'compound') bounded = partBox(shape, box);
-    else for (const part of shape.parts) if (!partBox(part, box)) { bounded = false; break; }
-    if (!bounded || !box.every(Number.isFinite) || (box[2] - box[0]) / CELL * ((box[3] - box[1]) / CELL) > 1e5) {
-      everywhere.push(record);
-      continue;
-    }
-    // (a centimetre past it: the tests' own rounding never reaches that far)
-    for (let cx = Math.floor((box[0] - 0.01) / CELL); cx <= Math.floor((box[2] + 0.01) / CELL); cx++) {
-      for (let cz = Math.floor((box[1] - 0.01) / CELL); cz <= Math.floor((box[3] + 0.01) / CELL); cz++) {
-        const k = key(cx, cz);
-        const list = cells.get(k);
-        if (list) list.push(record); else cells.set(k, [record]);
-      }
-    }
+    if (!shape) {
+      box[0] = record.min[0] - maxMargin; box[1] = record.min[2] - maxMargin; box[2] = record.max[0] + maxMargin; box[3] = record.max[2] + maxMargin;
+      extent[0] = record.min[0]; extent[1] = record.min[2]; extent[2] = record.max[0]; extent[3] = record.max[2]; grow = 1;
+      add(record, null, false, true);
+    } else if (shape.kind !== 'compound') add(record, shape, false, partBox(shape));
+    else for (const part of shape.parts) add(record, part, true, partBox(part));
   }
-  return (x: number, z: number, margin: number): boolean => {
-    const holds = (q: CollisionRecord) => !q.dead && collisionFootprintContainsPoint(q, x, z, margin);
-    if (!(margin <= maxMargin)) return records.some(holds);
-    return (cells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)))?.some(holds) ?? false) || everywhere.some(holds);
+  const cells = new Map<number, number[]>();
+  const cellParts = (cx: number, cz: number): number[] => {
+    const key = (cx + 4096) * 8192 + (cz + 4096);
+    let list = cells.get(key);
+    if (list) return list;
+    list = [];
+    const x0 = cx * CELL, z0 = cz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
+    for (let k = 0, b = 0; k < partRecord.length; k++, b += 4) {
+      if (boxes[b] <= x1 && boxes[b + 2] >= x0 && boxes[b + 1] <= z1 && boxes[b + 3] >= z0) list.push(k);
+    }
+    cells.set(key, list);
+    return list;
+  };
+  /** `exclude`: records left out of this query (a caller's own, read against the rest). */
+  return (x: number, z: number, margin: number, exclude?: ReadonlySet<CollisionRecord>): boolean => {
+    if (!(margin <= maxMargin)) return records.some((q) => !q.dead && !exclude?.has(q) && collisionFootprintContainsPoint(q, x, z, margin));
+    // as footprintContainsPoint reads each: a shapeless record's box, a shape, a compound's parts but its decks
+    const holds = (k: number): boolean => {
+      const reach = margin * grows[k] + PAD, e = k * 4;
+      if (x < extents[e] - reach || x > extents[e + 2] + reach || z < extents[e + 1] - reach || z > extents[e + 3] + reach) return false;
+      const record = partRecord[k];
+      if (record.dead || exclude?.has(record)) return false;
+      const shape = partShape[k];
+      if (!shape) return x >= record.min[0] - margin && x <= record.max[0] + margin && z >= record.min[2] - margin && z <= record.max[2] + margin;
+      if (partOfCompound[k] && collisionPartIsDeck(record, shape)) return false;
+      return simpleFootprintContainsPoint(shape, x, z, margin, false);
+    };
+    return cellParts(Math.floor(x / CELL), Math.floor(z / CELL)).some(holds) || everywhere.some(holds);
   };
 }
 

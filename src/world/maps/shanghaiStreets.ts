@@ -541,6 +541,9 @@ const BALLAST = rgb(0x4a463f), SLEEPER = rgb(0x3b2f25), BUFFER_RED = rgb(0x7a2a2
 function dressNorthStation(ctx: StreetContext): void {
   const hf = ctx.heightField, roads = ctx.L.roads ?? [];
   const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  // (battle-spikes-253) the records binned by where their footprints reach, once for every station (the forecourt's fit
+  // tested every cell of every try against every record on the map: one 5 s task on Suzhou Creek's entry); the same answers
+  let index: ReturnType<typeof createFootprintPointIndex> | null = null;
   for (const b of ctx.buildings ?? []) {
     if (b.kind !== 'civichall' || bankOf({ x: b.x, z: b.z } as RegionalBuildContext) !== 'zhabei') continue;
     const c = Math.cos(b.rot), s = Math.sin(b.rot);
@@ -554,14 +557,14 @@ function dressNorthStation(ctx: StreetContext): void {
     const sink = new PartSink([0, 0]);
     // the records round the station, not its own (a record whose middle stands inside the station's plot is the station's:
     // its pavilion and steps reach a little past the plot's front, where the forecourt meets them)
-    const others = records.filter((q) => {
+    const own = new Set(records.filter((q) => {
       const mx = (q.min[0] + q.max[0]) / 2 - b.x, mz = (q.min[2] + q.max[2]) / 2 - b.z;
       const lx = mx * c - mz * s, lz = mx * s + mz * c;
-      return !(Math.abs(lx) < W / 2 + 0.5 && Math.abs(lz) < halfD + 1.0);
-    });
-    // (battle-spikes-253) the records binned by where their footprints reach (the forecourt's fit tested every cell of every
-    // try against every record on the map: one 5 s task on Suzhou Creek's entry); the same answers
-    const recordHolds = createFootprintPointIndex(others, 1.6);
+      return Math.abs(lx) < W / 2 + 0.5 && Math.abs(lz) < halfD + 1.0;
+    }));
+    index ??= createFootprintPointIndex(records, 1.6);
+    const footprints = index;
+    const recordHolds = (x: number, z: number, r: number) => footprints(x, z, r, own);
     const freeCell = (lx: number, lz: number, r: number) => {
       const [x, z] = world(lx, lz);
       // (a record's own footprint, not its box: a turned building's box reaches far past its walls)

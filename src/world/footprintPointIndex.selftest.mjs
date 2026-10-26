@@ -46,6 +46,10 @@ for (let i = 0; i < 600; i++) {
   if (t < 0.15) { /* a box only */ }
   else if (t < 0.35) record.shape2 = { kind: 'compound', cx, cz, parts: Array.from({ length: 1 + Math.floor(rand() * 4) }, () => part(cx + between(-8, 8), cz + between(-8, 8))) };
   else record.shape2 = part(cx, cz);
+  if (record.shape2?.kind === 'compound' && rand() < 0.3) {
+    // a raised deck (collisionPartIsDeck: a convex part with a drawn top over the record's foot): no footprint in a compound
+    record.shape2.parts.push({ kind: 'convex', cx, cz, points: ring(cx, cz, 'convex'), y0: 3, y1: 3.2, tp: [cx, cz, 0, 0, 3.2] });
+  }
   if (rand() < 0.05) record.dead = true;
   records.push(record);
 }
@@ -68,6 +72,17 @@ for (let i = 0; i < 60000; i++) {
 }
 assert.ok(inside > 3000 && inside < checked - 3000, `both answers exercised (${inside} of ${checked} inside)`);
 
+// a query that leaves out a set of records (the station's own) answers as the scan over the rest
+const own = new Set(records.filter((_, k) => k % 7 === 0));
+let excluded = 0;
+for (let i = 0; i < 8000; i++) {
+  const x = between(-140, 140), z = between(-140, 140), margin = [0, 0.4, 1.6, 2.5][i % 4];
+  const expected = records.some((r) => !own.has(r) && !r.dead && collisionFootprintContainsPoint(r, x, z, margin));
+  assert.equal(holds(x, z, margin, own), expected, `with the excluded records left out at (${x}, ${z}) margin ${margin}`);
+  if (expected !== records.some((r) => !r.dead && collisionFootprintContainsPoint(r, x, z, margin))) excluded++;
+}
+assert.ok(excluded > 50, `the exclusion changed answers (${excluded})`);
+
 // a sharp corner's mitre: its reach at the margin is far past the margin (an index binning by box + margin would miss it)
 const spike = { min: [0, 0, 0], max: [1, 1, 1], shape2: { kind: 'convex', cx: 0, cz: 0, points: [0, 0, 40, 0.5, 40, -0.5] } };
 const spikeHolds = createFootprintPointIndex([spike], 1.6);
@@ -75,4 +90,4 @@ const spikeHolds = createFootprintPointIndex([spike], 1.6);
 const tip = [-(1.6 / Math.sin(Math.atan2(0.5, 40))) * 0.98, 0];
 assert.equal(collisionFootprintContainsPoint(spike, tip[0], tip[1], 1.6), true, 'the spike\'s mitre reaches its tip at the margin');
 assert.equal(spikeHolds(tip[0], tip[1], 1.6), true, 'and the index finds it there');
-console.log(`footprintPointIndex.selftest: ${checked} points over ${records.length} records (circles, obbs, convex rings either way round, needles, reflex and degenerate rings, compounds, boxes, dead), margins to the bound and past it: the scan's answers (${inside} inside); a spike's mitre found`);
+console.log(`footprintPointIndex.selftest: ${checked} points over ${records.length} records (circles, obbs, convex rings either way round, needles, reflex and degenerate rings, compounds with raised decks, boxes, dead), margins to the bound and past it: the scan's answers (${inside} inside), a query's excluded records left out (${excluded} answers changed); a spike's mitre found`);
