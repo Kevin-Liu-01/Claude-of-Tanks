@@ -35,6 +35,8 @@ const budgetMin = Number(option('budget-min', '20'));
 const mapId = option('map', '');
 // --solo: before the room, a solo battle on the same battlefield (the page's own kernels, its own CSP reports)
 const solo = argv.includes('--solo');
+// --vercel-json=<path>: the headers (CSP among them) the preview serves, when the build's own tree is not this one
+const vercelJson = option('vercel-json', '');
 const CSP_TEXT = /Content Security Policy|Content-Security-Policy|\[Report Only\]|Refused to (compile|evaluate|load|execute)/i;
 const root = new URL('..', import.meta.url).pathname;
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
@@ -86,11 +88,15 @@ function observe(page, name, log) {
   });
   page.on('pageerror', (e) => log.errors.push(`${name}: pageerror ${String(e?.message || e).split('\n')[0]}`));
   page.on('requestfailed', (r) => { if (!/net::ERR_ABORTED/.test(r.failure()?.errorText ?? '')) log.errors.push(`${name}: request failed ${r.url()} ${r.failure()?.errorText ?? ''}`); });
-  page.on('response', (r) => { if (r.status() >= 400) log.errors.push(`${name}: ${r.status()} ${r.url()}`); });
+  page.on('response', (r) => {
+    if (r.status() >= 400) log.errors.push(`${name}: ${r.status()} ${r.url()}`);
+    // the world kernels' module (the page's and the match host Worker's fetch): the kernels ran where it was fetched
+    if (/\.wasm(\?|$)/.test(r.url())) log.wasm.push(`${name}: ${r.url().split('/').pop()}`);
+  });
 }
 
 const samples = [];
-const log = { errors: [], warnings: [], csp: [] };
+const log = { errors: [], warnings: [], csp: [], wasm: [] };
 let pagesForStage = [];
 const stage = async (name, startedAt) => {
   // each page's own violation events since the last stage, and the world kernels as the page reports them
@@ -98,11 +104,11 @@ const stage = async (name, startedAt) => {
     kernels: globalThis.__SIM_KERNELS ? { mode: globalThis.__SIM_KERNELS.mode, worlds: globalThis.__SIM_KERNELS.worlds } : null })).catch(() => null)));
   const csp = [...log.csp.splice(0), ...pageState.flatMap((p, i) => (p?.csp ?? []).map((v) => `${'AB'[i]} event: ${v}`))];
   samples.push({ kind: `lobby-${name}`, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length,
-    consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null) },
+    consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null), wasmFetches: log.wasm.splice(0) },
     wallMs: Math.round(performance.now() - startedAt) });
   const last = samples.at(-1).census;
   console.log(`lobby-${name.padEnd(8)} ${String(last.consoleErrors.length).padStart(2)} errors ${String(last.consoleWarnings).padStart(2)} warnings `
-    + `${String(csp.length).padStart(2)} csp  kernels ${JSON.stringify(last.kernels)}`
+    + `${String(csp.length).padStart(2)} csp  kernels ${JSON.stringify(last.kernels)}  wasm ${JSON.stringify(last.wasmFetches)}`
     + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}${csp.length ? `\n    ${csp.slice(0, 6).join('\n    ')}` : ''}`);
 };
 
@@ -117,7 +123,8 @@ try {
   if (!await portFree(LAN_ROOMS_PORT)) throw new Error(`port ${LAN_ROOMS_PORT} (the LAN room helper's) is in use`);
   rooms = await createRoomsServer({ host: '127.0.0.1', port: LAN_ROOMS_PORT, seatSecret: randomBytes(24).toString('hex'), world: 'terrain' });
   const port = await freePort();
-  server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`], { stdio: 'ignore' });
+  server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.mjs'), `--dist=${dist}`, `--port=${port}`,
+    ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
   const origin = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
 
