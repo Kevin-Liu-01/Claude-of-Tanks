@@ -84,16 +84,16 @@ try {
   if (shotsDir) await mkdir(shotsDir, { recursive: true });
 
   // Preview images are a selector-demand asset, never an entry dependency.
-  await page.click('.cot-garage-variant-trigger');
+  await page.click('[data-picker-menu="garage-staging"]');
   await page.evaluate(async () => {
-    const images = [...document.querySelectorAll('.cot-garage-variant-card img')];
+    const images = [...document.querySelectorAll('.cot-c-menu__pop:popover-open .cot-c-picker__opt img')];
     await Promise.all(images.map((image) => image.complete ? Promise.resolve()
       : new Promise((resolve) => {
         image.addEventListener('load', resolve, { once: true });
         image.addEventListener('error', resolve, { once: true });
       })));
   });
-  await page.click('.cot-garage-variant-trigger');
+  await page.click('[data-picker-menu="garage-staging"]');
 
   // Reproduce the real selector race: hover starts one pack's offscreen
   // preparation, then a different card becomes selected while the first is
@@ -101,10 +101,10 @@ try {
   // reveal instead of being evicted into an empty clear-color frame.
   const intentRaceTarget = variants[1].id;
   const intentRaceDecoy = variants[2].id;
-  await page.click('.cot-garage-variant-trigger');
-  await page.hover(`[data-variant-id="${intentRaceDecoy}"]`);
+  await page.click('[data-picker-menu="garage-staging"]');
+  await page.hover(`.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="${intentRaceDecoy}"]`);
   await new Promise((resolve) => setTimeout(resolve, 8));
-  await page.click(`[data-variant-id="${intentRaceTarget}"]`);
+  await page.click(`.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="${intentRaceTarget}"]`);
   await page.waitForFunction((id) => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return stats.selected === id && stats.architecture?.ready === true
@@ -148,8 +148,8 @@ try {
   const results = [];
   for (const variant of variants) {
     await startFrameProbe('__GARAGE_SWITCH_PROBE');
-    await page.click('.cot-garage-variant-trigger');
-    await page.click(`[data-variant-id="${variant.id}"]`);
+    await page.click('[data-picker-menu="garage-staging"]');
+    await page.click(`.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="${variant.id}"]`);
     await page.waitForFunction((id) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
       return stats.selected === id && stats.architecture?.ready === true
@@ -159,7 +159,7 @@ try {
     const frames = await stopFrameProbe('__GARAGE_SWITCH_PROBE');
     const state = await page.evaluate((id) => {
       const stats = window.__GARAGE_WORKSHOP.stats();
-      const card = document.querySelector(`[data-variant-id="${id}"]`);
+      const card = document.querySelector(`.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="${id}"]`);
       const preview = card?.querySelector('img');
       return {
         id,
@@ -319,17 +319,17 @@ try {
     await page.click('.cot-mobile-nav-trigger');
     await page.click('[data-mobile-nav="environment"]');
     const selector = await page.evaluate(() => {
-      const menu = document.querySelector('.cot-garage-variant-menu');
+      const menu = document.querySelector('.cot-c-menu__pop:popover-open');
       const bounds = menu?.getBoundingClientRect();
       return {
-        open: menu?.hidden === false,
-        cards: menu?.querySelectorAll('.cot-garage-variant-card').length || 0,
+        open: !!menu,
+        cards: menu?.querySelectorAll('.cot-c-picker__opt').length || 0,
         inside: !!bounds && bounds.left >= 0 && bounds.right <= innerWidth,
       };
     });
     responsive[viewport.name] = { ...layout, selector };
     if (shotsDir) await page.screenshot({ path: path.join(shotsDir, `${viewport.name}.png`) });
-    await page.click('[data-variant-id="verdant_motor_pool"]');
+    await page.click('.cot-c-menu__pop:popover-open .cot-c-picker__opt[data-id="verdant_motor_pool"]');
   }
 
   const failures = [];

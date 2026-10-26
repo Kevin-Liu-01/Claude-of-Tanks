@@ -8,6 +8,7 @@
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/components/components.css';
+import '../../src/ui/components/pickers.css';
 import '../../src/ui/components/figures.css';
 import '../../src/ui/components/notices.css';
 import '../../src/ui/battleTimeChoices.css';

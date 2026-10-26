@@ -110,7 +110,11 @@ const pins = [
   [/const RING_STROKE_REACH = 1\.5;/, R.ringReachPx === 1.5], [/const SIGHT_MARK_RING_GAP = 3;/, R.markGapPx === 3],
   [/state\.zoomScale = state\.sniper\s+\? Math\.min\(1\.8, 1\.1 \+ 0\.085 \* \(view\.zoom \|\| 8\)\)/, R.scopeClearCentrePx === 14 + .8 * 9],
   [/state\.centerClearanceRadius = 14 \+ \(state\.zoomScale - 1\) \* 9;/, R.clearCentrePx === 14],
-  [/const armEnd = radius \* 1\.55 \+ 3;/, R.armFactor === 1.55],
+  [/const scopeArmEnd = \(radius: number\): number => radius \* 1\.55 \+ 3;/, R.armFactor === 1.55],
+  [/const armEnd = scopeArmEnd\(radius\);/, true], [/const SCOPE_ARM_REACH = 1\.2;/, R.armReachPx === 1.2],
+  [/return draw\.sniper && h > 430;/, R.armHoldsOverPx === 430],
+  [/const dx = Math\.max\(draw\.cx - SCOPE_ARM_REACH - x1, 0, x0 - draw\.cx - SCOPE_ARM_REACH\);\s+const dy = Math\.max\(draw\.cy \+ draw\.radius \+ 3 - y1, 0, y0 - draw\.cy - scopeArmEnd\(draw\.radius\)\);/, true],
+  [/return lowerArmHolds\(draw\) \? Math\.min\(ring, scopeArmGap\(draw, x0, y0, x1, y1\)\) : ring;/, true],
   [/paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(5,6,8,0\.55\)', 2\.4\);/, R.armPx === 3 + 1.3],
   // the column under the marker: a rack (four shells) or a struck round, dropped below a ring that crosses it, the
   // countdown under it or beside the rack; over the ring where the furniture sits under it
@@ -120,7 +124,7 @@ const pins = [
   [/totalW \* 0\.5 \+ 5, AUTOLOADER_HUD_ARC_DEPTH \+ shellH \+ 3/, 2.25 + 16 + 3 <= 19 + 3],
   [/const shellW = draw\.sniper \? 8 : 7;\s+const shellH = draw\.sniper \? 19 : 17;/, R.markHalfWidthPx >= 8 / 2 + 6],
   [/const top = draw\.cy \+ draw\.centerClearanceRadius \+ 6;/, true], [/belowRing\(draw\) \+ 3 : top/, true],
-  [/return draw\.circleY \+ draw\.radius \+ RING_STROKE_REACH \+ SIGHT_MARK_RING_GAP;/, true],
+  [/const ring = draw\.circleY \+ draw\.radius \+ RING_STROKE_REACH;\s+return \(lowerArmHolds\(draw\) \? Math\.max\(ring, draw\.cy \+ scopeArmEnd\(draw\.radius\) \+ SCOPE_ARM_REACH\) : ring\) \+ SIGHT_MARK_RING_GAP;/, true],
   [/return Math\.min\(draw\.circleY - draw\.radius - RING_STROKE_REACH, draw\.cy - draw\.centerClearanceRadius, draw\.aboveTopY\);/, true],
   [/const above = aboveSightTop\(draw\) - SIGHT_MARK_RING_GAP - markH;/, true],
   [/const COUNTDOWN_SIZE = 16;/, R.countdownPx >= 16 * (.74 + .08) - .01], [/const COUNTDOWN_RACK_GAP = 3;/, true],
@@ -134,7 +138,7 @@ const pins = [
   [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
   [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],
   // the scope's readout row and its places
-  [/const rest = h <= 300 \? draw\.cy \+ 32\s+: h <= 430 \? draw\.cy \+ 48\s+: Math\.min\(draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24, draw\.radius \* 1\.55 \+ 18, 96\), sniperReadoutFloor\(\)\);/, true],
+  [/const rest = h <= 300 \? draw\.cy \+ 32\s+: h <= 430 \? draw\.cy \+ 48\s+: Math\.min\(draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24,\s+scopeArmEnd\(draw\.radius\) \+ SCOPE_ARM_REACH \+ SIGHT_MARK_RING_GAP \+ row\.lineTop \+ 1\), sniperReadoutFloor\(\)\);/, true],
   [/function sniperReadoutFloor\(\): number \{\s+return h - 176;/, true], [/return h <= 300 \? 18 : 24;/, true],
   [/row\.lineTop = line\.round \? 14\.7 : 10;\s+row\.lineFoot = line\.round \? 4\.7 : 1\.1;/, R.readoutAbovePx === 14.7 && R.readoutBelowPx === 4.7],
   [/out\.top = 11\.9 - drop; out\.foot = drop \+ 1\.3;/, R.zoomAbovePx === 11.9 && R.zoomBelowPx === 1.3],

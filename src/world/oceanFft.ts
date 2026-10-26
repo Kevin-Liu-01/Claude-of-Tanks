@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
+import { compileFullscreenPrograms } from '../engine/fullscreenProgramWarm.ts';
 import { getDeviceTier, presetLightWorld, resolvePresetName, type PresetName } from '../engine/quality.ts';
 import {
   OCEAN_FFT_SIZE, OCEAN_QUAD_VERTEX, oceanPassPlan, oceanStageShader, type OceanSpectrumTexels, type OceanState,
@@ -38,6 +39,9 @@ export interface OceanField {
   update(dt: number): void;
   /** Pin the surface clock (deterministic captures). */
   setTime(t: number): void;
+  /** (battle-spikes-253) Submit this field's pass programs against their targets with no draw (a covered entry's warm):
+   *  its passes run only on a frame that advances time. Returns the passes submitted (0 without a compile). */
+  compilePrograms(): number;
   dispose(): void;
 }
 
@@ -183,6 +187,11 @@ export function createOceanField(
       transform(Math.min(dt, 0.1) * stride);
     },
     setTime(t) { if (Number.isFinite(t)) time = Math.max(0, t); },
+    compilePrograms() {
+      if (disposed) return 0;
+      return compileFullscreenPrograms(gl, [{ material: resetMaterial, target: finals[0] },
+        ...passes.map((pass) => ({ material: pass.material, target: pass.last ? finals[0] : ping[1] }))]);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

@@ -67,7 +67,6 @@ function mountArchiveMotionInfo(): Promise<unknown> {
         json: recipe,
         image: poster ? {
           src: poster,
-          fit: 'contain',
           alt: t('fieldGuide.videoFrame'),
           caption: t('fieldGuide.videoFrame'),
         } : null,

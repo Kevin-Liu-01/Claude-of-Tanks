@@ -162,20 +162,25 @@ const CSS = `
 .cot-range-card [aria-checked='true'] .rc-sw{border-color:${AMBER};background:rgba(240,160,48,.3)}
 .cot-range-card [aria-checked='true'] .rc-sw::after{transform:translateX(10px);background:#ffd27a}
 @media (prefers-reduced-motion:reduce){.cot-range-card .rc-sw::after,.cot-range-card .rc-shot.stale{transition:none}}
-.cot-range-card .rc-foot button{min-height:32px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;
+.cot-range-card .rc-foot button{min-height:36px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;
   color:#e8f0f5;background:rgba(126,148,164,.12);border:1px solid rgba(176,194,208,.26);
   font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
 .cot-range-card .rc-foot button:hover{border-color:rgba(240,160,48,.6)}
+/* (INTERACTION-REDESIGN C, the census's proving-range row: the browser's default ring and 32 px controls on a fine pointer;
+   the kit's focus ring, 36 px, and the kit's key cap) */
+.cot-range-card .rc-foot button:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 .cot-range-card .rc-foot button[aria-checked='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
 .cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
-.cot-range-card .rc-foot kbd{font:500 11px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
+.cot-range-card .rc-foot .cot-c-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 var(--s1);
+  box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);
+  font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2)}
 /* a phone: one row (the range, then the three controls, each its icon over its short name) and the last shot under it; the
    left lane is short there, so the card never scrolls or clips its controls */
 body.cot-touch-layout .cot-range-card{width:min(236px,var(--hud-side-width,236px));max-height:none;overflow:visible;
   flex-direction:row;flex-wrap:wrap;align-items:center;padding:6px 7px;gap:5px}
 body.cot-touch-layout .cot-range-card .rc-head{flex:1 1 auto;min-width:0}
 body.cot-touch-layout .cot-range-card .rc-round,body.cot-touch-layout .cot-range-card .rc-lanes,
-body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-range-card .rc-foot .rc-l{display:none}
+body.cot-touch-layout .cot-range-card .rc-foot .cot-c-kbd,body.cot-touch-layout .cot-range-card .rc-foot .rc-l{display:none}
 body.cot-touch-layout .cot-range-card .rc-foot{display:flex;gap:4px}
 body.cot-touch-layout .cot-range-card .rc-foot button{width:46px;min-height:44px;padding:3px 1px 2px;flex-direction:column;gap:2px;
   letter-spacing:0;text-transform:none;font:600 11px/1.05 ${PROVING_DISPLAY}}
@@ -244,12 +249,12 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     `<div class="rc-lanes" role="list"></div>` +
     `<div class="rc-foot"><button type="button" data-range-action="reset" title="${t('action.rangeReset')}">` +
     `${uiIconSVG('reload', 15)}<span class="rc-l">${t('hud.range.reset')}</span><span class="rc-s">${t('hud.range.reset')}</span>` +
-    `<kbd></kbd></button>` +
+    `<kbd class="cot-c-kbd" aria-hidden="true"></kbd></button>` +
     `<button type="button" data-range-action="exit" title="${t('hud.range.exit')}" aria-label="${t('hud.range.exit')}">` +
     `${uiIconSVG('garage', 16)}<span class="rc-l">${t('hud.range.garage')}</span><span class="rc-s">${t('hud.range.garage')}</span></button>` +
     `<button type="button" role="switch" data-range-action="moving" aria-checked="false" title="${t('action.rangeMoving')}">` +
     `<i class="rc-sw" aria-hidden="true"></i><span class="rc-l">${t('hud.range.moving')}</span>` +
-    `<span class="rc-s">${t('hud.range.movingShort')}</span><kbd></kbd></button></div>`;
+    `<span class="rc-s">${t('hud.range.movingShort')}</span><kbd class="cot-c-kbd" aria-hidden="true"></kbd></button></div>`;
   const roundEl = root.querySelector<HTMLElement>('.rc-round')!;
   const laidRangeEl = root.querySelector<HTMLElement>('.rc-rng span')!;
   const shotEl = root.querySelector<HTMLElement>('.rc-shot')!;

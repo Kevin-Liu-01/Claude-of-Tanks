@@ -1,7 +1,13 @@
 interface EditingControlTarget {
   readonly tagName?: string;
+  /** An INPUT's type: only the ones that take typed text own the keyboard. */
+  readonly type?: string;
   readonly isContentEditable?: boolean;
 }
+
+/** The input types that take typed text (a range, a checkbox or a colour does not: a slider still focused after Settings
+ *  closed took the next Esc for an edit and held the menu shut, INTERACTION-REDESIGN C). */
+const TYPED_INPUTS = new Set(['', 'text', 'search', 'email', 'url', 'tel', 'password', 'number']);
 
 interface PointerUnlockContext {
   readonly pointerLocked?: boolean;
@@ -13,8 +19,8 @@ interface PointerUnlockContext {
 
 /** True when a focused DOM node owns typed keyboard input. */
 export function isEditingControl(target: EditingControlTarget | null | undefined): boolean {
-  return Boolean(target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
-    target.tagName === 'SELECT' || target.isContentEditable));
+  return Boolean(target && ((target.tagName === 'INPUT' && TYPED_INPUTS.has((target.type ?? '').toLowerCase()))
+    || target.tagName === 'TEXTAREA' || target.isContentEditable));
 }
 
 /**
