@@ -163,7 +163,7 @@ import { buildHardstandDressing } from './hardstandDressing.ts';
 import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
 import { roadLifeFor } from './civic/roadLife.ts'; // (229) every map's road life
 import { civicStyle } from './civic/styles.ts';
-import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
+import { composeCivicAreaSteps, type CivicPiece } from './civic/civicAreaKit.ts';
 import { buildPathwayNetworkSteps } from './civic/pathwayKit.ts';
 import { CIVIC_RECORDS, CIVIC_STALL_FORMS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
 import type { CivicRect } from './civic/types.ts';
@@ -264,7 +264,8 @@ import { breachRubble } from './maps/wallBreachRubble.ts'; // (the looks lane, r
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import {
-  bindStructureSpans, describeStructure, tagStructureVertices, type StructureMaterialEntry, type StructureSpan,
+  bindStructureSpans, describeStructure, measureOtherMapStructures, tagStructureVertices, type StructureMaterialEntry,
+  type StructureSpan,
 } from './structureDamageSeam.ts';
 import { setDefaultKitStyleReader } from './destructionDefaultKit.ts';
 import type { StructureDamageAnatomy } from './destructionKit.ts';
@@ -1574,7 +1575,11 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
   // (2026-10-08) and the tiles it paints from its noise (seed + 7) — all in the order the build reaches them: the straw,
   // the building kit's three detail tiles, the rock tile, the dry-stone print
   const noiseSeed = propsSeed + 7;
+  // (battle-spikes-253) a regional kit's render first (makePlaster: the primary on its seed, plaster2 and plaster3 on the
+  // next), at the plaster canvas's 256 on every tier
+  const kitRender = resolveRegionalArchitecture((cfg?.props as { architecture?: string } | undefined)?.architecture)?.surfaces.render;
   const requests: SurfacePaintRequest[] = [
+    ...(kitRender ? [kitRender.seed, kitRender.seed + 1].map((seed) => ({ kind: kitRender.kind, size: 256, seed })) : []),
     { kind: 'hay', size, seed: HAY_PRINT_SEED },
     { kind: 'structureDetail', detail: 'wood', noiseSeed },
     { kind: 'structureDetail', detail: 'canvas', noiseSeed },
@@ -3945,6 +3950,9 @@ function* propsBuildSteps(
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
+  // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
+  // build describes its first building and the queue would take them all in one go
+  while (measureOtherMapStructures(mapId, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
   // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
   const civicPlan = civicPlanFor(mapId);
   if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
@@ -4018,6 +4026,18 @@ function* propsBuildSteps(
   // where neither sets one
   if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
   const T = P.tones || {};
+  // (battle-spikes-253) the kit's render prints, painted ahead by the surface paint worker when the prefetch holds them
+  // (plannedSurfacePaints), else here as makePlaster would paint them: the same painter, the same texels
+  if (kitRender) {
+    let byPaint = paintedRenders.get(noi);
+    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
+    const { kind } = kitRender;
+    for (const seed of [kitRender.seed, kitRender.seed + 1]) {
+      if (byPaint.has(`${kind}:${seed}`)) continue;
+      byPaint.set(`${kind}:${seed}`, yield* paintedAhead(surfacePaintKey({ kind, size: 256, seed }),
+        function* () { return kind === 'limeRender' ? paintLimeRender(256, seed) : paintLimewash(256, seed); }));
+    }
+  }
   const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
@@ -5275,7 +5295,8 @@ ${snowCap ? `
    * the geometry the pool kept. The anatomy's mass class is then read from the structure's records, as
    * describeStructureAt reads it. After the join every structure derives inline.
    */
-  function joinStructureShells(): void {
+  // (battle-spikes-253) a structure a step: the join's bands and damage states were one 175 ms task on a 4x phone
+  function* joinStructureShells(): Generator<PropsBuildSlice, void, void> {
     if (!shellPool || shellsJoined) return;
     shellsJoined = true;
     const replacements = new Map<CollisionRecord, CollisionRecord[]>();
@@ -5298,6 +5319,7 @@ ${snowCap ? `
       const described = structureDamage.get(pending.structureIdx);
       const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
       if (described && state) described.anatomy.massClass = state.massClass;
+      yield { fine: true, progress: false, stage: 'structure-shells-join' };
     }
     const joined: CollisionRecord[] = [];
     for (const record of colliders) {
@@ -6462,7 +6484,7 @@ ${snowCap ? `
   // (the frontage walks read their plots) and before every scatter pass, which keeps out of each area's room by the
   // veto; their furniture, vehicles, lamps and railings join the destructibles after every seeded pass
   const civicPieces: CivicPiece[] = [];
-  function composeCivicAreas(): void {
+  function* composeCivicAreas(): Generator<PropsBuildSlice, void, void> {
     // (229) a plan's street parking, authored past its areas (a map without an area too), and every map's road life
     // (civic/roadLife.ts: the owner's "cars and stuff on roads")
     for (const f of [...(civicPlan?.streetParking ?? []), ...(civicPlan?.streetFurniture ?? []), ...roadLifeFor(mapId)]) {
@@ -6473,10 +6495,13 @@ ${snowCap ? `
     const areas: Array<{ id: string; census: Record<string, number> }> = [];
     const debugPolys: Array<{ pts: number[]; col: [number, number, number]; fill?: [number, number, number] }> = [];
     for (const area of civicPlan.areas) {
-      const built = composeCivicArea(area, style, {
+      const steps = composeCivicAreaSteps(area, style, {
         ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: civicPlots(),
         pathways: civicPlan.pathways,
       });
+      let step = steps.next();
+      while (!step.done) { yield { fine: true, progress: false, stage: 'civic-area' }; step = steps.next(); }
+      const built = step.value;
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);
       // (229) a map without the walked monument pass (props.monument unset) seats the area's monument as an authored
@@ -6492,7 +6517,7 @@ ${snowCap ? `
     }
     group.userData.civic = { areas, debugPolys, vetoed: civicVetoed };
   }
-  composeCivicAreas();
+  yield* composeCivicAreas();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -10664,7 +10689,7 @@ ${snowCap ? `
   if (shellPool && pendingShells.length) {
     yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };
   }
-  joinStructureShells();
+  yield* joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -13036,7 +13061,7 @@ ${snowCap ? `
   }
   joinBrokenVehicles();
   nearMeshVertexHeights = null; // (a query after the build asks the field)
-  joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
+  yield* joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
   group.userData.streamDraws = { placement: placementDraws, main: mainDraws };
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials, mapCraterSites,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,

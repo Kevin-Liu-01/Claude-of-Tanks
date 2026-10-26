@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { HAY_PRINT_SEED, paintHayBuffers } from './hayPrint.ts';
 import { FIELD_STONE_PRINT_SEED, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { FIELD_MUD_PRINT_SEED, paintFieldMudBuffers } from './fieldMudSurface.ts';
+import { paintLimeRender, paintLimewash } from './regionalSurfaces.ts';
 import { registerPaintNoise, settledPaint, startSurfacePaints, surfacePaintKey } from './surfacePaintPrefetch.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { paintRockDetailBuffers } from './rockDressing.ts';
@@ -38,6 +39,9 @@ const jobs = [
   { kind: 'fieldStone', size: 256, seed: FIELD_STONE_PRINT_SEED, lithology: 'chalk' },
   // (battle-spikes-253) a mud-walled map's render
   { kind: 'fieldMud', size: 256, seed: FIELD_MUD_PRINT_SEED },
+  // (battle-spikes-253) a regional kit's render: the franconian lime render's two seeds, the khatas' limewash
+  { kind: 'limeRender', size: 256, seed: 0x5e1b }, { kind: 'limeRender', size: 256, seed: 0x5e1c },
+  { kind: 'limewash', size: 256, seed: 0x4e21 },
   ...LITHOLOGIES.map((lithology) => ({ kind: 'rockDetail', lithology, noiseSeed: 2009 })),
   ...['wood', 'canvas', 'steel'].map((detail) => ({ kind: 'structureDetail', detail, noiseSeed: 2009 })),
 ].map((job, i) => ({ ...job, id: i + 1 }));
@@ -48,6 +52,8 @@ const inline = (job) => {
     case 'hay': return drain(paintHayBuffers(job.size, job.seed));
     case 'fieldStone': return drain(paintFieldStoneBuffers(job.size, job.seed, job.lithology));
     case 'fieldMud': return drain(paintFieldMudBuffers(job.size, job.seed));
+    case 'limeRender': return paintLimeRender(job.size, job.seed);
+    case 'limewash': return paintLimewash(job.size, job.seed);
     case 'rockDetail': return drain(paintRockDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.lithology));
     default: return paintStructureDetailBuffers(workerModule.propsPaintNoise(job.noiseSeed), job.detail);
   }
@@ -131,4 +137,4 @@ for (const id of ['verdant', 'urban', 'desert', 'fjord']) {
 }
 assert.deepEqual(plannedSurfacePaints({ id: 'verdant', props: {} }, 1337).filter((r) => r.noiseSeed !== undefined).map((r) => r.noiseSeed),
   [1344, 1344, 1344, 1344], 'another props seed, another noise');
-console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');
+console.log('surfacePaintPrefetch: the worker\'s prints are the props build\'s texel for texel (straw, dry stone, chalk, the mud render, the kit lime render and limewash, seven rock tiles, three kit tiles), handed over once by exact arguments, failures where taken, settled tiles only to their registered noise, the plan by wall style PASS');

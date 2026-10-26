@@ -326,6 +326,21 @@ nav-perf's phone census (4x CPU): the next battle's world builds behind the Gara
   texture the world's materials reach (the mask and its road layers) on the same three maps. liquidMarshSurface's red
   (Mangrove's bank grade 0.88) is the base's: the same with terrain.ts at HEAD.
 
+- **nav-perf's phone Garage sweep** (main 251, 4x, ten presses) read through the dist's sourcemaps, beyond the items
+  above:
+  - the props build's first building measured the last battlefield's whole deferred-measure queue in one task (1,444 ms on
+    the filter press): a prefetched map's measures are never run by a world that was not played. The build now drains
+    another map's queue in 6 ms slices before it describes a building (structureDamageSeam measureOtherMapStructures);
+  - the horizon ring and the Hinterland were each one supply slot: a second world build (a deploy while the Garage built
+    another map) took it, and the first built its ring on the page (14 tasks of 100-376 ms on deploy). One supply a map
+    and variant now;
+  - a civic square (368 ms), the structure shells' join (175 ms) and a kit's lime render or limewash prints (150-180 ms a
+    seed) are steps or the surface paint worker's now. Props output identical in Node on Alpine+Urban (the queue
+    drained), Autumn and Delta (civic; Autumn's destructible records differ only in three's random UUIDs), Coastal and
+    Desert (lime render).
+  - Open: a road wreck's commit (150 ms; its geometry's three transforms are one bake each), a planned building
+    (100-150 ms), a landmark's halves, the rock variants, the yards.
+
 ## Draw count (the engine ruling's lever)
 
 The census's `--draw-attribution` (30 frames) and the frame recorder's draw columns. Diag build, cold, load 45-69 (the
