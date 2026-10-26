@@ -93,7 +93,7 @@ const BATTLEFIELDS = 34;
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
   'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
-  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById'], lane: 'premiere-gallery-studio' },
+  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
   'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
