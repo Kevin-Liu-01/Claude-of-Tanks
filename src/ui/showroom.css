@@ -514,6 +514,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage:not
   top:auto;bottom:var(--cot-side-panel-bottom);width:auto;height:var(--cot-figures-h);max-height:none;overflow:hidden;
   background:var(--glyph-plate);border:0;border-radius:var(--control-radius);box-shadow:var(--ring-1);}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>:not(.cot-overview-section){display:none;}
+/* the open drawer shows every station: its damage, reload and speed read on their stations' plates, not twice in the
+   overview above them (UI-LOCKDOWN G5) */
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-hrow:is([data-stat='dmg'],[data-stat='reload'],[data-stat='speed']){display:none;}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
   display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:var(--s2);height:100%;margin:0;padding:var(--s2) 0 var(--s2) var(--s3);border:0;}
 body[data-cot-panels='overlay'] .cot-garage .stats .cot-headline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);}

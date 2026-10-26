@@ -1270,7 +1270,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // an even figure carries no gap: only a difference is news
       const delta = gap == null || gap === 0 ? '' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
         `${gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
-      return `<div class="cot-hrow">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
+      return `<div class="cot-hrow" data-stat="${key}">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
         `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}${delta}</span>` +
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
@@ -3442,11 +3442,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
     const head = headlineOf(spec, eqM.reload, eqM.turret);
     setHotspotFacts({
-      // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor)
-      gun: { lead: `${spec.gun.caliberMm} mm`, more: `${head.reload.toFixed(1)} s` },
-      turret: { lead: `${head.turret.toFixed(0)} °/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
-      engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
-      tracks: { lead: `${Math.round(spec.topSpeedKmh)} km/h`, more: `${spec.weightTons.toFixed(0)} t` },
+      // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
+      // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there
+      // (UI-LOCKDOWN G3)
+      gun: { lead: `${spec.gun.caliberMm} mm`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
+      turret: { lead: turMm ? `${turMm} mm` : '', more: '' },
+      engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: '' },
+      tracks: { lead: `${spec.weightTons.toFixed(0)} t`, more: '' },
     });
     // Small equipment bonuses should not round into a misleading 1.4 > 1.4.
     const aimPrecision = eqM.aimTime !== 1 ? 2 : 1;
