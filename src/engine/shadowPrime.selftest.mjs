@@ -39,8 +39,10 @@ function fixture() {
       // the production router (renderLayers routeShadowOnlyLayer) exposes the shadow-only layer while the map traverses
       if (!(object.layers.mask & (activeCamera.layers.mask | (1 << 29)))) return;
       if (!object.castShadow && !(renderer.shadowMap.type === THREE.VSMShadowMap && object.receiveShadow)) return;
-      // three's frustum test against the cascade's box, for casters a case places outside it
+      // three's frustum test against the cascade's box, for casters a case places outside it, and a BatchedMesh's
+      // per-item cull in its shadow hook (every item outside: an empty draw list, which the router skips)
       if (object.frustumCulled && object.userData.outsideCascade) return;
+      if (object.isBatchedMesh && object.perObjectFrustumCulled && object.userData.outsideCascade) return;
       const geometry = object.geometry;
       const positionCount = geometry.getAttribute('position')?.count ?? 0;
       const rangeStart = geometry.drawRange.start;
@@ -106,8 +108,22 @@ function fixture() {
       culled: object.frustumCulled });
     return object;
   };
+  const addBatchedCaster = (name, options = {}) => {
+    const material = new THREE.MeshBasicMaterial();
+    const object = new THREE.BatchedMesh(1, 24, 36, material);
+    object.addInstance(object.addGeometry(new THREE.BoxGeometry()));
+    object.name = name;
+    object.castShadow = true;
+    object.frustumCulled = false;
+    object.perObjectFrustumCulled = true;
+    if (options.outsideCascade) object.userData.outsideCascade = true;
+    scene.add(object);
+    casters.push({ object, visible: true, cast: true, receive: false, culled: false, perObject: true });
+    return object;
+  };
   const casterFlagsRestored = () => {
-    for (const { object, visible, cast, receive, culled } of casters) {
+    for (const { object, visible, cast, receive, culled, perObject } of casters) {
+      if (perObject !== undefined) assert.equal(object.perObjectFrustumCulled, perObject, `${object.name}: per-item cull restored`);
       assert.equal(object.visible, visible, `${object.name}: visible restored`);
       assert.equal(object.castShadow, cast, `${object.name}: castShadow restored`);
       assert.equal(object.receiveShadow, receive, `${object.name}: receiveShadow restored`);
@@ -134,7 +150,7 @@ function fixture() {
     casterFlagsRestored();
   };
   return { run, renderer, scene, camera, lights, target, prior, context, failures, hooks,
-    calls, draws, cohorts, addCaster, bindingsRestored, casterFlagsRestored, restored, disposed: () => disposed,
+    calls, draws, cohorts, addCaster, addBatchedCaster, bindingsRestored, casterFlagsRestored, restored, disposed: () => disposed,
     cleanup() {
       for (const { object } of casters) {
         object.geometry.dispose();
@@ -429,11 +445,15 @@ await withFixture(async (f) => {
   f.addCaster('far', 4, { outsideCascade: true });
   f.addCaster('proxy', 5, { layer: 29 });
   f.addCaster('far-proxy', 6, { layer: 29, outsideCascade: true });
+  const batched = f.addBatchedCaster('far-batch', { outsideCascade: true });
+  batched._visibilityChanged = false;
   await f.run({ casterWarmup: { maxCastersPerBatch: 1,
     yieldBeforeBatch() { f.bindingsRestored(); }, onBatch() { f.bindingsRestored(); },
   } });
-  assert.deepEqual(f.cohorts, [['near'], ['far'], ['proxy'], ['far-proxy'], ['near', 'proxy'], ['near', 'proxy']],
-    'every caster draws in its own batch wherever it stands; the cascades after keep their cull');
+  assert.deepEqual(f.cohorts, [['near'], ['far'], ['proxy'], ['far-proxy'], ['far-batch'],
+    ['near', 'proxy'], ['near', 'proxy']], 'every caster draws in its own batch wherever it stands; the cascades after keep their cull');
+  // three keeps a BatchedMesh's last draw list while per-item culling is off and no visibility changed
+  assert.equal(batched._visibilityChanged, true, 'the batched caster rebuilt its list with every item in it');
   f.restored(true);
 });
 

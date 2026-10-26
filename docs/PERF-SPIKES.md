@@ -255,6 +255,34 @@ the obstacle, collider, crushable, loose, wreck-spot, utility, grounding and fea
 state and boxes; the carts' seating receipt) is hashed before (HEAD, through a load hook) and after on Alpine and
 Steinburg. The scheduling receipts (propsScheduling) walk the new slices against a synchronous control.
 
+## A room's first live frames (the MP cover)
+
+nav-perf's program log of a room (root-p, 1f58a4460e) recorded each program made after the cover lifts, with its
+drawer and the cache-key difference from the nearest program of the same shader. The first live seconds still had a
+1.2 s task of eight links.
+
+- **Five depth programs** (the horizon ring's rocks, far vegetation, two baked prop buckets and a rock pool's
+  shadow-only proxy) differed from their warmed twins only at key index 34, the point-light count: 8 live, 7 warmed.
+  The light census (`window.__LIGHT_CENSUS`) read 8 point lights at both the compile and the watchdog, so the 7-light
+  programs came from the Garage's background build. Under the cover these casters never drew at 8: the caster warm-up
+  (`engine/shadowPrime.ts`) renders cascade 0 with the shadow map's frustum cull, and they stand outside its box. The
+  shadow-only proxy was not batched at all: the warm-up filtered on the camera's layers, which leave out layer 29, so
+  the proxy sat unmuted in every batch. Each batch now draws its own casters unculled, and shadow-only casters join the
+  batches. A batched caster (the field boundary works' BatchedMesh) culls its items again in its own shadow hook, so in
+its batch its per-item cull is off too and its draw list is rebuilt. The batch count is unchanged; a batch's draws are
+its own eight casters wherever they stand.
+- **`LateFxPass.Copy`** never compiled at the post warm: the late pass draws nothing while no effect is live, and none
+  is live under the cover. It now has the post warm's `warmGated` switch, as the sun shafts and the lens flare do, and
+  draws its active path (input copy, depth copy, the FX layer, output copy) with the image unchanged.
+- **The impostor atlas's bake programs** (the two `COT_BAKE_BILLBOARD` materials) linked at the first live frame that
+  showed the far tier. The room's world is built without activation's precompile, so nothing baked it. The MP compile
+  now calls `warmImpostors()`, as the solo loading does.
+
+Receipts: `shadowPrime.selftest` (a far caster, a far proxy and a far batch each draw in their own batch; the final cascades keep
+their cull), `lateFxColorHandoff.selftest` (no copy without the switch, both copies and the depth copy with it, live
+counts untouched), `worldMaterialsBeforeCompile.selftest` (the MP compile bakes the impostors before its strict
+compile). Each case fails against the previous source.
+
 ## Memory across battles
 
 `tools/battle-memory-probe.mjs` plays N battles in one page (the census's battle driver) and measures the garage after

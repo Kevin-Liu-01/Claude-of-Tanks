@@ -84,8 +84,13 @@ interface CasterState {
   castShadow: boolean;
   receiveShadow: boolean;
   frustumCulled: boolean;
+  /** A BatchedMesh's own per-item cull (null for any other caster). */
+  perObjectCulled: boolean | null;
   vertexCount: number;
 }
+
+/** Three's BatchedMesh keeps its last draw list while per-item culling is off and no visibility changed. */
+type BatchedCaster = Object3D & { isBatchedMesh?: boolean; perObjectFrustumCulled?: boolean; _visibilityChanged?: boolean };
 
 type ShadowDrawable = Object3D & { geometry: BufferGeometry; material: Material | Material[] };
 
@@ -115,8 +120,10 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
       ? geometry.groups.some(group => material[group.materialIndex ?? 0]?.visible
         && Math.min(end, group.start + group.count) > Math.max(start, group.start))
       : material.visible;
+    const batched = object as BatchedCaster;
     if (draws) casters.push({ object, castShadow: object.castShadow,
-      receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled, vertexCount });
+      receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled,
+      perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount });
   });
   return casters;
 }
@@ -151,6 +158,9 @@ function restoreWarmCasters(casters: readonly CasterState[]): void {
     cleanup.run(() => { prior.object.castShadow = prior.castShadow; });
     cleanup.run(() => { prior.object.receiveShadow = prior.receiveShadow; });
     cleanup.run(() => { prior.object.frustumCulled = prior.frustumCulled; });
+    if (prior.perObjectCulled !== null) {
+      cleanup.run(() => { (prior.object as BatchedCaster).perObjectFrustumCulled = prior.perObjectCulled!; });
+    }
   }
   cleanup.finish();
 }
@@ -215,7 +225,17 @@ function renderWarmBatch(
       // (battle-spikes-253) The batch's own casters draw wherever they stand: a caster outside the first cascade's box
       // (the horizon ring, far vegetation, the baked prop buckets) otherwise links its depth program in the first live
       // frame that frames it, at the battle's light counts (nav-perf's program log, root-p: five such programs at 1.2 s).
-      if (index >= start && index < end) { object.frustumCulled = false; continue; }
+      if (index >= start && index < end) {
+        object.frustumCulled = false;
+        // a batched caster (the field boundary works) culls its items again inside its own shadow hook: all of them
+        // outside the box submit nothing, so its depth program waited too. Rebuild its list with every item in it.
+        if (casters[index]!.perObjectCulled) {
+          const batched = object as BatchedCaster;
+          batched.perObjectFrustumCulled = false;
+          batched._visibilityChanged = true;
+        }
+        continue;
+      }
       // Never hide a parent: eligible child casters must still be traversed.
       // VSM also submits receive-only objects, so mute both eligibility flags.
       object.castShadow = false;
