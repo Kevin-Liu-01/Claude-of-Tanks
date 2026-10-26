@@ -255,9 +255,31 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     for (const element of options$()) element.tabIndex = element === to ? 0 : -1;
     if (focus) to.focus({ preventScroll });
   };
+  /** A scrolling list never ends on a row's edge, which would hide that more rows follow (Rooms r34): when its foot falls in
+   *  or next to a gap, it gives up height until 40 % of the next row shows. Its host keeps its own size, so the observer
+   *  that calls this sees no change from it. (Cards and swatches stand beside a preview whose foot they share.) */
+  const keepPeek = (): void => {
+    if (options.layout !== 'list') return;
+    grid.style.maxHeight = '';
+    if (grid.scrollHeight <= grid.clientHeight + 1) return;
+    const tops = [...new Set(options$().map((element) => element.offsetTop))].sort((a, b) => a - b);
+    if (tops.length < 2) return;
+    const pitch = tops[1] - tops[0];
+    const style = getComputedStyle(grid);
+    const pads = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+    const gap = parseFloat(style.rowGap) || 0;
+    const view = grid.clientHeight - pads;
+    const rest = view % pitch;
+    if (view < pitch * 1.4 || (rest >= pitch * 0.25 && rest <= pitch - gap - pitch * 0.15)) return;
+    const content = (Math.floor(view / pitch - 0.4) + 0.4) * pitch;
+    grid.style.maxHeight = `${Math.round(content + (style.boxSizing === 'border-box' ? pads : 0))}px`;
+  };
+  const gridResize = new ResizeObserver(keepPeek);
+  gridResize.observe(host);
   // The grid opens with its choice in view on whole rows: the chosen row on top, or near the end the first row from which
   // the chosen one shows. A row cut under the bar would read as a loose caption (Rooms r25).
   const revealChosen = (): void => {
+    keepPeek();
     const chosen = options$().find((element) => element.getAttribute('aria-selected') === 'true');
     if (!chosen || grid.scrollHeight <= grid.clientHeight) return;
     const style = getComputedStyle(grid);
@@ -414,6 +436,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       search.removeEventListener('input', onInput);
       chipRow.removeEventListener('scroll', syncMore);
       chipsResize.disconnect();
+      gridResize.disconnect();
       host.replaceChildren();
     },
   };

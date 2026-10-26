@@ -1580,6 +1580,8 @@
   "playMenu.private.title": "Private room",
   "playMenu.lan.title": "Local network",
   "playMenu.kind": "Room type",
+  "playMenu.kind.private": "Private Room",
+  "playMenu.kind.lan": "Local Network",
   "playMenu.rules.heading": "Battle rules",
   "playMenu.identity.callsign": "Callsign",
   "playMenu.create.title": "Create a room",

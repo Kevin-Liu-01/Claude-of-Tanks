@@ -735,8 +735,8 @@ export function createPlayMenu({
     </section></header>
     <p class="lead"></p>
     ${segmented({ label: t('playMenu.kind'), value: 'private', className: 'modes', options: [
-      { value: 'private', label: t('playMenu.private.title'), icon: 'battlePrivate' },
-      { value: 'lan', label: t('playMenu.lan.title'), icon: 'battleLan' }] })}
+      { value: 'private', label: t('playMenu.kind.private'), icon: 'battlePrivate' },
+      { value: 'lan', label: t('playMenu.kind.lan'), icon: 'battleLan' }] })}
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
