@@ -201,16 +201,24 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-banner h1 .dm-phrases{word-break:keep-all;line-break:strict;overflow-wrap:break-word}
 .dm-banner__cap{position:absolute;right:20px;bottom:16px;z-index:var(--docs-banner-z);max-width:min(460px,40%);margin:0;padding:7px 10px;border-radius:var(--r1);background:var(--glyph-plate)}
 .dm-banner__cap .doc-icon{width:16px;height:16px;color:var(--ink-3)}
-/* the hero ends at the content container's edge (the shelf's plate starts at its other edge), so a wide screen keeps the
-   page centred; its pause control stands on the content's edge, the header's and the contents rail's */
+/* beside the shelf (1100 px and up) the hero ends on the content edge at every width, the header's (Play now) and the
+   contents rail's, a gutter short of the page container's edge; its pause control stands on that same edge. The stacked
+   layout (under 1100 px) keeps the hero a full-bleed band. */
 .dm-banner>.cot-media-toggle{z-index:var(--docs-banner-z);top:16px;right:var(--docs-gutter);bottom:auto}
-.dm-body{display:grid;grid-template-columns:minmax(0,var(--measure-docs)) var(--docs-toc-w);justify-content:space-between;gap:var(--s7);padding:var(--s3) var(--docs-gutter) var(--s8)}
+@media (width >= 1100px){
+  .dm-banner{margin-right:var(--docs-gutter)}
+  .dm-banner>.cot-media-toggle{right:0}
+}
+/* one block edge in every chapter: the article takes the width to the contents rail, so its figures, charts, tables and
+   cards end on one edge, and its prose paragraphs keep the reading measure */
+.dm-body{display:grid;grid-template-columns:minmax(0,1fr) var(--docs-toc-w);gap:var(--s7);padding:var(--s3) var(--docs-gutter) var(--s8)}
 .dm-article{min-width:0}
 .dm-meta{display:flex;align-items:center;gap:6px;margin:0 0 var(--s5);font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3)}
 .dm-meta .doc-icon{width:16px;height:16px}
 .dm-section{padding-top:var(--s6);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-section h2{margin:0 0 var(--s4);font:600 var(--fs-28)/1.08 var(--font-display);color:var(--ink-1)}
 .dm-section p{margin:0 0 var(--s4);font:400 var(--fs-16)/var(--lh-docs) var(--font-body);color:var(--ink-2)}
+.dm-section>p{max-width:var(--measure-docs)}
 /* inline code, in the reading column and its cards: the mono face in the prose's ink and weight, no plate (a plate
    abutted the words beside it and stood past the column); a token moves to the next line whole and wraps inside only
    when it is wider than the column */
@@ -229,9 +237,6 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* a long neighbour's name wraps inside its button on a phone instead of pushing the page sideways */
 .dm-pager .cot-c-btn{min-width:0;max-width:100%;height:auto;min-height:var(--btn-h-m);white-space:normal;text-align:start}
 :lang(zh-CN) .dm-banner h1{line-height:1.15}
-@media (width < 1440px){
-  .dm-body{grid-template-columns:minmax(0,1fr) var(--docs-toc-w)}
-}
 @media (width < 1100px){
   .dm{grid-template-columns:minmax(0,1fr)}
   /* the topic strip: its first item, the index link (one of its items, not a framed chip), sets its glyph on the page

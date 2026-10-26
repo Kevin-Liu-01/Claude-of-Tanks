@@ -314,8 +314,9 @@ export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, numbe
   '/media/ui-246/studio-workspace.webp': [1920, 1080],
 };
 const DEFAULT_FIGURE_SIZE = [1920, 1080] as const;
-/** A figure fills the article column (about 760 px; the full width on narrow screens). */
-const FIGURE_SIZES_ATTRIBUTE = '(max-width: 900px) 100vw, 760px';
+/** A figure fills the article column to its block edge, the tables' (about half the screen beside the shelf; the full
+ *  width on narrow screens), as the data-built chapters' figures do. */
+const FIGURE_SIZES_ATTRIBUTE = '(width < 1100px) 100vw, 60vw';
 
 function mediaFigure([src, caption]: TopicMedia): string {
   const [width, height] = TOPIC_FIGURE_SIZES[src] ?? DEFAULT_FIGURE_SIZE;
