@@ -794,6 +794,8 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .cot-c-picker__words{justify-content:center}
 .cot-eqpick .cot-c-picker__name{font:700 max(var(--fs-floor-11),var(--fs-11))/1.25 var(--font-ui);text-transform:uppercase}
 .cot-eqpick .cot-c-picker__facts{justify-content:center;flex-wrap:wrap;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.35}
+/* an effect line wraps inside its card (a flex item keeps its text's width: on a phone it ran into the next card) */
+.cot-eqpick .cot-c-picker__facts>span{min-width:0;max-width:100%;overflow-wrap:anywhere}
 /* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
 html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere}
 /* a shut item reads as unavailable by its quiet glyph and words, still legible (the kit's half opacity took them to 2.9:1) */
