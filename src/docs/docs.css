@@ -395,9 +395,11 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .doc-section>p:not(.lead){font:400 var(--fs-16)/var(--lh-docs) var(--font-body);color:var(--ink-2)}
 
 .docs-chapters h2{font:700 var(--docs-h2)/.94 var(--font-display)}
-.docs-chapter-grid{gap:10px;background:none}
-/* a card's frame is drawn inside its box, so the cards start on the search field's and the stat strip's edge */
-.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
+.docs-chapter-grid{gap:var(--s3);background:none}
+/* a card's frame is drawn inside its box (one line, which the picture covers as the class and map cards' do), so the
+   cards start on the search field's and the stat strip's edge */
+.docs-chapter-grid a{overflow:hidden;border:0;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
+@media(hover:hover) and (pointer:fine){.docs-chapter-grid a:hover{box-shadow:var(--ring-3)}}
 /* the manual's index: the search, the two shelves (tools/docs-prerender.mjs shelves the cards), the battle takes and
    the archive */
 .docs-index{display:grid;gap:var(--s7);padding-top:var(--s6);padding-bottom:var(--s8)}
