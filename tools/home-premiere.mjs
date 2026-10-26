@@ -94,29 +94,23 @@ function ladder(clip) {
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
-// what each clip shows (owner 2026-10-25: "also add text here at the left that says stuff about this!"): its two vehicles
-// and its battlefield, and its mode where the clip is a match. The manifest's own tanks and mode lead where the media lane
-// writes them; this table names the vehicles of the duels it delivered without them.
-const SHOT_TANKS = {
-  'vs03-reservoir-k2-vt4a1': ['k2_black_panther', 'vt4a1'],
-  'frosthollow-cv90-bmp3': ['cv90_mk4', 'bmp3'],
-  'wadi-abrams-t90m': ['m1a2_abrams_sepv3', 't90m'],
-  'oasis-night-merkava-t72b3': ['merkava4', 't72b3'],
-  'glacier-strv122-t80bv': ['strv122', 't80bv'],
-};
+// what each clip shows (owner 2026-10-25: "also add text here at the left that says stuff about this!"): the media lane's
+// manifest names each clip's vehicles (spec ids in frame order, the lead first), its battlefield and its mode
+const SHOT_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree' };
 /** A clip's caption: the vehicles (their names are the same in every locale), the battlefield and the mode, each the
  *  catalog's own words, stacked in one cell so the longest sets the box and a turn moves nothing. */
 function shotCaption(clip, on) {
-  const tanks = clip.tanks ?? SHOT_TANKS[clip.id];
-  if (tanks?.length !== 2) throw new Error(`home-premiere: ${clip.id} names no two vehicles (manifest tanks, or SHOT_TANKS)`);
-  const [a, b] = tanks.map((id) => tank(id).name);
-  const where = t(`map.${clip.map}`);
-  const mode = clip.mode ? GAME_MODE_DEFINITIONS[clip.mode] : null;
-  if (clip.mode && !mode) throw new Error(`home-premiere: ${clip.id} plays an unknown mode ${clip.mode}`);
-  const vars = esc(JSON.stringify({ a, b }));
+  const key = SHOT_KEYS[clip.tanks?.length];
+  if (!key) throw new Error(`home-premiere: ${clip.id} names ${clip.tanks?.length ?? 'no'} vehicles; a caption reads two or three (manifest tanks)`);
+  const names = clip.tanks.map((id) => tank(id).name);
+  const vars = Object.fromEntries(names.map((name, i) => ['abc'[i], name]));
+  const line = names.reduce((out, name, i) => out.replace(`{${'abc'[i]}}`, name), text(key));
+  const mode = GAME_MODE_DEFINITIONS[clip.mode];
+  if (!mode) throw new Error(`home-premiere: ${clip.id} plays no known mode (manifest mode: ${clip.mode})`);
   return `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">`
-    + `<b data-i18n="home.hero.shot" data-i18n-vars="${vars}">${esc(text('home.hero.shot').replace('{a}', a).replace('{b}', b))}</b>`
-    + `<span class="hero__where">${where}${mode ? `<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}${t(`playMenu.matchMode.${clip.mode}.label`)}</span>` : ''}</span></span>`;
+    + `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`
+    + `<span class="hero__where">${t(`map.${clip.map}`)}<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}`
+    + `${t(`playMenu.matchMode.${clip.mode}.label`)}</span></span></span>`;
 }
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
 // a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
@@ -263,6 +257,62 @@ function playBlock() {
     + `</div></section>`;
 }
 
+// ---- head to head and the fleet (owner 2026-10-25: "we need to show of all our higher quality stuff. we hide too much and
+// we had better sections"): the media lane's versus twelve (public/media/versus-r1, `featured` in its order) and its fleet
+// strip (public/media/home-r2 fleetStrip), each a bento of large stills: the first spans two columns and two rows, every
+// still is named by what it shows and opens its vehicle's Gallery page. Below the fold: lazy, sized, no script.
+const VERSUS = json('public/media/versus-r1/manifest.json');
+/** The rungs a tile can use: the lead is at most 900 css px wide (its 3840 for dense screens), a small tile 450, and a
+ *  phone's rail card 86 % of the screen. */
+const BENTO_RUNGS = { lead: [1280, 1920, 3840], tile: [640, 1280, 1920] };
+/** A still's rungs as a srcset; the 1920 rung is its src. */
+function bentoRungs(rungs, lead) {
+  const sorted = [...rungs].sort((a, b) => a.width - b.width).filter((rung) => BENTO_RUNGS[lead ? 'lead' : 'tile'].includes(rung.width));
+  if (!sorted.some((rung) => rung.width === 1920)) throw new Error(`home-premiere: ${rungs[0]?.path} has no 1920 rung`);
+  return sorted;
+}
+function bentoPicture(rungs, lead) {
+  const sorted = bentoRungs(rungs, lead);
+  const base = sorted.find((rung) => rung.width === 1920);
+  for (const rung of sorted) if (!existsSync(join(ROOT, 'public', rung.path))) throw new Error(`home-premiere: ${rung.path} is not in public/`);
+  const sizes = lead ? '(width < 768px) 100vw, (width < 1100px) 66vw, 900px' : '(width < 768px) 50vw, (width < 1100px) 33vw, 450px';
+  return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
+    + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
+}
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines, the whole tile the way in. */
+const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
+  + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
+const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
+  + `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a></header>`;
+function duelsBlock() {
+  if (VERSUS.featured?.length !== 12) throw new Error('home-premiere: public/media/versus-r1/manifest.json features no twelve');
+  const tiles = VERSUS.featured.map((id, i) => {
+    const item = VERSUS.items.find((entry) => entry.id === id);
+    if (!item?.rungs?.length) throw new Error(`home-premiere: versus ${id} has no rungs`);
+    const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
+    if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
+    const [a, b] = [tank(hero.id).name, tank(foe.id).name];
+    const name = `<b data-i18n="home.hero.shot" data-i18n-vars="${esc(JSON.stringify({ a, b }))}">${esc(text('home.hero.shot').replace('{a}', a).replace('{b}', b))}</b>`;
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), galleryHref(hero.id), name,
+      [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
+  });
+  return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
+    + bentoHead('duels-title', 'home.duels.title', '/media', 'publicNav.media')
+    + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
+}
+function fleetBlock() {
+  const strip = REEL.fleetStrip ?? [];
+  if (strip.length !== 9) throw new Error('home-premiere: public/media/home-r2/manifest.json has no fleet strip of nine');
+  const tiles = strip.map((entry, i) => {
+    const a = tank(entry.specId);
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(entry.rungs, i === 0), galleryHref(entry.specId),
+      `<b>${esc(a.name)}</b>`, [t(`nation.${a.nation}`), t(`map.${entry.map}`)]);
+  });
+  return `<section class="bento bento--fleet" aria-labelledby="fleet-title"><div class="home-shell">`
+    + bentoHead('fleet-title', 'home.fleet.title', '/gallery', 'publicNav.tankGallery')
+    + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
+}
+
 // ---- the fleet index (src/presentation/fleetWall.json): the 404 page's search over every vehicle with a fleet take --
 // twelve nations, one take each (the newest fleet round), around the featured vehicle's plate
 const FLEET = ['t14', 'leo2a7v', 'm1a2_x', 'challenger1', 'strv122', 'type99a', 'type90', 'merkava2d', 'ua_t80u_kursk', 'amx40_x',
@@ -335,7 +385,7 @@ function fleetWall() {
 }
 const wallJson = () => `[\n${fleetWall().records.map((record) => JSON.stringify(record)).join(',\n')}\n]\n`;
 
-const BLOCKS = { hero: heroBlock, features: featuresBlock, play: playBlock };
+const BLOCKS = { hero: heroBlock, duels: duelsBlock, features: featuresBlock, play: playBlock, fleet: fleetBlock };
 const PRELOAD = /<link rel="preload"[^>]*as="image"[^>]*fetchpriority="high"[^>]*>/;
 const preloadTag = () => `<link rel="preload" href="${heroDefault()}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${heroSrcset()}" imagesizes="${HERO_SIZES}">`;
 const HOME = join(ROOT, 'site/home.html');

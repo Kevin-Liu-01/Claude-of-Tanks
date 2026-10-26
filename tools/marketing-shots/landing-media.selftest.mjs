@@ -138,7 +138,26 @@ const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].m
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
 assert.equal(/<source src=/.test(home), false, 'no landing video names its file in the markup');
 
-console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features and the landing-r1 picks pass`);
+// (owner 2026-10-25: "we need to show of all our higher quality stuff. we hide too much") head to head shows the versus
+// twelve in the media lane's order and the fleet its strip of nine: each still at every rung, sized and lazy, the first the
+// bento's lead, every tile named and opening its vehicle's Gallery page
+const versus = JSON.parse(await readFile(resolve(root, 'public/media/versus-r1/manifest.json'), 'utf8'));
+// the lead uses its 1280, 1920 and 3840 rungs, a small tile its 640, 1280 and 1920 (tools/home-premiere.mjs BENTO_RUNGS)
+const bentoRungs = (rungs, lead) => [...rungs].sort((a, b) => a.width - b.width).filter((rung) => (lead ? [1280, 1920, 3840] : [640, 1280, 1920]).includes(rung.width));
+const bento = (name) => home.match(new RegExp(`<!--home:${name}-->([\\s\\S]*?)<!--/home:${name}-->`))?.[1] || '';
+for (const [name, rungsOf] of [['duels', versus.featured.map((id) => versus.items.find((item) => item.id === id).rungs)], ['fleet', reel.fleetStrip.map((entry) => entry.rungs)]]) {
+  const tiles = [...bento(name).matchAll(/<figure class="(bento__tile[^"]*) cot-c-media">([\s\S]*?)<\/figure>/g)];
+  assert.equal(tiles.length, rungsOf.length, `${name}: one tile per still`);
+  tiles.forEach(([, cls, body], i) => {
+    assert.equal(cls.includes('bento__tile--lead'), i === 0, `${name} ${i + 1}: only the first leads`);
+    const srcset = body.match(/ srcset="([^"]+)"/)?.[1] ?? '';
+    assert.deepEqual(srcset.split(', ').map((entry) => entry.split(' ')[0]), bentoRungs(rungsOf[i], i === 0).map((rung) => rung.path), `${name} ${i + 1}: the rungs its size can use`);
+    assert.match(body, /width="1920" height="1080" alt="" loading="lazy" decoding="async">/, `${name} ${i + 1}: sized and lazy, named by its caption`);
+    assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b[^>]*>[^<]+<\/b><span class="bento__where"><span data-i18n="/, `${name} ${i + 1}: named, the way to its vehicle`);
+  });
+}
+
+console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features, the versus twelve, the fleet strip and the landing-r1 picks pass`);
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);
