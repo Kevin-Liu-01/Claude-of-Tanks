@@ -44,7 +44,11 @@ export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show
   '.cot-flight-hud .flight-console', '.cot-flight-hud .gunship-solution', '.cot-scope-vision',
   '.cot-touch.on .joy', '.cot-touch.on .round', '.cot-touch.on .mobile-chrome', '.cot-touch.on .quick'];
 /** Deliberate layerings: [selector a, selector b, why]. A pair matches in either order. */
-export const ALLOWED = [];
+export const ALLOWED = [
+  // (the network strip hangs beside the corner plate, its slanted right edge 4 px off the plate's slanted left one
+  // (battleHudLayout.ts NETWORK_PLATE_TUCK): their boxes cross only where the two slants interlock)
+  ['.cot-net', '.cot-mp-status.battle', 'the strip tucked to the corner plate\'s slant'],
+];
 
 function measure(instruments) {
   const els = [];

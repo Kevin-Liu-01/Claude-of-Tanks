@@ -525,12 +525,13 @@ try {
     assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
     assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
       'tall: level with the tray, the row sits left of it, whole within the space');
-    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408, the
-    // right lane's moved 3 px down onto the left's row (one pitch: their rows sat 3 px apart, gauntlet r5)
+    // the lanes start under the map and the chrome, the right lane's moved 3 px down onto the left's row (one pitch: their
+    // rows sat 3 px apart, gauntlet r5); and they end above the reticle's band (500 - SIGHT_BAND_ABOVE - 8 = 428), never
+    // the row's moved floor (632) nor its natural one (560): a portrait lane crosses the sight, and under the expanded map
+    // no row fits above it (Watch's ride ran a row through the ring at 320x568, gauntlet r14)
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 411], 'tall: under the map and the chrome');
-    assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
-    // (191 px wide, the global feed's rows stacked: three in the same floor, gauntlet r8)
-    assert.equal(tall.px('kill-right-height'), 3 * 41 - 3, 'tall: the right kill lane keeps the natural floor');
+    assert.equal(tall.px('kill-left-height'), 0, 'tall: no left lane row through the reticle');
+    assert.equal(tall.px('kill-right-height'), 0, 'tall: no right lane row through the reticle');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];

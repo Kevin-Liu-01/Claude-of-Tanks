@@ -808,6 +808,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.mapSlot;
     }
     const map = read('.cot-minimap');
+    // (the spectate bar, centred on the floor, ends 8 px short of a map in its band: at 720 px it met the map's larger step
+    // at 1440x900, gauntlet r14's overlap receipt)
+    const specRoom = map && map.left > width / 2 && map.bottom > height - 16 - 64 ? 2 * (map.left - 8 - width / 2) : 0;
+    setBodyVar('--hud-spec-max', specRoom > 0 ? `${Math.floor(specRoom)}px` : '');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
     // the team strip under the score (hudTeamPips.ts), where it shows; the objective under the score sits under it
@@ -833,7 +837,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       chipsBeside = besideRight || overMap;
       setBodyVar('--hud-pips-top', `${Math.round(besideRight && objective && chipsNow ? objective.top + (objective.height - chipsNow.height) / 2
         : overMap && objective ? objective.bottom + 8 : under + PIPS_GAP)}px`);
-      setBodyVar('--hud-pips-left', besideRight && objective ? `${Math.round(objective.right + 6)}px` : overMap ? '8px' : '');
+      // (over the map on its left edge: at 8 px the chips' row stood 4 px left of the map under it, gauntlet r14 at 320x568)
+      setBodyVar('--hud-pips-left', besideRight && objective ? `${Math.round(objective.right + 6)}px` : overMap ? `${Math.round(map?.left ?? 12)}px` : '');
       setBodyVar('--hud-pips-shift', chipsBeside ? '0px' : '');
       chips = chipsBeside ? null : read('.cot-pips.show');
     }
@@ -1363,14 +1368,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     setBodyVar('--hud-feed-width', touch && width < height && besideColumn < Math.min(320, width - 24) ? `${Math.floor(besideColumn)}px` : '');
     // A flight's sight at the centre (aerialHud.css .flight-sight) ends a lane that crosses it: a portrait phone's lanes run
     // to the column right of the sight, and the drone's personal lane ran its third row through it at 320x568, gauntlet r14.
+    // (and on a portrait phone the tank's reticle, its band around the centre: Watch's ride ran a feed row through the idle
+    // ring at 320x568, gauntlet r14)
     const flightSight = read('.cot-flight-hud:not([hidden]) .flight-sight');
+    const sight = flightSight ?? (touch && width < height ? { left: width / 2 - SIGHT_BAND_ABOVE, right: width / 2 + SIGHT_BAND_ABOVE,
+      top: height / 2 - SIGHT_BAND_ABOVE, bottom: height / 2 + SIGHT_BAND_BELOW } : null);
     const sightFloor = (anchor: number, crosses: boolean) =>
-      flightSight && crosses && flightSight.bottom + 8 > anchor ? flightSight.top - 8 : Infinity;
+      sight && crosses && sight.bottom + 8 > anchor ? sight.top - 8 : Infinity;
     const leftReach = touch && width < height ? Math.max(sideWidth, wideFeed ? wideLeftFeed : besideColumn) : sideWidth;
     // (on mouse the plan's countdown band above already keeps the lanes off it)
     const leftKillBottom = Math.min(!plan && countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd,
-    sightFloor(leftAnchor, !!flightSight && flightSight.left - 8 < leftReach));
+    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach));
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -1390,7 +1399,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
     const rightReach = wideFeed ? width - wideFeedWidth : width - sideWidth;
     const rightKillEnd = Math.min(rightKillBottom, rightKillFloor, rightEnd,
-      sightFloor(rightAnchor, !!flightSight && flightSight.right + 8 > rightReach));
+      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach));
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
       battleNotificationRows(rightKillEnd - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);

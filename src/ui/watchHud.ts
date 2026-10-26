@@ -119,8 +119,9 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
 /* (the seat's action in the bar's capitals, as GARAGE and the rest: "Drive" in title case, gauntlet r7) */
 .cot-watch .wb.seat .label{white-space:nowrap;text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (riding, the ridden tank's controls row shows its state without its key caps: the watcher's own Q and E sat in the bar
-   above it beside the row's Q, gauntlet r4) */
-html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
+   above it beside the row's Q, gauntlet r4; its ammunition and consumables too, the ridden tank's slots and never the
+   watcher's keys: their 1 to 6 kept caps under a row without them, gauntlet r14) */
+html[data-watch=ride] .cot-hud :is(.cot-vehicle-controls .sk,.cot-shell .key,.cot-con .key){visibility:hidden}
 /* (... and a narrow tile's glyph back on its centre at the row's size: set at its foot a size down to clear a cap no longer
    shown, it sank 8 px under the tile's centre at 900x700, gauntlet r13) */
 html[data-watch=ride] body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-hud .cot-vehicle-controls>button .si{align-self:center;--hud-tile-icon:inherit}
