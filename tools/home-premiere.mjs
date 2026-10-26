@@ -94,6 +94,36 @@ function ladder(clip) {
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
+// what each clip shows (owner 2026-10-25: "also add text here at the left that says stuff about this!"): the media lane's
+// manifest names each clip's vehicles (spec ids in frame order, the lead first), its battlefield and its mode
+// two vehicles read "A vs B", three "A vs B and C", four (a two-on-two) "A and B vs C and D"
+const MATCHUP_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree', 4: 'home.hero.shotFour' };
+/** The vehicles a clip shows, in frame order (their names are the same in every locale), as one catalog line. */
+function matchup(id, tanks) {
+  const key = MATCHUP_KEYS[tanks?.length];
+  if (!key) throw new Error(`home-premiere: ${id} names ${tanks?.length ?? 'no'} vehicles; a caption reads two to four (manifest tanks)`);
+  // a name keeps its model and variant on one line: "M1A2 Abrams SEPv3" never breaks before "SEPv3"
+  const names = tanks.map((spec) => tank(spec).name.replace(/ /g, '\u00a0'));
+  const vars = Object.fromEntries(names.map((name, i) => ['abcd'[i], name]));
+  const line = names.reduce((out, name, i) => out.replace(`{${'abcd'[i]}}`, name), text(key));
+  return `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`;
+}
+/** A clip's mode: its glyph in the mode's own hue, and its name. */
+function modeMark(clip) {
+  const mode = GAME_MODE_DEFINITIONS[clip.mode];
+  if (!mode) throw new Error(`home-premiere: ${clip.id} plays no known mode (manifest mode: ${clip.mode})`);
+  return `<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}${t(`playMenu.matchMode.${clip.mode}.label`)}</span>`;
+}
+/** Where and when a clip plays: its battlefield, its hour where the manifest names one (the catalog's atmosphere words),
+ *  and its mode. */
+function whereLine(clip) {
+  if (clip.hour && typeof EN[`atmosphere.${clip.hour}`] !== 'string') throw new Error(`home-premiere: ${clip.id} is filmed at an unknown hour ${clip.hour}`);
+  return `${t(`map.${clip.map}`)}${clip.hour ? t(`atmosphere.${clip.hour}`) : ''}${modeMark(clip)}`;
+}
+/** A reel clip's caption: the vehicles, then where and when, stacked in one cell so the longest sets the box and a turn
+ *  moves nothing. */
+const shotCaption = (clip, on) => `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">${matchup(clip.id, clip.tanks)}`
+  + `<span class="hero__where">${whereLine(clip)}</span></span>`;
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
 // a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
 const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
@@ -104,11 +134,14 @@ function heroBlock() {
   const first = REEL.hero[0];
   const lead = altOf(first);
   const size = reelPoster().find((rung) => rung.width >= 1440) ?? reelPoster().at(-1);
-  const clips = REEL.hero.filter((clip) => clip.film || clip.mobile || clip.wide).map((clip) => {
+  const moving = REEL.hero.filter((clip) => clip.film || clip.mobile || clip.wide);
+  const clips = moving.map((clip) => {
     const alt = altOf(clip);
-    return `<video class="hero__clip" muted playsinline loop preload="none" aria-hidden="true" data-reel-clip data-seconds="${seconds(clip)}"`
+    return `<video class="hero__clip" muted playsinline loop preload="none" aria-hidden="true" data-reel-clip data-shot="${clip.id}" data-seconds="${seconds(clip)}"`
       + ` data-label="${esc(alt.en)}" data-i18n-label="${alt.key}">${ladder(clip)}</video>`;
   }).join('');
+  // the poster is the first clip's frame, so its caption shows until the reel turns (heroReel.ts)
+  const shots = [first, ...moving.filter((clip) => clip !== first)].map((clip) => shotCaption(clip, clip === first)).join('');
   const trailer = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.webm');
   return `<header class="hero" aria-labelledby="hero-title" data-hero-reel>`
     + `<img class="hero__still" src="${heroDefault()}" alt="${esc(lead.en)}" data-i18n-alt="${lead.key}" width="1920" height="${Math.round(1920 * size.height / size.width)}"`
@@ -116,19 +149,24 @@ function heroBlock() {
     + `<div class="hero__reel">${clips}</div>`
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to
-    // duplicate it in hero"); the page's h1 names the game for assistive tech and search
-    + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
+    // duplicate it in hero"); the headline says what the game is, and its h1 names the game for assistive tech and search
+    + `<div class="hero__card"><div class="hero__lead"><h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks. </span>${t('home.hero.title')}</h1>`
+    + `${t('home.hero.lede', 'p', 'hero__lede')}`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
     + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}<span>${t('home.hero.trailer')}`
-    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></span></button></div>`
+    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></span></button></div></div>`
+    // the shot on screen and the reel's pause: the captions are the picture's (the poster's alt and the clips' labels name
+    // the shots for assistive tech)
+    + `<div class="hero__reelbar"><p class="hero__shots" aria-hidden="true">${shots}</p>`
     + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
-    + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div>`
+    + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div></div>`
     + `<ul class="hero__stats" data-datum="fleet-counts">`
     + `<li>${iconMarkup('gallery', 18)}<b>{{COT_PRODUCTION_VEHICLES}}</b>${t('home.stats.tanks')}</li>`
     + `<li>${iconMarkup('map', 18)}<b>{{COT_BATTLEFIELDS}}</b>${t('home.stats.battlefields')}</li>`
-    + `<li>${iconMarkup('modeStandard', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`
+    // every mode together reads with the Deploy screen's glyph: a mode's own glyph (Standard's included) wears its mode hue
+    + `<li>${iconMarkup('deploy', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`
     + `<li>${iconMarkup('team', 18)}<b lang="en">7v7</b>${t('home.stats.rooms')}</li></ul>`
     // the trailer plays in a dialog with its sound, on the viewer's press: nothing of it loads before then. Its controls are
     // the kit's (ghost icon buttons, the Studio's scrubber), never the browser's own (publicPages.ts mountFilm)
@@ -216,7 +254,7 @@ function modeTile(id) {
 const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`mechanics/${id}`, `media.home.mechanics.${camel(id)}`)}`
   + `<figcaption class="play-tile__nm">${t(`home.mechanics.${camel(id)}.title`, 'b')}</figcaption></figure>`;
 function playBlock() {
-  const tabs = [['modes', 'modeStandard', 'home.stats.modes', ''],
+  const tabs = [['modes', 'deploy', 'home.stats.modes', ''],
     ...MECHANICS.map(([group, icon]) => [group, icon, `home.mechanics.group.${group}`, ''])]
     .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="radio" data-play-tab="${value}" aria-checked="${i === 0}">`
       + `${iconMarkup(icon, 16)}${t(key)}${extra}</button>`).join('');
@@ -230,6 +268,79 @@ function playBlock() {
     + panel('modes', MODE_PRESENTATION_ORDER.map(modeTile), false)
     + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
     + `</div></section>`;
+}
+
+// ---- head to head and the fleet (owner 2026-10-25: "we need to show of all our higher quality stuff. we hide too much and
+// we had better sections"): the media lane's versus twelve (public/media/versus-r1, `featured` in its order) and its fleet
+// strip (public/media/home-r2 fleetStrip), each a bento of large stills: the first spans two columns and two rows, every
+// still is named by what it shows and opens its vehicle's Gallery page. Below the fold: lazy, sized, no script.
+const VERSUS = json('public/media/versus-r1/manifest.json');
+/** The rungs a tile can use: the lead is at most 900 css px wide (its 3840 for dense screens), a small tile 450, and a
+ *  phone's rail card 86 % of the screen. */
+const BENTO_RUNGS = { lead: [1280, 1920, 3840], tile: [640, 1280, 1920] };
+/** A still's rungs as a srcset; the 1920 rung is its src. */
+function bentoRungs(rungs, lead) {
+  const sorted = [...rungs].sort((a, b) => a.width - b.width).filter((rung) => BENTO_RUNGS[lead ? 'lead' : 'tile'].includes(rung.width));
+  if (!sorted.some((rung) => rung.width === 1920)) throw new Error(`home-premiere: ${rungs[0]?.path} has no 1920 rung`);
+  return sorted;
+}
+function bentoPicture(rungs, lead) {
+  const sorted = bentoRungs(rungs, lead);
+  const base = sorted.find((rung) => rung.width === 1920);
+  for (const rung of sorted) if (!existsSync(join(ROOT, 'public', rung.path))) throw new Error(`home-premiere: ${rung.path} is not in public/`);
+  const sizes = lead ? '(width < 768px) 100vw, (width < 1100px) 66vw, 900px' : '(width < 768px) 50vw, (width < 1100px) 33vw, 450px';
+  return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
+    + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
+}
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines, the whole tile the way in. */
+const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
+  + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
+const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
+  + `${href ? `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a>` : ''}</header>`;
+function duelsBlock() {
+  if (VERSUS.featured?.length !== 12) throw new Error('home-premiere: public/media/versus-r1/manifest.json features no twelve');
+  const tiles = VERSUS.featured.map((id, i) => {
+    const item = VERSUS.items.find((entry) => entry.id === id);
+    if (!item?.rungs?.length) throw new Error(`home-premiere: versus ${id} has no rungs`);
+    const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
+    if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
+    const name = matchup(id, [hero.id, foe.id]);
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), galleryHref(hero.id), name,
+      [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
+  });
+  return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
+    + bentoHead('duels-title', 'home.duels.title', '/media', 'publicNav.media')
+    + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
+}
+// in battle: the media lane's battle clips (home-r2 clips[]), four loops two to a row, each its poster until the media
+// player gives it its file on screen (mediaPlayer.ts, the features' own player), named like the reel's shots
+function clipsBlock() {
+  const clips = REEL.clips ?? [];
+  if (clips.length !== 4) throw new Error('home-premiere: public/media/home-r2/manifest.json has no four battle clips');
+  const tiles = clips.map((clip) => {
+    const rungs = [...clip.poster.rungs].sort((a, b) => a.width - b.width);
+    const base = rungs.find((rung) => rung.width === 1280) ?? rungs.at(-1);
+    const picture = `<img src="${base.path}" srcset="${rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}"`
+      + ` sizes="(width < 768px) 86vw, (width < 1100px) 50vw, 680px" width="1280" height="720" alt="" loading="lazy" decoding="async">`;
+    const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}">${ladder(clip)}</video>`;
+    return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
+      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
+      + `<span class="bento__where">${whereLine(clip)}</span></a></figcaption></figure>`;
+  });
+  return `<section class="bento bento--clips" aria-labelledby="clips-title"><div class="home-shell">`
+    + bentoHead('clips-title', 'home.clips.title') + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
+}
+function fleetBlock() {
+  const strip = REEL.fleetStrip ?? [];
+  if (strip.length !== 9) throw new Error('home-premiere: public/media/home-r2/manifest.json has no fleet strip of nine');
+  const tiles = strip.map((entry, i) => {
+    const a = tank(entry.specId);
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(entry.rungs, i === 0), galleryHref(entry.specId),
+      `<b>${esc(a.name.replace(/ /g, '\u00a0'))}</b>`, [t(`nation.${a.nation}`), t(`map.${entry.map}`)]);
+  });
+  return `<section class="bento bento--fleet" aria-labelledby="fleet-title"><div class="home-shell">`
+    + bentoHead('fleet-title', 'home.fleet.title', '/gallery', 'publicNav.tankGallery')
+    + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
 }
 
 // ---- the fleet index (src/presentation/fleetWall.json): the 404 page's search over every vehicle with a fleet take --
@@ -304,7 +415,7 @@ function fleetWall() {
 }
 const wallJson = () => `[\n${fleetWall().records.map((record) => JSON.stringify(record)).join(',\n')}\n]\n`;
 
-const BLOCKS = { hero: heroBlock, features: featuresBlock, play: playBlock };
+const BLOCKS = { hero: heroBlock, duels: duelsBlock, features: featuresBlock, clips: clipsBlock, play: playBlock, fleet: fleetBlock };
 const PRELOAD = /<link rel="preload"[^>]*as="image"[^>]*fetchpriority="high"[^>]*>/;
 const preloadTag = () => `<link rel="preload" href="${heroDefault()}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${heroSrcset()}" imagesizes="${HERO_SIZES}">`;
 const HOME = join(ROOT, 'site/home.html');

@@ -1023,6 +1023,7 @@
         "t72b3"
       ],
       "mode": "standard",
+      "hour": "day",
       "title": {
         "en": "High over Verdant Fields' onion-domed church, a Leopard 2A6M and a Puma S1 fight a T-90A and a T-72B3 through the village",
         "zh": "翠野原洋葱顶教堂的上空，一辆 Leopard 2A6M 和一辆 Puma S1 在村中与一辆 T-90A 和一辆 T-72B3 交战"
@@ -1082,6 +1083,7 @@
         "t64bv1"
       ],
       "mode": "standard",
+      "hour": "golden",
       "title": {
         "en": "Straight down over Tarkhan Steppe at golden hour: a Chieftain Mk 10 and a T-64BV1 race and trade fire",
         "zh": "黄金时刻，俯瞰塔尔汗草原：一辆 Chieftain Mk 10 与一辆 T-64BV1 并驾齐驱并交火"
@@ -1143,6 +1145,7 @@
         "t72b3"
       ],
       "mode": "standard",
+      "hour": "morning",
       "title": {
         "en": "Over the shoulders of a T-90 and a T-72B3 as a Stridsvagn 122 and a CV90 Mk 4 knock them out below the orchard village in the morning",
         "zh": "清晨，从一辆 T-90 和一辆 T-72B3 的肩后望去，一辆 Stridsvagn 122 和一辆 CV90 Mk 4 在果园村庄下方将其击毁"
@@ -1203,6 +1206,7 @@
         "leo1a5"
       ],
       "mode": "standard",
+      "hour": "day",
       "title": {
         "en": "A KV-2 comes head-on through a snowy Glacier Pass village, then the lens cranes up over the fight",
         "zh": "一辆 KV-2 迎面驶过冰川关积雪的村庄，随后镜头升起俯瞰战斗"
