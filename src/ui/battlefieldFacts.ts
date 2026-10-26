@@ -46,10 +46,10 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
-/** The maps the maps-r1 manifest holds a hover loop for (the random-battle maps first, 2026-10-26). */
+/** The maps the maps-r1 manifest holds a hover loop for (23 of 33 on 2026-10-26; the selftest holds the list to it). */
 const LOOPS: ReadonlySet<MapId> = new Set<MapId>([
   'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta', 'badlands',
-  'monsoon', 'alpine', 'caldera', 'foundry',
+  'monsoon', 'alpine', 'caldera', 'foundry', 'blackglass', 'copper_mesa', 'airfield', 'longleaf', 'mangrove', 'mars', 'cliffbridge',
 ]);
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
