@@ -2300,6 +2300,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // that fails on any on-screen canvas built outside it
     'src/ui/uiCanvas.selftest.mjs',
     'src/ui/uiCanvasCensus.selftest.mjs',
+    // a canvas's words and figures as DOM runs over it (the sight's readouts, the glyphs' letters)
+    'src/ui/canvasText.selftest.mjs',
     'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border
     'src/ui/hudNotices.selftest.mjs',

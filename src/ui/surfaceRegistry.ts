@@ -138,7 +138,7 @@ export const SURFACE_REGISTRY = Object.freeze({
   },
   reload: {
     places: [
-      { screen: 'battle', owner: HUD, surface: '.cot-ret', states: ['tank'] },
+      { screen: 'battle', owner: HUD, surface: '.cot-ret-text .cot-ret-reload', states: ['tank'] },
     ],
   },
   consumables: {

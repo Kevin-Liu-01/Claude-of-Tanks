@@ -32,6 +32,7 @@ import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
 import { vehicleAction } from '../game/vehicleActions.ts';
 import { DESKTOP_OUTPUT_PIXEL_BUDGET } from '../engine/resolutionPolicy.ts';
 import { createUiCanvas, scratchCanvas, type UiCanvas } from './uiCanvas.ts';
+import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -43,8 +44,8 @@ import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset
 import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph,
-  drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
+  OBJECTIVE_PALETTE, badgeLetter, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant,
+  drawPickupGlyph, drawProgressArc, drawSpawnGlyph, laneLetter, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { shellTypeCode, shellTypeLabel } from './shellLabels.ts';
 // the proving ground's range card (2026-10-17): loaded the first time a frame carries the range (updateRangeCard)
@@ -626,6 +627,8 @@ export interface HudRuntime {
    */
   setWatchSide(team: string | null): void;
   shotInfo: ShotInfoRuntime;
+  /** (UI-LOCKDOWN A) the sight's words and figures, DOM over its canvas: receipts read the last repaint's runs. */
+  sightText: Pick<CanvasText, 'placed'>;
   forceHitMark(bounced?: boolean): void;
   getHitArcs(): Array<{
     kind: string;
@@ -844,6 +847,13 @@ const FONT_RANGE_TAG = `600 11.5px ${FONT_COND}`;
 const FONT_AIM_WARNING = `700 13px ${FONT_COND}`;
 const AIM_WARNING_TRACK_PX = 13 * 0.08;
 const FONT_RACK_OVERFLOW = `700 11px ${FONT_COND}`;
+/** (UI-LOCKDOWN A) the sight's text runs, DOM over its canvas (canvasText.ts): five hit labels and their crit words
+ *  (2i, 2i + 1), then the readouts. */
+const SIGHT_TEXT_HIT = 0;
+const SIGHT_TEXT_COUNTDOWN = 10, SIGHT_TEXT_COUNTDOWN_UNIT = 11, SIGHT_TEXT_OVERFLOW = 12;
+const SIGHT_TEXT_AMMO_COUNT = 13, SIGHT_TEXT_AMMO_TYPE = 14, SIGHT_TEXT_RANGE = 15, SIGHT_TEXT_ZOOM = 16;
+/** The sight's word labels' floor: --battle-fs-11, 11 px, which zh-CN lifts to 13 (tokens.css; a hit's word, CRIT). */
+const sightWordFloorPx = (): number => (getLocale().startsWith('zh') ? 13 : 11);
 /** A lane marker's letter is part of its 11 px minimap glyph (drawLaneGlyph), sized with the glyph like the hex badges'
  *  letters, not reading text (the 11 px type floor is for labels a player reads). */
 const LANE_GLYPH_LETTER_PX = 8;
@@ -1480,6 +1490,7 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
+.cot-ret-text{z-index:var(--hud-layer-sight);}
 /* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
 .cot-hitmark{position:absolute;z-index:var(--hud-layer-sight);left:0;top:0;width:${HIT_MARK_BOX_PX}px;height:${HIT_MARK_BOX_PX}px;
   display:none;pointer-events:none;}
@@ -1804,7 +1815,7 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
-body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
+body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
   letter-spacing:-.02em;color:var(--accent-hi);white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
@@ -2104,6 +2115,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   padding:calc(var(--mm-pt) + var(--mm-g)) var(--mm-pr) var(--mm-pb) calc(var(--mm-pl) + var(--mm-g));
   border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
+.cot-minimap .cot-mm-letters{inset:calc(var(--mm-pt) + var(--mm-g)) var(--mm-pr) var(--mm-pb) calc(var(--mm-pl) + var(--mm-g));}
 .cot-mm-gx,.cot-mm-gy{display:none}
 .cot-minimap.grid{--mm-g:14px}
 .cot-minimap.grid :is(.cot-mm-gx,.cot-mm-gy){position:absolute;display:grid;place-items:center;pointer-events:none;
@@ -2247,8 +2259,10 @@ export function initHud(bus: EventBus): HudRuntime {
     initialBox: () => [root.clientWidth || window.innerWidth, root.clientHeight || window.innerHeight],
     onResize: () => { reticlePaint.valid = false; scopeGrad = null; scopeGradZoom = -1; },
   });
-  markDatum(retSurface.canvas, 'reload');
   const ctx = retSurface.context;
+  // its words and figures: DOM runs over it, placed where the canvas drew them (the reload countdown is the 'reload' datum)
+  const sightText = createCanvasText(root, 'cot-ret-text');
+  markDatum(sightText.run(SIGHT_TEXT_COUNTDOWN), 'reload').classList.add('cot-ret-reload');
   const markSurface = createUiCanvas(root, 'cot-hitmark', { initialBox: () => [HIT_MARK_BOX_PX, HIT_MARK_BOX_PX] });
   const markCanvas = markSurface.canvas;
   const markCtx = markSurface.context;
@@ -3096,6 +3110,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // every size step (--mm-k) and layout gets a store of its own size, released while the plate is hidden
   const MM = 220;
   const mmSurface = createUiCanvas(mmWrap, '', { units: [MM, MM], onResize: () => { mmDirty = true; } });
+  // the glyphs' letters (zones, sectors, lanes): DOM over the map, in its units scaled to the plate (canvasText.ts)
+  const mmLetters = createCanvasText(mmWrap, 'cot-mm-letters');
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
   mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
@@ -4244,6 +4260,7 @@ export function initHud(bus: EventBus): HudRuntime {
     indicator: HitDirection,
     frame: HitIndicatorFrameState,
     paint: HitIndicatorPaintState,
+    slot: number,
   ): void {
     const showBlockedAmount = !indicator.numeric && directionalHitValueVisible(
       directionalHitValuesEnabled,
@@ -4255,7 +4272,7 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Math.round(Math.min(Math.max(frame.minDimension * 0.023, 14), 19))
       : Math.round(Math.min(Math.max(
         frame.minDimension * (label.length > 13 ? 0.015 : 0.018),
-        11, // the HUD's 11 px floor (the coordinator, 246)
+        sightWordFloorPx(), // the HUD's 11 px floor (the coordinator, 246), 13 in Chinese
       ), 14));
     const valueRadius = frame.radius + paint.thickness + (indicator.numeric ? 14 : 16);
     ctx.save();
@@ -4276,12 +4293,12 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.globalAlpha = Math.min(1, 0.98 * paint.alpha);
     ctx.lineWidth = indicator.numeric ? 4.6 : 4;
     ctx.strokeStyle = 'rgba(5,8,11,0.94)';
-    ctx.strokeText(label, x, y);
     ctx.fillStyle = indicator.labelColor;
-    ctx.fillText(label, x, y);
+    // (UI-LOCKDOWN A) DOM over the sight, as the canvas drew it: this font, ink and alpha over a halo of this width
+    sightText.placeAs(slot, label, x, y, ctx, ctx.lineWidth);
     if (indicator.crit && indicator.numeric) {
       const critRadius = valueRadius + fontPx + 5;
-      const critFontPx = Math.max(11, Math.round(fontPx * 0.55)); // the 11 px floor
+      const critFontPx = Math.max(sightWordFloorPx(), Math.round(fontPx * 0.55)); // the 11 px floor (13 in Chinese)
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
       // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
       const crit = t('hud.dmg.crit');
@@ -4298,9 +4315,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ctx.lineWidth = 3.4;
       const wordX = critX + mark * 1.4;
       const markX = critX - critHalf + mark;
-      ctx.strokeText(crit, wordX, critY);
       ctx.fillStyle = '#ffd0a8';
-      ctx.fillText(crit, wordX, critY);
+      sightText.placeAs(slot + 1, crit, wordX, critY, ctx, ctx.lineWidth);
       ctx.beginPath();
       ctx.moveTo(markX, critY - mark); ctx.lineTo(markX + mark, critY);
       ctx.lineTo(markX, critY + mark); ctx.lineTo(markX - mark, critY); ctx.closePath();
@@ -4322,7 +4338,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!paint) continue;
       paintHitIndicatorBody(frame, paint);
       paintHitIndicatorRim(indicator, frame, paint);
-      paintHitIndicatorLabel(indicator, frame, paint);
+      paintHitIndicatorLabel(indicator, frame, paint, SIGHT_TEXT_HIT + i * 2);
     }
     ctx.lineCap = 'butt';
   }
@@ -4738,7 +4754,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ctx.font = FONT_RACK_OVERFLOW;
       ctx.textAlign = 'left';
       // 3 px past the turned outer shell's contour (the capture's rack gap)
-      ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3, y0 + shellH);
+      sightText.placeAs(SIGHT_TEXT_OVERFLOW, `+${magazine.overflow}`, draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3,
+        y0 + shellH, ctx);
       ctx.textAlign = 'center';
     }
     if (magazine.dry) paintDrySlash(draw.cx, y0 + AUTOLOADER_HUD_ARC_DEPTH * 0.5 + shellH * 0.5, totalW * 0.5 + 3, shellH * 0.5 + 2);
@@ -4946,9 +4963,9 @@ export function initHud(bus: EventBus): HudRuntime {
     noteSightInk(x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT);
     ctx.textAlign = 'left';
     ctx.font = FONT_COUNTDOWN;
-    ctx.fillText(text, x, y);
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x, y, ctx);
     ctx.font = FONT_COUNTDOWN_UNIT;
-    ctx.fillText(unit, x + textW, y);
+    sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx);
     ctx.textAlign = 'center';
   }
 
@@ -5279,10 +5296,10 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'left';
     ctx.font = FONT_SCOPE_COUNT;
     ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
-    ctx.fillText(label, x, y);
+    sightText.placeAs(SIGHT_TEXT_AMMO_COUNT, label, x, y, ctx);
     ctx.font = FONT_SCOPE_TYPE;
     ctx.fillStyle = 'rgba(159,176,191,0.9)';
-    ctx.fillText(type, x + countW, y);
+    sightText.placeAs(SIGHT_TEXT_AMMO_TYPE, type, x + countW, y, ctx);
     ctx.textAlign = 'center';
   }
 
@@ -5292,7 +5309,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(208,221,232,0.8)';
     ctx.font = FONT_RANGE_TAG;
-    ctx.fillText(tag.text, tag.x0, tag.y);
+    sightText.placeAs(SIGHT_TEXT_RANGE, tag.text, tag.x0, tag.y, ctx);
     ctx.textAlign = 'center';
   }
 
@@ -5305,7 +5322,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // gauntlet r4)
     ctx.font = FONT_SCOPE_ZOOM;
     ctx.fillStyle = PEN_GREEN;
-    ctx.fillText(text, x, y);
+    sightText.placeAs(SIGHT_TEXT_ZOOM, text, x, y, ctx);
     const halfWidth = ctx.measureText(text).width / 2 + 12;
     ctx.strokeStyle = ZOOM_RULE_INK;
     ctx.lineWidth = 1.2;
@@ -6624,14 +6641,14 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   // The chrome never changes, so it renders once into its own layer at the
-  // plate's store size and each paint copies it 1:1 (two grid strokes, the
+  // plate's device size and each paint copies it 1:1 (two grid strokes, the
   // full-plate vignette and two keylines become one drawImage). The layer
   // re-renders every MM_CHROME_REFRESH paints, whenever its context reads
-  // lost (a backing store a browser purged under memory pressure, iPadOS
-  // Safari or a lost GPU context, heals within seconds) and whenever the
-  // plate's store changes size (uiCanvas follows the plate's box and the
-  // device ratio); the raster itself stays the decoded image (above). No
-  // layer context: the chrome draws direct.
+  // lost and whenever the plate's store changes size (uiCanvas: a size step, a
+  // layout, a DPR flip), so a backing store a browser purged under memory
+  // pressure (iPadOS Safari, a lost GPU context) heals within seconds; the
+  // raster itself stays the decoded image (above). No layer context: the
+  // chrome draws direct.
   const MM_CHROME_REFRESH = 120;
   let mmChrome: HTMLCanvasElement | null = null;
   let mmChromeCtx: CanvasRenderingContext2D | null = null;
@@ -6644,15 +6661,13 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     const lctx = mmChromeCtx;
     if (!lctx) return null;
-    if (mmChrome.width !== store.width || mmChrome.height !== store.height) {
-      mmChrome.width = store.width; mmChrome.height = store.height;
-      mmChromePaints = MM_CHROME_REFRESH;
-    }
-    if (++mmChromePaints > MM_CHROME_REFRESH || lctx.isContextLost?.()) {
+    const resized = mmChrome.width !== store.width || mmChrome.height !== store.height;
+    if (resized) { mmChrome.width = store.width; mmChrome.height = store.height; }
+    if (resized || ++mmChromePaints > MM_CHROME_REFRESH || lctx.isContextLost?.()) {
       mmChromePaints = 1;
       lctx.setTransform(1, 0, 0, 1, 0, 0);
       lctx.clearRect(0, 0, mmChrome.width, mmChrome.height);
-      lctx.setTransform(mmChrome.width / MM, 0, 0, mmChrome.height / MM, 0, 0);
+      lctx.setTransform(store.width / MM, 0, 0, store.height / MM, 0, 0);
       drawMinimapChrome(lctx);
     }
     return mmChrome;
@@ -6673,7 +6688,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!chrome) { drawMinimapChrome(mmCtx); return true; }
     mmCtx.setTransform(1, 0, 0, 1, 0, 0);
     mmCtx.drawImage(chrome, 0, 0);
-    mmCtx.setTransform(chrome.width / MM, 0, 0, chrome.height / MM, 0, 0);
+    mmSurface.begin(); // back to the map's 220-unit transform
     return true;
   }
 
@@ -6806,6 +6821,26 @@ export function initHud(bus: EventBus): HudRuntime {
   // Frontline sectors (taken / active / locked), Turbo goals and ball, horde
   // caches. Pulses breathe on the frame clock; a marker under the player arrow
   // fades like the bases do.
+  /** (UI-LOCKDOWN A) a map glyph's letter: DOM over the plate, its 220 units scaled to the plate's box. */
+  const mapLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
+  const mapLetterStyle: CanvasTextStyle = {
+    font: '', color: '', align: 'center', baseline: 'middle', alpha: 1, haloWidth: 0, halo: OBJECTIVE_PALETTE.keyline,
+  };
+  const mapLetterFonts = new Map<number, string>();
+  let mmLetterSlot = 0;
+  function placeMapLetter(label: string | undefined, letter: GlyphLetter, fontUnits: number): void {
+    if (!label) return;
+    const k = mmSurface.width / MM;
+    const px = Math.round(fontUnits * k * 10) / 10;
+    let font = mapLetterFonts.get(px);
+    if (!font) { font = `700 ${px}px ${FONT_COND}`; mapLetterFonts.set(px, font); }
+    mapLetterStyle.font = font;
+    mapLetterStyle.color = letter.color;
+    mapLetterStyle.alpha = mmCtx.globalAlpha;
+    mapLetterStyle.haloWidth = letter.halo * k;
+    mmLetters.place(mmLetterSlot++, label, letter.x * k, letter.y * k, mapLetterStyle);
+  }
+
   function drawMinimapObjectives(
     markers: readonly ObjectiveMarker[],
     timeS: number,
@@ -6878,11 +6913,8 @@ export function initHud(bus: EventBus): HudRuntime {
           const r = taken ? 7.5 : marker.kind === 'zone' ? 8.5 : 9.5;
           if (locked) mmCtx.globalAlpha = 0.72;
           if (marker.pulse) halo(r + 3, 0.5);
-          drawHexBadge(mmCtx, x, y, r, {
-            fill, stroke: color, label: marker.label, ringWidth: 2,
-            dashed: marker.side === 'contested' || locked,
-            font: `700 ${taken ? 8.5 : 10}px ${FONT_COND}`,
-          });
+          drawHexBadge(mmCtx, x, y, r, { fill, stroke: color, ringWidth: 2, dashed: marker.side === 'contested' || locked });
+          placeMapLetter(marker.label, badgeLetter(x, y, r, OBJECTIVE_PALETTE.chalk, mapLetter), taken ? 8.5 : 10);
           const progress = marker.progress ?? 0;
           if (progress > 0.01 && progress < 0.995 && marker.progressSide) {
             drawProgressArc(mmCtx, x, y, r + 3.4, progress, sideColor(marker.progressSide), 2);
@@ -6902,7 +6934,8 @@ export function initHud(bus: EventBus): HudRuntime {
           drawPickupGlyph(mmCtx, x, y, 6, marker.status === 'heal' ? 'heal' : 'ammo');
           break;
         case 'lane':
-          drawLaneGlyph(mmCtx, x, y, 6.5, marker.label || '', `700 ${LANE_GLYPH_LETTER_PX}px ${FONT_COND}`);
+          drawLaneGlyph(mmCtx, x, y, 6.5);
+          placeMapLetter(marker.label, laneLetter(x, y, 6.5, mapLetter), LANE_GLYPH_LETTER_PX);
           break;
         default:
           break;
@@ -7067,6 +7100,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function drawMinimap(frame: HudFrame): void {
     if (!drawMinimapBackground()) return;
+    mmLetters.begin();
+    mmLetterSlot = 0;
     const tanks = frame.tanks || [];
     const player = frame.player;
     // player map position first — base rings fade while the arrow sits on them
@@ -7114,6 +7149,7 @@ export function initHud(bus: EventBus): HudRuntime {
       _fwd.set(0,0,-1);if(frame.camera)_fwd.transformDirection(frame.camera.matrixWorld);
       drawAerialMinimap(mmCtx,player.aerial,player.state.pos,frame.aim?.point,_fwd,worldToMap,MM/mapWorldSize);
     }
+    mmLetters.end();
   }
 
   // ---------- bus feeds ----------
@@ -7828,6 +7864,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!retSurface.begin()) {
       reticlePaint.valid = false;
       hideAerialHitMark();
+      sightText.clear();
       return;
     }
     ctx.clearRect(0, 0, w, h);
@@ -7838,8 +7875,11 @@ export function initHud(bus: EventBus): HudRuntime {
     if (mode === 'hidden') {
       reticlePaint.valid = false;
       hideAerialHitMark();
+      sightText.clear();
       return;
     }
+    // (the sight's text runs follow its repaints: a reused frame keeps them, a repaint places them again)
+    sightText.begin();
     const aerial = !!playerRef?.aerial?.active;
     if (mode === 'sniper' && !aerial) drawScope(aimView);
     drawHitIndicators(lastTimeS);
@@ -7847,6 +7887,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (mode === 'sniper' && !aerial) paintScopeSkeleton(aimView);
     if (aerial) paintAerialHitMark(lastTimeS);
     else { hideAerialHitMark(); drawHitMark(ctx, aimView.cx, aimView.cy, lastTimeS); }
+    sightText.end();
     captureReticlePaint(aimView);
   }
 
@@ -7860,8 +7901,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!hitMark) { hideAerialHitMark(); return; }
     const x = Math.round(aimView.cx - HIT_MARK_BOX_PX / 2), y = Math.round(aimView.cy - HIT_MARK_BOX_PX / 2);
     if (x !== markX || y !== markY) { markX = x; markY = y; markCanvas.style.transform = `translate(${x}px,${y}px)`; }
-    if (!markShown) { markShown = true; markCanvas.style.display = 'block'; }
-    // (UI-LOCKDOWN A) a hidden mark holds no store: the frame it shows is measured, and the next one draws
+    if (!markShown) { markShown = true; markCanvas.style.display = 'block'; markSurface.measureNow(); }
+    // (UI-LOCKDOWN A) a hidden mark holds no store: it reads its box the frame it shows
     if (!markSurface.begin()) return;
     markCtx.clearRect(0, 0, HIT_MARK_BOX_PX, HIT_MARK_BOX_PX);
     drawHitMark(markCtx, HIT_MARK_BOX_PX / 2, HIT_MARK_BOX_PX / 2, timeS);
@@ -7895,10 +7936,17 @@ export function initHud(bus: EventBus): HudRuntime {
     document.body.classList.toggle('cot-gun-dry', dry);
   }
 
+  let rootShown = false;
   function applyMode(): void {
     if (mode === 'hidden') playerEngaged = false;
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';markGunDry(false);}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
+    // (UI-LOCKDOWN A) a HUD just shown paints in this task (a screenshot's forced frame, the HUD editor's preview): its
+    // canvases read their boxes now rather than at the observer's next report (one layout read per show)
+    if (rootShown !== (mode !== 'hidden')) {
+      rootShown = mode !== 'hidden';
+      if (rootShown) { retSurface.measureNow(); mmSurface.measureNow(); }
+    }
     // the layout owner holds a medal card placed clear of the battle sight only while the scope is up (battleHudLayout.ts);
     // the flag sits on the document element, so a scope toggle relayouts nothing unless such a card waits on it
     document.documentElement.toggleAttribute('data-cot-scoped', mode === 'sniper');
@@ -8068,6 +8116,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const hud: HudRuntime = {
     root,
     shotInfo, // SHOT-INFO SECTION: exposed for tests/debug hooks
+    sightText,
 
     /**
      * Stage a deterministic hit-confirm marker (controls_gunnery r3 test
@@ -8195,6 +8244,7 @@ export function initHud(bus: EventBus): HudRuntime {
         setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);
         hideAerialHitMark();
+        sightText.clear();
         aimTargetId = null;
         if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
         // spectate bar never survives leaving the battlefield
@@ -8246,7 +8296,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
       if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
-      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); return; }
+      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); return; }
       updateHudWorldPanels(frame, state.camera);
       updateAimPresentation(frame, state);
       updateMinimapIfDue(frame);
