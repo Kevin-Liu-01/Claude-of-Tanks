@@ -38,8 +38,8 @@ interface BattlefieldFacts {
 }
 
 const DAY_ONLY: ReadonlySet<MapId> = new Set(['mars', 'moon']);
-/** The maps the maps-r1 manifest holds stills for (all 33 since 2026-10-26); a new battlefield joins when the media lane
- *  films it, and falls back to the generated art until then (never a fetch of the manifest). */
+/** The maps the maps-r1 manifest holds stills and a hover loop for (all 33 since 2026-10-26); a new battlefield joins when
+ *  the media lane films it, and falls back to the generated art until then (never a fetch of the manifest). */
 const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta',
   'badlands', 'monsoon', 'alpine', 'caldera', 'foundry', 'ruinspires', 'blackglass', 'titan_gorge', 'skybridge',
@@ -47,9 +47,6 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
-/** The one still map the maps-r1 manifest holds no hover loop for yet (32 of 33 filmed on 2026-10-26; Ruinspires is being
- *  re-filmed). The selftest holds every map's loop to the manifest. */
-const NO_LOOP: ReadonlySet<MapId> = new Set<MapId>(['ruinspires']);
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
   const thumb = `/maps/thumbs/${id}.webp`;
@@ -59,7 +56,7 @@ function poster(id: MapId): BattlefieldFacts['poster'] {
   const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
   return {
     src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb,
-    ...(NO_LOOP.has(id) ? {} : { loop: `/media/maps-r1/${id}-loop-960.mp4` }),
+    loop: `/media/maps-r1/${id}-loop-960.mp4`,
   };
 }
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);
