@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BUDGETS, collect, compare, evaluate, ownerOf, surfaceOf } from './frontend-budget.mjs';
+import { BUDGETS, BUNDLE_BUDGETS, collect, compare, evaluate, ownerOf, surfaceOf } from './frontend-budget.mjs';
 
 // which screen each recorded press or step is, and who owns it
 for (const [kind, surface] of [['home-load', 'home'], ['cn-home', 'home'], ['docs-to-topic', 'docs'], ['not-found', '404'],
@@ -95,7 +95,28 @@ try {
   assert.deepEqual(compare(rows, worse).regressions.map((r) => r.key), ['app/garage/desktop/longTaskMs']);
   const stale = { ...known, 'app/garage/desktop/contentMs': { value: 900 } };
   assert.deepEqual(compare(rows, stale).fixed.map((r) => r.key), ['app/garage/desktop/contentMs'], 'a known miss that now passes is reported');
+
+  // bundles: a route past its pin is a miss for the integrator; it holds only under a named ruling, up to its bytes
+  const pin = BUNDLE_BUDGETS.game;
+  const bundleRows = evaluate(collect({ bundle: {
+    game: { brotli: pin.brotliBytes + 2000, requests: pin.requests, entryBrotli: pin.entryBrotliBytes + 50 },
+    gallery: { brotli: BUNDLE_BUDGETS.gallery.brotliBytes - 4000, requests: BUNDLE_BUDGETS.gallery.requests + 1 },
+  } }));
+  const bundleRow = (key) => bundleRows.find((r) => r.key === key);
+  assert.deepEqual([bundleRow('bundle/game/any/brotliBytes').pass, bundleRow('bundle/game/any/brotliBytes').owner], [false, 'integrator']);
+  assert.equal(bundleRow('bundle/game/any/entryBrotliBytes').pass, true, 'a hash-noise wobble under the slack passes');
+  assert.equal(bundleRow('bundle/gallery/any/brotliBytes').pass, true);
+  assert.equal(bundleRow('bundle/gallery/any/requests').pass, false, 'one more boot request is a miss');
+  const unruled = { 'bundle/game/any/brotliBytes': { value: pin.brotliBytes + 2000 } };
+  assert.deepEqual(compare(bundleRows, unruled).regressions.map((r) => r.why).sort(),
+    ['growth without a named ruling', 'new miss'], 'a recorded bundle miss without a ruling still fails');
+  const ruled = { 'bundle/game/any/brotliBytes': { value: pin.brotliBytes + 2000, ruling: 'Main 2026-10-25: the drone dock' },
+    'bundle/gallery/any/requests': { value: BUNDLE_BUDGETS.gallery.requests + 1, ruling: 'Main 2026-10-25: the dossier chunk' } };
+  assert.deepEqual(compare(bundleRows, ruled).regressions, [], 'named rulings hold');
+  const outgrown = { ...ruled, 'bundle/game/any/brotliBytes': { value: pin.brotliBytes + 1000, ruling: 'Main 2026-10-25' } };
+  assert.deepEqual(compare(bundleRows, outgrown).regressions.map((r) => r.key), ['bundle/game/any/brotliBytes'],
+    'growth past the ruling\'s bytes fails');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
-console.log('frontend-budget.selftest: surfaces, owners, budgets by rig, INP p98, memory, and --check against known misses PASS');
+console.log('frontend-budget.selftest: surfaces, owners, budgets by rig, INP p98, memory, bundles under named rulings, and --check against known misses PASS');
