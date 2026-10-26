@@ -44,6 +44,8 @@ const CURVES = {
   // (t80uXArmor.ts T80U_X_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],
   t72_rys: [],
+  // 2026-10-26: the M48A5's trunnion at 2.10 under its compact shield; its measured curve (supplementalFleetSpecs.ts)
+  m48a5_patton: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
