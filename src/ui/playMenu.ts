@@ -2,7 +2,8 @@ import { createCustomSelect } from './customSelect.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
-import { createModePicker, type ModeCard, type ModePicker } from './modePicker.ts';
+import { createModePicker, modeRuleLines, type ModeCard, type ModePicker } from './modePicker.ts';
+import { battlefieldFacts } from './battlefieldFacts.ts';
 import type { IconId } from './icons/icon.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
@@ -67,7 +68,7 @@ import {
   type GameModeId,
 } from '../sim/gameModeCatalog.ts';
 import { isCoopGameMode } from '../mp/room/roomPolicy.ts';
-import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
+import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
@@ -713,14 +714,11 @@ export function createPlayMenu({
     return `<div class="campaign-heading"><b>${t('campaign.heading')}</b><span>${t('campaign.progress', { cleared: summary.cleared, total: summary.total })} · ${t('campaign.stars', { stars: summary.stars, max: summary.maxStars })}</span></div>
       <div class="ops" role="list">${cards}</div>`;
   };
-  // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated
-  // from the same table the sim reads, so the card can never promise a rule the battle does not keep
-  // team arrangement (2026-09-15): the card follows the player's arrangement, the nation reads as copy
-  const ruleLineValues = (line: { key: string; values: Readonly<Record<string, string>> }): Record<string, string> =>
-    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) }
-      : line.key === 'teamsMono' ? { scope: t(`rules.teams.scope.${line.values.scope}`) } : { ...line.values };
+  // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated from the same
+  // table the sim reads; the lines are modePicker.ts's modeRuleLines, one source with Deploy (team arrangement
+  // 2026-09-15: the card follows the player's arrangement, the nation reads as copy)
   const ruleLines = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string[] =>
-    rulesetLines(matchRulesetFor(id, null, arrangement)).map((line) => t(`rules.line.${line.key}`, ruleLineValues(line)));
+    modeRuleLines(id, arrangement);
   // the one presentation order (sim/gameModeCatalog.ts), as Deploy shows the modes
   const modeRank = (id: GameModeId): number => { const rank = (MODE_PRESENTATION_ORDER as readonly string[]).indexOf(id); return rank < 0 ? MODE_PRESENTATION_ORDER.length : rank; };
   /** The battle modes as the mode picker's cards (the practice modes launch from the Garage dossier and the Gallery, never
@@ -1049,8 +1047,14 @@ export function createPlayMenu({
   const battlefieldCards = (): BattlefieldCard[] => maps.map((map): BattlefieldCard => (map.id === 'random'
     ? { id: map.id, name: map.name, facts: [t('playMenu.map.battlefieldsCount', { count: maps.length - 1 })],
       media: { mosaic: maps.filter((other) => other.thumb).slice(0, 4).map((other) => other.thumb as string) } }
-    : { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-      media: { poster: map.thumb || map.hero || '' }, hero: map.hero || map.thumb, tags: [...mapRegionTags(map.id)] }));
+    : mapCard(map)));
+  /** A battlefield's card: its pictures from battlefieldFacts.ts (the media lane's stills, one source with Deploy), its
+   *  two landscapes as facts. */
+  function mapCard(map: PlayMenuMap): BattlefieldCard {
+    const poster = battlefieldFacts(map.id).poster;
+    return { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, tags: [...mapRegionTags(map.id)] };
+  }
   function closeBattlefieldPick(restoreFocus = false): void {
     if (battlefieldPick.hidden) return;
     battlefieldPick.hidden = true;
@@ -1761,7 +1765,7 @@ export function createPlayMenu({
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
-      : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
+      : `url("${String(battlefieldFacts(selectedMap.id).poster.hero).replace(/"/g, '%22')}")`;
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
