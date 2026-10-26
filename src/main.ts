@@ -100,7 +100,7 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2807,6 +2807,25 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
+            // (2026-10-26, the 257 rooms census: the room entry's longest task, 1.5 s, was the opening composer warm below
+            // uploading the battlefield's textures and buffers in its one render) the battlefield draws offscreen a cohort
+            // at a time, a frame between cohorts, as the solo deployment's forward warm does: the composer warm then meets
+            // resident textures, buffers and programs
+            const forwardBatches: number[] = [];
+            const forwardYield = createFrameBudgetYielder(8);
+            for (const batch of createDeploymentForwardWarmBatches({
+              scene,
+              csmLights: lighting.csm?.lights,
+              worldGroup: currentWorld()?.group,
+              playerRoot: game.player?.visual?.root,
+              warmRender,
+            })) {
+              forwardBatches.push(batch.ms);
+              signal?.throwIfAborted();
+              await forwardYield(true);
+            }
+            const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0) };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;
@@ -2840,7 +2859,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing };
+            return { ...timing, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
