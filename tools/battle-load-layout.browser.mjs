@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { datumProblems } from './datum-census.mjs';
 const arg = (name,fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3) || fallback;
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','.qa-dev/battle-load-layout'));
@@ -73,6 +74,8 @@ try {
     await page.evaluate(()=>{window.__LOAD_LAYOUT.screen.progress(1,'Ready');window.__LOAD_LAYOUT.screen.countdown(3);});
     const ready=await page.evaluate(measure);
     assert.deepEqual(ready.teams,before.teams,`${name}: progress/countdown must not move rosters`);
+    // one datum, one place (UI-LOCKDOWN part C, tools/datum-census.mjs)
+    assert.deepEqual(await datumProblems(page),[],`${name}: one place a datum`);
     await page.screenshot({path:resolve(out,`${name}-7v7.png`)});
     await context.close();
   }

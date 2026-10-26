@@ -6,6 +6,7 @@ import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { dronePhase } from './droneControlState.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { vehicleAction } from '../game/vehicleActions.ts';
+import { markDatum } from './dom.ts';
 import { t, getLocale } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
@@ -111,7 +112,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   // DR.05 (#100): the height above the ground under the airframe (terrain AGL), beside the battery.
   const altimeter=instrument(telemetry,'altitude',t('flight.altitude'));
   const link=instrument(telemetry,'radio',t('flight.link'));
-  const speedometer=instrument(telemetry,'speed',t('flight.speed'));
+  const speedometer=instrument(telemetry,'speed',t('flight.speed'));markDatum(speedometer.host,'speed');
   const support=node('div','flight-support',heading);
   // the supplies' glyphs and keys are the vehicle-action table's (src/game/vehicleActions.ts FLIGHT_ACTIONS)
   const supplyButtons=([{kind:'ammo',action:'supplyAmmo'},{kind:'heal',action:'supplyHeal'}] as const).map(entry=>{
@@ -121,7 +122,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
     button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship'&&!button.disabled)bus.emit('ui:'+item.action,{});});return{...item,button,status,key};
   });
   const battery=node('meter','flight-battery',panel);battery.min=0;battery.max=AERIAL_RULES.drone.batteryS;battery.setAttribute('aria-label',t('flight.battery'));
-  const weapons=node('div','flight-weapons',panel);
+  const weapons=markDatum(node('div','flight-weapons',panel),'ammo');
   const weaponIcons:UiIconId[]=['roofGun','shell','missileRack'];
   const cards=weaponIcons.map((name,slot)=>{
     const button=node('button','flight-weapon',weapons);button.type='button';
@@ -133,7 +134,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
     button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship')bus.emit('ui:shellSelect',{slot});});
     return {button,status};
   });
-  const actions=node('div','flight-actions',panel),hint=node('span','flight-hint',actions);
+  const actions=node('div','flight-actions',panel),hint=markDatum(node('span','flight-hint',actions),'hints');
   const back=node('button','cot-drone-return',actions);back.type='button';icon(back,'undo');
   const backLabel=node('span','',back);backLabel.textContent=t('flight.return');
   const backKey=node('kbd','flight-key',back);backKey.textContent='V';

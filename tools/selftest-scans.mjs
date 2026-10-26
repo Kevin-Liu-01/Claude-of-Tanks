@@ -80,6 +80,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
   // 228p: mediaLibrary.ts's static CSS import was a red no import-closure selection could find
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
+  // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
+  'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
   // release 230 type package: the shipped faces, every shipped source and document, and no Monument font file anywhere
   'src/ui/typeSystem.selftest.mjs': lists('public/**/*.{woff2,woff,ttf,otf}', 'tools/**/*.{woff2,woff,ttf,otf}',
     'src/**/*.{ts,css,js,mjs}', 'site/**/*.html', 'tools/fixtures/*.html'),

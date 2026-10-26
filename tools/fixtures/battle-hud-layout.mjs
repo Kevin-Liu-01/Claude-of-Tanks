@@ -180,16 +180,18 @@ function hit(incoming=false, attackerIndex=8) {
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
 let network=null;
-function multiplayer(kind='healthy') {
+function multiplayer(kind='healthy', role='host') {
   network?.dispose();
   network=createMultiplayerStatusSurface({onLeave:()=>window.__HUD_LEFT=true});
-  const snapshot=Object.assign(new NetworkStatusModel().snapshot,{attached:true,health:kind==='healthy'?'good':'offline',room:'joined',roomPhase:'playing',link:'live',rttMs:42,rttMedianMs:45,rosterCount:28,seat:1,role:'host',peersConnected:27});
+  const snapshot=Object.assign(new NetworkStatusModel().snapshot,{attached:true,health:kind==='healthy'?'good':'offline',room:'joined',roomPhase:'playing',link:'live',rttMs:42,rttMedianMs:45,rosterCount:28,seat:1,role,peersConnected:27});
   network.set(snapshot,kind==='healthy'?null:{kind:'reconnecting',scope:'match',attempt:2,nextRetryS:3});
   return network;
 }
 function state(name) {
   network?.dispose();network=null;
   delete frame.rosterTanks; frame.tanks=tanks; frame.aim=defaultAim(); frame.mode='battle';
+  // (a networked state's link round trip from its first frame: the corner chip reads it at most once a second)
+  frame.pingMs=name==='mp-host'||name==='mp-client'?42:0;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
@@ -260,6 +262,12 @@ function state(name) {
     bus.emit('ui:minimapZoom',{});
   }
   if(name.startsWith('ammo-'))stageAmmo(name);
+  // a networked battle's corner (UI-LOCKDOWN part C): the v2 strip up as the host or a client, the frame carrying the
+  // link's round trip, so the HUD's own link chip would show beside the strip if the one-readout rule broke
+  if(name==='mp-host'||name==='mp-client'){
+    multiplayer('healthy',name==='mp-host'?'host':'client');
+    for(let i=0;i<3;i++)hud.update(frame);
+  }
   if(name==='ended')bus.emit('battle:ended',{result:'victory',timeS:320,reason:'elimination',roster:tanks.map(t=>({
     id:t.id,isPlayer:t.isPlayer,team:t.team,specId:t.spec.id,name:t.displayName,hp:t.combat.hp,maxHp:t.combat.maxHp
   }))});

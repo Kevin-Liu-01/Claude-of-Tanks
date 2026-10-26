@@ -10,6 +10,7 @@ import {
   type AchievementProgress, type MedalGroup, type ServiceBattle, type ServiceRecordView,
 } from '../game/serviceRecord.ts';
 import { formatDate, formatNumber, t } from './i18n.ts';
+import { datumAttr } from './dom.ts';
 import { achievementSVG, medalSVG } from './medalArt.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { emptyState, statTile, tag } from './components/components.ts';
@@ -102,7 +103,7 @@ export function recordSummary(names: RecordViewNames, view: ServiceRecordView = 
   const distinct = Object.keys(view.medals).length;
   const last = getPlayerRecord().lastBattle;
   const plate = last
-    ? `<div class="cot-record-plate result-${safe(last.result)}">${battleVehicleArt(last)}<p><span class="cot-record-result">${safe(resultLabel(last.result))}</span>` +
+    ? `<div${datumAttr('last-battle')} class="cot-record-plate result-${safe(last.result)}">${battleVehicleArt(last)}<p><span class="cot-record-result">${safe(resultLabel(last.result))}</span>` +
       `<b>${safe(battleVehicleName(last, names))}</b><small>${safe(names.map(last.mapId))} · <span class="cot-record-when">${safe(when(last.completedAt))}</span></small></p></div>`
     : '<div class="cot-record-plate is-empty"></div>'; // the tabs' empty states say what will fill them
   return {
@@ -137,7 +138,7 @@ function overview(view: ServiceRecordView): string {
   const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
   // a figure with nothing behind it yet reads as a dash, the counts as their zero
   const figure = (value: number, text = num(value)) => (value ? text : '–');
-  const career = `<div class="cot-record-overview"><div class="cot-record-outcomes">` +
+  const career = `<div class="cot-record-overview"><div class="cot-record-outcomes"${datumAttr('record')}>` +
     `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}${record.matches ? `<strong>${pct}%</strong>` : '<strong class="is-null">–</strong>'}` +
     `${record.matches ? splitBar(record.wins, record.draws, record.losses) : ''}</div>` +
     `<div class="cot-record-outcome${record.wins ? ' win' : ''}">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +

@@ -45,7 +45,7 @@ import {
 } from './settingsIcons.ts';
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
-import { createElement as el } from './dom.ts';
+import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import type { CustomSelectController } from './customSelect.ts';
@@ -555,7 +555,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   root.innerHTML =
     `<div class="cot-set-panel" role="dialog" aria-modal="true" tabindex="-1" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
-    `<span class="cot-set-paused">${t('settings.paused')}</span>` +
+    `<span class="cot-set-paused"${datumAttr('paused')}>${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
@@ -567,7 +567,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
     `</div>` +
     // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
-    `<div class="cot-set-conflict cot-c-notice" data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
+    `<div class="cot-set-conflict cot-c-notice"${datumAttr('notices')} data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +
     `<span class="cot-c-notice__body"><span class="cot-c-notice__text msg"></span></span><span class="cot-c-notice__acts">` +
     `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
     `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></span></div>` +
@@ -640,7 +640,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   });
   battleUiVisibility.setBattle(isBattleActive());
 
-  const hints = el('div', 'cot-hints');
+  const hints = markDatum(el('div', 'cot-hints'), 'hints');
   document.body.appendChild(hints);
 
   // Click-to-resume veil (controls_gunnery r2): pointer-lock loss from ALT-TAB
@@ -650,7 +650,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   resume.setAttribute('role', 'dialog');
   resume.setAttribute('aria-labelledby', 'cot-rz-title');
   resume.innerHTML =
-    `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title">${t('settings.pauseTitle')}</h2>` +
+    `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
     '<div class="rz-actions">' +
     `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--56 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
