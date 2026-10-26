@@ -269,7 +269,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop .cot-c-picker__search{flex:1 1 100%}
 /* where the inspector is short the picker is a sheet over it (fitMapPop places it), its head naming it and closing it */
 /* (the Studio's root takes no pointer; the sheet stands in it, so it takes them itself) */
-.cot-studio .mapPop.sheet{position:fixed;right:auto;bottom:auto;max-height:none;box-shadow:var(--studio-sheet-veil);pointer-events:auto}
+/* (its edge and the dark around it are the frame's own mask: a Studio-only token on every public page's sheet cost them
+   56 bytes each) */
+.cot-studio .mapPop.sheet{position:fixed;right:auto;bottom:auto;max-height:none;box-shadow:var(--studio-frame-mask);pointer-events:auto}
 .cot-studio .mapPopHead{display:none}
 .cot-studio .mapPop.sheet .mapPopHead{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
   padding:0 0 var(--s2) var(--s1);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
