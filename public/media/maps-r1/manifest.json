@@ -32,6 +32,32 @@
       }
     },
     {
+      "id": "urban",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/urban-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40696
+          },
+          {
+            "path": "/media/maps-r1/urban-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143252
+          },
+          {
+            "path": "/media/maps-r1/urban-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 306846
+          }
+        ]
+      }
+    },
+    {
       "id": "coastal",
       "hour": "day",
       "poster": {
@@ -79,6 +105,58 @@
             "width": 1920,
             "height": 1080,
             "bytes": 293142
+          }
+        ]
+      }
+    },
+    {
+      "id": "steppe",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/steppe-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43132
+          },
+          {
+            "path": "/media/maps-r1/steppe-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 147026
+          },
+          {
+            "path": "/media/maps-r1/steppe-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 313524
+          }
+        ]
+      }
+    },
+    {
+      "id": "railyard",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/railyard-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43594
+          },
+          {
+            "path": "/media/maps-r1/railyard-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143906
+          },
+          {
+            "path": "/media/maps-r1/railyard-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 292840
           }
         ]
       }
@@ -214,6 +292,32 @@
       }
     },
     {
+      "id": "ruinspires",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/ruinspires-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 25178
+          },
+          {
+            "path": "/media/maps-r1/ruinspires-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 73702
+          },
+          {
+            "path": "/media/maps-r1/ruinspires-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 175564
+          }
+        ]
+      }
+    },
+    {
       "id": "blackglass",
       "hour": "day",
       "poster": {
@@ -235,6 +339,58 @@
             "width": 1920,
             "height": 1080,
             "bytes": 320416
+          }
+        ]
+      }
+    },
+    {
+      "id": "skybridge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/skybridge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 34764
+          },
+          {
+            "path": "/media/maps-r1/skybridge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 109714
+          },
+          {
+            "path": "/media/maps-r1/skybridge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 278932
+          }
+        ]
+      }
+    },
+    {
+      "id": "polders",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/polders-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41902
+          },
+          {
+            "path": "/media/maps-r1/polders-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 145772
+          },
+          {
+            "path": "/media/maps-r1/polders-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 319168
           }
         ]
       }
@@ -292,6 +448,58 @@
       }
     },
     {
+      "id": "oasis",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/oasis-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42374
+          },
+          {
+            "path": "/media/maps-r1/oasis-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146288
+          },
+          {
+            "path": "/media/maps-r1/oasis-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 309524
+          }
+        ]
+      }
+    },
+    {
+      "id": "whiteout",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/whiteout-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 23376
+          },
+          {
+            "path": "/media/maps-r1/whiteout-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 75750
+          },
+          {
+            "path": "/media/maps-r1/whiteout-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 178050
+          }
+        ]
+      }
+    },
+    {
       "id": "longleaf",
       "hour": "day",
       "poster": {
@@ -313,6 +521,58 @@
             "width": 1920,
             "height": 1080,
             "bytes": 301612
+          }
+        ]
+      }
+    },
+    {
+      "id": "saltwind",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/saltwind-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 24602
+          },
+          {
+            "path": "/media/maps-r1/saltwind-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 80020
+          },
+          {
+            "path": "/media/maps-r1/saltwind-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 207706
+          }
+        ]
+      }
+    },
+    {
+      "id": "reservoir",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/reservoir-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 31406
+          },
+          {
+            "path": "/media/maps-r1/reservoir-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 109236
+          },
+          {
+            "path": "/media/maps-r1/reservoir-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 285550
           }
         ]
       }
