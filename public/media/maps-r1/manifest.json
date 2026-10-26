@@ -599,6 +599,14 @@
             "bytes": 320416
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/blackglass-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1076009
       }
     },
     {
@@ -703,6 +711,14 @@
             "bytes": 325810
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/copper_mesa-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1087406
       }
     },
     {
@@ -729,6 +745,14 @@
             "bytes": 321330
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/airfield-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1075550
       }
     },
     {
@@ -833,6 +857,14 @@
             "bytes": 301612
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/longleaf-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1069250
       }
     },
     {
@@ -859,6 +891,14 @@
             "bytes": 180938
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/mangrove-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1076344
       }
     },
     {
@@ -937,6 +977,14 @@
             "bytes": 317368
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/mars-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081846
       }
     },
     {
@@ -989,6 +1037,14 @@
             "bytes": 309308
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/cliffbridge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1080882
       }
     }
   ]
