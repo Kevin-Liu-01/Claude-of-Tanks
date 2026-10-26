@@ -192,7 +192,7 @@
 .cot-record-battle[open] .cot-record-expand{rotate:180deg}
 /* an open battle shows its medals once, in its body (surface registry S6); the row keeps their room so nothing moves */
 .cot-record-battle[open] .cot-record-battle-medals{visibility:hidden}
-.cot-record-battle-body{padding:var(--s4) var(--s5);border-top:1px solid var(--line-1);background:var(--surface-page)}
+.cot-record-battle-body{padding:var(--s5);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .cot-record-battle-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s4)}
 .cot-record-battle-awards{display:flex;flex-wrap:wrap;gap:var(--s1);margin-bottom:var(--s4)}
 .cot-record-battle-awards button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;border:0;border-radius:var(--r2);background:none;cursor:help}
@@ -249,8 +249,8 @@
   .cot-record-ach-grid{grid-template-columns:minmax(0,1fr)}
   .cot-record-ach{grid-template-columns:48px minmax(0,1fr);gap:var(--s3);padding:var(--s4) var(--s3)}
   .cot-record-ach-art svg{width:48px;height:auto}
-  .cot-record-medal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
-  .cot-record-medal{padding:var(--s4) var(--s2) var(--s3)}
+  .cot-record-medal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+  .cot-record-medal{padding:var(--s4) var(--s3) var(--s3)}
   .cot-record-medal-art{min-height:96px}
   .cot-record-medal-art svg{width:72px}
   .cot-record-card{padding:var(--s4)}
