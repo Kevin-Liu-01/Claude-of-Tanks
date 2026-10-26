@@ -641,7 +641,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     list.tabIndex = 0;
     list.setAttribute('role', 'region');
     list.setAttribute('aria-label', label);
-    list.addEventListener('scroll', () => markMore(list), { passive: true });
+    list.addEventListener?.('scroll', () => markMore(list), { passive: true });
   }
   const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
   const foeN = requiredElement<HTMLSpanElement>(root, '.team.foe .n');
