@@ -76,8 +76,9 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
-  setCamoBiome,
+  setCamoBiome, paintCamoTryOn,
 } from '../vehicles/materials.ts';
+import { createGarageCamoTryOn } from './garageCamoTryOn.ts';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.ts';
 import { createStudioPanel } from '../ui/studioPanel.ts';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
@@ -253,6 +254,8 @@ interface StudioContext {
   /** (2026-10-26) The first view's shadow casters drawn into the cascades a batch at a time under the entry's cover
    *  (main.ts → deploymentShadowWarm.prime), so their depth programs link before the first frame. */
   prepareFirstViewShadows?(): Promise<unknown>;
+  /** (2026-10-26) Wait between frames until the renderer's queued program links are in (main.ts awaitRendererProgramLinks). */
+  awaitProgramLinks?(): Promise<unknown>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -816,6 +819,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     frameDirty = true;
     if (!historyTimer && !restoringHistory) historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
   }
+  // the paint picker's try-on (INTERACTION-REDESIGN B, the Garage's): the selected tank wears the paint under the pointer
+  // or the focus as a tile, and leaving puts its paint back. A frame, never a history step or a save.
+  const camoTryOn = createGarageCamoTryOn({ paint: paintCamoTryOn, onChange: () => { frameDirty = true; } });
+  function previewActorCamo(ref: ActorRef, selection: string | null): void {
+    const a = selection ? findActor(ref) : null;
+    camoTryOn.preview(a && !recording ? a.visual.root : null, a ? selection : null);
+  }
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
@@ -1377,6 +1387,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function removeActor(ref: ActorRef, opts: RemoveActorOptions = {}): boolean {
     const a = findActor(ref);
     if (!a) return false;
+    camoTryOn.preview(null, null);
     const actorKey = actorRefOut(a);
     const hadEffects = effectLog.length > 0;
     for (let i = effectLog.length - 1; i >= 0; i--) {
@@ -1403,6 +1414,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function clearActors() {
+    camoTryOn.preview(null, null);
     effectLog.length = 0;
     effectUidSeq = 1;
     selectedEffect = null;
@@ -1495,6 +1507,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       bindStoryboardTracks();
     }
     if (patch.camo === undefined) return;
+    // a chosen paint replaces the try-on: the worn bake repaints in place, so the tile gives way to it
+    camoTryOn.preview(null, null);
     a.camo = patch.camo || null;
     if (!a.camo) return;
     setCamoOverride(a.specId, a.camo);
@@ -1533,6 +1547,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // --- selection / mouse ------------------------------------------------------
   let selected: StudioActor | null = null;
   function selectActor(ref: ActorRef): StudioActor | null {
+    camoTryOn.preview(null, null);
     selected = findActor(ref);
     if (selected && selectedEffect) {
       selectedEffect = null;
@@ -5728,9 +5743,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // the programs the first view draws, linked before it
       await prepareFirstViewPrograms(owns);
       stillOwned();
+      // (2026-10-26, production 255) the links that preparation and the entry's own submissions left in flight, waited for
+      // between frames: the post warm's scene pass below draws the whole scene in one render, and on a second entry it
+      // waited 2.9 s inside that render on 8 programs still linking (the F8 press submits them)
+      try { await ctx.awaitProgramLinks?.(); } catch { /* the draws below wait for them as before */ }
+      stillOwned();
       // and its casters' depth programs (12 of a cold entry's first-frame links once the world's materials were patched
       // first: 0.62 s of its first frame under load)
       try { await ctx.prepareFirstViewShadows?.(); } catch { /* the first frame links them as before */ }
+      stillOwned();
+      // (2026-10-26, a release build of 177aa385d2) the view again, once the entry's own frames have run: the post warm's
+      // scene pass met programs the first preparation never saw, made in between — the props' collapse-mask and
+      // night-fixture variants (a cold entry: 8 programs, 3.0 s inside that render) and the map's air rebuilt for this
+      // entry (a second entry: MapAmbience.fluff, 1.9 s). That pass draws the camera's frustum, as this preparation reads.
+      await nextFrame();
+      await nextFrame();
+      stillOwned();
+      await prepareFirstViewPrograms(owns);
+      stillOwned();
+      try { await ctx.awaitProgramLinks?.(); } catch { /* the post warm waits for them as before */ }
       stillOwned();
       // and the post chain's own, a pass at a time (LateFxPass.Copy: the one link left in a cold entry's first frame,
       // 0.38 s); a pass whose programs are linked goes on in the same frame
@@ -5780,6 +5811,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let exiting = false;
   let exitRun: Promise<unknown> | null = null;
   function exit() {
+    camoTryOn.preview(null, null);
     commitHistory(); // the last edit reaches the autosave before the Studio closes
     if (!active || exiting) return;
     exiting = true;
@@ -6081,6 +6113,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     setActorState: (ref: ActorRef, state: string, ageS: number | null = null) => (
       recording ? false : setActorState(ref, state, ageS)
     ),
+    previewActorCamo,
     selectActor: (ref: ActorRef) => { const a = selectActor(ref); return a ? a.uid : null; },
     clearActors: () => { if (!recording) clearActors(); },
     // effects + time

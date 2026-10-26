@@ -37,8 +37,10 @@ export const TANK_TIER = Object.freeze({
   challenger1_mk3: 9,
   t72bu: 8,
   chieftain5: 7,
-  t90: 10,
-  t90a_burlak: 10,
+  // 257: the second-wave T-90 and T-90A Burlak copy their donors' combat metadata (synchronizeSecondWaveXCombatMetadata),
+  // so they matchmake at their donors' tier: t90_1992 and t90a_burlak_proto went to IX with the T-90 lineage (e55cb66959)
+  t90: 9,
+  t90a_burlak: 9,
   t90ms_tagil: 10,
   leo2a7v: 10, leo2a6m: 10, leo2a5m: 10, leo2a5: 10, // owner 2026-09-15 (evening): 2A5M and 2A5 studies tier X
   merkava4: 9, merkava3d: 9,
@@ -80,7 +82,9 @@ export const TANK_TIER = Object.freeze({
   merkava3c: 9, merkava3_baz: 9, merkava4b: 9,
   t62_1975: 7, t64bv1: 8, t72b3m_2022: 9,
   t72bu_1989: 8, t90sm_2013: 9, type90_kyumaru: 9, t90a_2006: 9,
-  t90_1992: 10, t90ms_2011: 10, t90a_burlak_proto: 10,
+  // 2026-10-26 (257, RETIER-253.md): the T-90 obr. 1992 and the T-90A Burlak Prototype stand at IX with the later T-90A
+  // obr. 2004/2006, T-90SM obr. 2013 and T-90AM, so the T-90 lineage never steps down (the MS 2011 and Proryv stay X).
+  t90_1992: 9, t90ms_2011: 10, t90a_burlak_proto: 9,
   centurion3: 7, centurion5_2: 8,
   leopard2_proto: 8, m46_patton: 7, m47_patton: 7,
   m60a3: 8,

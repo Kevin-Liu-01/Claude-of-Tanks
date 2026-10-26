@@ -67,4 +67,13 @@ for (const fault of ['no-fences', 'lost', 'fence-null', 'wait-throws']) {
   for (let i = 0; i < 3; i++) assert.equal(gate.caughtUp(), true, `${fault}: answers caught up, the poll as before`);
   gate.dispose();
 }
+// the renderer-wide link wait (main.ts awaitRendererProgramLinks: the battle visual stream's) polls through a gate too
+{
+  const { readFileSync } = await import('node:fs');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const at = main.indexOf('const awaitRendererProgramLinks = async');
+  const body = main.slice(at, main.indexOf('\n};', at));
+  assert.ok(at > 0 && body.includes('createGpuCatchUpGate(renderer.getContext())') && body.includes('if (gate.caughtUp())')
+    && body.includes('gate.dispose()'), 'the renderer-wide link wait asks only once the GPU caught up');
+}
 console.log('gpuCatchUp.selftest: a poll asks only after its previous mark signalled; never a blocking wait; fenceless, lost and failing contexts answer caught up');

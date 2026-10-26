@@ -885,8 +885,8 @@ try {
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
   await activate(pages.a,'.cot-multiplayer-entry');
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-  await activate(pages.a,`.cot-play .modes [data-mode="${roomKind}"]`);
-  await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-mode="${kind}"]`)?.classList.contains('on'), `A ${roomKind} mode`, 10_000, { args: [roomKind] });
+  await activate(pages.a,`.cot-play .modes [data-value="${roomKind}"]`);
+  await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-value="${kind}"]`)?.getAttribute('aria-checked') === 'true', `A ${roomKind} mode`, 10_000, { args: [roomKind] });
   await pages.a.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';

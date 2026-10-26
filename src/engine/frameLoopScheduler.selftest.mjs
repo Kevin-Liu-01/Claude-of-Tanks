@@ -724,6 +724,8 @@ async function completedCamoWakes(method,legacy=false){
   const camo=runInNewContext(`(() => {let camoSweepP;const api={${body}};
     return {...api,completed:()=>camoSweepP};})()`,{
     setCamoSelection(){},setCustomCamoSelection(){},multiplayerLobby:null,
+    // the try-on (garageCamoTryOn) holds a worn paint's tile until its bake: inert here
+    pedestal:{switchPending:false,current:null},camoTryOn:{wear(){},settle(){}},
     applyCamoPatternsChunked:()=>new Promise(resolve=>{finishPaint=resolve;}),
     invalidateGaragePresentation:activity.invalidate,
   });

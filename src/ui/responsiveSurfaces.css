@@ -195,23 +195,20 @@ body[data-cot-width='phone'] .cot-set-btn.reset{margin-right:0}
 body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:column;gap:8px;padding-block:10px}
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
-body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 0}
+body[data-cot-width='phone'] .cot-settings .cot-c-seg,
+body[data-cot-width='phone'] .cot-set-menu{width:100%}
+body[data-cot-width='phone'] .cot-settings .cot-c-seg__opt{flex:1 1 0;min-width:0}
 body[data-cot-width='phone'] .cot-settings .cot-battle-times{width:100%}
 body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 0}
 body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
-/* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
-body[data-cot-width='phone'] .cot-set-seg:has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
-body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-time-content{height:var(--cot-control-floor)}
 /* on touch a segmented control is 44 px like every other control: its options sit inside its 3 px inset (the slate plate
    inside the track, as on desktop) and their hit areas reach the track's edge */
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg button{position:relative;height:calc(var(--cot-control-floor) - 6px)}
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg button::before{content:'';position:absolute;inset:-3px 0}
-/* a picker set as a grid (the team colours) draws each cell at the full floor */
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg:has(> :nth-child(5)) button{height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-seg__opt{position:relative;height:calc(var(--cot-control-floor) - 6px)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-seg__opt::before{content:'';position:absolute;inset:-3px 0}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
@@ -891,9 +888,10 @@ body[data-cot-input='coarse'] .cot-play .menu-select-trigger,
 body[data-cot-input='coarse'] .cot-play .menu-select-option{min-height:44px}
 /* the room's segmented settings are 44 px like its triggers, as Settings' are: the options sit inside the track's 3 px
    inset and their hit areas reach its edge (a 50 px track put the foot's labels 6 px apart, Rooms r28) */
-body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
   position:relative;min-height:0;height:calc(var(--cot-control-floor) - 6px)}
-body[data-cot-input='coarse'] .cot-play :is(.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
+body[data-cot-input='coarse'] .cot-play .brain-allies .cot-c-toggle{min-height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
   content:'';position:absolute;inset:-3px 0}
 
 @media (prefers-reduced-motion:reduce){

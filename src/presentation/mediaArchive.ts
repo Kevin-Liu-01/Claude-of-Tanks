@@ -3,6 +3,7 @@ import { t } from '../ui/i18n.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { icon } from '../ui/icons/icon.ts';
+import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
@@ -116,7 +117,6 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
       className: 'media-archive-recipe',
       image: {
         src: shot.src,
-        fit: 'contain',
         alt: shot.alt || t('mediaArchive.recipe.fallbackAlt', { title: shot.title }),
         caption: `${shot.title} // ${shot.map}`,
       },
@@ -154,8 +154,6 @@ export async function mountMediaArchive(
   toolbar.className = 'media-archive-toolbar';
   const filters = document.createElement('div');
   filters.className = 'media-archive-filters';
-  filters.setAttribute('role', 'group');
-  filters.setAttribute('aria-label', t('mediaArchive.filterAria'));
   const count = document.createElement('output');
   count.className = 'media-archive-count';
   const status = document.createElement('div');
@@ -181,19 +179,17 @@ export async function mountMediaArchive(
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;
     loadMore.textContent = remaining > 0 ? t('mediaArchive.loadMore', { count: Math.min(pageSize, remaining) }) : '';
-    filters.querySelectorAll('button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.feature === active)));
+    const strip = filters.firstElementChild;
+    if (strip instanceof HTMLElement) setRoving(strip, active);
   }
   if (options.filters !== false) {
-    for (const feature of features) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'media-archive-filter';
-      button.dataset.feature = feature;
-      button.textContent = featureLabel(feature);
-      button.setAttribute('aria-pressed', String(feature === active));
-      button.addEventListener('click', () => { active = feature; visibleLimit = Math.min(pageSize, limit); render(); });
-      filters.appendChild(button);
-    }
+    // the features are the kit's underline tabs over the grid: each shows the archive's shots of one feature
+    filters.innerHTML = tabs({ label: t('mediaArchive.filterAria'), selected: active,
+      tabs: features.map((feature) => ({ id: feature, label: featureLabel(feature) })) });
+    wireRoving(filters.firstElementChild as HTMLElement, (feature) => {
+      if (feature === active) return;
+      active = feature; visibleLimit = Math.min(pageSize, limit); render();
+    });
   }
   loadMore.addEventListener('click', () => { visibleLimit = Math.min(limit, visibleLimit + pageSize); render(); });
   status.append(count, loadMore);

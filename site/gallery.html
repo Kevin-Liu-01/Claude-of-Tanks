@@ -120,7 +120,7 @@
   <meta property="og:type" content="website"><meta property="og:url" content="https://cot.kevinliu.studio/gallery"><meta property="og:locale" content="en_US">
   <meta property="og:image" content="https://cot.kevinliu.studio/brand/og/gallery.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:alt" content="Claude of Tanks in-engine armored battle with the commander mark">
   <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Tank Gallery · Claude of Tanks"><meta name="twitter:description" content="Inspect all {{COT_PRODUCTION_VEHICLES}} production vehicles with interactive exterior, armor, module, crew, and technical views."><meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og/gallery.jpg"><meta name="twitter:image:alt" content="Claude of Tanks in-engine armored battle with the commander mark">
-  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!--cot:type ui mono display-->
@@ -155,7 +155,7 @@
         </div>
       </details>
       <div class="order">
-        <label class="order__sort"><span class="sr-only" data-i18n="gallery.sort.aria">Sort</span><select id="gallerySort"></select></label>
+        <div class="order__sort" id="gallerySort"></div>
         <button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon order__dir" id="sortDirection" aria-pressed="true" data-ui-sound="toggle" data-i18n-aria-label="gallery.sort.descending" data-i18n-title="gallery.sort.descending"><svg class="cot-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" data-icon="chevronDown" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-chevronDown-s"/></svg></button>
         <div class="cot-c-seg layout-switch" role="radiogroup" data-i18n-aria-label="gallery.layout.aria">
           <button type="button" role="radio" class="cot-c-seg__opt" data-value="list" aria-checked="true" data-ui-sound="select" data-i18n-aria-label="gallery.layout.list" data-i18n-title="gallery.layout.list"><svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" data-icon="menu" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-menu"/></svg></button>
@@ -227,7 +227,7 @@
           <div class="ratings" id="ratingGrid"></div>
           <ul class="features" id="dossierFeatures"></ul>
           <div class="vsc" id="versus">
-            <label class="vsc__pick"><span class="sr-only" data-i18n="gallery.versus.rival">Rival</span><select id="rivalSelect"></select></label>
+            <div class="vsc__pick" id="rivalMenu"></div>
             <div class="s" id="versusOwn"></div>
             <div class="mid" id="versusMid"></div>
             <div class="s r" id="versusRival"></div>

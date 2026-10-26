@@ -7,7 +7,8 @@
 //   modes: every battle mode on every map (no mode is tied to a map; gameModeCatalog.ts BATTLE_MODE_IDS)
 //   random: mapIds.ts RANDOM_BATTLE_MAP_IDS
 //   pictures: the media lane's maps-r1 stills (public/media/maps-r1/manifest.json: 16:9 at 640, 1280 and 1920 wide) where a
-//     map has them, else the generated art: the 16:9 thumb and card (public/maps/thumbs, public/maps/cards) and the hero.
+//     map has them, else the generated art: the 16:9 thumb and card (public/maps/thumbs, public/maps/cards) and the hero;
+//     and the manifest's 6 s hover loop (960x540, muted, first frame its last) where it holds one.
 //     The generated paths follow the map's id (mapThumbs.ts MAP_THUMBS and MAP_HEROES, which the selftest holds this to):
 //     importing that table from the picker's lazy chunk split it off the game's boot chunk, one more boot request.
 // There is no size datum: every map plays the same 1024 m square and its two sides start 720-860 m apart (Mars 513 m),
@@ -30,9 +31,9 @@ interface BattlefieldFacts {
   readonly modes: readonly BattleModeId[];
   /** Whether Random may draw it (the space maps only by choice). */
   readonly random: boolean;
-  /** Its pictures: the card's 16:9 picture (its smallest rung) with a srcset over every rung, the preview's large picture and
-   *  the small thumb. */
-  readonly poster: { readonly src: string; readonly srcset: string; readonly hero: string; readonly thumb: string };
+  /** Its pictures: the card's 16:9 picture (its smallest rung) with a srcset over every rung, the preview's large picture,
+   *  the small thumb, and the preview's hover loop where the media lane has filmed one. */
+  readonly poster: { readonly src: string; readonly srcset: string; readonly hero: string; readonly thumb: string; readonly loop?: string };
 }
 
 const DAY_ONLY: ReadonlySet<MapId> = new Set(['mars', 'moon']);
@@ -45,6 +46,12 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
+/** The maps the maps-r1 manifest holds a hover loop for (the random-battle maps first, 2026-10-26; then monsoon, alpine,
+ *  caldera and foundry, 054eb44074: 16 of 33). */
+const LOOPS: ReadonlySet<MapId> = new Set<MapId>([
+  'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta', 'badlands',
+  'monsoon', 'alpine', 'caldera', 'foundry',
+]);
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
   const thumb = `/maps/thumbs/${id}.webp`;
@@ -52,7 +59,10 @@ function poster(id: MapId): BattlefieldFacts['poster'] {
     return { src: thumb, srcset: `${thumb} 512w, /maps/cards/${id}.webp 1280w`, hero: `/maps/${id}.webp`, thumb };
   }
   const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
-  return { src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb };
+  return {
+    src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb,
+    ...(LOOPS.has(id) ? { loop: `/media/maps-r1/${id}-loop-960.mp4` } : {}),
+  };
 }
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);
 
