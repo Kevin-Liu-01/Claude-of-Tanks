@@ -1,0 +1,4 @@
+{
+  "note": "Measured exceptions to tools/motion-lint.mjs (UI-LOCKDOWN part D). A row covers the findings of one rule at one place: { rule, file, where (the selector, '@keyframes <name>', 'animate()', 'requestAnimationFrame(<name>)' or the media path), property? (one property; absent covers them all), reason, measured (the run and the number: dropped frames, layer size, LoAF) }. A row without a measurement, or one that no longer matches a finding, fails the receipt.",
+  "rows": []
+}

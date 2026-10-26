@@ -118,6 +118,13 @@ z-index, shadow, duration and `!important` literals outside the token package
 (CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
 new file starts at zero). After replacing literals with tokens, lower it with
 `node tools/style-literal-census.mjs --write`.
+Motion animates `transform` and `opacity` only, on the `--dur-*` tokens, with a
+reduced-motion path for anything that moves or loops (token durations collapse
+to 1 ms; a loop needs a `prefers-reduced-motion: reduce` rule on its class), as
+CSS or WAAPI, never a rAF loop writing styles. `tools/motion-lint.mjs` counts
+the rest per file against `tools/motion-lint-baseline.json`, which may only
+fall; a measured exception (a small isolated layer) is a row in
+`tools/motion-allowlist.json`.
 The player's accessibility choices (BUI-F9) live on `:root`: the game
 document's head seed (`index.html`) writes them before first paint and
 `accessibilitySettings.ts` `applyAccessibility()` after a change, identically
