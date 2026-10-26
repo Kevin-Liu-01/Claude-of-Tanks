@@ -66,6 +66,10 @@ function observe(page, name, log) {
   // (Main 2026-10-25) a CSP report is counted on its own, from the page console, the page's securitypolicyviolation
   // events and each worker's Log domain (a report-only refusal in the match host's Worker never reaches the page)
   page.evaluateOnNewDocument(() => {
+    // each page's long tasks (the entry's longest is the perf lane's question), read and cleared per stage
+    window.__censusLongTasks = [];
+    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__censusLongTasks.push(Math.round(e.duration)); })
+      .observe({ type: 'longtask', buffered: true }); } catch { /* no long task timing */ }
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.disposition} ${e.effectiveDirective} ${e.blockedURI}`));
   }).catch(() => {});
@@ -107,14 +111,19 @@ let pagesForStage = [];
 const stage = async (name, startedAt) => {
   // each page's own violation events since the last stage, and the world kernels as the page reports them
   const pageState = await Promise.all(pagesForStage.map((page) => page.evaluate(() => ({ csp: (window.__cspViolations ?? []).splice(0),
+    longTasks: (window.__censusLongTasks ?? []).splice(0), entryFailure: window.__NETWORK_ENTRY_FAILURE ?? null,
     kernels: globalThis.__SIM_KERNELS ? { mode: globalThis.__SIM_KERNELS.mode, worlds: globalThis.__SIM_KERNELS.worlds } : null })).catch(() => null)));
   const csp = [...log.csp.splice(0), ...pageState.flatMap((p, i) => (p?.csp ?? []).map((v) => `${'AB'[i]} event: ${v}`))];
   samples.push({ kind: `lobby-${name}`, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length,
-    consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null), wasmFetches: log.wasm.splice(0) },
+    consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null), wasmFetches: log.wasm.splice(0),
+    longTasks: pageState.map((p) => { const t = p?.longTasks ?? []; return { count: t.length, totalMs: t.reduce((a, b) => a + b, 0), longestMs: t.length ? Math.max(...t) : 0 }; }),
+    entryFailures: pageState.map((p) => p?.entryFailure ?? null) },
     wallMs: Math.round(performance.now() - startedAt) });
   const last = samples.at(-1).census;
   console.log(`lobby-${name.padEnd(8)} ${String(last.consoleErrors.length).padStart(2)} errors ${String(last.consoleWarnings).padStart(2)} warnings `
     + `${String(csp.length).padStart(2)} csp  kernels ${JSON.stringify(last.kernels)}  wasm ${JSON.stringify(last.wasmFetches)}`
+    + `  longest task ${last.longTasks.map((t, i) => `${'AB'[i]} ${t.longestMs} ms (${t.count})`).join(', ')}`
+    + `${last.entryFailures.some(Boolean) ? `  ENTRY FAILED ${JSON.stringify(last.entryFailures)}` : ''}`
     + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}${csp.length ? `\n    ${csp.slice(0, 6).join('\n    ')}` : ''}`);
 };
 
