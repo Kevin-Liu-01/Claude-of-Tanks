@@ -962,7 +962,11 @@ async function main() {
     page.on('console', (message) => {
       const type = message.type();
       if (type === 'error' || type === 'warn' || type === 'warning') {
-        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: message.text().slice(0, 240) });
+        // the script position that logged it (a browser intervention such as Canvas2D's readback notice names its caller
+        // here, not in its text)
+        const frame = message.stackTrace?.()?.[0] ?? message.location?.();
+        const at = frame?.url ? ` @ ${frame.url.replace(/^.*\/assets\//, '')}:${(frame.lineNumber ?? 0) + 1}:${(frame.columnNumber ?? 0) + 1}` : '';
+        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: `${message.text().slice(0, 240)}${at}` });
       }
     });
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
