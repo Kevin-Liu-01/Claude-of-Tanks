@@ -1041,7 +1041,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  preloadSoloBattle: () => preloadSoloBattleRuntime(),
+  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
+  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,

@@ -12,6 +12,13 @@
 // counts the frames (and ms) until the hull as drawn (its visual root) has moved 1 cm; then W comes up and it settles.
 // --cpu-throttle=R slows the page's CPU R times (CDP), for the low frame rates (about 11 fps).
 //
+// --killcam: the killcam's parity. After the measurement the player drives forward until its hull dies (5 min at most),
+// and the probe samples the killcam and the battle clock while it plays: solo's simulation holds through it, and so
+// must the local host's authority (the battle frame's hold).
+//
+// --profile: a CPU profile of the main thread over the measured window, saved per run under .qa-dev/solo-host-profiles/,
+// with its self time by file in the report (where each mode's frame goes).
+//
 // --dist=<dir> serves a production build (vite preview) instead of the dev server: the entry as a player meets it (the
 // dev server loads every module of a path the first time that path runs).
 //
@@ -19,7 +26,7 @@
 //                                  [--latency=12] [--cpu-throttle=6] [--dist=.qa-dev/dist]
 //   (report: .qa-dev/solo-host-probe.json)
 import { resolve } from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import puppeteer from 'puppeteer';
 import { createServer, preview } from 'vite';
@@ -34,6 +41,8 @@ const cycles = Number(arg('cycles', 1));
 const smoke = process.argv.includes('--smoke');
 const latencyTrials = Number(arg('latency', 0));
 const cpuThrottle = Number(arg('cpu-throttle', 1));
+const killcamCheck = process.argv.includes('--killcam');
+const profileRuns = process.argv.includes('--profile');
 const port = Number(arg('port', 5296));
 const out = resolve(root, '.qa-dev', 'solo-host-probe.json');
 
@@ -88,9 +97,22 @@ async function run(mode, size) {
     requestAnimationFrame(count);
   });
   const clock = () => page.evaluate(() => window.__DEBUG.game.timeS ?? 0);
+  if (profileRuns) {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+    await cdp.send('Profiler.start');
+  }
   const task0 = await metric('TaskDuration'), frames0 = await page.evaluate(() => window.__soloProbeFrames), t0 = performance.now(), sim0 = await clock();
   await new Promise((done) => setTimeout(done, seconds * 1000));
   const task1 = await metric('TaskDuration'), frames1 = await page.evaluate(() => window.__soloProbeFrames), t1 = performance.now(), sim1 = await clock();
+  let profileFiles = null;
+  if (profileRuns) {
+    const { profile } = await cdp.send('Profiler.stop');
+    const dir = resolve(root, '.qa-dev/solo-host-profiles');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(resolve(dir, `${mode}-${size}-${Date.now()}.cpuprofile`), JSON.stringify(profile));
+    profileFiles = selfTimeByFile(profile, Math.max(1, frames1 - frames0));
+  }
   const frames = Math.max(1, frames1 - frames0);
   const state = await page.evaluate(() => {
     const game = window.__DEBUG.game, network = window.__DEBUG.network;
@@ -103,10 +125,11 @@ async function run(mode, size) {
   });
   const workers = page.workers().map((worker) => worker.url().replace(/^.*\//, ''));
   const latency = latencyTrials > 0 ? await measureLatency(page, latencyTrials) : null;
+  const killcam = killcamCheck ? await watchKillcam(page) : null;
   const result = { mode, size, tanks: state.tanks, network: state.network, entryMs, entryStages: state.entryStages, frames, fps: frames / ((t1 - t0) / 1000),
     mainMsPerFrame: ((task1 - task0) * 1000) / frames, battleTimeS: state.timeS,
     // battle seconds a real second over the window (1: the simulation keeps real time)
-    simRate: (sim1 - sim0) / ((t1 - t0) / 1000), workers, latency, errors: errors.slice(0, 6) };
+    simRate: (sim1 - sim0) / ((t1 - t0) / 1000), workers, latency, killcam, profileFiles, errors: errors.slice(0, 6) };
   await page.close();
   return result;
 }
@@ -158,7 +181,45 @@ async function measureLatency(page, trials) {
   return { trials: samples, framesP50: frames[frames.length >> 1], msP50: ms[ms.length >> 1] ?? null };
 }
 
-const report = { mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, dist, loadStart: loadavg()[0], runs: [] };
+/** A profile's self time by script (ms a frame), the 20 dearest. */
+function selfTimeByFile(profile, frames) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const totals = new Map();
+  for (let i = 0; i < profile.samples.length; i++) {
+    const node = byId.get(profile.samples[i]);
+    const url = node?.callFrame.url ? node.callFrame.url.replace(/^.*\/(assets|src)\//, '').replace(/\?.*$/, '') : `(${node?.callFrame.functionName || 'program'})`;
+    totals.set(url, (totals.get(url) ?? 0) + (profile.timeDeltas[i] ?? 0) / 1000);
+  }
+  return [...totals].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([file, ms]) => [file, Math.round((ms / frames) * 100) / 100]);
+}
+
+/** Drive forward until the player's hull dies, then sample the killcam and the battle clock while it plays. */
+async function watchKillcam(page) {
+  await page.keyboard.down('KeyW');
+  const died = await page.waitForFunction(() => window.__DEBUG.game.player?.combat?.destroyed === true || !!window.__DEBUG.game.result,
+    { timeout: 300_000, polling: 250 }).then(() => true, () => false);
+  await page.keyboard.up('KeyW');
+  if (!died) return { died: false };
+  return page.evaluate(() => new Promise((done) => {
+    const game = window.__DEBUG.game, killcam = window.__DEBUG.killcam;
+    const samples = [];
+    const startedAt = performance.now();
+    const tick = () => {
+      samples.push({ ms: Math.round(performance.now() - startedAt), active: !!killcam?.isActive?.(), timeS: game.timeS, result: game.result ?? null });
+      const sawIt = samples.some((sample) => sample.active);
+      if ((sawIt && !samples.at(-1).active) || performance.now() - startedAt > 30_000) {
+        const during = samples.filter((sample) => sample.active);
+        done({ died: true, decided: !!game.result, activeMs: during.length ? during.at(-1).ms - during[0].ms : 0,
+          clockDuringS: during.length ? during.at(-1).timeS - during[0].timeS : null, samples: samples.length });
+        return;
+      }
+      setTimeout(tick, 100);
+    };
+    tick();
+  }));
+}
+
+const report = { mapId, sizes, seconds, cycles, smoke, latencyTrials, cpuThrottle, killcamCheck, dist, loadStart: loadavg()[0], runs: [] };
 try {
   if (lock) await lock.acquire(90 * 60 * 1000);
   for (const size of sizes) {
