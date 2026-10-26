@@ -57,7 +57,7 @@
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
-.cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover}
+.cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
@@ -120,7 +120,7 @@
 .cot-bf .cot-bf__map{position:absolute;right:var(--s3);bottom:var(--s3);width:34%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);
   background:var(--surface-scene);box-shadow:var(--plate-shadow)}
 .cot-bf .cot-bf__map[hidden]{display:none}
-.cot-bf__map>:is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cot-bf__map>:is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-bf__cap{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s3);min-height:28px}
 .cot-bf__name{font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-bf__facts{display:flex;gap:var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}

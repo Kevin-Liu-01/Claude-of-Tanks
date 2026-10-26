@@ -444,8 +444,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
-.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12))}
-.cot-play .player .name{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
+/* the name keeps the vehicle name's line pitch, the tag's line included, so a wrapped name and a wrapped vehicle centre
+   onto the same lines (Rooms r35: 3 px apart when the tag took a 24 px line under a 16 px one) */
+.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12));margin-block:calc((var(--name-line) - 20px) / 2)}
+.cot-play .player .name{--name-line:calc(max(var(--fs-floor-12),var(--fs-13)) * 1.3);display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/var(--name-line) var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
 .cot-play .vehicle-icon{--w:58px;--h:42px;width:var(--w);height:var(--h);flex:0 0 var(--w);object-fit:cover;
@@ -735,8 +737,8 @@ export function createPlayMenu({
     </section></header>
     <p class="lead"></p>
     ${segmented({ label: t('playMenu.kind'), value: 'private', className: 'modes', options: [
-      { value: 'private', label: t('playMenu.private.title'), icon: 'battlePrivate' },
-      { value: 'lan', label: t('playMenu.lan.title'), icon: 'battleLan' }] })}
+      { value: 'private', label: t('playMenu.kind.private'), icon: 'battlePrivate' },
+      { value: 'lan', label: t('playMenu.kind.lan'), icon: 'battleLan' }] })}
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">

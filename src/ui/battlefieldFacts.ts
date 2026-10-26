@@ -1,7 +1,8 @@
 // One battlefield's facts for the battlefield picker (interaction redesign A, owner 2026-10-26: "make map selection much
 // more intituitve"): its name, its landscape, the hours it plays, the modes it hosts, whether Random draws it and its
 // pictures, read from the sources that already own each datum. It imports no map config and no engine runtime, so the
-// picker reads it without loading a battlefield; the placeholders (a data-URL table) load only when asked for.
+// picker reads it without loading a battlefield. (The blurred placeholders, src/ui/mapLqip.ts, stay the loading screen's
+// own chunk: the picker's cards show the stills themselves.)
 //   name: catalog.ts getLocalizedMapName      regions: regionTags.ts mapRegionTags (the camo browser's landscape tags)
 //   hours: battleWeatherPolicy.ts BATTLE_TIMES, Mars and the Moon held to day (battleAtmosphereRuntime.ts prepare)
 //   modes: every battle mode on every map (no mode is tied to a map; gameModeCatalog.ts BATTLE_MODE_IDS)
@@ -37,8 +38,8 @@ interface BattlefieldFacts {
 }
 
 const DAY_ONLY: ReadonlySet<MapId> = new Set(['mars', 'moon']);
-/** The maps the maps-r1 manifest holds stills for (all 33 since 2026-10-26); a new battlefield joins when the media lane
- *  films it, and falls back to the generated art until then (never a fetch of the manifest). */
+/** The maps the maps-r1 manifest holds stills and a hover loop for (all 33 since 2026-10-26); a new battlefield joins when
+ *  the media lane films it, and falls back to the generated art until then (never a fetch of the manifest). */
 const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta',
   'badlands', 'monsoon', 'alpine', 'caldera', 'foundry', 'ruinspires', 'blackglass', 'titan_gorge', 'skybridge',
@@ -46,12 +47,6 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
-/** The maps the maps-r1 manifest holds a hover loop for (the random-battle maps first, 2026-10-26; then monsoon, alpine,
- *  caldera and foundry, 054eb44074: 16 of 33). */
-const LOOPS: ReadonlySet<MapId> = new Set<MapId>([
-  'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta', 'badlands',
-  'monsoon', 'alpine', 'caldera', 'foundry',
-]);
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
   const thumb = `/maps/thumbs/${id}.webp`;
@@ -61,7 +56,7 @@ function poster(id: MapId): BattlefieldFacts['poster'] {
   const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
   return {
     src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb,
-    ...(LOOPS.has(id) ? { loop: `/media/maps-r1/${id}-loop-960.mp4` } : {}),
+    loop: `/media/maps-r1/${id}-loop-960.mp4`,
   };
 }
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);
@@ -83,10 +78,4 @@ export function battlefieldFacts(mapId: string): BattlefieldFacts {
     random: RANDOM.has(id),
     poster: poster(id),
   };
-}
-
-/** A battlefield's 48x27 blurred placeholder (a data URL) for the moment before its poster decodes; '' when it has none. */
-export async function battlefieldPlaceholder(mapId: string): Promise<string> {
-  const { MAP_LQIP } = await import('./mapLqip.ts');
-  return isMapId(mapId) && Object.hasOwn(MAP_LQIP, mapId) ? MAP_LQIP[mapId] : '';
 }
