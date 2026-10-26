@@ -923,7 +923,9 @@ export function prepareSourcedTerrain(
           'GDRM'.indexOf(a.target.slice(-1)) - 'GDRM'.indexOf(b.target.slice(-1))));
     },
     cancel() {
-      abort.abort();
+      // (battle-spikes-253) a plain reason: abort() with none makes a DOMException whose captured stack holds the frames'
+      // receivers — the disposing world among them — for as long as the signal lives (the memory probe's retainer path)
+      abort.abort('cancelled');
       for (const entry of entries.values()) entry.composed = null;
     },
   };
