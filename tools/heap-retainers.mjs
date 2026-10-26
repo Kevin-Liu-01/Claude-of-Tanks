@@ -45,15 +45,86 @@ export function createSnapshotParser() {
     }
   }
   function finish() {
-    const strings = JSON.parse(stringsText.replace(/\}\s*$/, ''));
+    const stringsJson = stringsText.replace(/\}\s*$/, '');
+    let strings;
+    try { strings = JSON.parse(stringsJson); } catch (error) {
+      // (a real snapshot's string table failed JSON.parse 11 MB in, 2026-10-25) read it string by string instead, and keep
+      // what stood at the fault for the record
+      const at = Number(/position (\d+)/.exec(String(error?.message))?.[1] ?? -1);
+      fault = { message: String(error?.message ?? error), around: at >= 0 ? stringsJson.slice(Math.max(0, at - 200), at + 200) : null,
+        head: stringsJson.slice(0, 200), tail: stringsJson.slice(-200) };
+      const read = readStringArray(stringsJson);
+      strings = read.strings;
+      fault.gaps = read.gaps.length;
+      // (2026-10-25: a stretch of one chunk lost inside the string table — the protocol's text dropped it, the ints are
+      // whole) the strings after a single gap realigned: as many placeholders there as the graph's highest string index says
+      // are missing
+      if (read.gaps.length === 1) {
+        const meta0 = JSON.parse(metaText.replace(/^\s*\{\s*"snapshot"\s*:\s*/, '').replace(/,\s*$/, '')).meta;
+        const missing = highestStringIndex(meta0, nodes.a.subarray(0, nodes.n), edges.a.subarray(0, edges.n)) + 1 - strings.length;
+        if (missing > 0) strings.splice(read.gaps[0], 0, ...new Array(missing).fill('(lost)'));
+        fault.realigned = missing;
+      }
+    }
     const meta = JSON.parse(metaText.replace(/^\s*\{\s*"snapshot"\s*:\s*/, '').replace(/,\s*$/, '')).meta;
-    return { meta, nodes: nodes.a.subarray(0, nodes.n), edges: edges.a.subarray(0, edges.n), strings };
+    return { meta, nodes: nodes.a.subarray(0, nodes.n), edges: edges.a.subarray(0, edges.n), strings, fault };
   }
+  let fault = null;
   return { feed, finish };
 }
 
-/** The shortest strong retainer paths (up to `max`) from a GC root to each object built by `markerName`. */
-export function retainerPaths({ meta, nodes, edges, strings }, markerName, max = 3) {
+/**
+ * A JSON array of strings read string by string. Where a string's content follows the last string with no comma (a lost
+ * stretch took the comma and the next string's opening quote: `"16.40421485900"528984",`), a gap is noted at that index
+ * and the content read as the next string's.
+ */
+export function readStringArray(text) {
+  const strings = [], gaps = [];
+  let i = text.indexOf('[') + 1, expectValue = true;
+  const readTo = (from, quoted) => {
+    let j = from, value = '';
+    for (; j < text.length; j++) {
+      const d = text[j];
+      if (d === '"') break;
+      if (d !== '\\') { value += d; continue; }
+      const e = text[++j];
+      if (e === 'u') { value += String.fromCharCode(Number.parseInt(text.slice(j + 1, j + 5), 16)); j += 4; }
+      else value += ({ b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' })[e] ?? e;
+    }
+    strings.push(value);
+    return j + 1;
+  };
+  while (i < text.length) {
+    const c = text[i];
+    if (c === ']') break;
+    if (c === ',') { expectValue = true; i++; continue; }
+    if (c === ' ' || c === '\n' || c === '\r' || c === '\t') { i++; continue; }
+    if (c === '"' && expectValue) { i = readTo(i + 1); expectValue = false; continue; }
+    // a value where a comma belongs: the lost stretch ended inside a string (its quote taken for the last one's close)
+    gaps.push(strings.length);
+    i = readTo(c === '"' ? i + 1 : i);
+    expectValue = false;
+  }
+  return { strings, gaps };
+}
+
+/** The highest string index a node's name or a named edge reads. */
+function highestStringIndex(meta, nodes, edges) {
+  const NF = meta.node_fields.length, EF = meta.edge_fields.length;
+  const nName = meta.node_fields.indexOf('name'), eType = meta.edge_fields.indexOf('type'), eName = meta.edge_fields.indexOf('name_or_index');
+  const edgeTypes = meta.edge_types[eType];
+  let top = -1;
+  for (let i = nName; i < nodes.length; i += NF) if (nodes[i] > top) top = nodes[i];
+  for (let e = 0; e < edges.length; e += EF) {
+    const kind = edgeTypes[edges[e + eType]];
+    if (kind !== 'element' && kind !== 'hidden' && edges[e + eName] > top) top = edges[e + eName];
+  }
+  return top;
+}
+
+/** The shortest strong retainer paths (up to `max`) from a GC root to each object built by `markerName` (or, given its
+ *  heap snapshot object id, that object: a string table that lost a stretch can misname it). */
+export function retainerPaths({ meta, nodes, edges, strings }, markerName, max = 3, markerId = null) {
   const NF = meta.node_fields.length, EF = meta.edge_fields.length;
   const nType = meta.node_fields.indexOf('type'), nName = meta.node_fields.indexOf('name');
   const nEdges = meta.node_fields.indexOf('edge_count');
@@ -70,7 +141,10 @@ export function retainerPaths({ meta, nodes, edges, strings }, markerName, max =
   const inEdges = new Int32Array(E), cursor = inStart.slice(0, N);
   for (let e = 0; e < E; e++) { const to = edges[e * EF + eTo] / NF; inEdges[cursor[to]++] = e; }
   const markers = [];
-  for (let i = 0; i < N; i++) if (typeOf(i) === 'object' && nameOf(i) === markerName) markers.push(i);
+  const nId = meta.node_fields.indexOf('id');
+  for (let i = 0; i < N; i++) {
+    if (markerId != null ? nodes[i * NF + nId] === Number(markerId) : typeOf(i) === 'object' && nameOf(i) === markerName) markers.push(i);
+  }
   return markers.map((marker) => {
     const via = new Int32Array(N).fill(-1), seen = new Uint8Array(N), queue = new Int32Array(N);
     let head = 0, tail = 0;
@@ -101,13 +175,23 @@ export function retainerPaths({ meta, nodes, edges, strings }, markerName, max =
   });
 }
 
-/** Take the page's heap snapshot through a CDP session and return each marker's retainer paths. */
-export async function snapshotRetainerPaths(cdp, markerNames, max = 3) {
+/** A page object's heap snapshot id, its handle released before any snapshot (a held handle would retain it itself). */
+export async function heapObjectIdOf(cdp, expression) {
+  await cdp.send('HeapProfiler.enable');
+  const { result } = await cdp.send('Runtime.evaluate', { expression, objectGroup: 'cot-heap-retainers' });
+  try { return result?.objectId ? (await cdp.send('HeapProfiler.getHeapObjectId', { objectId: result.objectId })).heapSnapshotObjectId : null; }
+  finally { await cdp.send('Runtime.releaseObjectGroup', { objectGroup: 'cot-heap-retainers' }); }
+}
+
+/** Take the page's heap snapshot through a CDP session and return each marker's retainer paths (`ids`: a marker's heap
+ *  snapshot object id by its name, found by id rather than by name). */
+export async function snapshotRetainerPaths(cdp, markerNames, max = 3, ids = {}) {
   const parser = createSnapshotParser();
   const onChunk = ({ chunk }) => parser.feed(chunk);
   cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
   try { await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }); }
   finally { cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk); }
   const snapshot = parser.finish();
-  return Object.fromEntries(markerNames.map((name) => [name, retainerPaths(snapshot, name, max)]));
+  if (snapshot.fault) console.error(`[heap-retainers] the string table read string by string: ${JSON.stringify(snapshot.fault)}`);
+  return Object.fromEntries(markerNames.map((name) => [name, retainerPaths(snapshot, name, max, ids[name] ?? null)]));
 }

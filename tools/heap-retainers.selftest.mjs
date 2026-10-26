@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { createSnapshotParser, retainerPaths } from './heap-retainers.mjs';
 
-const strings = ['', '(GC roots)', 'Window', 'cache', 'World', 'marker', 'LeakMarker_1', 'weakRefs', 'Holder', 'held', 'world'];
+const strings = ['', '(GC roots)', 'Window', 'cache', 'World', 'marker', 'LeakMarker_1', 'weakRefs', 'Holder', 'held'];
 const meta = {
   node_fields: ['type', 'name', 'id', 'self_size', 'edge_count'],
   node_types: [['hidden', 'object', 'synthetic', 'closure']],
@@ -32,4 +32,19 @@ const [paths] = retainerPaths(snapshot, 'LeakMarker_1', 3);
 assert.deepEqual(paths, [['(GC roots) .Window', 'Window .cache', 'World .marker', 'LeakMarker_1']],
   'the strong path; the weakly held Holder does not retain it');
 assert.deepEqual(retainerPaths(snapshot, 'Nothing', 3), [], 'no marker, no paths');
-console.log('heap-retainers.selftest: streamed parse across chunk splits, strong retainer path, weak edges skipped');
+// a stretch of one chunk lost inside the string table (the tail of "Window", the comma, "cache" and the next opening quote):
+// read string by string, the gap noted, the strings after it realigned by the graph's highest string index
+const lost = json.replace('"Window","cache","World"', '"Win"World"');
+const tolerant = createSnapshotParser();
+for (let at = 0; at < lost.length; at += 11) tolerant.feed(lost.slice(at, at + 11));
+const repaired = tolerant.finish();
+assert.ok(repaired.fault && repaired.fault.gaps === 1 && repaired.fault.realigned === 1, `one gap, one string realigned (${JSON.stringify(repaired.fault)})`);
+assert.deepEqual(repaired.strings.slice(4), strings.slice(4), 'every string after the gap at its own index');
+assert.deepEqual(retainerPaths(repaired, 'LeakMarker_1', 3)[0][0], ['(GC roots) .Win', 'Win .(lost)', 'World .marker', 'LeakMarker_1'],
+  'the marker found by name after the gap, the path whole');
+// and by its heap id, whatever its name reads (a node's id field)
+const byId = { ...snapshot, nodes: Float64Array.from(snapshot.nodes) };
+byId.nodes[3 * F + 2] = 77; byId.nodes[3 * F + 1] = 8; // the marker's id 77, its name misread as "Holder"
+assert.deepEqual(retainerPaths(byId, 'LeakMarker_1', 3), [], 'by name the misnamed marker is not found');
+assert.equal(retainerPaths(byId, 'LeakMarker_1', 3, 77)[0][0].length, 4, 'by id it is, its strong path whole');
+console.log('heap-retainers.selftest: streamed parse across chunk splits, strong retainer path, weak edges skipped, a lost stretch in the string table realigned, a marker found by heap id');

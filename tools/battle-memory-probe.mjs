@@ -28,7 +28,7 @@ import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
-import { snapshotRetainerPaths } from './heap-retainers.mjs';
+import { heapObjectIdOf, snapshotRetainerPaths } from './heap-retainers.mjs';
 
 const TOOL = 'battle-memory-probe';
 const BUDGET_FILE = fileURLToPath(new URL('./battle-memory-budget.json', import.meta.url));
@@ -345,10 +345,16 @@ async function probeScenario(options, scenario) {
         }));
         log(`worlds alive: ${row.worldsAlive.map((w) => `${w.label}${w.alive ? (w.current ? ' (current)' : w.cached ? ' (cached)' : ' (LEAKED)') : ' (collected)'}`).join(', ')}`);
         // (--retainers) a leaked world's shortest strong retainer paths, from a heap snapshot parsed as it streams
-        const leaked = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached)
-          .map((w) => `LeakMarker_${((Number.parseInt(w.label, 10) - 1) % 12) + 1}`);
+        const leakedRows = row.worldsAlive.filter((w) => w.alive && !w.current && !w.cached);
+        const leaked = leakedRows.map((w) => `LeakMarker_${((Number.parseInt(w.label, 10) - 1) % 12) + 1}`);
         if (options.retainers && leaked.length) {
-          row.retainers = await snapshotRetainerPaths(cdp, leaked, 3);
+          // each marker's heap id (its handle released first): found by id when the string table lost a stretch
+          const ids = {};
+          for (const [k, w] of leakedRows.entries()) {
+            ids[leaked[k]] = await heapObjectIdOf(cdp,
+              `(window.__WORLD_REFS ?? []).find((w) => w.label === ${JSON.stringify(w.label)})?.ref.deref()?.__leakMarker`).catch(() => null);
+          }
+          row.retainers = await snapshotRetainerPaths(cdp, leaked, 3, ids);
           for (const [name, perMarker] of Object.entries(row.retainers)) {
             for (const paths of perMarker) for (const steps of paths) log(`retainer of ${name}: ${steps.join(' > ')}`);
           }
