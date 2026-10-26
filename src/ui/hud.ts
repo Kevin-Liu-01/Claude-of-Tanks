@@ -1719,6 +1719,8 @@ body.cot-touch-layout .cot-hud-gear{display:none;}
 .cot-ear.l .cot-er.dead{border-left-color:color-mix(in srgb,var(--hud-own) 30%,transparent);}
 .cot-ear.r .cot-er.dead{border-right-color:color-mix(in srgb,var(--hud-enemy) 30%,transparent);}
 .cot-er.dead .hpm{display:none;}
+/* (the player's own health is the hull panel's figure alone: UI-LOCKDOWN B5) */
+.cot-er.me .hpm{visibility:hidden;}
 /* Crowded rosters become a compact silhouette grid; names remain available
    to assistive reading and in each tile's native hover description. */
 .cot-ear.icon-grid .cot-ear-rows{display:grid;grid-template-columns:repeat(var(--roster-columns,4),minmax(0,1fr));
@@ -8189,6 +8191,8 @@ export function initHud(bus: EventBus): HudRuntime {
       // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
       if (!ruleset || ruleset.provingGround) return;
       for (const line of rulesetLines(ruleset)) {
+        // (the battle's clock is the score plate's, which shows the whole limit before the start: UI-LOCKDOWN B20)
+        if (line.key === 'clock') continue;
         const chip = document.createElement('span');
         if (line.key === 'enemyNation') chip.textContent = t('rules.line.enemyNation', { value: t(`campaign.enemy.${line.values.value}`) });
         else {
