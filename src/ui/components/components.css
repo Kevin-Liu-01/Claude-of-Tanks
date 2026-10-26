@@ -163,13 +163,22 @@ button.cot-c-chip{cursor:pointer}
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);}
 .cot-c-picker__search::placeholder{color:var(--ink-3)}
 .cot-c-picker__search:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-/* the chips keep one row and scroll sideways, so the cards keep the height */
-.cot-c-picker__chips{display:flex;flex:1 1 100%;gap:var(--s2);min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+/* the chips keep one row and scroll sideways, so the cards keep the height; their ends fade over a band of their own
+   padding, as the grid's do */
+.cot-c-picker__chips{display:flex;flex:1 1 100%;gap:var(--s2);min-width:0;margin:0 calc(-1 * var(--s3));padding:0 var(--s3);overflow-x:auto;
+  overscroll-behavior-x:contain;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s3)),transparent);
+  mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s3)),transparent)}
 .cot-c-picker__chips::-webkit-scrollbar{display:none}
 .cot-c-picker__chips>.cot-c-chip{flex:none}
-/* where a surface bounds the picker's height the grid scrolls in place (its padding keeps the focus ring in view) */
+/* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot
+   carries the scroll edges' fade, so at rest nothing fades and the focus ring stays in view, and scrolled cards pass under
+   the fade instead of a hard cut */
 .cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);flex:1 1 auto;min-height:0;
-  margin:calc(-1 * var(--s1));padding:var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+  margin:calc(-1 * var(--s3)) calc(-1 * var(--s1));padding:var(--s3) var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  scrollbar-color:var(--line-3) transparent;
+  -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s3)),transparent);
+  mask-image:linear-gradient(transparent,var(--ink-1) var(--s3),var(--ink-1) calc(100% - var(--s3)),transparent)}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 .cot-c-picker__cell{position:relative;min-width:0;content-visibility:auto;contain-intrinsic-size:auto 168px}
@@ -226,8 +235,9 @@ button.cot-c-chip{cursor:pointer}
   .cot-bf .cot-bf__preview{display:none}
   .cot-bf__in{grid-template-rows:minmax(0,1fr)}
 }
-.cot-bf__preview{display:flex;flex-direction:column;gap:var(--s3);margin:0;min-width:0}
-.cot-bf__hero{aspect-ratio:16/9}
+.cot-bf__preview{display:flex;flex-direction:column;gap:var(--s3);margin:0;min-width:0;max-height:100%;overflow:hidden}
+/* the frame's line sits inside its box on the column's edge, as a plate's ring does */
+.cot-bf .cot-bf__hero{flex:none;aspect-ratio:16/9;box-shadow:var(--ring-1)}
 .cot-bf .cot-bf__map{position:absolute;right:var(--s3);bottom:var(--s3);width:34%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);
   background:var(--surface-scene);box-shadow:var(--plate-shadow)}
 .cot-bf .cot-bf__map[hidden]{display:none}

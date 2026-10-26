@@ -385,7 +385,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-trigger::after{content:"";position:absolute;right:var(--s4);top:50%;width:7px;height:7px;
   border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:translateY(-68%) rotate(45deg);
   transition:transform var(--dur-fast) var(--ease-move)}
-.cot-play .menu-select.open .menu-select-trigger::after{transform:translateY(-30%) rotate(225deg)}
+.cot-play .menu-select.open .menu-select-trigger::after,.cot-play .menu-select-trigger[aria-expanded=true]::after{transform:translateY(-30%) rotate(225deg)}
 .cot-play .menu-select.disabled .menu-select-trigger{cursor:not-allowed;background:transparent;box-shadow:var(--ring-1);color:var(--ink-3)}
 .cot-play .menu-select.disabled .menu-select-trigger::after{opacity:.45}
 .cot-play .menu-select-list{position:fixed;z-index:112;display:none;gap:2px;margin:0;padding:var(--s1);
@@ -456,7 +456,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-card.picking{grid-template-columns:minmax(0,1fr)}
 .cot-play .battlefield-card.picking .battlefield-art{display:none}
 .cot-play .battlefield-card.picking .battlefield-copy{grid-column:1 / -1;padding-left:var(--s4)}
-.cot-play .battlefield-pick{flex:none;height:min(560px,62vh);margin-top:var(--s3)}
+.cot-play .battlefield-pick{box-sizing:border-box;height:clamp(340px,62vh,560px);margin-top:var(--s3);padding:var(--s4);border-radius:var(--plate-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .battlefield-pick[hidden]{display:none}
 .cot-play:where(:has(.control-options>.field[hidden])) .battlefield-card{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
