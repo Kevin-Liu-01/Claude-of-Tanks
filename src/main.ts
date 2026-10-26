@@ -102,6 +102,7 @@ import {
 } from './engine/garageGpuWarmRuntime.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
+import { stageTextureUploads } from './engine/textureUploadStaging.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2859,6 +2860,10 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // uploading the battlefield's textures and buffers in its one render) the battlefield draws offscreen a cohort
             // at a time, a frame between cohorts, as the solo deployment's forward warm does: the composer warm then meets
             // resident textures, buffers and programs
+            // (2026-10-26, the room-stalls lane: after the cohorts, one cohort's draw still held 1033 ms of texSubImage2D)
+            // the battlefield's textures uploaded first, one at a time under a frame budget, so the cohorts' draws meet
+            // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal });
             const forwardBatches: number[] = [];
             const forwardYield = createFrameBudgetYielder(8);
             for (const batch of createDeploymentForwardWarmBatches({
@@ -2907,7 +2912,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing, deploymentForward };
+            return { ...timing, textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
