@@ -1598,9 +1598,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secCap.appendChild(filmBlurRow);
   const filmSummary = el('div', 'recStatus filmSummary', '');
   secCap.appendChild(filmSummary);
-  const filmBtn = kitButton(t('studio.film.export'), 'primary', 'deploy');
-  filmBtn.classList.add('cot-c-btn--wide');
-  secCap.appendChild(filmBtn);
+  // the export settings run from the header's Export film, the workspace's one primary (the s13 critic: two accent
+  // Export film buttons in view at once)
   // Authoring the export settings records them in the scene's `film` block.
   for (const control of [filmFps.select, filmBlur.select, filmShake.select]) {
     control.addEventListener('change', () => {
@@ -1689,7 +1688,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         ? t('studio.film.cancelled')
         : t('studio.film.failed', { error: errorMessage(error) })));
   }
-  filmBtn.addEventListener('click', startFilmExport);
   let filmSignature = '';
   function updateFilmSummary(): void {
     const film = S.getFilm();
@@ -1704,8 +1702,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     const status = S.filmExportStatus();
     const busyOutput = status.active || S.recordingStatus().active;
-    filmBtn.disabled = busyOutput || !status.supported;
-    exportBtn.disabled = filmBtn.disabled;
+    exportBtn.disabled = busyOutput || !status.supported;
     for (const control of [filmSize.select, filmFps.select, filmBlur.select, filmShake.select]) control.disabled = busyOutput;
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
     try {
@@ -1791,16 +1788,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     flashBusy(t('studio.sceneJsonCopied'));
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
-  // Copy scene link (studioSceneLinkUi.ts): the scene itself rides in the link's #fragment, capped and schema-checked.
-  const sceneLinkBtn = kitButton(t('studio.sceneLink.copy'));
-  sceneLinkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
-  sceneLinkBtn.classList.add('cot-c-btn--wide');
-  sceneLinkBtn.dataset.tip = t('studio.sceneLink.copyTitle');
-  sceneLinkBtn.dataset.sceneLinkCopy = '';
-  sceneLinkBtn.addEventListener('click', () => {
-    copySceneLink(S.state(), browserSceneLinkEnv())
-      .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
-  });
+  // the scene's link is the header's Copy scene link (one control, one style: the s13 critic read a capitals twin here)
   // localStorage slots: the kit's buttons, as Save, Load and Copy above them (a chip row stood 6 px shorter)
   const slotRow = el('div', 'grid3');
   for (let i = 1; i <= 3; i++) {
@@ -1825,7 +1813,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     });
     slotRow.appendChild(b);
   }
-  secScene2.append(svRow, sceneLinkBtn, slotRow, fileIn);
+  secScene2.append(svRow, slotRow, fileIn);
   outputGroup.body.append(secCap, secLive, secScene2);
 
   function openArchive(): void {
@@ -1952,10 +1940,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const tick = el('i', 'mj');
       tick.style.left = pct(at);
       marks.push(tick);
-      // the first label would sit under the playhead's thumb at rest and the last would run past the track: both keep
-      // their ticks alone
-      if (k > 0 && at < S.durationMs - step * 400) {
-        const label = el('b', null, rulerClock(k * step));
+      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; the scene's end reads
+      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off)
+      const end = at >= S.durationMs - step * 400;
+      if (k > 0 && (!end || at >= S.durationMs - 1)) {
+        const label = el('b', end ? 'end' : null, rulerClock(k * step));
         label.style.left = pct(at);
         marks.push(label);
       }
