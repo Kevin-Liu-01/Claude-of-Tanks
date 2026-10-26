@@ -9,7 +9,11 @@ import {
   isWaveMode, matchRulesetFor, modeCopyValues, rulesetLines, rulesetSides, TEST_DRIVE, type MatchRuleset,
 } from '../../sim/matchRuleset.ts';
 import { objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from '../../ui/minimapObjectives.ts';
-import { drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, sideColor, sideFill } from '../../ui/objectiveGlyphs.ts';
+import {
+  badgeLetter, badgeLetterFont, drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, OBJECTIVE_PALETTE,
+  sideColor, sideFill, type GlyphLetter,
+} from '../../ui/objectiveGlyphs.ts';
+import { drawGlyphLetter } from '../../ui/objectiveGlyphLetters.ts';
 import { projectWorldToMinimap } from '../../ui/minimapOrientation.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { getMapName } from '../../world/maps/mapIds.ts';
@@ -18,6 +22,13 @@ import { t } from '../../ui/i18n.ts';
 import { SvgCanvas } from '../svgCanvas.ts';
 import type { RichSection } from './types.ts';
 import baked from '../../../public/minimaps/objectives.json' with { type: 'json' };
+
+/** A zone's letter in the diagrams' SVG (the glyphs draw none: objectiveGlyphs.ts badgeLetter). */
+const diagramLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
+function drawBadgeLetter(c: CanvasRenderingContext2D, label: string, x: number, y: number, r: number): void {
+  const letter = badgeLetter(x, y, r, OBJECTIVE_PALETTE.chalk, diagramLetter);
+  drawGlyphLetter(c, label, letter, badgeLetterFont(letter.px));
+}
 
 /** The chapter's groups: how a mode is won decides where it sits. */
 const GROUPS: ReadonlyArray<{ readonly id: string; readonly modes: readonly GameModeId[] }> = [
@@ -104,7 +115,8 @@ export function objectiveDiagram(mode: string, mapId: string, box = DIAGRAM_BOX)
       case 'spawn': drawSpawnGlyph(c, x, y, r * 0.8, color, fill); break;
       case 'zone':
       case 'sector':
-        drawHexBadge(c, x, y, r, { fill, stroke: color, label: marker.label, dashed: marker.status === 'locked' });
+        drawHexBadge(c, x, y, r, { fill, stroke: color, dashed: marker.status === 'locked' });
+        drawBadgeLetter(c, marker.label ?? '', x, y, r);
         break;
       case 'flagBase': drawPennant(c, x, y, r * 1.6, color); break;
       case 'goal': drawGoalGlyph(c, x, y, r * 0.8, color, fill); break;
@@ -131,7 +143,10 @@ function legend(): string {
   const items: Array<[string, string]> = [
     [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('own'), sideFill('own'))), t('docs.modes.legend.ownSpawn')],
     [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('enemy'), sideFill('enemy'))), t('docs.modes.legend.enemySpawn')],
-    [glyph((c) => drawHexBadge(c, m, m, r * 1.1, { fill: sideFill('neutral'), stroke: sideColor('neutral'), label: 'A' })), t('docs.modes.legend.zone')],
+    [glyph((c) => {
+      drawHexBadge(c, m, m, r * 1.1, { fill: sideFill('neutral'), stroke: sideColor('neutral') });
+      drawBadgeLetter(c, 'A', m, m, r * 1.1);
+    }), t('docs.modes.legend.zone')],
     [glyph((c) => drawPennant(c, m, m, r * 2, sideColor('enemy'))), t('docs.modes.legend.flag')],
     [glyph((c) => drawGoalGlyph(c, m, m, r * 0.9, sideColor('enemy'), sideFill('enemy'))), t('docs.modes.legend.goal')],
     [glyph((c) => drawBallGlyph(c, m, m, r * 0.6)), t('docs.modes.legend.ball')],

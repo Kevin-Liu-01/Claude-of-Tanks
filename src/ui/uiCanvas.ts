@@ -16,10 +16,11 @@
  *   flips it, changes devicePixelRatio and fires no query, resize or observer event);
  * - a retained drawing redraws only on a size, ratio or data change (redraw()), a per-frame painter sizes in begin();
  * - a lost context redraws when it is restored, and begin() allocates nothing.
- * UI text is DOM over the canvas, never canvas text (the kit's type, i18n, the zh floor, assistive tech):
- * tools/ui-canvas-census.selftest.mjs fails on an on-screen canvas built outside this module and pins the canvas text
- * still to move (a ratchet that only shrinks). Texture canvases (world/, vehicles/, fx/, the garage's and the renderer's
- * baked textures) are listed there by path; an offscreen scratch canvas anywhere else comes from scratchCanvas().
+ * UI text is DOM over the canvas, never canvas text (the kit's type, i18n, the zh floor, assistive tech): a canvas places
+ * its words and figures through canvasText.ts. src/ui/uiCanvasCensus.selftest.mjs fails on an on-screen canvas built
+ * outside this module and on canvas text on screen. Texture canvases (world/, vehicles/, fx/, the garage's and the
+ * renderer's baked textures) are listed there by path; an offscreen scratch canvas anywhere else comes from
+ * scratchCanvas().
  */
 
 /** The device-pixel cap a UI canvas's store takes (the probe's CANVAS_CAP, tools/click-timeline.mjs). */
@@ -68,6 +69,9 @@ export interface UiCanvas {
   begin(): boolean;
   /** The retained drawing's data changed: draw now when shown, else when the box returns. */
   redraw(): void;
+  /** Read the box now (one layout read) rather than at the observer's next report: for an owner that has just shown the
+   *  canvas and paints in the same task (a HUD mode switch, a screenshot frame). Never per frame. */
+  measureNow(): void;
   /** Show an image through the drawing (a swatch's painted tile, a film's frame). */
   setImage(image: UiCanvasImage | null): void;
   /** Stop observing and release the store. */
@@ -337,6 +341,13 @@ class Surface implements UiCanvas {
   redraw(): void {
     this.dirty = true;
     this.flush();
+  }
+
+  measureNow(): void {
+    if (!this.canvas.isConnected) return;
+    // a box it can see (a hidden one is the observer's to report, and a stand-in DOM reads 0 here)
+    const width = this.canvas.clientWidth, height = this.canvas.clientHeight;
+    if (width > 0 && height > 0) this.measure(width, height, 0, 0);
   }
 
   /** Take the drawing a host's canvas was made without (its drawer loads later). */

@@ -13,9 +13,10 @@ import { createElement as el, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { iconUrl } from './icons.ts';
 import { FONT_COND } from './fonts.ts';
-import { drawObjectiveChip } from './objectiveGlyphs.ts';
+import { badgeLetter, drawObjectiveChip, sideColor, OBJECTIVE_PALETTE, type GlyphLetter } from './objectiveGlyphs.ts';
 import { tokenEpoch } from './tokens/tokenSelection.ts';
 import { createUiCanvas, type UiCanvas } from './uiCanvas.ts';
+import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import type { ObjectiveMarker } from './minimapObjectives.ts';
 
 /** Teams larger than this read on the rosters' silhouette grid instead: the pips keep to the score plate's width. */
@@ -24,7 +25,13 @@ const MAX_TEAM_PIPS = 16;
 const CHIP_W = 38, CHIP_H = 42, CHIP_R = 15;
 /** A chip's scale where the top is not wide (a smaller window, a short one, touch). */
 const NARROW_CHIP = 0.72;
-const CHIP_FONT = `700 14px ${FONT_COND}`;
+/** A chip letter's size on the wide chip (scaled with the chip, never under the 11 px floor). */
+const CHIP_FONT_PX = 14;
+const chipLetter: GlyphLetter = { x: 0, y: 0, px: 0, color: '', halo: 0 };
+const chipStyle: CanvasTextStyle = {
+  font: '', color: '', align: 'center', baseline: 'middle', alpha: 1, haloWidth: 0, halo: OBJECTIVE_PALETTE.keyline,
+};
+const chipFonts = new Map<number, string>();
 
 const CSS = `
 .cot-pips{position:absolute;z-index:var(--hud-layer-score);left:50%;top:var(--hud-pips-top,82px);transform:translateX(-50%);
@@ -64,6 +71,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-top .cot-pips-row .pip.me{outline:0;color:var(--accent)}
 .cot-top .cot-pips-row .pip.dead::after{display:none}
 .cot-pips-sectors{display:flex;gap:10px}
+.cot-pips-sectors .chip{position:relative;display:block}
 .cot-pips-sectors canvas{display:block;width:${Math.round(CHIP_W * NARROW_CHIP)}px;height:${Math.round(CHIP_H * NARROW_CHIP)}px}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-pips-sectors{gap:16px}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-pips-sectors canvas{width:${CHIP_W}px;height:${CHIP_H}px}
@@ -79,7 +87,7 @@ interface PipTank {
 }
 
 interface Pip { node: HTMLElement; own: boolean; dead: boolean | null; me: boolean; seen: number }
-interface Chip { surface: UiCanvas; key: string; marker: ObjectiveMarker | null }
+interface Chip { node: HTMLElement; surface: UiCanvas; letter: CanvasText; key: string; marker: ObjectiveMarker | null }
 
 interface TeamPipsRuntime {
   root: HTMLElement;
@@ -147,14 +155,29 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
     if (fits !== rowShown) { rowShown = fits; row.hidden = !fits; refreshShown(); }
   }
 
-  /** A chip's drawing in its CHIP_W x CHIP_H design space, stretched by uiCanvas over its box (wide or narrow). */
-  function paintChip(ctx: CanvasRenderingContext2D, marker: ObjectiveMarker | null): void {
+  /** A chip's drawing in its CHIP_W x CHIP_H design space, stretched by uiCanvas over its box (wide or narrow); its
+   *  letter DOM over it (UI-LOCKDOWN A), at the box's scale, never under the 11 px floor. */
+  function paintChip(chip: Chip, ctx: CanvasRenderingContext2D, width: number): void {
     ctx.clearRect(0, 0, CHIP_W, CHIP_H);
-    if (!marker) return;
-    drawObjectiveChip(ctx, CHIP_W / 2, CHIP_H / 2, CHIP_R, {
-      side: marker.side, label: marker.label || '', progress: marker.progress ?? 0, progressSide: marker.progressSide,
-      font: CHIP_FONT,
-    });
+    const marker = chip.marker;
+    chip.letter.begin();
+    if (marker) {
+      drawObjectiveChip(ctx, CHIP_W / 2, CHIP_H / 2, CHIP_R, {
+        side: marker.side, progress: marker.progress ?? 0, progressSide: marker.progressSide,
+      });
+      if (marker.label) {
+        const k = width / CHIP_W;
+        const letter = badgeLetter(CHIP_W / 2, CHIP_H / 2, CHIP_R, sideColor(marker.side), chipLetter);
+        const px = Math.max(11, Math.round(CHIP_FONT_PX * k * 10) / 10);
+        let font = chipFonts.get(px);
+        if (!font) { font = `700 ${px}px ${FONT_COND}`; chipFonts.set(px, font); }
+        chipStyle.font = font;
+        chipStyle.color = letter.color;
+        chipStyle.haloWidth = letter.halo * k;
+        chip.letter.place(0, marker.label, letter.x * k, letter.y * k, chipStyle);
+      }
+    }
+    chip.letter.end();
   }
 
   function updateSectors(markers: readonly ObjectiveMarker[]): void {
@@ -167,9 +190,10 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
       if (marker.kind !== 'zone' && marker.kind !== 'sector') continue;
       let chip = chips[count];
       if (!chip) {
-        const made: Chip = { surface: createUiCanvas(sectors, '', {
-          units: [CHIP_W, CHIP_H], draw: (ctx) => paintChip(ctx, made.marker),
-        }), key: '', marker: null };
+        const node = el('span', 'chip', sectors);
+        const made: Chip = { node, surface: createUiCanvas(node, '', {
+          units: [CHIP_W, CHIP_H], draw: (ctx, width) => paintChip(made, ctx, width),
+        }), letter: createCanvasText(node, ''), key: '', marker: null };
         chip = made;
         chips.push(chip);
       }
@@ -179,9 +203,9 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
       count++;
     }
     while (chips.length > count) {
-      const gone = chips.pop()!.surface;
-      gone.dispose();
-      gone.canvas.remove();
+      const gone = chips.pop()!;
+      gone.surface.dispose();
+      gone.node.remove();
     }
     if (chips.length !== before) refreshShown();
   }

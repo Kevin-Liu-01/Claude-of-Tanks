@@ -213,6 +213,23 @@ assert.equal(UI_CANVAS_DPR_CAP, 2, 'the probe\'s cap (tools/click-timeline.mjs C
   assert.equal(`${canvas.width}x${canvas.height}`, '1600x1200');
 }
 
+// 7b. measureNow(): an owner that has just shown its canvas reads the box in the same task (a visible box only)
+{
+  globalThis.devicePixelRatio = 2;
+  let paints = 0;
+  const shown = createUiCanvas(null, '', { onResize: () => { paints++; } });
+  report(shown.canvas, 0, 0); // the observer saw it hidden
+  assert.equal(shown.begin(), false);
+  shown.canvas.clientWidth = 320; shown.canvas.clientHeight = 180; // the owner shows it (display: block)
+  shown.measureNow();
+  assert.equal(shown.begin(), true, 'it paints in the same task');
+  assert.equal(`${shown.canvas.width}x${shown.canvas.height}`, '640x360');
+  shown.canvas.clientWidth = 0; shown.canvas.clientHeight = 0;
+  shown.measureNow();
+  assert.equal(shown.begin(), true, 'a zero read changes nothing (hidden is the observer\'s report)');
+  assert.ok(paints >= 1);
+}
+
 // 8. a lost context: nothing draws until it is restored, then the drawing returns
 {
   window.devicePixelRatio = 1;

@@ -7,8 +7,8 @@
 //   a review (texture or on-screen?), not a free pass. An offscreen canvas anywhere else is uiCanvas's scratchCanvas().
 // - No `<canvas` markup in TypeScript: createUiCanvas() makes an on-screen canvas.
 // - Every canvas in a page's HTML is registered below with the module that mounts it.
-// - Canvas text, which belongs in the DOM over the canvas (the kit's type, i18n, the zh floor, assistive tech), is
-//   pinned per file and only shrinks: moving a label to the DOM lowers its pin, a new one fails.
+// - No canvas text on screen: a canvas's words and figures are DOM over it (canvasText.ts: the kit's type, i18n, the zh
+//   floor, assistive tech). Text set into a texture or an SVG is a module of its own, kept to the importers named below.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -36,12 +36,13 @@ const PAGE_CANVASES = Object.freeze({
   'site/gallery.html#stageScale': 'src/gallery/trueScale.ts',
   'site/gallery.html#versusScale': 'src/gallery/trueScale.ts',
 });
-/** Canvas text still drawn on screen, per file: lower a pin when its labels move to the DOM; never raise one. */
-const CANVAS_TEXT = Object.freeze({
-  // the sight's readouts: hit values, the rack's overflow, the reload countdown, the scope's ammunition and zoom lines
-  'src/ui/hud.ts': 11,
-  // the zone letters in the hex badges, chips and lane glyphs (the minimap, the team strip, the Deploy map)
-  'src/ui/objectiveGlyphs.ts': 4,
+/** Canvas text still drawn on screen, per file (a ratchet: lower a pin as its labels move to the DOM; never raise one).
+ *  None is left: the sight's 11 readouts (hud.ts) and the glyphs' 4 zone letters (objectiveGlyphs.ts) moved to DOM. */
+const CANVAS_TEXT = Object.freeze({});
+/** Text set into a texture or an SVG (no DOM over it), by module: the files that may import it. */
+const OFFSCREEN_TEXT = Object.freeze({
+  // a badge's or lane mark's letter on the battlefield's objective sprites and in the Field Manual's mode diagrams
+  'src/ui/objectiveGlyphLetters.ts': ['src/game/matchModeWorldPresentation.ts', 'src/docs/chapters/modes.ts'],
 });
 
 function walk(dir, out = []) {
@@ -81,7 +82,7 @@ for (const path of sources) {
   if (!texture && path !== 'src/ui/uiCanvas.ts' && count(text, MARKUP)) {
     failures.push(`${path}: <canvas> markup (make it with createUiCanvas())`);
   }
-  if (texture || Object.hasOwn(TEXTURE_FILES, path)) continue;
+  if (texture || Object.hasOwn(TEXTURE_FILES, path) || Object.hasOwn(OFFSCREEN_TEXT, path)) continue;
   const labels = count(text, TEXT);
   const pin = CANVAS_TEXT[path] ?? 0;
   if (Object.hasOwn(CANVAS_TEXT, path)) textSeen.add(path);
@@ -90,6 +91,14 @@ for (const path of sources) {
 }
 for (const path of Object.keys(TEXTURE_FILES)) if (!textureSeen.has(path)) failures.push(`${path}: a pinned texture file that no longer exists`);
 for (const path of Object.keys(CANVAS_TEXT)) if (!textSeen.has(path)) failures.push(`${path}: a canvas text pin for a file that no longer exists`);
+// an offscreen text module reaches only its named importers (an on-screen canvas places its text through canvasText.ts)
+for (const [module, importers] of Object.entries(OFFSCREEN_TEXT)) {
+  const name = module.split('/').pop().replace(/\.ts$/, '');
+  for (const path of sources) {
+    if (path === module || !read(path).includes(`/${name}.ts'`)) continue;
+    if (!importers.includes(path)) failures.push(`${path}: imports ${module}, which sets text into textures and SVG only (on screen: canvasText.ts)`);
+  }
+}
 
 // page canvases: each has an id and a registered module that mounts it through uiCanvas
 const pages = readdirSync(join(ROOT, 'site')).filter((name) => name.endsWith('.html')).map((name) => `site/${name}`);
@@ -114,4 +123,4 @@ for (const id of ['stageScale', 'versusScale']) {
 
 assert.deepEqual(failures, [], `on-screen canvases outside uiCanvas:\n  ${failures.join('\n  ')}`);
 console.log(`uiCanvasCensus.selftest: PASS (${sources.length} sources, ${Object.keys(TEXTURE_FILES).length} texture files, ` +
-  `${Object.values(CANVAS_TEXT).reduce((a, b) => a + b, 0)} canvas text calls pinned)`);
+  `${Object.values(CANVAS_TEXT).reduce((a, b) => a + b, 0)} canvas text calls left on screen)`);
