@@ -29,6 +29,7 @@ import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
+import { coverImage, createUiCanvas, drawImageFit } from './uiCanvas.ts';
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -1109,7 +1110,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     swatch.setAttribute('aria-pressed', 'false');
     swatch.setAttribute('aria-label', cid);
     swatch.dataset.camo = cid;
-    swatch.appendChild(document.createElement('canvas'));
+    createUiCanvas(swatch, '', { draw: coverImage });
     swatch.addEventListener('click', () => patchSel({ camo: cid }));
     swatchButtons.set(cid, swatch);
     swatches.appendChild(swatch);
@@ -1639,8 +1640,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmVeil.setAttribute('role', 'dialog');
   filmVeil.setAttribute('aria-modal', 'true');
   filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
-  const veilPreview = document.createElement('canvas');
-  veilPreview.className = 'fvPreview';
+  // (UI-LOCKDOWN A) the frame's preview: a uiCanvas sized by its CSS box (the film's aspect, --fv-aspect), the latest
+  // frame fitted into it at min(DPR, 2)
+  const veilSurface = createUiCanvas(null, 'fvPreview', {
+    draw: (ctx, width, height, surface) => {
+      ctx.clearRect(0, 0, width, height);
+      if (surface.image) drawImageFit(ctx, surface.image, width, height, 'contain');
+    },
+  });
+  const veilPreview = veilSurface.canvas;
+  let veilAspect = 0;
   const veilBar = el('div', 'fvBar');
   const veilFill = el('i');
   veilBar.appendChild(veilFill);
@@ -1667,10 +1676,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   function drawFilmPreview(canvas: HTMLCanvasElement): void {
     const aspect = canvas.width / Math.max(1, canvas.height);
-    const width = aspect >= 1 ? 640 : Math.round(480 * aspect);
-    const height = Math.round(width / aspect);
-    if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
-    veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
+    if (aspect !== veilAspect) { veilAspect = aspect; veilPreview.style.setProperty('--fv-aspect', String(aspect)); }
+    veilSurface.setImage(canvas);
   }
   /** One film through the veil (Export film and the queue): resolves with its size; an AbortError when cancelled. */
   function renderFilm(options: { resolution: number; fps: number; samples: number; shake: number; name?: string },

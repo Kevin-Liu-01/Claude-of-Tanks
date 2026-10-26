@@ -10,6 +10,7 @@ import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 
 /**
  * Each operation's briefing plate (public/media/deploy-r1/op-0N-1280.webp, the media lane's Scene Studio stills from
@@ -143,10 +144,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   // the Deploy bar's estimate beside its key, and the objective map over the tactical map
   const estimate = document.createElement('span');
   menu.querySelector('.cot-deploy-end')?.prepend(estimate);
-  const objectives = document.createElement('canvas');
-  objectives.className = 'cot-deploy-field-obj';
-  objectives.width = objectives.height = 256;
-  menu.querySelector('.cot-deploy-field-mm')?.append(objectives);
+  // (a uiCanvas: its lazy drawer, deployObjectives.ts, sizes it to the map's box at the capped ratio)
+  const objectives = createUiCanvas(menu.querySelector('.cot-deploy-field-mm'), 'cot-deploy-field-obj').canvas;
 
   // the keys the screen answers (the direction's .hints), for a keyboard
   const keys = document.createElement('footer');
@@ -225,11 +224,11 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-facts">${host.flag(op.enemy)}${host.rules([['map', t(`map.${op.mapId}`)], ['clock', op.clock]])}` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
       `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span></div>` +
-      `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async">` +
-      `<canvas width="256" height="256"></canvas></div>` +
+      `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async"></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;
-    const canvas = plateBrief.querySelector('canvas');
-    if (!canvas) return;
+    const mm = plateBrief.querySelector('.cot-deploy-brief-mm');
+    if (!mm) return;
+    const canvas = createUiCanvas(mm, '').canvas;
     // the frontline's opening objectives (the drawer and its data load with the first map to draw)
     drawer ??= import('./deployObjectives.ts');
     void drawer.then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id

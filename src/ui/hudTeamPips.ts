@@ -15,6 +15,7 @@ import { iconUrl } from './icons.ts';
 import { FONT_COND } from './fonts.ts';
 import { drawObjectiveChip } from './objectiveGlyphs.ts';
 import { tokenEpoch } from './tokens/tokenSelection.ts';
+import { createUiCanvas, type UiCanvas } from './uiCanvas.ts';
 import type { ObjectiveMarker } from './minimapObjectives.ts';
 
 /** Teams larger than this read on the rosters' silhouette grid instead: the pips keep to the score plate's width. */
@@ -78,7 +79,7 @@ interface PipTank {
 }
 
 interface Pip { node: HTMLElement; own: boolean; dead: boolean | null; me: boolean; seen: number }
-interface Chip { canvas: HTMLCanvasElement; key: string }
+interface Chip { surface: UiCanvas; key: string; marker: ObjectiveMarker | null }
 
 interface TeamPipsRuntime {
   root: HTMLElement;
@@ -105,7 +106,6 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
   const pips = new Map<string, Pip>();
   const chips: Chip[] = [];
   let pass = 0, rowShown = false, chipEpoch = -1;
-  const dpr = Math.min(2, Math.max(1, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1));
 
   function refreshShown(): void {
     const shown = (rowShown && !rowHost) || chips.length > 0;
@@ -147,11 +147,10 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
     if (fits !== rowShown) { rowShown = fits; row.hidden = !fits; refreshShown(); }
   }
 
-  function paintChip(chip: Chip, marker: ObjectiveMarker): void {
-    const ctx = chip.canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  /** A chip's drawing in its CHIP_W x CHIP_H design space, stretched by uiCanvas over its box (wide or narrow). */
+  function paintChip(ctx: CanvasRenderingContext2D, marker: ObjectiveMarker | null): void {
     ctx.clearRect(0, 0, CHIP_W, CHIP_H);
+    if (!marker) return;
     drawObjectiveChip(ctx, CHIP_W / 2, CHIP_H / 2, CHIP_R, {
       side: marker.side, label: marker.label || '', progress: marker.progress ?? 0, progressSide: marker.progressSide,
       font: CHIP_FONT,
@@ -168,18 +167,22 @@ export function createTeamPips(parent: HTMLElement, rowHost?: HTMLElement): Team
       if (marker.kind !== 'zone' && marker.kind !== 'sector') continue;
       let chip = chips[count];
       if (!chip) {
-        const canvas = el('canvas', '', sectors);
-        canvas.width = Math.round(CHIP_W * dpr);
-        canvas.height = Math.round(CHIP_H * dpr);
-        chip = { canvas, key: '' };
+        const made: Chip = { surface: createUiCanvas(sectors, '', {
+          units: [CHIP_W, CHIP_H], draw: (ctx) => paintChip(ctx, made.marker),
+        }), key: '', marker: null };
+        chip = made;
         chips.push(chip);
       }
       // (the progress in 2 % steps: a capture repaints its chip about 50 times, never per frame)
       const key = `${marker.side}|${marker.label}|${Math.round((marker.progress ?? 0) * 50)}|${marker.progressSide}`;
-      if (key !== chip.key || repaintAll) { chip.key = key; paintChip(chip, marker); }
+      if (key !== chip.key || repaintAll) { chip.key = key; chip.marker = marker; chip.surface.redraw(); }
       count++;
     }
-    while (chips.length > count) chips.pop()!.canvas.remove();
+    while (chips.length > count) {
+      const gone = chips.pop()!.surface;
+      gone.dispose();
+      gone.canvas.remove();
+    }
     if (chips.length !== before) refreshShown();
   }
 

@@ -50,6 +50,7 @@ import {
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { datumAttr } from './dom.ts';
+import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
@@ -531,12 +532,22 @@ function scheduleCamoSwatchLoad(immediate = false) {
 
 /**
  * A swatch still waiting for its real paint shows the kit's skeleton (a flat quiet fill, garage.css), never a stand-in
- * pattern: the old hued stripes read as a grid of broken thumbnails (the gauntlet 10-25). The painter clears the mark.
+ * pattern: the old hued stripes read as a grid of broken thumbnails (the gauntlet 10-25). The painter clears the mark
+ * (camoSwatchPainter.ts blit); the surface stays clear until its tile arrives, so the CSS fill shows through.
  */
-function paintCamoSwatchPlaceholder(canvas: HTMLCanvasElement): void {
-  canvas.width = 128;
-  canvas.height = 44;
+function markCamoSwatchLoading(canvas: HTMLCanvasElement): void {
   canvas.dataset.loading = '';
+}
+
+/** (UI-LOCKDOWN A) a picker, band or custom-preview swatch: its exact tile (clear before it, over the skeleton) covers the
+ *  canvas's own box at min(DPR, 2), as the CSS's object-fit did over the fixed 128 x 44 store it replaces. */
+const paintCamoSwatchSurface: UiCanvasDraw = (ctx, width, height, surface) => {
+  ctx.clearRect(0, 0, width, height);
+  if (surface.image) drawImageFit(ctx, surface.image, width, height, 'cover');
+};
+
+function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
+  return uiCanvas(canvas, { draw: paintCamoSwatchSurface });
 }
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
@@ -554,7 +565,8 @@ function queueExactCamoSwatch(
 ): void {
   const version = (camoSwatchPaintVersion.get(canvas) || 0) + 1;
   camoSwatchPaintVersion.set(canvas, version);
-  paintCamoSwatchPlaceholder(canvas);
+  markCamoSwatchLoading(canvas);
+  camoSwatchSurface(canvas).setImage(null);
   scheduleCamoSwatchLoad(false).then((loaded) => {
     if (!loaded || camoSwatchPaintVersion.get(canvas) !== version) return;
     if (!swatchGateInstalled) {
@@ -2163,8 +2175,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
-        : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
+        ? `<div class="sw auto"></div><div class="cl"></div>`
+        : `<div class="sw"></div><div class="cl"></div>`;
+      createUiCanvas(card.querySelector('.sw'), '', { draw: paintCamoSwatchSurface });
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
       card.dataset.tip = (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -2688,14 +2701,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.innerHTML = picks.map((patternId, index) => {
       const label = escapeHtmlAttribute(camoPatternLabel(patternId));
       return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
+        `aria-pressed="${index === 0}" aria-label="${label}">` +
         (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
     }).join('') +
       `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
       `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
     paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
-      const canvas = button.querySelector('canvas');
-      if (canvas) paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
+      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
+      button.prepend(canvas);
+      paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
     });
   }
   paintEl.addEventListener('click', (event) => {

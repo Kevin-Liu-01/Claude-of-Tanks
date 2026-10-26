@@ -289,15 +289,18 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     get: (target, key) => (key in target ? target[key] : (...args) => { log.push([key, ...args]); }),
     set: (target, key, value) => { target[key] = value; return true; },
   });
+  // (UI-LOCKDOWN A) the plate is a uiCanvas: its store follows the box (578 px here, a 220-unit plate at 2.625), begin()
+  // sizes it and sets the plate's transform, and false (hidden) draws nothing
   const drawBackground = (layerContext) => {
     const main = [], layer = [], chromeOn = [], made = [];
-    const mmCtx = recorder(main), mmBg = { raster: true }, dpr = 2.625;
-    const draw = new Function('MM', 'mmDpr', 'mmCanvas', 'mmCtx', 'mmBg', 'drawMinimapChrome', 'document',
+    const mmCtx = recorder(main), mmBg = { raster: true }, store = { width: 578, height: 578 };
+    const surface = { shown: true, canvas: store, begin() { return this.shown; } };
+    const draw = new Function('MM', 'mmSurface', 'mmCtx', 'mmBg', 'drawMinimapChrome', 'scratchCanvas',
       `${stripTypeScriptTypes(hudSource.slice(begin, end))}\nreturn drawMinimapBackground;`)(
-      mapSize, dpr, { width: 578, height: 578 }, mmCtx, mmBg,
+      mapSize, surface, mmCtx, mmBg,
       (context) => { chromeOn.push(context === mmCtx ? 'plate' : 'layer'); },
-      { createElement: (tag) => { const canvas = { tag, getContext: () => layerContext?.(layer) ?? null }; made.push(canvas); return canvas; } });
-    return { draw, main, layer, chromeOn, made, mmBg, dpr };
+      (width, height) => { const canvas = { width, height, getContext: () => layerContext?.(layer) ?? null }; made.push(canvas); return canvas; });
+    return { draw, main, layer, chromeOn, made, mmBg, dpr: store.width / mapSize, surface, store };
   };
   let layerContext = null;
   const run = drawBackground((log) => (layerContext ??= recorder(log)));
@@ -325,6 +328,16 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   run.draw();
   assert.equal(run.chromeOn.length, 3, 'a restored layer is reused again');
   assert.equal(run.made.length, 1, 'the layer canvas is created once');
+  // a new plate store (a size step, a layout, a ratio flip) re-renders the layer at that size, and a hidden plate paints nothing
+  run.store.width = run.store.height = 440;
+  run.draw();
+  assert.deepEqual([run.made[0].width, run.made[0].height, run.chromeOn.length], [440, 440, 4],
+    'a resized plate store re-renders the layer at its size');
+  assert.deepEqual(run.layer.at(-1), ['setTransform', 440 / mapSize, 0, 0, 440 / mapSize, 0, 0]);
+  run.surface.shown = false;
+  const painted = run.main.length;
+  assert.equal(run.draw(), false, 'a hidden plate reports nothing drawn');
+  assert.equal(run.main.length, painted, 'a hidden plate draws nothing');
   // no 2D context for the layer (a canvas memory cap): the chrome draws straight onto the plate every paint
   const direct = drawBackground(null);
   direct.draw(); direct.draw();

@@ -19,6 +19,7 @@ import {
 import { camoPatternIdHash, camoPatternStreamSeed, resolveCamoVisual } from '../vehicles/materials.ts';
 import { CAMO_TILE_SPAN_M } from '../vehicles/camoWorldScale.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
+import { scratchCanvas, uiCanvasOf } from './uiCanvas.ts';
 
 // --- CAMO PICKER SECTION: swatch painter ------------------------------------
 export const CAMO_SWATCH_WIDTH = 128;
@@ -95,12 +96,7 @@ const swatchCache = new Map<string, HTMLCanvasElement>();
 function resolveCanvasFactory(sample: HTMLCanvasElement): CanvasFactory {
   if (canvasFactory) return canvasFactory;
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-    canvasFactory = (width, height) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      return canvas;
-    };
+    canvasFactory = scratchCanvas;
   } else {
     // Receipts paint through a native canvas with no document: its constructor takes (width, height).
     const Native = sample.constructor as unknown as new (width: number, height: number) => HTMLCanvasElement;
@@ -146,8 +142,12 @@ function cachedSwatch(sample: HTMLCanvasElement, recipe: CamoSwatchRecipe): HTML
   return swatch;
 }
 
+/** Show `swatch` on `canvas`: an on-screen swatch (a uiCanvas) covers its own box with it at the capped ratio; a bare
+ *  canvas (a receipt's, an offscreen copy) takes the 128 x 44 swatch itself. */
 function blit(canvas: HTMLCanvasElement, swatch: HTMLCanvasElement): void {
-  if (canvas.dataset) delete canvas.dataset.loading; // the Garage's skeleton mark (garage.ts paintCamoSwatchPlaceholder)
+  if (canvas.dataset) delete canvas.dataset.loading; // the Garage's skeleton mark (garage.ts markCamoSwatchLoading)
+  const surface = uiCanvasOf(canvas);
+  if (surface) { surface.setImage(swatch); return; }
   canvas.width = CAMO_SWATCH_WIDTH;
   canvas.height = CAMO_SWATCH_HEIGHT;
   const ctx = canvas.getContext('2d');
@@ -181,18 +181,34 @@ export function paintAutoCamoSwatch(
   canvas: HTMLCanvasElement,
   spec: FleetTankSpec,
 ): void {
+  const recipes = AUTO_PATTERNS.map((pattern) => camoSwatchRecipe(spec, pattern));
+  const key = `auto|${recipes.map((recipe) => recipe.key).join('|')}`;
+  let sheet = swatchCache.get(key);
+  if (!sheet) {
+    sheet = resolveCanvasFactory(canvas)(CAMO_SWATCH_WIDTH, CAMO_SWATCH_HEIGHT);
+    paintAutoSheet(sheet, canvas, recipes);
+    if (swatchCache.size >= SWATCH_CACHE_LIMIT) {
+      const oldest = swatchCache.keys().next().value;
+      if (oldest !== undefined) swatchCache.delete(oldest);
+    }
+    swatchCache.set(key, sheet);
+  }
+  blit(canvas, sheet);
+}
+
+const AUTO_PATTERNS = ['summer', 'desert', 'winter', 'urbanblock'];
+
+/** AUTO's contact sheet: the four seasonal families in a 2 x 2 grid over the swatch. */
+function paintAutoSheet(sheet: HTMLCanvasElement, sample: HTMLCanvasElement, recipes: readonly CamoSwatchRecipe[]): void {
   const W = CAMO_SWATCH_WIDTH, H = CAMO_SWATCH_HEIGHT;
-  if (canvas.dataset) delete canvas.dataset.loading;
-  canvas.width = W; canvas.height = H;
-  const c = canvas.getContext('2d');
+  const c = sheet.getContext('2d');
   if (!c) return;
   c.fillStyle = '#11171c';
   c.fillRect(0, 0, W, H);
-  const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
   const cellW = W / 2;
   const cellH = H / 2;
-  patterns.forEach((pattern, index) => {
-    const swatch = cachedSwatch(canvas, camoSwatchRecipe(spec, pattern));
+  recipes.forEach((recipe, index) => {
+    const swatch = cachedSwatch(sample, recipe);
     const x = (index % 2) * cellW;
     const y = Math.floor(index / 2) * cellH;
     c.drawImage(swatch, 0, 0, W, H, x, y, cellW, cellH);
