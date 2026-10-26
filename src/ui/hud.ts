@@ -797,6 +797,10 @@ const DRY_RING = 'rgba(214,120,112,0.62)';
  *  rack and the reload countdown (ringGap; critic r6: the desktop scope's countdown sat on the ring, a phone's clip
  *  touched it). */
 const SIGHT_MARK_RING_GAP = 3;
+/** How far a scope cross arm's under-stroke reaches either side of its line (paintScopeSkeleton: 2.4 px wide). */
+const SCOPE_ARM_REACH = 1.2;
+/** Where the scope's cross arms end, 1.55 radii out (the r4 short skeleton; paintScopeSkeleton). */
+const scopeArmEnd = (radius: number): number => radius * 1.55 + 3;
 /** How far the ring's stroke reaches past its radius: the dark halo under-pass, circleLw + 1.5 wide (drawReticle). */
 const RING_STROKE_REACH = 1.5;
 /** A rack shell's dark contour reaches 1.5 px past its outline; a turned outer shell (AUTOLOADER_HUD_OUTER_ROTATION)
@@ -4012,7 +4016,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.globalAlpha = scopeFadeAlpha();
     const radius = clampRetR(smoothRadPx);
     const gap = radius + 3;
-    const armEnd = radius * 1.55 + 3;
+    const armEnd = scopeArmEnd(radius);
     // the direction's optic ink (06b-sniper-optic .optic): paper lines over a graphite under-stroke, no green tint
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(5,6,8,0.55)', 2.4);
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(246,243,236,0.78)', 1.1);
@@ -4832,15 +4836,35 @@ export function initHud(bus: EventBus): HudRuntime {
     return ringGap(draw, draw.cx - halfW, top - 3, draw.cx + halfW, top + markH) < SIGHT_MARK_RING_GAP ? belowRing(draw) + 3 : top;
   }
 
-  /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included). */
+  /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included), and on the scope below its lower
+   *  cross arm too where that holds (scopeArmGap). */
   function belowRing(draw: ReticleDrawState): number {
-    return draw.circleY + draw.radius + RING_STROKE_REACH + SIGHT_MARK_RING_GAP;
+    const ring = draw.circleY + draw.radius + RING_STROKE_REACH;
+    return (lowerArmHolds(draw) ? Math.max(ring, draw.cy + scopeArmEnd(draw.radius) + SCOPE_ARM_REACH) : ring) + SIGHT_MARK_RING_GAP;
   }
 
   /** The lowest row anything set over the sight may reach: the ring's stroke, the marker's clear centre and any mark
    *  already set over the ring this frame, whichever is highest. */
   function aboveSightTop(draw: ReticleDrawState): number {
     return Math.min(draw.circleY - draw.radius - RING_STROKE_REACH, draw.cy - draw.centerClearanceRadius, draw.aboveTopY);
+  }
+
+  /**
+   * How far a box keeps from the scope's lower cross arm (paintScopeSkeleton: from the ring's gap to scopeArmEnd, its
+   * under-stroke SCOPE_ARM_REACH either side; negative where it runs through the box), on a scope over 430 px tall: the
+   * marks under the sight keep off it as off the ring (gauntlet r12: the reload time took the lower arm's place at
+   * 1280x720, 1024x600 and 900x700, the sight one arm short). The compact stack of the short windows keeps the arm's
+   * yielding: there the marks have no room under its end.
+   */
+  function scopeArmGap(draw: ReticleDrawState, x0: number, y0: number, x1: number, y1: number): number {
+    const dx = Math.max(draw.cx - SCOPE_ARM_REACH - x1, 0, x0 - draw.cx - SCOPE_ARM_REACH);
+    const dy = Math.max(draw.cy + draw.radius + 3 - y1, 0, y0 - draw.cy - scopeArmEnd(draw.radius));
+    return dx > 0 || dy > 0 ? Math.hypot(dx, dy) : -1;
+  }
+
+  /** Whether the scope's lower arm counts as the sight's furniture this frame (scopeArmGap). */
+  function lowerArmHolds(draw: ReticleDrawState): boolean {
+    return draw.sniper && h > 430;
   }
 
   /**
@@ -4865,7 +4889,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const { circleX: x, circleY: y, radius: r } = draw;
     const near = Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1));
     const far = Math.max(Math.hypot(x0 - x, y0 - y), Math.hypot(x1 - x, y0 - y), Math.hypot(x0 - x, y1 - y), Math.hypot(x1 - x, y1 - y));
-    return Math.max(near - (r + RING_STROKE_REACH), r - RING_STROKE_REACH - far);
+    const ring = Math.max(near - (r + RING_STROKE_REACH), r - RING_STROKE_REACH - far);
+    // (on a scope over 430 px tall its lower cross arm is the ring's furniture too)
+    return lowerArmHolds(draw) ? Math.min(ring, scopeArmGap(draw, x0, y0, x1, y1)) : ring;
   }
 
   /** One hollow round in the empty ink, struck through, over a dark contour. */
@@ -4958,7 +4984,8 @@ export function initHud(bus: EventBus): HudRuntime {
       // countdown and nearer than TAG_GROUP_GAP beside it, the countdown drops under the tag, so the two never read as
       // one line.
       const tag = sniperDistanceTag(view, draw);
-      if (tag && top < tag.y1 && top + height > tag.y0 && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP) {
+      // (within the marks' 3 px of the tag too: set under the lower arm, a countdown came 0.24 px under it, r12)
+      if (tag && top < tag.y1 + SIGHT_MARK_RING_GAP && top + height > tag.y0 && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP) {
         top = Math.max(top, tag.y1 + SIGHT_MARK_RING_GAP);
         // (dropping can carry it onto a ring that sits under the marker, the gun's lay off the centre)
         if (ringGap(draw, x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) top = Math.max(top, belowRing(draw));
@@ -5039,9 +5066,12 @@ export function initHud(bus: EventBus): HudRuntime {
     row.besideLeft = draw.cx + column + TAG_GROUP_GAP;
     row.bestClear = -Infinity;
     const tag = sniperDistanceTag(view, draw);
+    // (over 430 px tall the line rests a fixed step under the lower cross arm's end: under a 96 px floor it stood 8 px
+    // under the arm at 1920 and 30 to 55 px under it at 1280, 1024 and 390x844, a label off the lens, gauntlet r12)
     const rest = h <= 300 ? draw.cy + 32
       : h <= 430 ? draw.cy + 48
-        : Math.min(draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96), sniperReadoutFloor());
+        : Math.min(draw.cy + Math.max(draw.radius * 1.02 + 24,
+          scopeArmEnd(draw.radius) + SCOPE_ARM_REACH + SIGHT_MARK_RING_GAP + row.lineTop + 1), sniperReadoutFloor());
     const chip = row.chipW > 0;
     let seated = false;
     for (let i = 0; i < SNIPER_ROW_PLACES.length && !seated; i++) {
