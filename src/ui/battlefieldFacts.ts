@@ -36,10 +36,13 @@ interface BattlefieldFacts {
 }
 
 const DAY_ONLY: ReadonlySet<MapId> = new Set(['mars', 'moon']);
-/** The maps the maps-r1 manifest holds stills for; each batch the media lane lands extends it (never a fetch of the manifest). */
+/** The maps the maps-r1 manifest holds stills for (all 33 since 2026-10-26); a new battlefield joins when the media lane
+ *  films it, and falls back to the generated art until then (never a fetch of the manifest). */
 const STILLS: ReadonlySet<MapId> = new Set<MapId>([
-  'verdant', 'coastal', 'autumn', 'frontier', 'delta', 'badlands', 'monsoon', 'foundry', 'blackglass', 'copper_mesa',
-  'airfield', 'longleaf', 'mars', 'cliffbridge',
+  'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta',
+  'badlands', 'monsoon', 'alpine', 'caldera', 'foundry', 'ruinspires', 'blackglass', 'titan_gorge', 'skybridge',
+  'polders', 'copper_mesa', 'airfield', 'oasis', 'whiteout', 'orchard', 'longleaf', 'mangrove', 'saltwind',
+  'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
 
