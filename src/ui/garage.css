@@ -814,7 +814,8 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
-.cot-eqpreview :is(.metrics-heading,.summary){display:none}
+/* (at the base rules' weight and one more: they come later in this sheet and set display:block) */
+.cot-eqpreview .cot-eqtip :is(.metrics-heading,.summary){display:none}
 .cot-eqpreview .cot-eqtip:not([data-shut]) .action{display:none}
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 .cot-eqpreview .cot-eqtip[data-shut] .action{border-top:0;padding-top:0;color:var(--ink-2);text-transform:none}
