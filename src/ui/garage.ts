@@ -3655,6 +3655,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // its first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
   let deployFieldLoad: Promise<void> | null = null;
+  /** A phone's column scroll before the picker scrolled it into view (restored when the picker closes). */
+  let deployFieldColumnScroll: number | null = null;
   function openDeployField(): void {
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     if (!pop.firstChild) {
@@ -3670,10 +3672,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
     // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
     if (docked) list.scrollTop = 0;
-    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view)
+    // (the column alone: scrollIntoView also scrolled the fixed screen around it, header and Deploy bar out of view); the
+    // column returns to where it stood when the picker closes
     else requestAnimationFrame(() => {
       const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
-      if (column) column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top;
+      if (!column) return;
+      deployFieldColumnScroll ??= column.scrollTop;
+      column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top;
     });
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
@@ -3715,6 +3720,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!pop || pop.hidden) return;
     pop.hidden = true;
     for (const host of root.querySelectorAll('#cot-deploy-quick, .cot-battle-details')) host.classList.remove('is-picking');
+    if (deployFieldColumnScroll !== null) {
+      const column = root.querySelector<HTMLElement>('.cot-battle-menu-scroll');
+      if (column) column.scrollTop = deployFieldColumnScroll;
+      deployFieldColumnScroll = null;
+    }
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
   /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
