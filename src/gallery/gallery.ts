@@ -38,7 +38,7 @@ import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
-import { noticeRegion, notify, type NoticeSeverity } from '../ui/components/notice.ts';
+import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
@@ -448,11 +448,21 @@ function frameView(requestedName = 'hero'): void {
 // the turntable and photo buttons, and on a stacked page just above the dossier's actions (they ride its sticky bar,
 // where the copy and markup triggers sit)
 const stage = document.querySelector<HTMLElement>('#viewport');
-if (stage) noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
 const actions = document.querySelector<HTMLElement>('.acts');
-if (actions) noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
-// a short window lets the actions scroll with the page, so its notices stand at the window's foot
-noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
+type NoticeKit = typeof import('../ui/components/notice.ts');
+let noticeKit: Promise<NoticeKit> | null = null;
+/** The kit's notices load with the page's first notice and make their regions then (a static import made them one more
+ *  Gallery boot request: Main's 253 ruling). */
+function loadNotices(): Promise<NoticeKit> {
+  noticeKit ??= import('../ui/components/notice.ts').then((kit) => {
+    if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
+    if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
+    // a short window lets the actions scroll with the page, so its notices stand at the window's foot
+    kit.noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
+    return kit;
+  });
+  return noticeKit;
+}
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
 const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px)') : null;
 /**
@@ -462,7 +472,9 @@ const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px
  */
 const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2060').replace(/ (?=\S{1,4}$)/, '\u00a0');
 
-function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): ReturnType<typeof notify> | null {
+/** A notice's handle from the moment it is asked for: a dismissal before the kit has loaded cancels it. */
+interface GalleryNotice { dismiss(): void }
+function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): GalleryNotice | null {
   if (!visual) {
     // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
     const toast = $('#toast');
@@ -473,7 +485,13 @@ function showToast(message: string, { visual = true, severity = 'info' as Notice
   }
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
-  return notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+  let dismissed = false;
+  let shown: GalleryNotice | null = null;
+  void loadNotices().then((kit) => {
+    if (dismissed) return;
+    shown = kit.notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+  }, () => { /* the notice is lost with its module; the page goes on */ });
+  return { dismiss() { dismissed = true; shown?.dismiss(); } };
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
