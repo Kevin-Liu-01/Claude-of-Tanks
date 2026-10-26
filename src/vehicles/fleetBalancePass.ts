@@ -42,6 +42,15 @@ const TURRET_FRONT_COMPENSATION: Readonly<Record<string, number>> = Object.freez
 });
 const TURRET_FRONT_ZONE = /cheek|wedge|front|mantlet|gun_notch/i;
 
+/** Scales a turret's mantlet and gun-notch plates (KE and CE) alone. */
+function mantlet(registry: TankSpecRegistry, id: string, factor: number): void {
+  for (const plate of spec(registry, id).armor.turretPlates) {
+    if (plate.kind !== 'main' || !/mantlet|gun_notch/i.test(plate.name)) continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 function turretFront(registry: TankSpecRegistry, id: string, factor: number): void {
   for (const plate of spec(registry, id).armor.turretPlates) {
     if (plate.kind !== 'main' || !TURRET_FRONT_ZONE.test(plate.name) || /side|cupola/i.test(plate.name)) continue;
@@ -390,5 +399,60 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
   t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;
   spec(registry, 'upior').hp = 1820;
   primary(registry, 'upior', { pen100: 158, pen1000: 143, pen2000: 128 });
+}
+
+/**
+ * 2026-10-26 (259, Main's IV/VII balance round): same-tier fairness at the shown tiers IV and VII, measured by the
+ * same-tier MBT round robin on the balance range (balanceSimulation.ts: six seeds, both range ends, 120 m, the
+ * centre-of-mass aim). That aim meets a low Soviet-pattern turret on its mantlet or its sloped roof and a taller Western
+ * tank on its glacis, so the Soviet line bounced while every Western round went through.
+ * - Tier IV: the T-64BV, T-72M1, PT-91M and T-80B take a thicker mantlet, the pen to bite a Western glacis, a quicker
+ *   autoloader and hull. The FV4034's turret compensation and the Chieftain Mk 9's armour bonus, both set against the
+ *   251 tier-8 rounds, are trimmed. The C1 pre-series takes the Chieftain's round.
+ * - Tier VII: the C2 Ariete pair and the Leopard 2A5M brought Tier X armour (the 251 table) down to VII and are trimmed
+ *   to it. The C2 keeps its cadence over the C1 (arieteModernSpecs); the prototype cycles slower. The T-72B3 Sich's
+ *   weaker donor hull, the Husarz, the Wilk and the T-90 take hull.
+ * Runs after the shown-tier floors, before the tactical role balance.
+ */
+export function applySameTierFairness(registry: TankSpecRegistry): void {
+  // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
+  for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
+    primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
+    spec(registry, id).hp = 2150;
+  }
+  primary(registry, 'pt91m', { pen100: 790, pen1000: 730, pen2000: 647 });
+  primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
+  for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
+  spec(registry, 't80b').gun.aimTimeS = 1.85;
+  for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
+  cannonReload(registry, 't80b', 6.4);
+  cannonReload(registry, 'pt91m', 6.0);
+  // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round
+  turretFront(registry, 'fv4034', 0.85);
+  spec(registry, 'fv4034').hp = 2000;
+  // the Mk 9's 1.5 armour (applyFleetBalancePass) made it a protected Tier VIII MBT; at IV it keeps 1.32
+  armor(registry, 'chieftain_mk9', 0.88);
+  cannonReload(registry, 'chieftain_mk9', 7.0);
+  spec(registry, 'chieftain_mk9').hp = 2000;
+  cannonReload(registry, 't80bv', 7.4);
+  spec(registry, 't80bv').hp = 2100;
+  cannonReload(registry, 'leo2a3', 6.4);
+  cannonReload(registry, 'k1e1', 6.3);
+  primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
+  cannonReload(registry, 'c1_ariete_preserie', 6.0);
+  spec(registry, 'c1_ariete_preserie').hp = 2300;
+
+  // Tier VII: the C2 Ariete pair and the Leopard 2A5M against the modernized T-72B3/T-80U line
+  armor(registry, 'c2_ariete', 0.65);
+  spec(registry, 'c2_ariete').hp = 2400;
+  cannonReload(registry, 'c2_ariete_proto', 6.3);
+  spec(registry, 'c2_ariete_proto').gun.aimTimeS = 1.6;
+  armor(registry, 'c2_ariete_proto', 0.7);
+  cannonReload(registry, 'leo2a5m', 6.6);
+  armor(registry, 'leo2a5m', 0.7);
+  spec(registry, 't72b3_sich').hp = 2850;
+  for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
+  spec(registry, 't90').hp = 2700;
 }
 
