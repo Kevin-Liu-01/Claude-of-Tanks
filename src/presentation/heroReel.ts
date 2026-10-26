@@ -36,6 +36,9 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   const clips = [...hero.querySelectorAll<HTMLVideoElement>('video[data-reel-clip]')];
   const toggle = hero.querySelector<HTMLButtonElement>('[data-reel-toggle]');
   if (!clips.length || !autoplayAllowed()) return null;
+  // the pause control is the kit's square icon button on its opaque plate, as every loop on the page has
+  // (mediaPlayer.ts MEDIA_TOGGLE_CLASS); the markup holds it hidden until the reel shows it
+  toggle?.classList.add('cot-c-btn', 'cot-c-btn--icon');
 
   let current = -1;
   let timer = 0;

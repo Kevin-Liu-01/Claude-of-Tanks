@@ -227,7 +227,8 @@
   .cot-record-tab.has-new::after{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:var(--text-ok)}
   /* a phone's figures set the glyph over the name, so a three-up name keeps its word whole */
   .cot-service-record :is(.cot-record-outcome,.cot-record-metric){padding:var(--s3)}
-  .cot-service-record :is(.cot-record-outcome .cot-record-stat-label,.cot-record-metric .cot-c-tile__label){flex-direction:column;gap:var(--s2)}
+  .cot-service-record :is(.cot-record-outcome .cot-record-stat-label,.cot-record-metric .cot-c-tile__label,.cot-record-reason-stats .cot-record-stat-label){flex-direction:column;gap:var(--s2)}
+  .cot-record-reason-stats>div{padding-inline:var(--s3)}
   .cot-record-body{padding:var(--s4)}
   .cot-record-outcome strong{font-size:var(--fs-24)}
   .cot-record-outcome.win-rate strong{font-size:var(--fs-40)}

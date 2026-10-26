@@ -160,6 +160,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--ink-1);}
 .cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 /* the operation's fixed-width facts (clock, stars, meter) lead, so they line up row to row; the place follows and wraps */
+/* an operation's title holds one place in its row however its meta wraps (the rows share a title line) */
+body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op>span:nth-child(3){align-self:start;margin-top:var(--s2);}
 .cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s2);}
 .cot-garage .cot-deploy-op-meta>span:first-child{order:4;}
@@ -302,8 +304,9 @@ body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='
   body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{display:none;}
   body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:var(--field-rest,auto);align-content:start;}
 }
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{display:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:var(--field-rest,auto);align-content:start;}
+/* a phone's options take the rules' and the card's room (as the picker does), so the pickers under them hold still */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more :is(.cot-deploy-field,.cot-deploy-rules){display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:calc(var(--field-rest,0px) + var(--rules-rest,0px) + var(--s3));align-content:start;}
 /* beside the screen, an operation launches from its brief's one primary; a phone's rows keep their own */
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-launch{display:none;}
 /* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
@@ -385,6 +388,7 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-deploy-fiel
 .cot-garage .cot-battle-menu.open .cot-teams{flex-direction:column;align-items:flex-start;gap:0;}
 .cot-garage .cot-battle-menu.open .cot-teams button{height:34px;}
 .cot-garage .cot-battle-menu.open .cot-custom-select-trigger{min-height:40px;}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-custom-select-trigger{min-height:var(--cot-control-floor);}
 .cot-garage .cot-battle-menu.open .cot-mode-settings label{gap:0;}
 
 /* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */

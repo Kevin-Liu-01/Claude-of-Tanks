@@ -467,6 +467,8 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
    label columns */
 .cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
+/* its first line keeps an unwrapped row's height, so the label and swatches hold their place when the refusal shows */
+.cot-set-row:has(> .cot-set-refused:not([hidden]))>.cot-a11y-custom{margin-block:calc(var(--s1) / 2);}
 /* the refusal is the Custom row's inline notice: its glyph on the rows' glyph column, its text on their label column */
 .cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 0 var(--s1);}
 /* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
