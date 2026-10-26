@@ -2,7 +2,7 @@
 import { collisionFootprintContainsPoint, type CollisionRecord, type ObstacleQuery } from '../world/collision.ts';
 import { MATCH_OBJECTIVE_LAYOUTS, MATCH_MODE_ARENA_HALF_EXTENT_M } from './matchObjectiveLayouts.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
-import { createObjectiveAccess } from './matchPlacementAccess.ts';
+import { createObjectiveAccess, type ObjectiveAccess } from './matchPlacementAccess.ts';
 import { CLIFF_GRADE } from './terrainMobility.ts';
 import type { BotNavigationGrid } from './botRoutePlanner.ts';
 import {
@@ -48,6 +48,12 @@ interface PlacementOptions extends PlacementWorld {
    * dry route from both deployments), so the point the mode controller uses is the point this placement proved.
    */
   objectiveAxisM?: number | null;
+  /**
+   * (battle-spikes-253) The world's objective access built once for several modes' placements on the same world, ground,
+   * solids and anchors (world/scenery.ts fieldWorksKeepOut: it built the same navigation grid and floods for each of four
+   * modes, 170-250 ms a mode on a phone in the Garage's background build); read only, so every mode places as with its own.
+   */
+  objectiveAccess?: ObjectiveAccess | null;
 }
 /** `facing`: a spawn's heading (yaw); its hull then also needs open ground ahead (spawnFacing). */
 interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number; facing?: number }
@@ -404,7 +410,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   const axisLength = detMath.hypot(axisX, axisZ) || 1;
   const ux = axisX / axisLength, uz = axisZ / axisLength;
   const originalMiddle = { x: (anchors.alpha.x + anchors.bravo.x) * .5, z: (anchors.alpha.z + anchors.bravo.z) * .5 };
-  const access = mode === 'standard' ? null : createObjectiveAccess(options, anchors);
+  const access = mode === 'standard' ? null : options.objectiveAccess ?? createObjectiveAccess(options, anchors);
 
   /** The heading the last accepted spawn footprint faces (spawnFacing), read by `find` right after `acceptable`. */
   let acceptedFacing = 0;

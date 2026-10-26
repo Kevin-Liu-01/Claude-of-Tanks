@@ -37,6 +37,7 @@ import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type Fie
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../sim/assaultLines.ts';
 import { createMatchPlacement, deploymentClearings, matchPlacementAnchors, type MatchPlacement, type PlacementTerrain } from '../sim/matchPlacement.ts';
+import { createObjectiveAccess, type ObjectiveAccess } from '../sim/matchPlacementAccess.ts';
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
@@ -287,9 +288,13 @@ function* fieldWorksKeepOut(ctx: FieldWorksBuildContext): Generator<SceneryBuild
     const obstacles = [...ctx.obstacles, ...(ctx.trees ?? [])];
     const world = { mapId: ctx.mapId, anchors, obstacles, queryObstacles: createObstacleGrid(obstacles),
       heightField: ctx.heightField as unknown as PlacementTerrain };
+    // (battle-spikes-253; nav-perf's phone census: botRoutePlanner's grid in the Garage's background build) one objective
+    // access for every mode's placement: the same world, ground, solids and anchors, read only (matchPlacement.ts)
+    let access: ObjectiveAccess | null = null;
     for (const [mode, read] of PLACED_DISCS) {
       try {
-        for (const [x, z, r] of read(createMatchPlacement({ ...world, mode }))) discs.push([x, z, r + M]);
+        access ??= createObjectiveAccess(world, anchors);
+        for (const [x, z, r] of read(createMatchPlacement({ ...world, mode, objectiveAccess: access }))) discs.push([x, z, r + M]);
       } catch {
         // no safe placement for the mode on this world (the battle cannot start it either): its targets below stand
       }

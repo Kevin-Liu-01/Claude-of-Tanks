@@ -482,8 +482,12 @@ function frontageWalks(m: CivicMesh, area: CivicAreaPlan, plots: readonly CivicP
   }
 }
 
-/** A civic area composed from its plan: its geometry, the destructibles it adds, its veto. */
-export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle, ctx: CivicAreaContext): CivicAreaBuild {
+/**
+ * A civic area composed from its plan: its geometry, the destructibles it adds, its veto. In steps (battle-spikes-253: a
+ * square was one 368 ms task on a 4x phone's Garage background build): between its passes and each bed, paving, strip,
+ * platform, gutter and tree's litter, the props build paces.
+ */
+export function* composeCivicAreaSteps(area: CivicAreaPlan, style: RegionalCivicStyle, ctx: CivicAreaContext): Generator<void, CivicAreaBuild, void> {
   const m = new CivicMesh(ctx.ground);
   const pieces: CivicPiece[] = [];
   const census: Record<string, number> = {};
@@ -520,12 +524,15 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     }
     m.skinRing(C.x, C.z, 0, 0.45, 12, SKIN, () => granite);
   }
+  yield;
   for (const bed of area.beds) {
     composeBed(m, bed, style, pieces, census, ctx.tier);
     const r = bed.rect;
     debug.push({ pts: [r.x0, r.z0, r.x1, r.z0, r.x1, r.z1, r.x0, r.z1], col: [40, 140, 40], fill: [170, 205, 150] });
+    yield;
   }
   for (const p of area.paving) {
+    yield;
     if (p.kind === 'tiles') { census.tiles = (census.tiles ?? 0) + tileRect(m, p.rect, style, ctx.tier); continue; }
     if (p.kind === 'flags') flagRect(m, p.rect, style, p.cell ? SKIN + 0.012 : SKIN, 3, p.cell ?? 2.0);
     else if (p.kind === 'setts') settRect(m, p.rect, style.bands.sett, SKIN);
@@ -533,6 +540,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     debug.push({ pts: [p.rect.x0, p.rect.z0, p.rect.x1, p.rect.z0, p.rect.x1, p.rect.z1, p.rect.x0, p.rect.z1], col: [130, 130, 130] });
   }
   for (const [k, st] of (area.strips ?? []).entries()) {
+    yield;
     census.stripUnits = (census.stripUnits ?? 0) + stripPaving(m, st, style, ctx.tier, 50 + k);
     census.stripM = (census.stripM ?? 0) + Math.hypot(st.to[0] - st.from[0], st.to[1] - st.from[1]);
     debug.push({ pts: [st.from[0], st.from[1], st.to[0], st.to[1]], col: [150, 80, 50] });
@@ -540,6 +548,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   // (229 b3) the platforms round the trees' feet: whitewashed brick under a worn brick top, its arrises chamfered
   const wash = hexRgb(style.edging.wall.hex), topBrick = hexRgb(style.bands.sett);
   for (const pf of area.platforms ?? []) {
+    yield;
     const yaw = deg(pf.yawDeg), c = Math.cos(yaw), sn = Math.sin(yaw), g = ctx.ground(pf.x, pf.z);
     m.block(pf.x, pf.z, yaw, pf.half, pf.half, pf.height, (face) => toned(wash, pf.x + face, pf.z, 0.04, 44), { level: true, ch: 0.03, embed: 0.12 });
     const W = (u: number, v: number): [number, number] => [pf.x + u * c + v * sn, pf.z - u * sn + v * c];
@@ -554,6 +563,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     debug.push({ pts: [...W(-r, -r), ...W(r, -r), ...W(r, r), ...W(-r, r)], col: [220, 210, 190] });
   }
   if (area.frontage !== false) frontageWalks(m, area, ctx.plots, style, census, debug);
+  yield;
   // (228 r3, the blind critics: the streets' pavements "end abruptly" in "pale wedge slabs" at the square's mouths) each
   // mouth's corners paved flush: from the street's kerb line out past its widest pavement, as deep into the room as a
   // frontage walk and its gutter, so the street's dropped kerb runs on into the room's walks
@@ -577,6 +587,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
       }
     }
   }
+  yield;
   if (area.fountainRing) {
     const f = area.fountainRing;
     m.skinRing(f.x, f.z, f.r - 0.5, f.r, 56, SKIN, (k) => toned(granite, k, 6, 0.07, 37));
@@ -591,6 +602,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
         { top: g + st.rise * (k + 1), ch: 0.02, embed: 0.08 });
     }
   }
+  yield;
   // the bays: a row of paler setts, each its own stone with its joints, flush with the square (no paint)
   const bay = hexRgb(style.bands.bay);
   for (const b of area.bayMarks) {
@@ -605,6 +617,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   const gut = hexRgb(style.gutter.hex), gw = style.gutter.width / style.gutter.rows;
   const gridIron = hexRgb(style.grate.iron);
   for (const r of area.rinnen) {
+    yield;
     const dx = r.to[0] - r.from[0], dz = r.to[1] - r.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
     const P = (t: number, o: number): [number, number] => [r.from[0] + ux * t - uz * o, r.from[1] + uz * t + ux * o];
     for (let row = 0; row < style.gutter.rows; row++) {
@@ -628,6 +641,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
       census.gullies = (census.gullies ?? 0) + 1;
     }
   }
+  yield;
   // (228 r6) the manhole covers: a round cast-iron lid with its rings and its frame
   for (const c of area.covers ?? []) {
     m.skinRing(c.x, c.z, 0.31, 0.39, 20, SKIN + 0.003, (k) => toned(granite, k, c.x, 0.05, 45));
@@ -640,6 +654,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   if ((area.litterR ?? 0) > 0) {
     const leafCols = [0x6a4a22, 0x8a6a2a, 0x5a5a2a, 0x7a3e1e, 0x9a7a3a].map(hexRgb);
     for (const t of area.trees.stations) {
+      yield;
       const n = ctx.tier === 'mobile' ? 30 : 90;
       for (let i = 0; i < n; i++) {
         const h1 = civicHash(t.x * 7 + i, t.z, 61), h2 = civicHash(t.z * 5 - i, t.x, 62), h3 = civicHash(i, t.x + t.z, 63);
@@ -652,6 +667,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
       census.litter = (census.litter ?? 0) + n;
     }
   }
+  yield;
   // the trees' grates: an iron grate of concentric slots in a granite frame
   const iron = hexRgb(style.grate.iron), frame = hexRgb(style.grate.frame);
   for (const t of area.trees.stations) {
@@ -664,6 +680,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     }
     census.grates = (census.grates ?? 0) + 1;
   }
+  yield;
   // the monument's gravel octagon and its granite chain posts (the column itself is the props' destructible)
   if (area.monument) {
     const mo = area.monument, path = hexRgb(style.path.hex);
@@ -697,6 +714,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     const hx = (R.x1 - R.x0) / 2, hz = (R.z1 - R.z0) / 2;
     debug.push({ pts: [...W(-hx, -hz), ...W(hx, -hz), ...W(hx, hz), ...W(-hx, hz)], col: [200, 0, 200] });
   }
+  yield;
   census.triangles = m.triangles;
   return { geometry: m.geometry(`civic:${area.id}`), pieces, veto: area.room, vetoYaw: deg(area.roomYawDeg ?? 0), census, debug };
 }

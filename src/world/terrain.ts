@@ -4043,6 +4043,33 @@ export function makeMaskTexture(
   lawns: readonly CivicRect[] = [],
   pavedRooms: readonly CivicRect[] = [],
 ): THREE.DataTexture {
+  const steps = makeMaskTextureSteps(seedNoi, layout, landformW, waterWetnessAt, shoreDirtStart, sorWetnessAt, viaductCut,
+    lawns, pavedRooms);
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return next.value;
+  }
+}
+
+/** Rows of the mask painted between two of its steps (512 rows: eight steps). */
+const MASK_PAINT_ROWS = 64;
+
+/**
+ * The mask bake in steps (battle-spikes-253: with its splat step one 87 ms task on a desktop Verdant entry, about four
+ * times that on a phone's Garage background build): the land grid, the road raster, the paint a band of rows a step, the
+ * road layers, the stamps. The splat material's steps take them; makeMaskTexture drains them.
+ */
+function* makeMaskTextureSteps(
+  seedNoi: SimplexNoise,
+  layout: TerrainLayout,
+  landformW: HeightField['_mesaW'],
+  waterWetnessAt: HeightField['_waterWetnessAt'] | null,
+  shoreDirtStart: number | null,
+  sorWetnessAt: HeightField['_sorWetnessAt'] | null,
+  viaductCut: boolean,
+  lawns: readonly CivicRect[],
+  pavedRooms: readonly CivicRect[],
+): Generator<void, THREE.DataTexture, void> {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
   const plotWear = layout.terrain.villageWear === 'plots' ? createVillagePlotWear(layout) : null;
@@ -4068,6 +4095,7 @@ export function makeMaskTexture(
     return grid;
   }
   const landGrid = createLandGrid();
+  if (landGrid) yield;
   function landAt(x: number, z: number): number {
     const grid = landGrid;
     if (!grid) return 0;
@@ -4119,6 +4147,7 @@ export function makeMaskTexture(
     }
   }
   rasterizeRoadDistances();
+  yield;
   const px = new Uint8ClampedArray(s * s * 4);
   function paintRoadMask(x: number, z: number, i: number, j: number): void {
     const d = dist[i];
@@ -4172,8 +4201,9 @@ export function makeMaskTexture(
     }
     return false;
   }
-  function paintMaskPixels(): void {
+  function* paintMaskPixels(): Generator<void, void, void> {
     for (let tz = 0; tz < s; tz++) {
+      if (tz && tz % MASK_PAINT_ROWS === 0) yield;
       const z = (tz + 0.5) / T - HALF;
       for (let tx = 0; tx < s; tx++) {
         const x = (tx + 0.5) / T - HALF, i = tz * s + tx, j = i * 4;
@@ -4185,7 +4215,8 @@ export function makeMaskTexture(
       }
     }
   }
-  paintMaskPixels();
+  yield* paintMaskPixels();
+  yield;
   // roads lane (2026-10-10): the road layers read the road raster (dist) — build them before the shore stamp below reuses
   // that raster for its own distances (Tidegate Polders' clinker, Amberford's and Mangrove's frames were empty: every
   // texel read its distance to the water)
@@ -4207,6 +4238,7 @@ export function makeMaskTexture(
       road[i * 4 + 2] = code >> 8; road[i * 4 + 3] = code & 255;
     }
     roadLayerData = road;
+    yield;
   }
   // roads lane (2026-10-09): the road frame layer (stacked under the mask after the road layer), a texel per mask texel
   // within 14 m of any road — R G the running length of the nearest line at its nearest point (15 bits, 1/64 m, wrapping
@@ -4228,6 +4260,7 @@ export function makeMaskTexture(
       frame[i * 4 + 2] = code >> 8; frame[i * 4 + 3] = code & 255;
     }
     roadFrameData = frame;
+    yield;
   }
   if (layout.terrain.hardstands?.length) {
     stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
@@ -8195,8 +8228,9 @@ function* createSplatMaterialSteps(
   measureLayerMeans();
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
-  const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns, layout.civicGround?.paved);
+  const mask = yield* makeMaskTextureSteps(maskNoi, layout, rockMask, waterWetnessAt,
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns ?? [],
+    layout.civicGround?.paved ?? []);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);

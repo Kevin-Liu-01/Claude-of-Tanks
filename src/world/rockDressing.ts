@@ -823,10 +823,26 @@ export function boulderVariantForms(
   variant: number, noise: SimplexNoise, stream: () => () => number, hull: readonly number[], top: number,
   lithology: BoulderLithology, angular: number, mobile: boolean,
 ): { drawn: BoulderForm; collision: THREE.BufferGeometry; far: BoulderForm | null } {
+  const steps = boulderVariantFormSteps(variant, noise, stream, hull, top, lithology, angular, mobile);
+  for (;;) {
+    const next = steps.next();
+    if (next.done) return next.value;
+  }
+}
+
+/** The same forms a step each, in the same order (battle-spikes-253: a variant's two forms were 90-130 ms of one task on
+ * a 4x phone's Garage background build); the props build paces between them. */
+export function* boulderVariantFormSteps(
+  variant: number, noise: SimplexNoise, stream: () => () => number, hull: readonly number[], top: number,
+  lithology: BoulderLithology, angular: number, mobile: boolean,
+): Generator<void, { drawn: BoulderForm; collision: THREE.BufferGeometry; far: BoulderForm | null }, void> {
   const formOf = (subdiv: number): BoulderForm =>
     buildBoulderForm(variant, noise, stream(), hull, subdiv, top, boulderKindFor(lithology, variant), lithology, angular);
   const drawn = formOf(mobile ? 4 : 6);
-  return { drawn, collision: mobile ? formOf(6).geometry : drawn.geometry, far: mobile ? null : formOf(4) };
+  yield;
+  const collision = mobile ? formOf(6).geometry : drawn.geometry;
+  if (mobile) yield;
+  return { drawn, collision, far: mobile ? null : formOf(4) };
 }
 
 export function buildBoulderForm(

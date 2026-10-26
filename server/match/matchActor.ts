@@ -334,10 +334,20 @@ const BACKPRESSURE_SUSTAINED_MS = 2000;
  * (matchClient sampleInputs), so no wire signal marks the end of its cover: for ENTRY_BACKPRESSURE_GRACE_MS after the
  * WELCOME, soft pressure closes the link only after ENTRY_BACKPRESSURE_SUSTAINED_MS of continuous pressure (a dead link,
  * not a busy one: a loading client drains between its synchronous steps, which resets the clock). Stale snapshots are
- * still dropped, never queued, and the hard bound still closes at once.
+ * still dropped, never queued; the hard bound in the grace is ENTRY_BACKPRESSURE_HARD_BYTES (below).
  */
 export const ENTRY_BACKPRESSURE_GRACE_MS = 120_000;
 export const ENTRY_BACKPRESSURE_SUSTAINED_MS = 60_000;
+/**
+ * (battle-spikes-253; nav-perf's rooms census on a loaded Mac, Suzhou Creek: both seats closed "server 9" after a 13-16 s
+ * covered entry) The hard bound in the entry grace. A link's pressure reaches the actor only when its page pumps
+ * (matchHost link_pressure); a page whose own entry blocks it for seconds pumps nothing, so the actor goes on publishing
+ * against a stale low reading, and when the page frees up it forwards that backlog into the link at once: the next
+ * reading is a burst past BACKPRESSURE_HARD_BYTES that the host's own blocking made, not a dead peer. In the grace such a
+ * burst takes the soft path (the snapshot dropped, the long sustained limit's clock) and only this much closes at once,
+ * still a bound on the host's memory; after the grace the hard bound is BACKPRESSURE_HARD_BYTES again.
+ */
+export const ENTRY_BACKPRESSURE_HARD_BYTES = 8 * 1024 * 1024;
 const MAX_MESSAGES_PER_SECOND = 150;
 /**
  * The message-rate limit is a token bucket (P3b, 2026-09-29): a client sends ≈ 65 messages a second (inputs at 60 Hz
@@ -388,6 +398,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   /** The continuous soft pressure that closes this client now: longer while it is still in its entry grace. */
   const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
+  );
+  /** The buffered bytes that close this client at once: ENTRY_BACKPRESSURE_HARD_BYTES while it is in its entry grace. */
+  const hardPressureBytes = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? ENTRY_BACKPRESSURE_HARD_BYTES : BACKPRESSURE_HARD_BYTES
   );
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
@@ -904,7 +918,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     rowBudgetBytes = uplinkTargetBps > 0 ? snapshotRowBudgetBytes(clients.size, snapshotHz, uplinkTargetBps) : Infinity;
     for (const client of [...clients.keys()]) {
       const buffered = client.link.bufferedAmount;
-      if (buffered > BACKPRESSURE_HARD_BYTES) {
+      if (buffered > hardPressureBytes(client, nowMs)) {
         totals.backpressureCloses++;
         detach(client, CLOSE_REASON.BACKPRESSURE, `${buffered} bytes buffered`);
         continue;

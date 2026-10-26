@@ -19,7 +19,7 @@
 //      a finished map, vetoed: types.ts `ground`), its footprint published to the minimap.
 // Every refusal is named in the receipt (props.group.userData.landmarks); nothing is moved silently.
 import * as THREE from 'three';
-import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
+import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfileSteps, deriveRuntimeStructureShellBandsSteps } from '../structureCollision.ts';
 import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
@@ -312,7 +312,17 @@ function composeApproaches(ctx: LandmarkComposeContext, placement: LandmarkPlace
   return out;
 }
 
-/** Place the map's set pieces. A generator: a piece's build and its collision a slice each. */
+/** A derivation's steps as the landmarks' slices. */
+function* landmarkSlices<T>(steps: Generator<void, T, void>): Generator<Slice, T, void> {
+  let step = steps.next();
+  while (!step.done) {
+    yield { fine: true, progress: false, stage: 'landmarks' };
+    step = steps.next();
+  }
+  return step.value;
+}
+
+/** Place the map's set pieces. A generator: a piece's build and its collision (a height band a slice) in slices. */
 export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice, LandmarkReceipt, void> {
   const receipt: LandmarkReceipt = { pieces: [], placed: 0, skipped: 0, triangles: 0 };
   const discs = landmarkObjectiveDiscs(ctx.mapId, ctx.spawns);
@@ -423,10 +433,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         for (let i = 0; i < built.movement.length; i += MOVEMENT_PART_LIMIT) {
           movement.push(movementRecord(built.movement.slice(i, i + MOVEMENT_PART_LIMIT), placement.x, baseY, placement.z, yaw));
         }
+        // (battle-spikes-253) its shells derived a band a slice (a Verdant set piece's collision was one 444 ms slice)
+        shell = yield* landmarkSlices(deriveRuntimeStructureShellBandsSteps(solids));
         ctx.obstacles.push(...movement);
-        shell = deriveRuntimeStructureShellBands(solids);
       } else {
-        const profile = deriveRuntimeStructureCollisionProfile(solids);
+        const profile = yield* landmarkSlices(deriveRuntimeStructureCollisionProfileSteps(solids));
         appendStructureCollisionBand(ctx.obstacles, profile.contact, placement.x, baseY, placement.z, yaw).kind = 'structure';
         shell = profile.shell;
       }

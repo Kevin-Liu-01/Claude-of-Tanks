@@ -413,8 +413,29 @@ export function analyzeBattle({ readout, trace = null, observers = {}, window = 
   return {
     frames: shown.length, intervals: { ...summarizeIntervals(intervals), medianMs: round(medianMs, 1), hitchMs: round(hitchMs, 1), hitches: spikes.length },
     baseline: roundedBuckets(baseline, 0.3), heap: traced ? gcOf(events, tracedFrom) : heapOf(shown), links: linksOf(shown, readout?.links ?? []),
-    firstDraws: firstDrawsOf(shown, drawRows),
+    firstDraws: firstDrawsOf(shown, drawRows), draws: drawsOf(shown),
     spikes, longTasks, summary: summarize(spikes, longTasks), traced,
+  };
+}
+
+/**
+ * (battle-spikes-253, the draw-count lever) The rendered battle frames' draw calls, program switches and distinct
+ * programs, and the render's main-thread time (the 'post' stage: the composer's whole submission) — median and 90th
+ * percentile, and the submission per draw. Null for a readout without the draw columns.
+ */
+export function drawsOf(frames) {
+  const rendered = frames.filter((f) => f.rendered && typeof f.draws === 'number' && f.draws > 0);
+  if (!rendered.length) return null;
+  const pick = (values, q) => {
+    const sorted = values.slice().sort((a, b) => a - b);
+    return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  };
+  const stat = (values) => ({ median: round(pick(values, 0.5), 1), p90: round(pick(values, 0.9), 1) });
+  const submitMs = rendered.map((f) => f.stages?.post ?? 0);
+  return {
+    frames: rendered.length, draws: stat(rendered.map((f) => f.draws)), programSwitches: stat(rendered.map((f) => f.programSwitches ?? 0)),
+    programsUsed: stat(rendered.map((f) => f.programsUsed ?? 0)), submitMs: stat(submitMs),
+    usPerDraw: round(pick(rendered.map((f) => (f.stages?.post ?? 0) * 1000 / f.draws), 0.5), 1),
   };
 }
 
