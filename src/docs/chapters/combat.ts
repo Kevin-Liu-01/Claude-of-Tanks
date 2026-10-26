@@ -29,6 +29,7 @@ import { parseTechnicalLabels, technicalLabelsMarkup, type TechnicalLabelData } 
 import { lineChart, type ChartSeries } from './charts.ts';
 import { fleetTanks, type FleetTank } from './fleet.ts';
 import type { RichSection } from './types.ts';
+import { designationHtml } from '../designations.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -113,7 +114,7 @@ const MODULE_ICONS: Readonly<Record<string, IconId>> = {
 };
 
 function moduleTable(): string {
-  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 16 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
+  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 18 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
     + `<td class="num">${pct(MODULE_DEFS[id].damageChance)} %</td></tr>`).join('');
   return `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t('docs.combat.modulesAria'))}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.combat.col.module'))}</th><th scope="col">${esc(t('docs.combat.col.hp'))}</th>`
@@ -135,7 +136,7 @@ export function combatSections(): RichSection[] {
     overlays.push(overlay);
     return `<figure class="dm-diagram"><div class="dm-diagram__box">`
       + `<img src="/icons/${REFERENCE_TANK}_${view}_side.webp" width="1024" height="512" alt="${esc(alt)}" loading="lazy" decoding="async">`
-      + `${overlay}</div><figcaption>${esc(alt)}</figcaption></figure>`;
+      + `${overlay}</div><figcaption>${designationHtml(alt)}</figcaption></figure>`;
   };
   const overlayKey = DEFAULT_BINDINGS.hitboxOverlay;
   if (!overlayKey) throw new Error('docs: the armour overlay has no default key');

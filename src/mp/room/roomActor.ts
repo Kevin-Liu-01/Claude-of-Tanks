@@ -652,7 +652,8 @@ export class RoomActor {
       const mode: RoomMode = payload.mode === 'lan' ? 'lan' : 'private';
       const settings = isRecord(payload.settings) ? payload.settings as RoomCreateSettings : null;
       this.room = createRoom({
-        roomCode: this.roomCode, mode, creator: { id: playerId, name }, selection, settings, hostTransport: this.ports.matchHost.transport, now,
+        roomCode: this.roomCode, mode, creator: { id: playerId, name }, selection, settings, hostTransport: this.ports.matchHost.transport,
+        ...(this.ports.guards?.maxTeamSize ? { maxTeamSize: this.ports.guards.maxTeamSize } : {}), now,
       });
       this.chat = [];
       this.chatSeq = 0;

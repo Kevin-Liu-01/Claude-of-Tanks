@@ -15,10 +15,12 @@
 import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { datumAttr, datumGlyph } from './dom.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { t } from './i18n.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { createUiCanvas } from './uiCanvas.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
@@ -112,6 +114,9 @@ const WIDE = "body:is([data-cot-width='laptop'],[data-cot-width='desktop']):is([
  *  rosters, in the band the art leaves clear there (the tip stays a wide-layout part). */
 const PORTRAIT = "body[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-width='tablet'])"
   + ":is([data-cot-height='standard'],[data-cot-height='tall'])";
+/** Every portrait phone and tablet, at any height: its rows and its progress line (a 568 px tall phone kept the
+ *  landscape sheet's one-line rows, its foe column ran past its edge and the bar cut "Preparing the view", gauntlet r8). */
+const PORTRAIT_ROWS = "body[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-width='tablet'])";
 /** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
 const CARD_TEAM_MAX = 7;
 /** A side longer than this sets its short-landscape rows without the side render (responsiveSurfaces.css .team.long). */
@@ -167,7 +172,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
    scale set them 10 px at 900x700, gauntlet r4) */
 .cot-bl .rules .cot-c-chip{font-size:max(var(--battle-fs-12),var(--fs-13));}
 .cot-bl .rules .cot-c-chip :is(.kicker,.sv,.v){font-size:inherit;}
-.cot-bl .rules .gi{display:flex;color:var(--accent);}
+.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
@@ -196,6 +201,14 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
 .cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+/* (a list that scrolls shows whole rows: its height a whole number of its least rows' pitch, so the row at its foot is
+   never cut across; and its cue, the end report's chevron over a fade, while more lies below: gauntlet r8 at 568x256) */
+.cot-bl .team{--bl-row-min:min(16px,var(--bl-row-height));position:relative;}
+.cot-bl .team.scrolls:not(.cards) .rows{align-self:start;box-sizing:border-box;height:calc(var(--bl-row-inset) - var(--bl-row-gap)
+  + round(down,100% - var(--bl-row-inset) + var(--bl-row-gap),var(--bl-row-min) + var(--bl-row-gap)));}
+.cot-bl .bl-more{display:none;}
+.cot-bl .team.more:not(.cards) .rows{mask-image:linear-gradient(#000 calc(100% - 14px),transparent);}
+.cot-bl .team.more:not(.cards) .bl-more{position:absolute;left:50%;bottom:0;transform:translateX(-50%);display:flex;color:var(--ink-2);pointer-events:none;}
 .cot-bl .rows::-webkit-scrollbar{display:none}
 /* A sheet row on the HUD's strong plate (the art behind it is busy, and showed through a glass row, gauntlet r5): the
    side's ink on its outer edge, the nation's flag, the vehicle's own side render facing the other side, its name, and
@@ -289,21 +302,28 @@ ${PORTRAIT} .cot-bl .map[hidden]{display:none;}
 ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
 /* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
    would take the name's room) */
-${PORTRAIT} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;}
+${PORTRAIT_ROWS} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;--bl-row-min:32px;}
+/* (its two lines hold 32 px at the least: a long side scrolls before they squeeze, 16 px rows cut them at 320x568) */
+${PORTRAIT_ROWS} .cot-bl .team:not(.cards) .rows{grid-template-rows:repeat(var(--bl-count),minmax(var(--bl-row-min),var(--bl-row-height)));}
 /* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */
-${PORTRAIT} .cot-bl .rules{display:grid;grid-auto-flow:column;grid-template-rows:auto auto;justify-content:center;}
-${PORTRAIT} .cot-bl .rules .mode{grid-row:1;grid-column:1 / span 3;justify-self:center;}
-${PORTRAIT} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
+/* (three chips or more: the mode's on a row of its own, the rules' centred under it; two share one row, gauntlet r7) */
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden])))::before{content:'';order:1;flex-basis:100%;height:0;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))){row-gap:0;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip{margin-block:4px;}
+${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip:not(.mode){order:2;}
+${PORTRAIT_ROWS} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
   column-gap:6px;row-gap:2px;align-content:center;}
-${PORTRAIT} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}
-${PORTRAIT} .cot-bl .row .tier{display:none;}
-${PORTRAIT} .cot-bl .row :is(.fl,.sil){grid-row:1 / span 2;}
-${PORTRAIT} .cot-bl .row .sil{width:44px;height:22px;}
-${PORTRAIT} .cot-bl .team.ally .row .fl{grid-column:1;}${PORTRAIT} .cot-bl .team.ally .row .sil{grid-column:2;}
-${PORTRAIT} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
-${PORTRAIT} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT} .cot-bl .team.foe .row .sil{grid-column:2;}
-${PORTRAIT} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
-${PORTRAIT} .cot-bl .row .nm{grid-row:1;}${PORTRAIT} .cot-bl .row .cs{grid-row:2;margin:0;}
+${PORTRAIT_ROWS} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}
+${PORTRAIT_ROWS} .cot-bl .row .tier{display:none;}
+${PORTRAIT_ROWS} .cot-bl .row :is(.fl,.sil){grid-row:1 / span 2;}
+${PORTRAIT_ROWS} .cot-bl .row .sil{width:44px;height:22px;}
+${PORTRAIT_ROWS} .cot-bl .team.ally .row .fl{grid-column:1;}${PORTRAIT_ROWS} .cot-bl .team.ally .row .sil{grid-column:2;}
+${PORTRAIT_ROWS} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
+${PORTRAIT_ROWS} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT_ROWS} .cot-bl .team.foe .row .sil{grid-column:2;}
+${PORTRAIT_ROWS} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
+${PORTRAIT_ROWS} .cot-bl .row .nm{grid-row:1;}${PORTRAIT_ROWS} .cot-bl .row .cs{grid-row:2;margin:0;}
+/* (a phone up to 340 px wide gives the render's room to the names: a 138 px side left "M1A2 Abrams" 50 px, r8) */
+${PORTRAIT_ROWS}[data-cot-width-density='narrow'] .cot-bl .row .sil{display:none;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 /* (a long side's sheets keep a reading width, centred on the VS: at 1920 and up a row ran 840-1160 px with the name and
    the driver 650-1000 px apart, gauntlet r2) */
@@ -311,16 +331,16 @@ ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
    to 560 px they ended 83-830 px short of the right gutter, gauntlet r4; at the far end the two sat 650-1000 px apart,
    r2) */
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)){grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);}
-${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:var(--s4);}
-/* (the vehicle's name in a column of its own width, so the drivers beside it start on one line: each began where its
-   vehicle's name ended, gauntlet r5) */
-${WIDE} .cot-bl .team:not(.cards) .row .nm{flex:0 1 clamp(132px,7.6vw,200px);}
+/* (the driver on the row's inner edge, as the narrower layouts set it, the sheet capped to its reading width (below): a
+   mid-row column left the inner 40 % of every row empty at 1280 to 2560, gauntlet r7; at the far end of an uncapped
+   840 px sheet the two sat 650-1000 px apart, r2) */
+${WIDE} .cot-bl .team:not(.cards) .row .cs{flex:0 1 auto;margin-left:auto;}
 /* (a side's sheet as wide as its rows' reading line, on its outer gutter, the map between the two: stretched to the VS, a
    row carried 500-700 px of empty plate at 1920 and 2560, gauntlet r6) */
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team{width:100%;max-width:clamp(520px,30vw,760px);}
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.ally{justify-self:start;}
 ${WIDE} .cot-bl .teams:not(:has(>.team.cards)) .team.foe{justify-self:end;}
-${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:var(--s4);}
+${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:auto;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}
@@ -379,9 +399,9 @@ ${WIDE} .cot-bl .fbar i{height:clamp(4px,.22vw,6px);}
 ${WIDE} .cot-bl .count{font-size:clamp(15px,.78vw,20px);}${WIDE} .cot-bl .count b{font-size:clamp(24px,1.25vw,32px);}
 /* (a portrait phone's progress takes a line of its own under the stage and the share: squeezed between them it read as
    five 20 px dashes, gauntlet r3) */
-${PORTRAIT} .cot-bl .fmeta{flex-wrap:wrap;row-gap:8px;}
-${PORTRAIT} .cot-bl .fbar{order:3;flex-basis:100%;}
-${PORTRAIT} .cot-bl .fpct{margin-left:auto;}
+${PORTRAIT_ROWS} .cot-bl .fmeta{flex-wrap:wrap;row-gap:8px;}
+${PORTRAIT_ROWS} .cot-bl .fbar{order:3;flex-basis:100%;}
+${PORTRAIT_ROWS} .cot-bl .fpct{margin-left:auto;}
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .fbar i b{transition-duration:1ms;}}
 `;
 
@@ -483,23 +503,25 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.className = 'cot-bl';
   root.setAttribute('role', 'status');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
+  // (each side's cue at its foot while more of its list lies below, as the end report's columns: .team.more)
+  const MORE_CUE = `<div class="bl-more" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</div>`;
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div></div>` +
     `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
-    `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
-    `<div class="rules"><span class="cot-c-chip mode"><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
-    `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
-    `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v num"></span></span>` +
+    `<main class="briefing"><div class="cap"><h1 class="mapname"${datumAttr('map-name')}></h1>` +
+    `<div class="rules"><span class="cot-c-chip mode"${datumAttr('mode-name')}><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
+    `<span class="cot-c-chip sides" hidden${datumAttr('team-counts')}><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
+    `<span class="cot-c-chip clock" hidden${datumAttr('clock')}><span class="gi">${datumGlyph('clock', 16)}</span><span class="v num"></span></span>` +
     `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
-    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
+    `<div class="side"><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
-    `<div class="rows"></div></div>` +
+    `<div class="rows"></div>${MORE_CUE}</div>` +
     `<div class="vs">${t('battleLoad.vs')}</div>` +
     `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
-    `<div class="rows"></div></div>` +
+    `<div class="rows"></div>${MORE_CUE}</div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta">` +
+    `<div class="foot" aria-live="polite"><div class="fmeta"${datumAttr('load-progress')}>` +
     `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st">${t('battleLoad.loading')}</span></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
     `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
@@ -573,15 +595,19 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
-  const objCanvas = requiredElement<HTMLCanvasElement>(root, '.map .obj');
-  let objectivesPass = 0;
+  // the objectives over the plan: a uiCanvas the Deploy screen's lazy drawer draws (deployObjectives.ts)
+  const objCanvas = createUiCanvas(requiredElement<HTMLElement>(root, '.map .mp'), 'obj').canvas;
+  objCanvas.setAttribute('aria-hidden', 'true');
+  let objectivesPass = 0, objectivesDrawn = false;
   /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
    *  laid out); a later entry supersedes this one, and an entry without a mode clears them. */
   function drawObjectives(mapId: string | undefined, modeId: string | undefined): void {
     const pass = ++objectivesPass;
-    if (!mapId || !modeId) { objCanvas.getContext?.('2d')?.clearRect(0, 0, objCanvas.width, objCanvas.height); return; }
+    // (an entry without a mode clears the plan through the same drawing: empty, it draws nothing at any box)
+    if ((!mapId || !modeId) && !objectivesDrawn) return;
+    objectivesDrawn = true;
     void import('./deployObjectives.ts').then(({ drawDeployObjectives }) => {
-      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId, modeId); };
+      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId ?? '', modeId ?? ''); };
       if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw); else draw();
     }, () => { /* the plan stays bare */ });
   }
@@ -601,10 +627,21 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
   const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
   const foeRows = requiredElement<HTMLDivElement>(root, '.team.foe .rows');
+  /** A side whose list scrolls shows its cue while more lies below (a short window's long side, gauntlet r8 at 568x256:
+   *  the sixth of fourteen rows sat cut at the list's foot, nothing saying the list scrolls). */
+  const markMore = (list: HTMLElement): void => {
+    const scrolls = list.scrollHeight - list.clientHeight > 2;
+    list.parentElement?.classList.toggle('scrolls', scrolls);
+    list.parentElement?.classList.toggle('more', scrolls && list.scrollHeight - list.scrollTop - list.clientHeight > 2);
+  };
+  // (a list's box or its rows changing say again: fillTeam observes its list anew, whose first word follows the build)
+  const moreObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => { for (const entry of entries) markMore(entry.target as HTMLElement); }) : null;
   for (const [list, label] of [[allyRows, t('battleLoad.allies')], [foeRows, t('battleLoad.enemies')]] as const) {
     list.tabIndex = 0;
     list.setAttribute('role', 'region');
     list.setAttribute('aria-label', label);
+    list.addEventListener?.('scroll', () => markMore(list), { passive: true });
   }
   const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
   const foeN = requiredElement<HTMLSpanElement>(root, '.team.foe .n');
@@ -694,6 +731,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     if (!rows.length && reserved && host.dataset.pendingSlots === String(reserved) && host.childElementCount === reserved) return;
     if (reserved) host.dataset.pendingSlots = String(reserved); else delete host.dataset.pendingSlots;
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
+    moreObserver?.unobserve(host);
+    moreObserver?.observe(host);
     // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise; a window under
     // CARD_MIN_WIDTH sets the wide composition's sheets as a long side does, where a card cut its driver (gauntlet r2 and
     // r3: about 7 characters at 1280, 10 at 1440)
@@ -794,14 +833,22 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // (the mode's own glyph, as every chip beside it wears one: gauntlet r4)
       const modeGlyph = info.modeId ? GAME_MODE_DEFINITIONS[normalizeGameMode(info.modeId)]?.icon : '';
       modeGlyphEl.innerHTML = modeGlyph ? uiIconSVG(modeGlyph, 16) : '';
+      // (the glyph in the mode's own hue, components.css data-mode-tone: owner 2026-10-25)
+      const modeChip = modeGlyphEl.parentElement;
+      if (modeChip && info.modeId) modeChip.dataset.modeTone = normalizeGameMode(info.modeId);
+      else if (modeChip) delete modeChip.dataset.modeTone;
       // the art a covered entry already staged stays (the loading owner's first show names the same battlefield)
       const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
       if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
       stagedArt = artKey;
-      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
+      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next). A room whose map is
+      // not chosen yet names it 'none' (the art's own word for no map): its slot keeps its frame and asks for nothing
+      // until the map is known (2026-10-25: /minimaps/none.webp was a 404 and a console error in every room).
+      const planId = info.biome && info.biome !== 'none' ? info.biome : undefined;
       mapEl.hidden = !info.biome;
-      if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
-      drawObjectives(info.biome, info.modeId);
+      if (planId) mapImg.src = minimapAssetUrl(planId);
+      else mapImg.removeAttribute('src');
+      drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);

@@ -89,10 +89,19 @@ const PROBE = `(() => {
     new PerformanceObserver((list) => { for (const e of list.getEntries()) rec.longtasks.push({ start: e.startTime, duration: e.duration }); })
       .observe({ type: 'longtask', buffered: true });
   } catch (_) {}
-  // every rendered frame longer than 33 ms (two refreshes at 60 Hz), from the animation callbacks' own clock
+  // (UI-LOCKDOWN A) each canvas's context type, so the canvas check tells the UI's canvases from the 3D views
+  rec.contextKind = new WeakMap();
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    const context = getContext.call(this, type, ...rest);
+    if (context && !rec.contextKind.has(this)) rec.contextKind.set(this, String(type));
+    return context;
+  };
+  // every animation-callback interval past one refresh and a half (25 ms: at least one dropped frame at 60 Hz); the
+  // census counts the 33 ms ones (two refreshes) and the dropped frames (UI-LOCKDOWN D/E, 2026-10-25)
   rec.frames = [];
   let lastFrame = 0;
-  const frameTick = (t) => { if (lastFrame && t - lastFrame > 33) rec.frames.push({ start: lastFrame, duration: t - lastFrame });
+  const frameTick = (t) => { if (lastFrame && t - lastFrame > 25) rec.frames.push({ start: lastFrame, duration: t - lastFrame });
     lastFrame = t; requestAnimationFrame(frameTick); };
   requestAnimationFrame(frameTick);
 })();`;
@@ -128,12 +137,34 @@ async function target(page, selector, index = 0) {
 /** Press a control the way the profile does: a mouse click, or a tap on a touch screen. */
 async function press(page, selector, touch) {
   const handle = await page.waitForSelector(selector, { timeout: 15000 });
-  await handle.evaluate((el) => el.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  // the press lands on the target, never on a bar or sheet over it: a phone tap on the Gallery's second dossier tab
+  // went to whatever covered the tab's centre and left the Gallery (canvas-ui's phone run, 2026-10-25). Covered at
+  // `nearest`, the target is centred and checked again; still covered, the press throws instead of pressing that.
+  const cover = (block) => handle.evaluate((el, b) => {
+    el.scrollIntoView({ block: b, inline: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!hit || hit === el || el.contains(hit) || hit.contains(el)) return null;
+    return `${hit.tagName.toLowerCase()}${hit.id ? `#${hit.id}` : ''}${typeof hit.className === 'string' && hit.className ? `.${hit.className.trim().split(/\s+/).join('.')}` : ''}`;
+  }, block);
+  const covered = await cover('nearest') && await cover('center');
+  if (covered) throw new Error(`${selector} is covered by ${covered}`);
   if (touch) await handle.tap();
   else await handle.click();
 }
 
 const expression = (body) => `(() => { const shown = window.__click.shown; const visible = window.__click.visible; return (${body}); })()`;
+// --gate (2026-10-25): the game document loads as a player's does, with its entry gate, which the warm-up presses. Its
+// press opens the audio device (main.ts prepareAudioForEntry), so no measured press pays that (under ?nogate the first
+// press anywhere does: a Settings press read 262 ms of lazyAudio unlockContext).
+if (flag('gate')) {
+  DOCS.game = { url: '/', ready: `window.__GAME_READY === true && !!document.querySelector('#cot-boot-gate.on')`,
+    after: async (page) => {
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(expression(GARAGE), { timeout: 240000, polling: 200 });
+      await new Promise((done) => setTimeout(done, 2000));
+    } };
+}
 
 /** Wait for a page expression (polled), bounded. */
 async function waitFor(page, body, timeout = 120000, polling = 100) {
@@ -191,14 +222,17 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   // the press's task and its next two frames: what the layout tracer (when on) attributes
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
   const layoutReads = await page.evaluate(() => { window.__click.layoutArmed = false; return window.__click.layoutReads.splice(0); }).catch(() => []);
-  if (profiler) {
+  // --cpu-profile-full: the profile runs to the end of the census window (the work that lands after the press too: a
+  // background build's slices the press waited behind), stopped below
+  const stopProfile = async () => {
     const { profile } = await profiler.send('Profiler.stop').catch(() => ({ profile: null }));
     if (profile) {
       mkdirSync(cpuProfile.dir, { recursive: true });
       writeFileSync(join(cpuProfile.dir, `${cpuProfile.name}.cpuprofile`), JSON.stringify(profile));
     }
     await profiler.detach().catch(() => {});
-  }
+  };
+  if (profiler && !flag('cpu-profile-full')) await stopProfile();
   const stamp = () => page.evaluate(() => performance.now());
   let shownAt = null;
   let doneAt = null;
@@ -212,6 +246,8 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
   }
   await settle(page, quietMs);
   const censusData = census ? await censusWindow(page, t0, consoleFrom) : null;
+  if (profiler && flag('cpu-profile-full')) await stopProfile();
+  if (censusData && flag('canvas')) censusData.canvas = await canvasCheck(page);
   if (heap && censusData) censusData.alloc = await allocationWindow(heap, censusData.windowMs);
   const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
@@ -287,7 +323,10 @@ async function censusWindow(page, t0, consoleFrom) {
     const profiler = window.__cotProfiler;
     window.__cotProfiler = null;
     const trace = profiler ? await profiler.stop().catch(() => null) : null;
-    const frames = rec.frames.filter((f) => f.start + f.duration >= from && f.start <= end);
+    const late = rec.frames.filter((f) => f.start + f.duration >= from && f.start <= end);
+    const frames = late.filter((f) => f.duration > 33);
+    // the refreshes a late interval skipped (60 Hz): 26-41 ms one, 42-58 ms two, and so on
+    const dropped = late.reduce((sum, f) => sum + Math.max(1, Math.round(f.duration / (1000 / 60)) - 1), 0);
     const seen = new Set();
     const longs = rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= end && t.duration > 50
       && !seen.has(t.start) && seen.add(t.start));
@@ -320,7 +359,7 @@ async function censusWindow(page, t0, consoleFrom) {
     };
     return {
       windowMs: Math.round(end - from), profiler: !!trace, profilerError: window.__cotProfilerError ?? null,
-      frames33: frames.length, worstFrame: Math.round(Math.max(0, ...frames.map((f) => f.duration))),
+      frames33: frames.length, worstFrame: Math.round(Math.max(0, ...late.map((f) => f.duration))), droppedFrames: dropped,
       frames: frames.sort((a, b) => b.duration - a.duration).slice(0, 6).map((f) => ({ at: Math.round(f.start - from), ms: Math.round(f.duration) })),
       long50: longs.length, worstLong: Math.round(Math.max(0, ...longs.map((t) => t.duration))),
       longs: longs.sort((a, b) => b.duration - a.duration).slice(0, 6).map((t) => ({ at: Math.round(t.start - from), ms: Math.round(t.duration),
@@ -333,8 +372,82 @@ async function censusWindow(page, t0, consoleFrom) {
   const logged = (page.__consoleLog ?? []).slice(consoleFrom)
     .filter((m) => !/Cross-Origin-Opener-Policy header has been ignored, because the URL's origin was untrustworthy/.test(m.text));
   return { ...window_, consoleErrors: logged.filter((m) => m.type === 'error').map((m) => m.text).slice(0, 8),
-    consoleWarnings: logged.filter((m) => m.type === 'warn').length };
+    consoleWarnings: logged.filter((m) => m.type === 'warn').length,
+    consoleWarningTexts: logged.filter((m) => m.type === 'warn').map((m) => m.text).slice(0, 8) };
 }
+
+/** (UI-LOCKDOWN A) The device-pixel cap a UI canvas's backing store may take (src/ui/uiCanvas.ts). */
+const CANVAS_CAP = 2;
+/** Every on-screen UI canvas with a context (not a WebGL view: the 3D renderers own their resolution; not a canvas
+ *  never given a context: it holds no store) against the canvas rule: shown,
+ *  its backing store is its CSS box times min(devicePixelRatio, CANVAS_CAP) within a pixel (larger wastes memory and
+ *  compounds, smaller blurs); hidden, it holds at most one pixel. */
+const CANVAS_CHECK = `(() => {
+  const rec = window.__click, dpr = devicePixelRatio, scale = Math.min(dpr, ${CANVAS_CAP});
+  // the canvas and up to three ancestors (to the first with an id): an id-less canvas still names where it lives
+  const label = (el) => { const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.') : '';
+    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : ''); };
+  const describe = (node) => { const path = [label(node)];
+    for (let el = node.parentElement, n = 0; el && el !== document.body && n < 3 && !path[0].includes('#'); el = el.parentElement, n++) path.unshift(label(el));
+    return path.join(' > '); };
+  // (canvas-ui, 2026-10-25) a primitive's canvas carries data-ui-canvas: a shown 2D canvas without it was made outside it
+  const violations = [], outside = []; let checked = 0;
+  for (const canvas of document.querySelectorAll('canvas')) {
+    const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
+    // a WebGL view owns its resolution; a canvas never given a context allocates no store (a swatch not yet painted)
+    if (!kind || /webgl/i.test(kind)) continue;
+    checked++;
+    const box = canvas.getBoundingClientRect();
+    const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
+    if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
+    const wantW = box.width * scale, wantH = box.height * scale;
+    if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
+    else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
+  }
+  return { checked, violations, outside: [...new Set(outside)] };
+})()`;
+const canvasCheck = (page) => page.evaluate(CANVAS_CHECK).catch((cause) => ({ error: firstLine(cause) }));
+
+/** (UI-LOCKDOWN A) A surface's canvases checked at its start, after each of its interactions, after three resizes and
+ *  their return, and across a device-pixel-ratio flip and back: one recorded sample per check. */
+const CANVAS_RESIZES = { desktop: [[1280, 800], [1024, 768], [1680, 1050]], phone: [[360, 780], [414, 896], [844, 390]] };
+const canvasProbe = async (page, ctx, surface, interactions) => {
+  // a retained canvas releases or redraws within its 0.5 s backstop sweep after it hides or shows (canvas-ui, 253)
+  const record = async (step) => { await sleep(700); await settle(page, 300, 4000);
+    ctx.record(`canvas:${surface}:${step}`, { canvas: await canvasCheck(page) }); };
+  const home = new URL(page.url()).pathname;
+  await record('start');
+  for (let n = 0; n < interactions.length; n++) {
+    try { await interactions[n](); } catch (cause) { ctx.record(`canvas:${surface}:act${n}`, { error: firstLine(cause) }); continue; }
+    // a press that left the surface is recorded and undone: the steps after it check this surface, not another page
+    const now = new URL(page.url()).pathname;
+    if (now !== home) {
+      ctx.record(`canvas:${surface}:act${n}`, { error: `left ${home} for ${now}` });
+      await page.goBack({ waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+      await sleep(1500);
+      continue;
+    }
+    await record(`act${n}`);
+  }
+  const base = page.viewport();
+  for (const [width, height] of CANVAS_RESIZES[base.isMobile ? 'phone' : 'desktop']) {
+    await page.setViewport({ ...base, width, height });
+    await sleep(800);
+    await record(`resize-${width}x${height}`);
+  }
+  await page.setViewport(base);
+  await sleep(800);
+  await record('resize-back');
+  const flipped = base.deviceScaleFactor >= 2 ? 1 : 2;
+  await page.setViewport({ ...base, deviceScaleFactor: flipped });
+  await sleep(800);
+  await record(`dpr-${flipped}`);
+  await page.setViewport(base);
+  await sleep(800);
+  await record(`dpr-${base.deviceScaleFactor}`);
+};
 
 const pressKey = (page, key) => page.keyboard.press(key);
 const tapOrClick = (page, selector, { touch }) => press(page, selector, touch);
@@ -389,6 +502,14 @@ const ROSTER_SHOWN = `document.querySelector('[data-click-target].sel, .cot-card
 const ROSTER_DONE = `(() => { const id = document.querySelector('[data-click-target]')?.dataset.specId
   || document.querySelector('.cot-cards .cot-card.sel')?.dataset.specId; const list = window.__GARAGE_SWITCH;
   const last = Array.isArray(list) ? list[list.length - 1] : null; return !!(last && last.id === id && last.revealMs != null); })()`;
+// (UI-LOCKDOWN E) the screens the memory-cycle path opens and closes
+const MEMORY_CYCLES = 20;
+const MEMORY_SCREENS = [
+  { id: 'settings', open: '.cot-settings-slot .cot-gear, [data-nav=settings]', shown: `shown('.cot-settings.open')`, close: closeSettings },
+  { id: 'deploy', open: '[data-nav=deploy], .cot-battle-mode', shown: `shown('#cot-battle-menu.open')`, close: closeDeploy },
+  { id: 'record', open: '.cot-record-trigger', shown: `shown('#cot-record-modal')`,
+    close: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); } },
+];
 // (lockdown-251) roster-pick: the riding-station tanks (the RWS and M2 stations' sweeps), each between tanks far from it
 // in the roster so a neighbour prebuild never builds the next pick ahead
 const PICK_IDS = ['m1a1_abrams_hc', 't90m', 'm60a2', 'leo2a6', 'm1a1_abrams_aim', 'k2_black_panther', 'm551_sheridan', 'type10',
@@ -515,6 +636,89 @@ export const PATHS = [
             return !!(last && last.id === ${JSON.stringify(id)} && last.revealMs != null); })()`, doneTimeoutMs: 60000, quietMs: 600 });
         await sleep(1500);
       }
+    } },
+  // (UI-LOCKDOWN E) memory flat across 20 open/close cycles of each Garage screen: the JS heap after a forced collection
+  // and the DOM node count (Performance.getMetrics, detached nodes included), after two warm-up cycles and after twenty
+  { id: 'memory-cycle', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const cdp = await page.createCDPSession();
+      await cdp.send('Performance.enable');
+      const measureMemory = async () => {
+        for (let k = 0; k < 2; k++) await cdp.send('HeapProfiler.collectGarbage');
+        const { usedSize } = await cdp.send('Runtime.getHeapUsage');
+        const { metrics } = await cdp.send('Performance.getMetrics');
+        const metric = (name) => metrics.find((m) => m.name === name)?.value ?? null;
+        return { heapBytes: usedSize, nodes: metric('Nodes'), listeners: metric('JSEventListeners') };
+      };
+      for (const screen of MEMORY_SCREENS) {
+        if (!await page.evaluate(expression(`[...document.querySelectorAll(${JSON.stringify(screen.open)})].some((el) => __click.visible(el))`)).catch(() => false)) {
+          ctx.record(`memory:${screen.id}`, { error: 'no control on this layout' });
+          continue;
+        }
+        const cycle = async () => {
+          await tapOrClick(page, await target(page, screen.open), ctx);
+          await waitFor(page, screen.shown, 30000);
+          await settle(page, 300, 4000);
+          await screen.close(page, ctx);
+          await settle(page, 300, 4000);
+        };
+        try {
+          for (let k = 0; k < 2; k++) await cycle();
+          const before = await measureMemory();
+          for (let k = 0; k < MEMORY_CYCLES; k++) await cycle();
+          const after = await measureMemory();
+          const sample = { cycles: MEMORY_CYCLES, before, after, heapDeltaBytes: after.heapBytes - before.heapBytes,
+            nodeDelta: (after.nodes ?? 0) - (before.nodes ?? 0), listenerDelta: (after.listeners ?? 0) - (before.listeners ?? 0) };
+          ctx.record(`memory:${screen.id}`, sample);
+          console.log(`  memory:${screen.id.padEnd(10)} heap ${(sample.heapDeltaBytes / 1048576).toFixed(2)} MB  nodes ${sample.nodeDelta}  listeners ${sample.listenerDelta}`
+            + ` over ${MEMORY_CYCLES} cycles`);
+        } catch (cause) {
+          ctx.record(`memory:${screen.id}`, { error: firstLine(cause) });
+          console.log(`  memory:${screen.id} ERROR ${firstLine(cause)}`);
+          await restoreGarage(page, ctx);
+        }
+      }
+      await cdp.detach().catch(() => {});
+    } },
+  // (UI-LOCKDOWN A) the canvas rule over the Garage and its menus, then the Gallery (canvasProbe)
+  { id: 'canvas-garage', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector) => async () => { await tapOrClick(page, await target(page, selector), ctx); };
+      await canvasProbe(page, ctx, 'garage', [
+        pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'), pressOn('.cot-car-arrow.next'),
+        pressOn('.cot-settings-slot .cot-gear, [data-nav=settings]'), () => closeSettings(page, ctx),
+        () => openDeploy(page, ctx), pressOn('#cot-battle-menu .cot-battle-choice[data-game-mode], #cot-battle-menu .cot-battle-choice'),
+        () => closeDeploy(page, ctx),
+        pressOn('.cot-record-trigger'), async () => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000); },
+      ]);
+    } },
+  // the battle's HUD canvases (the minimap, the sights, the aerial HUD): a solo battle, its pause menu and live frames
+  { id: 'canvas-battle', doc: 'battle', reps: 1,
+    script: async (page, i, run, ctx) => {
+      await openDeploy(page, ctx);
+      await tapOrClick(page, await target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), ctx);
+      await waitFor(page, `!!window.__BATTLE_REVEAL`, 240000);
+      await settle(page, 800, 8000);
+      const wait = () => sleep(900);
+      const pause = async () => { await pressKey(page, 'Escape'); await waitFor(page, `shown('.cot-settings.open') || shown('.cot-pause')`, 10000).catch(() => {}); };
+      const resume = async () => { await closeSettings(page, ctx).catch(() => pressKey(page, 'Escape')); await sleep(600); };
+      await canvasProbe(page, ctx, 'battle-hud', [wait, wait, pause, resume, wait, wait, pause, resume, wait, wait]);
+      await page.evaluate(() => window.__DEBUG.slayEnemies());
+      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000).catch(() => {});
+      await canvasProbe(page, ctx, 'battle-end', []);
+      await tapOrClick(page, await target(page, '.cot-es.show [data-es-action="garage"]'), ctx).catch(() => {});
+      await waitFor(page, GARAGE_BACK, 120000).catch(() => {});
+    } },
+  { id: 'canvas-gallery', doc: 'gallery', reps: 1,
+    script: async (page, i, run, ctx) => {
+      const pressOn = (selector, n = 0) => async () => { await tapOrClick(page, await target(page, selector, n), ctx); await sleep(600); };
+      await canvasProbe(page, ctx, 'gallery', [
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 1), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 4),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 7),
+        pressOn('#dossierTabs [role=tab][data-tab]', 1), pressOn('#dossierTabs [role=tab][data-tab]', 2), pressOn('#dossierTabs [role=tab][data-tab]', 0),
+        pressOn('[data-mode="armor"]'), pressOn('[data-mode="appearance"]'),
+        pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 10), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 13),
+      ]);
     } },
   // the Garage at rest: no frame or task may stall while nobody touches it
   { id: 'garage-idle', doc: 'game', reps: 1,
@@ -673,6 +877,8 @@ async function runPath({ page, path, reps, touch, log, profileDir = null, outDir
   const samples = [];
   const ctx = {
     touch,
+    // a sample a script measures itself (the memory cycles), stored beside the presses
+    record: (kind, data, i = 0) => { samples.push({ kind, i, ...data }); },
     programs: async (name) => {
       if (!outDir) return;
       const list = await page.evaluate(PROGRAM_KEYS).catch(() => null);
@@ -778,7 +984,11 @@ async function main() {
     page.on('console', (message) => {
       const type = message.type();
       if (type === 'error' || type === 'warn' || type === 'warning') {
-        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: message.text().slice(0, 240) });
+        // the script position that logged it (a browser intervention such as Canvas2D's readback notice names its caller
+        // here, not in its text)
+        const frame = message.stackTrace?.()?.[0] ?? message.location?.();
+        const at = frame?.url ? ` @ ${frame.url.replace(/^.*\/assets\//, '')}:${(frame.lineNumber ?? 0) + 1}:${(frame.columnNumber ?? 0) + 1}` : '';
+        page.__consoleLog.push({ type: type === 'error' ? 'error' : 'warn', text: `${message.text().slice(0, 240)}${at}` });
       }
     });
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');

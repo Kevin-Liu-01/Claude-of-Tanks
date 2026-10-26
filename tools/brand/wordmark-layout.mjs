@@ -14,6 +14,8 @@ const face = (weight, file) => `@font-face{font-family:'W';font-weight:${weight}
   readFileSync(join(root, 'public/fonts/chakra-petch', file)).toString('base64')}) format('woff2')}`;
 
 // The direction's .wm, verbatim but for the family name; the stacked card centres the same three parts on one axis.
+// CSS letter-spacing trails the last letter: each word gives its own tracking back (.w's negative end margin), so a
+// line centres on its ink and the rules sit evenly round the "of" (the 2026-10-25 gauntlet measured them 4 px apart).
 const css = `${face(700, 'ChakraPetch-Bold-Latin.woff2')}${face(500, 'ChakraPetch-Medium-Latin.woff2')}
 body{margin:0;font-size:1000px}
 .wm{display:inline-flex;align-items:center;gap:.36em;font:700 1em/1 'W';text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
@@ -22,7 +24,8 @@ body{margin:0;font-size:1000px}
 .stack{display:inline-flex;flex-direction:column;align-items:center;gap:.08em;font:700 1em/1 'W';text-transform:uppercase;letter-spacing:.04em}
 .stack .of{display:flex;align-items:center;gap:.26em;font:500 .52em/1 'W';letter-spacing:.16em}
 .stack .of::before,.stack .of::after{content:'';width:2.2em;height:1.5px;background:currentColor}
-i.b{display:inline-block;width:0;height:0;vertical-align:baseline}`;
+i.b{display:inline-block;width:0;height:0;vertical-align:baseline}
+.w{margin-inline-end:-.04em}.of .w{margin-inline-end:-.16em}`;
 const html = `<style>${css}</style>
 <div id="h"><span class="wm"><span class="w">Claude<i class="b"></i></span><span class="of"><span class="w">of<i class="b"></i></span></span><span class="w">Tanks<i class="b"></i></span></span></div>
 <div id="s"><span class="stack"><span class="w">Claude<i class="b"></i></span><span class="of"><span class="w">of<i class="b"></i></span></span><span class="w">Tanks<i class="b"></i></span></span></div>`;
@@ -56,12 +59,11 @@ try {
         return { width: parseFloat(s.width), height: parseFloat(s.height) };
       });
       const ofBox = of.getBoundingClientRect();
-      const ofWord = of.querySelector('.w').getBoundingClientRect();
       return {
         width: box.width, height: box.height, glyphs,
         rules: [
           { x: ofBox.left - box.left, y: ofBox.top - box.top + ofBox.height / 2, ...rules[0] },
-          { x: ofWord.right - box.left + parseFloat(getComputedStyle(of).columnGap), y: ofBox.top - box.top + ofBox.height / 2, ...rules[1] },
+          { x: ofBox.right - box.left - rules[1].width, y: ofBox.top - box.top + ofBox.height / 2, ...rules[1] },
         ],
       };
     };

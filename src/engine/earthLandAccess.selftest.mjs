@@ -54,7 +54,7 @@ const map = here('../world/map.ts');
 const build = map.slice(map.indexOf('export async function createMapAsync('));
 const started = build.indexOf('const earthLandReady = skyDrawsEarth(');
 const awaited = build.indexOf('if (earthLandReady) await earthLandReady;');
-const assembled = build.indexOf('const world = assembleWorld(');
+const assembled = build.indexOf('const world = await assembleWorldPaced(');
 assert.ok(started > 0 && started < build.indexOf("await step('Surveying terrain'"), 'the load starts with the build, beside the terrain');
 assert.ok(awaited > started && awaited < assembled, 'and is awaited before the world is assembled');
 
@@ -85,7 +85,7 @@ function moonBuild(earthLand) {
     finishHorizonRingAsync: async () => {},
     createHeightField: () => field, createHeightFieldAsync: async () => field, requireTerrainRoot: (value) => value,
     buildTerrainMeshesAsync: async () => ({ userData: {} }), createVegetationAsync: async () => ({}), createPropsAsync: async () => ({}),
-    assembleWorld: () => { events.push('assembled'); return { mapId: 'moon' }; },
+    assembleWorldPaced: async () => { events.push('assembled'); return { mapId: 'moon' }; },
   };
   const run = new Function(...Object.keys(dependencies), stripTypeScriptTypes(mapAsync).replace('export ', '')
     + '\nreturn createMapAsync;')(...Object.values(dependencies));

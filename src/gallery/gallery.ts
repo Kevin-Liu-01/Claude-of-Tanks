@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
-import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -38,6 +38,7 @@ import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
@@ -208,7 +209,8 @@ let activeMode: GalleryMode = 'appearance';
 let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
+let dossierShownId = '';
 
 const damageHost = document.createElement('div');
 damageHost.className = 'damage-workbench-host';
@@ -334,28 +336,31 @@ function anatomyVehicle(): AnatomyVehicle | null {
   };
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
-  const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
+  // the loading notice covers a slow build only, and leaves the moment the layer shows (it outlived the render before)
+  let loading: GalleryNotice | null = null;
+  const slow = setTimeout(() => { loading = showToast(t('gallery.anatomy.loading'), { severity: 'progress' }); }, 250);
+  const settle = (): void => { clearTimeout(slow); loading?.dismiss(); loading = null; };
   anatomyReady = loadAnatomy().then(async (module) => {
     // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
     // microtask and held its paint (click-perf-244). The layer shows once its programs are linked (click-perf-248: its
     // first frame compiled them); the loading toast covers a slow build or link.
     await afterNextPaint();
     let vehicle = anatomyVehicle();
-    if (!vehicle || activeMode !== mode) { clearTimeout(slow); return; }
+    if (!vehicle || activeMode !== mode) { settle(); return; }
     if (!anatomyView) {
       anatomyView = module.createAnatomyView(anatomyHost());
       anatomyView.setMetric(armorMetric);
     }
     await anatomyView.prepare(vehicle);
-    clearTimeout(slow);
+    settle();
     vehicle = anatomyVehicle();
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
-    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
+    if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
-    clearTimeout(slow);
-    showToast(t('gallery.anatomy.loadFailed'));
+    settle();
+    showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
 
@@ -439,12 +444,53 @@ function frameView(requestedName = 'hero'): void {
   });
 }
 
-function showToast(message: string): void {
-  const toast = $('#toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+// the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
+// the turntable and photo buttons, and on a stacked page just above the dossier's actions (they ride its sticky bar,
+// where the copy and markup triggers sit)
+const stage = document.querySelector<HTMLElement>('#viewport');
+const actions = document.querySelector<HTMLElement>('.acts');
+type NoticeKit = typeof import('../ui/components/notice.ts');
+let noticeKit: Promise<NoticeKit> | null = null;
+/** The kit's notices load with the page's first notice and make their regions then (a static import made them one more
+ *  Gallery boot request: Main's 253 ruling). */
+function loadNotices(): Promise<NoticeKit> {
+  noticeKit ??= import('../ui/components/notice.ts').then((kit) => {
+    if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
+    if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
+    // a short window lets the actions scroll with the page, so its notices stand at the window's foot
+    kit.noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
+    return kit;
+  });
+  return noticeKit;
+}
+const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
+const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px)') : null;
+/**
+ * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
+ * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
+ * with the word before it.
+ */
+const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2060').replace(/ (?=\S{1,4}$)/, '\u00a0');
+
+/** A notice's handle from the moment it is asked for: a dismissal before the kit has loaded cancels it. */
+interface GalleryNotice { dismiss(): void }
+/** A layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet). */
+function announceLine(message: string): void {
+  const line = $('#announce');
+  line.textContent = message;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { line.textContent = ''; }, 1800);
+}
+function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}): GalleryNotice {
+  // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
+  // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
+  let dismissed = false;
+  let shown: GalleryNotice | null = null;
+  void loadNotices().then((kit) => {
+    if (dismissed) return;
+    shown = kit.notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+  }, () => { /* the notice is lost with its module; the page goes on */ });
+  return { dismiss() { dismissed = true; shown?.dismiss(); } };
 }
 
 function poseRecord(): { hullYawDeg: number; turretYawDeg: number; gunPitchDeg: number } {
@@ -770,13 +816,16 @@ Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
   })
   .catch(() => { /* the packaged angle icons stay */ });
 
+/** A row names a long designation by its short form (the full name on its tip) so the list keeps one row height. */
+const rowName = (record: GalleryRecord): string => record.displayName.length > 20 && record.shortName ? record.shortName : record.displayName;
+const rowTip = (record: GalleryRecord): string => rowName(record) === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`;
 /** A fleet row (07-gallery .fam .it): flag, silhouette, name and the sort's value. */
 function rowMarkup(record: GalleryRecord): string {
   const selected = record.id === selectedId;
   const dev = record.developmentOnly ? `<b class="it__dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
     + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
-    + `<span class="it__name">${esc(record.displayName)}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
+    + `<span class="it__name"${rowTip(record)}>${esc(keepDesignation(rowName(record)))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {
   const layout = effectiveLayout();
@@ -788,7 +837,9 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+    // a typed query that matches nothing is named, so the line never blames filters the reader did not set
+    const query = $<HTMLInputElement>('#gallerySearch').value.trim();
+    vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
@@ -819,7 +870,10 @@ function revealRow(row: HTMLElement | null): void {
     if (target?.isConnected) revealRowNow(target);
   });
 }
-function revealRowNow(row: HTMLElement): void {
+function revealRowNow(row: HTMLElement, settle = true): void {
+  // the rows skip rendering off view (content-visibility), so their heights are estimates until they show: once the
+  // first scroll has laid the rows near the target out, a second pass in the next frame lands it exactly
+  if (settle) requestAnimationFrame(() => { if (row.isConnected) revealRowNow(row, false); });
   const list = vehicleList.getBoundingClientRect();
   const box = row.getBoundingClientRect();
   if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
@@ -913,13 +967,35 @@ wireRoving(tabsHost, (value) => selectTab(value as DossierTab));
 
 const DIAGRAMS = [['armor_side', 'garage.dossier.image.armorSide'], ['modules_side', 'garage.dossier.image.modulesSide'],
   ['crew_side', 'garage.dossier.image.crewSide']] as const;
+// the switch names each drawing by its layer (the long names wrapped onto a second row); the long name is its alt
+const DIAGRAM_SHORT: Readonly<Record<typeof DIAGRAMS[number][0], string>> = Object.freeze({
+  armor_side: 'gallery.view.mode.armor', modules_side: 'gallery.view.mode.modules', crew_side: 'gallery.view.mode.crew',
+});
 let diagram: typeof DIAGRAMS[number][0] = 'armor_side';
 $<HTMLElement>('#diagramSwitch').innerHTML = DIAGRAMS.map(([view, key]) => `<button type="button" role="radio" class="cot-c-seg__opt"`
-  + ` data-value="${view}" aria-checked="${view === diagram}" tabindex="${view === diagram ? 0 : -1}" data-ui-sound="select">${esc(t(key))}</button>`).join('');
+  + ` data-value="${view}" aria-checked="${view === diagram}" tabindex="${view === diagram ? 0 : -1}" data-ui-sound="select"`
+  + ` aria-label="${esc(t(key))}">${esc(t(DIAGRAM_SHORT[view]))}</button>`).join('');
 wireRoving($<HTMLElement>('#diagramSwitch'), (value) => { diagram = value as typeof diagram; renderDiagram(); });
 const diagramImage = $<HTMLImageElement>('#diagramImage');
 diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.hidden = true; });
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
+// the drawing's labels are drawn into it (about 5 px at the dossier's width): a press shows it at the window's size,
+// where they read; a press or Escape puts it back
+const diagramFigure = diagramImage.closest('figure')!;
+const setDiagramZoom = (on: boolean): void => {
+  diagramFigure.classList.toggle('is-zoomed', on);
+  diagramImage.setAttribute('aria-expanded', String(on));
+};
+diagramImage.tabIndex = 0;
+diagramImage.setAttribute('role', 'button');
+diagramImage.setAttribute('aria-expanded', 'false');
+diagramFigure.addEventListener('click', () => setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')));
+diagramImage.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')); }
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && diagramFigure.classList.contains('is-zoomed')) { event.stopPropagation(); setDiagramZoom(false); }
+}, true);
 function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
@@ -991,6 +1067,10 @@ function renderOverview(record: GalleryRecord): void {
 function renderStats(record: GalleryRecord): void {
   const ranges = peerRanges(record);
   const rival = rivalId ? recordById.get(rivalId) : null;
+  // the deltas and the outlined cell are the overview's rival, named here (the switch above sets only the bars' scale)
+  const ref = $('#statRef');
+  ref.hidden = !rival;
+  if (rival) ref.innerHTML = `<i aria-hidden="true"></i>${esc(t('gallery.stats.versus', { name: rival.shortName || rival.displayName }))}`;
   $('#statGroups').innerHTML = STAT_GROUPS.map(([group, label, glyph]) => {
     const rows = STATS.filter((stat) => stat.group === group).map((stat) => {
       const value = stat.value(record);
@@ -1007,12 +1087,23 @@ function renderStats(record: GalleryRecord): void {
     return rows ? `<section class="stat-group"><h2>${icon(glyph, { size: 16 })}${esc(t(label))}</h2>${rows}</section>` : '';
   }).join('');
 }
+/** A shell type in the locale (脱壳弹, not APFSDS): the Garage's names, read by key so the page loads no Garage module
+ * (importing shellLabels.ts split it into a chunk of its own on the game's boot path). */
+const SHELL_TYPE_KEY = 'garage.shellType.';
+const shellTypeName = (type: string): string => {
+  const key = SHELL_TYPE_KEY + type.replace(/-(?:T|MP)$/, '');
+  const name = t(key);
+  return name === key ? type : name;
+};
 function renderAmmo(record: GalleryRecord): void {
   const best = Math.max(1, ...records.flatMap((other) => other.shells.map((shell) => shell.penetrationMm)));
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
+    const name = keepDesignation(shell.name || shell.type), typeName = shellTypeName(type);
+    // the round's type once: a designation that already names it ("3BK31 HEAT", "3OF82 HE-Frag") takes no subtitle
+    const named = name.split(/[^A-Za-z]+/).includes(typeName);
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(name)}</b>${named ? '' : `<small>${esc(typeName)}</small>`}</span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
@@ -1045,21 +1136,24 @@ function populateRivals(): void {
     return group;
   }));
 }
-/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, name; the rival's silhouette faces the selection. */
-function versusSide(record: GalleryRecord, mirrored: boolean): string {
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}<b>${esc(record.displayName)}</b>`;
+/** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
+ * picker above names it (the g10 critic read the name under the picker as the same name twice). */
+function versusSide(record: GalleryRecord): string {
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
-  $('#versusOwn').innerHTML = versusSide(record, false);
+  // the selection's side is its silhouette alone: its name and flag are the dossier's head (UI-LOCKDOWN G7, G8)
+  $('#versusOwn').innerHTML = silhouette(record.id, 'left');
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
   rivalSelect.value = rival.id;
-  $('#versusRival').innerHTML = versusSide(rival, true);
-  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, hit points
+  $('#versusRival').innerHTML = versusSide(rival);
+  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, top speed in km/h (hit points are
+  // the dossier's facts, UI-LOCKDOWN G9)
   const rows: Array<[IconId, string, string, number, number, number]> = [
     ['penetration', 'gallery.stat.penetration', 'gallery.unit.mm', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
     ['reload', 'gallery.stat.reload', 'gallery.unit.s', record.metrics.reloadS, rival.metrics.reloadS, -1],
-    ['shield', 'gallery.dossier.spec.hp', 'gallery.unit.hitPoints', record.metrics.hp, rival.metrics.hp, 1],
+    ['speed', 'gallery.stat.speed', 'gallery.unit.kmh', record.metrics.topSpeedKmh, rival.metrics.topSpeedKmh, 1],
   ];
   $('#versusMid').innerHTML = rows.map(([glyph, label, unitKey, own, other, better]) => {
     const ownBetter = (own - other) * better > 0;
@@ -1079,7 +1173,7 @@ function drawStageScale(record: GalleryRecord): void {
   void drawTrueScale($<HTMLCanvasElement>('#stageScale'), [
     ...(rival ? [{ id: rival.id, lengthM: rival.dimensions.overallLengthM, tone: '--ink-4', facing: 'right' as const }] : []),
     { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-2', facing: 'right' },
-  ], { layout: 'overlay', human: true, label: t('gallery.inset.aria', { name: record.displayName }) });
+  ], { layout: 'overlay', human: $<HTMLElement>('#stageHuman'), label: t('gallery.inset.aria', { name: record.displayName }) });
 }
 function setRival(id: string | null, pinned: boolean): void {
   rivalId = id && recordById.has(id) && id !== selectedId ? id : null;
@@ -1093,8 +1187,11 @@ function setRival(id: string | null, pinned: boolean): void {
 }
 
 function renderDossier(record: GalleryRecord): void {
-  $('#dossierName').textContent = record.displayName;
-  $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
+  // a newly chosen vehicle opens at its film and name, not at the last one's scroll
+  if (record.id !== dossierShownId) { dossierShownId = record.id; $('.dossier-scroll').scrollTop = 0; }
+  $('#dossierName').textContent = keepDesignation(record.displayName);
+  // a long name takes a second line before it gives up size: one title scale across the fleet
+  $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.85, Math.min(1, 24 / Math.max(1, record.displayName.length)))));
   const flagImage = $<HTMLImageElement>('#dossierFlag');
   flagImage.src = flagIconUrl(record.nation);
   flagImage.dataset.tip = nationName(record.nation);
@@ -1118,7 +1215,17 @@ function renderDossier(record: GalleryRecord): void {
   favourite.setAttribute('aria-pressed', String(favourites.has(record.id)));
 }
 
+/** A pose slider's fill runs from its zero to its value (from its left edge it read as half the range at 0°). */
+function paintPoseFill(input: HTMLInputElement): void {
+  const min = Number(input.min), max = Number(input.max);
+  const at = (value: number): string => `${(((value - min) / Math.max(1e-6, max - min)) * 100).toFixed(2)}%`;
+  const zero = Math.min(max, Math.max(min, 0)), value = Number(input.value);
+  input.style.setProperty('--lo', at(Math.min(zero, value)));
+  input.style.setProperty('--hi', at(Math.max(zero, value)));
+}
+
 function updateArticulation(): void {
+  for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) paintPoseFill($<HTMLInputElement>(`#${id}`));
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
@@ -1130,6 +1237,7 @@ function updateArticulation(): void {
     gunInput.value = String(Math.max(Number(gunInput.min), Number(gunInput.value)));
   }
   const gunPitch = Number(gunInput.value);
+  paintPoseFill(gunInput);
   visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
@@ -1185,7 +1293,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   }
   renderLegend();
   updateUrl();
-  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
+  if (announce && activeMode === 'markup') announceLine(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
 }
 
 function disposeTank(): void {
@@ -1218,7 +1326,9 @@ const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high
  *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
 async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
   let sliceStartedAt = performance.now();
-  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
+  // the decoration plans in the decor worker (stage 2b): a step that yields its wait is awaited, never polled
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx,
+    { ...GALLERY_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
   try {
     for (;;) {
       const result = steps.next();
@@ -1228,7 +1338,8 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
         result.value.dispose();
         return null;
       }
-      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
       if (!current()) return null;
     }
   } catch (error) {
@@ -1304,9 +1415,9 @@ function pickInspection(clientX: number, clientY: number): void {
 async function writeClipboard(text: string, successMessage: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    showToast(successMessage);
+    showToast(successMessage, { severity: 'success' });
   } catch (_) {
-    showToast(t('gallery.toast.clipboardUnavailable'));
+    showToast(t('gallery.toast.clipboardUnavailable'), { severity: 'warning' });
   }
 }
 

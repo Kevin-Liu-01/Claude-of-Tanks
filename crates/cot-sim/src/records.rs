@@ -296,7 +296,7 @@ impl Record {
 }
 
 /// `convexWinding`: the outline's turn (+1 or −1).
-fn convex_winding(points: &[f64]) -> f64 {
+pub(crate) fn convex_winding(points: &[f64]) -> f64 {
     let mut area2 = 0.0;
     let mut index = 0;
     while index < points.len() {

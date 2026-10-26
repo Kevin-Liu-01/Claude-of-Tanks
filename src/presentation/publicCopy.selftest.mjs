@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { typeTokenCss, TYPE_STACK } from '../ui/typeFaces.ts';
+import { MEDIA_PAUSE_ICON } from './mediaPlayer.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pageFiles = ['site/home.html', 'site/gallery.html', 'site/docs.html'];
@@ -106,8 +107,8 @@ assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trai
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 // Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
 // lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.
-assert.match(homeSource, /<h1 class="hero__title home-sr" id="hero-title">Claude of Tanks<\/h1>/,
-  'the hero names the game in its h1 for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
+assert.match(homeSource, /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n="home\.hero\.title">[^<]+<\/span><\/h1>/,
+  'the hero\'s headline says what the game is (owner 2026-10-25: "also add text here at the left that says stuff about this!") and its h1 names the game for assistive tech and search; the mark and the name live in the nav bar alone (owner 2026-10-25)');
 assert.doesNotMatch(homeSource, /hero__lockup/, 'the hero draws no second lockup');
 assert.doesNotMatch(homeStyles, /html\[lang\^='zh'\][^{]*\{[^}]*-webkit-text-stroke/, 'no outline type on the Chinese hero');
 assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(--hollow-ink,#eef4f8\);-webkit-text-stroke:0;opacity:\.72\}/,
@@ -122,8 +123,11 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
 // (2026-10-25, the reel and the features: the counts' glyphs, Play, the features' way in, the reel's pause, the dialog's close)
 const landingIcons = ['play', 'map', 'team', 'gallery', 'media', 'modeStandard', 'chevronRight', 'close', 'fullscreen', 'sound'];
-// the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place
-assert.match(homeSource, /data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="M4 2\.5h3v11H4zM9 2\.5h3v11H9z"\/>/, 'the reel\'s pause draws the player\'s glyph');
+// the reel's pause is the media player's own glyph pair (mediaPlayer.ts), drawn in place; read from the player, so a
+// redrawn pair (252's fifth gauntlet round thinned the bars) moves the reel and this receipt together
+const pauseGlyph = MEDIA_PAUSE_ICON.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+assert.match(homeSource, new RegExp(`data-reel-toggle[^>]*><svg viewBox="0 0 16 16"[^>]*><path fill="currentColor" d="${pauseGlyph}"/>`),
+  'the reel\'s pause draws the player\'s glyph');
 for (const icon of landingIcons) {
   assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }

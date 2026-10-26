@@ -11,6 +11,7 @@ import { createGaragePhasePresentationRuntime } from './garagePhasePresentationR
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 const names = new Set(['enter', 'doEnter', 'doExit', 'withStage']);
+// (UI-LOCKDOWN E) the first view's program preparation is a port here; its place in the entry is pinned below
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
@@ -80,6 +81,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     applyPictureRuntime: () => calls.push('picture-applied'),
     // the destruction stages the Studio played and its own dug ground (fx lane, destruction core lane, 2026-10-08)
     studioStages: new Map(), resetStudioGround: noop, flareToWallClock: noop,
+    prepareFirstViewPrograms: async () => { calls.push('first-view-programs'); },
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -138,6 +140,10 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 2], ['dormant', false]);
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
+  const programsIndex = calls.indexOf('first-view-programs');
+  assert.ok(programsIndex > sunIndex && programsIndex < calls.indexOf('picture-applied'),
+    'the first view\'s programs are prepared once its light and camera are set, before its frame');
+  if (directBoot) assert.ok(programsIndex < calls.indexOf('covered-frame'), 'and before the covered first frame');
   assert.equal(calls.includes('covered-frame'), directBoot);
   // shell-first (247): an F8 entry shows the Studio's own panels at once over the battlefield's stage, which clears once
   // the world is in; a direct boot stays under the boot veil

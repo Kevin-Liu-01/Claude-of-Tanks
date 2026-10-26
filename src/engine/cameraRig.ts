@@ -1509,7 +1509,7 @@ export function createCameraRig(
 // therefore byte-identical whether or not the player had dragged the view.
 
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
-const SHOW_FOV_UPRIGHT_MAX_DEG = 70;   // a screen held upright opens the lens up to this (showFovDeg)
+const SHOW_FOV_UPRIGHT_MAX_DEG = 80;   // a screen held upright opens the lens up to this (showFovDeg)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
 // garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
@@ -1531,15 +1531,24 @@ const SHOW_ZOOM_MIN = 0.62;
 const SHOW_ZOOM_MAX = 1.55;
 const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
 // A screen held upright (the 246 Garage fix): the hero framed whole, gun included, in a frame narrower than it is tall.
-// The camera pitches down onto the tank and stands back a little further, still under the hall's lamps and truss chords
-// (8.66 m: at 12 degrees and 22 m the eye is about 6.5 m up, about 8 m inside the bay's walls on its diagonal), and the
-// frame keeps a fifth of the window for the guns that reach past the canonical box.
+// The camera pitches down onto the tank and stands back no further than a screen held wide does (19 m; the UI gauntlet
+// 10-25: at 22 m the eye stood past Verdant's overhead crane, which filled a phone's stage), the lens opening to 80
+// degrees instead, and the tank takes seven tenths of the stage, so its turntable stays on the screen.
 const SHOW_UPRIGHT_PITCH = THREE.MathUtils.degToRad(12);
-const SHOW_UPRIGHT_DIST_MAX_M = 22;
-const SHOW_UPRIGHT_HERO_FILL = 0.8;
+const SHOW_UPRIGHT_DIST_MAX_M = 19;
+const SHOW_UPRIGHT_HERO_FILL = 0.7;    // the turntable (about 1.4 times the tank) stays on a phone's screen
 const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
 const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane
 const SHOW_SOLVE_ITERS = 9;
+// The camera blends onto a new framing (another hero, a moved stage rect: a panel opening, a resize) on --dur-base's time
+// constant instead of jumping to it; a reset, and a reader who asked for reduced motion, take it at once.
+const SHOW_FRAME_TAU_S = 0.22;
+const SHOW_FRAME_EPS = 1e-4;           // NDC: a stage rect moved by less than this is the same rect
+const SHOW_BLEND_EPS_M = 1e-3;         // m: a blended pose this close to its solve has arrived
+const SHOW_REMEASURE_S = 3;            // a new hero's late parts (its stowage, its decor) land in its first seconds
+const SHOW_POINTS_MAX = 4096;          // silhouette points (8 per drawn part); past it the hero frames its whole box
+const SHOW_FOV_SHORT_MAX_DEG = 58;     // a stage too short for the hero at the bay's reach opens the lens up to this
+const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Wrap an angle delta into [-π, π) — yaw springs take the short way home. */
 function wrapPi(a: number): number {
@@ -1558,12 +1567,21 @@ const _sbU = new THREE.Vector3();      // camera up
 const _sbPos = new THREE.Vector3();
 const _sbLook = new THREE.Vector3();
 const _sbCenter = new THREE.Vector3();
-const _sbCorners: THREE.Vector3[] = [];
-for (let i = 0; i < 8; i++) _sbCorners.push(new THREE.Vector3());
-// per-corner camera-basis coordinates (right, up, toward-camera), reused
-const _sbPr = new Float64Array(8);
-const _sbPu = new Float64Array(8);
-const _sbPc = new Float64Array(8);
+// The framed points (world): a fixed frame's eight corners, or the hero's silhouette, the corners of every drawn part's
+// own box (a gun reaches out as a thin box, where the hull box's corners stood a whole tank's width out in front), plus
+// one point for a mode preview's headroom.
+const _sbPx = new Float64Array(SHOW_POINTS_MAX + 1);
+const _sbPy = new Float64Array(SHOW_POINTS_MAX + 1);
+const _sbPz = new Float64Array(SHOW_POINTS_MAX + 1);
+let _sbCount = 0;
+// the hero's silhouette in its own frame, measured once per hero (measureLocalPoints)
+const _lpX = new Float64Array(SHOW_POINTS_MAX);
+const _lpY = new Float64Array(SHOW_POINTS_MAX);
+const _lpZ = new Float64Array(SHOW_POINTS_MAX);
+// per-point camera-basis coordinates (right, up, toward-camera), reused
+const _sbPr = new Float64Array(SHOW_POINTS_MAX + 1);
+const _sbPu = new Float64Array(SHOW_POINTS_MAX + 1);
+const _sbPc = new Float64Array(SHOW_POINTS_MAX + 1);
 
 /**
  * Union of every descendant mesh's geometry AABB, expressed in `root`'s LOCAL
@@ -1610,6 +1628,44 @@ function measureLocalBox(
 }
 
 /**
+ * The hero's silhouette in `root`'s LOCAL frame, into _lpX/_lpY/_lpZ: the eight corners of every part's own geometry
+ * box. `drawnOnly` keeps what is drawn (hidden descendants, the armour, module and crew helpers a hull carries for its
+ * overlays, and meshes whose materials do not draw leave it; the root's own flag is ignored, it hides the hero while it
+ * parses). @returns the point count, 0 for none, -1 past SHOW_POINTS_MAX.
+ */
+function measureLocalPoints(root: THREE.Object3D, drawnOnly: boolean): number {
+  root.updateMatrixWorld(true);
+  _sbInv.copy(root.matrixWorld).invert();
+  let count = 0;
+  const addBox = (g: THREE.BufferGeometry, matrixWorld: THREE.Matrix4): void => {
+    if (count < 0) return;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox;
+    if (!bb || bb.isEmpty()) return;
+    if (count + 8 > SHOW_POINTS_MAX) { count = -1; return; }
+    for (let i = 0; i < 8; i++) {
+      _sbV.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
+      _sbV.applyMatrix4(matrixWorld).applyMatrix4(_sbInv);
+      _lpX[count] = _sbV.x; _lpY[count] = _sbV.y; _lpZ[count] = _sbV.z;
+      count++;
+    }
+  };
+  const visit = (o: THREE.Object3D): void => {
+    if (!(o instanceof THREE.Mesh) || !o.geometry) return;
+    if (drawnOnly) {
+      const material = o.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(material) ? !material.some((m) => m.visible !== false) : material?.visible === false) return;
+    }
+    const parts = o instanceof THREE.InstancedMesh ? [] : staticMergePartsOf(o);
+    for (const part of parts) addBox(part.geometry, staticMergePartMatrixWorld(o, part, _sbPartWorld));
+    if (!parts.length) addBox(o.geometry, o.matrixWorld);
+  };
+  if (drawnOnly) for (const child of root.children) child.traverseVisible(visit);
+  else root.traverse(visit);
+  return count;
+}
+
+/**
  * Create the garage showroom camera controller.
  *
  * Owns nothing but the pose it hands to `rig.setExternalPose` — the rig stays
@@ -1646,6 +1702,13 @@ interface ShowroomOrbitDeps {
   heroYawRad: number;
   heroPitchRad: number;
   fixedFrame?(): ShowroomFixedFrame | null;
+  /** Headroom (m) over the hero's own box that the frame keeps: a mode preview's flag or drone above the tank. */
+  frameTopPadM?(): number;
+  /** The turntable the hero stands on (world centre, radius and deck height, m): kept whole on the screen and across
+   *  `getKeepRect`'s width. */
+  keepRing?(): { x: number; y: number; z: number; r: number; h: number } | null;
+  /** The whole free stage (CSS px) the turntable keeps inside, left to right; the screen when absent. */
+  getKeepRect?(): ShowroomStageRect | null;
   floorY?(): number;
 }
 
@@ -1689,7 +1752,10 @@ export function createShowroomOrbit(
   const heroPitchWide = THREE.MathUtils.clamp(deps.heroPitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
   // the hero pose's yaw holds in every shape; an upright screen looks down onto it (SHOW_UPRIGHT_*)
   const upright = (): boolean => viewAspect() < 1;
-  const heroPitchNow = (): number => (upright() ? Math.max(heroPitchWide, SHOW_UPRIGHT_PITCH) : heroPitchWide);
+  // a stage high in a short window lifts the hero pitch (solveHero) so the eye stays over the floor while the tank sits up
+  // in the frame, rather than the floor guard sinking the tank under the name
+  let liftPitch = 0;
+  const heroPitchNow = (): number => Math.max(upright() ? Math.max(heroPitchWide, SHOW_UPRIGHT_PITCH) : heroPitchWide, liftPitch);
   const heroFill = (): number => (upright() ? SHOW_UPRIGHT_HERO_FILL : SHOW_HERO_FILL);
   const distMax = (): number => (upright() ? SHOW_UPRIGHT_DIST_MAX_M : SHOW_DIST_MAX_M);
 
@@ -1711,26 +1777,30 @@ export function createShowroomOrbit(
   let lastDragMs = 0;
   let lastInputMs = -Infinity;
   let measureAccS = 0;
-  const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
+  const win = { cx: 0, cy: 0, hx: 1, hy: 1 };      // the framing window the solve fits
+  const goal = { cx: 0, cy: 0, hx: 1, hy: 1 };     // the stage rect as last read
+  let haveWindow = false;
   let appliedAspect = NaN;
   const appliedWin = { cx: NaN, cy: NaN, hx: NaN, hy: NaN };
   const projectionBounds = { nx0: 0, nx1: 0, ny0: 0, ny1: 0 };
 
-  /** Stage rect (CSS px) → NDC center/half-extents, with a sanity floor. */
-  function readWindow(): typeof win {
+  /** Stage rect (CSS px) → NDC center/half-extents in `goal`, with a sanity floor. */
+  function readWindow(): typeof goal {
     const vw = camera.__cotViewW || (typeof window !== 'undefined' ? window.innerWidth : 1920);
     const vh = camera.__cotViewH || (typeof window !== 'undefined' ? window.innerHeight : 1080);
     // A viewport with no area (a collapsed pane or embed reports 0 wide or 0 high) has no stage to frame: dividing by
     // it made the window infinite and the solved camera NaN, and the Garage's audio listener is that camera (232's
     // AudioParam throw). Keep the last window until the viewport has an area again.
-    if (!(vw > 0 && vh > 0)) return win;
+    if (!(vw > 0 && vh > 0)) return goal;
     let r: ShowroomStageRect | null = null;
     try { r = deps.getStageRect ? deps.getStageRect() : null; } catch { r = null; }
     let x0 = 0, y0 = 0, x1 = vw, y1 = vh;
     if (r && r.w > 0 && r.h > 0) { x0 = r.x; y0 = r.y; x1 = r.x + r.w; y1 = r.y + r.h; }
     // Crowded viewports (the 768 px embed the controls probe drives) can pinch
-    // the free area to a sliver — never let the UI starve the hero framing.
-    const minW = vw * 0.52, minH = vh * 0.44;
+    // the free area to a sliver — never let the UI starve the hero framing. The floors are low: the Garage hands a
+    // hero rect a little over half its free stage (so the turntable, about 1.4 times the tank, stays in it), and a short
+    // docked window's stage over the tank's name is a band the hero fits rather than standing under the name.
+    const minW = vw * 0.36, minH = vh * 0.24;
     if (x1 - x0 < minW) {
       const c = THREE.MathUtils.clamp((x0 + x1) / 2, minW / 2, vw - minW / 2);
       x0 = c - minW / 2; x1 = c + minW / 2;
@@ -1739,11 +1809,22 @@ export function createShowroomOrbit(
       const c = THREE.MathUtils.clamp((y0 + y1) / 2, minH / 2, vh - minH / 2);
       y0 = c - minH / 2; y1 = c + minH / 2;
     }
-    win.cx = ((x0 + x1) / vw) - 1;          // NDC x of the rect center
-    win.cy = 1 - ((y0 + y1) / vh);          // NDC y (screen y grows downward)
-    win.hx = (x1 - x0) / vw;                // NDC half-width
-    win.hy = (y1 - y0) / vh;
-    return win;
+    goal.cx = ((x0 + x1) / vw) - 1;         // NDC x of the rect center
+    goal.cy = 1 - ((y0 + y1) / vh);         // NDC y (screen y grows downward)
+    goal.hx = (x1 - x0) / vw;               // NDC half-width
+    goal.hy = (y1 - y0) / vh;
+    return goal;
+  }
+
+  /** Read the stage rect into the framing window. @returns whether it moved (the camera then blends onto it). */
+  function syncWindow(): boolean {
+    readWindow();
+    const moved = !haveWindow || Math.abs(goal.cx - win.cx) + Math.abs(goal.cy - win.cy) + Math.abs(goal.hx - win.hx)
+      + Math.abs(goal.hy - win.hy) > SHOW_FRAME_EPS;
+    haveWindow = true;
+    if (!moved) return false;
+    win.cx = goal.cx; win.cy = goal.cy; win.hx = goal.hx; win.hy = goal.hy;
+    return true;
   }
 
   /** The camera's aspect, or 16:9 while the viewport has no area (the resize seam's w / 0 and 0 / 0 are no aspect). */
@@ -1755,44 +1836,171 @@ export function createShowroomOrbit(
    *  wide as a square screen would (up to 70°), so a phone frames the whole tank inside the bay's 19 m reach instead of
    *  cropping both ends of the hull. */
   function showFovDeg(): number {
+    return Math.max(stageFovDeg(), lensDeg);
+  }
+
+  function stageFovDeg(): number {
     const aspect = viewAspect();
     if (aspect >= 1) return SHOW_FOV_DEG;
     const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
     return Math.min(SHOW_FOV_UPRIGHT_MAX_DEG, THREE.MathUtils.radToDeg(2 * Math.atan(tanV / aspect)));
   }
 
-  function measureFixedFrame(frame: ShowroomFixedFrame): void {
-    _sbMin.set(-frame.hw, -frame.hh, -frame.hd);
-    _sbMax.set(frame.hw, frame.hh, frame.hd);
-    _sbCenter.set(frame.x, frame.y, frame.z);
-    for (let index = 0; index < 8; index++) {
-      _sbCorners[index].set(
-        _sbCenter.x + (index & 1 ? frame.hw : -frame.hw),
-        _sbCenter.y + (index & 2 ? frame.hh : -frame.hh),
-        _sbCenter.z + (index & 4 ? frame.hd : -frame.hd),
-      );
-    }
+  // A stage too short for the hero even at the bay's reach (a docked window 600 px tall, its stage a band over the
+  // tank's name): the lens opens just enough for the hero to fit it, rather than the name covering the hull.
+  let lensDeg = 0;
+  /** The hero solve at the current hero pitch, opening the lens where the reach alone cannot fit the stage. */
+  function solveHeroAtPitch(): ShowroomSolve {
+    lensDeg = 0;
+    let solved = solve(heroYaw, heroPitchNow(), heroFill(), 0);
+    if (solved.dist < distMax() - 1e-6) return solved;
+    const fill = heroFill();
+    const over = Math.max(
+      (projectionBounds.nx1 - projectionBounds.nx0) / Math.max(2 * win.hx * fill, 1e-6),
+      (projectionBounds.ny1 - projectionBounds.ny0) / Math.max(2 * win.hy * fill, 1e-6),
+    );
+    if (!(over > 1.001)) return solved;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(stageFovDeg()) * 0.5);
+    const maxDeg = Math.max(stageFovDeg(), SHOW_FOV_SHORT_MAX_DEG);
+    lensDeg = Math.min(maxDeg, THREE.MathUtils.radToDeg(2 * Math.atan(tanV * over)));
+    solved = solve(heroYaw, heroPitchNow(), heroFill(), 0);
+    return solved;
   }
 
-  function measureSubjectFrame(root: THREE.Object3D): boolean {
-    if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
-    for (let index = 0; index < 8; index++) {
-      _sbCorners[index].set(
-        index & 1 ? _sbMax.x : _sbMin.x,
-        index & 2 ? _sbMax.y : _sbMin.y,
-        index & 4 ? _sbMax.z : _sbMin.z,
-      ).applyMatrix4(root.matrixWorld);
+  /** The hero distance: the lens opened where the reach cannot fit the stage, the pitch lifted where the eye would sink
+   *  under the floor guard. The orbit at rest follows the lifted pitch. @returns the distance */
+  function solveHero(): number {
+    liftPitch = 0;
+    let solved = solveHeroAtPitch();
+    const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
+    const eyeY = (s: ShowroomSolve): number => {
+      basis(heroYaw, heroPitchNow());
+      return _sbCenter.y + _sbC.y * s.dist + _sbU.y * s.sy;
+    };
+    while (eyeY(solved) < minY && heroPitchNow() < SHOW_PITCH_MAX - 1e-6) {
+      liftPitch = Math.min(SHOW_PITCH_MAX, heroPitchNow() + THREE.MathUtils.degToRad(1));
+      solved = solveHeroAtPitch();
     }
-    _sbCenter.set(0, 0, 0);
-    for (let index = 0; index < 8; index++) _sbCenter.add(_sbCorners[index]);
-    _sbCenter.multiplyScalar(1 / 8);
+    if (!dragging && !held && sinceInputS > SHOW_IDLE_RETURN_S) tPitch = heroPitchNow();
+    return keepRingOnScreen(solved);
+  }
+
+  // The turntable stays whole on the screen (Main 10-25): framed on the tank, a phone's stage could push its rim past an
+  // edge (the rim is centred on the hull, the tank's silhouette on its gun side). The camera then stands back, or at the
+  // bay's reach opens the lens, just enough.
+  const SHOW_RING_EDGE = 0.98;          // NDC: the rim keeps this inside the screen's edge
+  const SHOW_RING_STEPS = 24;
+  /** How far the turntable's rim reaches past its room, as the factor the framing must shrink by (≤ 1: it fits). */
+  function ringOverflow(dist: number, sx: number): number {
+    const ring = deps.keepRing ? deps.keepRing() : null;
+    if (!ring) return 0;
+    let lo = -SHOW_RING_EDGE, hi = SHOW_RING_EDGE;
+    let keep: ShowroomStageRect | null = null;
+    try { keep = deps.getKeepRect ? deps.getKeepRect() : null; } catch { keep = null; }
+    const vw = camera.__cotViewW || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+    if (keep && keep.w > 0 && vw > 0) {
+      lo = Math.max(lo, (2 * keep.x) / vw - 1);
+      hi = Math.min(hi, (2 * (keep.x + keep.w)) / vw - 1);
+    }
+    basis(heroYaw, heroPitchNow());
+    const tanH = Math.tan(THREE.MathUtils.degToRad(showFovDeg()) * 0.5) * viewAspect();
+    const c = win.cx;
+    let worst = 0;
+    for (let step = 0; step < SHOW_RING_STEPS * 2; step++) {
+      const a = ((step >> 1) / SHOW_RING_STEPS) * Math.PI * 2;
+      _sbV.set(ring.x + Math.cos(a) * ring.r - _sbCenter.x, ring.y + (step & 1 ? ring.h : 0) - _sbCenter.y,
+        ring.z + Math.sin(a) * ring.r - _sbCenter.z);
+      const depth = dist - _sbV.dot(_sbC);
+      if (depth <= 0.1) return Infinity;
+      const nx = (_sbV.dot(_sbR) - sx) / (depth * tanH);
+      if (nx > hi) worst = Math.max(worst, (nx - c) / Math.max(hi - c, 1e-3));
+      else if (nx < lo) worst = Math.max(worst, (c - nx) / Math.max(c - lo, 1e-3));
+    }
+    return worst;
+  }
+  function keepRingOnScreen(solved: ShowroomSolve): number {
+    let dist = solved.dist;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const off = solve(heroYaw, heroPitchNow(), heroFill(), dist);
+      const over = ringOverflow(dist, off.sx);
+      if (!(over > 1.001)) break;
+      if (dist < distMax() - 1e-6) {
+        dist = Math.min(distMax(), dist * over);
+      } else {
+        const tanV = Math.tan(THREE.MathUtils.degToRad(showFovDeg()) * 0.5);
+        lensDeg = Math.min(SHOW_FOV_UPRIGHT_MAX_DEG, THREE.MathUtils.radToDeg(2 * Math.atan(tanV * over)));
+      }
+    }
+    return dist;
+  }
+
+  function measureFixedFrame(frame: ShowroomFixedFrame): void {
+    _sbCenter.set(frame.x, frame.y, frame.z);
+    for (let index = 0; index < 8; index++) {
+      _sbPx[index] = frame.x + (index & 1 ? frame.hw : -frame.hw);
+      _sbPy[index] = frame.y + (index & 2 ? frame.hh : -frame.hh);
+      _sbPz[index] = frame.z + (index & 4 ? frame.hd : -frame.hd);
+    }
+    _sbCount = 8;
+  }
+
+  // The hero's own silhouette (owner 10-25 via Main: frame the tank itself, centred), measured once per hero root and
+  // again through its first seconds, while its late parts land; never every refresh.
+  let pointsRoot: THREE.Object3D | null = null;
+  let pointsAgeS = Infinity;
+  let pointsCount = 0;
+  const pointsMin = new THREE.Vector3(), pointsMax = new THREE.Vector3();
+
+  function measureSubjectFrame(root: THREE.Object3D): boolean {
+    if (root !== pointsRoot || pointsAgeS < SHOW_REMEASURE_S) {
+      let count = measureLocalPoints(root, true);
+      if (count === 0) count = measureLocalPoints(root, false);
+      if (count < 0) {
+        // a hero of more parts than the buffer holds frames its whole box
+        if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
+        for (let index = 0; index < 8; index++) {
+          _lpX[index] = index & 1 ? _sbMax.x : _sbMin.x;
+          _lpY[index] = index & 2 ? _sbMax.y : _sbMin.y;
+          _lpZ[index] = index & 4 ? _sbMax.z : _sbMin.z;
+        }
+        count = 8;
+      }
+      if (count === 0) return false;
+      pointsCount = count;
+      pointsMin.set(Infinity, Infinity, Infinity);
+      pointsMax.set(-Infinity, -Infinity, -Infinity);
+      for (let index = 0; index < count; index++) {
+        _sbV.set(_lpX[index], _lpY[index], _lpZ[index]);
+        pointsMin.min(_sbV);
+        pointsMax.max(_sbV);
+      }
+      if (root !== pointsRoot) { pointsRoot = root; pointsAgeS = 0; }
+    } else {
+      root.updateMatrixWorld(true);
+    }
+    const m = root.matrixWorld;
+    for (let index = 0; index < pointsCount; index++) {
+      _sbV.set(_lpX[index], _lpY[index], _lpZ[index]).applyMatrix4(m);
+      _sbPx[index] = _sbV.x; _sbPy[index] = _sbV.y; _sbPz[index] = _sbV.z;
+    }
+    _sbCount = pointsCount;
+    // a mode preview's headroom: one point over the hero's middle
+    const pad = Math.max(0, deps.frameTopPadM ? deps.frameTopPadM() : 0);
+    if (pad > 0) {
+      _sbV.set((pointsMin.x + pointsMax.x) / 2, pointsMax.y + pad, (pointsMin.z + pointsMax.z) / 2).applyMatrix4(m);
+      _sbPx[_sbCount] = _sbV.x; _sbPy[_sbCount] = _sbV.y; _sbPz[_sbCount] = _sbV.z;
+      _sbCount++;
+    }
+    _sbCenter.set((pointsMin.x + pointsMax.x) / 2, (pointsMin.y + pointsMax.y + pad) / 2, (pointsMin.z + pointsMax.z) / 2)
+      .applyMatrix4(m);
     return true;
   }
 
   function updateMeasuredRadius(): void {
     let radius = 0;
-    for (let index = 0; index < 8; index++) {
-      radius = Math.max(radius, _sbCorners[index].distanceTo(_sbCenter));
+    for (let index = 0; index < _sbCount; index++) {
+      const dx = _sbPx[index] - _sbCenter.x, dy = _sbPy[index] - _sbCenter.y, dz = _sbPz[index] - _sbCenter.z;
+      radius = Math.max(radius, Math.hypot(dx, dy, dz));
     }
     nearDist = radius + SHOW_NEAR_PAD_M;
   }
@@ -1824,8 +2032,8 @@ export function createShowroomOrbit(
   function prepareCornerProjection(yawRad: number, pitchRad: number): number {
     basis(yawRad, pitchRad);
     let maxDepth = -Infinity;
-    for (let index = 0; index < 8; index++) {
-      _sbV.copy(_sbCorners[index]).sub(_sbCenter);
+    for (let index = 0; index < _sbCount; index++) {
+      _sbV.set(_sbPx[index] - _sbCenter.x, _sbPy[index] - _sbCenter.y, _sbPz[index] - _sbCenter.z);
       _sbPr[index] = _sbV.dot(_sbR);
       _sbPu[index] = _sbV.dot(_sbU);
       _sbPc[index] = _sbV.dot(_sbC);
@@ -1845,7 +2053,7 @@ export function createShowroomOrbit(
     projectionBounds.nx1 = -Infinity;
     projectionBounds.ny0 = Infinity;
     projectionBounds.ny1 = -Infinity;
-    for (let index = 0; index < 8; index++) {
+    for (let index = 0; index < _sbCount; index++) {
       const depth = distance - _sbPc[index];
       const nx = (_sbPr[index] - shiftX) / (depth * tanH);
       const ny = (_sbPu[index] - shiftY) / (depth * tanV);
@@ -1860,7 +2068,7 @@ export function createShowroomOrbit(
     let shiftX = -win.cx * distance * tanH;
     let minX = Infinity;
     let maxX = -Infinity;
-    for (let index = 0; index < 8; index++) {
+    for (let index = 0; index < _sbCount; index++) {
       const nx = (_sbPr[index] - shiftX) / ((distance - _sbPc[index]) * tanH);
       if (nx < minX) minX = nx;
       if (nx > maxX) maxX = nx;
@@ -1890,7 +2098,8 @@ export function createShowroomOrbit(
    *   along its right/up axes (the framing offsets).
    */
   function solve(y: number, p: number, fill: number, fixedDist: number): ShowroomSolve {
-    const w = readWindow();
+    if (!haveWindow) syncWindow();
+    const w = win;
     const tanV = Math.tan(THREE.MathUtils.degToRad(showFovDeg()) * 0.5);
     const tanH = tanV * viewAspect();
     const maxPc = prepareCornerProjection(y, p);
@@ -1900,9 +2109,11 @@ export function createShowroomOrbit(
     for (let it = 0; it < SHOW_SOLVE_ITERS; it++) {
       readProjectionBounds(d, sx, sy, tanH, tanV);
       if (!fixedDist) {
+        // the silhouette spans `fill` of the rect's full width or height (2 × its NDC half-extent): measured against the
+        // half-extent, every hero wanted twice the distance and stood at the bay's 19 m reach on every screen
         const s = Math.min(
-          (w.hx * fill) / Math.max(projectionBounds.nx1 - projectionBounds.nx0, 1e-6),
-          (w.hy * fill) / Math.max(projectionBounds.ny1 - projectionBounds.ny0, 1e-6),
+          (2 * w.hx * fill) / Math.max(projectionBounds.nx1 - projectionBounds.nx0, 1e-6),
+          (2 * w.hy * fill) / Math.max(projectionBounds.ny1 - projectionBounds.ny0, 1e-6),
         );
         const dNew = THREE.MathUtils.clamp(d / s, dFloor, distMax());
         // offsets are proportional to distance — carry them across the step so
@@ -1932,8 +2143,18 @@ export function createShowroomOrbit(
     return { dist: d, sx, sy };
   }
 
-  /** Write the solved pose for the current damped orbit state to the rig. */
-  function applyPose(): void {
+  // the pose the rig was last given: a new framing (another hero, a moved stage) blends from it onto the solve
+  const shownPos = new THREE.Vector3(), shownLook = new THREE.Vector3();
+  let haveShownPose = false;
+  let blending = false;
+  /** Blend onto the next framing rather than jumping to it (no blend before a first pose, or under reduced motion). */
+  function beginBlend(): void {
+    blending = haveShownPose && !reducedMotion();
+  }
+
+  /** Write the solved pose for the current damped orbit state to the rig: at once, or blended over `dt` while a new
+   *  framing settles. */
+  function applyPose(dt = 0): void {
     if (!haveBox) return;
     const need = solve(yaw, pitch, SHOW_KEEP_FILL, 0).dist;
     const d = THREE.MathUtils.clamp(Math.max(heroDist, need) * zoom,
@@ -1947,7 +2168,21 @@ export function createShowroomOrbit(
     const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
-    rig.setExternalPose(_sbPos, _sbLook, showFovDeg());
+    if (blending && dt > 0) {
+      const k = 1 - Math.exp(-dt / SHOW_FRAME_TAU_S);
+      shownPos.lerp(_sbPos, k);
+      shownLook.lerp(_sbLook, k);
+      if (shownPos.distanceToSquared(_sbPos) + shownLook.distanceToSquared(_sbLook) < SHOW_BLEND_EPS_M * SHOW_BLEND_EPS_M) {
+        blending = false;
+      }
+    }
+    if (!blending || dt <= 0) {
+      blending = false;
+      shownPos.copy(_sbPos);
+      shownLook.copy(_sbLook);
+    }
+    haveShownPose = true;
+    rig.setExternalPose(shownPos, shownLook, showFovDeg());
     appliedAspect = viewAspect();
     appliedWin.cx = win.cx; appliedWin.cy = win.cy;
     appliedWin.hx = win.hx; appliedWin.hy = win.hy;
@@ -1962,7 +2197,10 @@ export function createShowroomOrbit(
     sinceInputS = 999;
     lastInputMs = -Infinity;
     measureAccS = 0;
-    heroDist = solve(heroYaw, heroPitchNow(), heroFill(), 0).dist;
+    syncWindow();
+    blending = false;
+    heroDist = solveHero();
+    tPitch = pitch = heroPitchNow();
     applyPose();
     return true;
   }
@@ -2009,7 +2247,7 @@ export function createShowroomOrbit(
     const previousSubject = subject;
     const previousHeroDist = heroDist;
     if (!measure() || !haveBox) return false;
-    heroDist = solve(heroYaw, heroPitchNow(), heroFill(), 0).dist;
+    heroDist = solveHero();
     settleNewSubject(previousSubject);
     return framingChanged(previousHeroDist);
   }
@@ -2073,7 +2311,7 @@ export function createShowroomOrbit(
     get active() { return running && haveBox; },
     /** True only while an interaction/spring can produce another camera pose. */
     get moving() {
-      return running && haveBox && (dragging ||
+      return running && haveBox && (dragging || blending ||
         Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN ||
         Math.abs(tYaw - yaw) > SHOW_SETTLE_EPS ||
         Math.abs(tPitch - pitch) > SHOW_SETTLE_EPS ||
@@ -2115,16 +2353,25 @@ export function createShowroomOrbit(
     update(dt: number): boolean {
       if (!running) return false;
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
+      pointsAgeS += d;
       if (!haveBox) return pollForFirstSubject(d);
       // The hero GLB streams in behind a procedural stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
       // framing (and heroDist) always describes what is actually on stage.
       const dirty = refreshSubjectMeasurement(d);
       if (!haveBox) return false;
+      // another hero or a moved stage (a panel opening): the camera blends onto the new framing. A resized window
+      // re-solves at once (the still Garage ticks too rarely for the periodic re-measure) and takes its framing directly.
+      const windowMoved = syncWindow();
+      const resized = Math.abs(viewAspect() - appliedAspect) > SHOW_SETTLE_EPS;
+      if (windowMoved || resized) heroDist = solveHero();
+      if (resized) blending = false;
+      else if (dirty || windowMoved) beginBlend();
       advanceOrbitTargets(d);
       const moved = dampOrbitPose(d);
-      if (dirty || moved) applyPose();
-      return dirty || moved;
+      const settling = blending;
+      if (dirty || moved || windowMoved || resized || settling) applyPose(d);
+      return dirty || moved || windowMoved || resized || settling;
     },
 
     /** Pointer went down on the 3D stage. @returns {void} */
@@ -2226,7 +2473,7 @@ export function createShowroomOrbit(
         box: haveBox
           ? { min: _sbMin.toArray(), max: _sbMax.toArray(), center: _sbCenter.toArray() }
           : null,
-        corners: haveBox ? _sbCorners.map((c) => c.toArray()) : null,
+        corners: haveBox ? Array.from({ length: _sbCount }, (_, index) => [_sbPx[index], _sbPy[index], _sbPz[index]]) : null,
         stage: { cx: win.cx, cy: win.cy, hx: win.hx, hy: win.hy },
       };
     },

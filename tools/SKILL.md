@@ -40,6 +40,12 @@ selftest proves each literal is the same stylesheet under Lightning CSS).
 `style-literal-census.mjs` is the style-literal ratchet (colour, font-size,
 letter-spacing, z-index, shadow, duration, `!important` outside the token
 package; `style-literal-baseline.json` may only fall, `--write` lowers it).
+`motion-lint.mjs` is the static motion lint (UI-LOCKDOWN part D): per file it
+counts transitions, `@keyframes` and `animate()` on layout or paint properties,
+time literals instead of `--dur-*`, moving or looping motion without a
+reduced-motion path, rAF loops that write styles and raster UI chrome;
+`motion-lint-baseline.json` may only fall, `motion-allowlist.json` holds the
+measured exceptions and `--report` lists every finding by file and line.
 `public-first-paint.browser.mjs` opens each public page with JavaScript off and
 on and fails when the first-paint layout differs (`--compare` diffs two runs).
 

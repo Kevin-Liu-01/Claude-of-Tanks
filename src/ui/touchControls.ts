@@ -59,7 +59,7 @@ const CSS = `
   border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid var(--line-control);
   background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);
   box-shadow:0 6px 18px oklch(from var(--surface-scene) l c h / .52),inset 0 0 0 4px oklch(from var(--surface-scene) l c h / .3),inset 0 1px 4px oklch(from var(--ink-1) l c h / .18);
-  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,box-shadow var(--dur-instant) ease;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-touch .round::before{content:"";position:absolute;inset:7px;border-radius:50%;pointer-events:none;
   border:1px solid var(--line-1);}
 .cot-touch .round:active,.cot-touch .round.down{transform:scale(.94);border-color:var(--accent);
@@ -102,7 +102,7 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
   display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden;
   opacity:0;transform:scale(.78);border-radius:50%;border:1.5px solid oklch(from var(--danger) l c h / .7);
   background:var(--battle-chip-plate);color:oklch(from var(--danger) .77 .137 h);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .48);
-  transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease,border-color var(--dur-instant) ease;}
+  transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease;}
 .cot-touch .fire-cancel b{font:400 var(--battle-fs-28)/1 ${FONT_COND};}
 .cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:.82;transform:scale(1);}
 .cot-touch.fire-cancel-hot .fire-cancel{opacity:1;color:var(--ink-1);border-color:var(--danger);background:oklch(from var(--danger) .35 .131 h / .94);
@@ -138,7 +138,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
   border:1px solid var(--touch-edge);border-bottom:2px solid var(--line-control);border-radius:2px;
   background:linear-gradient(180deg,var(--hud-plate-strong),var(--touch-panel));
   color:var(--ink-1);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),inset 0 1px oklch(from var(--ink-1) l c h / .05);
-  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-touch .quick:active{transform:scale(.95);border-color:var(--accent);color:var(--accent-hi);background:var(--hud-plate-strong);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;line-height:1;
@@ -166,7 +166,7 @@ body.cot-touch-layout .cot-shells{left:auto;right:max(14px,env(safe-area-inset-r
   width:52px;height:52px;display:block;transform:none;z-index:24;overflow:visible;}
 body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:52px;height:52px;
   opacity:0;pointer-events:none;transform:scale(.94);transform-origin:right center;
-  transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
+  transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
 /* (the tray's way is the sprite's chevron, hud.ts .tchev: a typed "‹" was a glyph of its own, gauntlet bar line 3) */
 body.cot-touch-layout .cot-shell.sel .tchev{display:flex;position:absolute;left:2px;top:40%;transform:translateY(-50%);color:var(--accent-hi);}
@@ -176,10 +176,10 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel .tchev{transform:translateY(-50%) scaleX(-1);}
 /* The type label sits on the slot's floor, and so does the shell: scaled from its base 11 px up, its tail keeps 3 px
    from the label at every touch slot height (critic r4b: APFSDS crossed the dart's tail) */
-body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
+body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%);--shell-k:.76;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:-.06em}
+body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:0}
 body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-fig-11);}
 /* the selected round in the kit's selected look, the system tiles' and the Watch bar's (the accent's ring on its wash),
    its frame in the bright accent for a glance at phone size (gauntlet r5: a brown gradient and a 16 px glow were a fourth
@@ -189,7 +189,7 @@ body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom
   box-shadow:var(--ring-accent);}
 /* (the selected tile's code is the figures' 11 px in every locale, a hair tighter so a six-letter code clears both
    borders: at 13 px in zh it ran past them, gauntlet r3) */
-body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:-.06em;}
+body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:0;}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
@@ -275,7 +275,7 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
    shrinks and steps left, out from under it (critic r4: the dart's tip ran into the 1; r4b: the 1 met it on a
    landscape slot), standing 1 px higher so the stepped fins keep 3 px from the label (r6: 2.5 px on the phone). */
 body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--battle-fs-11);}
-body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px)) scale(.6);}
+body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px));--shell-k:.6;}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px var(--s3);}

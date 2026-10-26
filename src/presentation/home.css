@@ -11,7 +11,7 @@
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}}
 @layer surfaces{
-:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
+:root{--home-h1:clamp(var(--fs-44),min(5.4vw,9.5svh),var(--fs-88));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
@@ -29,29 +29,58 @@ img{display:block;max-width:100%}
 .cot-c-btn--primary .cot-i[data-af],.hero__thumb .cot-i{fill:currentColor}
 
 /* the bar floats over the hero until the page scrolls (publicNav.ts data-scrolled), then takes its plate (02, 03) */
-.home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
-  transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter)}
-.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:var(--surface-nav)}
+.home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* the plate is a layer under the bar's content that fades in: the bar never repaints while it comes */
+.home .public-nav::before{content:'';position:absolute;z-index:-1;inset:0 0 -1px;border-bottom:1px solid var(--line-1);background:var(--surface-nav);
+  opacity:0;pointer-events:none;transition:opacity var(--dur-base) var(--ease-enter)}
+.home .public-nav[data-scrolled]::before{opacity:1}
 
 /* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
 .hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
   min-height:max(540px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
 .hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
-/* the still, the reel and the grade share one layer under the card: their order in the markup stacks them */
-:is(.hero__still,.hero__reel,.hero__grade){z-index:-1}
+/* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
+.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
-/* the reel carries the hero: the actions sit at its foot, the game's name stays in the nav bar (the h1 is for assistive tech) */
-.hero__card{grid-area:card;align-self:end;display:flex;align-items:center;justify-content:space-between;gap:var(--s4);margin-bottom:var(--s6)}
+/* the reel carries the hero: at its foot the headline, its line and the actions on the left, the shot on screen and the
+   reel's pause on the right (owner 2026-10-25: "also add text here at the left that says stuff about this!"); the game's
+   mark and name stay in the nav bar */
+/* where the actions and the shot's caption cannot share the row (a narrow desktop), the caption and the pause take their
+   own row on the right */
+.hero__card{grid-area:card;align-self:end;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s6);margin-bottom:var(--s6)}
+.hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:max(calc(var(--home-h1) * 9.4),34rem)}
+.hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
+.hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:balance}
+/* the shot's caption sits beside the reel's pause, which holds the hero's right edge, both centred on the actions' row.
+   The pause keeps its place while it waits for the reel (hidden only under reduced motion, where the reel never starts),
+   and every caption shares one cell, so the longest sets the box: nothing moves when the reel starts or turns */
+.hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px;margin-left:auto}
+@media (prefers-reduced-motion:no-preference){.hero__reelbar>.hero__toggle[hidden]{display:grid;visibility:hidden}}
+/* the words' scrim (owner 2026-10-25: their contrast holds over bright snow): a plate of the scene's ink under the lead and
+   under the caption, feathered at its edges and running off the screen's side, a gradient mask over imagery, never blur */
+.hero__lead::before,.hero__reelbar::before{--feather:var(--s9);content:'';position:absolute;pointer-events:none;background:var(--home-hero-scrim);
+  --plate:linear-gradient(90deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent),linear-gradient(0deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent);
+  -webkit-mask-image:var(--plate);mask-image:var(--plate);-webkit-mask-composite:source-in;mask-composite:intersect}
+.hero__lead::before{inset:calc(-1 * var(--feather) - var(--s5)) calc(-1 * var(--feather) - var(--s6)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--home-gutter))}
+.hero__reelbar::before{inset:calc(-1 * var(--feather) - var(--s2)) calc(-1 * var(--feather) - var(--home-gutter)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--s4))}
+.hero__shots{display:grid;margin:0;text-align:right}
+.hero__shot{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-end;gap:var(--s1);opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
+.hero__shot.is-on{opacity:1}
+.hero__shot b{font:500 var(--fs-15)/1.3 var(--font-body);color:var(--ink-1);white-space:nowrap}
+.hero__where{display:flex;align-items:center;gap:var(--s3);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);white-space:nowrap}
+.hero__mode{display:inline-flex;align-items:center;gap:var(--s1)}
+.hero__where>span+span:not(.hero__mode)::before{content:'·';margin-right:var(--s3);color:var(--ink-3)}
+.hero__mode .cot-i{width:16px;height:16px;color:var(--mode-ink,var(--ink-2))}
 .home-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.hero__ctas{display:flex;align-items:center;gap:var(--s4)}
+.hero__ctas{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s6)}
 .hero__trailer{padding-left:var(--s2);background:var(--surface-raised)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
-.hero__dur{font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
+.hero__dur{margin-left:var(--s3);font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
 .hero__trailer-icon{display:none}
 /* the reel's pause: the media player's own control (mediaPlayer.css .cot-media-toggle), a disc on the scrim */
 .hero__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;transition:border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter)}
@@ -61,14 +90,14 @@ img{display:block;max-width:100%}
 .hero__toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .hero__toggle[hidden]{display:none}
 .hero__stats{grid-area:stats;display:flex;align-items:center;gap:var(--s6);height:50px;margin:0;padding:0;list-style:none;border-top:1px solid var(--line-1)}
-.hero__stats li{display:inline-flex;align-items:center;gap:var(--s3);white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
-.hero__stats .cot-i{width:17px;height:17px;color:var(--ink-2)}
+.hero__stats li{display:inline-flex;align-items:baseline;gap:var(--s3);white-space:nowrap;font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
+.hero__stats .cot-i{align-self:center;width:17px;height:17px;color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
-.hero__film{width:min(1280px,92vw);max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
-.hero__film::backdrop{background:var(--scrim)}
+.hero__film{width:min(1280px,calc(100vw - 2 * var(--home-gutter) - 2px));max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
+.hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
-.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);box-shadow:var(--btn-secondary-ring);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -89,7 +118,7 @@ img{display:block;max-width:100%}
 .hero__film:fullscreen video{flex:1;min-height:0;aspect-ratio:auto}
 
 /* ---- the features: one large picture or loop each, its name the way in (a row of one runs the page's width) ---- */
-.features{padding:var(--s7) 0 var(--s8)}
+.features{padding:var(--s7) 0}
 .features-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
 .feat,.play-tile{box-shadow:var(--ring-1)}
 .feat{margin:0;aspect-ratio:16/9}
@@ -115,6 +144,10 @@ img{display:block;max-width:100%}
 /* ---- how it plays: the modes and the mechanics in one rail of large cards, one switch, two arrows ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-head>.home-h2{text-box:trim-end cap alphabetic}
+:lang(zh-CN) :is(.home-head>.home-h2,.press__title){margin-bottom:.12em}
+:lang(zh-CN) .hero__title{line-height:1.08}
+/* a Chinese matchup breaks only at its spaces, never inside 对阵 or 与 */
+:lang(zh-CN) :is(.hero__shot,.bento__cap) b{word-break:keep-all}
 .play{padding:var(--s7) 0}
 .play-acts{display:flex;align-items:center;gap:var(--s2);max-width:100%}
 /* a narrow switch scrolls its options in place */
@@ -137,26 +170,28 @@ img{display:block;max-width:100%}
 .play-tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
 .play-tile__nm a:focus-visible{outline:none}
 /* a mode wears its Deploy glyph, in ink: the accent stays with the primary and the selection */
-.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--ink-2)}
+.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}
 /* a long name takes a second line, never an ellipsis */
 .play-tile__nm b{font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
-.press{padding:var(--s7) 0 var(--s8);border-top:1px solid var(--line-1)}
-.press__inner{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title stats" "quotes quotes" "sources sources" "date date";align-items:last baseline;gap:var(--s6) var(--s7)}
+.press{padding:var(--s7) 0 var(--s9)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "stats" "quotes" "sources" "date";gap:var(--s5)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
 :lang(zh-CN) .home-h2 .t-hollow{opacity:1}
 /* zh quotes break at their punctuation, never inside a word */
 :lang(zh-CN) .press__quotes blockquote{line-break:strict}
-.press__title{grid-area:title}
+/* the press head ends on its baseline like the modes head, so both sit 24 px over their content */
+.press__title{grid-area:title;text-box:trim-end cap alphabetic}
 .press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
 .press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
-.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s6);margin:0}
+.press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5) var(--s3);margin:0}
 .press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
-.press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1)}
+:lang(zh-CN) :is(.press__stats dt,.hero__stats li){font-family:var(--font-cjk)}
+.press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1);text-box:trim-end cap alphabetic}
 .press__sources{grid-area:sources;display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:var(--s5) 0 0;list-style:none;border-top:1px solid var(--line-1)}
 .press__src{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
 .press__src:hover,.press__src:focus-visible{color:var(--ink-1);box-shadow:var(--ring-3)}
@@ -167,8 +202,10 @@ img{display:block;max-width:100%}
 .press__quotes .v5-social-metrics{gap:var(--s4)}
 .press__quotes .v5-social-card__body{justify-content:flex-start}
 .press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
-.press__avatar{display:inline-block;width:.8em;height:.8em;margin-right:var(--s4);vertical-align:-.06em;border-radius:50%;outline:1px solid var(--line-3)}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
+.press__title a{display:flex;align-items:first baseline;gap:var(--s4)}
+.press__title a>span{text-box:trim-end cap alphabetic}
+.press__avatar{position:relative;top:.06em;flex:none;width:.8em;height:.8em;border-radius:50%;outline:1px solid var(--line-3)}
+.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
 .v5-social-card--vaibhav{--social-accent:var(--ink-2)}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
@@ -206,18 +243,44 @@ img{display:block;max-width:100%}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--s4)}
 
+/* ---- head to head and the fleet: a bento of large stills, the first two columns wide and two rows tall, each named by what
+   it shows and opening its vehicle (owner 2026-10-25: "we need to show of all our higher quality stuff") ---- */
+.bento{padding:var(--s7) 0}
+/* the first section after the hero keeps the full step between two sections */
+.bento--duels{padding-top:var(--s9)}
+.bento__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
+.bento__tile{margin:0;aspect-ratio:16/9;box-shadow:var(--ring-1)}
+.bento__tile--lead{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
+.bento__tile>img{transition:transform var(--dur-stage) var(--ease-camera)}
+.bento .bento__cap{position:absolute;inset:0;display:flex;align-items:flex-end;margin:0;padding:var(--s4) var(--s5)}
+.bento__cap a{display:flex;flex-direction:column;gap:var(--s1);min-width:0;color:var(--ink-1)}
+/* the whole picture answers the link */
+.bento__cap a::after{content:'';position:absolute;inset:0}
+.bento__cap a:focus-visible{outline:none}
+.bento__tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
+.bento__cap b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
+.bento__tile--lead .bento__cap b{font-size:var(--fs-36)}
+.bento__where{display:flex;flex-wrap:wrap;gap:0 var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2)}
+.bento__where>span+span:not(.hero__mode)::before{content:'·';margin-right:var(--s2);color:var(--ink-3)}
+/* in battle: four loops two to a row, on the features' own player (its file only on screen, its disc top right) */
+.bento--clips .bento__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bento__tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
+.bento__tile>video.has-frame{opacity:1}
+.bento__tile .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
+@media (hover:hover) and (pointer:fine){
+  .bento__tile:hover>:is(img,video){transform:scale(1.02)}
+}
+
 /* the sections under the hero lay out only as they near the screen: the first frame draws the hero alone */
 .features{content-visibility:auto;contain-intrinsic-size:auto 2600px}
 :is(.play,.press,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 640px}
+.bento{content-visibility:auto;contain-intrinsic-size:auto 1500px}
 
 /* Chinese headlines: roomier lines (CJK glyphs fill the em box, so the Latin display leading would make two lines touch) */
 html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
 @media (width < 1100px){
   .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 2)}
-  .press__inner{grid-template-columns:1fr;grid-template-areas:"title" "stats" "sources" "date";align-items:start}
-  .press__stats{grid-template-columns:repeat(2,auto);justify-content:start}
-  .press__inner{grid-template-areas:"title" "stats" "quotes" "sources" "date"}
   .press__quotes{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 /* the phone landing: the poster and the clips over the first 640 px, the headline in its sky, the counts, and one Play
@@ -232,35 +295,53 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
-  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--home-gutter) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--side-plate);box-shadow:var(--home-bar-edge)}
+  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--home-gutter) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:var(--s3);background:var(--surface-nav);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   /* the trailer keeps its name on a phone; its picture and length step aside */
   .hero__trailer{--h:58px;padding-inline:var(--s4)}
-  .hero__trailer>:is(.hero__thumb,.hero__dur){display:none}
-  /* in the picture's lower right, above the counts: the hero's own box ends with them */
-  .hero__toggle{position:static;grid-area:card;align-self:end;justify-self:end;margin-bottom:var(--s3)}
-  .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);height:auto;margin:0;padding:0;border:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1)}
+  .hero__trailer :is(.hero__thumb,.hero__dur){display:none}
+  /* the headline and its line over the picture's foot, then the shot on screen beside the reel's pause, above the counts */
+  .hero__card{flex-direction:column;align-items:stretch;gap:var(--s4);margin-bottom:var(--s4)}
+  .hero__lead{max-width:none}
+  /* the words' scrim is the phone grade's lower half (home-phone-grade), across the picture and through the counts */
+  .hero__lead::before,.hero__reelbar::before{content:none}
+  .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
+  .hero__reelbar{justify-content:space-between;height:44px}
+  .hero__shots{text-align:left}
+  .hero__shot{align-items:flex-start}
+  .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s2);height:auto;margin:0;padding:0;border:0}
+  .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
-  .features{padding-top:var(--s6)}
+  .features{padding:var(--s6) 0}
   .features-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2)}
   .feat,.feat--wide{aspect-ratio:16/9}
   .feat__cap{padding:var(--s4)}
   .feat__link,.feat--wide .feat__link{font-size:var(--fs-24)}
   .feat__link .cot-i{width:20px;height:20px}
-  :root{--home-h2:var(--fs-44)}
+  :root{--home-h1:clamp(var(--fs-32),10vw,var(--fs-44));--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
-  /* one whole card per view, the arrows beside the switch; the switch takes two rows at the 44 px target */
+  /* the closing band keeps the phone's 64 px section step (the band's picture has no inset of its own) */
+  .press{padding:var(--s6) 0 calc(2 * var(--s6))}
+  /* one whole card per view; the switch keeps its arrows beside it while the column holds all four tabs (the play-acts
+     query below sets them two by two when it does not), at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
-  .play-acts{display:grid;grid-template-columns:1fr auto auto;width:100%}
-  .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;grid-column:1 / -1;overflow:visible}
+  /* each bento is a rail of whole stills on a phone, the next one showing at the edge */
+  .bento{padding:var(--s6) 0;contain-intrinsic-size:auto 420px}
+  .bento--duels{padding-top:calc(2 * var(--s6))}
+  .bento .bento__grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:86%;gap:var(--s2);overflow-x:auto;overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory;scrollbar-width:none}
+  .bento__grid::-webkit-scrollbar{display:none}
+  .bento__tile,.bento__tile--lead{grid-column:auto;grid-row:auto;aspect-ratio:16/9;scroll-snap-align:start}
+  .bento__tile--lead .bento__cap b,.bento__cap b{font-size:var(--fs-20)}
+  .bento .bento__cap{padding:var(--s3) var(--s4)}
+  .play-acts{flex-wrap:wrap;width:100%;container:play-acts / inline-size}
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px;white-space:normal}
-  .play-acts .cot-c-btn--icon{--h:44px}
-  .play-acts>.cot-c-btn--icon:first-of-type{grid-column:2}
+  .play-acts .cot-c-btn--icon{--h:50px}
   .play-tile__nm{left:var(--s4);right:var(--s4);bottom:var(--s3)}
   .play-tile__nm b{font-size:var(--fs-20)}
   .play-tile__nm .cot-i{width:20px;height:20px}
+  .press__stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .press__stats dd{font-size:var(--fs-28)}
   .press__quotes{grid-template-columns:minmax(0,1fr)}
   .v5-social-card{min-height:0}
@@ -280,6 +361,11 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .film-scrub{height:44px}
   .film-time{display:none}
 }
+/* a phone column too narrow for the four tabs: two by two, the arrows on the row under them */
+@container play-acts (width < 560px){
+  .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 100%;overflow:visible}
+  .play-acts>.cot-c-btn--icon:first-of-type{margin-left:auto}
+}
 @media (height < 520px) and (width >= 768px){
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
@@ -287,7 +373,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 /* blockers 3, 4: touch screens (and a short landscape one, which is a phone) get the 44 px targets */
 @media (pointer:coarse),(height < 520px){
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px}
-  .play-acts .cot-c-btn--icon{--h:44px}
+  .play-acts .cot-c-btn--icon{--h:50px}
   .press__src{height:44px}
   .film-btn,.hero__film-close{--h:44px}
   .film-scrub{height:44px}

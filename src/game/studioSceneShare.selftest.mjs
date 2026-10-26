@@ -587,8 +587,16 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   }
   assert.ok(sinks >= 5, `the Studio's markup sinks are audited (${sinks})`);
   const panel = read('src/ui/studioPanel.ts');
-  assert.match(panel, /noticeMessage\.textContent = text;\n\s+noticeDetail\.textContent = detail;/, 'the notice writes the message and detail as text');
-  assert.match(read('src/ui/studioProductionPanel.ts'), /linkStatus\.textContent = /, 'the Director status writes text');
+  // (integ 254: the Studio's notice is the kit's toast since brand-ui-garage-redesign-245's Studio rounds) the message and
+  // detail reach the kit's queue as data, which writes each escaped
+  assert.match(panel, /notify\(\{ id: 'studio-notice', region: 'studio', severity: tone, text, detail: detail \|\| undefined \}\)/,
+    'the notice hands the message and detail to the kit as data');
+  const kitNotice = read('src/ui/components/notice.ts');
+  assert.match(kitNotice, /\$\{esc\(options\.text\)\}/, 'the kit writes a notice\'s text escaped');
+  assert.match(kitNotice, /\$\{esc\(options\.detail\)\}/, 'the kit writes a notice\'s detail escaped');
+  // (integ 254) the Director's scene-link result goes to the same kit notice as data (its status line is gone)
+  assert.match(read('src/ui/studioProductionPanel.ts'), /hosts\.notice\?\.\(result\.message, result\.ok \? 'info' : 'error', result\.detail\)/,
+    'the Director hands the link result to the notice as data');
 }
 
 // 11. Boot budget: the codec, schema and messages load with the Studio's chunk, never on the game entry.

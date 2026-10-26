@@ -2,8 +2,8 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/sim/structureSupport.ts",
- "sourceSha256": "88789d3c2ffb8caa6f5679aa981df311c9e9cbdbc443d5321fc7dead76f97641",
- "collisionSha256": "0b6fa32f787583e4df0a3bff5bc0c011e29aa173ce7071eb63af4a55f757ed9b",
+ "sourceSha256": "20f2e9d8e7318bcc893078cb29511fc486ee303e569c2a36dd91145cf4968723",
+ "collisionSha256": "573ef6fa979611c35996327d81a79ccba49643a31c6e231fe75b2bf7dad8d52b",
  "records": {
   "urban:35": {
    "min": [

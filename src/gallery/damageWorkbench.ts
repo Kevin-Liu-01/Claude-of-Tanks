@@ -6,10 +6,20 @@ import type { ArmorIntersection } from '../sim/armor.ts';
 
 const kinds = ['era', 'equipment', 'module', 'crew'] as const;
 const icons = { era: 'armorFlashlight', equipment: 'shield', module: 'engine', crew: 'crew' };
+/** A plate's name in the page's language, word by word (glacis_era_l: "Glacis ERA L", zh "首上反应装甲左"); a word with
+ *  no entry keeps its title case. */
+function plateLabel(name: string): string {
+  const words = String(name || '').split(/[_\s]+/).filter(Boolean).map((word) => {
+    const key = `gallery.plate.${word.toLowerCase()}`;
+    const text = t(key);
+    return text === key || text.startsWith('gallery.') ? word.charAt(0).toUpperCase() + word.slice(1) : text;
+  });
+  return words.length ? words.join(' ').replace(/(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])/g, '') : technicalLabel(name);
+}
 function targetLabel(target: DamageTarget): string {
   if (target.module) return t(`garage.module.${target.module}`);
   if (target.kind === 'crew') return t(`garage.crew.${target.name}`);
-  return technicalLabel(target.name);
+  return plateLabel(target.name);
 }
 function button(label: string, icon: string, action: string): HTMLButtonElement {
   const element = document.createElement('button'); element.type = 'button'; element.dataset.damageAction = action;
@@ -107,7 +117,7 @@ export function createDamageWorkbench(host: HTMLElement, callbacks: {
       const title = document.createElement('li'); title.textContent = t(hits.length ? 'gallery.damage.traceResult' : 'gallery.damage.traceMiss', { count: hits.length }); ray.append(title);
       for (const hit of hits.slice(0, 16)) {
         const item = document.createElement('li');
-        const label = hit.kind === 'plate' ? technicalLabel(hit.plate.name) : t(`garage.${hit.kind}.${hit.kind === 'module' ? hit.module : hit.crew}`);
+        const label = hit.kind === 'plate' ? plateLabel(hit.plate.name) : t(`garage.${hit.kind}.${hit.kind === 'module' ? hit.module : hit.crew}`);
         item.textContent = hit.kind === 'plate' ? `${label} · ${hit.plate.physicalMm} mm · ${hit.impactAngleDeg.toFixed(0)}°` : label;
         ray.append(item);
       }

@@ -57,6 +57,7 @@ import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -1367,7 +1368,7 @@ function leopardA6MantletRoofBridge(
 // wall/lip, segmented full-length fender planks (width carriers must catch
 // station slice windows — merkava packet mechanics), heavy front skirt
 // blocks at EXACTLY the committed half-width, inset rear skirt run.
-function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
+function* leoHullV3Steps(P: TankBuilderPort, H: LeopardHullV3Config): TankProfileBuild {
   const { box, cylY, torus, headlight, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW;
@@ -1469,6 +1470,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage1();
   };
   leoHullV3AssemblyStage1();
+  yield 'leoHullV3AssemblyStage1';
   // lower hull tub + belly. H.tubZrear starts the REAR UNDERCUT: the refs'
   // belly rises over the sprocket bay (a flat tub to the tail read 0.22-0.25
   // below the ref band on every sprocket-zone column) — wedge from the tub
@@ -1492,6 +1494,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage2();
   };
   leoHullV3AssemblyStage2();
+  yield 'leoHullV3AssemblyStage2';
   // glacis: chained slabs along the measured two-slope polyline (near-full
   // width: the measured beaks stay wide — plan nose +-1.6 at the tip band)
   const g = H.glacis;                      // [[z,y] ...] crease -> beak tip
@@ -1630,6 +1633,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage3();
   };
   leoHullV3AssemblyStage3();
+  yield 'leoHullV3AssemblyStage3';
   // beak tip: the measured plan nose is CLIPPED at the centre (tow-hook
   // recess) with the wings running further forward. BW.dropTip lowers the
   // wing's outer end toward the refs' thin low tip band (a6: [0.97..1.06]).
@@ -1701,6 +1705,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage4();
   };
   leoHullV3AssemblyStage4();
+  yield 'leoHullV3AssemblyStage4';
   // beak underside: tip band down-back to the belt. r4 TRACK-CONTAINMENT:
   // when glacisLaneCut is set the underside and the nose interior fill also
   // narrow to the inter-track body — their over-track spans grazed the wrap
@@ -1801,6 +1806,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage5();
   };
   leoHullV3AssemblyStage5();
+  yield 'leoHullV3AssemblyStage5';
   // glacis furniture: weld seam, splash V, tow eyes, headlight pods
   const cr = g[0];
   const leoHullV3HullStage6 = (): void => {
@@ -1810,6 +1816,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage6();
   };
   leoHullV3AssemblyStage6();
+  yield 'leoHullV3AssemblyStage6';
   const gRx = -Math.atan2(g[0][1] - g[1][1], g[1][0] - g[0][0]);
   const leoHullV3HullStage7 = (): void => {
     for (const s of [-1, 1] as const) {
@@ -1830,6 +1837,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage7();
   };
   leoHullV3AssemblyStage7();
+  yield 'leoHullV3AssemblyStage7';
   // driver hatch + flush periscopes front-right, ammo hatch left
   const dz = H.driverZ ?? cr[0] - 0.60;
   const dy = deck[0][1];
@@ -1846,6 +1854,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage8();
   };
   leoHullV3AssemblyStage8();
+  yield 'leoHullV3AssemblyStage8';
   // rear deck furniture: flush fan discs, radiator wells, transverse louvre
   const fz = H.fans.z, fx = H.fans.x, fr = H.fans.r;
   const fy = deckYAt(deck, fz);
@@ -1895,6 +1904,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage9();
   };
   leoHullV3AssemblyStage9();
+  yield 'leoHullV3AssemblyStage9';
   const tz = tailZ + 0.40;
   const ty = deckYAt(deck, tz);
   const leoHullV3HullStage10 = (): void => {
@@ -1918,6 +1928,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage10();
   };
   leoHullV3AssemblyStage10();
+  yield 'leoHullV3AssemblyStage10';
 
   // rear wall: plate from the measured undercut line up to the deck, tail
   // lip (deck overhang) beyond it, louvres/taillights on the plate.
@@ -1944,6 +1955,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage11();
   };
   leoHullV3AssemblyStage11();
+  yield 'leoHullV3AssemblyStage11';
   const lvX = H.rearWallHW ? Math.min(hw * 0.52, rwHW - 0.31) : hw * 0.52;
   const lvW = H.rearWallHW ? Math.min(0.60, (rwHW - lvX) * 2 - 0.02) : 0.60;
   const leoHullV3HullStage12 = (): void => {
@@ -1997,6 +2009,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage12();
   };
   leoHullV3AssemblyStage12();
+  yield 'leoHullV3AssemblyStage12';
 
   // full-length fender planks, SEGMENTED so every station slice window
   // catches an end cap (unbroken axis-aligned boxes are edge-on invisible).
@@ -2029,6 +2042,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage13();
   };
   leoHullV3AssemblyStage13();
+  yield 'leoHullV3AssemblyStage13';
   // fore-fender run over the glacis: the refs' front mudguards FOLLOW the
   // falling glacis line (a level plank there sticks 0.2-0.3 above the ref
   // side profile). Thin plates chained just under the glacis surface.
@@ -2057,6 +2071,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage14();
   };
   leoHullV3AssemblyStage14();
+  yield 'leoHullV3AssemblyStage14';
   // STATION LAW (merkava packets): an unbroken axis-aligned course is
   // edge-on INVISIBLE to the near/far-clipped station-slice cameras — the
   // a5 gate read the bare 3.40 track band on every skirt slice (flat 2%
@@ -2105,6 +2120,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage15();
   };
   leoHullV3AssemblyStage15();
+  yield 'leoHullV3AssemblyStage15';
   // thinner rear skirt run, inset under the fender lip
   const RS = H.rearSkirt;
   const leoHullV3HullStage16 = (): void => {
@@ -2114,6 +2130,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     leoHullV3HullStage16();
   };
   leoHullV3AssemblyStage16();
+  yield 'leoHullV3AssemblyStage16';
 
   // A5/A6-family fender-to-skirt shoulder. The fender and skirt courses are
   // intentionally authored at different widths, but the old build left the
@@ -2283,6 +2300,9 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
   };
   leoHullV3AssemblyStage17();
 }
+function leoHullV3(...args: Parameters<typeof leoHullV3Steps>): void {
+  drainTankBuild(leoHullV3Steps(...args));
+}
 
 // Measured wedge turret (a6/a5): arrowhead plates lofted along the traced
 // nose line with the crest FALLING outboard (ref front views read 2.6 ->
@@ -2295,7 +2315,7 @@ const LEO_A6_UNDERBODY_PLAN = [
   [-1.39, 0.42], [-1.22, 0.92],
 ];
 
-function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
+function* wedgeTurretV3Steps(P: TankBuilderPort, T: LeopardWedgeV3Config): TankProfileBuild {
   const { box, frustum, polyMultiLoft, cylY, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = T.h;
@@ -2315,6 +2335,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage1();
+  yield 'wedgeTurretV3TurretStage1';
   const wedgeTurretV3TurretStage2 = (): void => {
     const shellPlan = T.shellPlan;
     const shellRings = T.shellRings;
@@ -2796,6 +2817,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage2();
+  yield 'wedgeTurretV3TurretStage2';
   // bustle rack: rails + slats + strapped kit, measured width/height.
   // Rails span EXACTLY 2*RK.x — the old +0.26 overhang read as proc-only
   // turret-plan columns outside the measured rack width.
@@ -2830,6 +2852,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage3();
+  yield 'wedgeTurretV3TurretStage3';
   // strapped kit sits just FORWARD of the rear rail — a mid-rack center
   // put the a5 duffels 0.15 past the measured rack rear (proc-only cols)
   const bz = RK.z1 + 0.25;
@@ -2845,6 +2868,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage4();
+  yield 'wedgeTurretV3TurretStage4';
   // roof: EMES hood (recessed cutout, lid at the published-height line),
   // hatches, PERI blister (the <=0.45 m p95 spike budget), smoke mortars
   // tucked inside the wedge plan, optional whip antennas (measured 1-col
@@ -2861,6 +2885,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     P.add('turretGlass', box(0.24 * eS, 0.09 * eS, 0.016), E.x, E.top - 0.10 * eS, E.z + 0.215 * eS);
   };
   wedgeTurretV3TurretStage5();
+  yield 'wedgeTurretV3TurretStage5';
   const PR = T.peri;
   const prD = PR.d ?? 0.24;
   const periB = PR.mat ?? 'turretDark';                // a6 r2: camo body, not raw dark
@@ -2891,6 +2916,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage6();
+  yield 'wedgeTurretV3TurretStage6';
   const wedgeHatchStations: ReadonlyArray<readonly [LeopardWedgeV3Config['cmdr'], boolean]> = [
     [T.cmdr, false], [T.loader, true],
   ];
@@ -2981,10 +3007,12 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
     }
   };
   wedgeTurretV3TurretStage7();
+  yield 'wedgeTurretV3TurretStage7';
   const wedgeTurretV3TurretStage8 = (): void => {
     periscope(P, 'turretDetail', T.cmdr.x, h - 0.01, T.cmdr.z + 0.30);
   };
   wedgeTurretV3TurretStage8();
+  yield 'wedgeTurretV3TurretStage8';
   const mTop = T.mastTop ?? (h + 0.06);
   const wedgeTurretV3TurretStage9 = (): void => {
     // 2026-10-19 (owner float sweep): mastBaseY runs a bustle mast down to its lower roof (A5: 80 mm short of 0.68).
@@ -3113,11 +3141,11 @@ function addLeopardClosedShoulderMudguards(
   });
 }
 
-function buildLeo2A6(P: TankBuilderPort) {
+function* buildLeo2A6Steps(P: TankBuilderPort): TankProfileBuild {
   const { box, cylX, cylZ, torus, xform, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const buildLeo2A6MarkingsStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A6MarkingsStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       // tracks re-laid to the measured front-view ground band (ref reaches
       // ground over x 0.99..1.63 per side; the shoe PIN CAPS add trackW*0.49
       // +0.03 beyond xc, so trackW 0.60 @ xc 1.305 puts pads 1.00..1.61 and
@@ -3381,7 +3409,8 @@ function buildLeo2A6(P: TankBuilderPort) {
       P.add('hullDark', box(0.06, 0.115, 0.03), s2 * 0.45, 1.425, -3.70);
     }
   };
-  buildLeo2A6MarkingsStage1();
+  yield* buildLeo2A6MarkingsStage1();
+  yield 'buildLeo2A6MarkingsStage1';
 
   // ---- shaded-parity r2 hull furniture (visual fix round) ------------------
   // Standing law: additions live INSIDE the certified silhouette — sub-row
@@ -3539,6 +3568,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     P.add('hullShadow', box(2.80, 0.243, 0.001), 0, 1.2525, -3.622);
   };
   buildLeo2A6HullStage1();
+  yield 'buildLeo2A6HullStage1';
   const buildLeo2A6HullStage2 = (): void => {
     for (const s2 of [-1, 1]) {
       P.add('hullDark', box(0.03, 0.245, 0.002), s2 * 1.415, 1.2525, -3.6235);
@@ -3574,6 +3604,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     }
   };
   buildLeo2A6HullStage2();
+  yield 'buildLeo2A6HullStage2';
   const buildLeo2A6HullStage3 = (): void => {
     for (const s2 of [-1, 1]) {
       P.add('hullDark', box(0.40, 0.17, 0.030), s2 * 1.16, 1.50, -3.630);
@@ -3691,6 +3722,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     }
   };
   buildLeo2A6HullStage3();
+  yield 'buildLeo2A6HullStage3';
   // r3 #6: fan-ring relief that survives hero tilt — raised rim curb over a
   // near-black recess floor with radial blades (a real ~5 mm well). Trace
   // safety: the fan columns are a certified +1-row residual; the new max
@@ -3713,6 +3745,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     }
   };
   buildLeo2A6HullStage4();
+  yield 'buildLeo2A6HullStage4';
   // #10 skirts: heavier front-third armor-block pads (faces 1.871 — inside
   // the committed 1.875 width line; rows 0.985..1.185 already carried by
   // the certified 1.864 lip bands) + tone-only scalloped rubber lower edge
@@ -3765,6 +3798,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     }
   };
   buildLeo2A6HullStage5();
+  yield 'buildLeo2A6HullStage5';
   // r7 #3 HERO PATCH (critic r6: behind-wheel bg wedges, close-roof 324 px /
   // hero-rearright 51 px — "sponson plane too short behind wheels 2-4").
   // Corridor (computed on the close-roof ray family, elev ~27deg): rays
@@ -3809,12 +3843,13 @@ function buildLeo2A6(P: TankBuilderPort) {
     P.turretG.position.set(0, 1.77, 0.35);
   };
   buildLeo2A6HullStage6();
+  yield 'buildLeo2A6HullStage6';
   // contiguity r9: crest tables hoisted to consts — the wedge END-CLOSURE
   // pieces below (owner contiguity flag) are computed off the same points.
   const crestR: Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
   const crestLt: Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
-  const buildLeo2A6TurretStage1 = (): void => {
-    wedgeTurretV3(P, {
+  const buildLeo2A6TurretStage1 = function* (): TankProfileBuild {
+    yield* wedgeTurretV3Steps(P, {
       h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55, crestTail: 0.05, wallDrop: 0.10,
       underbodyRings: [
         { height: -0.12, inset: 0.90 },
@@ -4083,7 +4118,8 @@ function buildLeo2A6(P: TankBuilderPort) {
       }
     }
   };
-  buildLeo2A6TurretStage1();
+  yield* buildLeo2A6TurretStage1();
+  yield 'buildLeo2A6TurretStage1';
   // r9 CONTIGUITY (owner flag: "empty areas... behind the cheek"): the slot
   // between the cheek plate's trailing edge and the wall chamfer showed the
   // turretDark spaced-armor shadow wall as a BLACK POCKET from garage
@@ -4202,6 +4238,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     P.add('turretCloth', box(2.00, 0.42, 0.016), 0, 0.32, -2.955);
   };
   buildLeo2A6TurretStage2();
+  yield 'buildLeo2A6TurretStage2';
   // r6 #4 HERO SEAL (rack cage sky-leak; not board-scored, game-visible):
   // at low-oblique rear the open TOP+SIDES of the basket read a sky
   // TRIANGLE bounded by the neck-wall rear edge, the rack rails and the
@@ -4550,11 +4587,16 @@ function buildLeo2A6(P: TankBuilderPort) {
     ]);
   };
   buildLeo2A6RunningGearStage1();
+  yield 'buildLeo2A6RunningGearStage1';
   const buildLeo2A6AssemblyStage1 = (): void => {
     P.topY = 1.24;
   };
   buildLeo2A6AssemblyStage1();
 }
+function buildLeo2A6(...args: Parameters<typeof buildLeo2A6Steps>): void {
+  drainTankBuild(buildLeo2A6Steps(...args));
+}
+withBuildSteps(buildLeo2A6, buildLeo2A6Steps);
 
 // ---------------------------------------------------------------------------
 // Leopard 2A5 — GATE-V10 rebuild against the fully-repaired recovered
@@ -4570,7 +4612,7 @@ function buildLeo2A6(P: TankBuilderPort) {
 // bustle to -2.90, whips (x -0.96, z -1.93) / (+1.08, -2.02) to 4.11,
 // mantlet block top 2.21 over z 3.43..3.95, L/44 axis 1.99 muzzle 6.02.
 // ---------------------------------------------------------------------------
-export function buildLeo2A5(builder: object) {
+function* buildLeo2A5Steps(builder: object): TankProfileBuild {
   const P = requireTankBuilderPort(builder);
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -4587,8 +4629,8 @@ export function buildLeo2A5(builder: object) {
   // frame rails are the rear-window med's bright population — toning them
   // slid the louvre med 82.4 -> 80.6 under its 82 floor)
 
-  const buildLeo2A5HullStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A5HullStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.638, sponsonY: 1.38, trackW: 0.64, xc: 1.37,
       // deck staircase re-laid to the fresh 96-col trace (1.684 mid, the
       // −1.95..−2.29 dip at 1.768, 1.825 aft — the old flat-1.84 aft band and
@@ -4786,7 +4828,8 @@ export function buildLeo2A5(builder: object) {
       }
     }
   };
-  buildLeo2A5HullStage1();
+  yield* buildLeo2A5HullStage1();
+  yield 'buildLeo2A5HullStage1';
   // hull rear stowage frame (batch-3 certified Strv-pattern HULL rack),
   // raised to the fresh trace (tops 1.99→1.91 over −3.41..−3.86): rails
   // 1.42/1.38, load ~1.94, roll 1.97. The low rail SPLITS — centre section
@@ -4901,6 +4944,7 @@ export function buildLeo2A5(builder: object) {
     }
   };
   buildLeo2A5HullStage2();
+  yield 'buildLeo2A5HullStage2';
   // VISUAL r1 rear-wall dressing (the ref pair's dominant rear read is the
   // crossed spare tow cables + louvred grille bands + lamp clusters; the
   // proc wall was bare camo). Cables lie 15mm proud of the -3.42 wall face,
@@ -4953,6 +4997,7 @@ export function buildLeo2A5(builder: object) {
     }
   };
   buildLeo2A5HullStage3();
+  yield 'buildLeo2A5HullStage3';
   // VISUAL r6 2b TAILLIGHT GUARD RINGS (critic driver B): the ref's low wall
   // corners carry round ribbed guard cages (window hue 52.2 at x -1.06..
   // -0.68, y 0.89..1.23) — concentric pale rings over a dark backing disc +
@@ -4994,6 +5039,7 @@ export function buildLeo2A5(builder: object) {
     for (const s of [-1, 1] as const) P.add('hullDark', KIT.cylZ(0.058, 0.032, 12), s * 0.90, 1.395, 3.615, -0.30, 0, 0);
   };
   buildLeo2A5HullStage4();
+  yield 'buildLeo2A5HullStage4';
   // VISUAL r6 3e GLACIS ANTI-SLIP + X-STRAPS + POD CLUSTER PLATES (critic
   // driver C: glacis BARE and +11.8 bright vs ref 61.8): dark matte fields
   // hug the two plate slopes (<=8 mm proud, slope-aligned — the a6 #1
@@ -5002,7 +5048,7 @@ export function buildLeo2A5(builder: object) {
   // armored backing plates + 3-bar brush guards cluster the headlight pods
   // (tops <= the pods' own 1.45 line; plan stays wing/pad-owned).
   const antiSlipGeos: THREE.BufferGeometry[] = [];
-  const buildLeo2A5MarkingsStage1 = (): void => {
+  const buildLeo2A5MarkingsStage1 = function* (): TankProfileBuild {
     {
       // r8 1b GLACIS DECOUPLE: the anti-slip fields leave the shared rubber
       // bucket (tires needed a big sub45 lift that pushed the glacis med
@@ -5069,7 +5115,7 @@ export function buildLeo2A5(builder: object) {
     // frustums are edge-on invisible to the clipped slice cameras; param-only
     // segmentation, zero shared-path edits).
     P.turretG.position.set(0, 1.78, 0.30);
-    wedgeTurretV3(P, {
+    yield* wedgeTurretV3Steps(P, {
       h: 0.76, apexY: 0.16, gunW: 0.36, slotZ: 1.60,
       chamferY: 0.52, roofX: 1.06, crestTail: 0.79, crestTailDrop: 0.005,
       // r3: fore walls 1.40 → 1.38 with the chamfer break raised to 0.62
@@ -5199,7 +5245,8 @@ export function buildLeo2A5(builder: object) {
       }
     }
   };
-  buildLeo2A5MarkingsStage1();
+  yield* buildLeo2A5MarkingsStage1();
+  yield 'buildLeo2A5MarkingsStage1';
   // VISUAL r6 3b PERI two-tone + face split (a6 r3 #2 crown recipe at the
   // a5's flat-cluster stature): pale full-footprint cap disc + dark ring +
   // hub riding +0.7..1.4 mm over the 0.873 box top — the same certified
@@ -5221,6 +5268,7 @@ export function buildLeo2A5(builder: object) {
     }
   };
   buildLeo2A5TurretStage1();
+  yield 'buildLeo2A5TurretStage1';
   // The inherited merged smoke tubes were buried inside the side wall.
   // Replace them with complete fitting assemblies on the two fore side
   // courses. Their bases overlap armor while the tubes and dark mouths stay
@@ -5275,6 +5323,7 @@ export function buildLeo2A5(builder: object) {
     buildLeo2A5ReceiptStage2();
   };
   buildLeo2A5ReceiptStage1();
+  yield 'buildLeo2A5ReceiptStage1';
   // r6 loader pintle MG (owner decoration law): thin members riding BELOW
   // the cluster line inside already-lit side/front columns — mask-free.
   // r3 POST-WARP: whole assembly dropped ~0.045 with the 2.697→2.653 line.
@@ -5418,6 +5467,7 @@ export function buildLeo2A5(builder: object) {
     P.addGunExtra(box(0.40, 0.33, 0.52), 0, 0.05, 2.24);
   };
   buildLeo2A5MarkingsStage2();                         // deep mantlet block (r6: ref 2.203 line, z 3.43..3.95)
+  yield 'buildLeo2A5MarkingsStage2';
   const buildLeo2A5GunStage1 = (): void => {
     P.addGunExtra(box(0.22, 0.15, 0.20), 0, 0.075, 2.60);                        // sleeve collar (ref 2.12-2.15 step at 3.95..4.17w; r3 d 0.20 — the 4.003 col read one row low at d 0.12)
     // VISUAL r6 3d MANTLET-ROOT GRAMMAR (critic driver C): the concentric box
@@ -5466,6 +5516,7 @@ export function buildLeo2A5(builder: object) {
     for (const s of [-1, 1] as const) P.add('gun', box(0.06, 0.05, 4.10), s * 0.155, 0, 2.42);
   };
   buildLeo2A5GunStage1();
+  yield 'buildLeo2A5GunStage1';
   // ---- VISUAL r1 tone block (a6 shaded-parity r2..r8 landed recipe,
   // a5-scoped: createTankMaterials is per-instance). Baseline pairs read the
   // a6-r1 defect classes verbatim: near-pure-black band/chain, saturated
@@ -6333,11 +6384,16 @@ export function buildLeo2A5(builder: object) {
     buildLeo2A5HullStage6();
   };
   buildLeo2A5HullStage5();
+  yield 'buildLeo2A5HullStage5';
   const buildLeo2A5AssemblyStage3 = (): void => {
     P.topY = 1.24;
   };
   buildLeo2A5AssemblyStage3();
 }
+export function buildLeo2A5(...args: Parameters<typeof buildLeo2A5Steps>): void {
+  drainTankBuild(buildLeo2A5Steps(...args));
+}
+withBuildSteps(buildLeo2A5, buildLeo2A5Steps);
 
 // Leopard 2A5/A5NL — owner-directed Tier X field-modernized A5. The base
 // A5 geometry remains intact; this package adds a physically backed skirt
@@ -6882,12 +6938,12 @@ function leo2A4FullGhillie(P: TankBuilderPort) {
 // flap/board recipes carry over verbatim because the running-gear
 // geometry is identical).
 // ---------------------------------------------------------------------------
-export function buildLeo2A4(builder: object) {
+function* buildLeo2A4Steps(builder: object): TankProfileBuild {
   const P = requireTankBuilderPort(builder);
   const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const buildLeo2A4AssemblyStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A4AssemblyStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.56, sponsonY: 1.24, trackW: 0.635, xc: 1.37,
       // deck: crease 1.665 rising gently to the flat engine deck (the real
       // 2A4 rear deck is one plane — no A5-print aft staircase). §B8 REWORK
@@ -6958,7 +7014,8 @@ export function buildLeo2A4(builder: object) {
       gearFloor: true,
     });
   };
-  buildLeo2A4AssemblyStage1();
+  yield* buildLeo2A4AssemblyStage1();
+  yield 'buildLeo2A4AssemblyStage1';
   // §SRCFIX-0808 BESPOKE A4 SKIRTS (photo class, Bundeswehr mid-production).
   // FORE z 1.60..3.64: three heavy armor blocks, outer face ±1.85 EXACT
   // (the §D width anchor holds), hanging to 0.38, leading piece CHAMFERED
@@ -7098,6 +7155,7 @@ export function buildLeo2A4(builder: object) {
     // construction (Leopard 2A6 X paired dish, nationWheelSets.ts); the pale hub-cap layer left with it.
   };
   buildLeo2A4RunningGearStage1();
+  yield 'buildLeo2A4RunningGearStage1';
   // Supported upper bow bridges span the small inboard shoulder pocket left
   // by the track-safe glacis lane cut. The upright roots overlap the real
   // glacis surface; the caps terminate before the terminal shoe lane, so the
@@ -7184,6 +7242,7 @@ export function buildLeo2A4(builder: object) {
     P.turretG.position.set(0, 1.62, 0.30);
   };
   buildLeo2A4MarkingsStage1();
+  yield 'buildLeo2A4MarkingsStage1';
   const A4_PLAN = [
     [-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.82], [1.13, -1.80],
     [1.04, -2.30], [-1.04, -2.30], [-1.13, -1.80], [-1.20, -0.82], [-1.24, 0.78],
@@ -7265,6 +7324,7 @@ export function buildLeo2A4(builder: object) {
     P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.222);
   };
   buildLeo2A4TurretStage1();
+  yield 'buildLeo2A4TurretStage1';
   // hatches: commander right (ring + lid + periscope ring), loader left.
   const hatchStations: Array<readonly [{ readonly x: number; readonly z: number }, boolean]> = [
     [{ x: 0.60, z: -0.75 }, false],
@@ -7310,6 +7370,7 @@ export function buildLeo2A4(builder: object) {
     }
   };
   buildLeo2A4TurretStage2();
+  yield 'buildLeo2A4TurretStage2';
   // 2x4 Wegmann smoke mortars per side on the rear side walls (§B3
   // launcher grammar — mount plate + angled tube banks). §B8 detail order
   // 3b ("smoke banks read weak in profile"): heavier mount plate, muzzle
@@ -7425,6 +7486,7 @@ export function buildLeo2A4(builder: object) {
     leoMantletGun(P, { rollR: 0.26, rollW: 0.62, plateW: 0.56, plateH: 0.44, len: 4.95, r: 0.084, evac: 0.56, evacR: 1.78 });
   };
   buildLeo2A4MarkingsStage2();
+  yield 'buildLeo2A4MarkingsStage2';
   const buildLeo2A4GunStage1 = (): void => {
     if (P.geometryReceipt) {
       P.gunG.userData.leopard2A4GunSeatReceipt = Object.freeze({
@@ -7444,6 +7506,10 @@ export function buildLeo2A4(builder: object) {
   };
   buildLeo2A4GunStage1();
 }
+export function buildLeo2A4(...args: Parameters<typeof buildLeo2A4Steps>): void {
+  drainTankBuild(buildLeo2A4Steps(...args));
+}
+withBuildSteps(buildLeo2A4, buildLeo2A4Steps);
 
 const LEO2A7V_CHEVRON_NOSE: readonly Vec2Tuple[] = Object.freeze([
   // A7V is an A6-family turret evolution, not a new short triangular shell.
@@ -7605,12 +7671,12 @@ function addLeo2A7VFrontalProtection(P: TankBuilderPort) {
 // census (FITTING-SINK under the 2.64 line); low-profile ADS-ready
 // sensor pods on the roof corners (photo class).
 // ---------------------------------------------------------------------------
-function buildLeo2A7V(P: TankBuilderPort) {
+function* buildLeo2A7VSteps(P: TankBuilderPort): TankProfileBuild {
   // Hull coordinates below retain the original authoring frame; the final
   // hull-only X transform reduces its nominal 4.00 m width to 3.60 m.
   const { box, cylY } = KIT;
-  const buildLeo2A7VMarkingsStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A7VMarkingsStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.76, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
       // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck rose 6 cm from the ring aft
       // under the turret's lower body, whose rear corners reach 2.38 m off the ring's axis 3 cm over the ring's deck, so
@@ -7746,7 +7812,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // the turret into a tall triangular shell unrelated to the 2A5/2A6 line.
     // The ring datum stays 10 cm over the local deck, matching the family seat.
     P.turretG.position.set(0, 1.72, 0.35);
-    wedgeTurretV3(P, {
+    yield* wedgeTurretV3Steps(P, {
       h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
       chamferY: 0.55, roofX: 1.05, crestTail: 0.05, crestTailDrop: 0.005,
       wallDrop: 0.10, wallShadowXCap: 1.335,
@@ -7826,7 +7892,8 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.add('turret', KIT.frustum(0.44, 0.17, -0.17, 0.28, 0.12, -0.12, 0.61, 0.88),
       -0.68, 0, 0.62);
   };
-  buildLeo2A7VMarkingsStage1();
+  yield* buildLeo2A7VMarkingsStage1();
+  yield 'buildLeo2A7VMarkingsStage1';
   // Recover the strongest readable details from our earlier authored A7V
   // without restoring its oversized 77-point primary silhouette.  These
   // shallow seams divide the long native side modules into plausible armor
@@ -7922,6 +7989,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.add('turretDark', box(0.03, 0.03, 0.22), -0.62, 0.70, -1.48);
   };
   buildLeo2A7VTurretStage1();              // conduit into the roof
+  yield 'buildLeo2A7VTurretStage1';
   // A7V SLAT/BAR ARMOR REAR ARC (identity: the rear-arc stand-off kit on
   // deployed fits): segmented horizontal bar panels around the bustle rear
   // corners — frame posts + 4 bars per panel, ≤0.48 m chunks (STATION
@@ -7986,6 +8054,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.addGunExtraDark(box(0.42, 0.018, 0.34), 0, 0.205, 0.72);
   };
   buildLeo2A7VMarkingsStage2();                 // recessed crown seam
+  yield 'buildLeo2A7VMarkingsStage2';
   const buildLeo2A7VGunStage1 = (): void => {
     P.addGunExtraDark(KIT.cylZ(0.158, 0.020, P.q ? 24 : 16), 0, 0, 1.38);     // dark mantlet face
     P.addGunExtra(KIT.cylZ(0.112, 0.16, P.q ? 22 : 14), 0, 0, 1.47);          // armored tube collar
@@ -7998,6 +8067,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     muzzleBore(P, { len: 5.53, r: 0.073 });
   };
   buildLeo2A7VGunStage1();
+  yield 'buildLeo2A7VGunStage1';
   const protectionReceipt = addLeo2A7VFrontalProtection(P);
   const buildLeo2A7VGunStage2 = (): void => {
     if (P.geometryReceipt) {
@@ -8056,6 +8126,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
     }
   }
 }
+function buildLeo2A7V(...args: Parameters<typeof buildLeo2A7VSteps>): void {
+  drainTankBuild(buildLeo2A7VSteps(...args));
+}
+withBuildSteps(buildLeo2A7V, buildLeo2A7VSteps);
 
 function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
   const { box } = KIT;
@@ -8449,7 +8523,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
 // owner-directed 2026-09-23 turret is an earlier interpretation of the current
 // Revolution: compact welded core, shorter modular cheeks and simpler optics.
 // ---------------------------------------------------------------------------
-function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
+function* buildLeo2RevolutionPrototypeSteps(P: TankBuilderPort): TankProfileBuild {
   const { box, cylY, torus, periscope, liftEye } = KIT;
   const slab = orientedSlab;                                  // outward winding on every authored wedge
   // r9 F1/F2 accumulators: jacket flank pieces leave the 'hull' bucket and
@@ -8470,6 +8544,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     P.add('hull', box(2.04, 0.78, 5.80), 0, 0.97, 0.0);
   };
   buildLeo2RevolutionHullStage1();                          // belly x ±1.02, y 0.58..1.36, z -2.9..2.9
+  yield 'buildLeo2RevolutionHullStage1';
   // §B5 DE-FUSION r16 (owner report "turret fused with hull"): the old
   // raised deck (plate 2.06 + underfill + 1.99 fore shelf + 2.06-2.19 bow
   // humps + 2.13-2.21 riser stair + 2.21 engine course + 2.33 corner posts)
@@ -8605,6 +8680,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     P.add('hullDetail', box(0.16, 0.028, 0.16), 0.35, 1.386, 3.15);
   };
   buildLeo2RevolutionHullStage2();              // pedestal cap (top 1.40 = ref 1.400-1.404 cols)
+  yield 'buildLeo2RevolutionHullStage2';
   // Prototype's driving lamps sit on the bow shoulders, below the gun sweep.
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', box(.22, .12, .20), side * .80, 1.36, 3.37);
@@ -8832,6 +8908,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     }
   };
   buildLeo2RevolutionHullStage3();
+  yield 'buildLeo2RevolutionHullStage3';
   // r5 left jacket flap: the front -1.699 column bottoms 0.409 in the ref
   // (mud flap under the jacket lip) — z-parked on the front course
   const buildLeo2RevolutionHullStage4 = (): void => {
@@ -9029,6 +9106,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     liftEye(P, 'hullDetail', 1.30, 1.51, 0.2);
   };
   buildLeo2RevolutionHullStage4();
+  yield 'buildLeo2RevolutionHullStage4';
   const buildLeo2RevolutionMarkingsStage1 = (): void => {
     P.decal('hull', 'number', 'Y-660', 0.26, [0.62, 1.2, -3.84], Math.PI, 0);
     // The former rear dip plates and front ramp trim planks deliberately
@@ -9084,6 +9162,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     });
   };
   buildLeo2RevolutionMarkingsStage1();
+  yield 'buildLeo2RevolutionMarkingsStage1';
 
   buildLeopardRevolutionPrototypeTurret(P);
 
@@ -9299,6 +9378,10 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
   };
   buildLeo2RevolutionRunningGearStage1();
 }
+function buildLeo2RevolutionPrototype(...args: Parameters<typeof buildLeo2RevolutionPrototypeSteps>): void {
+  drainTankBuild(buildLeo2RevolutionPrototypeSteps(...args));
+}
+withBuildSteps(buildLeo2RevolutionPrototype, buildLeo2RevolutionPrototypeSteps);
 
 function finishKf51RubberInstance(
   mesh: THREE.InstancedMesh,
@@ -9486,7 +9569,7 @@ function addKF51ClosedShoulderMudguards(
 // Published envelope: tail −3.80, prow +3.90 (7.70), muzzle +6.93 (10.73),
 // p95 roof anchored by SEOSS top 3.03 (mast is the 1-2 spike-col budget).
 // ---------------------------------------------------------------------------
-function buildKF51(P: TankBuilderPort) {
+function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
   const { box, cylX, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   // VISUAL r1 helper — plain-faced box via slab (centered at origin, so it
@@ -9509,6 +9592,7 @@ function buildKF51(P: TankBuilderPort) {
     P.add('hull', box(1.89, 0.83, 6.18), 0, 0.885, -0.50);
   };
   buildKF51HullStage1();                       // tub y 0.47..1.30 (ref front belly bottoms 0.466), z −3.59..2.59
+  yield 'buildKF51HullStage1';
   // deck: fresh gate re-lay — the ref side-hull top is its DECK staircase
   // (1.595 mid → 1.81 aft); the aft band widens to +1.735 on the RIGHT only
   // (front at=−1.72 col reads 1.87 there but the LEFT ±1.72 tops 1.59 —
@@ -9654,6 +9738,7 @@ function buildKF51(P: TankBuilderPort) {
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(2.20, 0.045, 0.05), 0, 1.30 + k * 0.075, -3.62);
   };
   buildKF51HullStage2();
+  yield 'buildKF51HullStage2';
   // VISUAL r1 #6 — rear plate furniture: chevron brace diagonals, hex
   // taillight recesses, corner exhaust boxes, coupling ring. Everything on
   // the plate face stays ≤3.5 mm proud (−3.6035): the −3.60 raster column is
@@ -9790,6 +9875,7 @@ function buildKF51(P: TankBuilderPort) {
     }
   };
   buildKF51HullStage3();
+  yield 'buildKF51HullStage3';
   // flank RE-LAY r4 (fresh gate columns): the ref side-hull TOP through the
   // whole mid-hull is the DECK staircase (1.595 fore / 1.65-1.81 aft), NOT a
   // 1.84 skirt line — the old 1.84-top deep face read +0.121 on ~20 columns.
@@ -9905,6 +9991,7 @@ function buildKF51(P: TankBuilderPort) {
     }
   };
   buildKF51HullStage4();
+  yield 'buildKF51HullStage4';
 
   // KF51 flank protection package. The certified thin skirt courses above
   // remain the inner splash/track screen; this outer course turns them into
@@ -10027,6 +10114,7 @@ function buildKF51(P: TankBuilderPort) {
     }
   };
   buildKF51RunningGearStage1();
+  yield 'buildKF51RunningGearStage1';
   const buildKF51RunningGearStage2 = (): void => {
     P.hullG.userData.kf51SkirtArmorReceipt = Object.freeze({
       profile: 'kf51-panther-skirt-era-cage-r1',
@@ -10215,6 +10303,7 @@ function buildKF51(P: TankBuilderPort) {
     // introducing a duplicate wheel course.
   };
   buildKF51RunningGearStage2();
+  yield 'buildKF51RunningGearStage2';
   const kf51Gear = P.gear;
   if (!kf51Gear) throw new Error('KF51 running gear must exist before wheel-face finishing');
   // 2026-09-14 owner: the forged face stack stood 0.15 m off the axle — 4–8 cm outboard of the
@@ -10235,6 +10324,7 @@ function buildKF51(P: TankBuilderPort) {
     );
   };
   buildKF51AssemblyStage1();
+  yield 'buildKF51AssemblyStage1';
   const wheelFaceRibs = KIT.mergeAll(Array.from({ length: 8 }, (_, index) => {
     const angle = index * Math.PI / 4;
     return xform(
@@ -10263,6 +10353,7 @@ function buildKF51(P: TankBuilderPort) {
     });
   };
   buildKF51AssemblyStage2();
+  yield 'buildKF51AssemblyStage2';
   const wheelFaceBolts = KIT.mergeAll(Array.from({ length: 10 }, (_, index) => {
     const angle = index * Math.PI / 5 + 0.16;
     return xform(
@@ -10389,6 +10480,7 @@ function buildKF51(P: TankBuilderPort) {
     });
   };
   buildKF51HullStage5();
+  yield 'buildKF51HullStage5';
   const h = 0.815;
   // WALL-STEP-ROOF: cheek walls 1.50→1.31 (plan corner at local z 2.00),
   // mid walls 1.44→1.30 back to −2.73, fore roof step with a near-vertical
@@ -10444,6 +10536,7 @@ function buildKF51(P: TankBuilderPort) {
       [-1.29, 0.16, -1.40], [1.29, 0.16, -1.40], [1.27, 0.30, -2.05], [-1.27, 0.30, -2.05]));
   };
   buildKF51TurretStage1();
+  yield 'buildKF51TurretStage1';
   // KF51 Panther front architecture. The previous owner-source reconstruction
   // used many independent shelf and hood slabs, which pinched toward the gun
   // and left a visibly round trunnion floating in a square recess. Rebuild the
@@ -10703,6 +10796,7 @@ function buildKF51(P: TankBuilderPort) {
     P.add('turretDark', cylY(0.150, 0.150, 0.005, 20), -0.64, h + 0.0375, -0.65);
   };
   buildKF51TurretStage2(); // r3 #7a: groove narrowed
+  yield 'buildKF51TurretStage2';
   const buildKF51TurretStage3 = (): void => {
     P.add('turret', cylY(0.130, 0.130, 0.005, 18), -0.64, h + 0.0385, -0.65);
     periscope(P, 'turretDetail', 0.62, h + 0.04, -0.45);
@@ -10808,6 +10902,7 @@ function buildKF51(P: TankBuilderPort) {
     P.add('turretDark', box(2.20, 0.10, 0.03), -0.03, 0.55, -3.33);
   };
   buildKF51TurretStage3();              // bustle base shadow seam
+  yield 'buildKF51TurretStage3';
   // Roof RWS: identical powered open-yoke architecture and size to the
   // Leopard 2A6M installation, with a KF51-specific armored brow, twin
   // optics and light bar. Seat the bearing directly on the structural turret
@@ -10901,6 +10996,7 @@ function buildKF51(P: TankBuilderPort) {
     P.gunG.position.set(0, 0.38, 0.90);
   };
   buildKF51MarkingsStage1();
+  yield 'buildKF51MarkingsStage1';
   const gseg = P.q ? 24 : 16;
   const kf51AngularHousing = outwardClosedSlab(
     [-0.39, -0.285, 0.10], [0.39, -0.285, 0.10], [0.27, -0.18, 1.78], [-0.27, -0.18, 1.78],
@@ -10952,6 +11048,7 @@ function buildKF51(P: TankBuilderPort) {
     P.add('gunDark', xform(cylZ(0.0805, 0.028, gseg), 0, -0.0145, 5.457, 0, 0, 0, [1.1, 1, 1]));
   };
   buildKF51GunStage1(); // dark muzzle face collar step
+  yield 'buildKF51GunStage1';
   // r6 #3a: the bore disc leaves the gunDark bucket (mats.dark floors the
   // sun-facing muzzle face at ~50 — read as a solid camo cap; ref shows a
   // 16-class HOLE in the bright rim). Same cylZ(0.050, 0.021) at the same
@@ -11564,6 +11661,7 @@ function buildKF51(P: TankBuilderPort) {
     buildKF51HullStage7();
   };
   buildKF51HullStage6();
+  yield 'buildKF51HullStage6';
   // r4 #7 CAMO DISTRIBUTION SPLIT (+ #1 phase break, #8 pano-lid pop).
   // The camo texture is one shared per-spec canvas boxUV'd at camoScale on
   // every camo bucket, so turret and hull CANNOT split scales at paint time
@@ -11642,6 +11740,10 @@ function buildKF51(P: TankBuilderPort) {
   };
   buildKF51AssemblyStage3();
 }
+function buildKF51(...args: Parameters<typeof buildKF51Steps>): void {
+  drainTankBuild(buildKF51Steps(...args));
+}
+withBuildSteps(buildKF51, buildKF51Steps);
 
 // ---------------------------------------------------------------------------
 // KF51 Panther — owner-source reconstruction (FULL.fbx / Grip420 woodland).
@@ -11653,7 +11755,7 @@ function buildKF51(P: TankBuilderPort) {
 // source-specific build separate so old mask compensations cannot leak back
 // into the live tank.
 // ---------------------------------------------------------------------------
-function buildKF51OwnerExact(P: TankBuilderPort) {
+function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const { box, cylX, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
@@ -11703,8 +11805,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   // ramps. §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685 band
   // inner face), sponson floor 1.19, with the outboard floor lifted over
   // the complete return course instead of intersecting the raised wraps.
-  const buildKF51OwnerExactAssemblyStage1 = (): void => {
-    leoHullV3(P, {
+  const buildKF51OwnerExactAssemblyStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.56, sponsonY: 1.19, trackW: 0.587, xc: 1.262,
       // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle's
       // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.78, 3.2 m) to -2.58, and meets the
@@ -11750,7 +11852,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     // fleet per-tank weathered rubber (a4/revolution receipt)
     P.mats.rubber.color.setHex(0x33352b);
   };
-  buildKF51OwnerExactAssemblyStage1();
+  yield* buildKF51OwnerExactAssemblyStage1();
+  yield 'buildKF51OwnerExactAssemblyStage1';
   // (The belly between the tub and the nose fill, open 0.84 m in the owner's 2026-10-19 markup, is closed by leoHullV3's
   // lower front plate.)
   // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
@@ -11932,6 +12035,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
   };
   buildKF51OwnerExactHullStage1();
+  yield 'buildKF51OwnerExactHullStage1';
   const turretPlan: Vec2Tuple[] = [
     [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],
     [1.40, -2.43], [0.96, -2.96], [-0.96, -2.96], [-1.40, -2.43],
@@ -12021,6 +12125,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.gunG.position.set(0, 0.22, 1.18);
   };
   buildKF51OwnerExactMarkingsStage1();
+  yield 'buildKF51OwnerExactMarkingsStage1';
   const kf51bGunSegments = P.q ? 24 : 16;
   const buildKF51OwnerExactGunStage1 = (): void => {
     // Transverse trunnion overlaps the closed cheek walls at x +/-0.43.
@@ -12057,6 +12162,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     }
   };
   buildKF51OwnerExactGunStage1();
+  yield 'buildKF51OwnerExactGunStage1';
   // Center the muzzle-reference housing over the bore and clamp it into the
   // 80 mm tube crown.  Preserve the shallow yaw and the inset top window,
   // but retire the former left-side perch that read as a floating box.
@@ -12177,6 +12283,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('turretDark', box(0.34, 0.045, 0.34), -0.56, 1.05, -1.06);
   };
   buildKF51OwnerExactTurretStage1();
+  yield 'buildKF51OwnerExactTurretStage1';
 
   // Full remote weapon tower. The old hand-built split shield stood on a
   // thin post and exposed no coherent feed/sensor mechanism. This shares
@@ -12242,6 +12349,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     }
   };
   buildKF51OwnerExactTurretStage2();
+  yield 'buildKF51OwnerExactTurretStage2';
   const buildKF51OwnerExactTurretStage3 = (): void => {
     for (let i = 0; i < 5; i++) {
       const x = -0.87 + i * 0.435;
@@ -12297,6 +12405,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     }
   };
   buildKF51OwnerExactTurretStage3();
+  yield 'buildKF51OwnerExactTurretStage3';
   const proportionReceipt = Object.freeze({
     revision: 'kf51b-turret-forward-convex-r1',
     uniformScale,
@@ -12316,6 +12425,10 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   };
   buildKF51OwnerExactReceiptStage1();
 }
+function buildKF51OwnerExact(...args: Parameters<typeof buildKF51OwnerExactSteps>): void {
+  drainTankBuild(buildKF51OwnerExactSteps(...args));
+}
+withBuildSteps(buildKF51OwnerExact, buildKF51OwnerExactSteps);
 
 
 // Owner-authoritative source rebuild (2026-08-18). The articulated print is
@@ -12323,7 +12436,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
 // first-party procedural geometry. Its high track course, shallow boat hull,
 // long low cast turret, compact saddle and rear basket set the base shape;
 // A5-only B&V appliqué, EMES-18 and German equipment are then surface-seated.
-function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
+function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBuild {
   const { box, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
@@ -12392,6 +12505,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     P.add('hull', box(1.90, 0.54, 6.48), 0, 0.68, -0.02);
   };
   buildLeo1A5ArticulatedProfileHullStage1();
+  yield 'buildLeo1A5ArticulatedProfileHullStage1';
   // The sponson is the hull shoulder above the fenders. It terminates at the
   // angle-derived deck break so the shortened 60-degree glacis has a closed,
   // load-bearing hull volume behind it.
@@ -12521,6 +12635,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     P.mats.rubber.color.setHex(0x34372d);
   };
   buildLeo1A5ArticulatedProfileRunningGearStage1();
+  yield 'buildLeo1A5ArticulatedProfileRunningGearStage1';
 
   // Driver station, lamps, guards, towing gear and source-visible deck kit.
   const driverHatchY = centerDeckTopY(0.86);
@@ -12528,6 +12643,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     P.addCupola('hull', box(0.68, 0.08, 0.42), -0.45, driverHatchY + 0.04, 0.86, -0.04, 0, 0);
   };
   buildLeo1A5ArticulatedProfileHullStage2();
+  yield 'buildLeo1A5ArticulatedProfileHullStage2';
   const driverPeriscopeY = centerDeckTopY(1.03);
   const buildLeo1A5ArticulatedProfileHullStage3 = (): void => {
     for (const x of [-0.66, -0.45, -0.24]) {
@@ -12536,6 +12652,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     }
   };
   buildLeo1A5ArticulatedProfileHullStage3();
+  yield 'buildLeo1A5ArticulatedProfileHullStage3';
   const roundHatchY = centerDeckTopY(0.70);
   const buildLeo1A5ArticulatedProfileRunningGearStage2 = (): void => {
     P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
@@ -12698,6 +12815,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [-0.76, 0.68, -1.44], [0.76, 0.68, -1.44], [0.44, 0.55, -2.20], [-0.44, 0.55, -2.20]));
   };
   buildLeo1A5ArticulatedProfileRunningGearStage2();
+  yield 'buildLeo1A5ArticulatedProfileRunningGearStage2';
 
   // Surface-seated A5 Blohm & Voss spaced appliqué. The paired panels form a
   // joined chevron and retain the low cast source shell beneath them.
@@ -12778,6 +12896,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     }
   };
   buildLeo1A5ArticulatedProfileTurretStage1();
+  yield 'buildLeo1A5ArticulatedProfileTurretStage1';
 
   // Compact Leopard bustle basket: its 1.88 m width now follows the cast
   // tail instead of overhanging it by a broad shelf. The shorter floor is
@@ -12840,6 +12959,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.17, 0.61, -1.05], Math.PI / 2, 0, 0.14);
   };
   buildLeo1A5ArticulatedProfileMarkingsStage1();
+  yield 'buildLeo1A5ArticulatedProfileMarkingsStage1';
 
   // Broad cast butterfly saddle and source-length L7A3. The turret owns a
   // flat receiver plate while the moving mantlet owns a matching planar rear
@@ -12924,6 +13044,10 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
   };
   buildLeo1A5ArticulatedProfileGunStage1();
 }
+function buildLeo1A5ArticulatedProfile(...args: Parameters<typeof buildLeo1A5ArticulatedProfileSteps>): void {
+  drainTankBuild(buildLeo1A5ArticulatedProfileSteps(...args));
+}
+withBuildSteps(buildLeo1A5ArticulatedProfile, buildLeo1A5ArticulatedProfileSteps);
 
 // ============================================================================
 // §5.248 GERMANY-LEOPARDS ground-up builds (owner order: donor-clone
@@ -13491,11 +13615,11 @@ function addLeo2A6MFrontalERA(P: TankBuilderPort, sectorPrefix: string) {
   });
 }
 
-function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
+function* buildLeo2A6MSteps(P: TankBuilderPort, { fieldEra = true } = {}): TankProfileBuild {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, shovelTool, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
-  const buildLeo2A6MRunningGearStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A6MRunningGearStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
       // family 2A6 deck cadence (same base hull as the resident — print
       // stations corroborate within a column); rear run holds 1.82.
@@ -13569,7 +13693,8 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     P.add('hullDetail', box(0.26, 0.035, 0.20), 0, 1.615, 2.40, 0.24, 0, 0);    // center service cover
     P.add('hullDark', box(0.20, 0.012, 0.016), 0, 1.638, 2.335, 0.24, 0, 0);
   };
-  buildLeo2A6MRunningGearStage1();    // cover seam
+  yield* buildLeo2A6MRunningGearStage1();    // cover seam
+  yield 'buildLeo2A6MRunningGearStage1';
   // ---- ISAF bar-armor cage, hull run. The rear skirt face is at 1.72 m,
   // while the armored bow modules stand at 1.875 m; a single 1.99 m rail
   // plane left the rear two-thirds suspended in an obvious air corridor.
@@ -13710,6 +13835,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     }
   };
   buildLeo2A6MHullStage1();
+  yield 'buildLeo2A6MHullStage1';
   // ---- wedge turret (print component Object_6 is CLEAN — lofted to its
   // traced lines; turret-local frame, pivot [0, 1.80, 0.45]).
   // Keep the canonical 2A6 arrowhead as the structural front.  The 2A6M
@@ -13717,8 +13843,8 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   // it must not replace the base wedge with a second broad cheek volume.
   const a6mCrestR: readonly Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
   const a6mCrestL: readonly Vec3Tuple[] = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
-  const buildLeo2A6MMarkingsStage1 = (): void => {
-    wedgeTurretV3(P, {
+  const buildLeo2A6MMarkingsStage1 = function* (): TankProfileBuild {
+    yield* wedgeTurretV3Steps(P, {
       h: 0.82, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
       crestTail: 0.05, wallDrop: 0.10,
       underbodyRings: [
@@ -13912,7 +14038,8 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       P.add('turretDetail', box(2.10, 0.022, 0.024), 0, 0.10 + row * 0.0917, -3.46);
     }
   };
-  buildLeo2A6MMarkingsStage1();
+  yield* buildLeo2A6MMarkingsStage1();
+  yield 'buildLeo2A6MMarkingsStage1';
   const buildLeo2A6MTurretStage1 = (): void => {
     for (let i = 0; i < 7; i++) {
       const x = -1.00 + i * (2.00 / 6);
@@ -13979,6 +14106,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     P.add('turretDark', cylZ(0.016, 0.012, 8), 0.34, 0.34, 1.675);
   };
   buildLeo2A6MTurretStage1();              // §B3.1-class dark port mouth
+  yield 'buildLeo2A6MTurretStage1';
   // Barracuda fasteners follow the actual closed-chevron surface.  The
   // previous cubes at y=.56-.70 included the exact marked lug at
   // (.55,.695,2.28): roughly 0.27 m above and partly ahead of the armor.
@@ -14042,6 +14170,10 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   };
   buildLeo2A6MMarkingsStage2();
 }
+function buildLeo2A6M(...args: Parameters<typeof buildLeo2A6MSteps>): void {
+  drainTankBuild(buildLeo2A6MSteps(...args));
+}
+withBuildSteps(buildLeo2A6M, buildLeo2A6MSteps);
 
 // Leopard 2A6 UA — a field-protection package on the certified 2A6M rig.
 // Added ERA is gameplay-backed through six independently strippable sectors;
@@ -14508,10 +14640,10 @@ function wrapRearSlat(P: TankBuilderPort, width: number, y0: number, y1: number,
 // slabs, mine-belly, the big rear stowage rack; gun keeps the §5.248 L44
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
 // overall 9.96 — bore-mouth law receipts in src/vehicles/germany.ts).
-function buildLeo2A4M(P: TankBuilderPort) {
+function* buildLeo2A4MSteps(P: TankBuilderPort): TankProfileBuild {
   const { box, cylX, cylY, cylZ, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
-  const buildLeo2A4MHullStage1 = (): void => {
-    leoHullV3(P, {
+  const buildLeo2A4MHullStage1 = function* (): TankProfileBuild {
+    yield* leoHullV3Steps(P, {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
       // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck climbs aft inside the
       // reach of the turret's low front corners (1.95 m off the ring's axis, 3 cm over its deck), so a traverse ran
@@ -14574,7 +14706,8 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // §B4: every inner face >= 1.746 vs the 1.69 shoe envelope.
     P.mats.rubber.color.setHex(0x33352b);
   };
-  buildLeo2A4MHullStage1();                        // weathered rubber (a4 receipt)
+  yield* buildLeo2A4MHullStage1();                        // weathered rubber (a4 receipt)
+  yield 'buildLeo2A4MHullStage1';
   const buildLeo2A4MHullStage2 = (): void => {
     for (const s of [-1, 1] as const) {
       // fore upper band: armor modules (4 full + 1 short at the idler)
@@ -14645,6 +14778,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
   };
   buildLeo2A4MHullStage2();
+  yield 'buildLeo2A4MHullStage2';
   // OWNER RESTORE (2026-08-17): recover the 5f26bfde A4M CAN hull-side
   // armor/cage silhouette.  The later two-band skirt remains as the inner
   // weather-and-rubber course, while these seven thick stand-off cassettes
@@ -14686,6 +14820,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
   };
   buildLeo2A4MHullStage3();
+  yield 'buildLeo2A4MHullStage3';
   // ---- §5.345 GLACIS ERA FIELD (§5.266 articulated blocks, asymmetric:
   // the right 2.94-band bay stays kit — the spare-links fitting owns it).
   // Blocks ride their local glacis plane (+0.035 proud), inboard of the
@@ -14848,6 +14983,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     P.add('hullDark', box(1.24, 0.02, 0.16), -0.20, 1.79, -3.70);
   };
   buildLeo2A4MHullStage4();              // tier floor mesh
+  yield 'buildLeo2A4MHullStage4';
   // ---- turret: THE PRE-WAVE TURRET (§5.299 owner order). Donor A4 welded
   // construction copied VERBATIM from buildLeo2A4 (pre-wave text ==
   // current guarded text, diff-verified). Ring re-seat: spec turretPivot y
@@ -14940,6 +15076,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.204);
   };
   buildLeo2A4MTurretStage1();
+  yield 'buildLeo2A4MTurretStage1';
   // hatches: commander right (ring + lid + periscope ring), loader left.
   const hatchStations: readonly (readonly [{ readonly x: number; readonly z: number }, boolean])[] = [
     [{ x: 0.60, z: -0.75 }, false],
@@ -14981,6 +15118,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
   };
   buildLeo2A4MTurretStage2();
+  yield 'buildLeo2A4MTurretStage2';
   // 2x4 Wegmann smoke mortars per side on the rear side walls (§B3
   // launcher grammar — mount plate + angled tube banks + collar rings).
   const buildLeo2A4MMarkingsStage1 = (): void => {
@@ -15071,6 +15209,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     wrapArmorCheeks(P, { reach: 1.60, crest: 0.66 });
   };
   buildLeo2A4MMarkingsStage1();
+  yield 'buildLeo2A4MMarkingsStage1';
   const buildLeo2A4MMarkingsStage2 = (): void => {
     for (const side of [-1, 1] as const) {
       for (let i = 0; i < 5; i++) wrapPlate(P, 'turret', side * 1.57,
@@ -15122,6 +15261,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
   };
   buildLeo2A4MMarkingsStage2();
 }
+function buildLeo2A4M(...args: Parameters<typeof buildLeo2A4MSteps>): void {
+  drainTankBuild(buildLeo2A4MSteps(...args));
+}
+withBuildSteps(buildLeo2A4M, buildLeo2A4MSteps);
 
 export const LEOPARD_PROFILES = {
   // Restore the detailed first-party 2A4 profile.  Leaving this id out of the

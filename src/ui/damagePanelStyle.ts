@@ -33,6 +33,7 @@ export const DAMAGE_PANEL_CSS = `
   font:600 var(--battle-fs-11)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--text-danger);
   background:var(--hud-plate-strong);box-shadow:var(--battle-chip-danger);
   animation:cotFirePulse var(--dur-stage) ease-in-out infinite alternate;}
+@media (prefers-reduced-motion:reduce){.cot-dp .fire{animation:none}}
 body.cot-touch-layout .cot-dp .hpnum{font-size:var(--battle-fs-18);}
 /* the narrow touch strip (112-150 px, the plan hidden there: touchControls.ts): the points and their maximum on one line */
 body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpnum{font-size:var(--battle-fs-15);}

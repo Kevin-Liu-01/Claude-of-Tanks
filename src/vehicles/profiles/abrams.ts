@@ -36,6 +36,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildHollowPairedRoadWheel, hollowPairedRoadWheelWidth } from '../hollowRoadWheelStock.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -392,13 +393,21 @@ function abramsProfile(build: (builder: AbramsBuilderPort) => void) {
   return { build: (builder: RuntimeValue): void => build(requireAbramsBuilder(builder)) };
 }
 
+/** A builder written in stages: synchronous callers run it whole, the factory's frame-budgeted builds a stage a slice
+ *  (tankBuildCooperation.ts withBuildSteps). */
+function steppedAbramsProfile(build: (builder: AbramsBuilderPort) => TankProfileBuild) {
+  const steps = (builder: RuntimeValue): TankProfileBuild => build(requireAbramsBuilder(builder));
+  return { build: withBuildSteps((builder: RuntimeValue): void => drainTankBuild(steps(builder)), steps) };
+}
+
 function configuredAbramsProfile(
-  build: (builder: AbramsBuilderPort, options: AbramsProfileOptions) => void,
+  build: (builder: AbramsBuilderPort, options: AbramsProfileOptions) => TankProfileBuild,
   options: AbramsProfileOptions,
 ) {
+  function* steps(builder: RuntimeValue): TankProfileBuild { const P=requireAbramsBuilder(builder); yield* build(P, options); if(P.spec.id==='m1a1_abrams_hc')addRearFieldStowage(P); }
   return {
     ...options,
-    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a1_abrams_hc')addRearFieldStowage(P); },
+    build: withBuildSteps((builder: RuntimeValue): void => drainTankBuild(steps(builder)), steps),
   };
 }
 
@@ -1197,7 +1206,7 @@ function seatAbramsTurret(turretG: THREE.Group, x: number, y: number, z: number)
 // optional rear overhang shelf — then skirts, running gear and deck kit.
 // Geometry tables are in world meters, straight off the v6 curves.
 // ---------------------------------------------------------------------------
-function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
+function* abramsHullSteps(P: AbramsBuilderPort, g: AbramsHullConfig): TankProfileBuild {
   const bw = g.bodyHalfW;
   const s = g.s ?? 1;
   const trackTh = g.trackTh ?? 0.09;
@@ -1248,6 +1257,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage1();
+  yield 'abramsHullHullStage1';
 
   // Bow wedge: bottom follows the measured lower-plate rake, top follows the
   // measured glacis line — the tip closes as the thin blade the curves show.
@@ -1306,6 +1316,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage2();
+  yield 'abramsHullHullStage2';
   // Full-depth sponson band from the glacis break to the stern break.
   // A lane carve may begin slightly forward of the measured lower-tail
   // break. In that case the full-width band must stop at the carve start;
@@ -1360,6 +1371,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage3();
+  yield 'abramsHullHullStage3';
 
   // Turbine grille doors on the rear face + louvres + taillight boxes + TIP.
   const rearZ = tail;
@@ -1398,6 +1410,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage4();
+  yield 'abramsHullHullStage4';
 
   // Engine deck: inset intake grilles + rib rows + fuel cap.
   const abramsHullHullStage5 = (): void => {
@@ -1415,6 +1428,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage5();
+  yield 'abramsHullHullStage5';
 
   // Skirts: measured plane {x, top, bot, z0, z1}; 3 heavy front panels with a
   // diagonal lead cut, dark joints, bolts, rubber wear lip, sponson seam.
@@ -1556,6 +1570,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage6(); // end !g.noSkirt
+  yield 'abramsHullHullStage6';
 
   // Running gear: 7 road wheels, front idler, rear drive sprocket.
   // (dishR/tireHex/contactZF/contactZR/deadSag are AXFIX-O1 opt-ins — all
@@ -1581,6 +1596,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     });
   };
   abramsHullRunningGearStage1();
+  yield 'abramsHullRunningGearStage1';
 
   // Glacis furniture — kept FLUSH: the v6 curves show a clean glacis line
   // (no proud splash board or periscope hump on the silhouette).
@@ -1626,6 +1642,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullHullStage7();
+  yield 'abramsHullHullStage7';
   // Driver's periscopes flush at the glacis crest (no proud hump in v6).
   const humpZ = g.periZ ?? (glacisTopZ + 0.15);
   const humpX = g.periX ?? 0;
@@ -1669,6 +1686,9 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     }
   };
   abramsHullMarkingsStage1();
+}
+function abramsHull(...args: Parameters<typeof abramsHullSteps>): void {
+  drainTankBuild(abramsHullSteps(...args));
 }
 
 // ---------------------------------------------------------------------------
@@ -1927,11 +1947,11 @@ function abramsShell(P: AbramsBuilderPort, t: AbramsShellConfig): void {
 // narrower than the shell (vertex r1: the tejas rack spans only x ±1.07 —
 // full-width proc rails put 0.4 m of rear-extent error on every wide plan
 // column). Default reproduces the historical tw-proportional rack.
-function abramsBustleRack(
+function* abramsBustleRackSteps(
   P: AbramsBuilderPort,
   t: AbramsTurretConfig & { readonly rackTop: number },
   s = 1,
-): void {
+): TankProfileBuild {
   const tw = t.tw;
   const rw = t.rackHalfW ?? tw * 0.86;         // rail half-width
   const zr = t.zRear;
@@ -1978,6 +1998,7 @@ function abramsBustleRack(
     }
   };
   abramsBustleRackTurretStage1();
+  yield 'abramsBustleRackTurretStage1';
   // Visual r4 item 5 (rackDress): interior post spacing IRREGULARIZED (the
   // even thirds read as a manufactured rhythm; merkava irregular-fill law).
   // End posts + rails/step-posts/drop columns byte-identical — the interior
@@ -1990,6 +2011,7 @@ function abramsBustleRack(
     }
   };
   abramsBustleRackTurretStage2();
+  yield 'abramsBustleRackTurretStage2';
   // Visual r5 FLEET LAW (rackDress = the tejas family): the ref renders the
   // whole rack band as ONE fused quiet camo mass (band %<L35 = 0.0) — every
   // recess/void/strap below rides the mid-shade channel (turretTrack ->
@@ -2040,6 +2062,7 @@ function abramsBustleRack(
     }
   };
   abramsBustleRackTurretStage3();
+  yield 'abramsBustleRackTurretStage3';
   // Duffel fill: full height on the forward span, sagging toward the rear
   // rail when the oracle's rack top slopes down. clothZOff pulls the duffel
   // row forward (tejas: 2.41 duffel tops bled a bin past the ref's 2.44
@@ -2111,6 +2134,7 @@ function abramsBustleRack(
     }
   };
   abramsBustleRackTurretStage4();
+  yield 'abramsBustleRackTurretStage4';
   // (strap stations follow the rackDress duffel row — r4 irregular fill;
   // rackDufMul-dropped duffels lose their straps too)
   const strapMul = t.rackDufMul ?? [1, 1];
@@ -2484,12 +2508,12 @@ function addAbramsXStyleRws(P: AbramsBuilderPort, {
 // A box EDGE within ~6 mm of a column boundary AA-bleeds a spike into the
 // neighbor column at the mask's 40-threshold — that bleed cost dims 97.2
 // twice in this round (head front edge at 0.477; keep 7 mm+ margins).
-function tejasRoofKit(
+function* tejasRoofKitSteps(
   P: AbramsBuilderPort,
   t: AbramsTurretConfig,
   station = 'crows',
   abramsKit: string | null = null,
-): void {
+): TankProfileBuild {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   const reactiveLeftWeapons = ['m1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep'].includes(P.spec.id);
   const ttsDerivedVariant = ({
@@ -2582,6 +2606,7 @@ function tejasRoofKit(
       lowProfileStation ? 0.105 : 0.14, -0.012);
   };
   tejasRoofKitTurretStage1();
+  yield 'tejasRoofKitTurretStage1';
   const carrierTopAt = (z: number): number => roofCarrierReceipt
     ? transitionRoofAt(z) + roofCarrierReceipt.seat + roofCarrierReceipt.thickness
     : platformTopAt(z);
@@ -2629,6 +2654,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitTurretStage2();
+  yield 'tejasRoofKitTurretStage2';
   // EO head at the W1b ref peak 2.4843 world (0.03 tail of the original
   // 3.30 CROWS — the ref front holds 2.472 across the -0.8..-1.09 body span
   // and a knee-flush head left all eight columns -0.03). THE p95 shape
@@ -2695,6 +2721,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitModulesStage1();
+  yield 'tejasRoofKitModulesStage1';
   // ---- STATION MAST (visibility escalation, owner order 2026-08-06: "i
   // still dont see the ... CROWS or machines for our existing abrams" —
   // owner-authorized gate spend, §B7-precedent). The r3/r4 flat skeletal
@@ -3017,6 +3044,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitModulesStage2();
+  yield 'tejasRoofKitModulesStage2';
   // Whip antennas at the ref's own x stations (world x -1.168/+1.096, still
   // centered in their front bins). W1b dropped the ref whips from 2.656 to
   // TRUE 2.466 (2.49 workorder / ~2.509 gate-m) — now affordable: rod tops
@@ -3053,6 +3081,7 @@ function tejasRoofKit(
     P.add('turretTrack', torus(0.243, 0.016, 18), 0.86, plat2 - 0.085, -0.30);
   };
   tejasRoofKitTurretStage3();
+  yield 'tejasRoofKitTurretStage3';
   // Loader-pintle foot from the surface-markup packet. Its old 54 mm box
   // floated above the roof and the gun post missed it in x/z. Extend a
   // sloped equipment-owned foot down into the roof while retaining the
@@ -3073,6 +3102,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitTurretStage4();
+  yield 'tejasRoofKitTurretStage4';
   const loaderMountTopAt = (z: number): number => loaderMountReceipt
     ? transitionRoofAt(z) + loaderMountReceipt.seat + loaderMountReceipt.thickness
     : loaderMountTopAtCenter;
@@ -3089,6 +3119,7 @@ function tejasRoofKit(
     P.addEquipment('turret', box(0.16, 0.06, 0.04), 0.60, 0.853, -0.70);
   };
   tejasRoofKitTurretStage5();
+  yield 'tejasRoofKitTurretStage5';
   // The commander's tower remains on the vehicle-left roof. SEP tanks carry a
   // separate Browning at this vehicle-right hatch, aimed down +z rather than
   // laid transversely across the roof.
@@ -3197,6 +3228,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitTurretStage6();
+  yield 'tejasRoofKitTurretStage6';
   // ---- gunner's primary sight doghouse right-forward: knee top only to
   // world 1.19, then a 2.22 rear shelf to 1.58 (the ref band edge law) ----
   const tejasRoofKitModulesStage3 = (): void => {
@@ -3277,6 +3309,7 @@ function tejasRoofKit(
     P.add('turretTrack', torus(0.13, 0.026, 14), -t.tw * 0.78, t.roofWide + 0.04, -0.15);
   };
   tejasRoofKitModulesStage3();
+  yield 'tejasRoofKitModulesStage3';
   // M250 clusters on the cheek plates, tucked inside the shell's plan edge
   // (vertex r1: the oracle plan shows NOTHING outboard of the cheek line at
   // z 1.2-1.6 — the old ±1.72 tips lit reference-empty columns). Visual r2:
@@ -3325,6 +3358,7 @@ function tejasRoofKit(
     }
   };
   tejasRoofKitAssemblyStage1();
+  yield 'tejasRoofKitAssemblyStage1';
   // ---- asymmetric flank kit (vertex r1 plan/front tables, world coords) ---
   // All z below are turret-local (world - 0.35); y local (world - 1.57).
   // LEFT wall band: outer face x -1.695, y 1.60..2.19 world, SEGMENTED
@@ -3501,6 +3535,7 @@ function tejasRoofKit(
     P.add('turretDark', box(0.10, 0.30, 0.06), -1.603, 0.36, -2.92);
   };
   tejasRoofKitMarkingsStage1();
+  yield 'tejasRoofKitMarkingsStage1';
   const freezeRoofPlateReceipt = (plate: RoofPlateReceipt | null) => plate ? Object.freeze({
     x0: plate.x0,
     x1: plate.x1,
@@ -4269,7 +4304,7 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   };
 }
 
-function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
+function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankProfileBuild {
   let g = TEJAS_HULL;
   // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's rise stays under the
   // turret's sides (1.55, 2.12 m off the ring's axis) to -1.77 and meets the 1.71 deck at -2.25; it reached 1.66 by -1.73,
@@ -4326,7 +4361,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       : orientedSlab(M(b1), M(b0), M(b3), M(b2),
         M(t1), M(t0), M(t3), M(t2)));
   };
-  const buildTejasFamilyHullStage1 = (): void => {
+  const buildTejasFamilyHullStage1 = function* (): TankProfileBuild {
     if (p.abramsKit === 'tusk') g = { ...g, noTip: true, noFlaps: true };
     // §B1-6/§B4 (m1a1ha graduate round 2026-08-05, EXTENDED FAMILY-WIDE in the
     // rear round 2026-08-06 — owner: "fix m1 butts"; the m1a1ha packet already
@@ -4345,7 +4380,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     //   fenders' plan reach).
     // - The corner guards + rear-kit softDark ride below/in tejasRearKit.
     g = { ...g, noRearFlap: true, frontFlapZ: 3.620 };
-    abramsHull(P, g);
+    yield* abramsHullSteps(P, g);
     // FAMILY FRONT-SHOULDER CLOSURE (owner screenshots 2026-08-15): bridge
     // the narrowed bow core to the fender with a raked armor wedge, not the
     // former horizontal shelf. The inner carrier stays above the animated
@@ -4538,8 +4573,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // turretSeatRace.ts), which lifted its lower lip off the deck; a body of revolution turns unseen, so the seat keeps it
     // as built (abramsTurretLift's circular cross-section at every azimuth).
     P.turretG.userData.turretSeatKeepR = 1.27;
-    abramsBustleRack(P, t, 1);
-    tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
+    yield* abramsBustleRackSteps(P, t, 1);
+    yield* tejasRoofKitSteps(P, t, p.station ?? 'crows', p.abramsKit);
     // The photo-based armored face and round cradle pitch as one assembly.
     buildM1A1GunMount(P, P.spec.id === 'm1a1ha');
     if (P.spec.id === 'm1a1ha') {
@@ -4611,7 +4646,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
     P.add('gun', cylZ(t.gunR * 1.12, 0.09, 12), 0, 0, t.gunLen - 0.55);
   };
-  buildTejasFamilyHullStage1();
+  yield* buildTejasFamilyHullStage1();
+  yield 'buildTejasFamilyHullStage1';
   // MRS collar step at the muzzle (visual r2 item 11): stepped sleeve +
   // dark seam behind the existing muzzle ring. All rings r <= 0.121 — the
   // plan-sliver law caps muzzle-zone rings at r 0.123 (the ±0.178 plan
@@ -4645,6 +4681,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     publishAmericanArmorFinish(P);
   };
   buildTejasFamilyGunStage1();
+  yield 'buildTejasFamilyGunStage1';
 
   const buildTejasFamilyHullStage2 = (): void => {
     if (p.abramsKit === 'tusk') {
@@ -5046,6 +5083,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
   };
   buildTejasFamilyHullStage2();
+  yield 'buildTejasFamilyHullStage2';
 
   // ==== SEP REBUILD-ON-BASE (§5.19 + §5.19a owner orders, 2026-08-07) ======
   // "for sepv2s and sepv3, we need to rebuild them to use the M1A2 abrams
@@ -5096,6 +5134,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
   };
   buildTejasFamilyHullStage3();
+  yield 'buildTejasFamilyHullStage3';
   const buildTejasFamilyHullStage4 = (): void => {
     if (sep2) {
       // §5.34 WORKS-ECHO DELETED (echo-deletion round, 2026-08-08): the
@@ -5339,6 +5378,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
   };
   buildTejasFamilyHullStage4();
+  yield 'buildTejasFamilyHullStage4';
   const buildTejasFamilyTurretStage1 = (): void => {
     if (sep3k) {
       // ---- M1A2C / SEPv3 identity kit (§5.07 set, re-seated on the tejas
@@ -5580,6 +5620,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
   };
   buildTejasFamilyTurretStage1();
+  yield 'buildTejasFamilyTurretStage1';
 
   // ---- FAMILY VARIETY LOADOUTS (§B3/§I, owner directive 2026-08-03) -------
   // Distinct KIT.fittings per variant; every envelope stays inside certified
@@ -5779,6 +5820,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     }
   };
   buildTejasFamilyTurretStage2();
+  yield 'buildTejasFamilyTurretStage2';
   // §B3.2 deck tie-down rings (all tejas-family marks — hull frame).
   const buildTejasFamilyHullStage5 = (): void => {
     // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the aft pair lies folded flat on the
@@ -5933,7 +5975,7 @@ const AX_TURRET_BUCKETS = Object.freeze([
   'turretGlass', 'turretTrack',
 ]);
 
-function buildAbramsX(P: AbramsBuilderPort): void {
+function* buildAbramsX(P: AbramsBuilderPort): TankProfileBuild {
   const g = AX_HULL;
   // AbramsX-local mirrored slab guard. The family helper preserves legacy
   // hashes for every other Abrams, while these authored bow/tunnel wedges
@@ -5956,8 +5998,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       : orientedSlab(M(b1), M(b0), M(b3), M(b2),
         M(t1), M(t0), M(t3), M(t2)));
   };
-  const buildAbramsXHullStage1 = (): void => {
-    abramsHull(P, g);
+  const buildAbramsXHullStage1 = function* (): TankProfileBuild {
+    yield* abramsHullSteps(P, g);
     // Watertight pass 2026-09-13 (owner's AbramsX roof-block markup): both turret
     // cheeks are hollow shells (walls at |x| 0.49..1.03, y_w 2.23..2.45,
     // z_w 0.56..0.92) and the left one opened at its junction with the roof
@@ -6036,7 +6078,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // stock. The canonical animated shoes already own the complete course.
 
   };
-  buildAbramsXHullStage1();
+  yield* buildAbramsXHullStage1();
+  yield 'buildAbramsXHullStage1';
   // End-wheel face dressing only. The native running-gear builder already
   // supplies the complete seven-station road-wheel tire/dish/hub train and
   // animates it with suspension travel + wheel rotation. The former static
@@ -6200,6 +6243,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage2();
+  yield 'buildAbramsXHullStage2';
   // AXDED-R2 FOREDECK PANEL GRAMMAR (new-ref look order): the new print's
   // near-flat blade foredeck carries RECESSED access-panel outlines + the
   // headlight recesses at the outer shoulders — the proc bow read as one
@@ -6254,6 +6298,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage3();
+  yield 'buildAbramsXHullStage3';
   // §B2 REAR-CORNER CLOSURE (rear round 2026-08-06): the top-down scan read
   // two 18-cell sky holes at (±1.61..1.67, -3.37) — the slot between the
   // deck-band edge (±1.617) and the skirt inner face over the empty
@@ -6344,6 +6389,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.gunG.position.set(0, -0.02, 2.539);
   };
   buildAbramsXHullStage4();
+  yield 'buildAbramsXHullStage4';
   const axHullAdd = P.add;
   const buildAbramsXHullStage5 = (): void => {
     P.add = (bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) => {
@@ -6394,6 +6440,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage5();
+  yield 'buildAbramsXHullStage5';
   // The two staggered roof sights are true open D-hoods, not painted lenses
   // on closed drums. Their measured 0.531 m envelope is assembled from a
   // rear shell, canted cheeks and roof brow around a genuinely recessed
@@ -6586,6 +6633,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('hullDetail', box(0.1, 0.035, 0.08), 0.48, 2.455, -0.35);
   };
   buildAbramsXHullStage6();
+  yield 'buildAbramsXHullStage6';
   // LECLERC-METHOD RCWS: component-envelope reconstruction from the
   // registered measurement receipt.  These are new primitives (boxes,
   // drums and a tapered receiver), never source triangles.  Keeping the
@@ -6843,6 +6891,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     axRwsBox('turretDark', -0.502, -0.318, 2.535, 2.720, -0.282, -0.041);
   };
   buildAbramsXTurretStage1();
+  yield 'buildAbramsXTurretStage1';
   axStation.mark('yaw');
   const buildAbramsXTurretStage2 = (): void => {
     P.add('turretDark', cylZ(0.100, 0.045, 12), -0.245,
@@ -6878,6 +6927,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXTurretStage2();
+  yield 'buildAbramsXTurretStage2';
   axStation.mark('pitch');
   // Twin whip antennas at the oracle's own (±1.15, z -1.98) stations, tops
   // 4.12 — two p95-free columns; they also zero the whip station slice.
@@ -6974,6 +7024,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       2.615 - 1.95, -1.877 + 0.39);
   };
   buildAbramsXHullStage7();
+  yield 'buildAbramsXHullStage7';
   // Bustle fittings from the registered component-envelope receipt.  They
   // are deliberately separate pods and caps, never the retired full-width
   // rear wall: the reference high-rear view shows daylight and deck seams
@@ -7026,6 +7077,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [-1.7915, 0.8, -0.6], -Math.PI / 2);
   };
   buildAbramsXMarkingsStage1();
+  yield 'buildAbramsXMarkingsStage1';
   // AX SKIRT (hand-rolled; AXDED-R1 re-architecture, workorder-measured):
   // kneed panels on the ±1.805 face, tops on the deck line, bottoms LOW
   // over the idler then raised to 0.80 so the road wheels read (§B8.1);
@@ -7189,6 +7241,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     buildAbramsXHullStage11();
   };
   buildAbramsXHullStage8();
+  yield 'buildAbramsXHullStage8';
   // ---- REAR PLATE KIT (rear round 2026-08-06, owner "fix m1 butts" family
   // order): the default abramsHull kit sat BURIED inside the -3.97 tail
   // loft (noRearFace now set) and the old pintle at -3.915/-3.925 was
@@ -7349,6 +7402,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage9();
+  yield 'buildAbramsXHullStage9';
   // Yawing shell (turret mask — the repaired oracle articulates it): sharp
   // front face at z 2.55, roof rising 2.13 -> 2.46 plateau (z 0.65..-0.55),
   // 2.39 shelf to -1.85, tail taper to 2.13 at -2.45; bottom 1.57 forward
@@ -7359,6 +7413,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.gunG.position.set(0, -0.02, 2.539);
   };
   buildAbramsXAssemblyStage1();
+  yield 'buildAbramsXAssemblyStage1';
   // Hexagonal plan (current bake): face 2.34 wide ±0.6 chamfering to the
   // ±1.70 flanks at z 1.9, flank run to -1.29, rear chamfer to the flat
   // ±0.78 stern at -2.14 (world -2.53... -2.45 tail line).
@@ -7669,6 +7724,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     buildAbramsXTurretStage6();
   };
   buildAbramsXTurretStage3();
+  yield 'buildAbramsXTurretStage3';
   // The source's widest lower wall persists as a short transverse casting
   // at z=-0.649, rather than as the zero-thickness apex of two interpolated
   // loft spans.  Give that measured 3.50 m frame its real depth so the
@@ -7696,6 +7752,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXTurretStage4();
+  yield 'buildAbramsXTurretStage4';
   // Do not add an AO backer under the bustle.  The old 2.90 m rectangle was
   // visible as a second unselectable dark panel floating behind the turret;
   // the actual shell and hull deck now define this negative space themselves.
@@ -7896,6 +7953,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     boreDisc(P, 0.060, 3.6905);
   };
   buildAbramsXGunStage1();
+  yield 'buildAbramsXGunStage1';
   // ---- §B3.2 DENSITY (owner directive 2026-08-06, "ALL abrams") — the
   // demonstrator stays clean-lined, but carries its common kit. min binds
   // on the CAPPED hull row (bridge-band cert): every addition here is
@@ -7953,6 +8011,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     }
   };
   buildAbramsXHullStage10();
+  yield 'buildAbramsXHullStage10';
   addAbramsXUpgradeEquipment(P);
   const feedReceipt = P.turretG.userData.abramsxRwsFeedReceipt;
   const buildAbramsXReceiptStage1 = (): void => {
@@ -8586,5 +8645,5 @@ export const ABRAMS_PROFILES = {
     station: 'ttsLowProfile', abramsKit: 'sepv3',
   }),
   m1a3: abramsProfile(buildM1A3),
-  abramsx: abramsProfile(buildAbramsX),
+  abramsx: steppedAbramsProfile(buildAbramsX),
 } satisfies VehicleProfileRecord;

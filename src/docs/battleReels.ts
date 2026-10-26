@@ -1,4 +1,5 @@
 import { onLocaleChange, t } from '../ui/i18n.ts';
+import { designationHtml } from './designations.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
 
@@ -80,7 +81,7 @@ export function mountBattleReels(scope: Document = document): void {
   grid.innerHTML = BATTLE_REELS.map((reel, index) => `
     <button class="battle-reel-card" type="button" data-battle-reel-index="${index}" aria-pressed="${index === 0}">
       <img src="${reel.poster}" alt="" loading="lazy" decoding="async">
-      <span><b>${reelNumber(index)}</b><strong>${reel.title}</strong><small>${reel.map}</small></span>
+      <span><b>${reelNumber(index)}</b><strong>${designationHtml(reel.title)}</strong><small>${designationHtml(reel.map)}</small></span>
     </button>
   `).join('');
 
@@ -89,7 +90,8 @@ export function mountBattleReels(scope: Document = document): void {
 
   const caption = (index: number): void => {
     const reel = BATTLE_REELS[index];
-    title.textContent = reel.title;
+    // a designation (T-90M, 2A7V) never breaks inside: the caption wraps before it
+    title.innerHTML = designationHtml(reel.title);
     map.textContent = `${reel.map} · ${t('docs.studio.reelSpec')}`;
     count.textContent = `${reelNumber(index)} / ${BATTLE_REELS.length}`;
     video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));
@@ -99,8 +101,8 @@ export function mountBattleReels(scope: Document = document): void {
   onLocaleChange(() => {
     buttons.forEach((button, index) => {
       const label = button.querySelector('strong'), place = button.querySelector('small');
-      if (label) label.textContent = BATTLE_REELS[index].title;
-      if (place) place.textContent = BATTLE_REELS[index].map;
+      if (label) label.innerHTML = designationHtml(BATTLE_REELS[index].title);
+      if (place) place.innerHTML = designationHtml(BATTLE_REELS[index].map);
     });
     caption(activeIndex);
   });

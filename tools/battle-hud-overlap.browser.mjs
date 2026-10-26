@@ -6,12 +6,17 @@
 // any two that intersect fail unless the pair is a deliberate layering (ALLOWED, each with its reason). Nested
 // instruments fold into their outermost one. The sight's own layers (the reticle canvas, the gimbal sight, a drone's
 // signal-loss veil) and the world-space markers over tanks are the scene's, not instruments, and are not measured.
+// One datum, one place (owner 2026-10-25: "prevent things like that silly double ping indicator from happening again";
+// UI-LOCKDOWN part C): in every state, a networked battle's host and client among them, two visible readouts of one
+// [data-datum] fail, and so does a datum with no row in src/ui/surfaceRegistry.ts or a visible link or frame-rate figure
+// outside any [data-datum] (tools/datum-census.mjs, shared with the gauntlet captures).
 // The full rendered regression (tools/battle-hud-layout.browser.mjs, Playwright) covers more windows and locales; this
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
 //     [--out=outputs/battle-hud-overlap]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { datumProblems } from './datum-census.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { default: puppeteer } = await import('puppeteer');
@@ -26,7 +31,7 @@ export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
 export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
-  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde'];
+  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client'];
 /** The HUD's instruments, each a box another may not cross. */
 export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show', '.cot-net', '.cot-mp-status.battle',
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
@@ -85,6 +90,8 @@ try {
           if (w > 1 && h > 1 && !allowed(a, b)) problems.push(`${a.name} overlaps ${b.name} (${Math.round(w)} x ${Math.round(h)} px)`);
         }
       }
+      // one datum, one place (tools/datum-census.mjs, the registry's runtime half)
+      problems.push(...await datumProblems(page, { scope: '.cot-hud, .cot-mp-status' }));
       for (const e of errors) problems.push(`page error: ${e}`);
       failures += problems.length;
       report.push({ case: name, state, problems, rects });

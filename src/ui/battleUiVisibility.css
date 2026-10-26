@@ -2,7 +2,7 @@
    Keep the root alive: its reticle canvas is authoritative aiming presentation. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-body.cot-battle-ui-hidden .cot-hud > :not(.cot-ret,.cot-hitmark,.cot-scope-vision,.cot-flight-hud,.cot-drone-signal-loss){display:none!important}
+body.cot-battle-ui-hidden .cot-hud > :not(.cot-ret,.cot-hitmark,.cot-ret-text,.cot-scope-vision,.cot-flight-hud,.cot-drone-signal-loss){display:none!important}
 body.cot-battle-ui-hidden :is(.cot-dp,.cot-si-stats,.cot-hints,.cot-room-chat,.cot-mp-status.battle,#cot-perfhud):not(.cot-hud-editor *){display:none!important}
 /* Touch navigation stays usable; desktop retains Esc and its settings button. */
 /* Aircraft retain their sight, range, view switch, weapons and return action. */

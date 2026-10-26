@@ -15,7 +15,9 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { markDatum } from './dom.ts';
 import { wireRovingKeys } from './components/components.ts';
+import { noticeRegion, notify } from './components/notice.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -28,6 +30,7 @@ import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
+import { coverImage, createUiCanvas, drawImageFit } from './uiCanvas.ts';
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -332,8 +335,8 @@ interface StudioPanelRuntime {
   setStage(stage: { readonly mapId: string; readonly name: string } | null): void;
   setStageProgress(fraction: number, label: string): void;
   /**
-   * A scene-link notice: the sentence, and an optional technical detail on its own line. Information fades after a few
-   * seconds; an error stays until dismissed or replaced, and announces assertively.
+   * What an action did, as the kit's toast over the picture: the sentence, and an optional technical detail on its own
+   * line. Information fades after a few seconds; an error stays until dismissed or replaced, and announces as an alert.
    */
   notice(text: string, tone?: 'info' | 'error', detail?: string): void;
   setPlaceArmed(specId: string | null): void;
@@ -370,7 +373,7 @@ const STUDIO_GLYPHS = Object.freeze({
 
 /** The outliner's order (09-studio .out: Scene, Actors, Shots, Effects), the Director first and Export last. */
 const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
-  ['director', 'studio'], ['battlefield', 'map'], ['tanks', 'vehicle'], ['cinematics', 'toolPhoto'], ['effects', 'detonation'], ['output', 'media'],
+  ['director', 'studio'], ['battlefield', 'map'], ['tanks', 'vehicle'], ['cinematics', 'toolPhoto'], ['effects', 'detonation'], ['output', 'film'],
 ] as const);
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
@@ -382,6 +385,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // the keys in words: the shipped faces carry no command-key glyph, so a Mac reads Cmd (the type system's coverage rule)
 const ON_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const PALETTE_KEY = ON_MAC ? 'Cmd K' : 'Ctrl K';
+/** The kit's key cap (components.ts keycap: cot-c-kbd, hidden from assistive technology) built as a node: the Studio's
+ *  sinks write no markup from data (studioSceneShare.selftest §10). No Studio key is an arrow, so no sprite glyph. */
+function studioKeycap(key: string): HTMLElement {
+  const cap = document.createElement('kbd');
+  cap.className = 'cot-c-kbd';
+  cap.setAttribute('aria-hidden', 'true');
+  cap.textContent = key;
+  return cap;
+}
 const UNDO_KEY = ON_MAC ? 'Cmd Z' : 'Ctrl Z';
 /** The Studio's shortcuts a focused panel lets through to the runtime. */
 function studioShortcut(e: KeyboardEvent): boolean {
@@ -460,7 +472,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const mark = el('span', 'st');
   mark.innerHTML = STUDIO_GLYPHS.mark;
   mark.append(el('span', 'wd', t('studio.ws.title')));
-  const projectName = el('span', 'pn', '');
+  const projectName = markDatum(el('span', 'pn', ''), 'map-name');
   // the scene's safety (09-studio header .sv and the undo/redo pair): its autosave, and the steps either side
   const savedState = el('span', 'sv');
   savedState.hidden = true;
@@ -541,7 +553,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // Commands (09-studio header): the palette over every action, with its shortcut
   const commandsBtn = chipButton(t('studio.ws.commands'), 'search');
   commandsBtn.classList.add('cmd');
-  commandsBtn.append(el('kbd', 'cot-c-kbd', PALETTE_KEY));
+  commandsBtn.appendChild(studioKeycap(PALETTE_KEY));
   commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
@@ -557,13 +569,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const id = S._internal.selected?.spec?.id;
     window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
   });
-  const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'record');
+  const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'film');
   exportBtn.addEventListener('click', () => startFilmExport());
-  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
-  exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
+  // Exit is a chip as its neighbours are (a ghost button set it in unbordered capitals among them)
+  const exitBtn = chipButton(t('studio.ws.exit'), 'close');
+  exitBtn.appendChild(studioKeycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
-  const queueBtn = chipButton(t('studio.ws.queue'), 'media');
+  const queueBtn = chipButton(t('studio.ws.queue'), 'clock');
   queueBtn.classList.add('que');
   queueBtn.setAttribute('aria-haspopup', 'dialog');
   queueBtn.setAttribute('aria-expanded', 'false');
@@ -575,15 +588,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const vpTop = el('div', 'st-vpt');
   const shotChip = chipButton('', 'toolPhoto');
   shotChip.addEventListener('click', () => productionPanel.activate('cinematics'));
-  const modeChip = chipButton('', 'freeLook');
-  modeChip.addEventListener('click', () => {
-    if (S.getCamera().mode === 'orbit') S.setCamera({ mode: 'fly' }); else orbitCamera();
-    api.refreshCamera();
-  });
   // Look through (09-studio .vpt): the view is the shots' camera at the playhead; navigating leaves it
   const lookChip = chipButton(t('studio.ws.lookThrough'), 'scope', true);
   lookChip.addEventListener('click', () => S.setLookThrough(!S.lookThrough));
-  vpTop.append(shotChip, lookChip, modeChip);
+  // the camera's mode and lens are the Cinematics workspace's controls, not chips beside them (UI-LOCKDOWN G17)
+  vpTop.append(shotChip, lookChip);
   const vpTools = el('div', 'st-vpb');
   const guidesChip = chipButton(t('studio.ws.guides'), 'pixels', true);
   guidesChip.addEventListener('click', () => {
@@ -593,17 +602,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     check.dispatchEvent(new Event('change'));
     guidesChip.setAttribute('aria-pressed', String(check.checked));
   });
-  const lensChip = chipButton('', 'optics');
-  lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
-  vpTools.append(guidesChip, lensChip);
-  const frameCounter = el('span', 'st-fc');
+  vpTools.append(guidesChip);
+  const frameCounter = markDatum(el('span', 'st-fc'), 'playhead');
   // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
   // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
   const selBox = el('div', 'st-sel');
   selBox.hidden = true;
   selBox.setAttribute('aria-hidden', 'true');
   // the name tag sits on the outline's top edge, kept inside the picture and below the chips
-  const selTag = el('span', 'st-sel-tag');
+  const selTag = markDatum(el('span', 'st-sel-tag'), 'tank-name');
   selTag.hidden = true;
   selTag.setAttribute('aria-hidden', 'true');
   const selTagText = el('span');
@@ -657,13 +664,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     selBox.style.top = `${Math.round(f.top)}px`;
     selBox.style.width = `${Math.max(8, Math.round(f.right - f.left))}px`;
     selBox.style.height = `${Math.max(8, Math.round(f.bottom - f.top))}px`;
-    const heading = Math.round(((a.pose.facingDeg % 360) + 360) % 360);
-    const key = `${a.uid}|${heading}`;
+    // the tag names the tank; its heading is the transform's field and the facing slider (UI-LOCKDOWN G13)
+    const key = a.uid;
     selTag.hidden = false;
     if (key !== selTagKey) {
       selTagKey = key;
       selTag.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), selTagText);
-      selTagText.textContent = t('studio.ws.selTag', { name: a.spec.name, deg: heading });
+      selTagText.textContent = a.spec.name;
       selTagWidth = selTag.offsetWidth;
     }
     // above the outline, or under it when the chips leave no room above: never on the tank, never past the picture's sides
@@ -689,29 +696,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const busy = el('div', 'busy');
   vp.appendChild(busy);
-  // Scene-link notices: a glyph (constant markup), the sentence and the detail as text, and a dismiss button.
-  const notice = el('div', 'notice');
-  notice.dataset.studioNotice = '';
-  const noticeGlyph = el('span', 'ng');
-  const noticeText = el('div', 'nt');
-  const noticeMessage = el('b');
-  // the technical reason (a refused field's path) waits behind Details; the sentence says what happened and what to do
-  const noticeMore = el('details', 'nd');
-  const noticeDetail = el('code');
-  noticeMore.append(el('summary', null, t('studio.sceneLink.details')), noticeDetail);
-  noticeText.append(noticeMessage, noticeMore);
-  const noticeClose = el('button', 'nx', '×');
-  noticeClose.type = 'button';
-  noticeClose.setAttribute('aria-label', t('studio.sceneLink.dismiss'));
-  notice.append(noticeGlyph, noticeText, noticeClose);
-  vp.appendChild(notice);
-  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-  const hideNotice = (): void => {
-    if (noticeTimer !== null) clearTimeout(noticeTimer);
-    noticeTimer = null;
-    delete notice.dataset.open;
-  };
-  noticeClose.addEventListener('click', hideNotice);
+  // What an action did (a scene link, a delivery, a staged take): the kit's toast, one at a time over the picture's top
+  noticeRegion('studio', { host: vp, placement: 'host', limit: 1, className: 'st-notices' });
 
   // --- the outliner (09-studio .out): one group per workspace, its head the workspace's switch ----------------------
   const outlineGroups = new Map<WorkspaceId, HTMLDivElement>();
@@ -794,7 +780,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
   // the times of day: a segmented row (09-studio .seg), the times this map has enabled
-  const timeSeg = el('div', 'cot-c-seg');
+  const timeSeg = el('div', 'cot-c-seg times');
   timeSeg.setAttribute('role', 'radiogroup');
   wireRovingKeys(timeSeg);
   timeSeg.setAttribute('aria-label', t('studioPanel.timeOfDay'));
@@ -831,14 +817,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const dial = svg('svg', { viewBox: '-50 -50 100 100', class: 'sunDial', role: 'slider', tabindex: 0,
     'aria-label': t('studioPanel.light.bearingAria'), 'aria-valuemin': 0, 'aria-valuemax': 359 });
   dial.append(svg('circle', { r: 44, class: 'ring', 'stroke-width': 1 }), svg('circle', { r: 30, class: 'ring', 'stroke-width': 1 }));
-  for (let tick = 0; tick < 360; tick += 30) {
+  // north's tick is its label (the line ran through the glyph)
+  for (let tick = 30; tick < 360; tick += 30) {
     const a = tick * Math.PI / 180, r0 = tick % 90 ? 40 : 36;
     dial.appendChild(svg('line', { x1: -Math.sin(a) * r0, y1: -Math.cos(a) * r0, x2: -Math.sin(a) * 44, y2: -Math.cos(a) * 44,
       class: tick % 90 ? 'tick' : 'tick major', 'stroke-width': 1 }));
   }
-  const north = svg('text', { x: 0, y: -24, 'text-anchor': 'middle', class: 'north' });
+  // north reads at the rim, and the camera's wedge stays inside the inner ring, clear of it at every bearing
+  const north = svg('text', { x: 0, y: -38, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'north' });
   north.textContent = t('studioPanel.light.north');
-  const camWedge = svg('path', { d: 'M0 0 L-9 -30 A31 31 0 0 1 9 -30 Z', class: 'cam', 'stroke-width': 1 });
+  const camWedge = svg('path', { d: 'M0 0 L-7.5 -25 A26 26 0 0 1 7.5 -25 Z', class: 'cam', 'stroke-width': 1 });
   const sunRay = svg('line', { x1: 0, y1: 0, x2: 0, y2: -38, class: 'ray', 'stroke-width': 1.5 });
   const sunDot = svg('circle', { cx: 0, cy: -38, r: 6.5, class: 'sun', 'stroke-width': 1.5 });
   dial.append(north, camWedge, sunRay, sunDot);
@@ -943,7 +931,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     dial.setAttribute('aria-valuetext', t('studioPanel.light.bearingValue', { deg: Math.round(az) }));
     bearingRead.replaceChildren(`${t('studioPanel.light.bearing')} `, el('b', null, `${Math.round(az)}°`));
     elevationRead.replaceChildren(`${t(light.time === 'night' ? 'studioPanel.light.moon' : 'studioPanel.light.sun')} `,
-      el('b', null, `${elev.toFixed(1)}°`));
+      // whole degrees as the bearing and the outliner write them; a half step keeps its decimal
+      el('b', null, `${Number.isInteger(elev) ? elev : elev.toFixed(1)}°`));
     elevation.setRange(light.band.min, light.band.max);
     elevation.set(elev);
     press(elevationReset, light.override?.sunElevationDeg === undefined);
@@ -955,7 +944,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       option.setAttribute('aria-checked', String(time === light.time));
       option.tabIndex = time === light.time ? 0 : -1;
     }
-    lightRow.pick.querySelector('.d')!.textContent = `${Math.round(az)}° / ${Math.round(elev)}°`;
   }
   battlefieldGroup.body.append(secScene, secLight);
 
@@ -968,7 +956,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
-  lightRow.pick.append(el('span', 'nm', ''), el('span', 'd', ''));
+  // the row names the light; its sun's angles are the dial's (UI-LOCKDOWN G15)
+  lightRow.pick.append(el('span', 'nm', ''));
   sceneRows.append(mapRow.row, lightRow.row);
 
   let mapPreviewsHydrated = false;
@@ -1028,9 +1017,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the card shows the tank alone; its flag and name sit on their own line under it (no text on a tank)
   const hero = el('div', 'st-hero');
   const heroSil = el('span', 'cot-c-sil');
-  const heroName = el('div', 'st-hero-name');
+  // its name and flag are the selection tag's (UI-LOCKDOWN G12)
   hero.append(heroSil);
-  secSel.append(hero, heroName);
+  secSel.append(hero);
   const transform = el('div', 'sec');
   transform.appendChild(sectionHead(t('studio.ws.transform'), 'freeLook'));
   const fields = el('div', 'fld');
@@ -1107,7 +1096,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     swatch.setAttribute('aria-pressed', 'false');
     swatch.setAttribute('aria-label', cid);
     swatch.dataset.camo = cid;
-    swatch.appendChild(document.createElement('canvas'));
+    createUiCanvas(swatch, '', { draw: coverImage });
     swatch.addEventListener('click', () => patchSel({ camo: cid }));
     swatchButtons.set(cid, swatch);
     swatches.appendChild(swatch);
@@ -1299,6 +1288,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   fxStack.setAttribute('aria-label', t('studioPanel.effects.listAria'));
   const clearStackBtn = kitButton(t('studio.clearAll'), 'danger', 'trash');
   clearStackBtn.classList.add('cot-c-btn--wide');
+  clearStackBtn.hidden = true;
   clearStackBtn.addEventListener('click', () => S.clearEffects());
   secFx.append(fxStack, clearStackBtn);
   const selOr = <Result>(fn: (actor: StudioActor | null) => Result): Result =>
@@ -1397,26 +1387,26 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ]);
   // media r5 cinematic pyrotechnics: quality toggles + the new effect types
   const cineGroup = el('div', 'fxg');
-  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.cinematic')));
-  const cineToggles = el('div', 'grid3');
-  const cineBtn = chipButton(t('studioPanel.fx.cinematicOff'), null, false);
+  // the render switches: each chip names its layer and its pressed state says on or off
+  cineGroup.appendChild(el('div', 'gh', t('studioPanel.fxGroup.render')));
+  const cineToggles = el('div', 'grid');
+  const cineBtn = chipButton(t('studioPanel.fx.cinematic'), null, false);
   cineBtn.addEventListener('click', () => S.setFxQuality(S.fxQuality === 'cinematic' ? 'battle' : 'cinematic'));
-  const dustBtn = chipButton(t('studioPanel.fx.trackDustOff'), null, false);
+  const dustBtn = chipButton(t('studioPanel.fx.trackDust'), null, false);
   dustBtn.addEventListener('click', () => S.setTrackDust(!S.trackDust));
   // the map's air (world/mapAmbience.ts): pollen, leaves, snow, dust, embers by map
-  const airBtn = chipButton(t('studioPanel.fx.ambienceOn'), null, true);
+  const airBtn = chipButton(t('studioPanel.fx.ambience'), null, true);
   airBtn.addEventListener('click', () => { S.setAmbience(!S.ambience); refreshCinematicToggles(); });
+  // the third switch takes the row the first two leave (a lone half-width chip read as a stray)
+  airBtn.style.gridColumn = '1 / -1';
   cineToggles.append(cineBtn, dustBtn, airBtn);
   cineGroup.appendChild(cineToggles);
   secBoard.appendChild(cineGroup);
   function refreshCinematicToggles(): void {
     const on = S.fxQuality === 'cinematic';
     press(cineBtn, on);
-    setLabel(cineBtn, t(on ? 'studioPanel.fx.cinematicOn' : 'studioPanel.fx.cinematicOff'));
     press(dustBtn, S.trackDust);
-    setLabel(dustBtn, t(S.trackDust ? 'studioPanel.fx.trackDustOn' : 'studioPanel.fx.trackDustOff'));
     press(airBtn, S.ambience);
-    setLabel(airBtn, t(S.ambience ? 'studioPanel.fx.ambienceOn' : 'studioPanel.fx.ambienceOff'));
   }
   fxGroup(t('studioPanel.fxGroup.cinematic'), [
     [t('studioPanel.fx.smokeScreen'), () => withSelected((a) => S.effect({ type: 'smoke_screen', actor: a.uid }))],
@@ -1533,6 +1523,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   const resetFxBtn = kitButton(t('studio.clearAllEffects'), 'danger');
   resetFxBtn.classList.add('cot-c-btn--wide');
+  resetFxBtn.hidden = true;
   resetFxBtn.addEventListener('click', () => S.clearEffects());
   secTime.append(duelBtn, resetFxBtn);
   globalGroup.body.appendChild(secTime);
@@ -1615,11 +1606,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmBlurRow.append(filmBlur.row, filmShake.row);
   filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
-  const filmSummary = el('div', 'recStatus', '');
+  const filmSummary = el('div', 'recStatus filmSummary', '');
   secCap.appendChild(filmSummary);
-  const filmBtn = kitButton(t('studio.film.export'), 'primary', 'deploy');
-  filmBtn.classList.add('cot-c-btn--wide');
-  secCap.appendChild(filmBtn);
+  // the export settings run from the header's Export film, the workspace's one primary (the s13 critic: two accent
+  // Export film buttons in view at once)
   // Authoring the export settings records them in the scene's `film` block.
   for (const control of [filmFps.select, filmBlur.select, filmShake.select]) {
     control.addEventListener('change', () => {
@@ -1635,8 +1625,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   filmVeil.setAttribute('role', 'dialog');
   filmVeil.setAttribute('aria-modal', 'true');
   filmVeil.setAttribute('aria-label', t('studio.film.veilTitle'));
-  const veilPreview = document.createElement('canvas');
-  veilPreview.className = 'fvPreview';
+  // (UI-LOCKDOWN A) the frame's preview: a uiCanvas sized by its CSS box (the film's aspect, --fv-aspect), the latest
+  // frame fitted into it at min(DPR, 2)
+  const veilSurface = createUiCanvas(null, 'fvPreview', {
+    draw: (ctx, width, height, surface) => {
+      ctx.clearRect(0, 0, width, height);
+      if (surface.image) drawImageFit(ctx, surface.image, width, height, 'contain');
+    },
+  });
+  const veilPreview = veilSurface.canvas;
+  let veilAspect = 0;
   const veilBar = el('div', 'fvBar');
   const veilFill = el('i');
   veilBar.appendChild(veilFill);
@@ -1663,10 +1661,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   function drawFilmPreview(canvas: HTMLCanvasElement): void {
     const aspect = canvas.width / Math.max(1, canvas.height);
-    const width = aspect >= 1 ? 640 : Math.round(480 * aspect);
-    const height = Math.round(width / aspect);
-    if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
-    veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
+    if (aspect !== veilAspect) { veilAspect = aspect; veilPreview.style.setProperty('--fv-aspect', String(aspect)); }
+    veilSurface.setImage(canvas);
   }
   /** One film through the veil (Export film and the queue): resolves with its size; an AbortError when cancelled. */
   function renderFilm(options: { resolution: number; fps: number; samples: number; shake: number; name?: string },
@@ -1708,7 +1704,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         ? t('studio.film.cancelled')
         : t('studio.film.failed', { error: errorMessage(error) })));
   }
-  filmBtn.addEventListener('click', startFilmExport);
   let filmSignature = '';
   function updateFilmSummary(): void {
     const film = S.getFilm();
@@ -1723,18 +1718,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     const status = S.filmExportStatus();
     const busyOutput = status.active || S.recordingStatus().active;
-    filmBtn.disabled = busyOutput || !status.supported;
-    exportBtn.disabled = filmBtn.disabled;
+    exportBtn.disabled = busyOutput || !status.supported;
     for (const control of [filmSize.select, filmFps.select, filmBlur.select, filmShake.select]) control.disabled = busyOutput;
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
     try {
       const format = S.productionFormat;
       const { width, height } = filmOutputSize(format, Number(filmSize.select.value));
       const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value) }), 0, S.durationMs);
-      filmSummary.textContent = t('studio.film.summary', {
+      const summary = t('studio.film.summary', {
         ratio: formatRatio(format),
         width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
       });
+      filmSummary.replaceChildren(...summary.split(' · ').map((part) => el('span', null, part)));
     } catch (error) {
       filmSummary.textContent = errorMessage(error);
     }
@@ -1742,7 +1737,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- live recording, stills and the scene file ---------------------------------------------------------------
   const secLive = el('div', 'sec');
   secLive.dataset.pro = '';
-  secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'record'));
+  secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'cameraPath'));
   const fpsSel = labelledSelect(t('studio.ws.video'));
   for (const fps of [60, 30]) {
     const option = document.createElement('option');
@@ -1750,7 +1745,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
     fpsSel.select.appendChild(option);
   }
-  const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'record');
+  const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'cameraPath');
   recordBtn.classList.add('cot-c-btn--wide');
   recordBtn.setAttribute('aria-pressed', 'false');
   recordBtn.addEventListener('click', () => {
@@ -1809,20 +1804,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     flashBusy(t('studio.sceneJsonCopied'));
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
-  // Copy scene link (studioSceneLinkUi.ts): the scene itself rides in the link's #fragment, capped and schema-checked.
-  const sceneLinkBtn = kitButton(t('studio.sceneLink.copy'));
-  sceneLinkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
-  sceneLinkBtn.classList.add('cot-c-btn--wide');
-  sceneLinkBtn.dataset.tip = t('studio.sceneLink.copyTitle');
-  sceneLinkBtn.dataset.sceneLinkCopy = '';
-  sceneLinkBtn.addEventListener('click', () => {
-    copySceneLink(S.state(), browserSceneLinkEnv())
-      .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
-  });
-  // localStorage slots
+  // the scene's link is the header's Copy scene link (one control, one style: the s13 critic read a capitals twin here)
+  // localStorage slots: the kit's buttons, as Save, Load and Copy above them (a chip row stood 6 px shorter)
   const slotRow = el('div', 'grid3');
   for (let i = 1; i <= 3; i++) {
-    const b = chipButton(t('studio.slot', { n: i }), null);
+    const b = kitButton(t('studio.slot', { n: i }));
     b.dataset.tip = t('studio.slotTitle');
     b.addEventListener('click', (e) => {
       const key = `cot.studio.slot${i}.v1`;
@@ -1843,7 +1829,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     });
     slotRow.appendChild(b);
   }
-  secScene2.append(svRow, sceneLinkBtn, slotRow, fileIn);
+  secScene2.append(svRow, slotRow, fileIn);
   outputGroup.body.append(secCap, secLive, secScene2);
 
   function openArchive(): void {
@@ -1892,12 +1878,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const stepBtn = iconButton(t('studio.stepOneFrame'));
   stepBtn.innerHTML = STUDIO_GLYPHS.stepForward;
   stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
-  const clockNow = el('span', 'tc');
   // the J/K/L shuttle's rate beside the clock, only while it is not plain play or stop
   const shuttleBadge = el('span', 'rate');
   shuttleBadge.hidden = true;
-  const playKey = el('kbd', 'cot-c-kbd', t('studio.ws.spaceKey'));
-  playKey.setAttribute('aria-hidden', 'true');
   const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
   const ts = sliderRow(t('studioPanel.storyboard.speedLabel'), 0.25, 2, 0.05, (v) => S.setTimeScale(v));
   const transportRight = el('div', 'r');
@@ -1907,10 +1890,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   shotBtn.addEventListener('click', () => S.addCameraShot());
   ts.row.dataset.pro = '';
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
-  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, shuttleBadge, playKey, transportRight);
+  // the playhead reads in the frame chip alone (UI-LOCKDOWN G14)
+  transport.append(restartBtn, pauseBtn, stepBtn, shuttleBadge);
+  transport.appendChild(studioKeycap(t('studio.ws.spaceKey')));
+  transport.append(transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
+  // the ruler's marks (ticks and m:ss labels on the playhead's travel), under the scrub that seeks through them
+  const rulerMarks = el('div', 'tm');
+  rulerMarks.setAttribute('aria-hidden', 'true');
+  ruler.appendChild(rulerMarks);
   const scrub = document.createElement('input');
   scrub.type = 'range';
   scrub.className = 'scrub';
@@ -1948,6 +1938,40 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     return track;
   }
   const pct = (ms: number): string => `${Math.max(0, Math.min(100, (ms / Math.max(1, S.durationMs)) * 100))}%`;
+  const rulerClock = (sec: number): string => {
+    const minutes = Math.floor(sec / 60);
+    const rest = sec - minutes * 60;
+    return `${minutes}:${rest < 10 ? '0' : ''}${Number.isInteger(rest) ? rest : rest.toFixed(1)}`;
+  };
+  let rulerFor = -1;
+  /** A labelled tick every step (at most ten across the take) and a short one between; redrawn when the length changes. */
+  function drawRuler(): void {
+    if (S.durationMs === rulerFor) return;
+    rulerFor = S.durationMs;
+    const seconds = S.durationMs / 1000;
+    const step = [0.5, 1, 2, 5, 10, 15, 30, 60, 120].find((value) => seconds / value <= 10) ?? 300;
+    const marks: HTMLElement[] = [];
+    for (let k = 0; k * step <= seconds + 1e-6; k++) {
+      const at = k * step * 1000;
+      const tick = el('i', 'mj');
+      tick.style.left = pct(at);
+      marks.push(tick);
+      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; the scene's end reads
+      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off)
+      const end = at >= S.durationMs - step * 400;
+      if (k > 0 && (!end || at >= S.durationMs - 1)) {
+        const label = el('b', end ? 'end' : null, rulerClock(k * step));
+        label.style.left = pct(at);
+        marks.push(label);
+      }
+      if (at + step * 500 < S.durationMs) {
+        const minor = el('i');
+        minor.style.left = pct(at + step * 500);
+        marks.push(minor);
+      }
+    }
+    rulerMarks.replaceChildren(...marks);
+  }
 
   // --- the production panel: the Director, and the outliner's heads, the shelf, the toggle and the frame ------------
   const productionPanel = mountStudioProductionPanel(S, root, dock, () => api.refreshAll(), {
@@ -1964,6 +1988,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     takes: shelf,
     toggle: headRight,
     guides: vp,
+    notice: (text, tone, detail) => api.notice(text, tone, detail),
   });
   // the Director's frame select becomes the header's segmented frame (09-studio header .seg)
   const directorFormat = root.querySelector<HTMLSelectElement>('[data-production-format]');
@@ -2032,7 +2057,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const queuePop = el('div', 'st-queue');
   queuePop.hidden = true;
   queuePop.setAttribute('role', 'dialog');
-  queuePop.setAttribute('aria-label', t('studio.ws.queueTitle'));
   const queuePresets = el('div', 'qp');
   const queueList = el('div', 'ql');
   const queueEmpty = el('p', 'qe', t('studio.ws.queue.empty'));
@@ -2045,7 +2069,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     refreshQueue();
   });
   queueFoot.append(queueClear, queueStart);
-  queuePop.append(queuePresets, queueList, queueEmpty, queueFoot);
+  queueFoot.hidden = true;
+  const queueHead = el('h3', 'qh', t('studio.ws.queueTitle'));
+  queueHead.id = 'st-queue-title';
+  queuePop.setAttribute('aria-labelledby', queueHead.id);
+  // the queue's state (its jobs, or that it is empty) under its name, the deliveries to add after it: a phone's short
+  // popover cut the state off below the presets
+  queuePop.append(queueHead, queueList, queueEmpty, queuePresets, queueFoot);
   head.appendChild(queuePop);
   queuePop.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -2071,6 +2101,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   function toggleQueue(open = queuePop.hidden): void {
     queuePop.hidden = !open;
     queueBtn.setAttribute('aria-expanded', String(open));
+    // the popover opens under its button (a phone opens it from the palette, its button hidden: the stylesheet places it)
+    if (open && queueBtn.offsetParent) {
+      queuePop.style.right = `${Math.max(8, Math.round(head.getBoundingClientRect().right - queueBtn.getBoundingClientRect().right))}px`;
+    }
     if (open) refreshQueue();
   }
   function refreshQueue(): void {
@@ -2111,6 +2145,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
     queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
     queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
+    // an empty queue shows no actions at all (the kit's disabled ink still read as live beside "Nothing queued")
+    queueFoot.hidden = !queueJobs.length;
   }
   const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
   /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
@@ -2186,7 +2222,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const via = (button: HTMLButtonElement) => () => { if (!button.disabled) button.click(); };
     const text = (node: Element): string => node.textContent?.trim() ?? '';
     const selected = S._internal.selected;
-    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: 'Space', keywords: 'play pause' });
+    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: t('studio.ws.spaceKey'), keywords: 'play pause' });
     add('restart', t('studio.restart'), via(restartBtn), { keywords: 'restart beginning' });
     add('step', t('studio.stepOneFrame'), via(stepBtn), { keywords: 'step frame next' });
     if (!undoBtn.disabled) add('undo', t('studio.ws.cmd.undo'), via(undoBtn), { hint: UNDO_KEY, keywords: 'undo' });
@@ -2436,6 +2472,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     rebuildFxParams(effects);
     refreshCinematicToggles();
     outlineCount('effects', effects.length);
+    // nothing to clear shows no clear (the kit's disabled ink still read as live beside the empty list)
+    clearStackBtn.hidden = resetFxBtn.hidden = !effects.length;
     if (!effects.length) {
       fxStack.appendChild(el('div', 'fxempty', t('studioPanel.fx.empty')));
       return;
@@ -2518,6 +2556,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   function rebuildStoryboard() {
     const board = S.getStoryboard();
+    drawRuler();
     laneHost.textContent = '';
     shotThumbSlots.clear();
     shotboard.querySelectorAll<InfoButton>('.cot-info-trigger')
@@ -2723,17 +2762,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (label) stageLabel.textContent = label;
     },
     notice(text, tone = 'info', detail = '') {
-      hideNotice();
-      noticeGlyph.innerHTML = tone === 'error' ? SCENE_LINK_GLYPHS.broken : SCENE_LINK_GLYPHS.done;
-      noticeMessage.textContent = text;
-      noticeDetail.textContent = detail;
-      noticeMore.hidden = !detail;
-      noticeMore.open = false;
-      notice.dataset.tone = tone;
-      notice.setAttribute('role', tone === 'error' ? 'alert' : 'status');
-      notice.setAttribute('aria-live', tone === 'error' ? 'assertive' : 'polite');
-      notice.dataset.open = '';
-      if (tone !== 'error') noticeTimer = setTimeout(hideNotice, 5000);
+      notify({ id: 'studio-notice', region: 'studio', severity: tone, text, detail: detail || undefined });
     },
     setPlaceArmed(specId) {
       press(placeBtn, !!specId);
@@ -2789,12 +2818,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         hero.dataset.spec = a.spec.id;
         hero.querySelector('.hc-host')?.remove();
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
-        heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), el('span', null, a.spec.name));
         for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
           .then(([cards]) => (hero.dataset.spec === specId
-            ? cards.decorateHeroTile(hero, specId, { tankSizes: '296px', flagSizes: '296px', priority: true }) : false))
+            ? cards.decorateHeroTile(hero, specId, { tankSizes: '340px', flagSizes: '340px', priority: true }) : false))
           .catch(() => false);
         repaintSwatches(a.spec.id);
       }
@@ -2824,8 +2852,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       orbBtn.setAttribute('aria-checked', String(c.mode === 'orbit'));
       flyBtn.tabIndex = c.mode === 'fly' ? 0 : -1;
       orbBtn.tabIndex = c.mode === 'orbit' ? 0 : -1;
-      setLabel(modeChip, c.mode === 'orbit' ? t('studio.orbit') : t('studio.freeFly'));
-      setLabel(lensChip, `${Math.round(c.fov)}°`);
       press(lookChip, S.lookThrough && !lookChip.disabled);
     },
     refreshTime() {
@@ -2852,12 +2878,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       scrub.max = String(S.durationMs);
       if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
       scrub.style.setProperty('--fill', `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`);
-      const now = `${(S.fxTimeMs / 1000).toFixed(2).padStart(5, '0')}`;
-      if (clockNow.dataset.now !== now || clockNow.dataset.total !== String(seconds)) {
-        clockNow.dataset.now = now;
-        clockNow.dataset.total = String(seconds);
-        clockNow.replaceChildren(`00:${now} `, el('small', null, `/ 00:${seconds.toFixed(2).padStart(5, '0')}`));
-      }
       playhead.style.setProperty('--t', String(Math.max(0, Math.min(1, S.fxTimeMs / Math.max(1, S.durationMs)))));
       if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();
@@ -2873,12 +2893,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         : (rec.supported
           ? t('studio.recordReady')
           : t('studio.recordUnsupported'));
-      // the frame readout (09-studio .fc): the frame at 30 fps and the camera's place and aim
+      // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
+      // coordinates, which read as a debug overlay)
       const frames = Math.round(S.durationMs / 1000 * 30);
       const frame = Math.min(frames, Math.round(S.fxTimeMs / 1000 * 30));
       const camera = S.getCamera();
       frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })),
-        ` · ${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`);
+        ...(proControls ? [el('span', 'co', `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`)] : []));
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
@@ -2914,12 +2935,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const id = S.mapId;
       if (!id) return;
       const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
+      // the map's name in the locale (翠野原, not Verdant Fields), its own name where the catalog has none
+      const nameKey = `map.${id}`;
+      const name = t(nameKey) === nameKey ? info.name || id : t(nameKey);
       mapHero.src = imageFor(MAP_HEROES, id) || imageFor(MAP_THUMBS, id) || '';
-      mapName.textContent = info.name || id;
+      mapName.textContent = name;
       mapId.textContent = id;
-      projectName.textContent = info.name || id;
+      projectName.textContent = name;
       mapRowThumb.src = imageFor(MAP_THUMBS, id) || '';
-      mapRow.pick.querySelector('.nm')!.textContent = info.name || id;
+      mapRow.pick.querySelector('.nm')!.textContent = name;
       lightRow.pick.querySelector('.nm')!.textContent = t(`atmosphere.${S.timeOfDay}`);
       if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));

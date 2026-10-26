@@ -14,7 +14,8 @@ for (const id of MAP_IDS) {
 }
 assert.equal(selectTerrainLandformMask(undefined, landform), landform);
 assert.equal(selectTerrainLandformMask({}, null), null);
-assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt,/);
+// (integ 254: battle-spikes 5cc91e072a bakes the mask in steps, makeMaskTextureSteps, with the same arguments)
+assert.match(source, /makeMaskTexture(?:Steps)?\(maskNoi, layout, rockMask, waterWetnessAt,/);
 assert.match(source, /uRockGate = \{ value: rockMask \? 1 : 0 \}/,
   'mask bake and shader agree about the single blue-channel owner');
 assertTerrainFetchExpressionCensus(source);

@@ -141,6 +141,7 @@
     "deploy:telemetry:cloudflare": "npm --prefix cloudflare/telemetry run deploy",
     "shadow:truth": "node tools/shadow-render-truth.mjs --gate",
     "check:bundle": "node tools/bundle-budget.mjs --check",
+    "check:frontend": "node tools/frontend-budget.mjs --dist=dist --check",
     "hero-cards:check": "node tools/hero-cards-check.mjs",
     "hero-cards:plan": "node tools/hero-cards-plan.mjs",
     "roof:discipline": "node --max-old-space-size=4096 tools/roof-gun-discipline.mjs",

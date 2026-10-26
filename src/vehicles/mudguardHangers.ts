@@ -140,28 +140,54 @@ function vertexTouchesStock(v: THREE.Vector3, stock: PlanGrid, skip: ReadonlySet
   return false;
 }
 
-/** Every running-gear mesh under hullG, in hullG's frame. */
-function addRunningGear(gear: PlanGrid, hullG: THREE.Object3D): void {
-  hullG.updateMatrixWorld(true);
-  const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), matrix = new THREE.Matrix4();
-  hullG.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (!mesh.isMesh || !mesh.userData.runningGear) return;
-    matrix.multiplyMatrices(toHull, mesh.matrixWorld);
-    const instanced = mesh as unknown as THREE.InstancedMesh;
-    if (!instanced.isInstancedMesh) { gear.add(soupOf(mesh.geometry, matrix)); return; }
-    const instance = new THREE.Matrix4(), combined = new THREE.Matrix4();
-    for (let i = 0; i < instanced.count; i++) {
-      instanced.getMatrixAt(i, instance);
-      gear.add(soupOf(mesh.geometry, combined.multiplyMatrices(matrix, instance)));
+/** A margin on a running-gear piece's bounds: its souped (float32) triangles stay inside them. */
+const GEAR_BOUNDS_MARGIN_M = 1e-4;
+
+/**
+ * Every running-gear mesh (and instance) under hullG, in hullG's frame, for box tests. A piece is souped into the grid
+ * only when a tested box meets its bounds: a triangle that meets the box lies in a piece whose bounds do, so the answers
+ * are the ones souping it all up front gave, without every wheel's and link's triangles on each build (an Abrams' was
+ * 3.4 s of one task on a 4x phone's Garage pedestal).
+ */
+class RunningGear {
+  private readonly grid = new PlanGrid();
+  private readonly pieces: ({ geometry: THREE.BufferGeometry; matrix: THREE.Matrix4; bounds: THREE.Box3 } | null)[] = [];
+  constructor(hullG: THREE.Object3D) {
+    hullG.updateMatrixWorld(true);
+    const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), localBounds = new Map<THREE.BufferGeometry, THREE.Box3>();
+    const piece = (geometry: THREE.BufferGeometry, matrix: THREE.Matrix4): void => {
+      let local = localBounds.get(geometry);
+      if (!local) localBounds.set(geometry, local = new THREE.Box3().setFromBufferAttribute(geometry.getAttribute('position') as THREE.BufferAttribute));
+      this.pieces.push({ geometry, matrix, bounds: local.clone().applyMatrix4(matrix).expandByScalar(GEAR_BOUNDS_MARGIN_M) });
+    };
+    hullG.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.userData.runningGear) return;
+      const matrix = new THREE.Matrix4().multiplyMatrices(toHull, mesh.matrixWorld);
+      const instanced = mesh as unknown as THREE.InstancedMesh;
+      if (!instanced.isInstancedMesh) { piece(mesh.geometry, matrix); return; }
+      const instance = new THREE.Matrix4();
+      for (let i = 0; i < instanced.count; i++) {
+        instanced.getMatrixAt(i, instance);
+        piece(mesh.geometry, new THREE.Matrix4().multiplyMatrices(matrix, instance));
+      }
+    });
+  }
+  /** Whether a box in hullG's frame meets the running gear (triangle bounds: conservative). */
+  touchesBox(box: THREE.Box3): boolean {
+    for (let i = 0; i < this.pieces.length; i++) {
+      const p = this.pieces[i];
+      if (!p || !p.bounds.intersectsBox(box)) continue;
+      this.grid.add(soupOf(p.geometry, p.matrix));
+      this.pieces[i] = null;
     }
-  });
+    return this.grid.touchesBox(box);
+  }
 }
 
 /** Whether a box in hullG's frame meets the running gear (triangle bounds: conservative). */
 export function runningGearTest(hullG: THREE.Object3D): (box: THREE.Box3) => boolean {
-  const gear = new PlanGrid();
-  addRunningGear(gear, hullG);
+  const gear = new RunningGear(hullG);
   return (box) => gear.touchesBox(box);
 }
 
@@ -189,7 +215,7 @@ export function hangAuthoredMudguards(
   structural: ReadonlySet<THREE.BufferGeometry> = new Set(supports),
 ): MudguardHangerReceipt[] {
   if (!requests.length) return [];
-  const stock = new PlanGrid(), gear = new PlanGrid();
+  const stock = new PlanGrid(), gear = new RunningGear(hullG);
   // Every permanent hull part is stock, other hung guards included (a hem hangs from its hung board); each guard skips
   // only itself and what it carries (below).
   const stockIndex = new Map<THREE.BufferGeometry, number>(), stockBoxes: THREE.Box3[] = [], structuralIndex = new Set<number>();
@@ -201,7 +227,6 @@ export function hangAuthoredMudguards(
     stockBoxes.push(part.boundingBox);
     if (structural.has(part)) structuralIndex.add(index);
   }
-  addRunningGear(gear, hullG);
   const receipts: MudguardHangerReceipt[] = [], scratch = new THREE.Vector3();
   // Touching another guard anchors a guard only once that guard is itself anchored (hung, or touching stock): a hem and
   // its board touching each other would otherwise both stand as authored, floating together.

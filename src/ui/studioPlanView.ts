@@ -6,6 +6,7 @@
  * plan shows the motion the renderer plays; the graph scrubs the timeline. A 2D canvas built only with the Studio.
  */
 import { sampleActorTrack, sampleCameraRail } from '../game/studioTimeline.ts';
+import { createUiCanvas, scratchCanvas } from './uiCanvas.ts';
 import type { ActorTrackSample, CameraRailSample, Storyboard } from '../game/studioTimeline.ts';
 
 /** The battlefield's plan: the HUD minimap's features and the map's extent (Studio getPlanFeatures). */
@@ -112,7 +113,11 @@ const COLORS = { ground: '#1d2418', grid: 'rgba(255,255,255,0.06)', road: '#a89f
 export function createPlanView(S: PlanSource, t: (key: string) => string): { readonly root: HTMLElement; refreshPlan(): void; refreshTime(): void } {
   const root = document.createElement('div');
   root.className = 'planView';
-  const map = document.createElement('canvas'), graph = document.createElement('canvas');
+  // (UI-LOCKDOWN A) both canvases are uiCanvases: each store its box × min(DPR, 2), drawn in device pixels, redrawn on a
+  // box or ratio change and held at 1 px while the panel is hidden
+  const mapSurface = createUiCanvas(null, '', { units: 'device', draw: () => drawMap() });
+  const graphSurface = createUiCanvas(null, '', { units: 'device', draw: () => drawGraph() });
+  const map = mapSurface.canvas, graph = graphSurface.canvas;
   map.setAttribute('role', 'img'); map.setAttribute('aria-label', t('studioPanel.plan.aria'));
   graph.setAttribute('role', 'slider'); graph.setAttribute('aria-label', t('studioPanel.plan.graphAria'));
   map.style.cssText = 'width:100%;aspect-ratio:1;border-radius:var(--r1);display:block;background:' + COLORS.ground;
@@ -123,25 +128,6 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
   let plan: PlanGeometry | null = null, features: StudioPlanFeatures | null = null, base: HTMLCanvasElement | null = null, mapKey = '';
   const cam: CameraRailSample = {}, track: ActorTrackSample = {};
 
-  // each canvas's CSS box, kept by a resize observer: a draw runs on every playhead step and read the boxes each time,
-  // laying the panel out inside the press (perf 249); a new box redraws at its resolution
-  const boxes = new WeakMap<HTMLCanvasElement, { readonly w: number; readonly h: number }>();
-  const sizer = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const box = entry.contentBoxSize?.[0];
-      boxes.set(entry.target as HTMLCanvasElement, box ? { w: box.inlineSize, h: box.blockSize }
-        : { w: entry.contentRect.width, h: entry.contentRect.height });
-    }
-    draw();
-  }) : null;
-  sizer?.observe(map);
-  sizer?.observe(graph);
-  const fit = (canvas: HTMLCanvasElement) => {
-    const box = boxes.get(canvas) ?? { w: canvas.clientWidth, h: canvas.clientHeight };
-    const ratio = Math.min(2, window.devicePixelRatio || 1), w = Math.max(1, Math.round(box.w * ratio)), h = Math.max(1, Math.round(box.h * ratio));
-    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; return true; }
-    return false;
-  };
   // north-up like the game's tactical map (minimapOrientation.ts): world +Z is up the map and -X is to its right
   const toPx = (x: number, z: number, size: number) => {
     const b = plan!.bounds, k = size / (2 * b.half);
@@ -151,7 +137,7 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
   function paintVisibleWater(g: CanvasRenderingContext2D, raster: NonNullable<StudioPlanFeatures['visibleWater']>, size: number): void {
     const n = raster.cells;
     if (!(n > 0) || raster.water.length !== n * n) return;
-    const texels = document.createElement('canvas'); texels.width = n; texels.height = n;
+    const texels = scratchCanvas(n, n);
     const tg = texels.getContext('2d')!, image = tg.createImageData(n, n);
     const tone = /rgba\((\d+),(\d+),(\d+),([\d.]+)\)/.exec(COLORS.water);
     const [r, gr, b, alpha] = tone ? tone.slice(1).map(Number) : [70, 120, 190, 0.55];
@@ -171,7 +157,7 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
   }
   /** The still layer: ground, grid, roads, water, woods, buildings — redrawn when the window or the map changes. */
   function drawBase(size: number): HTMLCanvasElement {
-    const c = document.createElement('canvas'); c.width = size; c.height = size;
+    const c = scratchCanvas(size, size);
     const g = c.getContext('2d')!;
     g.fillStyle = COLORS.ground; g.fillRect(0, 0, size, size);
     const b = plan!.bounds, k = size / (2 * b.half), step = b.half > 220 ? 100 : 50;
@@ -202,10 +188,14 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
     }
     return c;
   }
+  /** Both drawings, now where shown (a playhead step, a new take). */
   function draw() {
-    if (!root.isConnected || !plan) return;
-    fit(map); fit(graph);
-    const size = map.width, g = map.getContext('2d')!;
+    mapSurface.redraw();
+    graphSurface.redraw();
+  }
+  function drawMap() {
+    const size = map.width, g = mapSurface.context;
+    if (!plan) { g.clearRect(0, 0, map.width, map.height); return; }
     if (!base || base.width !== size) base = drawBase(size);
     g.drawImage(base, 0, 0);
     const now = S.fxTimeMs;
@@ -244,8 +234,12 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
     for (const s of [-1, 1]) { const [px, pz] = toPx(cx + Math.sin(yaw + s * halfH) * reach, cz + Math.cos(yaw + s * halfH) * reach, size); g.lineTo(px, pz); }
     g.closePath(); g.fill();
     g.fillStyle = COLORS.lens; g.beginPath(); g.arc(pcx, pcz, Math.max(3.5, size / 80), 0, Math.PI * 2); g.fill();
-    // the graph: the camera's distance to the hero and its height across the take, the playhead
-    const gg = graph.getContext('2d')!, W = graph.width, H = graph.height, s = plan.series;
+  }
+  /** The graph: the camera's distance to the hero and its height across the take, the playhead. */
+  function drawGraph() {
+    const gg = graphSurface.context, W = graph.width, H = graph.height;
+    if (!plan) { gg.clearRect(0, 0, W, H); return; }
+    const s = plan.series, now = S.fxTimeMs;
     gg.fillStyle = COLORS.ink; gg.fillRect(0, 0, W, H);
     if (s) {
       const n = s.distance.length - 1, px = (i: number) => (i / n) * W, py = (v: number) => H - 4 - (v / s.max) * (H - 8);

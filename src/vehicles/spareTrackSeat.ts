@@ -149,6 +149,9 @@ let runSerial = 0;
  * across builds and registeredGuardPaint's before/after builds disagreed on every run's id).
  */
 export function resetSpareTrackRunSerial(): void { runSerial = 0; }
+/** The build's serial so far, held across a stepped profile build's pauses (another build may number its runs there). */
+export function spareTrackRunSerial(): number { return runSerial; }
+export function restoreSpareTrackRunSerial(serial: number): void { runSerial = serial; }
 /** A fresh run registration: every geometry carrying the same object is one rigid run. */
 export function spareTrackRunTag(tag: SpareTrackRunTag): SpareTrackRunTag & { readonly id: number } {
   return { ...tag, id: ++runSerial };

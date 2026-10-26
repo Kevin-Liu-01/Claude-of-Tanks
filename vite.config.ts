@@ -245,10 +245,13 @@ export default defineConfig({
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
     // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
     // split four boot chunks (+5 game / +4 gallery requests) or drag the builder core into the host. The small
-    // workers are single self-contained files.
+    // workers are single self-contained files. The riding-parts and decor workers (UI-LOCKDOWN E) run the profile kit
+    // and the decoration the page has already loaded by the time they start.
     ...sharedWorkerChunks({ workers: {
       'src/world/wreckBakeWorker.ts': {},
       'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
+      'src/vehicles/ridingPartsWorker.ts': {},
+      'src/vehicles/decorPlanWorker.ts': {},
     } }),
     // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
@@ -425,6 +428,21 @@ export default defineConfig({
             // the collision primitives they are built on, instead of splitting into two chunks of their own (+1 game
             // request) once the prediction world became their third importer.
             { name: 'collision', test: /[\\/]src[\\/](world[\\/]collision|sim[\\/]structureSupport|sim[\\/]tankBodyContacts)\.ts$/ },
+            // 2026-10-25 (nav-perf, UI-LOCKDOWN E; 252's bundle growth): the turret seat plane (its five vehicle modules), the
+            // tech tree's tier table and the deterministic math are all three loaded at boot by exactly the game, cn and
+            // Gallery pages. On their own they were two new boot requests on each, and the deterministic math, pulled into
+            // the collision chunk as one of its dependencies, put that whole 57 KB chunk on the Gallery's boot for 15 KB of
+            // math its vehicle markings and launcher muzzles import. One chunk, exactly these modules, ahead of the collision
+            // group's dependency sweep.
+            // 2026-10-25 (integrator 253): the UI canvas primitive (canvas-ui-253) and the vehicle eras table (equipment-rules-253)
+            // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
+            // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
+            // equipment preview is their second importer, and on their own they were one more game boot request
+            // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
+            // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

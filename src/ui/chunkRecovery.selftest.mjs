@@ -269,7 +269,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   assert.equal(h.live(30000), 1, 'an arrival replaces the document watchdogs instead of stacking them');
   assert.equal(h.live(60000), 1);
   assert.equal(h.timers.filter((timer) => timer.ms === 60000).length, 2, 'the previous 60 s watchdog was re-armed, not left running');
-  assert.match(h.stage.textContent, /Downloading game files · 1 \/ 4/, 'the splash counts entry-graph files while the module has not claimed the line');
+  assert.match(h.stage.textContent, /Downloading game files · 1\/4/, 'the splash counts entry-graph files while the module has not claimed the line');
   const network = h.window.__COT_BOOT_RECOVERY.network();
   assert.equal(network.entries, 2);
   assert.equal(network.scripts, 1);
@@ -280,9 +280,9 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   assert.equal(h.timers[1].cancelled, true, 'the superseded load-time recovery watchdog is cleared');
   h.advance(1000);
   h.window.__COT_BOOT_RECOVERY.progress('renderer');
-  assert.equal(h.stage.textContent, 'Downloading game files · 1 / 4', 'module stage begin is reported by bootScreen, not this line');
+  assert.equal(h.stage.textContent, 'Downloading game files · 1/4', 'module stage begin is reported by bootScreen, not this line');
   h.arrive([{ name: 'https://game.test/assets/sky-x.js', transferSize: 1000 }]);
-  assert.equal(h.stage.textContent, 'Downloading game files · 1 / 4', 'once the module owns the stage line, downloads stop repainting it');
+  assert.equal(h.stage.textContent, 'Downloading game files · 1/4', 'once the module owns the stage line, downloads stop repainting it');
 }
 
 {

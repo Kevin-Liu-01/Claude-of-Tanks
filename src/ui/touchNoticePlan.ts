@@ -51,6 +51,13 @@ const RING_CEILING = 0.15;
 export const TOUCH_COMPACT_NOTICE: TouchSize = { w: 136, h: 32 };
 // (the compact alert as wide as the compact notice: stacked, the notices are one column, gauntlet r3)
 export const TOUCH_COMPACT_ALERT: TouchSize = { w: 136, h: 40 };
+/** The tiniest landscapes' one row (`oneRow`): both notices in one 24 px place, the alert on one line at most this wide;
+ *  narrower where the wider row meets a panel (a 320 px portrait phone's ammunition column beside the sight). */
+export const TOUCH_ONE_ROW: TouchSize = { w: 248, h: 24 };
+const ONE_ROW_WIDTHS = [248, 200, 176, 136] as const;
+/** The resting ring's own reach over the aim point (hud.ts RET_FLOOR_PX 11, its stroke and halo): the one row's sight
+ *  band, where SIGHT_CLEAR_PX's margin leaves it no place. */
+const RESTING_RING_PX = 14;
 
 /**
  * The reticle's footprint at full bloom on a touch layout (see the module's note), as boxes. `seated`: the warning chip
@@ -117,7 +124,7 @@ export function touchFreePlace(size: TouchSize, top: number, width: number, heig
  *  buttons); a place over the block itself costs OVER_FACTOR times as much again (at 568x256 the margins alone set the
  *  detection 10 px onto a consumable). */
 function leastIntrusive(size: TouchSize, top: number, width: number, height: number,
-  layers: readonly (readonly [readonly TouchBox[], number])[]): { y: number; cost: number } {
+  layers: readonly (readonly [readonly TouchBox[], number])[], resting = false): { y: number; cost: number } {
   const x0 = noticeCentreX(width) - size.w / 2, x1 = x0 + size.w;
   const grown: { box: TouchBox; weight: number }[] = [];
   for (const [blocks, weight] of layers) {
@@ -127,7 +134,8 @@ function leastIntrusive(size: TouchSize, top: number, width: number, height: num
       grown.push({ box: grow(block, TOUCH_NOTICE_GAP), weight: Math.min(weight, MARGIN_WEIGHT) }, { box: block, weight: weight * OVER_FACTOR });
     }
   }
-  const aim = height / 2, over = aim - SIGHT_CLEAR_PX - TOUCH_SIGHT_GAP, under = aim + MARKS_BELOW_PX + TOUCH_SIGHT_GAP;
+  const aim = height / 2, over = aim - (resting ? RESTING_RING_PX : SIGHT_CLEAR_PX) - TOUCH_SIGHT_GAP;
+  const under = aim + MARKS_BELOW_PX + TOUCH_SIGHT_GAP;
   let best = { y: Math.max(top, TOUCH_NOTICE_GAP), cost: Infinity };
   for (const crosshair of [true, false]) {
     for (let y = Math.max(top, TOUCH_NOTICE_GAP); y + size.h <= height - TOUCH_NOTICE_GAP; y += 2) {
@@ -176,6 +184,10 @@ interface TouchNoticeInput {
   readonly countdownRules?: TouchSize | null;
   /** The medal card's, when one waits for a place. */
   readonly banner: TouchSize | null;
+  /** The tiniest landscapes (up to 340 px tall) and portrait phones (up to 340 px wide): where no place clears both
+   *  notices, they share one 24 px row
+   *  (TOUCH_ONE_ROW), the alert in the detection's place while it shows (battleHudLayout hides the detection under it). */
+  readonly oneRow?: boolean;
   /** Where integ put the detection's top (the stack's, centred). */
   readonly fallbackTop: number;
 }
@@ -188,10 +200,14 @@ interface TouchNoticePlan {
   /** The countdown's top and scale (its top fixed: battleHudLayout.css scales it from there), and its rules panel's top
    *  and scale under the sight (shown false: no place clears it). */
   countdownTop: number; countdownScale: number;
+  /** The dial came down over the resting sight (countdownPlace.ts `overSight`): the idle reticle stands down under it. */
+  dialOverSight: boolean;
   rulesTop: number; rulesScale: number; rulesShown: boolean;
   /** Every element keeps clear of the footprint and the furniture. */
   cleared: boolean;
   bannerTop: number; bannerReady: boolean;
+  /** Both notices in one row (`oneRow`). */
+  oneRow: boolean;
 }
 
 /** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's PANEL_WEIGHT), and a
@@ -236,8 +252,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeTop: input.fallbackTop, alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP,
     alertW: input.alert.w, noticeCompact: false, alertCompact: false,
-    countdownTop: start, countdownScale: 1, rulesTop: height, rulesScale: 1, rulesShown: false,
-    cleared: true, bannerTop: start, bannerReady: false };
+    countdownTop: start, countdownScale: 1, dialOverSight: false, rulesTop: height, rulesScale: 1, rulesShown: false,
+    cleared: true, bannerTop: start, bannerReady: false, oneRow: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
   // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
@@ -254,6 +270,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     const rules = input.countdownRules ?? null;
     const place = placeCountdown(width, height, top, input.countdown, rules, [...input.obstacles, ...input.soft, ...map, ...labels], gap, true);
     plan.countdownTop = place.top; plan.countdownScale = place.scale;
+    plan.dialOverSight = place.top + input.countdown.h * place.scale > height / 2 - SIGHT_CLEAR_PX;
     plan.rulesTop = place.rulesTop; plan.rulesScale = place.rulesScale; plan.rulesShown = place.rulesShown;
     if (!place.cleared) plan.cleared = false;
     placed.push(centred(place.top, scaled(input.countdown, place.scale)));
@@ -294,6 +311,29 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     plan.noticeCompact = noticeCompact; plan.alertCompact = alertCompact;
     found = true;
   }
+  if (!found && input.oneRow) {
+    // the tiniest landscapes: one row for both, clear of the panels where it can be, else reaching into the footprint as
+    // far as the resting ring (568x256: under the objective the band over the sight holds one 24 px row, and the pair
+    // went onto the hull panel and each other, the layout receipt)
+    // (the widest row that keeps off every panel and control, else the narrowest at its least intrusive height; from the
+    // notices' gap under the score and the objective, not integ's 8 px: at 844x300 the Frontline's three-line objective
+    // left the row 2 px short of the band over the resting ring)
+    const rowStart = top + gap;
+    let row: { y: number; w: number; free: boolean } = { y: rowStart, w: ONE_ROW_WIDTHS[ONE_ROW_WIDTHS.length - 1], free: false };
+    for (const w of ONE_ROW_WIDTHS) {
+      const size = { w: Math.min(w, width - 2 * gap), h: TOUCH_ONE_ROW.h };
+      const free = touchFreePlace(size, rowStart, width, height, [...blocks, ...placed]);
+      if (free !== null) { row = { y: free, w: size.w, free: true }; break; }
+      const least = leastIntrusive(size, rowStart, width, height, layers(placed), true);
+      if (least.cost < PANEL_WEIGHT) { row = { y: least.y, w: size.w, free: false }; break; }
+      row = { y: least.y, w: size.w, free: false };
+    }
+    if (!row.free) plan.cleared = false;
+    plan.noticeTop = plan.alertTop = row.y;
+    plan.noticeCompact = plan.alertCompact = plan.oneRow = true;
+    plan.alertW = row.w;
+    found = true;
+  }
   if (!found) {
     // the smallest phones: each in its compact form at the height that reaches least far, one off the other, in the
     // order that reaches least far in all (r10g: the detection first took the one free place at 640x360, and the alert
@@ -314,7 +354,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   if (input.banner) {
     const notice = plan.noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
     const alert = plan.alertCompact ? compactAlert : input.alert;
-    const taken = input.countdown ? placed : [...placed, centred(plan.noticeTop, notice), centred(plan.alertTop, alert)];
+    const taken = input.countdown ? placed : plan.oneRow ? [...placed, centred(plan.noticeTop, { w: plan.alertW, h: TOUCH_ONE_ROW.h })]
+      : [...placed, centred(plan.noticeTop, notice), centred(plan.alertTop, alert)];
     const y = touchFreePlace(input.banner, start, width, height, [...blocks, ...taken]);
     if (y !== null) { plan.bannerTop = y; plan.bannerReady = true; }
   }

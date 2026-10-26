@@ -68,8 +68,10 @@ assert.deepEqual(Object.keys(reel.features).sort(), ['battlefields', 'destructio
 const en = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
 const zh = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
 const clipFiles = (clip) => [...clip.poster.rungs, clip.film, clip.mobile, clip.wide].filter(Boolean);
+// a clip without an altKey files its title as media.homeR2.<camelId> (tools/home-premiere.mjs syncAltCatalogs)
+const altKeyOf = (clip) => clip.altKey ?? `media.homeR2.${clip.id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase())}`;
 for (const clip of [...reel.hero, ...Object.values(reel.features)]) {
-  assert.ok(en[clip.altKey] && zh[clip.altKey], `${clip.id}: its alt text is in both catalogs`);
+  assert.ok(en[altKeyOf(clip)] && zh[altKeyOf(clip)], `${clip.id}: its alt text is in both catalogs`);
   for (const file of clipFiles(clip)) {
     assert.equal((await stat(resolve(root, 'public', file.path.slice(1)))).size, file.bytes, `${file.path} is the manifest's file`);
   }
@@ -82,7 +84,7 @@ const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[
 const rungs = reel.hero[0].poster.rungs;
 const srcset = rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
 const lcp = (rungs.find((rung) => rung.width >= 1440) ?? rungs.at(-1)).path;
-assert.ok(heroMarkup.includes(`<img class="hero__still" src="${lcp}" alt="`) && heroMarkup.includes(`data-i18n-alt="${reel.hero[0].altKey}"`)
+assert.ok(heroMarkup.includes(`<img class="hero__still" src="${lcp}" alt="`) && heroMarkup.includes(`data-i18n-alt="${altKeyOf(reel.hero[0])}"`)
   && heroMarkup.includes('fetchpriority="high"') && heroMarkup.includes(`srcset="${srcset}"`), 'the poster carries its size, priority and rungs');
 assert.match(heroMarkup, /<img class="hero__still" [^>]*width="1920" height="\d+"/, 'the poster reserves its box');
 assert.equal(home.includes(`<link rel="preload" href="${lcp}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${srcset}"`), true,
@@ -101,8 +103,18 @@ clips.forEach(([, attrs, body], i) => {
 assert.match(heroMarkup, /<button class="cot-c-btn cot-c-btn--64 hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="[^"]+" alt="" width="84" height="46"/,
   'the trailer button shows a dimensioned thumbnail');
 assert.match(heroMarkup, /data-reel-toggle hidden aria-label="[^"]+" data-i18n-aria-label="publicPages\.reel\.pauseAria"/, 'the reel has its pause control');
+// (owner 2026-10-25: "also add text here at the left that says stuff about this!") the hero says what the game is, and
+// each clip's caption names its vehicles and battlefield: one caption per clip, the poster's on until the reel turns
+assert.match(heroMarkup, /<p class="hero__lede" data-i18n="home\.hero\.lede">[^<]+<\/p><div class="hero__ctas">/, 'the headline\'s line sits above the actions');
+const shotIds = [...heroMarkup.matchAll(/<span class="hero__shot[^"]*" data-reel-shot="([^"]+)">/g)].map((m) => m[1]);
+assert.deepEqual([...shotIds].sort(), reel.hero.map((clip) => clip.id).sort(), 'one caption per clip');
+assert.match(heroMarkup, new RegExp(`<span class="hero__shot is-on" data-reel-shot="${reel.hero[0].id}">`), 'the poster\'s caption shows first');
+assert.equal((heroMarkup.match(/class="hero__shot is-on"/g) || []).length, 1, 'one caption on at a time');
+clips.forEach(([, attrs], i) => assert.ok(attrs.includes(`data-shot="${reel.hero[i].id}"`), `clip ${i + 1} names its caption`));
+assert.match(heroMarkup, /<p class="hero__shots" aria-hidden="true">/, 'the captions are the picture\'s: the poster\'s alt and the clips\' labels name the shots');
 const heroReel = await readFile(resolve(root, 'src/presentation/heroReel.ts'), 'utf8');
 assert.match(heroReel, /if \(!clips\.length \|\| !autoplayAllowed\(\)\) return null;/, 'no clip moves under reduced motion or data saving');
+assert.match(heroReel, /shot\.classList\.toggle\('is-on', shot\.dataset\.reelShot === video\.dataset\.shot\)/, 'the caption turns with its clip');
 const homePage = await readFile(resolve(root, 'src/presentation/homePage.ts'), 'utf8');
 assert.match(homePage, /addEventListener\('load', idle, \{ once: true \}\)/, 'the reel starts after the page has loaded and gone idle');
 assert.match(publicPages, /if \(document\.querySelector\('\[data-hero-reel\]'\)\) void import\('\.\/homePage\.ts'\);/, 'the landing\'s behaviour loads with the landing alone');
@@ -114,7 +126,7 @@ assert.deepEqual(featureSlots, ['battlefields', 'killcam', 'destruction', 'watch
 for (const slot of featureSlots) {
   const clip = reel.features[slot];
   const tile = featureMarkup.match(new RegExp(`<figure class="feat[^"]*" data-feature="${slot}">([\\s\\S]*?)</figure>`))?.[1] ?? '';
-  assert.match(tile, new RegExp(`<img src="${clip.poster.rungs.at(-1).path}"[^>]* width="\\d+" height="\\d+" alt="[^"]+" data-i18n-alt="${clip.altKey}" loading="lazy"`),
+  assert.match(tile, new RegExp(`<img src="${clip.poster.rungs.at(-1).path}"[^>]* width="\\d+" height="\\d+" alt="[^"]+" data-i18n-alt="${altKeyOf(clip)}" loading="lazy"`),
     `${slot}: its poster is sized, described and lazy`);
   const motion = clip.film || clip.mobile || clip.wide;
   assert.equal(/<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/.test(tile), Boolean(motion), `${slot}: a loop exactly where the slot has motion`);
@@ -126,7 +138,35 @@ const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].m
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
 assert.equal(/<source src=/.test(home), false, 'no landing video names its file in the markup');
 
-console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features and the landing-r1 picks pass`);
+// (owner 2026-10-25: "we need to show of all our higher quality stuff. we hide too much") head to head shows the versus
+// twelve in the media lane's order and the fleet its strip of nine: each still at every rung, sized and lazy, the first the
+// bento's lead, every tile named and opening its vehicle's Gallery page
+const versus = JSON.parse(await readFile(resolve(root, 'public/media/versus-r1/manifest.json'), 'utf8'));
+// the lead uses its 1280, 1920 and 3840 rungs, a small tile its 640, 1280 and 1920 (tools/home-premiere.mjs BENTO_RUNGS)
+const bentoRungs = (rungs, lead) => [...rungs].sort((a, b) => a.width - b.width).filter((rung) => (lead ? [1280, 1920, 3840] : [640, 1280, 1920]).includes(rung.width));
+const bento = (name) => home.match(new RegExp(`<!--home:${name}-->([\\s\\S]*?)<!--/home:${name}-->`))?.[1] || '';
+for (const [name, rungsOf] of [['duels', versus.featured.map((id) => versus.items.find((item) => item.id === id).rungs)], ['fleet', reel.fleetStrip.map((entry) => entry.rungs)]]) {
+  const tiles = [...bento(name).matchAll(/<figure class="(bento__tile[^"]*) cot-c-media">([\s\S]*?)<\/figure>/g)];
+  assert.equal(tiles.length, rungsOf.length, `${name}: one tile per still`);
+  tiles.forEach(([, cls, body], i) => {
+    assert.equal(cls.includes('bento__tile--lead'), i === 0, `${name} ${i + 1}: only the first leads`);
+    const srcset = body.match(/ srcset="([^"]+)"/)?.[1] ?? '';
+    assert.deepEqual(srcset.split(', ').map((entry) => entry.split(' ')[0]), bentoRungs(rungsOf[i], i === 0).map((rung) => rung.path), `${name} ${i + 1}: the rungs its size can use`);
+    assert.match(body, /width="1920" height="1080" alt="" loading="lazy" decoding="async">/, `${name} ${i + 1}: sized and lazy, named by its caption`);
+    assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b[^>]*>[^<]+<\/b><span class="bento__where"><span data-i18n="/, `${name} ${i + 1}: named, the way to its vehicle`);
+  });
+}
+
+// in battle: the media lane's four battle clips in its order, each its sized lazy poster and its loop on the media player
+const clipTiles = [...bento('clips').matchAll(/<figure class="bento__tile cot-c-media" data-clip="([^"]+)">([\s\S]*?)<\/figure>/g)];
+assert.deepEqual(clipTiles.map((m) => m[1]), reel.clips.map((clip) => clip.id), 'in battle: the four clips in the manifest order');
+for (const [, id, body] of clipTiles) {
+  assert.match(body, /<img [^>]*width="1280" height="720" alt="" loading="lazy" decoding="async">/, `${id}: its poster is sized and lazy`);
+  assert.match(body, /<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/, `${id}: its loop waits for the player`);
+  assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b data-i18n="home\.hero\.shot[A-Za-z]*"/, `${id}: named, the way to its vehicle`);
+}
+
+console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features, the versus twelve, the ${reel.clips.length} battle clips, the fleet strip and the landing-r1 picks pass`);
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);

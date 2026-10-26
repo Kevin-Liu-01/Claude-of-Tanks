@@ -3,7 +3,6 @@
  * The random choice should read as a deliberate collection of real maps,
  * never as a generic four-colour placeholder.
  */
-import { t } from './i18n.ts';
 
 const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
   'verdant', 'desert', 'winter', 'foundry',
@@ -12,10 +11,6 @@ const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
 interface MapPreview {
   readonly id: string;
   readonly thumb?: string;
-}
-
-interface RandomMapMosaicOptions {
-  readonly showCount?: boolean;
 }
 
 export function randomMapPreviewEntries<T extends MapPreview>(
@@ -35,10 +30,7 @@ export function randomMapPreviewEntries<T extends MapPreview>(
   return picked.slice(0, Math.max(0, count));
 }
 
-export function createRandomMapMosaic(
-  maps: readonly MapPreview[] | null | undefined,
-  { showCount = false }: RandomMapMosaicOptions = {},
-): HTMLDivElement {
+export function createRandomMapMosaic(maps: readonly MapPreview[] | null | undefined): HTMLDivElement {
   const mosaic = document.createElement('div');
   mosaic.className = 'random-map-mosaic';
   mosaic.setAttribute('aria-hidden', 'true');
@@ -47,13 +39,6 @@ export function createRandomMapMosaic(
     tile.className = 'random-map-tile';
     tile.style.backgroundImage = `url("${String(map.thumb).replace(/"/g, '%22')}")`;
     mosaic.appendChild(tile);
-  }
-  if (showCount) {
-    const count = (maps || []).filter((map) => map?.id !== 'random').length;
-    const badge = document.createElement('div');
-    badge.className = 'random-map-count';
-    badge.innerHTML = `<b>${count}</b><span>${t('randomPreviews.theatres')}</span>`;
-    mosaic.appendChild(badge);
   }
   return mosaic;
 }

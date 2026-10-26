@@ -226,6 +226,21 @@ function bodyFrameParts(parts: DescribeStructureArgs['parts'], job: DeferredMeas
   return out;
 }
 /**
+ * (battle-spikes-253) Another battlefield's deferred structures (the queue holds one map's), measured for up to `budgetMs`
+ * in the order the idle measurer takes them; how many are left. A props build drains them in its own slices before it
+ * describes its first building: `defer` measured them all in one go (1.4 s of one task on a 4x phone's Garage background
+ * build: a prefetched battlefield's measures, never run by a world that was not played).
+ */
+export function measureOtherMapStructures(mapId: string, budgetMs: number): number {
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  const other = (): boolean => pendingMeasures.length > 0 && pendingMeasures[pendingMeasures.length - 1]!.mapId !== mapId;
+  while (other()) {
+    measureNow(pendingMeasures.pop()!);
+    if (typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs) break;
+  }
+  return other() ? pendingMeasures.length : 0;
+}
+/**
  * The idle measurer (the world's update, a slice a frame): deferred structures measured for up to `budgetMs`; how many are
  * left. `budgetMs` Infinity measures them all (a receipt, a warm).
  */

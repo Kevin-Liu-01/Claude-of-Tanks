@@ -169,11 +169,13 @@ function proveMode(mode, entry) {
   });
   const ctx = panelContext;
   assert.ok(ctx, 'the panel stage canvas is the tracked context');
+
+  panel.setTank(spec, null);
+  // (UI-LOCKDOWN A) the stage is a uiCanvas: its transform maps the 142 x 138 design space onto its store, set at its
+  // first drawing (here the panel's fixed box at the receipt's ratio)
   const base = ctx.records.find((row) => row.op === 'setTransform');
   assert.ok(base && base.ctm[1] === 0 && base.ctm[2] === 0 && base.ctm[0] === base.ctm[3], 'the stage transform is a pure DPR scale');
   const dpr = base.ctm[0];
-
-  panel.setTank(spec, null);
   assert.equal(panel.debugState().masksReady, mode === 'masks', `${mode}: mask readiness matches the mode`);
   const combat = healthyCombat();
 

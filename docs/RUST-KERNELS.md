@@ -13,8 +13,11 @@ mix them. They are on by default since 2026-10-25 (RUST-ENGINE-DECISION §9.3), 
 | The match's deformed ground (craters, heaps, courses) | `deformation.rs` | `sim/terrainDeformation.ts` |
 | Structure support (roofs, decks, stones) | `records.rs`, `structure_support.rs` | `sim/structureSupport.ts` |
 | A hull's outer track lines and support fan | `support_sampling.rs` | `sim/movement.ts` `sampleOuterTrackLines`, `sampleSupportFan` |
+| The bots' clearance scans (a box's candidates kept by their clearance of a point or a lane) | `clearance.rs` | `world/collision.ts` `collisionClearanceContainsPoint`, `rayCollisionClearanceEntry2` in `game/ai.ts`'s `avoidObstacles`, `solidWithin`, `laneMeetsSolid`, `solidAhead` |
 
-`src/world/wasmWorldKernels.ts` binds them behind the TypeScript interfaces. A world built with `kernels`
+`src/world/wasmWorldKernels.ts` binds them behind the TypeScript interfaces. The clearance scans ride the obstacle
+grid (`ObstacleQuery.clearance`): the AI uses them where the grid carries them and its own loops elsewhere, and keeps
+reading a record's crushed state itself, since a match changes it. A world built with `kernels`
 (`createHeadlessCollisionWorld`) gets its own instance: its own lattice, overlay and record table. The module imports one
 function, `env.terrain_height`, the map's height function.
 
@@ -34,6 +37,21 @@ function, `env.terrain_height`, the map's height function.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
+## A fallback is reported
+
+Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
+cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `compile`, `link`,
+`missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
+
+- **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
+- **Solo battle:** `soloBattleRuntime.ts` reports its load failure.
+- **On the page,** for both of those, `src/world/simKernelsReport.ts`:
+  - sets `window.__SIM_KERNELS`'s `mode`, `source` (`solo` / `host`) and `reason`;
+  - on a fallback, sends one telemetry note a session, `kernels:<source>:<reason>` (the entry telemetry's `sim_kernels`);
+  - in development, writes one `console.info` line. A production build writes nothing to the console.
+- **Dedicated server:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
+  and serves it in `/metrics` as `kernels`.
+
 ## Receipts
 
 | Command | Proves |
@@ -42,9 +60,11 @@ function, `env.terrain_height`, the map's height function.
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |
+| `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30 --base=scans` | The clearance scans' own share: A on the kernels less the scans |
 | `node tools/mp-p2p-soak.mjs … --sim-kernels=wasm[@seats]` | The browser host Worker on the kernels, migrations included |
 | `node tools/sim-determinism-audit.mjs --craters --kernels` | A match on the kernels against one on the TypeScript, the dug ground included |
 | `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
+| `node src/world/simKernelsReport.selftest.mjs`, `src/mp/host/hostStandby.selftest.mjs` | A fallback's reason named and reported: the host core's `ready` (`off`, a refused module's `http_404`, `wasm`) |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.
@@ -63,3 +83,6 @@ porting the change to its Rust file; `cargo test` fails until both agree.
   a tick (−7.5 %), the support solve −25 %; Urban (three pairs) 2.51 → 2.26 ms (−10 %), the support solve −15 %. Only
   the support rides the kernels there; the rendered world's grids and rays, the AI and the shells stay TypeScript.
   `wasm-check` over 20 s: 5.9 million comparisons on Verdant and 5.8 million on Urban, none differ.
+- The bots' clearance walk alone (`--base=scans`: the kernels with it against the kernels without it), 16 a side,
+  digests identical: Verdant −1.6 %, Urban −1.2 %, Mars −2.4 % of the tick's CPU. A first version that returned every
+  match in the box cost Urban 6.6 %: the TypeScript loops stop at the first solid, and the walk keeps that.

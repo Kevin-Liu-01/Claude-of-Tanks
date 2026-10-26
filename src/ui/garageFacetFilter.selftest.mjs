@@ -114,15 +114,18 @@ assert.doesNotMatch(panelSource, /cot-facet-label|cot-facet-hint/, 'no visible e
 // Blind critic round 1 (2026-10-21): the panel sits above the phone Garage's side cards, takes the height above the
 // rail, shows Clear only once something narrows, cues the swipe rows, and the stage follows the filter.
 assert.match(panelSource, /clearButton\.hidden = active === 0;/, 'Clear shows only while a filter is active');
-assert.match(panelSource, /const fitHeight = Math\.round\(Math\.max\(160, Math\.min\(520, top - 16\)\)\);\s*panel\.style\.maxHeight = `\$\{fitHeight\}px`;/,
-  'the panel takes the height above the rail');
+assert.match(panelSource, /for \(const el of document\.querySelectorAll<HTMLElement>\('\.cot-gbar, \.cot-brand-rail, \.cot-nav'\)\)/,
+  'the ceiling is the header\'s lowest visible edge, whichever parts a layout shows');
+assert.match(panelSource, /const ceiling = !short \? headerBottom \+ 12 : 16;\s*const fitHeight = Math\.round\(Math\.max\(160, Math\.min\(520, top - ceiling\)\)\);\s*panel\.style\.maxHeight = `\$\{fitHeight\}px`;/,
+  'the panel takes the height above the rail, a gap under the header (a short landscape phone covers the header whole)');
 assert.match(panelSource, /wrap\.dataset\.more = max <= 1 \? '' :/, 'swipe rows mark the side with more chips');
 const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url), 'utf8');
 const garageText = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
 assert.match(panelCss, /\.cot-facet-rowwrap\{position:relative;min-width:0;/, 'a swipe row never widens the panel (blind re-check 2026-10-21)');
 assert.match(panelCss, /grid-template-columns:minmax\(0,1fr\)/, 'the panel column never grows past the panel');
-assert.match(panelCss, /\.cot-facet-rowwrap\[data-more\*='l'\]::before,\.cot-facet-rowwrap\[data-more\*='r'\]::after\{opacity:1;\}/,
-  'the edge cue shows where chips continue');
+assert.match(panelCss, /\.cot-facet-rowwrap\[data-more='r'\] \.cot-facet-row\{[^}]*mask-image:linear-gradient\(90deg/,
+  'the edge cue shows where chips continue: the side with more fades (the gauntlet 10-25)');
+assert.doesNotMatch(panelCss, /\.cot-facet-rowwrap::after\{[^}]*content/, 'no arrow glyph over the chips');
 assert.match(panelCss, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
   'an open panel lifts the rail over the side cards and the Battle and Multiplayer buttons');
 assert.doesNotMatch(garageText, /facetToggle[^\n]*'\.code'/, 'the Filter toggle is an icon: its name rides in aria-label and title');
@@ -139,7 +142,7 @@ assert.doesNotMatch(garageSource, /^import (?!type )[^;]*from '(?:\.\.\/vehicles
 assert.match(garageSource, /\.filter\(\(s\) => facetVisible\(s\.id\)\)/, 'arrow keys walk only the filtered strip');
 assert.match(garageCss, /\.cot-facet-toggle\{grid-column:2;position:relative;/, 'the toggle has its own rail slot before the flag track');
 assert.match(garageSource, /countryRailEl\.insertBefore\(facetToggle, chipsEl\);/, 'no flag ever scrolls beneath the toggle');
-assert.match(panelCss, /\.cot-country-chip\.is-facet-empty\{opacity:/, 'nations without a match read as empty');
+assert.match(panelCss, /\.cot-country-chip\.is-facet-empty:not\(\.sel\)\{opacity:/, 'nations without a match read as empty; the chosen one keeps its mark');
 // boot budget: only the toggle's idle look rides garage.css; its open/active/badge styles load with the panel
 assert.doesNotMatch(garageCss, /is-facet-empty|cot-facet-toggle\.is-active|cot-facet-toggle \.ct|cot-facet-panel/,
   'the filter\'s panel-time styles stay off the boot stylesheet');
