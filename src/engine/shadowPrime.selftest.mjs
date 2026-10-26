@@ -457,6 +457,28 @@ await withFixture(async (f) => {
   f.restored(true);
 });
 
+// (battle-spikes-253) a root the scene holds hidden (an unspotted actor) warms its casters inside the batches only:
+// visible during its batch's synchronous render, hidden again at every yield, never drawn by the final cascades
+await withFixture(async (f) => {
+  f.addCaster('seen', 3);
+  const hiddenTank = new THREE.Group();
+  hiddenTank.name = 'hidden-tank';
+  hiddenTank.visible = false;
+  f.scene.add(hiddenTank);
+  f.addCaster('hidden-wheels', 4, { parent: hiddenTank });
+  const visibleAtYield = [];
+  await f.run({ casterWarmup: { maxCastersPerBatch: 1,
+    hiddenRoots: () => [hiddenTank, null, undefined],
+    yieldBeforeBatch() { visibleAtYield.push(hiddenTank.visible); f.bindingsRestored(); },
+    onBatch() { visibleAtYield.push(hiddenTank.visible); f.bindingsRestored(); },
+  } });
+  assert.deepEqual(f.cohorts, [['seen'], ['hidden-wheels'], ['seen'], ['seen']],
+    'the hidden tank draws in its own warm batch and in no final cascade');
+  assert.ok(visibleAtYield.length === 4 && visibleAtYield.every((visible) => visible === false), 'hidden at every yield');
+  assert.equal(hiddenTank.visible, false);
+  f.restored(true);
+});
+
 await withFixture(async (f) => {
   f.renderer.shadowMap.type = THREE.VSMShadowMap;
   const parent = f.addCaster('vsm-parent', 3, { receiveShadow: true });

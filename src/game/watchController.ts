@@ -101,6 +101,8 @@ export interface WatchController {
   readonly zoom: number;
   readonly speedIndex: number;
   readonly canTake: boolean;
+  /** Why the seat is held, the bar's tip (watchSeatRefusal's word, 'no-hull' with nothing in view), or null. */
+  readonly takeRefusal: string | null;
   /** The tank the drone's orbit is locked on (the bar names it), or null. */
   readonly lockedId: string | null;
   /** Lock the drone on the tank in view, or let go. */
@@ -344,12 +346,10 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     }
     const riding = watchCamera.mode === 'ride';
     switch (code) {
-      case 'Tab':
-        event.preventDefault();
-        ride(cycleFrom(rideTarget(), event.shiftKey ? -1 : 1));
-        break;
-      case 'KeyE': if (riding) ride(cycleFrom(rideTarget(), 1)); break;
-      case 'KeyQ': if (riding) ride(cycleFrom(rideTarget(), -1)); break;
+      // (E and Q step through the field from the drone as from a ride: Tab did it too, a second binding that held the
+      // rosters' key, INTERACTION-REDESIGN C)
+      case 'KeyE': ride(cycleFrom(rideTarget(), 1)); break;
+      case 'KeyQ': ride(cycleFrom(rideTarget(), -1)); break;
       case 'KeyF': ride(tankAt(0, 0)); break;
       case 'KeyV': if (riding) toDrone(true); break;
       case 'Enter': case 'NumpadEnter': event.preventDefault(); take(); break;
@@ -470,6 +470,10 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     get canTake() {
       const target = rideTarget();
       return watching() && !!target && target === shown && watchSeatRefusal(game, target) === null;
+    },
+    get takeRefusal() {
+      const target = rideTarget();
+      return !watching() || !target || target !== shown ? 'no-hull' : watchSeatRefusal(game, target);
     },
     setClimb(direction) {
       // the rail presses the keyboard's own actions: one hold, one Accessibility choice

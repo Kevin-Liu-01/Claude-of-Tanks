@@ -55,6 +55,88 @@ function lockupStacked(ink, accent, body = null) {
   return svg(`${sx} ${top.toFixed(0)} ${sw} ${(sh + height + gap).toFixed(0)}`,
     (body ?? place(tank(ink, accent), TANK, x, top, width)) + stacked(ink, accent));
 }
+/** A square tile: `ground` behind, the full mark `share` of the side wide, centred on its box. A `crew` above 1 draws the
+ *  commander and the helmet that much larger about the cupola's top, as the tab's pixel masters do, where the mark is
+ *  too small for the commander's eyes. */
+function markTile(size, ground, share, radius = 0, crew = 1) {
+  const top = 68.2 - (68.2 - ty) * crew, box = [tx, Math.min(ty, top), tw, ty + th - Math.min(ty, top)];
+  const w = size * share, h = w * box[3] / box[2];
+  const body = tank(PAPER, TUNGSTEN).replace('<g class="mk-crew">',
+    crew === 1 ? '<g class="mk-crew">' : `<g class="mk-crew" transform="translate(106 68.2) scale(${crew}) translate(-106 -68.2)">`);
+  const back = `<rect width="${size}" height="${size}"${radius ? ` rx="${radius}"` : ''} fill="${ground}"/>`;
+  return svg(`0 0 ${size} ${size}`, back + place(body, box, (size - w) / 2, (size - h) / 2, w));
+}
+
+/** The tab's pixel masters (owner, 2026-10-26: "make the favicon the proper claude on tank"): the full mark hand-hinted
+ *  on a 16 and a 32 cell grid. The crew is drawn about 1.6 times the tank's scale so the commander keeps its own orange
+ *  block (its eyes from 32), the gun keeps its rise, and the running gear is one band at 16 (its wheels from 32). Cells:
+ *  p paper, t tungsten, a and h paper at 50 and 70 % over graphite (the thin antenna, the track's round ends). */
+const FAVICON_16 = [
+  '................',
+  '................',
+  '..t.............',
+  '.tt..pppp.......',
+  '..t.pppppp......',
+  '..a..tttt.......',
+  '..a.tttttt...pp.',
+  '...pppppppppp...',
+  '...pppppppp.....',
+  '.pppppppppp.....',
+  '.ppppppppppppp..',
+  '................',
+  '..hppppppppph...',
+  '..hppppppppph...',
+  '................',
+  '................',
+];
+const FAVICON_32 = [
+  '................................',
+  '................................',
+  '................................',
+  '................................',
+  '....tt..........................',
+  '..tttt..........................',
+  '..tttt.....pppppp...............',
+  '....tt....p.a..a.p..............',
+  '.....a....pppppppp..............',
+  '.....a...pppppppppp.............',
+  '.....a....t.tttt.t..............',
+  '......a...t.tttt.t..............',
+  '......a.tttttttttttt.......ppp..',
+  '......a.tttttttttttt....pppppp..',
+  '.......pppppppppppppppppppp.....',
+  '......pppppppppppppppppp........',
+  '......ppppppppppppppp...........',
+  '.......pppppppppppppp...........',
+  '...ppppppppppppppppppp..........',
+  '..ppppppppppppppppppppppp.......',
+  '..ppppppppppppppppppppppppp.....',
+  '..ppppppppppppppppppppppppppp...',
+  '................................',
+  '................................',
+  '..appppppppppppppppppppppppa....',
+  '..pp..pp..pp..pp..pp..pp..pp....',
+  '..pp..pp..pp..pp..pp..pp..pp....',
+  '..appppppppppppppppppppppppa....',
+  '................................',
+  '................................',
+  '................................',
+  '................................',
+];
+const over = (share) => `#${[[0x11, 0xf6], [0x15, 0xf3], [0x1a, 0xec]].map(([g, p]) => Math.round(g + (p - g) * share).toString(16).padStart(2, '0')).join('')}`;
+const CELL_INK = { p: PAPER, t: TUNGSTEN, a: over(0.5), h: over(0.7) };
+/** A pixel master on its graphite tile: one path per ink, a rectangle per run of cells, every edge on the grid. */
+function pixelTile(cells, radius) {
+  const n = cells.length;
+  const runs = {};
+  cells.forEach((row, y) => {
+    if (row.length !== n || [...row].some((cell) => cell !== '.' && !CELL_INK[cell])) throw new Error(`pixel master row ${y}: ${row}`);
+    for (const { 0: run, index } of row.matchAll(/([^.])\1*/g)) (runs[run[0]] ??= []).push(`M${index} ${y}h${run.length}v1h-${run.length}Z`);
+  });
+  return svg(`0 0 ${n} ${n}`, `<rect width="${n}" height="${n}" rx="${radius}" fill="${GRAPHITE}"/>`
+    + Object.entries(runs).map(([cell, d]) => `<path fill="${CELL_INK[cell]}" d="${d.join('')}"/>`).join(''));
+}
+
 /** A square tile: `ground` behind, the bust `share` of the side wide, centred (a little low, for its optical centre). */
 function tile(size, ground, share, radius = 0, ink = PAPER, accent = TUNGSTEN) {
   const w = size * share, h = w * bh / bw;
@@ -77,11 +159,15 @@ const masters = {
   'bust-paper.svg': svg(BRAND_BUST_VIEWBOX, bust(GRAPHITE, TUNGSTEN_600)),
   'bust-mono.svg': svg(BRAND_BUST_VIEWBOX, bust(PAPER, PAPER, true)),
   'bust-mono-ink.svg': svg(BRAND_BUST_VIEWBOX, bust(GRAPHITE, GRAPHITE, true)),
-  // a browser tab: the bust on a graphite tile, so it reads on light and dark tab strips alike
-  'favicon.svg': tile(64, GRAPHITE, 0.86, 12),
-  // the app icon: full bleed (the system rounds it); the maskable keeps the bust inside the 80 % safe circle
-  'app-icon.svg': tile(1024, GRAPHITE, 0.7),
-  'maskable.svg': tile(1024, GRAPHITE, 0.56),
+  // a browser tab: the 32 cell master on a graphite tile, so it reads on light and dark tab strips alike (a 2x tab draws
+  // it cell for cell; the 16 px rasters take the 16 cell master)
+  'favicon.svg': pixelTile(FAVICON_32, 6),
+  'favicon-16.svg': pixelTile(FAVICON_16, 3),
+  // the tab's tile at 48 and 192 px: the vector mark, its crew drawn half again as large as the pixel masters draw it
+  'favicon-mark.svg': markTile(64, GRAPHITE, 0.875, 12, 1.5),
+  // the app icon: full bleed (the system rounds it); the maskable keeps the mark inside the 80 % safe circle
+  'app-icon.svg': markTile(1024, GRAPHITE, 0.78),
+  'maskable.svg': markTile(1024, GRAPHITE, 0.66),
   'social-avatar.svg': tile(400, GROUND, 0.66),
   'lockup.svg': lockup(PAPER, TUNGSTEN),
   'lockup-paper.svg': lockup(GRAPHITE, TUNGSTEN_600),
@@ -105,8 +191,8 @@ if (process.argv.includes('--svg')) process.exit(0);
 const IOS = [20, 29, 40, 58, 60, 76, 80, 87, 120, 152, 167, 180, 1024];
 const MACOS = [16, 32, 64, 128, 256, 512, 1024];
 const rasters = [
-  ['favicon-16.png', 'favicon.svg', 16], ['favicon-32.png', 'favicon.svg', 32], ['favicon-48.png', 'favicon.svg', 48],
-  ['favicon-192.png', 'favicon.svg', 192],
+  ['favicon-16.png', 'favicon-16.svg', 16], ['favicon-32.png', 'favicon.svg', 32], ['favicon-48.png', 'favicon-mark.svg', 48],
+  ['favicon-192.png', 'favicon-mark.svg', 192],
   ['apple-touch-icon.png', 'app-icon.svg', 180], ['../apple-touch-icon.png', 'app-icon.svg', 180],
   ['icon-192.png', 'app-icon.svg', 192], ['icon-512.png', 'app-icon.svg', 512],
   ['maskable-192.png', 'maskable.svg', 192], ['maskable-512.png', 'maskable.svg', 512],
@@ -179,7 +265,8 @@ writeFileSync(join(ROOT, 'public/browserconfig.xml'), `<?xml version="1.0" encod
 const purpose = {
   'mark.svg': 'the mark on dark', 'mark-paper.svg': 'the mark on paper', 'mark-mono.svg': 'one colour, paper', 'mark-mono-ink.svg': 'one colour, ink',
   'mark-motion.svg': 'the living mark (CSS loop)', 'bust.svg': 'the icon on dark', 'bust-paper.svg': 'the icon on paper',
-  'bust-mono.svg': 'icon, one colour, paper', 'bust-mono-ink.svg': 'icon, one colour, ink', 'favicon.svg': 'browser tab',
+  'bust-mono.svg': 'icon, one colour, paper', 'bust-mono-ink.svg': 'icon, one colour, ink', 'favicon.svg': 'browser tab (32 cell master)', 'favicon-16.svg': 'browser tab at 16 px (16 cell master)',
+  'favicon-mark.svg': 'the mark on the tab tile (48 and 192 px)',
   'app-icon.svg': 'app icon master (full bleed)', 'maskable.svg': 'maskable and tile master (80 % safe zone)',
   'social-avatar.svg': 'X / GitHub avatar', 'lockup.svg': 'horizontal lockup on dark', 'lockup-paper.svg': 'horizontal lockup on paper',
   'lockup-mono.svg': 'horizontal lockup, one colour', 'lockup-stacked.svg': 'stacked lockup on dark', 'lockup-stacked-paper.svg': 'stacked lockup on paper',

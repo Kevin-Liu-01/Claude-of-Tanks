@@ -239,15 +239,17 @@ try {
     const tab = S.root.querySelector('.cot-set-tab[data-tab="sound"]');
     tab?.click();
     await wait(250);
+    // the crew voice is the kit's picker menu: its trigger in the field, its options in a popover in the body
     const picker = S.root.querySelector('[data-setting="crewVoice"]');
-    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
-    const english = picker?.parentElement.querySelector('[role="option"][data-value="en-US"]');
+    const option = (id) => document.querySelector(`.cot-c-menu__pop:popover-open [role="option"][data-id="${id}"]`);
+    picker?.querySelector('.cot-c-menu__trigger')?.click();
+    const english = option('en-US');
     english?.click();
     await wait(250);
     const stored = JSON.parse(localStorage.getItem('cot.settings.v1') || '{}');
     const lang = window.__COT_AUDIO.crewLanguage;
-    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
-    picker?.parentElement.querySelector('[role="option"][data-value="national"]')?.click();
+    picker?.querySelector('.cot-c-menu__trigger')?.click();
+    option('national')?.click();
     await wait(250);
     const back = window.__COT_AUDIO.crewLanguage;
     const toggles = S.root.querySelectorAll('.cot-set-row').length;

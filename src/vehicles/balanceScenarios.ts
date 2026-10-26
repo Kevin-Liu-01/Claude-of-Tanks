@@ -27,7 +27,7 @@ export const BALANCE_SCENARIOS: readonly BalanceScenario[] = Object.freeze([
   { id: 'tier9-rifled-peers', aId: 'challenger1_mk2', bId: 't90am', purpose: 'Tier IX protected MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'nextgen-challengers', aId: 'challenger3_proto', bId: 'challenger3', purpose: 'base and survivability package sidegrades', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'nextgen-abrams-peer', aId: 'm1a3', bId: 'abramsx', purpose: 'next-generation US peer ceiling', minAScore: 0.2, maxAScore: 0.8 },
-  { id: 't90-export-step', aId: 't90_1992', bId: 't90ms_2011', purpose: 'Tier X T-90 family progression', minAScore: 0.2, maxAScore: 0.8 },
+  { id: 't90-export-step', aId: 't90_1992', bId: 't90ms_2011', purpose: 'T-90 family progression (IX to the X export step)', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'chieftain-tier8', aId: 'chieftain_mk9', bId: 'fv4034', purpose: 'late Cold War UK Tier VIII peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-peer', aId: 'xk2_black_panther', bId: 'leo2a4', purpose: 'Tier IX modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-mobile-peer', aId: 'xk2_black_panther', bId: 'leo2a4', distanceM: 220, advanceToM: 105, purpose: 'Tier IX mobility and firing-on-the-move peers', minAScore: 0.2, maxAScore: 0.8 },

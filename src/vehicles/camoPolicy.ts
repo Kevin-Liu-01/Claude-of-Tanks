@@ -332,6 +332,15 @@ const CAMO_NATION_TAG: Readonly<Record<string, CamoTagId>> = Object.freeze({
   Ukraine: 'ua',
 });
 
+// the same table read backwards: a flag tag's nation (its first spelling: 'ru' is Russia)
+const CAMO_TAG_NATION: Readonly<Partial<Record<CamoTagId, string>>> = Object.freeze(
+  Object.fromEntries(Object.entries(CAMO_NATION_TAG).reverse().map(([nation, tag]) => [tag, nation])));
+
+/** The nation a camo flag tag names ('ua' -> 'Ukraine'), or null for any other tag. */
+export function camoTagNation(tag: string): string | null {
+  return CAMO_TAG_NATION[tag as CamoTagId] ?? null;
+}
+
 interface SharedCamoVisual {
   readonly scheme: string;
   readonly base: string;
