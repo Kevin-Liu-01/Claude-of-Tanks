@@ -229,6 +229,11 @@ export interface BattlePresentationOptions {
   /** How long a verdict may sit in snapshot meta before it is presented without its `match_ended` event. */
   verdictGraceMs?: number;
   clock?: () => number;
+  /**
+   * A free sortie on the solo sim Worker (src/game/soloSimBattleRuntime.ts): its end is a solo battle's (`network: false`,
+   * the allies lost), kept in the records as the page's own simulation keeps it.
+   */
+  solo?: boolean;
 }
 
 export interface BattlePresentation extends PresentationAdapter {
@@ -524,6 +529,7 @@ export function createBattlePresentation({
   onRosterProgress,
   verdictGraceMs = 500,
   clock = () => (typeof performance === 'object' ? performance.now() : Date.now()),
+  solo = false,
 }: BattlePresentationOptions): BattlePresentation {
   if (!engineCtx || !engineCtx.scene || !game || !bus) throw new TypeError('engineCtx, game and bus are required');
   const actors = new Map<string, MatchActor>();
@@ -1066,8 +1072,10 @@ export function createBattlePresentation({
     // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
     // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
-      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: true,
+      result, reason, timeS: game.timeS, map: game.mapId, mapId: game.mapId, durationS: game.timeS, network: !solo,
       gameMode: game.gameMode, roster: resultRoster(), hordeWave: hordeWave(),
+      // (a sortie on the solo sim Worker) the allies lost, as state.ts's battle:ended counts them
+      ...(solo ? { alliesLost: roster.filter((actor) => actor.team !== 'enemy' && !actor.isPlayer && actor.combat.destroyed).length } : {}),
     });
   }
 
