@@ -123,6 +123,13 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
    */
   drawWarm?: (root: Object3D) => void;
   /**
+   * (battle-spikes-253) The same draw a cohort a step, for a stream's deferred draws: a step draws one cohort, and the
+   * stream yields between steps. One draw of a whole tank first-bound all of its meshes' buffers in one task, and the
+   * last upload waited 694 ms for the GPU process to drain the rest (nav-perf's root-v solo entry, bufferData under
+   * drawWarm). A hidden opponent is attached and shown only inside each step.
+   */
+  drawWarmSteps?: (root: Object3D) => Iterable<unknown>;
+  /**
    * Wait, between tasks, until the programs the staged roots submitted have linked (2026-10-24, transitions-249). With
    * it, a stream draws its roots once all are built: each root's links run while the next tank builds, where a draw
    * straight after its compile waited on them inside one task (5.4 s, the first ally on a 4x phone).
@@ -228,6 +235,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   armorAimOverlay,
   forwardProgramWarm,
   drawWarm,
+  drawWarmSteps,
   awaitProgramLinks,
   onVisualReady,
   recordTiming = () => {},
@@ -268,16 +276,27 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     visual: NonNullable<Entity['visual']>,
     home: Object3D,
     initiallyHidden: boolean,
-  ) => (): number => {
+  ) => async (yieldForBudget: VisualBudgetYield): Promise<number> => {
     const root = visual.root!;
-    const drawAt = now();
-    const borrowed = initiallyHidden && !root.parent;
-    if (borrowed) { home.add(root); visual.setVisible?.(true); }
-    try { warmDraw(root); } catch { /* first render fallback */ }
-    finally {
-      if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
+    let drawnMs = 0;
+    // one synchronous step with a hidden opponent attached and shown (re-checked each step: spotting may attach it)
+    const borrowAround = (run: () => boolean): boolean => {
+      const drawAt = now();
+      const borrowed = initiallyHidden && !root.parent;
+      if (borrowed) { home.add(root); visual.setVisible?.(true); }
+      try { return run(); } catch { return true; /* first render fallback */ }
+      finally {
+        if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
+        drawnMs += now() - drawAt;
+      }
+    };
+    if (!drawWarmSteps) {
+      borrowAround(() => { warmDraw(root); return true; });
+      return Math.round(drawnMs);
     }
-    return Math.round(now() - drawAt);
+    let steps: Iterator<unknown> | null = null;
+    while (!borrowAround(() => !!(steps ??= drawWarmSteps(root)[Symbol.iterator]()).next().done)) await yieldForBudget();
+    return Math.round(drawnMs);
   };
 
   /**
@@ -291,7 +310,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     initiallyHidden: boolean,
     options: BattleVisualStageOptions,
     deferDraw: boolean,
-  ): Promise<{ receipt: BattleVisualStageReceipt; draw: (() => number) | null }> => {
+  ): Promise<{ receipt: BattleVisualStageReceipt; draw: ((yieldForBudget: VisualBudgetYield) => Promise<number>) | null }> => {
     const visual = entity.visual;
     const root = visual?.root;
     const emptyReceipt: BattleVisualStageReceipt = {
@@ -369,14 +388,14 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     await ensureTankBuilders(pending.map((entity) => entity.specId));
     let built = 0;
     const deferDraws = !!awaitProgramLinks && !!drawWarm;
-    const draws: Array<{ draw: () => number; timing: VisualLoadTiming }> = [];
+    const draws: Array<{ draw: (yieldForBudget: VisualBudgetYield) => Promise<number>; timing: VisualLoadTiming }> = [];
     for (;;) {
       const next = nextStagedBake(game, predicate);
       if (!next) {
         if (draws.length && awaitProgramLinks) {
           await awaitProgramLinks(yieldForBudget);
           for (const { draw, timing } of draws) {
-            timing.drawWarmMs = draw();
+            timing.drawWarmMs = await draw(yieldForBudget);
             await yieldForBudget();
           }
         }

@@ -684,6 +684,8 @@ export function createTouchControls({
       fireGesture.move(e.pointerId, e.clientX, e.clientY); renderFireGesture();
     });
     fire.addEventListener('pointerup', (e) => finishFire(e, true));
+    // (a key's or an assistive tool's press on FIRE fires one round, the gesture's tap)
+    fire.addEventListener('click', (e) => { if (e.detail === 0) { e.preventDefault(); input.tapVirtual('fire'); } });
     fire.addEventListener('pointercancel', (e) => finishFire(e, false));
     fire.addEventListener('lostpointercapture', (e) => finishFire(e, false));
   }
@@ -703,26 +705,37 @@ export function createTouchControls({
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) releaseAllTouch();
   });
-  root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); e.stopPropagation(); input.tapVirtual(getFlightKind()==='gunship'?'zoomIn':'sniperToggle'); bus.emit('ui:click', {});
+  // (INTERACTION-REDESIGN C, the census's touch row: the round actions answer on pointerdown, so a thumb's press acts at
+  // once; a click with no pointer behind it, a key's on a focused button or an assistive tool's, acts as well, where a
+  // tap's own click, after its pointerdown already acted, does not)
+  const onKeyClick = (button: HTMLButtonElement, act: () => void): void => {
+    button.addEventListener('click', (e) => { if (e.detail === 0) { e.preventDefault(); act(); } });
+  };
+  const scopeButton = root.querySelector<HTMLButtonElement>('.scope')!;
+  const toggleScope = (): void => { input.tapVirtual(getFlightKind()==='gunship'?'zoomIn':'sniperToggle'); bus.emit('ui:click', {}); };
+  scopeButton.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation(); toggleScope();
   });
+  onKeyClick(scopeButton, toggleScope);
   // round 30: the rocket jump / flip button — pointerdown so it fires while the other thumb steers
   const jumpButton = root.querySelector<HTMLButtonElement>('.jump')!;
+  const selfRight = (): void => { bus.emit('ui:selfRight', {}); bus.emit('ui:click', {}); };
   jumpButton.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
-    bus.emit('ui:selfRight', {});
-    bus.emit('ui:click', {});
+    selfRight();
   });
+  onKeyClick(jumpButton, selfRight);
   bus.on('ui:jumpAvailable', (payload) => {
     const { on } = payload as { on?: boolean };
     jumpButton.hidden = !on;
   });
   const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
+  const toggleAutoAim = (): void => { bus.emit('ui:autoAimToggle', {}); bus.emit('ui:click', {}); };
   autoAim.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
-    bus.emit('ui:autoAimToggle', {});
-    bus.emit('ui:click', {});
+    toggleAutoAim();
   });
+  onKeyClick(autoAim, toggleAutoAim);
   bus.on('ui:autoAimState', (payload) => {
     const { on } = payload as { on?: boolean };
     autoAim.classList.toggle('on', !!on);

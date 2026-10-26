@@ -92,6 +92,8 @@ interface DecorOptions {
   decor?: boolean;
   /** The factory's geometry tier: 'low' (the mobile tier) builds only the coarse accessory forms. */
   geometryQuality?: string;
+  /** The tank's camo selection (createTank's camoPattern): the kit paint and roughness come from its own entry. */
+  camoPattern?: string | null;
 }
 
 interface ShadowEngineContext {
@@ -1499,6 +1501,7 @@ function equipmentPaletteForNation(nation = ''): FleetEquipmentPalette {
 function buildDecorMaterials(
   spec: FleetTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
+  camoPattern: string | null = null,
 ): DecorMaterials {
   const equipmentPalette = equipmentPaletteForNation(spec.nation || '');
   // through the vehicle registration (materials.ts registerVehicleMaterial): the cascade setup with the bare readability
@@ -1525,7 +1528,7 @@ function buildDecorMaterials(
     // repaints with garage pattern switches (same texture the ARAT/stowage
     // add-on path uses — crews spray hard kit, never soft kit).
     kit: () => (canPaint ? {
-      map: getKitPaintTexture(spec), roughnessMap: getSharedRoughnessTexture(spec),
+      map: getKitPaintTexture(spec, camoPattern), roughnessMap: getSharedRoughnessTexture(spec, camoPattern),
       roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35,
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
@@ -1535,7 +1538,7 @@ function buildDecorMaterials(
     // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
       color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
-      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec, camoPattern) : undefined,
       vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
@@ -1561,7 +1564,7 @@ function buildDecorMaterials(
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
-      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec, camoPattern) : undefined,
       vertexColors: true, envMapIntensity: 0.2,
     }),
     // round 5 (2026-10-08): the rolled and draped nets wear the suits' garnished net in the vehicle's theatre
@@ -4658,7 +4661,7 @@ function* decorationSteps(
     root.userData.__decorApplied = true;
     claimed = true;
     // the plan alone makes no material (a worker has no renderer); a given plan goes straight to its attachment
-    const materials = mode === 'plan' ? null : buildDecorMaterials(spec, engineCtx);
+    const materials = mode === 'plan' ? null : buildDecorMaterials(spec, engineCtx, opts.camoPattern ?? null);
     mats = materials;
     if (typeof mode === 'object') return yield* attachDecorPlanSteps(a, mode.plan, materials!, resources);
 

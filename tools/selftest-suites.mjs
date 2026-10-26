@@ -751,6 +751,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
+    // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
+    'tools/media-r5/duels.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -897,6 +899,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
+    'src/game/garageCamoTryOn.selftest.mjs',
+    'src/ui/camoPicker.selftest.mjs',
+    'src/ui/garageEquipmentPicker.selftest.mjs',
+    'src/ui/components/pickerMenu.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -1752,6 +1758,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
+    'src/vehicles/decorKitTextureSelection.selftest.mjs',
     'src/vehicles/wreckBurn.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
@@ -1954,6 +1961,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/worldMaterialsBeforeCompile.selftest.mjs', // battle-spikes-253: both entries patch the world before compiling it
     'src/game/simStepRetention.selftest.mjs', // battle-spikes-253: simStep stores no closure that keeps a battle's world
     'src/engine/gpuCatchUp.selftest.mjs', // battle-spikes-253: link polls ask only once the GPU caught up to their last poll
+    'src/world/simulationProgramWarm.selftest.mjs', // battle-spikes-253: the GPU simulations' programs linked under the cover
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
@@ -2367,6 +2375,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
     // again"): one row a datum, placed only by its owner, its glyph through the registry
     'src/ui/surfaceRegistry.selftest.mjs',
+    // 2026-10-26 (owner, the battle load: "there are still black bars above and below the images here!!! fix that!!! no more
+    // object containns"): contain only on registered transparent cutouts, every cover rule's focal point declared (a
+    // shrinking baseline), and the letterbox-band judge the browser check runs on the load, end and media pages
+    'tools/image-fit-lint.selftest.mjs',
+    'tools/letterbox-bands.selftest.mjs',
     // 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and systems"):
     // every choose-one registered against the kit picker, failing sites only in a shrinking baseline, common-path presses
     // that only fall; the keyboard and touch judge the gauntlet and click-timeline captures run

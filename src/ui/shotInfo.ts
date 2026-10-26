@@ -382,8 +382,9 @@ const SI_CSS = `
 /* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
 .cot-si-card{container:si-card/inline-size;}
 /* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
-   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis) */
-@container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
+   narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis; from 210 px both
+   fit, and the 900x700 card's 220 kept neither glyph in either script, r12) */
+@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
    gauntlet r7) */
@@ -405,7 +406,9 @@ const SI_CSS = `
 /* (one rhythm: every row 2 px over and under a hairline, the subtitle's included; the pen row's own gap and the armor row's
    own rules read as one-offs, gauntlet r3) */
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
-  align-items:center;font-size:var(--battle-fs-12);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
+  align-items:center;font-size:var(--battle-fs-12);line-height:14px;color:var(--ink-3);letter-spacing:0em;}
+/* (one 14 px line in both scripts: zh's 13 px rows ran a pixel a row taller than en's 12 px, and a dock that held four en
+   rows held three in zh, gauntlet r11) */
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
 /* (the row's glyph at 12 px in the label's ink: at 9 px in ink-3 it read as a speck, gauntlet r5) */
 .cot-si-kv .cot-si-k svg{width:12px;height:12px;flex:0 0 auto;color:var(--ink-2);}
@@ -423,6 +426,11 @@ const SI_CSS = `
   border:0;border-radius:var(--chip-radius);box-shadow:inset 0 0 0 1px currentColor;font-size:var(--battle-fs-11);letter-spacing:0;
   text-transform:none;vertical-align:middle;line-height:1;font-weight:700;}
 /* (centred in its chip by the box, not the line: the label sat 2 px under its top edge and 5 over its foot, gauntlet r5) */
+/* (zh's chip a line taller: its 13 px glyphs fill their em box and touched the ring, gauntlet r9) */
+:lang(zh-CN) .cot-si-kv b .q{min-height:18px;}
+/* (a damage row's Latin callsign and its figure at the Latin size in Chinese, as the kill feed's rows: zh's damage rows
+   ran 17 % wider than its kill rows, gauntlet r10) */
+:lang(zh-CN) body .cot-si-toast .l1 .lat,:lang(zh-CN) body .cot-si-toast:not(.deflected) .l1 b{font-size:var(--battle-fs-fig-11);}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
@@ -687,6 +695,8 @@ body.cot-touch-layout .cot-si-toast .l1 b{font-size:var(--battle-fs-11);}
 }
 `;
 
+/** A name in Latin type alone (the damage rows' .lat: Chinese's lifted label sizes are for Chinese text). */
+const LATIN_NAME = /^[\x20-\x7e\u00a0-\u024f]+$/;
 const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
@@ -1480,7 +1490,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.dataset.outcome = group.outcome?.id || 'mixed';
     toast.classList.toggle('deflected', !damaging);
     toast.classList.remove('out');
-    toast.querySelector('.attacker')!.textContent = name;
+    const attackerName = toast.querySelector<HTMLElement>('.attacker')!;
+    attackerName.textContent = name;
+    // (a Latin callsign keeps the Latin size in Chinese, as the kill feed's does: .lat, gauntlet r10)
+    attackerName.classList.toggle('lat', LATIN_NAME.test(name));
     const value = toast.querySelector<HTMLElement>('.l1 b')!;
     value.style.color = color;
     value.innerHTML = uiIconSVG(damaging ? 'damage' : (group.outcome?.icon || 'shield'), 11) +

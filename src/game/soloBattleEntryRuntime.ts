@@ -6,9 +6,10 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 import type { PendingBattlefield } from '../ui/battleLoad.ts';
+import { soloRosterSeats } from './soloRosterPlan.ts';
 
 interface EntryLoadScreen {
-  showPending(map?: string | PendingBattlefield | null): void;
+  showPending(map?: string | PendingBattlefield | null, seats?: { allies: number; enemies: number } | null): void;
   hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -97,7 +98,8 @@ export function createSoloBattleEntryRuntime({
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
       try { pending = describePendingMap(specId, mapId, options) ?? mapId; } catch { /* the cover never waits on a name */ }
-      battleLoad.showPending(pending);
+      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same)
+      battleLoad.showPending(pending, soloRosterSeats(options?.gameMode, options?.campaignOperationId));
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {

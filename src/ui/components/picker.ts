@@ -21,6 +21,8 @@ export interface PickerItem {
   /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures. */
   readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[] };
   readonly glyph?: IconId;
+  /** A small picture (its image URL) drawn in the glyph's place at 4:3: a nation's flag, a colour preset's swatch. */
+  readonly chip?: string;
   /** A game mode id: the glyph wears that mode's hue (data-mode-tone). */
   readonly tone?: string;
   /** The filter tags it answers (a biome, a size, a kind). */
@@ -45,6 +47,8 @@ export interface PickerText {
   readonly clear: string;
   /** The chip row's overflow button: it steps the row on, and turns back at its end. */
   readonly more: string;
+  /** A picker menu's sheet's close (pickerMenu.ts). */
+  readonly close?: string;
 }
 
 interface PickerOptions {
@@ -75,6 +79,8 @@ interface PickerController {
 
 /** Search and filters appear past this many items. */
 const SEARCH_FROM = 9;
+/** The width a surface may fade at the chip row's end (garage and showroom mask their last 40 px). */
+const CHIP_FADE = 48;
 /** Recents kept per memory key. */
 const RECENT_MAX = 6;
 
@@ -126,7 +132,8 @@ interface PickerQuery {
   readonly recent: boolean;
 }
 
-const fold = (value: string): string => value.normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+// (NFKD reads a no-break space as a space; a word joiner a caller set inside a name is dropped)
+const fold = (value: string): string => value.normalize('NFKD').replace(/\p{M}|\u2060/gu, '').toLocaleLowerCase();
 
 /**
  * The items a query keeps, in the caller's order (recents in their own order when that chip is pressed). The Random item
@@ -160,22 +167,24 @@ export function gridStep(at: number, key: string, columns: number, count: number
 
 /* -------------------------------------------------------------------------------------------------- the controller */
 
-const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean, layout: PickerOptions['layout'], text: PickerText): string => {
+const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean | null, layout: PickerOptions['layout'], text: PickerText): string => {
   const picture = !item.media || layout === 'list' ? ''
     : item.media.mosaic?.length
       ? `<span class="cot-c-picker__mosaic">${item.media.mosaic.slice(0, 4).map((src) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`).join('')}</span>`
       : item.media.poster ? `<img src="${esc(item.media.poster)}"`
         + `${item.media.srcset ? ` srcset="${esc(item.media.srcset)}" sizes="${esc(item.media.sizes ?? '240px')}"` : ''} alt="" loading="lazy" decoding="async">` : '';
   const media = picture ? `<span class="cot-c-picker__media cot-c-media cot-c-media--soft">${picture}</span>` : '';
-  const glyph = item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
+  const glyph = item.chip ? `<span class="cot-c-picker__glyph cot-c-picker__chip"><img src="${esc(item.chip)}" alt="" decoding="async"></span>`
+    : item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
   const facts = item.facts?.length ? `<span class="cot-c-picker__facts">${item.facts.slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('')}</span>` : '';
   const tip = item.disabled ? ` data-tip="${esc(item.disabled)}"` : '';
   return `<div class="cot-c-picker__cell" role="presentation">`
     + `<div class="cot-c-picker__opt" role="option" id="" data-id="${esc(item.id)}" aria-selected="${chosen}" tabindex="-1"`
     + `${item.disabled ? ' aria-disabled="true"' : ''}${tip} data-ui-sound="select">${media}`
     + `<span class="cot-c-picker__words">${glyph}<span class="cot-c-picker__name">${esc(item.name)}</span>${facts}</span></div>`
-    + `<button type="button" class="cot-c-picker__fav" tabindex="-1" aria-pressed="${favourite}" aria-label="${esc(text.favourite)}"`
-    + ` data-tip="${esc(text.favourite)} (F)" data-ui-sound="toggle">${icon('star', { size: 16 })}</button></div>`;
+    // a picker without a memory (a menu's short set) keeps no favourites, so it draws no star
+    + (favourite === null ? '</div>' : `<button type="button" class="cot-c-picker__fav" tabindex="-1" aria-pressed="${favourite}" aria-label="${esc(text.favourite)}"`
+    + ` data-tip="${esc(text.favourite)} (F)" data-ui-sound="toggle">${icon('star', { size: 16 })}</button></div>`);
 };
 
 /** Mount the picker into `host` (its contents are replaced). */
@@ -191,6 +200,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const uid = `cot-picker-${options.id}-${Math.random().toString(36).slice(2, 7)}`;
 
   host.classList.add('cot-c-picker', `cot-c-picker--${options.layout}`);
+  host.classList.toggle('cot-c-picker--plain', !options.memory);
   host.dataset.picker = options.id;
   const searchable = (): boolean => items.length >= SEARCH_FROM;
   const chips = (): string => [
@@ -223,6 +233,15 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   const chipsResize = new ResizeObserver(syncMore);
   chipsResize.observe(chipRow);
+  /** A pressed chip stands in the row's view, clear of a surface's end fade (the r20q critic: the pressed Protection chip
+   *  lay past the row's end, so nothing showed which filter was on). */
+  const revealChip = (chip: HTMLElement): void => {
+    const row = chipRow.getBoundingClientRect();
+    const box = chip.getBoundingClientRect();
+    if (box.left < row.left) chipRow.scrollLeft -= row.left - box.left;
+    else if (box.right > row.right - CHIP_FADE) chipRow.scrollLeft += box.right - row.right + CHIP_FADE;
+    syncMore();
+  };
 
   const options$ = (): HTMLElement[] => [...grid.querySelectorAll<HTMLElement>('.cot-c-picker__opt')];
   const itemOf = (element: Element | null): PickerItem | null => {
@@ -243,11 +262,13 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       options.onPreview(next);
     });
   };
+  // the rows as drawn: each option stands in its own positioned cell, so its offsetTop is 0 in every row (an Arrow Down
+  // jumped to the last option)
   const columns = (): number => {
     const list = options$();
     if (list.length < 2) return 1;
-    const top = list[0].offsetTop;
-    const second = list.findIndex((element) => element.offsetTop !== top);
+    const top = list[0].getBoundingClientRect().top;
+    const second = list.findIndex((element) => Math.abs(element.getBoundingClientRect().top - top) > 1);
     return second < 0 ? list.length : second;
   };
   const rove = (to: HTMLElement | undefined, focus: boolean, preventScroll = false): void => {
@@ -272,7 +293,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);
-    grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, memory.favourites.includes(item.id), options.layout, options.text)).join('');
+    grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
     options$().forEach((element, i) => { element.id = `${uid}-${i}`; });
     empty.hidden = shown.length > 0;
     grid.hidden = shown.length === 0;
@@ -335,6 +356,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
         : key === 'recent' ? { ...query, recent: on }
           : { ...query, tags: on ? [...query.tags, key.slice(4)] : query.tags.filter((tag) => tag !== key.slice(4)) };
       render();
+      if (on) revealChip(chip);
       return;
     }
     if (target.closest('.cot-c-picker__fav')) { favourite(itemOf(target.closest('.cot-c-picker__cell')?.querySelector('.cot-c-picker__opt') ?? null)); return; }

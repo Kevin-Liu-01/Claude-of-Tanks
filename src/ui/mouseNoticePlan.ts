@@ -159,8 +159,9 @@ export const MOUSE_RETICLE = Object.freeze({
    *  (gauntlet r4 raised it from 11: "PRESS L-SHIFT TO FLIP", about 159 px; r5 tracked it .08em as the centre notices, 22
    *  px more). */
   chipMinPx: 62, chipRingPx: 24, chipAbovePx: 14, chipBelowPx: 10, chipHalfWidthPx: 122,
-  /** drawScope: arms from the ring to 1.55 r + 3, a 2.4 px under-stroke and mil ticks either side. */
-  armFactor: 1.55, armPx: 3 + 1.3, armHalfWidthPx: 6.5,
+  /** drawScope: arms from the ring to 1.55 r + 3, a 2.4 px under-stroke (1.2 either side, SCOPE_ARM_REACH) and mil ticks
+   *  either side; over 430 px tall the marks under the sight keep off the lower arm as off the ring (lowerArmHolds). */
+  armFactor: 1.55, armPx: 3 + 1.3, armHalfWidthPx: 6.5, armReachPx: 1.2, armHoldsOverPx: 430,
   /** sniperReadoutStack: the readout line (digits 10 px over the baseline; a leading struck round 14.7 over and 4.7 under)
    *  centred under the marker, about 124 px wide; the zoom plate 24 px (18 at <= 300 tall) under it, or 16 px right of it
    *  (TAG_GROUP_GAP), 11.9 px over its baseline and 1.3 under, about 105 px wide. */
@@ -178,11 +179,12 @@ export const MOUSE_RETICLE = Object.freeze({
 });
 
 /** The scope readout line's rest under the aim point at ring radius `r` (sniperReadoutStack: 32 px at <= 300 tall, 48 at
- *  <= 430, else over the controls). */
+ *  <= 430, else a fixed step under the lower arm's end, its digits 10 px over the baseline, over the controls). */
 function readoutRest(height: number, r: number): number {
   if (height <= 300) return 32;
   if (height <= 430) return 48;
-  return Math.min(Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), height - 176 - height / 2);
+  const R = MOUSE_RETICLE;
+  return Math.min(Math.max(r * 1.02 + 24, r * R.armFactor + 3 + R.armReachPx + R.markGapPx + 10 + 1), height - 176 - height / 2);
 }
 
 /** How far a box keeps from the nearest furniture box (Infinity with none), as sightFurnitureGap reckons it. */
@@ -221,13 +223,19 @@ function sightMarks(boxes: number[], width: number, height: number, r: number, s
   const pad = R.inkPadPx;
   const push = (x0: number, y0: number, x1: number, y1: number, ink: number = pad) => { boxes.push(x0 - ink, y0 - ink, x1 + ink, y1 + ink); };
   const ring = r + R.ringReachPx;
-  /** How far a box keeps from the ring's stroke (ringGap: negative where the ring runs through it). */
+  // (lowerArmHolds: over 430 px tall the scope's lower arm is the ring's furniture too)
+  const arm = scope && height > R.armHoldsOverPx, armEnd = r * R.armFactor + 3;
+  /** How far a box keeps from the ring's stroke (ringGap: negative where the ring runs through it), and the scope's lower
+   *  arm where it holds (scopeArmGap). */
   const ringGap = (x0: number, y0: number, x1: number, y1: number) => {
     const near = Math.hypot(Math.max(x0 - cx, 0, cx - x1), Math.max(y0 - cy, 0, cy - y1));
     const far = Math.max(Math.hypot(x0 - cx, y0 - cy), Math.hypot(x1 - cx, y0 - cy), Math.hypot(x0 - cx, y1 - cy), Math.hypot(x1 - cx, y1 - cy));
-    return Math.max(near - ring, r - R.ringReachPx - far);
+    const gapRing = Math.max(near - ring, r - R.ringReachPx - far);
+    if (!arm) return gapRing;
+    const dx = Math.max(cx - R.armReachPx - x1, 0, x0 - cx - R.armReachPx), dy = Math.max(cy + r + 3 - y1, 0, y0 - cy - armEnd);
+    return Math.min(gapRing, dx > 0 || dy > 0 ? Math.hypot(dx, dy) : -1);
   };
-  const belowRing = cy + ring + g;
+  const belowRing = cy + (arm ? Math.max(ring, armEnd + R.armReachPx) : ring) + g;
   const centre = scope ? R.scopeClearCentrePx : R.clearCentrePx;
   // aboveSightTop: the ring's stroke, the marker's clear centre and any mark already set over the ring
   let aboveTop = cy - Math.max(ring, centre);
