@@ -2654,6 +2654,8 @@ now read the room size rules (same behaviour).
 
 A free sortie plays through this stack by default from 255 (Main's ruling, 2026-10-26), so its authority steps in the
 browser host's Worker on the world kernels and the page keeps only the client.
+**2026-10-26: default reverted to the page** (owner: solo bots games must not create multiplayer sessions); host only
+via `?soloAuthority=host` pending the rework (release 256, `soloAuthorityFor` returns `page('default')`).
 - **Which battles** (`soloAuthorityFor` in main.ts): the Garage's BATTLE button and the Play menu's Solo, in a versus
   battle mode. The page keeps its own simulation for:
   - the campaign;
