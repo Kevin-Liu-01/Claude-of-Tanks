@@ -14,6 +14,7 @@ import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { markDatum } from './dom.ts';
 import { vehicleName } from './killSourceIdentity.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 
 type WatchHudView = 'off' | 'drone' | 'ride' | 'drive';
 
@@ -272,7 +273,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
         who.dataset.side = tank.team === 'enemy' ? 'enemy' : 'own';
         lead.innerHTML = tank.spec?.nation ? flag(tank.spec.nation) : '';
         mark.innerHTML = /^[a-z0-9_]+$/.test(specId) && tank.aerial?.kind !== 'gunship' ? silhouette(specId) : '';
-        name.textContent = vehicleName(tank);
+        // (its tier before its name, as the spectator's plate reads "VI · Leopard 2A5": the tier after it read as a
+        // variant suffix, gauntlet r12)
+        const numeral = tank.aerial?.kind === 'gunship' ? '' : tierNumeral(specId);
+        name.textContent = numeral ? `${numeral} · ${vehicleName(tank)}` : vehicleName(tank);
       } else {
         delete who.dataset.side;
         lead.innerHTML = `<span class="glyph">${icon('modeDrone', { size: 20 })}</span>`;

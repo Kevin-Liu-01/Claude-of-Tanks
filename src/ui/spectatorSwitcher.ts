@@ -64,7 +64,7 @@ export function spectatorSwitcherMarkup(): string {
  */
 export const spectatorSwitcherStyles = `
 .cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,12px);
- display:none;grid-template-columns:minmax(0,1fr) auto 88px;align-items:stretch;gap:var(--s2);
+ display:none;grid-template-columns:minmax(0,1fr) auto auto;align-items:stretch;gap:var(--s2);
  width:min(620px,calc(100vw - 32px));min-width:0;padding:0;border:0;background:none;box-shadow:none;
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
@@ -93,13 +93,15 @@ export const spectatorSwitcherStyles = `
 /* (the chevron and its key cap side by side, the Watch bar's cycle pair's form and its 20 px cap: stacked under the
    chevron here and beside it there read as two kits, gauntlet r5) */
 .cot-spec .cycle{flex-direction:row;gap:var(--s2);min-width:44px;padding-inline:var(--s3)}
-.cot-spec .cycle-icon{display:flex;color:var(--accent-hi)}.cot-spec .cycle-icon svg{width:14px;height:14px;display:block}
+/* (the chevrons in the plate's ink at the Watch bar's 20 px: in the accent here and white there, one strip read as two
+   kits, gauntlet r12) */
+.cot-spec .cycle-icon{display:flex;color:inherit}.cot-spec .cycle-icon svg{width:20px;height:20px;display:block}
 .cot-spec .cycle kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border:0;
  border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);color:var(--ink-2);font:500 var(--battle-fs-fig-11)/1 var(--font-data)}
 /* (the way out is the bar's primary action, the Watch bar's seat button's fill: an accent outline read as a selected tile,
-   gauntlet r6) */
-.cot-spec .gar{flex-direction:column;gap:var(--s1);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
- letter-spacing:var(--track-label-s);background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
+   gauntlet r6; its glyph left of its word, as the seat button's: stacked over it, one strip read as two kits, r12) */
+.cot-spec .gar{flex-direction:row;gap:var(--s2);padding-inline:var(--s3);font:600 var(--battle-fs-11)/1 var(--font-ui);text-transform:uppercase;
+ letter-spacing:var(--track-label-s);white-space:nowrap;background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:20px;height:20px}
 .cot-spec :is(.cycle,.gar):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-spec :is(.cycle,.gar):active{transform:translateY(var(--btn-press-drop))}
@@ -108,7 +110,7 @@ export const spectatorSwitcherStyles = `
 @keyframes cotSpecSw{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
 @media(max-width:900px){
- .cot-spec{grid-template-columns:minmax(0,1fr) auto 64px;gap:8px}
+ .cot-spec{grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
  .cot-spec .subject{grid-template-columns:48px minmax(0,1fr);gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}
  .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:var(--battle-fs-15)}
  .cot-spec .gar{letter-spacing:0}
