@@ -419,13 +419,6 @@
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
       .cot-boot-link:active { transform: none; }
     }
-    /* Baseline for visible game scrollbars (the line ramp on the scene). Component rules still own hidden rails. */
-    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
-    :where(html,body,body *)::-webkit-scrollbar{width:6px;height:6px}
-    :where(html,body,body *)::-webkit-scrollbar-track{background:transparent}
-    :where(html,body,body *)::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:6px}
-    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
-    :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
     /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
       box-sizing:border-box;width:min(900px,calc(100vw - 34px));max-width:none;
@@ -576,6 +569,17 @@
       /* Retry sits under the notice, centred between it and the row: 26 px each side */
       .cot-boot-retry { align-self: start; margin-top: 14px; }
     }
+    }
+    /* Baseline for visible game scrollbars (the line ramp on the scene), in base: a component that hides its rail (a chip
+       strip's scrollbar-width:none) outranks it. In surfaces it drew a scrollbar under every picker's chips (the s16 and
+       r21q critics). */
+    @layer base {
+    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+    :where(html,body,body *)::-webkit-scrollbar{width:6px;height:6px}
+    :where(html,body,body *)::-webkit-scrollbar-track{background:transparent}
+    :where(html,body,body *)::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:6px}
+    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+    :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
     }
   </style>
   <script>
