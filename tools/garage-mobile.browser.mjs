@@ -89,15 +89,15 @@ try{
    await page.locator('.stats').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-dossier.png`)});
    await tap('.cot-dossier-close');
    step='equipment';await tap('.cot-lt-loadout .eqslot');await box('.cot-eqpick');
-   assert.equal(await page.locator('.cot-eqpick .ph .x').evaluate(el=>el===document.activeElement),true,'picker focuses close control');
+   assert.equal(await page.locator('.cot-eqpick .cot-c-picker__opt[aria-selected="true"]').evaluate(el=>el===document.activeElement),true,'picker focuses the slot\'s own item');
    await page.keyboard.press('Shift+Tab');assert.equal(await page.locator('.cot-eqpick').evaluate(el=>el.contains(document.activeElement)),true,'picker traps backwards Tab');
-   for(const category of ['all','firepower','recon','mobility','survival']){
-    const chip=page.locator(`.cot-eqpick .chip[data-cat="${category}"]`);if(!await chip.count())continue;
-    await tap(chip);await reach(page.locator('.cot-eqtile:not([disabled])').last());
+   for(const category of ['fire','recon','mobility','survival']){
+    const chip=page.locator(`.cot-eqpick [data-chip="tag:${category}"]`);if(!await chip.count())continue;
+    await tap(chip);await reach(page.locator('.cot-eqpick .cot-c-picker__opt').last());await tap(chip);
    }
    await page.screenshot({path:resolve(out,`${name}-equipment.png`)});
    await page.setViewportSize({width:height,height:width});await page.waitForTimeout(100);await box('.cot-eqpick');await reach('.cot-eqpick .ph .x');
-   await page.setViewportSize({width,height});await page.waitForTimeout(100);await tap(page.locator('.cot-eqtile:not([disabled]):not(.remove)').last());
+   await page.setViewportSize({width,height});await page.waitForTimeout(100);await tap(page.locator('.cot-eqpick .cot-c-picker__opt:not([aria-disabled="true"]):not([data-id="empty"])').last());
    assert.equal(await page.locator('.cot-eqpick').isVisible(),false);assert.equal(await page.locator('.eqslot[data-slot="0"]').evaluate(el=>el===document.activeElement),true,'equipment selection restores slot focus');
    await tap('.cot-lt-loadout .eqslot');await page.keyboard.press('Escape');
    assert.equal(await page.locator('.cot-eqpick').isVisible(),false,'Escape closes the picker');

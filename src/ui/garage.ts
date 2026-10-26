@@ -26,7 +26,6 @@ import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, customCamoPatternId } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
-import { createRichTooltip } from './richTooltip.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -35,8 +34,9 @@ import {
   EQUIPMENT_BY_ID, EQUIP_SLOTS, EQUIP_CATEGORIES,
   loadEquipment, saveEquipment, equipmentPicker, computeEquipMults,
 } from '../game/equipment.ts';
-import type { EquipmentItem, EquipmentLock, EquipmentPickerItem } from '../game/equipment.ts';
+import type { EquipmentItem, EquipmentLock } from '../game/equipment.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
+import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
@@ -388,89 +388,12 @@ function equipmentMetricIcon(metricId: string): string {
   return icons[metricId] || 'performance';
 }
 
-function equipmentCategoryButtons(activeCategory: string): string {
-  return EQUIP_CATEGORIES.map((category) => (
-    `<button type="button" class="cot-c-chip chip" aria-pressed="${category.id === activeCategory}" ` +
-    `data-cat="${category.id}">${t(`garage.equipment.cat.${category.id}`)}</button>`
-  )).join('');
-}
-
 function equipmentLabel(id: string): string {
   return t(`equipment.${id}.name`);
 }
 
 function equipmentDesc(id: string): string {
   return t(`equipment.${id}.desc`);
-}
-
-function equipmentEraTag(item: EquipmentItem): string {
-  if (item.era === 'modern') return `<span class="tag">${t('equipment.era.modern')}</span>`;
-  return '';
-}
-
-function equipmentTileClass(locked: boolean, fittedAt: number, openSlot: number): string[] {
-  const classes = ['cot-eqtile'];
-  if (locked) classes.push('locked');
-  else if (fittedAt === openSlot) classes.push('sel');
-  else if (fittedAt >= 0) classes.push('inother');
-  return classes;
-}
-
-function equipmentTileTag(item: EquipmentItem, lock: EquipmentLock | null, fittedAt: number, openSlot: number): string {
-  if (lock) return lock === 'era' ? equipmentEraTag(item) : '';
-  if (fittedAt === openSlot) return `<span class="tag">${t('garage.equipment.tag.fitted')}</span>`;
-  if (fittedAt >= 0) return `<span class="tag">${t('garage.equipment.tag.slot', { slot: fittedAt + 1 })}</span>`;
-  return '';
-}
-
-function equipmentTileActionCopy(
-  item: EquipmentItem,
-  lock: EquipmentLock | null,
-  fittedAt: number,
-  openSlot: number,
-): string {
-  if (lock) return equipmentLockCopy(item.id, lock);
-  if (fittedAt === openSlot) return t('garage.equipment.action.fitted');
-  if (fittedAt >= 0) return t('garage.equipment.action.fittedIn', { from: fittedAt + 1, to: openSlot + 1 });
-  return t('garage.equipment.action.equipIn', { slot: openSlot + 1 });
-}
-
-function equipmentTileMarkup({ item, lock, fittedSlot: fittedAt }: EquipmentPickerItem, openSlot: number): string {
-  const locked = lock !== null;
-  const cls = equipmentTileClass(locked, fittedAt, openSlot);
-  const tag = equipmentTileTag(item, lock, fittedAt, openSlot);
-  const availability = equipmentTileActionCopy(item, lock, fittedAt, openSlot);
-  const name = equipmentLabel(item.id);
-  const desc = equipmentDesc(item.id);
-  const ariaLabel = escapeHtmlAttribute(`${name}. ${desc}. ${availability}`);
-  // the tile carries the short name (10 characters at most, the slot caption's); the full name reads in its label and tip
-  return `<button type="button" class="${cls.join(' ')}" data-eq="${locked ? '' : item.id}" ` +
-    `data-eq-id="${item.id}" data-eq-cat="${item.cat}"${lock ? ` data-eq-lock="${lock}"` : ''} aria-label="${ariaLabel}" ` +
-    `aria-pressed="${fittedAt === openSlot ? 'true' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">` +
-    `${tag}${equipIconSVG(item.id, 38)}<span class="n">${t(`equipment.${item.id}.short`)}</span>` +
-    `<span class="e">${desc}</span></button>`;
-}
-
-function equipmentPickerTiles(
-  spec: GarageTankSpec | undefined,
-  currentLoadout: readonly string[],
-  openSlot: number,
-  activeCategory: string,
-): string {
-  const emptyLabel = escapeHtmlAttribute(
-    t('garage.equipment.empty.aria', { slot: openSlot + 1 }),
-  );
-  const emptyTile =
-    `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
-    `aria-label="${emptyLabel}">` +
-    `${uiIconSVG('close', 34)}` +
-    `<span class="n">${t('garage.equipment.empty.name')}</span></button>`;
-  // the lead's equipmentPicker (equipment 249): one group per category in catalog order, each tile's lock and fitted slot
-  const itemTiles = equipmentPicker(spec, currentLoadout)
-    .filter((group) => activeCategory === 'all' || group.category.id === activeCategory)
-    .flatMap((group) => group.items.map((entry) => equipmentTileMarkup(entry, openSlot)))
-    .join('');
-  return emptyTile + itemTiles;
 }
 
 /** The roster card's tier chip, "Tier X": the word in the data face, the numeral in tungsten. */
@@ -2049,7 +1972,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
-    const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .pgrid');
+    const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .cot-c-picker__grid');
     if (grid) fitPickerGrid(grid);
   });
   // The map roster now exceeds the short-viewport column. Its flex height
@@ -2264,17 +2187,48 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   eqpickEl.setAttribute('aria-modal', 'true');
   eqpickEl.setAttribute('aria-label', t('garage.dossier.equipment.heading'));
   eqpickEl.tabIndex = -1;
+  // the slot and its close, the kit picker (garageEquipmentPicker.ts) and the readout: the item under the pointer or the
+  // focus, else the slot's own, with its projected values in place on every layout (INTERACTION-REDESIGN C: they lived in
+  // a hover tip, never on touch)
+  eqpickEl.innerHTML =
+    `<div class="ph"><span class="t"></span>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost x" aria-label="${t('garage.equipment.headingClose')}">` +
+    `${uiIconSVG('close', 18)}</button></div>` +
+    `<div class="cot-eq-picker"></div>` +
+    `<div class="cot-eqpreview" role="group" aria-label="${escapeHtmlAttribute(t('garage.equipment.projectedStatsAria'))}"></div>`;
   root.appendChild(eqpickEl);
-  // a tile's projection: the kit's rich tooltip (richTooltip.ts) on hover and focus, never on a phone
-  const eqTip = createRichTooltip(eqpickEl, '.cot-eqtile', equipmentTip);
+  const eqTitleEl = requiredElement<HTMLElement>(eqpickEl, '.ph .t');
+  const eqReadoutEl = requiredElement<HTMLElement>(eqpickEl, '.cot-eqpreview');
   let eqOpenSlot = -1;   // -1 = picker closed
+  // what the readout shows: a shut item's reason, else the previewed item, else the slot's own (both null)
+  let eqPreviewId: string | null = null;
+  let eqShutId: string | null = null;
+  const eqLocks = new Map<string, EquipmentLock>();
+  const eqPicker = createGarageEquipmentPicker({
+    id: 'garage-equipment',
+    host: requiredElement<HTMLElement>(eqpickEl, '.cot-eq-picker'),
+    label: t('garage.dossier.equipment.heading'),
+    text: pickerText(),
+    words: {
+      short: (id) => t(`equipment.${id}.short`),
+      effect: equipmentDesc,
+      category: (id) => t(`garage.equipment.cat.${id}`),
+      slot: (index) => t('garage.equipment.tag.slot', { slot: index + 1 }),
+      lock: equipmentLockCopy,
+      empty: t('garage.equipment.empty.name'),
+    },
+    categories: EQUIP_CATEGORIES.map((category) => category.id),
+    glyph: (id) => (id === EQUIPMENT_EMPTY_ID ? uiIconSVG('close', 34) : equipIconSVG(id, 38)),
+    onPreview: (id) => { eqPreviewId = id; renderEqReadout(); },
+    onChoose: (id) => { emit('ui:click', {}); eqAssign(id); },
+    onShut: (id) => { eqShutId = id; renderEqReadout(); },
+  });
   // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
   // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
   let equipmentPreview: EquipmentPreviewModule | null = null;
   let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
   const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
     (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
-  let eqCat = 'all';     // active category chip
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
@@ -2321,23 +2275,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return t('garage.equipment.action.equipIn', { slot: eqOpenSlot + 1 });
   }
 
-  function equipmentTip(anchor: HTMLElement): HTMLElement | null {
-    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return null;
-    const itemId = anchor.dataset.eqId || '';
+  /** The readout's body for `itemId` (null: Empty) in the open slot: what it is, what it does and its projected values. */
+  function equipmentReadout(itemId: string | null, currentLoadout: readonly string[], spec: GarageTankSpec | undefined): HTMLElement {
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
-    const lock = (anchor.dataset.eqLock || null) as EquipmentLock | null;
-    const locked = lock !== null;
-    const currentLoadout = curLoadout();
+    const lock = (itemId && eqLocks.get(itemId)) || null;
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
-    const spec = selectedId ? specById.get(selectedId) : undefined;
-    // the tooltip shows whole, with its projections: one still loading holds it until they arrive, then it opens on the
-    // anchor the pointer or focus is still on (the rich tooltip's own hover and focus paths; integ 254 over the kit tip)
-    if (spec && !equipmentPreview) {
-      void loadEquipmentPreview().then(() => {
-        if (anchor.isConnected && anchor.matches(':hover, :focus-visible')) eqTip.show(anchor);
-      }, () => {});
-      return null;
-    }
     const category = equipmentTooltipCategory(item);
     const state = equipmentTooltipState(item, lock, fittedAt);
 
@@ -2350,11 +2292,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     detail.className = 'detail';
     detail.textContent = item ? equipmentDesc(item.id) : t('garage.equipment.removeFitted');
     const preview = spec && equipmentPreview
-      ? equipmentPreview.equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
+      ? equipmentPreview.equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !lock)
       : null;
     const summary = document.createElement('span');
     summary.className = 'summary';
-    summary.textContent = preview?.summary || t('garage.equipment.emptyStat');
+    summary.textContent = preview?.summary || '';
     const metrics = document.createElement('span');
     metrics.className = 'metrics';
     metrics.setAttribute('aria-label', t('garage.equipment.projectedStatsAria'));
@@ -2365,13 +2307,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const body = document.createElement('div');
     body.className = 'cot-eqtip';
     body.dataset.category = item?.cat || 'action';
+    if (lock) body.dataset.shut = '';
     body.append(eyebrow, name, detail, summary, metrics, action);
     return body;
   }
 
-  function equipmentTooltipAllowed(): boolean {
-    if (document.body.dataset.cotWidth === 'phone') return false;
-    return !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  /** The readout: a shut item's reason, else the previewed item, else the slot's own; its values once their module is in. */
+  function renderEqReadout(): void {
+    if (eqOpenSlot < 0 || !selectedId) return;
+    const loadout = curLoadout();
+    const spec = specById.get(selectedId);
+    const id = eqShutId ?? eqPreviewId ?? (loadout[eqOpenSlot] || EQUIPMENT_EMPTY_ID);
+    eqReadoutEl.replaceChildren(equipmentReadout(id === EQUIPMENT_EMPTY_ID ? null : id, loadout, spec));
+    if (spec && !equipmentPreview) void loadEquipmentPreview().then(() => renderEqReadout(), () => {});
   }
 
   /** Assign/remove an item in the open slot, persist, refresh the card. */
@@ -2391,19 +2339,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function renderEqPicker() {
     if (!selectedId || eqOpenSlot < 0) return;
-    eqTip.hide();
     const spec = specById.get(selectedId);
     const cur = curLoadout();
-    const chips = equipmentCategoryButtons(eqCat);
-    const tiles = equipmentPickerTiles(spec, cur, eqOpenSlot, eqCat);
-    eqpickEl.innerHTML =
-      `<div class="ph"><span class="t">${t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 })}</span>` +
-      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost x" aria-label="${t('garage.equipment.headingClose')}">` +
-      `${uiIconSVG('close', 18)}</button></div>` +
-      `<div class="chips">${chips}</div>` +
-      `<div class="pgrid">${tiles}</div>`;
-    // a picker that scrolls ends on a whole row of tiles, never a sliced one
-    requestAnimationFrame(() => { const grid = eqpickEl.querySelector<HTMLElement>('.pgrid'); if (grid) fitPickerGrid(grid); });
+    // the lead's equipmentPicker (equipment 249): one group per category in catalog order, each item's lock and fitted slot
+    const groups = equipmentPicker(spec, cur);
+    eqLocks.clear();
+    for (const group of groups) for (const entry of group.items) if (entry.lock) eqLocks.set(entry.item.id, entry.lock);
+    eqTitleEl.textContent = t('garage.equipment.tag.slot', { slot: eqOpenSlot + 1 });
+    eqPicker.show(groups, eqOpenSlot, cur[eqOpenSlot] || null);
+    eqPreviewId = null;
+    eqShutId = null;
+    renderEqReadout();
+    // a picker that scrolls ends on a whole row of cards, never a sliced one
+    requestAnimationFrame(() => { const grid = eqPicker.grid(); if (grid) fitPickerGrid(grid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
@@ -2411,21 +2359,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   function openEqPicker(slot: number): void {
-    if (vehicleLocked) return;
+    // a tank the room has locked says so (it blocked silently: the census's bar line 5)
+    if (vehicleLocked) { notifyLater({ id: 'cot-equipment-locked', severity: 'info', text: t('garage.vehicleLocked') }); return; }
     void loadEquipmentPreview().catch(() => {});
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
     root.classList.add('picker-open');
     renderEqPicker();
-    eqpickEl.querySelector<HTMLButtonElement>('.ph .x')?.focus({ preventScroll: true });
+    // the focus lands on the slot's own item (or Empty), where the arrows start
+    eqPicker.focus();
     document.addEventListener('keydown', eqKeydown);
     document.addEventListener('mousedown', eqOutside, true);
   }
   function closeEqPicker() {
     if (eqOpenSlot < 0) return;
     const slot = eqOpenSlot;
-    eqTip.hide();
     eqOpenSlot = -1;
+    eqPreviewId = null;
+    eqShutId = null;
     eqpickEl.classList.remove('open');
     root.classList.remove('picker-open', 'picker-over-readout');
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
@@ -2443,20 +2394,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
 
   eqpickEl.addEventListener('click', (e) => {
-    const target = eventElement(e);
-    const chip = target?.closest<HTMLElement>('.chip');
-    if (chip) {
-      emit('ui:click', {});
-      eqCat = chip.dataset.cat || 'all';
-      renderEqPicker();
-      return;
-    }
-    if (target?.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
-    const tile = target?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile || tile.classList.contains('locked')) return;
-    eqTip.hide();
-    emit('ui:click', {});
-    eqAssign(tile.dataset.eq || null);
+    if (eventElement(e)?.closest('.ph .x')) { emit('ui:click', {}); closeEqPicker(); }
   });
 
 

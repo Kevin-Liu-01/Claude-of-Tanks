@@ -64,51 +64,42 @@ assert.match(garageCss,
 assert.doesNotMatch(garageSource,
   /\$\{eqIds\.length\}\/\$\{EQUIP_SLOTS\} mounted/,
   'Garage equipment section must not repeat a mounted-slot counter');
-assert.ok((await readFile(new URL('./richTooltip.ts', import.meta.url), 'utf8')).includes("tip.setAttribute('role', 'tooltip')")
-  && garageSource.includes("createRichTooltip(eqpickEl, '.cot-eqtile'"),
-  'Garage equipment explanations must use an accessible tooltip contract (the kit\'s rich tooltip)');
-{
-  const richTooltip = await readFile(new URL('./richTooltip.ts', import.meta.url), 'utf8');
-  assert.ok(richTooltip.includes("host.addEventListener('pointerover', enter)") && richTooltip.includes("host.addEventListener('focusin', focus)"),
-    'Garage equipment tooltips must work with pointer hover and keyboard focus (the rich tooltip listens on the picker)');
-}
+// INTERACTION-REDESIGN C: the slot's picker is the kit picker (garageEquipmentPicker.ts); the projection of the item under
+// the pointer or the focus (else the slot's own) is a readout in place, on every layout (it lived in a hover tip, never on
+// touch), and a shut item says why on hover, focus and press
+assert.match(garageSource, /createGarageEquipmentPicker\(\{\s*id: 'garage-equipment',/,
+  'Garage equipment choices must be the kit picker, stamped with its registry id');
+assert.doesNotMatch(garageSource, /createRichTooltip\(eqpickEl/, 'Garage equipment projections must not hide in a hover-only tooltip');
 assert.match(garageSource,
-  /equipmentHoverPreview\(spec, currentLoadout, item\?\.id \|\| null, eqOpenSlot, !locked\)/,
-  'Garage equipment hover must project values for the selected vehicle and pending click');
+  /equipmentHoverPreview\(spec, currentLoadout, item\?\.id \|\| null, eqOpenSlot, !lock\)/,
+  'Garage equipment readout must project values for the selected vehicle and pending press');
 assert.match(garageSource, /projectEquipmentLoadout\(cur, itemId, eqOpenSlot\)/,
-  'Garage click assignment must share the exact projection path used by its tooltip');
+  'Garage press assignment must share the exact projection path used by its readout');
 assert.match(garageSource, /icon\.innerHTML = uiIconSVG\(equipmentMetricIcon\(metric\.id\), 12\)/,
   'Garage equipment projections must pair each adjusted stat with a shared UI icon');
 assert.doesNotMatch(garageSource, /Stock \$\{metric\.stock\}/,
   'Garage equipment projections must not add repetitive stock-caption lines');
-assert.match(garageSource, /document\.body\.dataset\.cotWidth === 'phone'/,
-  'Garage equipment projections must not open on phone layouts');
-assert.ok(garageSource.includes('<button type="button" class="${cls.join(\' \')}"'),
-  'Garage equipment choices must render as semantic buttons');
+assert.match(garageSource, /const id = eqShutId \?\? eqPreviewId \?\? \(loadout\[eqOpenSlot\] \|\| EQUIPMENT_EMPTY_ID\);/,
+  "Garage equipment readout shows a shut item's reason, else the previewed item, else the slot's own");
 assert.doesNotMatch(garageSource, /title="\$\{it\.name\}/,
   'Garage equipment choices must not fall back to inconsistent native title bubbles');
-assert.match(garageSource, /createRichTooltip\(eqpickEl, '\.cot-eqtile', equipmentTip\)/,
-  'Garage equipment tooltip must be the kit\'s rich tooltip, which escapes the scrolling picker in the top layer');
 assert.doesNotMatch(garageCss, /\.cot-eqtooltip/, 'Garage equipment tooltip must not keep a plate of its own');
 assert.match(garageCss,
   /\.cot-eqtip \.metric\{display:grid;grid-template-columns:14px minmax\(0,1fr\) auto;/,
-  'Garage equipment tooltip must align icons and stat labels with current-to-projected values');
+  'Garage equipment readout must align icons and stat labels with current-to-projected values');
 assert.match(garageCss,
   /\.cot-eqtip \.metric\.improved \.metric-values b\{color:var\(--text-ok\);\}/,
   'Garage equipment improvements must be visually distinguishable');
 assert.match(garageCss,
   /\.cot-eqtip \.metric\.degraded \.metric-values b\{color:var\(--text-danger\);\}/,
   'Garage equipment replacement tradeoffs must be visually distinguishable');
-assert.match(garageSource, /if \(!equipmentTooltipAllowed\(\) \|\| !eqpickEl\.classList\.contains\('open'\) \|\| !anchor\.isConnected\) return null;/,
-  'Garage equipment hover projections must remain absent from phone layouts');
-assert.match(garageCss,
-  /@media \(hover:hover\) and \(pointer:fine\)\{[\s\S]*\.cot-eqtile:not\(\.locked\):hover/,
-  'Garage equipment hover motion must only run on hover-capable pointers');
+assert.match(garageCss, /\.cot-eqpreview\{flex:none;block-size:9\.5rem;/,
+  'Garage equipment readout keeps one height whatever it shows (the panel never jumps under the pointer)');
 assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-eqpick\.open\{[^}]*left:auto;[^}]*right:calc\(max\([^}]*var\(--cot-compact-stats-width\)[^}]*width:min\(420px,calc\(100vw - var\(--cot-compact-stats-width\)[^}]*display:flex;/,
   'Compact Garage equipment picker must stay beside the dossier and inside the safe viewport');
 assert.match(garageCss,
-  /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
+  /body\[data-cot-panels='overlay'\] \.cot-eqpick \.cot-c-picker--swatches \.cot-c-picker__grid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
   'Compact Garage equipment choices must scroll inside the bounded picker');
 assert.match(garageCss,
   /\.cot-sidebar-section-title\{[^}]*font:600 max\(var\(--fs-floor-11\),var\(--fs-12\)\)\/1 var\(--font-display\);letter-spacing:var\(--track-label-s\);text-transform:uppercase;/,

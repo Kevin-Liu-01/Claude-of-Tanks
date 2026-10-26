@@ -534,7 +534,7 @@ const ACCESS_SURFACES = [
   { id: 'paint', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-lt-paint-all'), ctx);
     await waitFor(page, `shown('.cot-camo-card')`, 15000); } },
   { id: 'equipment', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.eqslot[data-slot]'), ctx);
-    await waitFor(page, `shown('.cot-eqtile')`, 15000); } },
+    await waitFor(page, `shown('.cot-eqpick .cot-c-picker__opt')`, 15000); } },
   { id: 'rooms', scope: '.cot-play',
     open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-room="private"]'), ctx);
       await waitFor(page, `shown('.cot-play .panel')`, 30000); } },

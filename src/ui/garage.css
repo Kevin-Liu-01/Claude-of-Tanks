@@ -844,65 +844,38 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
    three heads and three closes across the sibling panels) */
 .cot-eqpick .ph .t{color:var(--ink-1);font:600 var(--fs-16)/1 var(--font-display);}
 .cot-eqpick .ph .t i{font-style:normal;color:var(--text-accent);}
-.cot-eqpick .chips{display:flex;gap:var(--s1);margin-bottom:9px;flex-wrap:wrap;}
-/* the kit's chip and icon button (components.css); the Garage's element reset takes their padding */
-.cot-eqpick .cot-c-chip{padding:0 var(--s3);font-size:max(var(--fs-floor-11),var(--fs-13));}
-.cot-eqpick .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
-  max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
-  padding-right:3px;scrollbar-width:thin;
-  scrollbar-color:var(--line-3) var(--scrim);}
+/* INTERACTION-REDESIGN C: the slot's picker is the kit picker (garageEquipmentPicker.ts), its categories the picker's chips:
+   each card is its item's glyph over its short name and what it does, and the readout under the grid shows the item under
+   the pointer or the focus (else the slot's own) with its projected values */
+.cot-eqpick .cot-eq-picker{display:flex;flex-direction:column;min-height:0}
+.cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-height:min(46vh,430px)}
+.cot-eqpick .cot-c-picker__opt{align-items:center;gap:var(--s1);padding:var(--s2) var(--s1) 7px;text-align:center}
+.cot-eqpick .cot-c-picker--swatches .cot-eq-glyph{aspect-ratio:auto;display:grid;place-items:center}
+.cot-eqpick .cot-eq-glyph svg{display:block;width:38px;height:38px;filter:var(--sil-shadow)}
+.cot-eqpick .cot-c-picker__words{justify-content:center}
+.cot-eqpick .cot-c-picker__name{font:700 max(var(--fs-floor-11),var(--fs-11))/1.25 var(--font-ui);text-transform:uppercase}
+.cot-eqpick .cot-c-picker__facts{justify-content:center;flex-wrap:wrap;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.35}
+/* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
+html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere}
+/* a shut item reads as unavailable by its quiet glyph and words, still legible (the kit's half opacity took them to 2.9:1) */
+.cot-eqpick .cot-c-picker__opt[aria-disabled=true]{opacity:1}
+.cot-eqpick .cot-c-picker__opt[aria-disabled=true] :is(.cot-c-picker__name,.cot-c-picker__facts){color:var(--ink-3)}
+.cot-eqpick .cot-c-picker__opt[aria-disabled=true] .cot-eq-glyph svg{opacity:.5;filter:grayscale(1) var(--sil-shadow)}
+.cot-eqpick .cot-c-picker__opt[data-id='empty'] .cot-eq-glyph svg{opacity:.55}
 /* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
    the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
-:is(.cot-eqpick .pgrid,.cot-camos .cot-c-picker__grid){padding-bottom:var(--peek,16px);}
-.cot-eqpick .pgrid.can-scroll{
+:is(.cot-eqpick,.cot-camos) .cot-c-picker__grid{padding-bottom:var(--peek,16px);}
+.cot-eqpick .cot-c-picker__grid.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);
   mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);}
-.cot-eqpick .pgrid::-webkit-scrollbar{width:5px;}
-.cot-eqpick .pgrid::-webkit-scrollbar-track{background:var(--scrim);}
-.cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:var(--line-control);}
-.cot-eqtile{appearance:none;-webkit-appearance:none;cursor:pointer;position:relative;text-align:center;
-  /* top-aligned (a button centres its content): every glyph and name in a row on one line, whatever the description */
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
-  width:100%;min-width:0;padding:var(--s2) 5px 7px;font:inherit;color:inherit;
-  background:linear-gradient(180deg,var(--scrim),var(--side-plate));
-  border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background-color var(--dur-fast),transform var(--dur-fast);}
-.cot-eqtile.sel{border-color:var(--accent);border-bottom-color:var(--accent);
-  background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));}
-.cot-eqtile svg{display:block;width:38px;height:38px;margin:0 auto 5px;
-  filter:var(--sil-shadow);}
-.cot-eqtile .n{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:0em;color:var(--ink-1);
-  text-transform:uppercase;line-height:1.25;min-height:20px;
-  display:flex;align-items:center;justify-content:center;}
-.cot-eqtile .e{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;letter-spacing:0;color:var(--ink-3);
-  line-height:1.35;margin-top:3px;min-height:29px;display:block;}
-/* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
-html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere;}
-.cot-eqtile.sel .n{color:var(--accent-hi);}
-.cot-eqtile .tag{position:absolute;top:3px;right:3px;font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
-  letter-spacing:0;color:var(--text-accent);background:var(--accent-wash);
-  border:1px solid var(--accent-lo);padding:1px var(--s1);text-transform:uppercase;}
-.cot-eqtile.inother .tag{color:var(--ink-3);border-color:var(--line-3);
-  background:var(--surface-plate);}
-/* a locked tile reads as unavailable by its tag and its quiet plate, its words still legible (opacity took them to 2.9:1) */
-.cot-eqtile.locked{cursor:default;opacity:.8;}
-.cot-eqtile.locked :is(.n,.e){color:var(--ink-3);}
-/* its glyph quiets with its words, on every layout (the phone kept a full-colour frame on a locked tile) */
-.cot-eqtile.locked svg{opacity:.5;filter:grayscale(1) var(--sil-shadow);}
-.cot-eqtile.remove .n{color:var(--ink-3);}
-.cot-eqtile.remove svg{opacity:.55;}
-.cot-eqtile:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;
-  border-color:var(--accent);}
+/* the readout keeps one height whatever it shows, so the panel never jumps under the pointer */
+.cot-eqpreview{flex:none;block-size:9.5rem;margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-2);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+.cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.cot-eqpreview :is(.metrics-heading,.summary:empty){display:none}
+.cot-eqpreview .cot-eqtip[data-shut] .action{color:var(--ink-2)}
 
-@media (hover:hover) and (pointer:fine){
-  .cot-eqtile:not(.locked):hover{border-color:var(--line-control);
-    background:var(--side-plate);
-    box-shadow:var(--ring-1);transform:translateY(-1px);}
-  .cot-eqtile.locked:hover{border-color:var(--line-2);}
-}
-
-/* a tile's projection inside the kit's rich tooltip (richTooltip.css carries the plate, the placement and the layer;
-   garage.ts gives no body on a phone or a coarse pointer) */
+/* the readout's body (the item, what it does, its projected values and what a press does) */
 .cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
 .cot-eqtip[data-category="recon"] .eyebrow{color:var(--text-own);}
@@ -1195,9 +1168,10 @@ body[data-cot-panels='overlay'] .cot-eqpick.open{
   max-height:none;display:flex;flex-direction:column;
   padding:10px;
 }
-body[data-cot-panels='overlay'] .cot-eqpick .pgrid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-eq-picker{flex:1 1 auto}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
 /* a Chinese effect line keeps its terms whole: the tiles take two to a phone's row, so no line starts with a comma */
-html[lang^='zh'] body[data-cot-panels='overlay'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+html[lang^='zh'] body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body[data-cot-panels='overlay'] .cot-garage .cot-technical-section{
   min-height:0;margin:0;padding:0;background:none;border:0;box-shadow:none;
 }
@@ -1598,22 +1572,13 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:none}
 /* the Gallery and proving-ground links keep their row (glyph, label, chevron at the end) over the sheet's block reset */
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-gallery-link{display:flex}
-body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
+body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
 /* a 44 px touch target that draws only its glyph (the glyph carries its own ring; the 20 px plate stretched to 44 read
    as a second, off-centre ring) */
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger{display:inline-grid;place-items:center;border-color:transparent;background:transparent}
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger:focus-visible{box-shadow:var(--focus-ring)}
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger__icon{width:18px;height:18px}
 body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
-body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;overscroll-behavior:contain;padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
-  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
-body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
-/* a portrait phone wraps its picker's chips (every chip whole); its paint sheet keeps the nations and the kinds on one
-   strip each under the edge fade, so the sheet's room goes to paint (the gauntlet 10-25: seven rows of chips filled half
-   the sheet before the first swatch) */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpick .chips{flex-wrap:wrap;
-  overflow:visible;padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 /* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
    the screen */

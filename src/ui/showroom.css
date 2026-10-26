@@ -358,29 +358,32 @@ body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-
   width:max-content;max-width:calc(100% - var(--edge) - var(--fleet-right));max-height:calc(100% - var(--column-top) - var(--band-bottom) - var(--slot) - var(--lt-cap) - var(--s3));overflow:hidden;
   border-radius:var(--plate-radius);}
 body[data-cot-panels='persistent'] .cot-eqpick.open{display:flex;flex-direction:column;}
-/* 25 items and Empty (equipment 249): a glyph and the item's short name per tile, the full name and what it does in the
-   hover tip; the grid scrolls only if a short window still can't hold it */
-/* the picker takes the width its tiles need (a category of five does not leave a band-wide panel empty), up to the band */
-body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:var(--s1);
+/* 25 items and Empty (equipment 249): a glyph and the item's short name per card, the full name, what it does and its
+   projected values in the readout; the grid scrolls only if a short window still can't hold it */
+/* the picker takes the width its cards need (a category of five does not leave a band-wide panel empty), up to the band */
+body[data-cot-panels='persistent'] .cot-eqpick .cot-eq-picker{flex:0 1 auto}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:var(--s1);
   max-height:none;min-height:0;flex:0 1 auto;}
 /* a docked window 520-719 px tall keeps the picker left of the column as well: the column stays in place while it is open
    (the gauntlet 10-25: it vanished, and the layout jumped), and the grid scrolls under its fade if a row is left over */
 /* a short window gives the rows the head's line: the slot shows as the open slot in the band, close stands at the chips' end */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph{position:absolute;top:var(--s2);right:var(--s3);margin:0;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .ph .t{display:none;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .chips{padding-right:calc(var(--btn-h-s) + var(--s2));}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-c-picker__bar{padding-right:calc(var(--btn-h-s) + var(--s2));}
 /* the picker opens over the name's place: the name steps aside while it is open */
 body[data-cot-panels='persistent'] .cot-garage.picker-open .cot-lt-head{visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-garage.picker-open.picker-over-readout :is(.stats,.cot-stations){visibility:hidden;}
 body[data-cot-panels='persistent'] .cot-eqpick{padding:var(--s2) var(--s3);}
-body[data-cot-panels='persistent'] .cot-eqpick :is(.ph,.chips){margin-bottom:var(--s2);}
-body[data-cot-panels='persistent'] .cot-eqtile{padding:var(--s2) 3px var(--s1);}
-body[data-cot-panels='persistent'] .cot-eqtile svg{width:28px;height:28px;margin-bottom:var(--s1);}
-body[data-cot-panels='persistent'] .cot-eqtile .n{display:block;min-height:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-body[data-cot-panels='persistent'] .cot-eqtile .e{display:none;}
+body[data-cot-panels='persistent'] .cot-eqpick .ph{margin-bottom:var(--s2);}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__opt{gap:var(--s1);padding:var(--s2) 3px var(--s1);}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-eq-glyph svg{width:28px;height:28px;}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__name{display:block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__facts{display:none;}
+/* the docked readout is two lines lower: the band's room goes to the cards */
+body[data-cot-panels='persistent'] .cot-eqpreview{block-size:7.5rem}
 /* a short window's tiles stand lower (a smaller glyph, a slimmer pad), so as few rows as can be are left to scroll */
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile{padding:var(--s1) 2px;}
-body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqtile svg{width:22px;height:22px;margin-bottom:2px;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-c-picker__opt{padding:var(--s1) 2px;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-eqpick .cot-eq-glyph svg{width:22px;height:22px;}
 
 /* ---- the fleet: the roster tools over the cards, left of the column ---- */
 /* one kit row (owner 10-25 via Main): the search and its filter joined as one field, the nations, the favourites and the

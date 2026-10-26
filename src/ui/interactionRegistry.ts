@@ -96,8 +96,7 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
-  'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
-  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:fittedAt===openSlot'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
   // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
