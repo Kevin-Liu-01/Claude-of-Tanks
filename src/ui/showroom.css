@@ -174,12 +174,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-compare-toggle{flex:none;padding:0 var(--s3);}
 /* the readout's chips keep the label floor (13 px in Chinese): the kit chip's scaled 13 fell to about 10.5 px at 1280 */
 .cot-garage :is(.cot-action,.cot-compare-toggle){font-size:max(var(--fs-floor-11),var(--fs-13));}
-.cot-garage .cot-rival{flex:1;min-width:0;display:flex;align-items:center;gap:var(--s2);height:var(--btn-h-s);padding:0 var(--s3);
-  border:1px solid var(--line-2);border-radius:var(--control-radius);color:var(--ink-3);cursor:pointer;}
-.cot-garage .cot-rival select{flex:1;min-width:0;appearance:none;border:0;background:transparent;color:var(--ink-1);cursor:pointer;
-  font:600 max(var(--fs-floor-11),var(--fs-14))/1 var(--font-display);}
-.cot-garage .cot-rival select option{background:var(--surface-menu);color:var(--ink-1);}
-.cot-garage .cot-rival:focus-within{border-color:var(--accent);}
+/* the rival is the kit's picker menu (pickerMenu.ts), at the chip's height beside it */
+.cot-garage .cot-rival{flex:1;min-width:0;}
+.cot-garage .cot-rival .cot-c-menu__trigger{min-height:var(--btn-h-s);padding-block:0;}
 .cot-garage .cot-headline{display:grid;gap:var(--s3);}
 .cot-garage .cot-mag{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1);margin-top:var(--s3);}
 .cot-garage .cot-performance-section .cot-mag{margin:0 0 var(--s3);}

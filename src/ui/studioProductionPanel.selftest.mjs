@@ -8,6 +8,7 @@ import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { notice } from './components/notice.ts';
 import { wireRovingKeys } from './components/components.ts';
+import { pickerText } from './pickerText.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -68,7 +69,19 @@ const fetch = (url) => {
 };
 const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
-const context = { document, window, Event, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
+// the picker menu (pickerMenu.ts) needs the top layer: a stand-in records its options and chooses through them
+const menus = {};
+const createPickerMenu = (host, options) => {
+  const trigger = document.createElement('button');
+  trigger.dataset.pickerMenu = options.id;
+  host.append(trigger);
+  const menu = { options, trigger, value: options.value, setItems() {}, setValue(id) { menu.value = id; },
+    setDisabled(disabled) { trigger.disabled = disabled; }, open() {}, close() {}, dispose() {},
+    choose(id) { menu.value = id; options.onChoose(options.items.find((item) => item.id === id) ?? { id, name: id }); } };
+  menus[options.id] = menu;
+  return menu;
+};
+const context = { document, window, Event, createPickerMenu, pickerText, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
   sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
@@ -175,10 +188,11 @@ assert.equal(fleetCards().length, 0);
 assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
 search.value = ''; search.fire('input');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013']);
-const featuredTank = byData('productionTank');
-featuredTank.value = 'leo2a4'; featuredTank.fire('change');
+const featuredTank = menus['studio-featured-tank'];
+assert.equal(featuredTank.options.items[0].id, 'default', "the Director's default leads");
+featuredTank.choose('leo2a4');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a4'], 'the Director\'s featured tank comes first');
-featuredTank.value = ''; featuredTank.fire('change');
+featuredTank.choose('default');
 stored.clear(); search.fire('input');
 assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
 assert.equal(fleetStatus(), '', 'and no helper line: the placeholder says what to type');
@@ -212,7 +226,7 @@ assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'f
 assert.equal(frame.attributes['aria-checked'], 'true', 'the chosen frame is the checked radio');
 assert.deepEqual(all().filter((element) => element.dataset.productionFormat).map((element) => element.dataset.productionFormat),
   ['landscape', 'portrait', 'square', 'card'], 'the frames include the 1.91:1 card');
-byData('productionTank').value = 'm1a1_abrams_hc';
+featuredTank.choose('m1a1_abrams_hc');
 const stage = byData('productionStage'); stage.fire('click'); stage.fire('click');
 assert.equal(calls.filter(call => call[0] === 'stage').length, 1, 'one scene transaction despite repeated clicks');
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'stage')[1]), JSON.stringify({ presetId: 'two', format: 'portrait', vehicleId: 'm1a1_abrams_hc' }));

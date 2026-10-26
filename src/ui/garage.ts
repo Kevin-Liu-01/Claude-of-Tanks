@@ -37,6 +37,7 @@ import {
 import type { EquipmentItem, EquipmentLock } from '../game/equipment.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
+import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
@@ -1217,13 +1218,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<span class="v${theirs ? ' cmp' : ''}"><b class="num">${value.toFixed(digits)}</b>${unit || theirs ? `<small>${unit}</small>` : ''}${delta}</span>` +
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
-    const peers = rival ? rivalPeers(spec) : [];
-    const picker = `<div class="cot-compare">` + (rival
-      ? `<label class="cot-rival">${flagIconHTML(rival.nation, 22, 16)}` +
-        `<select data-rival aria-label="${t('garage.rival.aria')}">${peers.map((other) =>
-          `<option value="${other.id}"${other.id === rival.id ? ' selected' : ''}>${escapeHtmlAttribute(other.label?.displayName || other.name)}</option>`).join('')}` +
-        `</select>${uiIconSVG('chevronDown', 14)}</label>`
-      : '') +
+    // the rival is the kit's picker menu (mountRivalMenu, after the readout is drawn): a raw select in the census
+    const picker = `<div class="cot-compare">` + (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
       `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="${compareOn}">` +
       `<span class="cot-c-chip__label">${t('garage.compare')}</span></button></div>`;
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
@@ -1251,14 +1247,32 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the chip keeps the focus through the rebuild
     statsEl.querySelector<HTMLElement>('[data-compare]')?.focus({ preventScroll: true });
   });
-  statsEl.addEventListener('change', (event) => {
-    const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
-    if (!select) return;
-    rivalChoice = select.value;
-    emit('ui:click', {});
-    const spec = specById.get(selectedId);
-    if (spec) renderStats(spec);
-  });
+  // the compare rival: the kit's picker menu over the selected tank's peers (its class), each with its nation and tier, a
+  // chip per nation, search, favourites and recents (memory 'rival', shared with the Gallery's versus)
+  let rivalMenu: PickerMenu | null = null;
+  function mountRivalMenu(spec: GarageTankSpec): void {
+    rivalMenu?.dispose();
+    rivalMenu = null;
+    const host = statsEl.querySelector<HTMLElement>('[data-rival-menu]');
+    const rival = host && compareOn ? rivalFor(spec) : null;
+    if (!host || !rival) return;
+    const peers = rivalPeers(spec);
+    const nations = [...new Set(peers.map(countryCodeOf))];
+    rivalMenu = createPickerMenu(host, {
+      id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival',
+      items: peers.map((other) => ({ id: other.id, name: other.label?.displayName || other.name,
+        facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
+        media: { poster: iconUrl(other.id, 'side') } })),
+      filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
+      onChoose: (item) => {
+        rivalChoice = item.id;
+        emit('ui:click', {});
+        renderStats(spec);
+        // the readout is drawn again: the new trigger keeps the focus
+        statsEl.querySelector<HTMLElement>('[data-rival-menu] .cot-c-menu__trigger')?.focus({ preventScroll: true });
+      },
+    });
+  }
 
   let selectedId = specs[0]?.id || '';
   let battleMode: BattleMode = 'solo';
@@ -3317,6 +3331,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     loadoutEl.innerHTML = equipmentSlots(eqIds);
     if (dossierFolded()) {
       statsEl.innerHTML = overviewSection(spec, eqM, shells);
+      mountRivalMenu(spec);
       renderLowerThird(spec, crewRows.length);
       dossierStale = true;
       queueReadoutFit(false, vehicleChanged);
@@ -3413,6 +3428,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         guide: ({ Performance: 'performance', 'Special system': 'special', Ammunition: 'ammunition', Protection: 'protection', Armament: 'armament', Modules: 'modules', Crew: 'crew', Equipment: 'equipment' } as const)[label as GarageInfoLabel],
       }));
     });
+    mountRivalMenu(spec);
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
     else queueReadoutFit(false, vehicleChanged);
     requestAnimationFrame(syncScrollFades);
@@ -4430,6 +4446,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!api.isOpen) return;
     const target = eventElement(e);
     if (target?.closest('.cot-modal')) return;
+    // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
+    if (target?.closest('.cot-c-menu__pop')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
     // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here
     if (target?.closest('[data-deploy-field-pop], [data-deploy-modes]') && e.code !== 'Escape') return;

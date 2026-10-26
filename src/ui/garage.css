@@ -8,7 +8,7 @@
 /* the kit's pickers and the sheet's action buttons keep their own padding (the components layer's): this reset sits in the
    surfaces layer and took it (the r18 critic: search text, chip labels and button words flush against their edges). At
    the reset's own weight, so a Garage rule that sizes them still wins */
-.cot-garage :where(.cot-c-picker,.cot-c-picker *,.cot-drawer-actions .cot-c-btn){padding:revert-layer;}
+.cot-garage :where(.cot-c-picker,.cot-c-picker *,.cot-drawer-actions .cot-c-btn,.cot-c-menu__trigger){padding:revert-layer;}
 .cot-garage .band-top{position:absolute;left:0;right:0;top:0;height:26%;
   background:linear-gradient(180deg,var(--side-plate) 0%,var(--scrim) 55%,transparent 100%);}
 .cot-garage .band-bot{position:absolute;left:0;right:0;bottom:0;height:36%;

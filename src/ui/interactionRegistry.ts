@@ -95,7 +95,7 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
   'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
-  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
+  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
@@ -168,16 +168,16 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
   // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
   'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
-  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:tanks'], lane: 'premiere-gallery-studio' },
+  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'picker', marks: ['picker:studio-featured-tank'], lane: 'premiere-gallery-studio' },
   'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
   'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the Tank Gallery (premiere-gallery-studio)
   'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], lane: 'premiere-gallery-studio' },
   'gallery-facets': { chooses: 'filter', options: 23, screen: 'gallery', owner: 'src/gallery/galleryFacets.ts', build: 'bespoke', marks: ['bespoke:selected===code', 'bespoke:selected===id', `${GALLERY} bespoke:browse.era`, `${GALLERY} bespoke:browse.role`], lane: 'premiere-gallery-studio' },
-  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#gallerySort'], lane: 'premiere-gallery-studio' },
+  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-sort'], lane: 'premiere-gallery-studio' },
   'gallery-layout': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.layout-switch', `${GALLERY} bespoke:dataset.value`], lane: 'premiere-gallery-studio' },
-  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#rivalSelect'], lane: 'premiere-gallery-studio' },
+  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-rival'], lane: 'premiere-gallery-studio' },
   'gallery-peer-scale': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.peer-switch'], lane: 'premiere-gallery-studio' },
   'gallery-drawing': { chooses: 'view', options: 3, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#diagramSwitch', `${GALLERY} bespoke:view===diagram`], lane: 'premiere-gallery-studio' },
   'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-gallery-studio' },

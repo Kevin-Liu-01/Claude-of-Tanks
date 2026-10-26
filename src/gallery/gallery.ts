@@ -39,6 +39,8 @@ import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
@@ -905,11 +907,25 @@ function applyFilters(): void {
   filteredRecords = sortRecords(list);
   renderRoster();
 }
+// the sort is the kit's picker menu (pickerMenu.ts): a raw select in the census, its twenty keys now named with their glyphs
+let sortMenu: PickerMenu | null = null;
+function sortGlyph(key: SortKey): IconId | undefined {
+  const rating = RATINGS.find(([ratingKey]) => ratingKey === key);
+  return (rating?.[2] ?? statByKey.get(key)?.icon) as IconId | undefined;
+}
 function populateSort(): void {
-  const select = $<HTMLSelectElement>('#gallerySort');
-  select.replaceChildren(...SORTS.map((key) => new Option(sortLabel(key), key, false, key === browse.sort)));
-  select.setAttribute('aria-label', t('gallery.sort.aria'));
+  const items = SORTS.map((key) => { const glyph = sortGlyph(key); return { id: key, name: sortLabel(key), ...(glyph ? { glyph } : {}) }; });
+  if (sortMenu) sortMenu.setItems(items, browse.sort);
+  else sortMenu = createPickerMenu($<HTMLElement>('#gallerySort'), { id: 'gallery-sort', label: t('gallery.sort.aria'), items,
+    value: browse.sort, layout: 'list', text: pickerText(), onChoose: (item) => chooseSort(item.id as SortKey) });
   syncSortDirection();
+}
+function chooseSort(key: SortKey): void {
+  browse.sort = key;
+  browse.descending = !(browse.sort === 'name' || browse.sort === 'nation' || statByKey.get(browse.sort)?.better === -1);
+  syncSortDirection();
+  writePrefs();
+  applyFilters();
 }
 function syncSortDirection(): void {
   const button = $('#sortDirection');
@@ -1154,19 +1170,20 @@ function defaultRival(record: GalleryRecord): string | null {
   const candidates = records.filter((other) => other.id !== record.id && flagIconCode(other.nation) !== own);
   return candidates.sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))[0]?.id ?? null;
 }
-const rivalSelect = $<HTMLSelectElement>('#rivalSelect');
+// the rival is the kit's picker menu (pickerMenu.ts): the fleet by nation, each with its tier and nation, a chip per
+// nation, search, favourites and recents (a raw select of about 220 in the census)
+let rivalMenu: PickerMenu | null = null;
 function populateRivals(): void {
-  const byNation = new Map<string, GalleryRecord[]>();
-  for (const record of [...records].sort((a, b) => a.displayName.localeCompare(b.displayName, getLocale()))) {
-    const code = flagIconCode(record.nation);
-    byNation.set(code, [...(byNation.get(code) ?? []), record]);
-  }
-  rivalSelect.replaceChildren(...flagCodes.map((code) => {
-    const group = document.createElement('optgroup');
-    group.label = flagLabel(code);
-    group.append(...(byNation.get(code) ?? []).map((record) => new Option(record.displayName, record.id)));
-    return group;
+  const order = new Map(flagCodes.map((code, index) => [code, index]));
+  const items = [...records].sort((a, b) => (order.get(flagIconCode(a.nation)) ?? 99) - (order.get(flagIconCode(b.nation)) ?? 99)
+    || a.displayName.localeCompare(b.displayName, getLocale())).map((record) => ({
+    id: record.id, name: record.displayName, facts: [t('gallery.tier', { tier: record.tierNumeral }), nationName(record.nation)],
+    tags: [flagIconCode(record.nation)], media: { poster: iconUrl(record.id, 'side') },
   }));
+  if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
+  rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
+    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival',
+    filters: flagCodes.map((code) => ({ id: code, label: flagLabel(code) })), onChoose: (item) => setRival(item.id, true) });
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
@@ -1178,7 +1195,7 @@ function renderVersus(record: GalleryRecord): void {
   // the selection's side is its silhouette alone: its name and flag are the dossier's head (UI-LOCKDOWN G7, G8)
   $('#versusOwn').innerHTML = silhouette(record.id, 'left');
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
-  rivalSelect.value = rival.id;
+  rivalMenu?.setValue(rival.id);
   $('#versusRival').innerHTML = versusSide(rival);
   // every number carries its unit (247 round 2): penetration in mm, reload in seconds, top speed in km/h (hit points are
   // the dossier's facts, UI-LOCKDOWN G9)
@@ -1500,13 +1517,6 @@ function stepVehicle(step: number): void {
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#archiveFilters').addEventListener('submit', (event) => event.preventDefault());
 for (const id of ['#nationFacets', '#classFacets', '#eraFacets', '#roleFacets', '#extraFacets']) $(id).addEventListener('click', onFacet);
-$<HTMLSelectElement>('#gallerySort').addEventListener('change', (event) => {
-  browse.sort = (event.target as HTMLSelectElement).value;
-  browse.descending = !(browse.sort === 'name' || browse.sort === 'nation' || statByKey.get(browse.sort)?.better === -1);
-  syncSortDirection();
-  writePrefs();
-  applyFilters();
-});
 $('#sortDirection').addEventListener('click', () => {
   browse.descending = !browse.descending;
   syncSortDirection();
@@ -1552,7 +1562,6 @@ vehicleList.addEventListener('keydown', (event) => {
   rows[to].focus({ preventScroll: true });
   revealRow(rows[to]);
 });
-rivalSelect.addEventListener('change', () => setRival(rivalSelect.value, true));
 // A row under the pointer fetches its vehicle's builder chunks, so the click only builds (nav-perf-240).
 const warmedBuilders = new Set<string>();
 vehicleList.addEventListener('pointerover', (event) => {

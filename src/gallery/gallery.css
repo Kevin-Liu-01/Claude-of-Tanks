@@ -10,6 +10,7 @@
 @import url('../ui/tokens/surface-gallery.css');
 @import url('../ui/components/figures.css');
 @import url('../ui/components/notices.css');
+@import url('../ui/components/pickers.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{button,input,select,textarea{font:inherit;color:inherit}}
@@ -77,11 +78,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 @media (prefers-reduced-motion:reduce){.more-facets summary .cot-i{transition:none}}
 .order{display:flex;align-items:center;gap:var(--s1)}
 .order__sort{position:relative;flex:1;min-width:0}
-.order__sort select,.vsc__pick select{width:100%;height:32px;padding:0 var(--s5) 0 var(--s3);appearance:none;-webkit-appearance:none;border:0;
-  border-radius:var(--control-radius);background:transparent;box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.order__sort::after,.vsc__pick::after{content:'';position:absolute;right:10px;top:50%;width:6px;height:6px;margin-top:-5px;
-  border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(45deg);pointer-events:none}
-.order__sort option,.vsc__pick option{background:var(--surface-menu);color:var(--ink-1)}
+/* the sort and the rival are the kit's picker menus (pickerMenu.ts, the interaction census: raw selects), at the toolbar's
+   height */
+.order__sort .cot-c-menu__trigger{min-height:32px;padding-block:0}
 /* the sort direction is the sort menu's kind of control (one ring, no filled box beside it) */
 .order__dir{--h:32px;background:transparent;box-shadow:var(--ring-2);color:var(--ink-2)}
 #sortDirection[aria-pressed=false] .cot-i{transform:rotate(180deg)}
@@ -161,7 +160,6 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .flags button[aria-pressed=true]:hover{box-shadow:var(--ring-accent)}
   .fam .it:hover{background:var(--surface-hover);color:var(--ink-1)}
   .fam .it[aria-selected=true]:hover{background:var(--accent-wash)}
-  .order__sort select:hover,.vsc__pick select:hover{box-shadow:var(--ring-3)}
 }
 .stage{--inset-w:150px}
 .inset{left:16px;bottom:16px;width:150px;margin:0;padding:var(--s2)}
@@ -453,7 +451,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   :root body .take-actions a,:root body .take-media .fleet-take-toggle{width:44px;height:44px}
   :root body .take-media .fleet-take-toggle{right:calc(12px + 52px)}
   .fam .it{min-height:44px}
-  .order__dir,.order__sort select{min-height:40px;min-width:40px}
+  .order__dir,.order__sort .cot-c-menu__trigger{min-height:40px;min-width:40px}
   /* the camera rail and the layer dock at a finger's size (the landscape phone's were 30 to 34 px); eight cameras still fit
      the short stage's height */
   .views button{height:36px;min-width:36px}

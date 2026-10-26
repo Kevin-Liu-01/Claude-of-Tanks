@@ -5,6 +5,8 @@ import type { StudioPanelApi } from './studioPanel.ts';
 import type { NoticeSeverity } from './components/notice.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { wireRovingKeys } from './components/components.ts';
+import { createPickerMenu } from './components/pickerMenu.ts';
+import { pickerText } from './pickerText.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
@@ -201,16 +203,30 @@ export function mountStudioProductionPanel(
   const frame = segments(productionLabel('format'), 'productionFormat',
     (['landscape', 'portrait', 'square', 'card'] as const).map((value) => [value, productionLabel(value)] as const), format,
     (next) => { setFormat(next); S.setProductionFormat(format); });
-  const tankLabel = node('label', '', productionLabel('subject'));
-  const tanks = node('select');
-  tanks.dataset.productionTank = '';
-  const defaultOption = node('option', '', productionLabel('defaultTank')); defaultOption.value = ''; tanks.append(defaultOption);
-  for (const id of S.TANK_IDS) { const option = node('option', '', S.getSpecInfo(id).name); option.value = id; tanks.append(option); }
-  frameLabel.append(frame.group); tankLabel.append(tanks); fields.append(frameLabel, tankLabel);
+  // the featured tank is the kit's picker menu (pickerMenu.ts): the fleet by name with its nation, search and recents (a raw
+  // select of about 220 in the census), the Director's default first
+  const FEATURED_DEFAULT = 'default';
+  let featured: string = FEATURED_DEFAULT;
+  const featuredTank = (): string => (featured === FEATURED_DEFAULT ? '' : featured);
+  const tankLabel = node('div', 'production-choice', productionLabel('subject'));
+  const tankHost = node('div', 'production-tank');
+  const tanks = createPickerMenu(tankHost, {
+    id: 'studio-featured-tank', label: productionLabel('subject'), value: FEATURED_DEFAULT, layout: 'list', text: pickerText(),
+    memory: 'studio-tank',
+    items: [{ id: FEATURED_DEFAULT, name: productionLabel('defaultTank') }, ...S.TANK_IDS.map((id) => {
+      const info = S.getSpecInfo(id);
+      return { id, name: info.name, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
+    })],
+    onChoose: (item) => {
+      featured = item.id;
+      if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes();
+    },
+  });
+  frameLabel.append(frame.group); tankLabel.append(tankHost); fields.append(frameLabel, tankLabel);
   const stage = button(productionLabel('stage'), () => {
     if (staging || S.recordingStatus().active) return;
     staging = true; refresh(); say(productionLabel('staging'));
-    S.directProduction({ presetId: selectedId, format, ...(tanks.value ? { vehicleId: tanks.value } : {}) })
+    S.directProduction({ presetId: selectedId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
       .then(() => { say(productionLabel('ready')); refreshAll(); })
       .catch(failure)
       .finally(() => { staging = false; refresh(); });
@@ -329,7 +345,7 @@ export function mountStudioProductionPanel(
   function renderFleetTakes(): void {
     const typed = fleetSearch.value.trim();
     const query = typed.toLocaleLowerCase();
-    const tank = tanks.value || garageTank();
+    const tank = featuredTank() || garageTank();
     const matches = query
       ? fleetTakes.filter((take) => fleetText.get(take.id)?.includes(query))
       : fleetTakes.filter((take) => take.vehicle === tank);
@@ -342,7 +358,6 @@ export function mountStudioProductionPanel(
     refresh();
   }
   fleetSearch.addEventListener('input', renderFleetTakes);
-  tanks.addEventListener('change', () => { if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes(); });
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
     if (!path || loadingTake || staging || S.recordingStatus().active) return;
@@ -491,7 +506,8 @@ export function mountStudioProductionPanel(
     const recording = S.recordingStatus();
     const locked = staging || recording.active;
     toggle.disabled = recording.active;
-    for (const element of [stage, tanks, play, restart, scrub, photo]) element.disabled = locked;
+    for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
+    tanks.setDisabled(locked);
     frame.lock(locked);
     lens.lock(locked);
     for (const element of cards.values()) element.disabled = locked;
