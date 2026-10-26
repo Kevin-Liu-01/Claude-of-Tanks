@@ -293,7 +293,7 @@ const CSS = `
 body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:minmax(0,1fr)}
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
-.cot-play .arrange-sides{margin-bottom:var(--s2)}
+.cot-play .arrange-sides{margin-bottom:var(--s3)}
 .cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
@@ -340,12 +340,12 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .field{display:grid;gap:var(--s2)}
 
 /* fields and the menu select */
-.cot-play :is(input,select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
+.cot-play :is(input:not(.cot-c-picker__search),select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
-.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,
+.cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
 .cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}
@@ -386,6 +386,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
   padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .vehicle-pick[hidden]{display:none}
+/* the open vehicle picker would fill a stuck foot and leave the room a strip: the foot scrolls with the room instead,
+   the picker brought under the head (Rooms r30) */
+.cot-play .lobby.show .controls:has(>.vehicle-pick:not([hidden])){position:static}
 .cot-play .vehicle-pick{container-type:inline-size}
 .cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 @container (width < 420px){.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
@@ -726,7 +729,8 @@ export function createPlayMenu({
    *  Frontline Assault's first fact is the campaign push. */
   const modeCards = (arrangementOf: (id: GameModeId) => TeamArrangement | null = (id) => readTeamArrangement(id)): ModeCard[] =>
     BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id]).sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) => {
-      const rules = ruleLines(rule.id, arrangementOf(rule.id));
+      // every rule line starts with a capital, wherever it stands ("Unlimited rounds · Respawn in 6 s"); zh has no case
+      const rules = ruleLines(rule.id, arrangementOf(rule.id)).map((line) => line.charAt(0).toLocaleUpperCase(getLocale()) + line.slice(1));
       return { id: rule.id, name: t(`playMenu.matchMode.${rule.id}.label`), glyph: rule.icon as IconId, tone: rule.id,
         facts: rule.id === 'frontline_assault' ? [frontlineProgressLabel(), ...rules.slice(0, 1)] : rules.slice(0, 2),
         description: t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id)), rules };

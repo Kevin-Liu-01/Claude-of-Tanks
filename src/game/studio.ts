@@ -208,6 +208,9 @@ interface StudioFxRuntime {
   cinematicPort(): FxCinematicPort;
   /** (fx 8n) The battle's smoke presentation on the Studio's clock (effects.ts setAuxiliaryClock); resetAll clears it. */
   setAuxiliaryClock?(clock: (() => number) | null): boolean;
+  /** (battle-spikes-253) Patch the world's structure materials with the damage mask now (effects.ts attachWorld), so the
+   *  first view's programs are the patched ones. */
+  prepareWorldMaterials?(): void;
 }
 
 interface StudioLightingRuntime {
@@ -248,6 +251,9 @@ interface StudioContext {
   restoreStudioAtmosphere?(): void;
   /** The renderer's forward program warm (main.ts): the first view's programs are prepared with it (prepareFirstViewPrograms). */
   programWarm?: Pick<ForwardProgramWarmOwner, 'prepareSceneSteps'>;
+  /** (2026-10-26) The first view's shadow casters drawn into the cascades a batch at a time under the entry's cover
+   *  (main.ts → deploymentShadowWarm.prime), so their depth programs link before the first frame. */
+  prepareFirstViewShadows?(): Promise<unknown>;
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
@@ -5585,16 +5591,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * world's forward renderables inside the placed camera's frustum (or never culled), on the gameplay targets, as the
    * Garage mode preview's are. A first entry's first frame waited 613 ms on links inside one task; preparing the whole map
    * instead queued hundreds of compiles ahead of that frame (a 14.2 s task, reverted in fe9035e418). A preparation that
-   * cannot finish leaves its links to that frame, as before.
+   * cannot finish leaves its links to that frame, as before. (2026-10-26) The scene's, not only the world group's: the
+   * map's air, rebuilt at each entry, hangs off the scene and linked inside the first frame (MapAmbience.fluff, 1.7 s on
+   * a second entry); a program already linked costs the preparation nothing.
    */
   async function prepareFirstViewPrograms(current: () => boolean): Promise<void> {
-    const root = getWorld()?.group;
-    if (!ctx.programWarm || !root || !current()) return;
+    if (!ctx.programWarm || !getWorld()?.group || !current()) return;
     camera.updateMatrixWorld();
     _firstViewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     _firstViewFrustum.setFromProjectionMatrix(_firstViewMatrix);
     const objects: THREE.Object3D[] = [];
-    root.traverseVisible((object) => {
+    scene.traverseVisible((object) => {
       const drawn = object as THREE.Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean };
       if (!drawn.isMesh && !drawn.isPoints && !drawn.isLine) return;
       if (!object.frustumCulled || _firstViewFrustum.intersectsObject(object)) objects.push(object);
@@ -5728,8 +5735,22 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       cam.orbit.target.copy(_v2);
       cam.orbit.dist = 24;
       lighting.updateFrustums();
+      // (2026-10-26) the structure mask re-keys every structure material when the fx first meets the world: before this
+      // warm, or the first frame linked the patched variants (16 lit programs of a cold entry's 29)
+      try { fx.prepareWorldMaterials?.(); } catch { /* the first fx update patches them as before */ }
       // the programs the first view draws, linked before it
       await prepareFirstViewPrograms(owns);
+      stillOwned();
+      // and its casters' depth programs (12 of a cold entry's first-frame links once the world's materials were patched
+      // first: 0.62 s of its first frame under load)
+      try { await ctx.prepareFirstViewShadows?.(); } catch { /* the first frame links them as before */ }
+      stillOwned();
+      // and the post chain's own, a pass at a time (LateFxPass.Copy: the one link left in a cold entry's first frame,
+      // 0.38 s); a pass whose programs are linked goes on in the same frame
+      try {
+        const budget = createFrameBudgetYielder(8);
+        await post.warmFirstFrame(() => budget(false));
+      } catch { /* the first frame links them as before */ }
       stillOwned();
       // Direct-route boot has not started the shared rAF yet. Produce one
       // complete real Studio frame behind the boot veil so readiness means a

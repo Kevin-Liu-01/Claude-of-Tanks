@@ -21,7 +21,8 @@ import {
 // layer and turret+gun layer separately), replacing the baked one-piece
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
-import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner } from '../vehicles/fleetFactory.ts';
+import { nextFrame } from '../engine/frameScheduler.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
 import { applyTopMaskCoverage } from './topMaskCoverage.ts';
@@ -1166,6 +1167,37 @@ function cacheMaskResult(id: string, entry: TopDownMaskEntry | null): void {
   }
 }
 
+const MASK_TANK_OPTIONS = { camoSeed: 4000, quality: 'high' } as const;
+
+/**
+ * (2026-10-26, UI-LOCKDOWN E) The mask's own tank, a frame-sized slice at a time, its decoration planned in the decor
+ * worker (stage 2b): the damage panel's last attempt and the callers with no live visual built it in one task (m1a3,
+ * 1.0 s in a room entry's last seconds, 0.24 s of it the decoration). A sliced build that fails builds at once.
+ */
+async function buildMaskTank(id: string): Promise<TankMaskVisual> {
+  let sliceStartedAt = performance.now();
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, maskEngineCtx,
+    { ...MASK_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
+  try {
+    for (;;) {
+      const result = steps.next();
+      if (result.done) {
+        steps = null;
+        return result.value as TankMaskVisual;
+      }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 8) { await nextFrame(); sliceStartedAt = performance.now(); }
+    }
+  } catch (error) {
+    steps = null;
+    console.warn(`[tankThumbs] the sliced mask build failed for ${id}; building at once:`, errorMessage(error));
+    return createTank(id, maskEngineCtx, MASK_TANK_OPTIONS) as TankMaskVisual;
+  } finally {
+    // an abandoned build closes its iterator, which disposes what it had made
+    steps?.return(undefined as never);
+  }
+}
+
 async function buildTopDownMasks(
   spec: TankMaskSpec,
   clonedRoot: THREE.Object3D | null,
@@ -1187,7 +1219,7 @@ async function buildTopDownMasks(
       sourceLifetime?.assertAlive();
       visual = clonedRoot
         ? { root: clonedRoot, dispose() {} }
-        : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' }) as TankMaskVisual;
+        : await buildMaskTank(id);
     } finally { build.endTime = performance.now(); }
     const prepared = await renderMaskEntry(visual, spec, trace, sourceLifetime);
     sourceLifetime?.assertAlive();

@@ -22,6 +22,7 @@ import {
   captureNewProgramUniformSteps,
   ProgramUniformPreparationError,
   snapshotRendererPrograms,
+  warmNewRendererProgramUniforms,
   type ForwardProgramCompileTiming,
   type ForwardProgramWarmOwner,
 } from '../engine/programWarm.ts';
@@ -93,6 +94,8 @@ interface BattleWarmWorld {
   getGrassWorkState?(): {
     disposed: boolean;
     carpet?: { cold: boolean; pending: boolean };
+    /** The tall grass's near cells still to build (map.ts). */
+    swardNearPending?: number;
   };
   heightField?: {
     warmFastTilesAround(points: TerrainWarmPoint[]): Iterable<number>;
@@ -214,7 +217,9 @@ export async function primeOpeningTerrainPresentation({
     requireCurrent();
     const grass = world.getGrassWorkState?.();
     if (grass?.disposed) throw new Error('Opening ground cover world was disposed');
-    if (!grass?.carpet || (!grass.carpet.cold && !grass.carpet.pending)) return;
+    // (battle-spikes-253) and the tall grass's near ring: its cold fill is capped per update (tallGrass.ts
+    // coldUpdateMs), so the sward beside the camera completes here, a bounded update at a time, not after the reveal
+    if (!grass?.carpet || (!grass.carpet.cold && !grass.carpet.pending && !(grass.swardNearPending! > 0))) return;
     if (!yieldForBudget) await nextPaintFrame();
   }
   throw new Error('Opening ground cover did not complete within 900 bounded batches');
@@ -259,6 +264,8 @@ interface WreckWarmOptions {
   camera: Camera;
   compilePrograms(root: Object3D): void;
   warmRender(): void;
+  /** In a revealed battle (a solo room's streamed seats): no fallback probe, whose warm render draws the scene. */
+  live?: boolean;
 }
 
 type WreckWarmMesh = Object3D & {
@@ -502,6 +509,7 @@ export async function warmNetworkWrecks({
   camera,
   compilePrograms,
   warmRender,
+  live = false,
 }: WreckWarmOptions): Promise<void> {
   signal?.throwIfAborted();
   const generation = warmGeneration;
@@ -533,7 +541,7 @@ export async function warmNetworkWrecks({
   }
 
   if (!valid()) return;
-  if (fallbackProbes.size) {
+  if (fallbackProbes.size && !live) {
     warmWreckFallbackProbe({
       candidates: [...fallbackProbes.values()],
       scene,
@@ -545,6 +553,34 @@ export async function warmNetworkWrecks({
   if (!valid()) return;
   await yieldForFrameBudget(true);
   valid();
+}
+
+/**
+ * A solo room's other vehicles, taken in under the cover after the viewer's warms (mp/session/browserComposition.ts
+ * streamSoloRoster): their forward programs compiled and their uniforms warmed in 12 ms slices. A link still running
+ * when its window closes waits at its first draw. Their wreck states follow unawaited, with no scene render (`live`):
+ * the reveal does not wait on them, and a first kill is seconds into the battle.
+ */
+export async function warmStreamedVehicles(options: WreckWarmOptions): Promise<RuntimeValue> {
+  const { signal, renderer, compilePrograms } = options;
+  const roster = [...options.entities];
+  const baseline = snapshotRendererPrograms(renderer);
+  const yieldForBudget = createFrameBudgetYielder(12);
+  for (const entity of roster) {
+    const root = entity.visual?.root;
+    if (root) compilePrograms(root);
+    await yieldForBudget();
+    signal?.throwIfAborted();
+  }
+  let uniforms: RuntimeValue;
+  try {
+    uniforms = await warmNewRendererProgramUniforms(renderer, baseline, yieldForBudget, undefined, { signal });
+  } catch (error) {
+    if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
+    uniforms = { unfinished: error.preparation.reason, pending: error.preparation.pending ?? null };
+  }
+  void warmNetworkWrecks({ ...options, entities: roster, live: true }).catch(() => { /* a wreck warms at its first use */ });
+  return uniforms;
 }
 
 interface BattleFxPort {
@@ -589,6 +625,8 @@ interface StudioFxPort extends BattleFxPort {
   propCrush(position: Vector3, direction: Vector3, heightM: number): void;
   /** A building's first damage's programs (fx/structureStages.ts warm): laid at `position`, cleared by resetAll. */
   warmStructures?(position: Vector3): number;
+  /** (battle-spikes-253) the world's structure materials patched for the collapse mask before the world compiles */
+  prepareWorldMaterials?(): void;
   /** (EF.04) a missile's body, smoke trail and wire in the covered render (call after update()); cleared by resetAll */
   warmProjectilePresentation?(position: Vector3, direction: Vector3): void;
 }
@@ -1288,6 +1326,9 @@ function* warmDestroyedRosterVariantsSteps(
   return undefined;
 }
 
+/** (battle-spikes-253) The slices a cooperative combat warm waits for pending links before its real-scene render. */
+const COOPERATIVE_LINK_SLICES = 150;
+
 function* compileHiddenVariantsSteps(
   context: CombatWarmRuntimeContext,
   detail: Record<string, RuntimeValue> | null = null,
@@ -1394,6 +1435,9 @@ function* compileHiddenVariantsSteps(
     return undefined;
   };
 
+  // (battle-spikes-253) the world's structure materials take the collapse mask's patch before they compile: patched later
+  // (the opening warm's first fx call), they re-key, and the next real render links every masked variant synchronously
+  try { context.fx.prepareWorldMaterials?.(); } catch (_) { /* the opening warm patches them as before */ }
   for (const entity of game.tanks) {
     assertCurrent();
     if (!entity.visual?.root) continue;
@@ -1405,8 +1449,12 @@ function* compileHiddenVariantsSteps(
   if (world?.group) {
     try { yield* compileAll(world.group); } catch (_) { assertCurrent(); /* warm only */ }
     yield;
-    for (const _ of forwardProgramWarm.linkerBreathingSlices(40)) {
-      yield;
+    // (battle-spikes-253) a cooperative warm gives the links the strict preparation left (its compile retried and deferred
+    // under load) frames to finish in before the real-scene render below would link them synchronously (nav-perf's
+    // profiled room at load 31-34: 991 ms of getProgramParameter in that render); it returns once every program is linked.
+    // Each of its slices a real yield (the checkpoint: a budget yielder would run a poll's worth of slices in one task)
+    for (const _ of forwardProgramWarm.linkerBreathingSlices(execution.cooperative ? COOPERATIVE_LINK_SLICES : 40)) {
+      if (execution.cooperative) yield COMBAT_WARM_PROGRAM_CHECKPOINT; else yield;
       assertCurrent();
     }
   }

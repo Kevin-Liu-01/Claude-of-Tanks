@@ -1,5 +1,6 @@
 import { Object3D } from 'three';
 import { nextFrame } from './frameScheduler.ts';
+import { createGpuCatchUpGate, type GpuCatchUpGate } from './gpuCatchUp.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   Camera,
@@ -112,6 +113,8 @@ export interface ForwardProgramCompileTiming {
   /** Synchronous linker rounds, including initial context/extension setup. */
   pollCount?: number;
   yields?: number;
+  /** (battle-spikes-253) Polls that asked nothing: the fence their previous poll left had not signalled (gpuCatchUp.ts). */
+  gpuBehind?: number;
   /** Selected-material cache cohort reflection only; excludes readiness queries and caller waits. */
   uniformMs?: number;
   maxUniformMs?: number;
@@ -205,6 +208,12 @@ interface ProgramWarmLifetime {
   readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
   readonly reflected: WeakMap<LinkedProgram, WebGLProgram>;
   parallelCompile?: ParallelShaderCompileExtension | null;
+  /**
+   * (battle-spikes-253) The context's link-poll gate (gpuCatchUp.ts), shared by every drain on it: a drain after
+   * another finds the last mark already signalled instead of spending its first poll placing one (one per wreck visual
+   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns.
+   */
+  catchUp?: GpuCatchUpGate;
 }
 
 export type ContextProgramRenderer = Pick<ForwardWarmRenderer, 'info' | 'getContext'>;
@@ -845,8 +854,20 @@ function* initializeMaterialProgramSteps(
   for (const field of ['uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformReused'] as const) {
     recordCompileTiming(context.timing, field, 0);
   }
+  // (battle-spikes-253) each round's completion queries wait for the GPU to catch up to the previous round (gpuCatchUp.ts):
+  // a query behind a deep queue blocked a Garage return 1.3 s. A held poll takes no round, and a GPU still behind is
+  // not a stalled cohort; the wall-clock budget still ends the drain.
+  const gate = extension ? (context.lifetime.catchUp ??= createGpuCatchUpGate(context.gl)) : null;
   try {
-    while (budget.takeRound()) {
+    for (;;) {
+      if (gate && entries.some((entry) => !entry.initialized && !entry.failed) && !gate.caughtUp()) {
+        recordCompileTiming(context.timing, 'gpuBehind', 1);
+        if (stallMs) lastProgressAt = diagnosticNow(context.now);
+        yield;
+        if (!context.valid() || budget.expired()) break;
+        continue;
+      }
+      if (!budget.takeRound()) break;
       const pending = yield* initializeMaterialProgramRound(context, entries, extension, budget.expired, slice, newestFirst);
       if (!pending) break;
     }
@@ -1336,10 +1357,14 @@ export function createForwardProgramWarmOwner({
       // Retain identities for this bounded warm job, not mutable array indices.
       const programs = [...captureNewProgramCohort(renderer, new Set()).values()];
       const context = { renderer, gl, valid, now, timing, existingPrograms, lifetime };
+      // (battle-spikes-253) a slice asks only once the GPU has caught up to the previous slice (gpuCatchUp.ts)
+      const gate = lifetime.catchUp ??= createGpuCatchUpGate(gl);
       for (let slice = 0; slice < maxSlices; slice += 1) {
         if (!valid()) return;
-        cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor);
-        if (cursor === programs.length) return;
+        if (gate.caughtUp()) {
+          cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor);
+          if (cursor === programs.length) return;
+        } else recordCompileTiming(timing, 'gpuBehind', 1);
         finishPoll();
         recordCompileTiming(timing, 'yields', 1);
         yield;

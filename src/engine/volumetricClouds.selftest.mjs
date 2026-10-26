@@ -833,6 +833,10 @@ for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMat
   // the shade the lit materials read: the near cascade's column depth as a continuous share, the column's own beam in g
   assert.match(shadersSource, /share = uShadeLaw\.x \* \( 1\.0 - exp\( -od \/ max\( uShadeLaw\.y, 1e-3 \) \) \);\s*beam = exp\( -od \);/);
   assert.match(layerSource, /this\.scene\.userData\.cloudSunMean = this\.sunMean;/, 'the sun mean published for the light model (the skies lane\'s hook)');
+  // (battle-spikes-253) and read back only while a reader asks: each refresh is a synchronous GPU round trip
+  const sunMeanBody = layerSource.slice(layerSource.indexOf('private updateSunMean(): void {'), layerSource.indexOf('beginRgba8Readback(gl, CLOUD_SUN_MEAN_TEXELS'));
+  assert.match(sunMeanBody, /^private updateSunMean\(\): void \{[^]*?if \(this\.framesShown > this\.sunMeanWantedThrough\) return;/, 'no readback while no reader asks');
+  assert.match(layerSource, /watchSunMean\(\): CloudSunMean \{\s*this\.sunMeanWantedThrough = this\.framesShown \+ 2 \* CLOUD_SUN_MEAN_EVERY;\s*return this\.sunMean;/, 'a reader asks through watchSunMean');
 }
 // ---- the parabolic shells: the twin of the trace's band (cl2Band) — a ray under the band rises through its base and
 // leaves through its top, a ray inside leaves through either face, a ray over it dips in through its top

@@ -28,6 +28,7 @@ import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
+import { createGpuCatchUpGate } from './gpuCatchUp.ts';
 
 interface DeviceDiagResult {
   basic: boolean;
@@ -69,6 +70,10 @@ interface SceneBandTiming {
   restoreMs?: number;
   programsBeforeRender?: number;
   programsAfterRender?: number;
+  /** (battle-spikes-253) The programs the probe's render made (12 at most): each one's shader and where its cache key
+   *  parts differ from the nearest program of that shader already made (index:new/old) — what the warm did not compile
+   *  (nav-perf's profiled room entry: the probe render linked 1.4 s of programs synchronously, after the link wait). */
+  newPrograms?: string[];
   /** Programs still linking when the probe began, the wait for them between tasks, and those still linking after it. */
   linkPending?: number;
   linkWaitMs?: number;
@@ -354,6 +359,22 @@ export function applyDiagRescue(
  * poisoned texture mid-session.
  */
 let _envCompLight: THREE.AmbientLight | null = null;
+// (2026-10-26, UI-LOCKDOWN E) The probe's sphere, scene, camera and target live for the session. A sphere made per call
+// released its lit program with its material, so every validation linked that program again inside its task: the sky
+// validates after every bake and every cached re-install, and a second Studio entry's waited 2.9 s on the one link.
+let _envProbe: { scene: THREE.Scene; camera: THREE.PerspectiveCamera; target: THREE.WebGLRenderTarget; buf: Uint8Array } | null = null;
+function envProbe(): NonNullable<typeof _envProbe> {
+  if (_envProbe) return _envProbe;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+  camera.position.set(0, 0, 2.4);
+  scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(1, 24, 16),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.15 }),
+  ));
+  _envProbe = { scene, camera, target: new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true }), buf: new Uint8Array(4) };
+  return _envProbe;
+}
 export function enforceEnvValidity(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -364,32 +385,23 @@ export function enforceEnvValidity(
   // environment must not be mistaken for the poisoned/black mobile texture.
   const scale = Number.isFinite(radianceScale) ? Math.max(.001, Math.min(1, radianceScale)) : 1;
   let lum = -1;
-  let probe = null;
   const prevTarget = renderer.getRenderTarget();
-  const rt = new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true });
+  const probe = envProbe();
   try {
-    probe = new THREE.Scene();
-    probe.environment = scene.environment;
-    probe.environmentIntensity = 1 / scale;
-    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
-    cam.position.set(0, 0, 2.4);
-    const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 24, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.15 }),
-    );
-    probe.add(ball);
-    renderer.setRenderTarget(rt);
+    probe.scene.environment = scene.environment;
+    probe.scene.environmentIntensity = 1 / scale;
+    renderer.setRenderTarget(probe.target);
     renderer.clear();
-    renderer.render(probe, cam);
-    const buf = new Uint8Array(4);
-    renderer.readRenderTargetPixels(rt, 8, 8, 1, 1, buf);
-    lum = buf[0] + buf[1] + buf[2];
+    renderer.render(probe.scene, probe.camera);
+    probe.buf.fill(0);
+    renderer.readRenderTargetPixels(probe.target, 8, 8, 1, 1, probe.buf);
+    lum = probe.buf[0] + probe.buf[1] + probe.buf[2];
   } catch (_) {
     lum = -1; // treat an unreadable probe as invalid — never risk a black scene
   } finally {
-    if (probe) disposeSceneResources(probe);
+    // the probe never holds the scene's environment between validations
+    probe.scene.environment = null;
     renderer.setRenderTarget(prevTarget);
-    rt.dispose();
   }
   const ok = lum > 12 && FORCE !== 'badenv';
   const bag = window.__GL_DIAG;
@@ -444,12 +456,36 @@ function finishSceneProbeTiming(timing?: SceneBandTiming): void {
   if (timing && Number.isFinite(endedAt)) timing.endTime = endedAt;
 }
 
+const programsBeforeProbe = new WeakMap<SceneBandTiming, readonly object[]>();
 function recordSceneProbePrograms(timing: SceneBandTiming | undefined, renderer: THREE.WebGLRenderer,
   field: 'programsBeforeRender' | 'programsAfterRender'): void {
   if (!timing) return;
   try {
-    const count = renderer.info.programs?.length;
+    const programs = (renderer.info.programs ?? []) as unknown as { name?: string; cacheKey?: string }[];
+    const count = programs.length;
     if (count !== undefined && Number.isFinite(count)) timing[field] = count;
+    if (field === 'programsBeforeRender') { programsBeforeProbe.set(timing, programs.slice()); return; }
+    const before = programsBeforeProbe.get(timing);
+    if (!before) return;
+    const known = new Set(before);
+    const made = programs.filter((program) => !known.has(program)).slice(0, 12);
+    if (!made.length) return;
+    timing.newPrograms = made.map((program) => {
+      const parts = String(program.cacheKey ?? '').split(',');
+      let nearest: string[] | null = null, nearestDiff = Infinity;
+      for (const other of before as { name?: string; cacheKey?: string }[]) {
+        if (other.name !== program.name) continue;
+        const otherParts = String(other.cacheKey ?? '').split(',');
+        if (otherParts.length !== parts.length) continue;
+        let diff = 0;
+        for (let i = 0; i < parts.length && diff < nearestDiff; i++) if (parts[i] !== otherParts[i]) diff++;
+        if (diff < nearestDiff) { nearest = otherParts; nearestDiff = diff; }
+      }
+      const differs = nearest
+        ? parts.map((part, i) => (part === nearest![i] ? '' : `${i}:${part.slice(0, 24)}/${nearest![i].slice(0, 24)}`)).filter(Boolean).slice(0, 6).join(' ')
+        : 'no program of that shader before';
+      return `${program.name ?? '?'} ${differs}`;
+    });
   } catch { /* Optional program diagnostics cannot trigger a compatibility fallback. */ }
 }
 
@@ -729,6 +765,24 @@ function sceneProbeCopyPass(): SceneProbeCopyPass {
   scene.add(quad);
   sceneProbeCopy = { scene, camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), source };
   return sceneProbeCopy;
+}
+
+/**
+ * (battle-spikes-253) The probe's readback copy program compiled ahead, against a render target as the probe draws it (an
+ * RGBA8 target: the same key). nav-perf's program log: the MP watchdog's 1.8 s task made this one program and waited on its
+ * link behind the GPU process's queue. Called with the entry's compile; nothing is drawn.
+ */
+export function warmSceneProbePrograms(renderer: THREE.WebGLRenderer): void {
+  const target = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false });
+  const previous = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  try {
+    const pass = sceneProbeCopyPass();
+    renderer.setRenderTarget(target);
+    renderer.compile(pass.scene, pass.camera);
+  } catch { /* the probe compiles it at its draw */ } finally {
+    try { renderer.setRenderTarget(previous, face, mip); } catch { /* restored by the next frame */ }
+    target.dispose();
+  }
 }
 
 function createSceneProbeTargets(width: number, height: number): SceneProbeTargets {
@@ -1118,16 +1172,27 @@ async function awaitProgramLinks(
   receipt.linkPending = pending.length;
   const startedAt = sceneProbeClock();
   const deadline = Number.isFinite(startedAt) ? startedAt + PROBE_LINK_WAIT_MS : Infinity;
+  // (battle-spikes-253) one completion query a poll, the first program still linking: on ANGLE/Metal each query is a
+  // synchronous round trip that waits behind the GPU process's queued links, and asking every pending program in one
+  // poll was one 1.2 s task (nav-perf's profiled room, isReady → getProgramParameter). Linked programs answer from
+  // three's cache, so the cursor passes them without a query.
+  // And a poll asks only once the GPU has caught up to the previous poll (gpuCatchUp.ts): the first query behind a deep
+  // queue was itself the long task (nav-perf's root-r room B: 1.3 s in the watchdog stage).
+  let cursor = 0;
+  const context = renderer.getContext?.();
+  const gate = context ? createGpuCatchUpGate(context) : null;
   try {
-    while (pending.length && sceneProbeClock() < deadline) {
+    while (cursor < pending.length && sceneProbeClock() < deadline) {
       await new Promise<void>((resolve) => { setTimeout(resolve, PROBE_LINK_POLL_MS); });
       assertSceneWatchdogOwner(signal, isCurrent);
       if (renderer.getContext?.()?.isContextLost?.()) break;
-      pending = pending.filter((program) => !program.isReady!());
+      if (gate && !gate.caughtUp()) continue;
+      while (cursor < pending.length && pending[cursor].isReady!()) cursor++;
     }
   } finally {
+    gate?.dispose();
     receipt.linkWaitMs = sceneProbeClock() - startedAt;
-    receipt.linkLeft = pending.length;
+    receipt.linkLeft = pending.length - cursor;
   }
 }
 

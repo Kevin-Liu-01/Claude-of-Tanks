@@ -186,22 +186,45 @@ try {
     assert.deepEqual(h.clock.list, []);
   }
 
+  // (battle-spikes-253) A mask pass's links outlasting its wait under load: attempt 2 clones the live visual again (the
+  // factory build was one 700-1,000 ms task of a whole tank in a loaded room's last seconds) and adopts.
+  {
+    const h = harness();
+    const live = { root: {}, dispose() {} };
+    h.masks.plan(failing(failure('top_mask_program_timeout', 0)));
+    h.panel.setTank(spec, live);
+    await flush();
+    const entry = maskEntry();
+    h.masks.plan((call) => {
+      assert.strictEqual(call.sourceVisual, live, 'attempt 2 borrows the live visual again');
+      queueMicrotask(() => call.onReady(true));
+      return null;
+    });
+    h.masks.plan(cached(entry));
+    h.clock.fire(0);
+    await flush();
+    assert.equal(h.panel.debugState().masksReady, true, 'and the panel ends with the masks');
+  }
+
   // Three hard failures: one warning, one bounded beacon the server accepts.
   {
     const h = harness();
+    const live = { root: {}, dispose() {} };
     h.masks.plan(failing(failure('mask_build_error', 1)));
-    h.panel.setTank(spec, { root: {}, dispose() {} });
+    h.panel.setTank(spec, live);
     await flush();
     h.masks.plan(failing(failure('mask_build_error', 1))); // the hot negative cache answers at once
     h.clock.fire(0);
     await flush();
     assert.deepEqual(h.clock.list.map((timer) => timer.delayMs), [1500, 8000]);
-    assert.equal(h.masks.calls[1].sourceVisual, null);
+    // (battle-spikes-253) a failure that is not the source's disposal retries on the live visual; the last attempt drops it
+    assert.strictEqual(h.masks.calls[1].sourceVisual, live, 'attempt 2 keeps the live visual (its source was not disposed)');
     assert.deepEqual(warnings, [], 'no warning before the last attempt');
     h.masks.plan(failing(failure('mask_build_error', 2)));
     h.clock.fire(1);
     await flush();
     assert.equal(h.masks.calls.length, 3, 'three attempts, then the panel gives up');
+    assert.equal(h.masks.calls[2].sourceVisual, null, 'the last attempt is the factory build');
     assert.equal(h.clock.list.length, 2, 'no fourth attempt is scheduled');
     assert.equal(warnings.length, 1, 'exactly one console warning at the terminal failure');
     assert.match(warnings[0][0], /receipt-tank after 3 attempt\(s\) \(mask_build_error: injected compile failure\)/);

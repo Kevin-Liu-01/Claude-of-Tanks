@@ -539,7 +539,8 @@ beside a thin seam); the trace writes its depth, and the resolve reprojects by i
 variance. The clouds' sun is the light model's colour (`scene.userData.lightModel`) times the air between the ground and
 the cloud, and under a closing deck the ground light the bases see is what the deck passes down (`cloudGroundLight`). The
 near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
-its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model. The dome composite,
+its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model, refreshed only while
+a reader asks for it (`watchSunMean()`: each refresh is a synchronous GPU round trip in Chrome). The dome composite,
 the history the lens flare / sun shafts / horizon panorama read and the sky beyond the medium (rain, fog bank, cirrus,
 contrails, lightning) are unchanged; the far band is gone (the curved shells carry the field to the horizon).
 

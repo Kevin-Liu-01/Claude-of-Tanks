@@ -451,4 +451,43 @@ for (const failure of ['input-copy', 'output-copy']) {
   f.restored();
 }
 
+// (battle-spikes-253) The post warm's switch (warmGated): with no effect live, or no FX state yet, the one-pass warm
+// draws the late pass's active path, so LateFxPass.Copy and the depth copy link under the loading cover (nav-perf's MP
+// program log: the copy linked at a room's first live effect). The diagnostics count only live depth copies, and the
+// next live frame is the ordinary inactive one.
+for (const state of ['inactive', 'none']) {
+  const f = fixture();
+  f.render();
+  if (state === 'none') f.lateFx.setSoftState(null);
+  else f.setActive(false);
+  const enabled = f.composer.passes.map(pass => pass.enabled);
+  const warmOnce = (gated) => {
+    f.events.length = 0;
+    f.composer.renderToScreen = false;
+    // a pass warmed alone reads whatever the chain's read buffer last held, as every other pass the warm draws alone
+    f.lineage.set(f.composer.readBuffer.texture, 'warm-input');
+    for (const pass of f.composer.passes) pass.enabled = pass === f.lateFx;
+    if (gated) f.lateFx.warmGated(true);
+    try { f.composer.render(1 / 60); } finally {
+      if (gated) f.lateFx.warmGated(false);
+      f.composer.passes.forEach((pass, index) => { pass.enabled = enabled[index]; });
+      f.composer.renderToScreen = true;
+    }
+  };
+  warmOnce(false);
+  assert.equal(f.copies().length, 0, `${state}: an inactive late pass draws nothing, so its copy waited for a live effect`);
+  const depthCopies = f.lateFx.softDepthCopies;
+  warmOnce(true);
+  assert.deepEqual(f.copies().map(copy => copy.target === f.lateTarget ? 'input' : 'output'), ['input', 'output'],
+    `${state}: the switch draws both copies`);
+  assert.equal(f.events.filter(event => event.kind === 'depth').length, 1, `${state}: and the depth copy`);
+  assert.equal(f.events.filter(event => event.kind === 'fx').length, 1, `${state}: and the FX layer`);
+  assert.equal(f.lateFx.softDepthCopies, depthCopies, 'a warm is not a live depth copy');
+  f.events.length = 0;
+  f.render();
+  assert.equal(f.copies().length, 0, `${state}: the next live frame is the inactive frame`);
+  assert.equal(f.lateFx.needsSwap, false);
+  f.restored();
+}
+
 console.log('lateFxColorHandoff.selftest: real-pass lineage/copy counts, activity/AO/parity, depth, resize, warm, guards and failure restoration PASS (CPU only)');
