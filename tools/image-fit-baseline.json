@@ -23,10 +23,6 @@
     "src/presentation/mediaArchive.css": [
       ".media-archive-card img"
     ],
-    "src/ui/battleLoad.ts": [
-      "${WIDE} .cot-bl .map img",
-      "${PORTRAIT} .cot-bl .map img"
-    ],
     "src/ui/deploy.css": [
       ".cot-garage .cot-deploy-proving-art",
       ".cot-garage .cot-deploy-camp>img",
@@ -50,9 +46,6 @@
       ".cot-studio .mapBtn .mhero",
       ".cot-studio .production-card img",
       ".st-tl .clip .th"
-    ],
-    "src/ui/watchHud.ts": [
-      ".cot-watch .cot-c-flag"
     ]
   }
 }
