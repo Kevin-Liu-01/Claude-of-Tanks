@@ -634,9 +634,12 @@ function vehicleName(specId: string | null | undefined): string {
  */
 /** A " · " line as its parts: a wrapped line starts with its dot, never ends on one (gauntlet r1: "5 / 21 survived ·" over
  *  "111,300 damage"). */
-/** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them. */
-const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
-  + '.es-stat-secondary,.es-kill-block,.es-rematch';
+/** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them: the stat grid's
+ *  tiles and the medals one by one, so a column too short for the whole grid or strip ends on its last whole row (gauntlet
+ *  r8 and r9: as whole parts they left 568x256's and 320x568's report an empty plate under the cue, and 844x390 a 70 px
+ *  band over the medals). */
+const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid>*,.es-awards>.ak,.es-awards .aw,.es-best,'
+  + '.es-combat-details,.es-blow,.es-stat-secondary,.es-kill-block,.es-rematch';
 const FIT_CUE_H = 18;
 /** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
 const LATIN_NAME = /^[\x20-\x7e]+$/;
@@ -683,7 +686,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const bottom = part.getBoundingClientRect().bottom - top;
       if (bottom <= room - FIT_CUE_H && bottom > fit) fit = bottom;
     }
-    panel.style.setProperty('--es-cue-h', `${Math.floor(Math.max(FIT_CUE_H, room - fit))}px`);
+    // (the band's rule 2 px under the part's foot: on it, it covered the best shot's bottom border at 1280x720, gauntlet r9)
+    panel.style.setProperty('--es-cue-h', `${Math.floor(Math.max(FIT_CUE_H, room - fit - 2))}px`);
     markMore(panel);
   };
   /** Each scrolling column's cue (a chevron at its foot while more lies below), measured now and on every resize. */

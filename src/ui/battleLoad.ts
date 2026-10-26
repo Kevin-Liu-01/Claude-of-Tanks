@@ -172,7 +172,9 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
    scale set them 10 px at 900x700, gauntlet r4) */
 .cot-bl .rules .cot-c-chip{font-size:max(var(--battle-fs-12),var(--fs-13));}
 .cot-bl .rules .cot-c-chip :is(.kicker,.sv,.v){font-size:inherit;}
-.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}
+/* (the mode's glyph in its hue, the other chips' in the ink, as the end report's: amber glyphs here and grey ones there
+   read as two kits, gauntlet r9) */
+.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--ink-3));}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
@@ -306,11 +308,12 @@ ${PORTRAIT_ROWS} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;--bl-row-mi
 /* (its two lines hold 32 px at the least: a long side scrolls before they squeeze, 16 px rows cut them at 320x568) */
 ${PORTRAIT_ROWS} .cot-bl .team:not(.cards) .rows{grid-template-rows:repeat(var(--bl-count),minmax(var(--bl-row-min),var(--bl-row-height)));}
 /* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */
-/* (three chips or more: the mode's on a row of its own, the rules' centred under it; two share one row, gauntlet r7) */
-${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden])))::before{content:'';order:1;flex-basis:100%;height:0;}
-${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))){row-gap:0;}
-${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip{margin-block:4px;}
-${PORTRAIT} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip:not(.mode){order:2;}
+/* (three chips or more: the mode's on a row of its own, the rules' centred under it; two share one row, gauntlet r7; at
+   every portrait height: 320x568 broke them three and one, r9) */
+${PORTRAIT_ROWS} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden])))::before{content:'';order:1;flex-basis:100%;height:0;}
+${PORTRAIT_ROWS} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))){row-gap:0;}
+${PORTRAIT_ROWS} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip{margin-block:4px;}
+${PORTRAIT_ROWS} .cot-bl .rules:has(>:nth-child(3 of .cot-c-chip:not([hidden]))) .cot-c-chip:not(.mode){order:2;}
 ${PORTRAIT_ROWS} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
   column-gap:6px;row-gap:2px;align-content:center;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}

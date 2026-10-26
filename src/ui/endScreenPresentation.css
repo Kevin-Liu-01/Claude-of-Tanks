@@ -326,7 +326,12 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 @media(max-height:450px) and (orientation:landscape){
   /* (the parts on the head's line: the title, the tabs and every part inside the plate start one s3 in, gauntlet r5) */
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding:var(--s2) var(--s3)}
-  body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:var(--s2) var(--s3)}
+  /* (the tiles lead, one row of six, the vehicle's card standing down as from 701 px: at 568x256 the 112 px card filled
+     the report's first view, gauntlet r9) */
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
+  /* (the medals' strip 4 px nearer its tiles: one px over the column, they stood under the cue at 844x390, r9) */
+  body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:var(--s1) var(--s3)}
   /* (smaller medals, so a short landscape holds them whole under its tiles, gauntlet r4) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{width:48px;height:48px;padding:4px}
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw svg{width:40px;height:40px}
@@ -387,3 +392,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 /* (and up to 360 px a row gives its render's room to the callsign and the vehicle: "Commander_L…" and "M1A1 A…" at
    320x568, gauntlet r8) */
 @media(max-width:360px){body[data-cot-width] .cot-es.cot-es--record .es-tr .si{display:none}}
+/* (under 300 px tall the tiles a size down and the grid on the plate's 4 px, so their row stands whole over the cue: the
+   report at 568x256 is 85 px, gauntlet r9) */
+@media(max-height:299px) and (orientation:landscape){
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding-block:var(--s1)}
+  body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:52px;padding-block:3px}
+  body[data-cot-width] .cot-es.cot-es--record :is(.es-tal,.es-tal.hot) .v{font-size:22px}
+}
