@@ -1001,6 +1001,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
+    // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)
+    'tools/motion-lint.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
     // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
