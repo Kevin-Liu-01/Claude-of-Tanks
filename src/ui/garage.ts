@@ -4211,7 +4211,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   /** The plate's rules card for one mode, the chosen one or the one the mode picker previews under the pointer or the
    *  focus: its name, glyph in its hue, sentence and rules. */
   function renderModePlate(mode: GameModeId): void {
-    const meta = battleRuleMeta[mode];
+    // Standard is the solo battle's own (battleModeMeta.solo); every other mode has its rule meta
+    const meta = battleRuleMeta[mode] ?? (mode === 'standard' ? battleModeMeta.solo : null);
     if (!meta) return;
     setupTitle.textContent = meta.label;
     setupIcon.innerHTML = uiIconSVG(meta.icon, 24);
