@@ -244,8 +244,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
-import { normalizeGameMode } from './sim/gameModeCatalog.ts';
+import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createProvingControls } from './game/provingGroundSession.ts';
@@ -1043,11 +1043,11 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it and
-  // prepares the battle's host thread (its world, the player's anatomy, the bots' ground)
-  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
-    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), import('./mp/session/soloHostEntry.ts').then((entry) => entry.prepareSoloHost({
-      specId: garage.getSelected(), mapId: garage.getSelectedMap(), gameMode: 'standard' }))]) : preloadSoloBattleRuntime()),
+  // a free sortie on a local host (soloAuthorityFor) enters through the network composition (mp/session/soloHostEntry.ts):
+  // the intent warms it and prepares the battle's host thread (its world, the player's anatomy, the bots' ground); the
+  // page's own solo stays warm beside it for the battles it keeps
+  preloadSoloBattle: () => (soloAuthorityFor('standard').authority === 'host'
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -2955,11 +2955,79 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 
 /** The last solo entry was a watched battle (Battle Again watches again). */
 let lastEntryWatched = false;
+
+/**
+ * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5, the default from 255): a free sortie in a versus
+ * battle mode plays on a local host, its authority in the browser host's Worker (mp/session/soloHostEntry.ts). The page
+ * keeps its own simulation for the campaign, a watched battle, the practice and co-op modes (rooms host neither), the
+ * mobile tier (it never hosts, MULTIPLAYER-V2 §13.3), a browser without Workers, and `?soloAuthority=page`;
+ * `?soloAuthority=host` forces the host for any free versus sortie (the probes).
+ */
+const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|page)\b/.exec(location.search)?.[1] ?? null;
+function soloAuthorityFor(
+  gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
+): { authority: 'host' | 'page'; reason: string } {
+  const mode = normalizeGameMode(gameMode ?? 'standard');
+  const page = (reason: string) => ({ authority: 'page' as const, reason });
+  if (SOLO_AUTHORITY_PARAM === 'page') return page('opt_out');
+  if (campaign) return page('campaign');
+  if (watch) return page('watch');
+  if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
+  if (typeof Worker !== 'function') return page('no_worker');
+  if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
+  return getDeviceTier() === 'mobile' ? page('mobile') : { authority: 'host', reason: 'default' };
+}
+
+/** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
+function noteSoloAuthority({ authority, reason }: { authority: 'host' | 'page'; reason: string }): void {
+  entryTelemetry.send({ kind: 'solo_authority', code: authority, reason });
+}
+
+let soloHostPrepared = false;
+/** The Battle intent's host thread for a free sortie on a local host (the battlefield selected in the Garage). */
+function prepareSoloHost(): Promise<void> {
+  soloHostPrepared = true;
+  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.prepareSoloHost({
+    specId: garage.getSelected(), mapId: garage.getSelectedMap(), gameMode: 'standard' }));
+}
+/** A battle the page simulates lets the intent's prepared host thread (and its second world) go. */
+function releasePreparedSoloHost(): void {
+  if (!soloHostPrepared) return;
+  soloHostPrepared = false;
+  void import('./mp/session/soloHostEntry.ts').then((entry) => entry.releasePreparedSoloHost()).catch(() => {});
+}
+
+/** A free sortie on a local host; a room that cannot start hands the battle to `page`, the page's own entry. */
+function beginSoloOnHost(specId: string | null | undefined, mapId: string | null | undefined, gameMode: string, page: () => Promise<unknown>) {
+  soloHostPrepared = false;
+  const chosen = specId ?? garage.getSelected();
+  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+    specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+    equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+  }, beginMultiplayerV2Battle, () => {
+    noteSoloAuthority({ authority: 'page', reason: 'fallback' });
+    return page();
+  }));
+}
 function beginBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
+  const authority = soloAuthorityFor(options?.gameMode, { campaign: !!options?.campaignOperationId, watch: options?.watch === true });
+  noteSoloAuthority(authority);
+  if (authority.authority === 'host') {
+    return beginSoloOnHost(specId, mapId, normalizeGameMode(options?.gameMode ?? 'standard'), () => beginPageBattleEntry(specId, mapId, options));
+  }
+  return beginPageBattleEntry(specId, mapId, options);
+}
+
+function beginPageBattleEntry(
+  specId: string,
+  mapId: string | null = null,
+  options: SoloBattleLoadingStartOptions | undefined = undefined,
+) {
+  releasePreparedSoloHost();
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
@@ -2982,15 +3050,24 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
-  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
-  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
-    const chosen = specId ?? garage.getSelected();
-    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
-      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
-    }, beginMultiplayerV2Battle));
+  // a free sortie on a local host by default (soloAuthorityFor)
+  const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
+  noteSoloAuthority(authority);
+  if (authority.authority === 'host') {
+    return beginSoloOnHost(specId, mapId, normalizeGameMode(gameMode),
+      () => beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId }));
   }
+  return beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId });
+}
+
+function beginPageSoloBattle({
+  specId,
+  mapId,
+  randomRoster = true,
+  gameMode = 'standard',
+  campaignOperationId = null,
+}: SoloBattleEntryRequest = {}) {
+  releasePreparedSoloHost();
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3968,8 +4045,12 @@ if (diagnosticsRequested) {
           next.config.minimap, { ...minimapSnapCtx(), requireTextured: true });
         return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
-      beginBattleEntry,
-      beginSoloBattle,
+      // the debug entries keep the page's own simulation (its fast-forward, forced fire and full roster the probes read)
+      // unless ?soloAuthority=host asks for the free sortie's local host
+      beginBattleEntry: (specId: string, mapId: string | null = null, options?: SoloBattleLoadingStartOptions) => (
+        SOLO_AUTHORITY_PARAM === 'host' ? beginBattleEntry(specId, mapId, options) : beginPageBattleEntry(specId, mapId, options)),
+      beginSoloBattle: (request?: SoloBattleEntryRequest) => (
+        SOLO_AUTHORITY_PARAM === 'host' ? beginSoloBattle(request) : beginPageSoloBattle(request)),
       beginNetworkBattle: beginMultiplayerV2Battle,
       enterGarage,
       leaveBattleToGarage,

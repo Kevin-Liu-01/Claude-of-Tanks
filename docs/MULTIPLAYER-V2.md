@@ -2652,8 +2652,24 @@ now read the room size rules (same behaviour).
 
 ### 13.31 A solo battle on a local host (the Rust lane, RUST-ENGINE-DECISION §7 step 5, 2026-10-25)
 
-`?soloAuthority=host` (off by default) plays a free sortie through this stack, so its authority steps in the browser
-host's Worker on the world kernels and the page keeps only the client. The campaign keeps the page's own simulation.
+A free sortie plays through this stack by default from 255 (Main's ruling, 2026-10-26), so its authority steps in the
+browser host's Worker on the world kernels and the page keeps only the client.
+- **Which battles** (`soloAuthorityFor` in main.ts): the Garage's BATTLE button and the Play menu's Solo, in a versus
+  battle mode. The page keeps its own simulation for:
+  - the campaign;
+  - a watched battle;
+  - the practice and co-op modes (rooms host neither);
+  - the mobile tier (it never hosts, §13.3);
+  - a browser without Workers;
+  - `?soloAuthority=page`, the opt-out.
+- **Forcing the host.** `?soloAuthority=host` forces the host for any free versus sortie. The debug entries
+  (`__DEBUG.beginBattleEntry`, `__DEBUG.beginSoloBattle`) keep the page's simulation unless it is set: the probes read the
+  page's fast-forward, forced fire and full roster.
+- **A room that cannot start** hands the battle to the page's own entry, so the Battle button never does nothing.
+- **A page battle releases the host Worker.** A battle that runs in the page lets the Battle hover's prepared host Worker
+  and its world go.
+- **Telemetry.** Each entry's record carries the note `solo:<host|page>:<reason>`, where the reason is one of `default`,
+  `forced`, `opt_out`, `campaign`, `watch`, `mode`, `mobile`, `no_worker` or `fallback`.
 
 - **The room in the page** (`src/mp/room/inPageRoom.ts`) is the same `RoomActor` the Durable Object and the LAN helper run.
   The page's `RoomClient` reaches it through the WebSocket transport's socket factory instead of a network. Frames cross on
