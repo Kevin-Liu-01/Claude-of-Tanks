@@ -74,6 +74,8 @@ export const COMMON_PATHS = Object.freeze({
   'equip-item': { from: 'garage', presses: 2 },
   /** Garage: Deploy, Private, Create room. */
   'start-room': { from: 'garage', presses: 3 },
+  /** A room's lobby (the host): the battlefield trigger, a battlefield on the picker. */
+  'rooms-map': { from: 'rooms', presses: 2 },
 } as const satisfies Readonly<Record<string, { readonly from: Screen; readonly presses: number }>>);
 type CommonPathId = keyof typeof COMMON_PATHS;
 
@@ -134,7 +136,7 @@ export const INTERACTION_SITES = Object.freeze({
   // ---- Rooms (the lead)
   'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], lane: 'lead' },
-  'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead' },
+  'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
   'rooms-battlefield-list': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-map-list'], lane: 'lead' },
   'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },

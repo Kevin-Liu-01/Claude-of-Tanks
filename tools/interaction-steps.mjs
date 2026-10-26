@@ -11,6 +11,7 @@
 //
 // When a redesign removes a press, drop its step here, lower the registry's `presses` and the baseline in the same commit.
 // Selectors are the live markup's; `shown` and `done` are page expressions with click-timeline's `shown(sel)` helper.
+// `setup` presses bring the player to where the path starts (a room's lobby) and are not counted.
 
 /** Garage controls (desktop, docked). */
 const DEPLOY = '[data-nav=deploy], .cot-battle-mode';
@@ -61,6 +62,24 @@ export const STEP_PATHS = Object.freeze([
       { name: 'create', press: '.cot-play [data-action="create"]', shown: `shown('.cot-play .roomhead .code')`, shownTimeoutMs: 30000 },
     ],
     done: `shown('.cot-play .roomhead .code')`,
+    reset: 'room',
+  },
+  {
+    id: 'rooms-map',
+    doc: 'game',
+    // a host in a fresh room (the rooms service or the LAN helper): the start-room presses, uncounted
+    setup: [
+      { press: DEPLOY, shown: DEPLOY_OPEN },
+      { press: '#cot-battle-menu [data-deploy-room="private"]', shown: `shown('.cot-play .panel')` },
+      { press: '.cot-play [data-action="create"]', shown: `shown('.cot-play .roomhead .code')` },
+    ],
+    steps: [
+      { name: 'trigger', press: '.cot-play [data-control="map"] [data-select-trigger]', shown: `shown('.cot-play [data-picker="rooms-battlefield"]')` },
+      // a named battlefield, not Random (the first card)
+      { name: 'battlefield', press: '.cot-play [data-picker="rooms-battlefield"] .cot-c-picker__opt[aria-selected="false"]', index: 1,
+        shown: `!shown('.cot-play .battlefield-pick')` },
+    ],
+    done: `!shown('.cot-play .battlefield-pick') && !!document.querySelector('.cot-play [data-control="map"]')?.dataset.value`,
     reset: 'room',
   },
 ]);
