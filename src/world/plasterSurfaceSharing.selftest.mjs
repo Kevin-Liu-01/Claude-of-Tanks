@@ -49,9 +49,10 @@ function compilePalette(body, makePlaster) {
   // (batch 4: the palette reads a kit's poured concrete, regionalArchitecture?.surfaces.concrete; the receipt's palettes
   // carry no kit, so it is null and makeRegionalConcrete / applyTone are never reached)
   const noKit = () => { throw new Error('the receipt palettes carry no regional kit'); };
-  return new Function('makePlaster', 'regionalArchitecture', 'makeRegionalConcrete', 'applyTone', `${stripTypeScriptTypes(
+  // (integ 254: battle-spikes 0497d5747c paints a kit's render prints ahead, kitRender; no kit here, so it is null)
+  return new Function('makePlaster', 'regionalArchitecture', 'makeRegionalConcrete', 'applyTone', 'kitRender', `${stripTypeScriptTypes(
     `function* palette(noi, aniso, P) { ${body}\nreturn { plaster, plaster2, plaster3 }; }`)}\nreturn palette;`)(
-    makePlaster, null, function* () { noKit(); }, noKit);
+    makePlaster, null, function* () { noKit(); }, noKit, null);
 }
 const generate = compilePalette(productionPalette, productionPainter);
 const control = compilePalette(productionPalette, controlPainter);

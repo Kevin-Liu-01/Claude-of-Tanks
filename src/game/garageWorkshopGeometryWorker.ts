@@ -16,8 +16,6 @@ import { ABRAMS_PROFILES } from '../vehicles/profiles/abrams.ts';
 import { LEOPARD_PROFILES } from '../vehicles/profiles/leopard.ts';
 import { MODERN3_BUILDERS } from '../vehicles/modern3.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
-import { ridingPartsSource, ridingPartsTransfer, ridingPartsWire, type RidingPartsWire } from '../vehicles/ridingPartsWire.ts';
-import { RIDING_PARTS_BY_SPEC, RIDING_PARTS_KEYS } from './ridingPartsManifest.generated.ts';
 
 // This worker owns only the five Garage exhibit families. Importing the
 // browser fleet facade here made Vite copy every playable family into a 5 MB
@@ -104,16 +102,13 @@ export interface GarageWorkshopGeometryWire {
   };
 }
 
-/** The page's riding-parts prebuild (ridingPartsPrebuild.ts): the tanks to serve first, the keys it holds already. */
-export interface RidingPartsRequest { kind: 'riding-parts'; order: readonly string[]; have: readonly string[] }
-
 interface WorkshopWorkerScope {
   onmessage: ((event: MessageEvent<{
     requestId: number;
     specId: string;
     camoSeed: number;
     spec: (typeof TANK_SPECS)[string];
-  } | RidingPartsRequest>) => void) | null;
+  }>) => void) | null;
   postMessage(message: WorkshopWorkerReply, transfer?: Transferable[]): void;
 }
 
@@ -132,9 +127,7 @@ type WorkshopWorkerReply =
   | { ok: true; kind: 'geometries'; requestId: number; geometries: GeometryWire[] }
   | { ok: true; kind: 'nodes'; requestId: number; nodes: FlatNodeWire[] }
   | { ok: true; kind: 'complete'; requestId: number }
-  | { ok: false; requestId: number; message: string }
-  | { ok: true; kind: 'riding-part'; wire: RidingPartsWire }
-  | { ok: true; kind: 'riding-parts-done' };
+  | { ok: false; requestId: number; message: string };
 
 const workerScope = globalThis as typeof globalThis & WorkshopWorkerScope;
 
@@ -374,40 +367,12 @@ async function postWireInBatches(wire: GarageWorkshopGeometryWire): Promise<void
   workerScope.postMessage({ ok: true, kind: 'complete', requestId: wire.requestId });
 }
 
-/** A fitting's assembly needs one material to merge into; the stored riding parts are geometry and keep none of it. */
-const RIDING_MATS = { dark: new THREE.MeshBasicMaterial() };
-
-/**
- * The Garage's riding-parts prebuild (ridingPartsPrebuild.ts, UI-LOCKDOWN E): every riding cradle and riding station
- * option set the manifest names, the given tanks' first, built through its public fitting from its key alone and posted
- * as its stored parts for the page to seed. A key the page already holds is skipped; one this worker cannot build is
- * left to the build that needs it.
- */
-async function buildRidingParts(order: readonly string[], have: readonly string[]): Promise<void> {
-  const done = new Set(have);
-  const keys = [...order.flatMap((id) => (RIDING_PARTS_BY_SPEC[id] ?? []).map((index) => RIDING_PARTS_KEYS[index])), ...RIDING_PARTS_KEYS];
-  const fittings = FITTINGS as unknown as Record<string, ((opts: object) => THREE.Object3D) | undefined>;
-  for (const key of keys) {
-    if (!key || done.has(key)) continue;
-    done.add(key);
-    const source = ridingPartsSource(key);
-    try {
-      if (source) fittings[source.fitting]?.({ ...source.options, mats: RIDING_MATS });
-      const wire = ridingPartsWire(key);
-      if (wire) workerScope.postMessage({ ok: true, kind: 'riding-part', wire }, ridingPartsTransfer(wire));
-    } catch { /* built in-line where it is needed */ }
-    await yieldWorkerQueue();
-  }
-  workerScope.postMessage({ ok: true, kind: 'riding-parts-done' });
-}
-
 workerScope.onmessage = async (event: MessageEvent<{
   requestId: number;
   specId: string;
   camoSeed: number;
   spec: (typeof TANK_SPECS)[string];
-} | RidingPartsRequest>): Promise<void> => {
-  if ('kind' in event.data) { await buildRidingParts(event.data.order, event.data.have); return; }
+}>): Promise<void> => {
   const { requestId, specId, camoSeed, spec } = event.data;
   try {
     TANK_SPECS[specId] ||= spec;

@@ -16,7 +16,7 @@ import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
-import { keycap, wireRovingKeys } from './components/components.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { noticeRegion, notify } from './components/notice.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
@@ -385,6 +385,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // the keys in words: the shipped faces carry no command-key glyph, so a Mac reads Cmd (the type system's coverage rule)
 const ON_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const PALETTE_KEY = ON_MAC ? 'Cmd K' : 'Ctrl K';
+/** The kit's key cap (components.ts keycap: cot-c-kbd, hidden from assistive technology) built as a node: the Studio's
+ *  sinks write no markup from data (studioSceneShare.selftest §10). No Studio key is an arrow, so no sprite glyph. */
+function studioKeycap(key: string): HTMLElement {
+  const cap = document.createElement('kbd');
+  cap.className = 'cot-c-kbd';
+  cap.setAttribute('aria-hidden', 'true');
+  cap.textContent = key;
+  return cap;
+}
 const UNDO_KEY = ON_MAC ? 'Cmd Z' : 'Ctrl Z';
 /** The Studio's shortcuts a focused panel lets through to the runtime. */
 function studioShortcut(e: KeyboardEvent): boolean {
@@ -544,7 +553,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // Commands (09-studio header): the palette over every action, with its shortcut
   const commandsBtn = chipButton(t('studio.ws.commands'), 'search');
   commandsBtn.classList.add('cmd');
-  commandsBtn.insertAdjacentHTML('beforeend', keycap(PALETTE_KEY));
+  commandsBtn.appendChild(studioKeycap(PALETTE_KEY));
   commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
@@ -564,7 +573,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   exportBtn.addEventListener('click', () => startFilmExport());
   // Exit is a chip as its neighbours are (a ghost button set it in unbordered capitals among them)
   const exitBtn = chipButton(t('studio.ws.exit'), 'close');
-  exitBtn.insertAdjacentHTML('beforeend', keycap('F8'));
+  exitBtn.appendChild(studioKeycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
   const queueBtn = chipButton(t('studio.ws.queue'), 'clock');
@@ -1883,7 +1892,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
   // the playhead reads in the frame chip alone (UI-LOCKDOWN G14)
   transport.append(restartBtn, pauseBtn, stepBtn, shuttleBadge);
-  transport.insertAdjacentHTML('beforeend', keycap(t('studio.ws.spaceKey')));
+  transport.appendChild(studioKeycap(t('studio.ws.spaceKey')));
   transport.append(transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));

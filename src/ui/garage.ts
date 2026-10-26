@@ -2294,7 +2294,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
-    // the tooltip shows whole, with its projections: one still loading holds it until they arrive
+    // the tooltip shows whole, with its projections: one still loading holds it until they arrive, then it opens on the
+    // anchor the pointer or focus is still on (the rich tooltip's own hover and focus paths; integ 254 over the kit tip)
     if (spec && !equipmentPreview) {
       void loadEquipmentPreview().then(() => {
         if (anchor.isConnected && anchor.matches(':hover, :focus-visible')) eqTip.show(anchor);

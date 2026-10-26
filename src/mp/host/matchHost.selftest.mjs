@@ -101,6 +101,8 @@ const starting = host.start(config);
 await settle(12);
 await starting;
 assert.equal(host.state, 'live');
+// what the host's authority steps on reaches the page (simKernelsReport.ts): this boot named no kernels
+assert.deepEqual({ ...globalThis.__SIM_KERNELS }, { mode: 'ts', source: 'host', reason: 'off' }, 'the host reports its kernels');
 assert.deepEqual(states, ['booting:boot', 'live:started']);
 assert.equal(reports.length, 2, "the boot reports reached the room: 'loading' as soon as the actor exists, then its phase");
 assert.equal(reports[0].matchId, matchId);

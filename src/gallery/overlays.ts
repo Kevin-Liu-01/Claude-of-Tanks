@@ -3,6 +3,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
 import { t } from '../ui/i18n.ts';
+import { TECHNICAL_LEGENDS } from '../ui/technicalDiagramLegend.ts';
 import {
   addInternalCrewModel,
   addInternalDrivetrainModel,
@@ -602,27 +603,7 @@ export function createInspectionOverlay(
 }
 
 export function inspectionLegend(mode: InspectionMode): Array<readonly [string, string]> {
-  if (mode === 'armor') return [
-    [t('gallery.legend.armor.0'), '#e96959'],
-    [t('gallery.legend.armor.1'), '#f39a45'],
-    [t('gallery.legend.armor.2'), '#f2cf5b'],
-    [t('gallery.legend.armor.3'), '#a8d85d'],
-    [t('gallery.legend.armor.4'), '#50d890'],
-    [t('gallery.legend.armor.era'), '#c18cff'],
-  ];
-  if (mode === 'modules') return [
-    [t('gallery.legend.modules.ammunition'), '#ff4d5f'],
-    [t('gallery.legend.modules.fuel'), '#e76f51'],
-    [t('gallery.legend.modules.engine'), '#f0a23a'],
-    [t('gallery.legend.modules.optics'), '#5ee1d2'],
-    [t('gallery.legend.modules.other'), '#78a9ff'],
-  ];
-  if (mode === 'crew') return [
-    [t('gallery.legend.crew.driver'), '#63d6ff'],
-    [t('gallery.legend.crew.gunner'), '#ffd166'],
-    [t('gallery.legend.crew.commander'), '#b9f18c'],
-    [t('gallery.legend.crew.loader'), '#ff8fab'],
-    [t('gallery.legend.crew.specialist'), '#9eb7ff'],
-  ];
+  // one table with the technical diagrams' DOM legend (src/ui/technicalDiagramLegend.ts)
+  if (mode === 'armor' || mode === 'modules' || mode === 'crew') return TECHNICAL_LEGENDS[mode].map(([key, color]) => [t(key), color] as const);
   return [];
 }

@@ -9,6 +9,7 @@ import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { notice } from './components/notice.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
+import { uiIconSVG } from './uiIcons.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
 // outside this test: only user intent, asynchronous locking and exact export
@@ -67,7 +68,7 @@ const fetch = (url) => {
 const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
 const context = { document, window, Event, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
-  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice };
+  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;

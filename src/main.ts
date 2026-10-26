@@ -128,7 +128,7 @@ import { createGarageCamoTryOn } from './game/garageCamoTryOn.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
-  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
+  createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders, offThreadDecorPlanner,
 } from './vehicles/fleetFactory.ts';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -1054,7 +1054,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  preloadSoloBattle: () => preloadSoloBattleRuntime(),
+  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
+  preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -1073,7 +1075,8 @@ const pedestal = createGaragePedestalRuntime({
   residentLimit: residentLimits.pedestalVisuals,
   anisotropy: engineCtx.anisotropy ?? 4,
   createVisual: (specId, options) => createTank(specId, engineCtx, options),
-  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, options),
+  // stage 2b: the pedestal's stepped builds plan their decoration in the decor worker (it awaits the waits)
+  createVisualSteps: (specId, options) => createTankSteps(specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined }),
   getSpec,
   ensureTankBuilder,
   ensureTankBuilders,
@@ -1797,6 +1800,12 @@ const battleAmbienceTime = () => battleAtmosphere.current?.weather?.timeOfDay ??
 function deferredPanelMasks(specId: string): void {
   console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
 }
+/** (battle-spikes-253) The panel's mask programs start linking when a covered warm starts (tankThumbs warmTopMaskPrograms). */
+function kickPanelMaskPrograms(root: THREE.Object3D | null | undefined): void {
+  if (!root) return;
+  void import('./ui/tankThumbs.ts').then(({ warmTopMaskPrograms }) => { warmTopMaskPrograms(root); })
+    .catch(() => { /* the panel's stage compiles them */ });
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -2233,6 +2242,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    kickPlayerPanel: () => {
+      if (game.player?.aerial?.kind !== 'gunship') kickPanelMaskPrograms(game.player?.visual?.root);
+    },
     preparePlayerPanel: async () => {
       const player = game.player;
       if (player?.aerial?.kind === 'gunship') return;
@@ -2782,6 +2794,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
+          playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
+            kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
+          },
           playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;
@@ -2989,6 +3004,15 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
+  // RUST-ENGINE-DECISION §7 step 5 (off by default): ?soloAuthority=host plays a free sortie on a local host, the
+  // authority in the browser host's Worker (mp/session/soloHostEntry.ts)
+  if (!campaignOperationId && /[?&]soloAuthority=host\b/.test(location.search)) {
+    const chosen = specId ?? garage.getSelected();
+    return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
+      specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
+      equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    }, beginMultiplayerV2Battle));
+  }
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3408,6 +3432,8 @@ const battleFrame = createBattleFrameRuntime({
   network: {
     isActive: networkMatchActive,
     pump: networkPump.pump,
+    // a solo battle on a local host holds its authority as the page's solo simulation holds (soloHostEntry.ts)
+    setHeld: (held: boolean) => { multiplayerV2.current?.setPaused(held); },
   },
   countdown: {
     isWarmPending: () => battleWarmPending,

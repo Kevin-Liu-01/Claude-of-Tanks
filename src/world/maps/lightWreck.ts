@@ -104,6 +104,20 @@ interface LightWreckOptions {
  * FractureSettle throws). Plain triangles: position, normal, uv and colour.
  */
 export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFractureAnatomy, seed: number, opts: LightWreckOptions = {}): THREE.BufferGeometry {
+  const steps = settleLightWreckSteps(intact, anatomy, seed, opts);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * settleLightWreck a body at a time (battle-spikes-253; nav-perf's phone census: fractureSettle 133-192 ms in one task of
+ * the Garage's background world build): the props build yields between the bodies it lays. The same bodies in the same
+ * order from the same stream.
+ */
+export function* settleLightWreckSteps(intact: THREE.BufferGeometry, anatomy: KitFractureAnatomy, seed: number,
+  opts: LightWreckOptions = {}): Generator<void, THREE.BufferGeometry, void> {
   const S = new FractureSettle(intact, anatomy, { cell: 0.08, margin: 3, dust: opts.dust ?? 0.84, ground: opts.ground, restMembers: true });
   const P = anatomy.pieces, idx = P.map((_p, i) => i);
   const rng = stream(seed ^ 0x51ed7);
@@ -163,6 +177,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     snapped.add(i);
   }
   const lengths = (i: number, salt: number): SettleBody[] => (snapped.has(i) ? S.snap(i, lightEdge, undefined, seed ^ Math.imul(i + 1, salt)) : [S.body([i])]);
+  yield;
   // 1. the groundwork stays; the uprights and walls on the lee side stand broken off, staggered (a corner standing)
   for (const i of idx) if (GROUNDWORK.has(P[i].role) && P[i].anchor) S.stay(i, 0.9);
   // (what stands on the ground or on the floor: an upright or a wall whose foot is within 0.6 m of the ground)
@@ -181,6 +196,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
   const isShell = (p: FracturePiece): boolean => p.scoreAxis === 1 && Math.min(...p.h) >= 0.45 && (p.scores?.length ?? 0) > 0;
   const shellTop = Math.min(Infinity, ...P.filter(isShell).filter((p) => p.c[1] - p.h[1] <= 0.8).map((p) => p.c[1] - p.h[1] + 2 * p.h[1] * 0.38));
   for (const i of standing) {
+    yield;
     if (!keep.has(i)) continue;
     const p = P[i], foot = p.c[1] - tall(p) / 2, h = tall(p);
     const frac = raised.length || canvas ? r(0.3, 0.55) : r(0.45, 0.85), wander = r(0.08, 0.22), phase = r(0, 6.28);
@@ -188,11 +204,15 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     S.cut(i, (x, z) => top + Math.sin(x * 9.1 + z * 7.3 + phase) * wander * Math.min(h, top - foot) * 0.3, 0.9);
   }
   // the raised floors down first, tipped off what stands toward the blow
-  for (const i of raised) S.drop(S.body([i]), r(-0.25, 0.25), [blow[0] * r(0.3, 0.9), 0, blow[2] * r(0.3, 0.9)], { ceiling, maxTilt: 1.5 });
+  for (const i of raised) {
+    yield;
+    S.drop(S.body([i]), r(-0.25, 0.25), [blow[0] * r(0.3, 0.9), 0, blow[2] * r(0.3, 0.9)], { ceiling, maxTilt: 1.5 });
+  }
   // the shells (a solid body block, a tent's canvas mass) come down after the raised floors: a grounded one stands broken
   // off at two fifths to a half of its height, its top ragged (what was over it is gone into the heap); a raised one (a
   // house on stilts, a tent's canvas mass) is laid down whole on its flattest side, off the heap
   for (const i of idx) {
+    yield;
     const p = P[i];
     if (S.isLaid(i) || !isShell(p)) continue;
     // (grounded: on the ground or on its plinth)
@@ -210,6 +230,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
   // heap; a timber or sheet wall goes over whole)
   const MASONRY: ReadonlySet<string> = new Set(['brick', 'stone', 'adobe', 'plaster', 'rubble', 'concrete']);
   for (const i of idx) {
+    yield;
     const p = P[i];
     if (S.isLaid(i) || !PANEL.has(p.role) || !MASONRY.has(p.material) || tall(p) < 0.8 || p.c[1] - tall(p) / 2 > 1.4) continue;
     const foot = p.c[1] - tall(p) / 2, top = foot + tall(p) * r(0.32, 0.6), phase = r(0, 6.28);
@@ -217,6 +238,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
   }
   // 2. the rest of the uprights and the walls go over about their feet, outward (the blown side down the blow)
   for (const i of idx) {
+    yield;
     if (S.isLaid(i)) continue;
     const p = P[i];
     if (!(UPRIGHT.has(p.role) || PANEL.has(p.role)) || tall(p) < 0.6) continue;
@@ -240,6 +262,7 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     else S.topple(body, d, r(1.25, 1.55), { ceiling, maxTilt: drape(i, Math.min(0.7, tiltFor(body))) });
   }
   // 3. the roof together: its panels dropped on the heap a little down the blow, its rafters and purlins snapped
+  yield;
   S.together(() => {
     for (const i of idx) {
       if (S.isLaid(i) || !ROOF.has(P[i].role)) continue;
@@ -258,7 +281,9 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
     }
   });
   // 4. the horizontal members snapped where they hung; the small things thrown out of the heap
+  yield;
   for (const i of idx) {
+    yield;
     if (S.isLaid(i)) continue;
     const p = P[i], out = outward(p.c);
     if (MEMBER.has(p.role) || UPRIGHT.has(p.role) || PANEL.has(p.role)) {
@@ -274,5 +299,6 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
       else S.drop(b, r(-0.4, 0.4), [out[0] * r(0, 0.5), 0, out[2] * r(0, 0.5)], { ceiling, maxTilt: tiltFor(b) });
     }
   }
+  yield;
   return S.finish();
 }

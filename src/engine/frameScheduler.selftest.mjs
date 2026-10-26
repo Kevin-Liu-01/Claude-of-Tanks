@@ -7,6 +7,7 @@ import {
   onPaintStall,
   PAINT_WAIT_BUDGET_MS,
 } from './frameScheduler.ts';
+import { createBackgroundYielder } from './backgroundYield.ts';
 
 async function withFrameHost({ animationFrame = true, taskScheduler = false,
   hidden = false, documentAvailable = true, frameError = null } = {}, run) {
@@ -468,5 +469,82 @@ for (const kind of ['task', 'frame']) {
   await yieldWork();
   assert.deepEqual(calls, [kind, kind], 'a failed yield does not pretend its deadline was serviced');
 }
+
+// (battle-spikes-253; nav-perf's phone census) background work behind the live Garage: a slice ends at its budget or
+// when input is pending; a press, seen in the capture phase, holds the next slice until the press's paint (its animation
+// callback and the task after it); the work resumes as a task, never inside the animation callback
+await withFrameHost({}, async ({ frames, timers }) => {
+  const presses = {};
+  const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  globalThis.window = { addEventListener(type, callback, options) { presses[type] = { callback, options }; } };
+  const priorNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let inputWaiting = false;
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { scheduling: { isInputPending: () => inputWaiting } } });
+  try {
+    let clock = 0;
+    const yieldWork = createBackgroundYielder(4, { now: () => clock });
+    assert.equal(presses.pointerdown?.options.capture, true, 'a pointerdown is seen in the capture phase');
+    assert.equal(presses.keydown?.options.capture, true, 'and a keydown');
+    await yieldWork();
+    assert.equal(timers.length + frames.length, 0, 'under its budget with nothing pending a slice goes on');
+    clock = 4;
+    let resumed = false;
+    let pending = yieldWork().then(() => { resumed = true; });
+    await flush();
+    assert.equal(frames.length, 0, 'the work resumes as a task, not in an animation callback');
+    assert.equal(timers.length, 1);
+    timers[0].ran = true; timers[0].callback(); await pending; assert.equal(resumed, true);
+    // a press: the next slice waits for the press's paint
+    presses.pointerdown.callback();
+    resumed = false;
+    pending = yieldWork().then(() => { resumed = true; });
+    await flush();
+    assert.equal(resumed, false, 'a press holds background work');
+    assert.equal(frames.length, 1, 'until its animation callback');
+    frames[0](); await flush();
+    assert.equal(resumed, false, 'and the task after its paint');
+    const paintTask = timers.find((timer) => timer.delay === 0 && !timer.cancelled && !timer.ran);
+    paintTask.ran = true; paintTask.callback(); await flush();
+    const resumeTask = timers.findLast((timer) => timer.delay === 0 && !timer.ran);
+    assert.ok(resumeTask, 'then it resumes as a task');
+    resumeTask.ran = true; resumeTask.callback(); await pending;
+    assert.equal(resumed, true);
+    // input waiting behind the task ends a slice early, inside its budget
+    inputWaiting = true;
+    const before = timers.length;
+    pending = yieldWork();
+    await flush();
+    assert.equal(timers.length, before + 1, 'pending input ends the slice');
+    timers.at(-1).callback(); await pending;
+  } finally {
+    delete globalThis.window;
+    if (priorNavigator) Object.defineProperty(globalThis, 'navigator', priorNavigator); else delete globalThis.navigator;
+  }
+});
+
+// (battle-spikes-253) a background-priority task that never runs (a covered load keeping the thread busy) never stalls
+// the work: it resumes after the bounded wait
+await withFrameHost({}, async ({ timers }) => {
+  const priorScheduler = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+  const posted = [];
+  Object.defineProperty(globalThis, 'scheduler', { configurable: true, writable: true,
+    value: { postTask(_callback, options) { posted.push(options.priority); return new Promise(() => {}); } } });
+  try {
+    let clock = 0;
+    const yieldWork = createBackgroundYielder(4, { now: () => clock });
+    clock = 4;
+    let resumed = false;
+    const pending = yieldWork().then(() => { resumed = true; });
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.deepEqual(posted, ['background'], 'the work asks for a background-priority task');
+    const bound = timers.find((timer) => timer.delay === 50);
+    assert.ok(bound, 'with a bounded wait beside it');
+    assert.equal(resumed, false);
+    bound.callback(); await pending;
+    assert.equal(resumed, true, 'the bound resumes the work when the background task never runs');
+  } finally {
+    if (priorScheduler) Object.defineProperty(globalThis, 'scheduler', priorScheduler); else delete globalThis.scheduler;
+  }
+});
 
 console.log('[frameScheduler] all tests passed');

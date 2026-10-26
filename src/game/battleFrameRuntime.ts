@@ -29,6 +29,11 @@ interface BattleFrameKillcamPort {
 interface BattleFrameNetworkPort {
   isActive(): boolean;
   pump(dtSeconds: number, nowMs: number): void;
+  /**
+   * The battle holds as the page's solo simulation holds — the settings open, the killcam playing — until the battle is
+   * decided: a solo battle on a local host (RUST-ENGINE-DECISION §7 step 5) holds its authority with it. Edges only.
+   */
+  setHeld?(held: boolean): void;
 }
 
 interface BattleFrameCountdownPort {
@@ -114,6 +119,7 @@ export function createBattleFrameRuntime({
 
   let simulationAccumulator = 0;
   let networkBattleOwned = false;
+  let networkHeld = false;
   // The countdown's presentation edges, once a battle: the rollout, whether a running count was seen, the last whole
   // second reported (the count only falls, so 3, 2, 1 are each reported once even across a PREPARING hold).
   let rolledOut = false;
@@ -315,6 +321,11 @@ export function createBattleFrameRuntime({
     const killcamActive = killcam.isActive();
     const livePaused = paused && inBattle && !killcamActive && !game.result;
     const appliedDtSeconds = applyPauseEdge(livePaused, dtSeconds);
+    const held = inBattle && (paused || killcamActive) && !game.result;
+    if (held !== networkHeld) {
+      networkHeld = held;
+      network.setHeld?.(held);
+    }
     pauseInfo.lastDtR = appliedDtSeconds;
     frameStages?.stage(FRAME_STAGE.input);
     pollFrameInput(appliedDtSeconds, inBattle, paused, killcamActive, cameraLocked);

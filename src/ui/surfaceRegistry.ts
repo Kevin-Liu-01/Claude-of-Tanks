@@ -69,12 +69,11 @@ const BOOT = 'index.html';
 export const SURFACE_REGISTRY = Object.freeze({
   link: {
     glyph: DATUM_GLYPHS.link,
-    labels: ['hud.net.link', 'hud.net.local', 'hud.net.ms', 'hud.mission.ping'],
+    labels: ['hud.net.link', 'hud.net.local', 'hud.net.ms'],
     readout: '^\\d+\\s*ms$',
     places: [
       { screen: 'battle', owner: NET, surface: '.cot-mp-status.battle .unit.ping', states: ['mp-host', 'mp-client'] },
       { screen: 'battle', owner: HUD, surface: '.cot-net-unit.ping', states: ['metered'], yields: 'body.cot-mp-battle hides it (the strip owns the link)' },
-      { screen: 'battle', owner: HUD, surface: '.cot-net-link', states: ['mp-mounting'], yields: 'body.cot-mp-battle and .metered hide it' },
     ],
   },
   fps: {
@@ -101,6 +100,16 @@ export const SURFACE_REGISTRY = Object.freeze({
   objective: {
     places: [
       { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv' },
+    ],
+  },
+  // The Frontline's hostiles still standing: a part of its objective, which on the two smallest touch windows (320x568,
+  // 568x256) drops it so DETECTED keeps its row over the sight; the score plate's enemy side carries it there instead,
+  // Horde-style (Main 254; battleHudLayout.css). Touch hides the rosters, so these are its only places.
+  hostiles: {
+    places: [
+      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv .seg', states: ['frontline'],
+        yields: 'the score plate takes it on the smallest touch windows' },
+      { screen: 'battle', owner: HUD, surface: '.cot-top .fh', states: ['frontline-smallest-touch'] },
     ],
   },
   'mode-name': {

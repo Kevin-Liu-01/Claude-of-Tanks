@@ -117,6 +117,7 @@ for (const seed of [1, 7, 42, 2026, 31337]) {
 
 // props.ts: a kind with an anatomy breaks into its settled wreck; a kind that keeps its own broken builder keeps it
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
-assert.match(props, /settleLightWreck\(geoI, anatomy!?, fractureSeed\(seed, kind\)\)/, 'the settled wreck from the intact build and its anatomy');
+// (battle-spikes-253: a body a slice, settleLightWreckSteps)
+assert.match(props, /settleLightWreck(?:Steps)?\(geoI, anatomy!?, fractureSeed\(seed, kind\)\)/, 'the settled wreck from the intact build and its anatomy');
 assert.match(props, /ownBroken/, 'a structure variant\'s or the pillbox\'s own broken builder is never replaced');
 console.log('lightWreck.selftest: anatomy, settled heap (height, plan, cost, ground, determinism) and the props route pass');

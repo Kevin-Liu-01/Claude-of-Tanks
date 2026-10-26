@@ -3132,7 +3132,13 @@ export function tagUnlitVehicleMaterials(engineCtx: ShadowEngineContext | null |
   if (!supportsShadowHook(engineCtx)) return;
   root.traverse((object) => {
     for (const material of ([] as THREE.Material[]).concat((object as THREE.Mesh).material ?? [])) {
-      if (!(material instanceof THREE.MeshBasicMaterial) || material.transparent || UNLIT_VEHICLE_TAGGED.has(material)) continue;
+      // (battle-spikes-253) a material that writes no colour has no pixel to tag: the tanks' shared shadow-proxy material
+      // (tankFactoryCore PROC_SHADOW_MAT, colorWrite false, drawn only into the cascades through its depth material) took
+      // the hook from the first tank built, and the hook made every later tank's proxies inadmissible to their articulated
+      // shadow batch (engine/articulatedShadowBatch.ts: three's own onBeforeCompile only) — three proxy draws a tank a
+      // cascade in every battle instead of one
+      if (!(material instanceof THREE.MeshBasicMaterial) || material.transparent || material.colorWrite === false
+        || UNLIT_VEHICLE_TAGGED.has(material)) continue;
       UNLIT_VEHICLE_TAGGED.add(material);
       const compile = material.onBeforeCompile, programKey = `${material.customProgramCacheKey()}|veh-unlit-tag`;
       material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
