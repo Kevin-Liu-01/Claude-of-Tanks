@@ -32,8 +32,6 @@ const NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X
 const PAD_Y = 12;
 const END_Y = 12;
 const GAP_X = 18;
-/** A tree narrowed by its short rows (CARD_ASPECT) spreads its spare width into the gutters, up to this. */
-const GAP_X_MAX = 72;
 const GAP_Y = 14;
 const SPECIAL_GAP = 24;
 const HEAD_H = 40;
@@ -41,14 +39,20 @@ const MIN_COL = 112;
 /** A stat's narrowest column (at the screen's scale): the glyph, the longest label and the widest number beside it, so
  * the column count follows the screen, not the selected vehicle. */
 const MIN_STAT = 216;
-/** A card is at most this many rows wide: a tall tree's short rows narrow its columns instead of flattening its cards. */
-const CARD_ASPECT = 2;
+/** A card is at most this many rows wide: a tree short of height narrows its columns to keep its cards' shape, and one
+ * still too tall for the board scrolls. */
+const CARD_ASPECT = 2.4;
 /** A card's two 1 px edges, which a name's column has to clear (the selected card's wider edge grows outward). */
 const CARD_EDGES = 2;
-/** Wide screens fill with wider columns (the grid shares the title's and the detail's left edge) up to this. */
-const MAX_COL = 280;
+/** Wide screens fill with wider columns (the grid shares the title's and the detail's left edge) up to this; past it the
+ * gutters take the spare width, so every tree ends on the right gutter. */
+const MAX_COL = 360;
+/** A gutter is at most this share of a column: a tree with spare width grows its columns before its gutters. */
+const GAP_SHARE = 1;
 const MIN_ROW = 60;
+/** A connector's arrowhead, at the screen's scale. */
 const ARROW = 6;
+const arrowSize = (): number => Math.round(ARROW * uiScale() * 10) / 10;
 const WIRE_KINDS = ['base', 'sel'] as const;
 /** Zoom bounds (1 fits the tree to the board's width), and one button or key press's step. */
 const ZOOM_MIN = 0.55;
@@ -81,8 +85,10 @@ interface TechTreeScreen {
 }
 
 interface Geometry {
-  /** The tree's first tier and how many tiers it spans (a tree that opens at II has no empty column I). */
-  readonly first: number;
+  /** The tiers the tree holds, in order, one column each (a tier no vehicle of the tree holds takes no column), and each
+   * tier's column. */
+  readonly tiers: readonly number[];
+  readonly column: ReadonlyMap<number, number>;
   readonly count: number;
   /** The tier row's height, which grows with the screen's type scale. */
   readonly head: number;
@@ -128,12 +134,8 @@ function kitButton(label: string, options: { readonly glyph?: IconId; readonly v
 const nameScale = (col: number): number => Math.min(1.65, Math.max(1, col / 123));
 /** The screen's type scale beside the grid (title, detail, stats, rail): 1 to 1440 px, growing to 1.5 at 2400 px. */
 const uiScale = (): number => Math.min(1.5, Math.max(1, (window.innerWidth || 1440) / 1600));
-/** The tiers a tree spans, first to last. */
-const tierSpan = (tree: NationTree): { readonly first: number; readonly count: number } => {
-  const tiers = tree.nodes.map((node) => node.tier);
-  const first = Math.min(...tiers);
-  return { first, count: Math.max(...tiers) - first + 1 };
-};
+/** The tiers a tree holds, lowest first: the columns it draws. */
+const tierColumns = (tree: NationTree): number[] => [...new Set(tree.nodes.map((node) => node.tier))].sort((a, b) => a - b);
 
 export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   ensureFonts();
@@ -215,11 +217,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   const selectButton = root.querySelector<HTMLButtonElement>('.tt-select')!;
   const zoomButtons = root.querySelectorAll<HTMLButtonElement>('[data-zoom]');
 
-  /** The open tree's tier numerals, first to last. */
+  /** The open tree's tier numerals, one per column. */
   function buildTiers(): void {
-    const { first, count } = tierSpan(tree);
     tiersEl.replaceChildren();
-    for (let tier = first; tier < first + count; tier++) {
+    for (const tier of tierColumns(tree)) {
       const numeral = document.createElement('span');
       numeral.className = 'tt-numeral';
       numeral.dataset.tier = String(tier);
@@ -300,10 +301,6 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       item.setAttribute('aria-pressed', String(on));
       item.tabIndex = on ? 0 : -1;
     }
-    const selectedTier = nodeById.get(selectedId)?.tier;
-    for (const numeral of tiersEl.children) {
-      (numeral as HTMLElement).classList.toggle('is-on', Number((numeral as HTMLElement).dataset.tier) === selectedTier);
-    }
   }
 
   /**
@@ -348,44 +345,58 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   }
 
   /**
-   * The board's cells: the width gives a column and the height a row; a short row narrows the column (CARD_ASPECT) and
-   * the spare width goes to the gutters. The tree takes one name size, the column's (nameScale) or less so its longest
-   * name fits, never under the floor; a name longer than that widens the columns. Zoom scales the cells and the names.
+   * The board's cells: the width gives a column (up to MAX_COL) and the height a row. A row short of height narrows the
+   * column to keep the card's shape (CARD_ASPECT), but no further than gutters of GAP_SHARE of a column; past that the
+   * tree scrolls. The spare width goes to the gutters, so every tree ends on the right gutter. The tree takes one name
+   * size, the column's (nameScale) or less so its longest name fits, never under the floor; a name longer than that
+   * widens the columns. Zoom scales the cells and the names.
    */
   function measure(): Geometry {
-    const { first, count } = tierSpan(tree);
+    const tiers = tierColumns(tree), count = tiers.length;
+    const column = new Map(tiers.map((tier, index) => [tier, index]));
     const head = Math.round(HEAD_H * uiScale());
     const rows = layout.lineLanes + layout.specialLanes;
     const pad = parseFloat(getComputedStyle(root).getPropertyValue('--tt-gutter'));
     const span = board.clientWidth - pad * 2;
     const widthCol = Math.max(MIN_COL, Math.min(MAX_COL, Math.floor((span - GAP_X * (count - 1)) / count)));
     const boardHeight = board.clientHeight - head - PAD_Y * 2 - END_Y - (layout.specialLanes ? SPECIAL_GAP : 0) - GAP_Y * (rows - 1);
-    const fitRow = Math.max(MIN_ROW, Math.min(Math.round(widthCol * 0.72), Math.floor(boardHeight / Math.max(1, rows))));
-    const shapeCol = Math.max(MIN_COL, Math.min(widthCol, Math.round(fitRow * CARD_ASPECT)));
+    const heightRow = Math.floor(boardHeight / Math.max(1, rows));
+    const shapeCol = Math.min(widthCol, Math.max(MIN_COL, heightRow * CARD_ASPECT,
+      Math.floor(span / (count + GAP_SHARE * Math.max(0, count - 1)))));
+    const fitRow = Math.max(MIN_ROW, Math.round(shapeCol / CARD_ASPECT), Math.min(Math.round(shapeCol * 0.72), heightRow));
     const m = nameMetrics();
     const room = shapeCol - CARD_EDGES - m.inset;
     const label = Math.max(m.floor, Math.min(m.floor * nameScale(shapeCol), m.floor * room / m.text));
     const fitCol = Math.max(shapeCol, Math.ceil(m.text * label / m.floor + m.inset + CARD_EDGES));
     // the gutters take the width the columns leave, so a fitted tree spans the page gutter to gutter
-    const spread = Math.min(GAP_X_MAX, Math.max(GAP_X, (span - count * fitCol) / Math.max(1, count - 1)));
+    const spread = Math.max(GAP_X, (span - count * fitCol) / Math.max(1, count - 1));
     const col = Math.round(fitCol * zoom);
     const row = Math.round(fitRow * zoom);
     const gapX = Math.max(GAP_X, spread * zoom);
     const named = Math.max(m.floor, label * zoom);
     const compact = m.text * named / m.floor + m.inset + CARD_EDGES > col + 0.5;
-    const width = Math.ceil(pad * 2 + count * col + (count - 1) * gapX);
+    const width = Math.floor(pad * 2 + count * col + (count - 1) * gapX);
     const height = head + PAD_Y * 2 + END_Y + rows * row + (rows - 1) * GAP_Y + (layout.specialLanes ? SPECIAL_GAP : 0);
-    return { first, count, head, pad, col, row, gapX, label: named, compact, lanes: layout.lineLanes, specialLanes: layout.specialLanes,
+    return { tiers, column, count, head, pad, col, row, gapX, label: named, compact, lanes: layout.lineLanes, specialLanes: layout.specialLanes,
       width, height };
   }
 
-  /** Grid units (layout.ts) to pixels: a cell is one column or row, a gutter one gap. */
+  /**
+   * Grid units (layout.ts) to pixels: a cell is one column or row, a gutter one gap. layout.ts counts columns from tier I;
+   * here only the tiers the tree holds take a column, and a tier it skips folds into the gutter before the next one.
+   */
   const px = (g: Geometry, point: GridPoint): [number, number] => {
-    // the grid starts at the tree's first tier: layout.ts counts columns from tier I
-    const gx = point.x - 2 * (g.first - 1);
-    const ix = Math.floor(gx / 2), rx = gx - 2 * ix;
+    const c = Math.floor(point.x / 2), rx = point.x - 2 * c;
+    const at = g.column.get(c + 1);
+    const pitch = g.col + g.gapX;
+    let x: number;
+    if (at !== undefined) {
+      x = g.pad + at * pitch + (rx <= 1 ? rx * g.col : g.col + (rx - 1) * g.gapX);
+    } else {
+      const next = g.column.get(g.tiers.find((tier) => tier > c + 1) ?? 0) ?? g.count;
+      x = g.pad + next * pitch - g.gapX + (rx <= 1 ? 0 : (rx - 1) * g.gapX);
+    }
     const iy = Math.floor(point.y / 2), ry = point.y - 2 * iy;
-    const x = g.pad + ix * (g.col + g.gapX) + (rx <= 1 ? rx * g.col : g.col + (rx - 1) * g.gapX);
     const y = g.head + PAD_Y + iy * (g.row + GAP_Y) + (iy >= g.lanes ? SPECIAL_GAP : 0) + (ry <= 1 ? ry * g.row : g.row + (ry - 1) * GAP_Y);
     return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
   };
@@ -399,7 +410,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     let down = y - g.head - PAD_Y;
     const lineEnd = g.lanes * (g.row + GAP_Y);
     if (g.specialLanes && down > lineEnd) down -= Math.min(SPECIAL_GAP, down - lineEnd);
-    return { x: axis(x - g.pad, g.col, g.gapX) + 2 * (g.first - 1), y: axis(down, g.row, GAP_Y) };
+    const across = axis(x - g.pad, g.col, g.gapX);
+    const index = Math.min(g.count - 1, Math.max(0, Math.floor(across / 2)));
+    return { x: 2 * (g.tiers[index] - 1) + across - 2 * index, y: axis(down, g.row, GAP_Y) };
   };
 
   /** An SVG path through the route's points, each corner eased by a short quadratic turn. */
@@ -411,7 +424,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
       if (i < pts.length - 1) {
         const [px0, py0] = pts[i - 1], [nx, ny] = pts[i + 1];
         // the last bend ends before the arrowhead, so a connector never turns under it
-        const tail = i === pts.length - 2 ? Math.max(0, Math.hypot(nx - x, ny - y) - ARROW - 2) : Infinity;
+        const tail = i === pts.length - 2 ? Math.max(0, Math.hypot(nx - x, ny - y) - arrowSize() - 2) : Infinity;
         const r = Math.min(8, tail, Math.hypot(x - px0, y - py0) / 2, Math.hypot(nx - x, ny - y) / 2);
         const ax = x - Math.sign(x - px0) * r, ay = y - Math.sign(y - py0) * r;
         const bx = x + Math.sign(nx - x) * r, by = y + Math.sign(ny - y) * r;
@@ -498,10 +511,11 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
 
   /** A board larger than its space fades at every edge it can scroll toward, so nothing reads as cut. */
   function markOverflow(): void {
-    stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 2);
-    stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 2);
-    stage.classList.toggle('is-more-above', board.scrollTop > 2);
-    stage.classList.toggle('is-more-left', board.scrollLeft > 2);
+    // (a few pixels of rounding past an edge is not more board)
+    stage.classList.toggle('is-more-below', board.scrollTop + board.clientHeight < board.scrollHeight - 4);
+    stage.classList.toggle('is-more-right', board.scrollLeft + board.clientWidth < board.scrollWidth - 4);
+    stage.classList.toggle('is-more-above', board.scrollTop > 4);
+    stage.classList.toggle('is-more-left', board.scrollLeft > 4);
   }
   board.addEventListener('scroll', markOverflow, { passive: true });
 
@@ -517,9 +531,10 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     wires.setAttribute('viewBox', `0 0 ${g.width} ${g.height}`);
     wires.setAttribute('width', String(g.width));
     wires.setAttribute('height', String(g.height));
+    const arrow = arrowSize();
     const markers = WIRE_KINDS.map((kind) =>
-      `<marker id="tt-arrow-${kind}" class="is-${kind}" viewBox="0 0 ${ARROW} ${ARROW}" markerWidth="${ARROW}" markerHeight="${ARROW}" ` +
-      `refX="${ARROW}" refY="${ARROW / 2}" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L${ARROW} ${ARROW / 2}L0 ${ARROW}Z"/></marker>`).join('');
+      `<marker id="tt-arrow-${kind}" class="is-${kind}" viewBox="0 0 ${arrow} ${arrow}" markerWidth="${arrow}" markerHeight="${arrow}" ` +
+      `refX="${arrow}" refY="${arrow / 2}" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L${arrow} ${arrow / 2}L0 ${arrow}Z"/></marker>`).join('');
     // The selected node's connectors go last so they draw over the others.
     const rows: string[] = [];
     const selected: string[] = [];

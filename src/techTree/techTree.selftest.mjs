@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import '../vehicles/fleetRegistration.ts';
 import { TANK_CATALOGS, TANK_SPECS } from '../vehicles/specs.ts';
 import { layoutProblems, layoutTree } from './layout.ts';
+import { tankTier } from '../vehicles/tier.ts';
 import { displayTier, tierNumeral } from './tiers.ts';
 import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesOf } from './trees.ts';
 
@@ -55,6 +56,42 @@ assert.equal(displayTier('toString'), 0, 'the table answers own ids only');
 assert.deepEqual(childrenOf(tree('usa'), 'm1a1_abrams_hc').map((n) => n.id).sort(), ['m1a1_abrams_aim', 'm1a1_abrams_sa']);
 assert.equal(nodeForVehicle('t90a')?.node.id, 't90a_2004', 'a twin build resolves to its node');
 
+// ------------------------------------------------------------------------------------------------ the 251 order
+// Owner 2026-10-25 (253): "order we had before for all tanks was good we just need em re tiered". The shown tier keeps
+// the order of the matchmaking tiers as they stood at release 251 (src/vehicles/tier.ts, unchanged since), the era
+// breaking ties: a tank never shows below one that ranked lower, a T-72/T-80/T-90 lineage never steps down, and a
+// prototype never shows above its production type. The owner's Japan placements (the Type 10 and its dozer at X, the
+// TK-X and 10B at IX) sit inside their bands; his Korean orders are relative and hold inside the bands too.
+const ERA = { ww2: 0, 'cold-war': 1, modern: 2, 'next-generation': 3 };
+const OWNER_RULED = new Set(['type10', 'type10_dozer', 'type10_tk_x', 'type10b']);
+const rank = (id) => [tankTier(id), ERA[TANK_SPECS[id].era]];
+const below = (a, b) => rank(a)[0] < rank(b)[0] || (rank(a)[0] === rank(b)[0] && rank(a)[1] < rank(b)[1]);
+const inversions = [];
+for (const a of drawn) {
+  for (const b of drawn) {
+    if (below(a, b) && displayTier(a) > displayTier(b) && !OWNER_RULED.has(a) && !OWNER_RULED.has(b)) inversions.push(`${a} > ${b}`);
+  }
+}
+assert.deepEqual(inversions, [], 'no tank shows above one that outranked it at 251');
+assert.deepEqual(['type10', 'type10_dozer', 'type10_tk_x', 'type10b'].map(displayTier), [10, 10, 9, 9], "the owner's Type 10 tiers");
+// the owner's Korean order (2026-10-25): the K1A1 above the K1E1 and the K2B, the XK2 above the K21, the K2 above the K2B
+for (const [above, below] of [['k1a1', 'k1e1'], ['k1a1', 'k2b'], ['xk2_black_panther', 'k21'], ['k2_black_panther', 'k2b']]) {
+  assert.ok(displayTier(above) > displayTier(below), `${above} shows above ${below}`);
+}
+const lineages = [['t72b3m_2022', 't72bu_1989', 'pt91m'], ['t80', 't80b', 't80bv', 't80uk', 't84'],
+  ['t90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90am', 't90ms_2011', 't90m_proryv']];
+for (const line of lineages) {
+  line.forEach((a, i) => line.slice(i + 1).forEach((b) => {
+    if (String(rank(a)) === String(rank(b))) assert.ok(displayTier(a) <= displayTier(b), `${a} never shows above ${b}`);
+  }));
+}
+for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
+  ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
+  ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
+  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100']]) {
+  assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
+}
+
 // ------------------------------------------------------------------------------------------------ read-only
 for (const entry of TECH_TREES) {
   for (const n of entry.nodes) {
@@ -74,7 +111,7 @@ for (const file of sources) {
 
 // ------------------------------------------------------------------------------------------------ pin
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
-// 2026-10-25 re-pin: the owner's Japan and South Korea tiers (the Type 10 and its dozer at X, the TK-X and 10B its tier IX
-// prototypes; the K1A1 ahead of the K1E1 and K2B, the XK2 ahead of the K21, the K2 ahead of the K2B prototype).
-assert.equal(digest, 'cb5a5ca24c440814', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-25 re-pin (253): every tree re-tiered in the 251 order and re-laid (RETIER-253.md), keeping the owner's Japan
+// placements and his Korean order inside the 251 bands.
+assert.equal(digest, '42723b1d84b79f2d', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
