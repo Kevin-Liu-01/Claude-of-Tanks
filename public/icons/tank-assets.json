@@ -32548,8 +32548,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.14,
         "overallLength": 7.2,
@@ -33375,7 +33375,7 @@
         ]
       },
       "geometryHash": "9e8b11b5",
-      "metadataHash": "ffcc8e22",
+      "metadataHash": "9f80cf3a",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0394
@@ -33460,8 +33460,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17956,
-          "sha256": "76cc3fd5489ad35da57d74427e57ddaad8a2731f5c027a32c33695bf8a228bb7"
+          "bytes": 17914,
+          "sha256": "08c2d3ca27658e44b2bf9ce2e816f16ef3c88bcf4067f3a8f2a3863b0e66d944"
         },
         "topSilhouette": {
           "file": "bmp3_rok_top_silhouette.png",
@@ -33484,24 +33484,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38392,
-          "sha256": "b14c7baddbed15acd121eb502fbc52b2c4d215803aec0b77da783b9e46ebe671"
+          "bytes": 39030,
+          "sha256": "aa676cd73402020ab9473e37264664a3f5dc823c1971810d0c82be47772283b1"
         },
         "modulesSide": {
           "file": "bmp3_rok_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42778,
-          "sha256": "952fe6e9b1ae8d06ee2f2e26073f9501556c432bcc0edaa89ba75a468374b4c7"
+          "bytes": 43148,
+          "sha256": "c0201bd9d32df3386779c5da36959418c7936bb975e0054c1c744b6dd2427948"
         },
         "crewSide": {
           "file": "bmp3_rok_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 39130,
-          "sha256": "4c9135ffd5567e22506ca69d6fdfd55897b4a37244c72d8d830a7ea4203bad04"
+          "bytes": 39924,
+          "sha256": "936cfdd830786e3ad4857520ca54352de8be430f23c447fa6490b0102c937641"
         },
         "markings": {
           "file": "bmp3_rok_markings.png",
@@ -33514,8 +33514,8 @@
         "technicalLabels": {
           "file": "bmp3_rok_technical.json",
           "mime": "application/json",
-          "bytes": 3986,
-          "sha256": "3270ccc5bd0c8395bf53eedced0ee5bc892c589b1e409a6d36ba2c53a6133a01"
+          "bytes": 3987,
+          "sha256": "8ca281beaa4e22f8c7073948c8c73455d68858666f1b993926fdce5f2f834227"
         }
       }
     },
@@ -133562,8 +133562,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 7.627,
         "overallLength": 9.7226,
@@ -134880,7 +134880,7 @@
         ]
       },
       "geometryHash": "aed325f2",
-      "metadataHash": "d4b01c74",
+      "metadataHash": "58a080cc",
       "presentationAnchor": {
         "xM": 0.0019,
         "zM": 0.0227
@@ -134938,24 +134938,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26554,
-          "sha256": "53d4c1c934bad7bc97bb6eb90491e0d48ee0b96ead30f34675a68444bf6b5b90"
+          "bytes": 26576,
+          "sha256": "3c27301959ef1cbf4101eeb757ecae3e1fed6b17c8c0e556d917c600ac1d0538"
         },
         "modulesSide": {
           "file": "k1a1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26448,
-          "sha256": "995555e823d88e3ab76951f919df8e2234750e5b7622c7e80473974c708e353f"
+          "bytes": 26442,
+          "sha256": "f0ed81574b5a42e5ce5c1950d40105676e17bed257a0144f0f6554ad4f3e24c5"
         },
         "crewSide": {
           "file": "k1a1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24478,
-          "sha256": "0fd696ea0f90528b6cb790e111eb67623d9217a7a9aa20a4e6015dffca917fcd"
+          "bytes": 24444,
+          "sha256": "bda6d45f8751151d08b33b18077958536fc6075d80e1b9b7a5230f0103267a38"
         },
         "angle": {
           "file": "k1a1_angle.webp",
@@ -135046,8 +135046,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.48,
         "overallLength": 9.71,
@@ -136033,7 +136033,7 @@
         ]
       },
       "geometryHash": "caa6ee2c",
-      "metadataHash": "4686dac7",
+      "metadataHash": "bb7f47fd",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": -0.0273
@@ -136095,15 +136095,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25484,
-          "sha256": "4de6c16f344879dbed8ab80743b6010332bf36346f6ca59860c272e2fee30c76",
+          "bytes": 25510,
+          "sha256": "dcb5f85960e0ec4c6bfd0d971e21624f749f9c36e108452afaa38d9f0ebe2096",
           "thumbnail": {
             "file": "thumbs/k1e1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10386,
-            "sha256": "0a0007aec76930b1c3aeca4919e4b5fc5d6911eea7607c2c3adec2d431859d6a"
+            "bytes": 10364,
+            "sha256": "20e8be66e59ebe7c0c27fe60ea3a9409e67deb4efacd72225601698b4eecf8fc"
           }
         },
         "top": {
@@ -136111,16 +136111,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11640,
-          "sha256": "fa6501c9130a0210e8d1c4315db4f39ebe1b76512d3a83c5244c7e711aa85ad1"
+          "bytes": 11664,
+          "sha256": "a91d10de84dfb876c0b5fe19bd161450032fedf033c2c0085b316c7bc04a86d6"
         },
         "side": {
           "file": "k1e1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9964,
-          "sha256": "fab03f63a4f1536f5e921bfad0a597ac424616b52a161d17fb02281fc2965102"
+          "bytes": 9954,
+          "sha256": "98609b6d1fee9dc684bbcd09dfbec277f52a09786756306453f1bd5575e7b8a9"
         },
         "topSilhouette": {
           "file": "k1e1_top_silhouette.png",
@@ -136143,24 +136143,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23264,
-          "sha256": "affcf5e71ea4fa8d19a19ada0bad9d9aa652b7c3d0fabd6aef3cda0e24e6db60"
+          "bytes": 23364,
+          "sha256": "98ee646c93e30af77897af2860b0a9678dc8754c22b2f95eac6a550165991f25"
         },
         "modulesSide": {
           "file": "k1e1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24600,
-          "sha256": "3e7c28f5f3b877145e505fc5a790f550e25cf4cd0e46acabf46343d6f9a55fd7"
+          "bytes": 24644,
+          "sha256": "8cb9b2fdea2843d82170135a75ab7c46701f413da5cbfb0397fce343833ef931"
         },
         "crewSide": {
           "file": "k1e1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22002,
-          "sha256": "0bdc4f77923d0598874d6ea5488c0c976207fc84af3cb03acec4b16db8f9b895"
+          "bytes": 21842,
+          "sha256": "91d70940163f8da9cad761e624b639276560727ff54f334ee10232d8fc180576"
         },
         "markings": {
           "file": "k1e1_markings.png",
@@ -136207,8 +136207,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 10,
-      "tierNumeral": "X",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.3418,
         "overallLength": 10.8448,
@@ -137576,7 +137576,7 @@
         ]
       },
       "geometryHash": "d8372984",
-      "metadataHash": "b53b67f2",
+      "metadataHash": "eb9aa469",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": 0.0474
@@ -137635,24 +137635,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17078,
-          "sha256": "07439573fad89c203cf04ccb6a69a5ebbe7bfddbe9a11bce7e48f80da95783bd"
+          "bytes": 17162,
+          "sha256": "39ca0f371e1f1445f573df899c1d13ae30c4317e50460b05dbf49419fe39f1b9"
         },
         "modulesSide": {
           "file": "k2_black_panther_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19058,
-          "sha256": "621ce38f2361e65140641eb288a1d76030176830cf059b89513341561dc25ee5"
+          "bytes": 19034,
+          "sha256": "4a1bb9fad40a7c1fbf115931c5d663c7dbffced6797f76c36875b9f3e5cb4875"
         },
         "crewSide": {
           "file": "k2_black_panther_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16794,
-          "sha256": "17ab612a00778deba83e3d5a070010ddc5a0abdec03090dd78d51285a5caa7a5"
+          "bytes": 16678,
+          "sha256": "2b1edf332830551c2fd88b8d904664eab571a50404717ebeebedb1f3e54a20ec"
         },
         "angle": {
           "file": "k2_black_panther_angle.webp",
@@ -137683,8 +137683,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10940,
-          "sha256": "b6424202835498e2d91baa1f1b7edec9621bde68d854d6caf0ef9f273247c60c"
+          "bytes": 10954,
+          "sha256": "187fb6644aae49f81e807373674398601563831aa661a5c0914bfeaab1ee7c8a"
         },
         "topSilhouette": {
           "file": "k2_black_panther_top_silhouette.png",
@@ -137744,8 +137744,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.866,
         "overallLength": 6.866,
@@ -138734,7 +138734,7 @@
         ]
       },
       "geometryHash": "b64243ef",
-      "metadataHash": "ba6790b7",
+      "metadataHash": "22e1fbfc",
       "presentationAnchor": {
         "xM": -0.0012,
         "zM": -0.1243
@@ -138792,39 +138792,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42908,
-          "sha256": "541672271ccc2fd7bcea841fb6c91208788071b72cf57f637be1b9c40e61e114"
+          "bytes": 42936,
+          "sha256": "2ad5c0539eab124a986e7d2ffc7bca767945011ea7fdbfc9244f8e195f2d8823"
         },
         "modulesSide": {
           "file": "k21_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 43148,
-          "sha256": "2f6ffac0d5f7f4225c8254482c98f003ae8e7e30e8f6487d473292dcec91671f"
+          "bytes": 43132,
+          "sha256": "3b4e824f332251322c5c2b3c51f16a29f2e59f9491bf9a0947bb903ebfe1b2a4"
         },
         "crewSide": {
           "file": "k21_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 38646,
-          "sha256": "73d665a2a547f27dca6791eab8cb4ed16c58c3d8df59f9e58c403600a381663e"
+          "bytes": 38376,
+          "sha256": "f032208e902865ffb5d27a15e9240d40ebf4889140c4602fbdb3639e2ab71f0e"
         },
         "angle": {
           "file": "k21_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27904,
-          "sha256": "638cd6bb36c895202115da2d9e25e32a35bf23da784e8f65d9dcb1827fadbcd0",
+          "bytes": 27974,
+          "sha256": "79655043320c831c6226967770574872d2cc9f223be81929aa0f38ae69e40a61",
           "thumbnail": {
             "file": "thumbs/k21_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 11180,
-            "sha256": "619d38613b97635e371fd9b7a7354786c6e12eccd1d0d9bd4b5b1602d5dfc5e8"
+            "sha256": "4e8a3801d7a6e9c62cefd6e8849f9798ee84629a2de4051cbb3b69f3bcea9aeb"
           }
         },
         "top": {
@@ -138840,8 +138840,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17414,
-          "sha256": "a402547e0c6bc0225b16bc94cf0aa41c4567b72fdc395765ec7c9ce5c4904b23"
+          "bytes": 17382,
+          "sha256": "905e1e040898da42bd22eaf84a5e1cf2431b34893853bfc49999563801025325"
         },
         "topSilhouette": {
           "file": "k21_top_silhouette.png",
@@ -138902,8 +138902,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 7,
         "overallLength": 9.2,
@@ -140069,7 +140069,7 @@
         ]
       },
       "geometryHash": "cbdfb699",
-      "metadataHash": "d99999fc",
+      "metadataHash": "cb8140e1",
       "presentationAnchor": {
         "xM": 0.0044,
         "zM": -0.1079
@@ -140131,15 +140131,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25916,
-          "sha256": "240760e623aa77b5310e82df1aae0a0d945f520d437da90602870aaa187b0e89",
+          "bytes": 25886,
+          "sha256": "ee654c156394efe7358102e9186dabb95b2f81cafc4babcac7b5861292123438",
           "thumbnail": {
             "file": "thumbs/k2b_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 10666,
-            "sha256": "83c3ef581d57008c5d5045c2348ac1e3f9e33b8f1fadc010f27bcd4b1917c6ff"
+            "sha256": "b5f18dd69671ff06a56285cda88ee2e7aadeaecba92de9da824f47707d580e44"
           }
         },
         "top": {
@@ -140147,16 +140147,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11000,
-          "sha256": "5b4060da5e616cfdfd1296a5708415ed37797614d06e885f9f6836d9b1786f78"
+          "bytes": 11016,
+          "sha256": "dce906be7f00371cb31bf6cbc43d3b0627a488313c3abeac18a8f747aeefc7db"
         },
         "side": {
           "file": "k2b_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8752,
-          "sha256": "1c0f415641141eaae2d11e21100d9c5109543c5e11da66f4e2ed6f59e61546ea"
+          "bytes": 8706,
+          "sha256": "564065e0760572b70a6fadc33e54f85dabd6d0ea53c7d1c0509f72cac1dab4b6"
         },
         "topSilhouette": {
           "file": "k2b_top_silhouette.png",
@@ -140179,24 +140179,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22784,
-          "sha256": "18c140d14dc3a950d6ca27afb2455cc5405b85d69d009e4f74d3efd3e5e3ca44"
+          "bytes": 22660,
+          "sha256": "e1e0a3eda98ff86a6a9006c5fcf3e797b2bd6383f891c2293341ae3bc5f87f10"
         },
         "modulesSide": {
           "file": "k2b_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22656,
-          "sha256": "849214d31752d51f3a48623831c17974d3d37572017b59352216730136cbe0d4"
+          "bytes": 22554,
+          "sha256": "30a3ea652b04abde13a90bb857c17998758ea90f8a790f0b2c2fd2efadd3f3a5"
         },
         "crewSide": {
           "file": "k2b_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19314,
-          "sha256": "336e898f5467d289b304cf90a643a1e71ad11bd4c6c60f247f8120dec0c2ea4d"
+          "bytes": 19124,
+          "sha256": "7c2a3492b458a15bc5e7411a00f58c96458052d5f68b9fc623786b9504f060cc"
         },
         "markings": {
           "file": "k2b_markings.png",
@@ -2161590,8 +2161590,8 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 7,
+      "tierNumeral": "VII",
       "dimensionsM": {
         "hullLength": 7.5,
         "overallLength": 8.9525,
@@ -2162815,7 +2162815,7 @@
         ]
       },
       "geometryHash": "d89c34df",
-      "metadataHash": "bd7f0ac7",
+      "metadataHash": "43d6e34e",
       "presentationAnchor": {
         "xM": -0.0035,
         "zM": -0.1193
@@ -2162925,16 +2162925,16 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30834,
-          "sha256": "99fb668f0137da41d77bf2cb21856a89ce3afa7bbbc42db07d64f7156a005169"
+          "bytes": 30862,
+          "sha256": "3efa1758d50ad6d3f0aa9a89bfc8e454b9bd3b4f7691c446a47e5a66564b5833"
         },
         "modulesSide": {
           "file": "xk2_black_panther_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31414,
-          "sha256": "5b36680bb02bb02641bb06202636cc36bcf426f26ba73cc8d8dff7b405f4660d"
+          "bytes": 31474,
+          "sha256": "99b247a04dcfff34a26375a3d0e088e188494ff3a63490a6ec802a94e4d151ce"
         },
         "crewSide": {
           "file": "xk2_black_panther_crew_side.webp",
@@ -2162942,7 +2162942,7 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 26972,
-          "sha256": "181690937a18111952ee0176c63abe022988580ef90d32ce04988fc68ecc1644"
+          "sha256": "f97a529fcb383bb61bc1d82278f1cc004d33529e1214cbc160968c5ddccdbc11"
         },
         "markings": {
           "file": "xk2_black_panther_markings.png",
