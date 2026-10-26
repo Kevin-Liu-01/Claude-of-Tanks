@@ -3670,7 +3670,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (pop.parentElement !== dock) dock.append(pop);
     pop.hidden = false;
     (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
-    list.scrollTop = 0;
+    // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
+    if (docked) list.scrollTop = 0;
+    else requestAnimationFrame(() => pop.scrollIntoView({ block: 'start' }));
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
