@@ -14,7 +14,7 @@
 // any console error.
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
-//     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]]
+//     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -47,6 +47,9 @@ const cpuProfile = argv.includes('--cpu-profile');
 // --no-convolver: the reverb's convolver a pass-through gain, so the V8 sampler's signal cannot land in its FFT and wedge
 // the renderer (the perf lane's finding, 2026-10-25); the mix is wrong, the main thread's work is the same
 const noConvolver = argv.includes('--no-convolver');
+// --battle-eval=<expression>: evaluated in both pages once the battle has settled, kept in the battle stage's sample
+// (battleEval) and printed (a lane's entry probe: the black watchdog's newPrograms, say)
+const battleEval = option('battle-eval', '');
 const profiling = { armed: false, live: [], workers: [] };
 const profileWorker = async (url, session) => {
   await session.send('Profiler.enable');
@@ -321,8 +324,15 @@ try {
     for (const task of entryProfile.page) console.log(`host entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 20).join('\n    ')}`);
     for (const w of entryProfile.workers) console.log(`host worker ${w.url}: ${w.ms} ms profiled, ${w.samples} busy samples\n  self:\n    ${w.self.join('\n    ')}`);
   }
+  const evaluated = battleEval ? await Promise.all([pageA, pageB].map((page) => page.evaluate((expression) => {
+    try { return { value: JSON.parse(JSON.stringify((0, eval)(expression) ?? null)) }; } catch (error) { return { error: String(error?.message || error) }; }
+  }, battleEval).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })))) : null;
   await stage('battle', at);
   if (entryProfile) samples.at(-1).profile = entryProfile;
+  if (evaluated) {
+    samples.at(-1).battleEval = { expression: battleEval, pages: evaluated };
+    for (const [i, result] of evaluated.entries()) console.log(`battle eval ${'AB'[i]}: ${JSON.stringify(result).slice(0, 6000)}`);
+  }
 
   at = performance.now();
   for (const page of [pageB, pageA]) {
