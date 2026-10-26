@@ -3799,6 +3799,7 @@ const studioAccess = createStudioAccess({
       mapAmbience.setEnabled(true);
     },
     getStudioLight: () => studioLightLive,
+    programWarm: forwardProgramWarm,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
@@ -3971,7 +3972,16 @@ relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
 // ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
-const entryReady = boot.ready(() => audio.prepare());
+// (2026-10-25, UI-LOCKDOWN E) The gate's press opens the audio device. Chromium's AudioContext constructor waits 380-880 ms
+// on a cold audio service, so there the press dismisses the gate and paints first, and the device opens one paint later
+// inside the press's user activation (no autoplay warning, no stall on the press). WebKit and Firefox open it inside the
+// gesture, as before: iOS unlocks audio only there.
+const prepareAudioForEntry = (): void => {
+  const brands = (navigator as Navigator & { userAgentData?: { brands?: readonly { brand: string }[] } }).userAgentData?.brands;
+  if (brands?.some((entry) => entry.brand === 'Chromium')) void nextPaintFrame().then(() => audio.prepare());
+  else audio.prepare();
+};
+const entryReady = boot.ready(prepareAudioForEntry);
 if (pendingRoomInvitePromise) {
   Promise.all([entryReady, pendingRoomInvitePromise]).then(([, invite]) => {
     if (!invite) return;

@@ -30,6 +30,7 @@ import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {POLISH_PROTECTION_LAYOUTS} from '../nationalPolandProtectionConfig.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 const {box, cylY, cylX, torus} = KIT;
 
 type PolandDonorId = 't72b3_zubr' | 't72b3_zubr_ii';
@@ -418,17 +419,18 @@ function buildZubrIITurret(P: TankBuilderPort, casting: Stock): void {
 }
 
 /** Zubr: its unchanged Polish hull package, then the turret fit. */
-export function buildPolandDonorKit(P: TankBuilderPort, c: NationalModernizationConfig): void {
+export function* buildPolandDonorKit(P: TankBuilderPort, c: NationalModernizationConfig): TankProfileBuild {
   hullEquipment(P, c);
-  fitPolandDonorTurret(P, 't72b3_zubr');
+  yield 'polish-hull';
+  yield* fitPolandDonorTurret(P, 't72b3_zubr');
 }
 
 /** Zubr II: the hull is built by zubrII.ts buildZubrIIHull; the turret fit follows. */
-export function buildZubrIIDonorKit(P: TankBuilderPort): void {
-  fitPolandDonorTurret(P, 't72b3_zubr_ii');
+export function* buildZubrIIDonorKit(P: TankBuilderPort): TankProfileBuild {
+  yield* fitPolandDonorTurret(P, 't72b3_zubr_ii');
 }
 
-function fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): void {
+function* fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): TankProfileBuild {
   const castingGeometry: THREE.BufferGeometry[] = [];
   P.forEachBucketPart(['turret'], g => castingGeometry.push(g));
   const casting = new Stock(P.spec.id, castingGeometry);
@@ -438,6 +440,7 @@ function fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): void {
     // The flat landing kept for the mission drone dock (turret frame): its seat record is solved on this build.
     P.turretG.userData.polishDockLanding = [...(id === 't72b3_zubr' ? ZUBR_DOCK : ZUBR_II_DOCK)];
   } finally { casting.dispose(); }
+  yield 'polish-turret';
   const stock: THREE.BufferGeometry[] = [];
   P.forEachBucketPart(['turret', 'turretExternalArmor'], g => { if (!Object.hasOwn(g.userData, 'eraHitFaceVertexStarts')) stock.push(g); });
   addPolishProtection(P, PROTECTION_MODEL[id], stock, {turretScreens: false, turretSuit: true});

@@ -25,6 +25,7 @@ import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import type {ChineseChevronReceipt} from './chineseChevronEra.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
 const {box,cylY,cylZ,cylX}=KIT;
 type ChinaDonorId='t72b3m_kunlun'|'t72b3_qilin'|'t80u_yun';
@@ -826,7 +827,8 @@ function turretFit(P:TankBuilderPort,id:ChinaDonorId):void {
   if(id==='t72b3m_kunlun')kunlun(P);else if(id==='t80u_yun')yun(P);else qilin(P);
 }
 
-export function buildChinaDonorKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
+export function* buildChinaDonorKit(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuild {
   chinaDonorHull(P,c);
+  yield 'chinese-hull';
   turretFit(P,c.id as ChinaDonorId);
 }

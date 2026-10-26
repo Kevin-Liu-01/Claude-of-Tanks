@@ -179,6 +179,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fingerprint.mjs': caller('computeState({ root }): the fleet steps\' closures and tables under root'),
   'tools/changed-only/rows-child.mjs': caller("the data modules under the root its spawner passes (argv[2])"),
   'tools/changed-only/world.mjs': caller('computeWorldState(ctx): the world steps\' closures under ctx.root'),
+  'tools/frontend-budget.mjs': caller('collect({ nav, click }): the recorded run folders its caller names'),
   'tools/run-selftests.mjs': caller('selftestPlan and selftestReadOf read the closures of the cache their caller passes; ' +
     'the CLI lists the registry over this checkout'),
   'tools/changed-only/globs.mjs': caller('walk(base, dir): the changed-only regeneration globs over the root it is given'),
@@ -190,6 +191,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),
   'tools/changed-only/resolver.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),
   'tools/changed-only/world.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),

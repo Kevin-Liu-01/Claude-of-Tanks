@@ -110,8 +110,13 @@ class OwnerStock {
   }
 }
 
-/** Bind every suit mesh of each owner to the clusters its cloth and garnish rest on. */
-export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (readonly [THREE.Object3D, readonly THREE.Object3D[]])[]): void {
+/** The drape pauses inside a mesh once this much work has run (UI-LOCKDOWN E: a hull net was one 100-260 ms task). */
+const DRAPE_SLICE_MS = 4;
+
+/** Bind every suit mesh of each owner to the clusters its cloth and garnish rest on, in slices (the suit's build steps it;
+ *  each mesh's welds, rests and moves are its own). */
+export function* drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (readonly [THREE.Object3D, readonly THREE.Object3D[]])[]): Generator<void, void, void> {
+  let sliceAt = performance.now();
   for (const [parent, others] of owners) {
     parent.updateMatrixWorld(true);
     const suits = parent.children.filter((o): o is THREE.Mesh => (o as THREE.Mesh).isMesh && /_ghillie_/.test(o.name || ''));
@@ -128,7 +133,11 @@ export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (read
         if (k === undefined) { weld.set(key, k = p.length); p.push(new THREE.Vector3().fromBufferAttribute(pos, v).applyMatrix4(toOwner)); members.push([]); }
         nodeOf[v] = k; members[k].push(v);
       }
-      const count = p.length, rest = p.map(q => stock.nearest(q, REST_M + .02));
+      const count = p.length, rest: ReturnType<OwnerStock['nearest']>[] = [];
+      for (const q of p) {
+        rest.push(stock.nearest(q, REST_M + .02));
+        if (performance.now() - sliceAt >= DRAPE_SLICE_MS) { yield; sliceAt = performance.now(); }
+      }
       // into the module: towards its nearest point (or, lying on its face, against the face's normal)
       const inward = (v: number): THREE.Vector3 => {
         const r = rest[v]!;
@@ -168,6 +177,7 @@ export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (read
       const moved = new Map<string, Map<number, THREE.Vector3>>();
       const move = (c: string, v: number, to: THREE.Vector3) => { let m = moved.get(c); if (!m) moved.set(c, m = new Map()); m.set(v, to); };
       for (const nodes of pieces.values()) {
+        if (performance.now() - sliceAt >= DRAPE_SLICE_MS) { yield; sliceAt = performance.now(); }
         // the nodes lying on a module move (a garnish card's within 5 cm of it, the cloth's within 3 cm); then, ring by ring
         // (three), a node held up over a joint or standing in a card follows a moving neighbour in its direction onto the
         // permanent stock; a node lying on the permanent stock stays (a card across a module and a frame bends over it)
@@ -203,6 +213,8 @@ export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (read
         }
         port.bindEraDrape(c, pos, idx, spent);
       }
+      yield;
+      sliceAt = performance.now();
     }
   }
 }

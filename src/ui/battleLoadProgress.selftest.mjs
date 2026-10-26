@@ -25,6 +25,7 @@ function element(name) {
     } }),
     setAttribute(key, value) { mutations.push([name, 'attribute', key, value]); attributes.set(key, value); },
     getAttribute(key) { return attributes.get(key); },
+    removeAttribute(key) { mutations.push([name, 'remove', key]); attributes.delete(key); delete this[key]; },
     appendChild(child) { this.children.push(child); return child; },
     append(...children) { this.children.push(...children); },
     querySelector(selector) {
@@ -193,6 +194,19 @@ try {
     assert.match(cssText, /\.cot-bl \.hero \.art-img\{[^}]*opacity:0;/);
   }
 
+  // a room whose map is not chosen yet names it 'none': the plan's slot keeps its frame and requests nothing
+  // (2026-10-25: /minimaps/none.webp was a 404 and a console error in every room), then takes the map once it is known
+  {
+    const plan = selectors.get('.map img');
+    screen.show({ ...info, thumb: '', biome: 'none' });
+    assert.equal(plan.src, undefined, 'no request for a map named none');
+    assert.equal(selectors.get('.map').hidden, false, 'the plan keeps its frame while the room has no map');
+    screen.show({ ...info, thumb: '', biome: 'verdant' });
+    assert.match(plan.src, /\/minimaps\/verdant\.webp\?v=/, 'the plan loads once the map is known');
+    screen.show({ ...info, thumb: '', biome: 'none' });
+    assert.equal(plan.src, undefined, 'and a room back to no map drops the request');
+  }
+
   const css = elements.find(item => item.id === 'cot-bl-style').textContent;
   assert.match(css, /\.cot-bl \.fbar i b\{[^}]*inset:0;[^}]*transform:scaleX\(0\);[^}]*transform-origin:left center;[^}]*transition:transform/);
   assert.doesNotMatch(css, /transition:width/);
@@ -205,4 +219,4 @@ try {
   if (priorTimeout) Object.defineProperty(globalThis, 'setTimeout', priorTimeout);
   else delete globalThis.setTimeout;
 }
-console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds and restaging passed');
+console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging and the unchosen room map passed');

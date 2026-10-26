@@ -35,7 +35,6 @@ import {
   loadEquipment, saveEquipment, equipmentPicker, computeEquipMults,
 } from '../game/equipment.ts';
 import type { EquipmentItem, EquipmentLock, EquipmentPickerItem } from '../game/equipment.ts';
-import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, statChip, tag, wireRoving } from './components/components.ts';
@@ -105,6 +104,7 @@ interface GaragePhotoControl {
 type BattleMode = PlayMode;
 // The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
 type FleetTakesModule = typeof import('./fleetTakes.ts');
+type EquipmentPreviewModule = typeof import('./equipmentPreview.ts');
 type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo' | 'hull' | 'turret' | 'accuracy' | 'bloom';
 type StatRange = Record<StatRangeKey, [number, number]>;
 
@@ -2283,6 +2283,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   eqTooltipEl.setAttribute('aria-hidden', 'true');
   root.appendChild(eqTooltipEl);
   let eqOpenSlot = -1;   // -1 = picker closed
+  // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
+  // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
+  let equipmentPreview: EquipmentPreviewModule | null = null;
+  let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
+  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
+    (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
   let eqCat = 'all';     // active category chip
   let eqTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let eqTooltipAnchor: HTMLElement | null = null;
@@ -2328,7 +2334,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function populateEquipmentTooltipMetrics(
     metrics: HTMLElement,
-    preview: ReturnType<typeof equipmentHoverPreview>,
+    preview: ReturnType<EquipmentPreviewModule['equipmentHoverPreview']>,
     specName: string,
   ): void {
     if (!preview.metrics.length) return;
@@ -2377,6 +2383,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
+    // the tooltip shows whole, with its projections: one still loading holds it until they arrive
+    if (spec && !equipmentPreview) {
+      void loadEquipmentPreview().then(() => { if (eqTooltipAnchor === anchor) showEqTooltip(anchor); }, () => {});
+      return;
+    }
     const category = equipmentTooltipCategory(item);
     const state = equipmentTooltipState(item, lock, fittedAt);
 
@@ -2388,8 +2399,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const detail = document.createElement('span');
     detail.className = 'detail';
     detail.textContent = item ? equipmentDesc(item.id) : t('garage.equipment.removeFitted');
-    const preview = spec
-      ? equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
+    const preview = spec && equipmentPreview
+      ? equipmentPreview.equipmentHoverPreview(spec, currentLoadout, item?.id || null, eqOpenSlot, !locked)
       : null;
     const summary = document.createElement('span');
     summary.className = 'summary';
@@ -2435,8 +2446,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (vehicleLocked || !selectedId || eqOpenSlot < 0) return;
     const spec = specById.get(selectedId);
     if (!spec) return;
+    if (!equipmentPreview) { void loadEquipmentPreview().then(() => eqAssign(itemId), () => {}); return; }
     const cur = curLoadout();
-    const projected = projectEquipmentLoadout(cur, itemId, eqOpenSlot);
+    const projected = equipmentPreview.projectEquipmentLoadout(cur, itemId, eqOpenSlot);
     saveEquipment(selectedId, projected, spec);
     const slot = eqOpenSlot;
     closeEqPicker();
@@ -2467,6 +2479,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function openEqPicker(slot: number): void {
     if (vehicleLocked) return;
+    void loadEquipmentPreview().catch(() => {});
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
     root.classList.add('picker-open');

@@ -25,3 +25,17 @@ export function drainTankBuild<Result>(iterator: Iterator<TankBuildStage, Result
   return result.value;
 }
 
+/** An authored builder that carries its stepped body (the same statements, a stage at a time): the factory's
+ *  frame-budgeted builds step it (UI-LOCKDOWN E, 2026-10-25); every other caller calls the builder and gets the whole
+ *  build at once. The adapter (profileBuilderAdapter.ts) forwards it. */
+export function withBuildSteps<Args extends unknown[]>(
+  build: (...args: Args) => void,
+  buildSteps: (...args: Args) => TankProfileBuild,
+): (...args: Args) => void {
+  return Object.assign(build, { buildSteps });
+}
+/** A builder made of its stepped body alone: synchronous callers drain it whole, the factory steps it. */
+export function steppedBuilder<Args extends unknown[]>(buildSteps: (...args: Args) => TankProfileBuild): (...args: Args) => void {
+  return withBuildSteps((...args: Args): void => drainTankBuild(buildSteps(...args)), buildSteps);
+}
+

@@ -1,0 +1,185 @@
+{
+ "note": "Known frontend budget misses at release 252 (44d0145775; the baseline frontend-e/baseline.sh, recorded at load 30-60 on the lane machine, so timings run high): each names its owning lane. Remove a row when its surface passes. Bundle rows need a 'ruling' (tools/frontend-budget.mjs BUNDLE_BUDGETS).",
+ "known": {
+  "app/boot/desktop/contentMs": {
+   "value": 2111,
+   "owner": "premiere-site"
+  },
+  "app/boot/desktop/inpP98Ms": {
+   "value": 232,
+   "owner": "premiere-site"
+  },
+  "app/boot/phone/contentMs": {
+   "value": 8533,
+   "owner": "premiere-site"
+  },
+  "app/deploy/desktop/droppedFrames": {
+   "value": 9,
+   "owner": "premiere-site"
+  },
+  "app/deploy/desktop/inpP98Ms": {
+   "value": 208,
+   "owner": "premiere-site"
+  },
+  "app/deploy/phone/droppedFrames": {
+   "value": 73,
+   "owner": "premiere-site"
+  },
+  "app/deploy/phone/inpP98Ms": {
+   "value": 104,
+   "owner": "premiere-site"
+  },
+  "app/deploy/phone/longTaskMs": {
+   "value": 131,
+   "owner": "premiere-site"
+  },
+  "app/deploy/phone/shellMs": {
+   "value": 158,
+   "owner": "premiere-site"
+  },
+  "app/gallery/desktop/contentMs": {
+   "value": 1808,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/desktop/droppedFrames": {
+   "value": 62,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/desktop/longTaskMs": {
+   "value": 293,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/desktop/shellMs": {
+   "value": 459,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/phone/contentMs": {
+   "value": 15134,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/phone/droppedFrames": {
+   "value": 888,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/phone/inpP98Ms": {
+   "value": 256,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/phone/longTaskMs": {
+   "value": 3696,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/gallery/phone/shellMs": {
+   "value": 2395,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/desktop/contentMs": {
+   "value": 967,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/desktop/droppedFrames": {
+   "value": 131,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/desktop/longTaskMs": {
+   "value": 265,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/desktop/shellMs": {
+   "value": 331,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/phone/contentMs": {
+   "value": 3856,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/phone/droppedFrames": {
+   "value": 298,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/phone/inpP98Ms": {
+   "value": 152,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/garage/phone/longTaskMs": {
+   "value": 983,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/record/desktop/droppedFrames": {
+   "value": 1,
+   "owner": "premiere-site"
+  },
+  "app/settings/desktop/contentMs": {
+   "value": 348,
+   "owner": "premiere-site"
+  },
+  "app/settings/desktop/droppedFrames": {
+   "value": 14,
+   "owner": "premiere-site"
+  },
+  "app/settings/desktop/longTaskMs": {
+   "value": 235,
+   "owner": "premiere-site"
+  },
+  "app/settings/desktop/shellMs": {
+   "value": 348,
+   "owner": "premiere-site"
+  },
+  "app/settings/phone/droppedFrames": {
+   "value": 24,
+   "owner": "premiere-site"
+  },
+  "app/settings/phone/inpP98Ms": {
+   "value": 160,
+   "owner": "premiere-site"
+  },
+  "app/settings/phone/longTaskMs": {
+   "value": 300,
+   "owner": "premiere-site"
+  },
+  "app/settings/phone/shellMs": {
+   "value": 575,
+   "owner": "premiere-site"
+  },
+  "app/studio/desktop/contentMs": {
+   "value": 1416,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/studio/desktop/droppedFrames": {
+   "value": 48,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/studio/desktop/longTaskMs": {
+   "value": 432,
+   "owner": "premiere-gallery-studio"
+  },
+  "app/studio/desktop/shellMs": {
+   "value": 1232,
+   "owner": "premiere-gallery-studio"
+  },
+  "everywhere/deploy/phone/consoleWarnings": {
+   "value": 2,
+   "owner": "premiere-site"
+  },
+  "everywhere/garage/desktop/consoleWarnings": {
+   "value": 3,
+   "owner": "premiere-gallery-studio"
+  },
+  "everywhere/garage/phone/consoleWarnings": {
+   "value": 3,
+   "owner": "premiere-gallery-studio"
+  },
+  "everywhere/studio/desktop/consoleWarnings": {
+   "value": 24,
+   "owner": "premiere-gallery-studio"
+  },
+  "public/docs/desktop/inpMs": {
+   "value": 144,
+   "owner": "premiere-site"
+  },
+  "public/docs/phone/inpMs": {
+   "value": 176,
+   "owner": "premiere-site"
+  }
+ }
+}

@@ -16,6 +16,7 @@ import {
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
+import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -76,7 +77,7 @@ const nonUniformXform = KIT.xform as (
   scale: number | readonly number[],
 ) => THREE.BufferGeometry;
 
-function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
+function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild {
   // v: 0 = T-80 (no ERA), 1 = T-80B (brow applique + 902 smokes),
   //    2 = T-80BV (Kontakt-1 field: cheeks via the k1 arc + glacis raft)
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
@@ -108,6 +109,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     });
   };
   buildT80LineAssemblyStage1();
+  yield 'buildT80LineAssemblyStage1';
   // rear side-hump band (turbine deck): raked top 1.86 -> 1.70, recessed
   // center channel. r26: everything below the 1.24 lip pulls forward of
   // -3.30 — the ref stern fades to an overhanging deck (side col -3.33
@@ -209,6 +211,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.107, 0.04, 10), s * 1.5, 0.97, -3.00);
   };
   buildT80LineHullStage1();
+  yield 'buildT80LineHullStage1';
   const buildT80LineRunningGearStage1 = (): void => {
     // 2026-10-19 (owner float sweep): the glacis cable stood 15 mm off the plate; it is seated on it.
     P.snapGroup('t80-glacis-cable', () => KIT.towCable(P, [[-1.02, 1.30, 2.72], [0, 1.34, 2.42], [1.02, 1.30, 2.72]]), { reachM: 0.03 });
@@ -259,6 +262,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     if (v !== 2) for (const s of [-1, 1]) P.add('hullTrack', box(0.10, 0.37, 0.09), s * 1.67, 1.045, 3.345);
   };
   buildT80LineRunningGearStage1();
+  yield 'buildT80LineRunningGearStage1';
   // K-1 skirt front plates (BV only; faces stay inside the pub width)
   const buildT80LineHullStage2 = (): void => {
     if (v === 2) for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
@@ -277,6 +281,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     P.turretG.position.set(0, 1.45, 0.0);
   };
   buildT80LineHullStage2();
+  yield 'buildT80LineHullStage2';
   // r26 dome recalibration from the registered tables: the ref crown is
   // WIDE-FLAT at 2.22-2.25 (raised crown 2.23, +1.4% inside the dims-grace
   // budget) with a LOW front-edge falloff (front cols 2.03@±1.19, 2.07@±1.05
@@ -383,6 +388,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineTurretStage1();
+  yield 'buildT80LineTurretStage1';
   // cheek staircase + flank slabs (ref plan fronts 1.31@±1.0, 1.12@±1.3,
   // 0.9@±1.45; flank rears +0.1@±1.33 — the old shoulder run owned the
   // ±1.30 rear columns 0.6 too deep)
@@ -413,6 +419,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineTurretStage2();
+  yield 'buildT80LineTurretStage2';
   // The cast-body height correction above moved the roof down, but the old
   // stations were also moved down through `roofY()`.  Their feet wound up
   // inside the new shell (the owner screenshots show only hatch rims and a
@@ -450,6 +457,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     P.add('turretDark', cylY(0.12, 0.13, 0.018, 12), -0.05, roofTopY + 0.050, -0.73);
   };
   buildT80LineTurretStage3();
+  yield 'buildT80LineTurretStage3';
   const buildT80LineTurretStage4 = (): void => {
     P.add('turretDetail', box(0.34, 0.13, 0.25), 0.88, roofTopY - 0.015, -0.75, 0, -0.06, 0);
     P.add('turretDark', box(0.30, 0.020, 0.20), 0.88, roofTopY + 0.058, -0.75, 0, -0.06, 0);
@@ -503,6 +511,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineTurretStage4();
+  yield 'buildT80LineTurretStage4';
   const buildT80LineTurretStage5 = (): void => {
     P.add('turretDark', cylX(0.07, 1.5, 10), 0, roofY(0.40), -1.06);
     P.add('turretDetail', box(0.05, 0.05, 0.66), 0.80, roofY(0.46), -0.86, 0, 0.5, 0);
@@ -551,6 +560,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineTurretStage5();
+  yield 'buildT80LineTurretStage5';
   const buildT80LineTurretStage6 = (): void => {
     if (v === 0) {
       // The early T-80 carries no continuous ERA chevron. One compact shoulder
@@ -566,6 +576,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineTurretStage6();
+  yield 'buildT80LineTurretStage6';
   const buildT80LineHullStage3 = (): void => {
     if (v === 2) {
       // T-80BV Kontakt-1: discrete cheek field + flank wrap + glacis raft. The
@@ -702,6 +713,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     }
   };
   buildT80LineHullStage3();
+  yield 'buildT80LineHullStage3';
   const dxT = ringSkin(ringsT, 0.30) + 0.02;
   const buildT80LineMarkingsStage1 = (): void => {
     P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxT, 0.22, -0.30], Math.PI / 2);
@@ -721,6 +733,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.128, rootR: 0.28, rootL: 0.62 });
   };
   buildT80LineMarkingsStage1();
+  yield 'buildT80LineMarkingsStage1';
   const gunEnd = v === 2 ? 5.22 : v === 1 ? 5.73 : 5.67;
   const buildT80LineGunStage1 = (): void => {
     tubeGun(P, [
@@ -787,11 +800,11 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   buildT80LineGunStage1();
 }
 
-function buildT80(P: T80BuilderPort): void { buildT80Line(P, 0); }
+const buildT80 = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 0));
 
-function buildT80B(P: T80BuilderPort): void { buildT80Line(P, 1); }
+const buildT80B = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 1));
 
-function buildT80BV(P: T80BuilderPort): void { buildT80Line(P, 2); }
+const buildT80BV = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 2));
 
 
 export const T80_PROFILES = {
