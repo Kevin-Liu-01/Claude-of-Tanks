@@ -277,7 +277,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
   const tips = coarsePointer ? TIP_KEYS.filter(([, fine]) => !fine) : TIP_KEYS;
-  if (elRetry) elRetry.textContent = t('boot.gate.retry');
+  if (elRetry) elRetry.textContent = t('boot.retry');
   mountGitHubStars(document);
 
   const heartbeat = (stage: string): void => {

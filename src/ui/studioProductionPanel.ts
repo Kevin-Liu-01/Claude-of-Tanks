@@ -330,12 +330,14 @@ export function mountStudioProductionPanel(
   const play = button(productionLabel('play'), () => { if (S.playing) S.pause(); else S.play(); refresh(); }, KIT_BUTTON);
   const clock = node('output', 'num');
   const restart = button(productionLabel('restart'), () => { S.stop(); S.seek(0); refresh(); }, KIT_BUTTON);
-  transport.append(play, clock, restart);
+  transport.append(play, restart);
   const scrub = node('input', 'production-scrub');
   scrub.type = 'range'; scrub.min = '0'; scrub.step = '10'; scrub.setAttribute('aria-label', productionLabel('scrub'));
   scrub.addEventListener('input', () => { S.pause(); S.seek(Number(scrub.value)); refresh(); });
   const shots = node('div', 'production-shots');
-  sequence.append(transport, scrub, shots);
+  const scrubRow = node('div', 'production-scrubrow');
+  scrubRow.append(scrub, clock);
+  sequence.append(transport, scrubRow, shots);
   director.append(sequence);
 
   const cameras = node('section'); cameras.append(node('h3', '', productionLabel('camera')));

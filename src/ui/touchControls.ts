@@ -176,10 +176,10 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel .tchev{transform:translateY(-50%) scaleX(-1);}
 /* The type label sits on the slot's floor, and so does the shell: scaled from its base 11 px up, its tail keeps 3 px
    from the label at every touch slot height (critic r4b: APFSDS crossed the dart's tail) */
-body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
+body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%);--shell-k:.76;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:-.06em}
+body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-fig-11);left:1px;right:1px;text-align:center;letter-spacing:0}
 body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-fig-11);}
 /* the selected round in the kit's selected look, the system tiles' and the Watch bar's (the accent's ring on its wash),
    its frame in the bright accent for a glance at phone size (gauntlet r5: a brown gradient and a 16 px glow were a fourth
@@ -189,7 +189,7 @@ body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom
   box-shadow:var(--ring-accent);}
 /* (the selected tile's code is the figures' 11 px in every locale, a hair tighter so a six-letter code clears both
    borders: at 13 px in zh it ran past them, gauntlet r3) */
-body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:-.06em;}
+body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-fig-11);letter-spacing:0;}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
@@ -275,7 +275,7 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
    shrinks and steps left, out from under it (critic r4: the dart's tip ran into the 1; r4b: the 1 met it on a
    landscape slot), standing 1 px higher so the stepped fins keep 3 px from the label (r6: 2.5 px on the phone). */
 body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--battle-fs-11);}
-body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px)) scale(.6);}
+body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px));--shell-k:.6;}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px var(--s3);}

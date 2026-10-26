@@ -87,8 +87,9 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
   }
 }
 
-// The UI shows each vehicle's column in its national tree (owner 2026-10-25); matchmaking stays at X.
-for (const [id, shown] of [['t90_1992', 'VI'], ['t90a_burlak_proto', 'VIII'], ['t90ms_2011', 'VII']]) {
+// The UI shows each vehicle's column in its national tree (owner 2026-10-25; re-tiered in the 251 order for 253);
+// matchmaking stays at X.
+for (const [id, shown] of [['t90_1992', 'VII'], ['t90a_burlak_proto', 'VIII'], ['t90ms_2011', 'VIII']]) {
   assert.equal(tankTier(id), 10, `${id}: gameplay tier is X`);
   assert.equal(tierNumeral(id), shown, `${id}: UI tier is its tree column, ${shown}`);
 }

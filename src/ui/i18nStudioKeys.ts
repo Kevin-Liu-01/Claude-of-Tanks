@@ -28,8 +28,7 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([
   // the cinematic effects beside the game's own effect buttons
-  'studioPanel.fx.cinematicOn', 'studioPanel.fx.cinematicOff', 'studioPanel.fx.trackDustOn', 'studioPanel.fx.trackDustOff',
-  'studioPanel.fx.ambienceOn', 'studioPanel.fx.ambienceOff',
+  'studioPanel.fx.cinematic', 'studioPanel.fx.trackDust', 'studioPanel.fx.ambience', 'studioPanel.fxGroup.render',
   'studioPanel.fx.smokeScreen', 'studioPanel.fx.flare', 'studioPanel.fx.embers', 'studioPanel.fx.fireField',
   'studioPanel.fx.shockwave', 'studioPanel.fx.debris', 'studioPanel.fx.explHuge',
   'studioPanel.section.picture', 'studioPanel.section.pictureSub',

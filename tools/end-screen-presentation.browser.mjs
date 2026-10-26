@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
+import {datumProblems} from './datum-census.mjs';
 import {createServer} from 'vite';
 const arg=(key,fallback)=>process.argv.find(v=>v.startsWith(`--${key}=`))?.slice(key.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
@@ -22,6 +23,7 @@ try{
    await page.screenshot({path:resolve(out,`${name}-debug.png`)});await bounds('.es-actions');if(!wide)await bounds('.es-view-tabs');await bounds('.es-report');
    assert.equal(await page.locator('.es-report').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,`${name}/${result}: no sideways scroll sizes=${await page.locator('.es-report').evaluate(n=>[n.clientWidth,n.scrollWidth,n.getBoundingClientRect().width].join(','))}: ${JSON.stringify(await page.locator('.es-report').evaluate(n=>[...n.querySelectorAll('*')].filter(e=>e.getBoundingClientRect().right>n.getBoundingClientRect().right+1).map(e=>[e.className,e.getBoundingClientRect().width]).slice(0,12)))}`);
    assert.equal(await page.locator('.es-awards .aw').count(),5);
+   assert.deepEqual(await datumProblems(page),[],`${name}/${result}: one place a datum (UI-LOCKDOWN part C)`);
    assert.equal(await page.locator('.es-debrief.teams').isVisible(),wide);
    await page.screenshot({path:resolve(out,`${name}-${result}.png`)});
    const medal=page.locator('[data-medal-tip]').first();await medal.scrollIntoViewIfNeeded();await medal.click();

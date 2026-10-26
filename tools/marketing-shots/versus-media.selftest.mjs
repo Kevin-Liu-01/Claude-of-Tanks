@@ -87,6 +87,27 @@ for (const item of manifest.items) {
   }
   named.add(basename(item.path));
   total += bytes.length;
+  // (2026-10-25, the /home Versus section) its rungs: the 1920 and any of 640, 1280 and 3840, each 16:9 at its width,
+  // its bytes as pinned; and its view
+  assert.ok(['side', 'top'].includes(item.view), `${item.id}: a side or top view`);
+  assert.equal(item.view, scene.meta?.view === 'top-down' ? 'top' : 'side', `${item.id}: the view its scene names`);
+  const widths = item.rungs.map((r) => r.width);
+  assert.ok(widths.includes(1920) && widths.every((w) => [640, 1280, 1920, 3840].includes(w)), `${item.id}: rungs ${widths}`);
+  assert.deepEqual(widths, [...widths].sort((a, b) => a - b), `${item.id}: rungs in width order`);
+  for (const rung of item.rungs) {
+    const want = rung.width === 1920 ? item.path : `/media/${PICKS.collection}/${item.id}-${rung.width}.webp`;
+    assert.equal(rung.path, want, `${item.id}: the ${rung.width} rung's path`);
+    const rb = readFileSync(join(ROOT, 'public', rung.path));
+    assert.equal(rb.length, rung.bytes, `${item.id}: the ${rung.width} rung's bytes as pinned`);
+    assert.deepEqual(webpSize(rb), [rung.width, rung.width * 9 / 16], `${item.id}: the ${rung.width} rung is 16:9`);
+    named.add(basename(rung.path));
+  }
+}
+// the section's twelve, in its order, each a still that ships
+if (PICKS.featured) {
+  assert.deepEqual(manifest.featured, PICKS.featured, 'the manifest features picks.json\'s featured, in order');
+  assert.equal(new Set(PICKS.featured).size, PICKS.featured.length, 'no still is featured twice');
+  for (const id of PICKS.featured) assert.ok(PICKS.ship.includes(id), `featured ${id} ships`);
 }
 const files = readdirSync(DIR);
 assert.deepEqual(files.filter((f) => /\.(?:png|gif)$/i.test(f)), [], 'no PNG or GIF in the versus collection');

@@ -22,7 +22,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
   top:var(--hud-right-top);right:var(--hud-report-right,12px);bottom:auto;width:var(--hud-report-width,var(--hud-side-width));
-  max-height:var(--hud-right-height);min-height:0;overflow:auto;overscroll-behavior:contain;
+  max-height:min(var(--hud-right-height),var(--si-log-fit,100vh));min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
@@ -102,9 +102,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    The count takes the top-right corner, the key the top-left (the consumables' keys match it), the label centres on the
    floor, and the shell stands 3 px over the label's ink, small enough that its widest top (the HE drum) keeps 3 px from both corners. A
    three-digit count shrinks its shell and steps it left; an empty slot's strike spans its icon. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{top:auto;bottom:14px;transform:translateX(-50%) scale(.6);transform-origin:50% 100%}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{top:auto;bottom:14px;transform:translateX(-50%);--shell-k:.6}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell .ty{left:0;right:0;text-align:center}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide canvas{transform:translateX(calc(-50% - 3px)) scale(.54)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide canvas{transform:translateX(calc(-50% - 3px));--shell-k:.54}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell .cnt{top:2px;right:3px;bottom:auto;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.unlimited .cnt{font-size:16px;line-height:11px}
@@ -112,7 +112,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.empty::before{left:12px;right:12px}
 /* the 44 px wide slots (under 768 px) draw it smaller again and 1 px left, so the HE drum keeps 3 px from a two-digit
    count (r7 capture: 2.7 px at 640 px) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 1px)) scale(.56)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 1px));--shell-k:.56}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:80px}
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
@@ -194,6 +194,9 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
    (the smoke's charges, a wait's seconds) where a slot counts its rounds and the glyph at the centre, 40 px tall: a 32 px
    underlined strip of tabs read as the rack's header, not its abilities */
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:20px;--hud-tile-h:40px;--hud-tile-radius:var(--r1)}
+/* (a stacked tray's 54 px tiles: the glyph at 16 px clears the corner cap, at 20 the Q, C, G and N caps met their glyphs,
+   gauntlet r7) */
+body[data-cot-battle-layout][data-hud-tray='stacked']:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:16px}
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);column-gap:0;padding:3px;border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
   background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
@@ -235,6 +238,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
 body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
 /* a Standard battle has no objective beyond the score: its plate is the mission plate in the corner seat only */
 body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
+/* (the Horde's plate, in every seat, is the mode's name alone: its wave and those left are the score plate's, gauntlet r3
+   read them twice; without a corner seat the Horde had no objective at all, Main from the touch receipt) */
+body[data-cot-battle-layout] .cot-mode-status[data-mode='endless_horde'] .mn{display:block}
+body[data-cot-battle-layout] .cot-mode-status[data-mode='endless_horde'] .mv{display:none}
 /* The mission plate (brand-ui H3, the direction's .mission): where battleHudLayout.ts seats it in the top-left corner
    (the mouse layouts the team strip shows on), a right trapezoid hung from the window's corner (owner 2026-10-24: "left
    objective marker should be another right trapezoid attached to left"), the mode's glyph in its well, the mode's name
@@ -252,8 +259,6 @@ body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mn{
   text-transform:uppercase;color:var(--ink-1)}
 /* (the value in the plate seat's face: mono here and the display face under the score read as two kits, gauntlet r3) */
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font:600 var(--battle-fs-12)/1 var(--hud-font);color:var(--ink-3)}
-/* (the Horde's mission plate is its name alone: its wave and those left are the score plate's, gauntlet r3 read them twice) */
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status[data-mode='endless_horde'] .mv{display:none}
 @media (hover:hover) and (pointer:fine){
   body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{display:inline-flex;flex:none;padding:0 6px}
 }
@@ -273,7 +278,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net-link{display:none}
 /* (every mode's glyph in the one accent: its shape names the mode; a lilac, a cyan, a mint and a salmon of its own were
    off the palette, gauntlet r3) */
-body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--objective-accent)}
+body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}
 body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:1;min-width:0}
 body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
 /* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its
@@ -355,6 +360,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon
   display:grid;grid-template-rows:repeat(var(--roster-count,7),minmax(16px,var(--roster-row-height,24px)));align-content:start;
   height:calc(var(--roster-height) - 22px);overflow:hidden;
 }
+/* (a dense roster's, more than ten a side, down to 13 px: fourteen a side fit 1024x600 whole, battleHudLayout.ts ROSTER_ROW_DENSE) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear.dense:not(.icon-grid) .cot-ear-rows{grid-template-rows:repeat(var(--roster-count,7),minmax(13px,var(--roster-row-height,24px)))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{min-height:0;overflow:hidden;padding-block:0}
 /* (a roster cut to whole rows ends with the count it leaves out, its own 16 px line: battleHudLayout.ts snapRosterHeight) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid)[data-more] .cot-ear-rows{height:calc(var(--roster-height) - 22px - 17px)}
@@ -420,7 +427,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px)) scale(.6)}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px));--shell-k:.6}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
@@ -430,7 +437,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:215px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%) scale(.6)}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%);--shell-k:.6}
 }
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
@@ -447,14 +454,30 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
    placeAimWarning) under the rack, the countdown and the ring, as the mouse layout's canvas chip, and the scope's readouts
    start under it; its box is the canvas chip's ink, 24 px tall. A short landscape keeps it in the left lane (below). */
 .cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;display:flex;align-items:center;justify-content:center}
+/* (up to 340 px tall the joystick under the map and the seats beside it leave it no larger step: at 1.5 it ran 15 px onto
+   the stick at 568x256, and at 568x320 it sent the objective under the score and the detection onto the hull panel; on a
+   portrait phone up to 340 px wide it left the systems slot one 88 px column of six over the left FIRE, the layout
+   receipt at 320x568) */
+@media (max-height:340px) and (orientation:landscape), (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:106px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:min(calc(var(--mm-tiny) * var(--mm-k,1)),var(--mm-tiny))!important;height:min(calc(var(--mm-tiny) * var(--mm-k,1)),var(--mm-tiny))!important}
+}
+@media (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:92px}
+}
 @media (max-height:299px) and (orientation:landscape){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:calc(88px * var(--mm-k,1))!important;height:calc(88px * var(--mm-k,1))!important}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:88px}
 }
 
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
   .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s3);white-space:normal}
-  .cot-hud .cot-aim-warning{padding:4px var(--s3)}
+  .cot-hud .cot-aim-warning{padding:4px var(--s3);box-sizing:border-box}
+}
+/* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
+   300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
+@media (max-height:549px) and (min-height:300px) and (orientation:landscape){
+  .cot-hud .cot-aim-warning{min-height:32px}
 }
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
@@ -560,6 +583,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:center}
+/* (the tiniest landscapes, up to 340 px tall, where no place clears both: one 24 px row, the alert on one line in the
+   detection's place while it shows, the detection under it: touchNoticePlan oneRow, the layout receipt at 568x256 and,
+   where the parked chip beside the objective met the alert, 568x320) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}

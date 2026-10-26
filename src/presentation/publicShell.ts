@@ -85,7 +85,7 @@ function pageLinks(current: PublicPageKey | null, text: ShellText): string {
 /** The bar and its phone menu sheet. */
 export function publicNavHtml(shell: PublicShellPage, text: ShellText): string {
   const play = `${iconMarkup('play', 18)}<span data-i18n="publicNav.playNow">${escapeHtml(text('publicNav.playNow'))}</span>`;
-  const github = `<a class="public-nav__icon-link public-nav__github" href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 18)}</a>`;
+  const github = `<a class="public-nav__icon-link public-nav__github" href="${SITE_REPOSITORY}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(text('publicNav.githubAria'))}" data-i18n-aria-label="publicNav.githubAria">${iconMarkup('github', 16)}</a>`;
   return `<a class="public-skip" href="#main" data-i18n="publicNav.skip">${escapeHtml(text('publicNav.skip'))}</a>`
     + `<nav class="public-nav" aria-label="${escapeHtml(text('publicNav.primaryAria'))}" data-i18n-aria-label="publicNav.primaryAria"><div class="public-nav__inner">`
     + `<a class="public-nav__brand" href="/home"${shell.page === 'home' ? ' aria-current="page"' : ''} aria-label="${escapeHtml(text('publicNav.brandAria'))}" data-i18n-aria-label="publicNav.brandAria">${markMarkup(28)}${WORDMARK}</a>`
@@ -148,15 +148,16 @@ export function symbolBlock(html: string, sprite: string, flagSvg: (code: string
 const MARKER = (name: string): RegExp => new RegExp(`<!--cot:${name}-->[\\s\\S]*?<!--/cot:${name}-->`);
 
 /** The shell's route of a document: its canonical path (the docs topic template names /docs). The missing page has no
- * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address. */
+ * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address.
+ * Every Field Manual chapter, the Filming one too, is the manual's: Media names a section of that chapter (its
+ * #library), not a page of its own, so no document is current under it. */
 export function shellPageOf(html: string): PublicShellPage {
   const canonical = /<link rel="canonical" href="https:\/\/[^/"]+(\/[^"]*)"/.exec(html)?.[1];
   if (!canonical) return { path: '/404', page: null };
   const path = canonical.replace(/\/$/, '') || '/';
   const page: PublicPageKey = path.startsWith('/gallery') ? 'gallery'
-    : path.startsWith('/docs/filming') ? 'media'
-      : path.startsWith('/docs') ? 'docs'
-        : path.startsWith('/studio') ? 'studio' : 'home';
+    : path.startsWith('/docs') ? 'docs'
+      : path.startsWith('/studio') ? 'studio' : 'home';
   return { path, page };
 }
 

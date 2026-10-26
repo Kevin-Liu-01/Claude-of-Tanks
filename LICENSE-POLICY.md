@@ -45,6 +45,7 @@ server/world-collision-manifests-228/**
 src/audio/*.generated.ts
 src/docs/*.generated.json
 src/fx/*.ledger.json
+src/game/*.generated.ts
 src/sim/*.generated.ts
 src/ui/*.generated.ts
 tools/audio/**
