@@ -1365,7 +1365,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     colors: { id: 'team', tone: 'green' },
     highContrast: { id: 'graphics', tone: 'violet' },
     motion: { id: 'speed', tone: 'cyan' },
-    shake: { id: 'damage', tone: 'amber' },
+    shake: { id: 'toolPhoto', tone: 'amber' },
     flash: { id: 'lightbulb', tone: 'amber' },
     droneStatic: { id: 'modeDrone', tone: 'cyan' },
     rosters: { id: 'team', tone: 'cyan' },

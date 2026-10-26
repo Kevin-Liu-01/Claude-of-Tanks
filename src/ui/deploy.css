@@ -287,8 +287,13 @@ body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-fie
 /* a compact height sets the rules after the pickers: the picker takes the battlefield's room alone */
 body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{height:var(--field-rest,200px);}
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
+/* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */
+body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{flex:1 1 0;min-height:0;}
+/* where the card has no spare room (a compact height, a phone) it steps aside and the options keep its height */
 body:is([data-cot-height='compact'],[data-cot-height='short']) .cot-garage .cot-battle-details.is-more .cot-deploy-field,
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{display:none;}
+body:is([data-cot-height='compact'],[data-cot-height='short']) .cot-garage .cot-battle-details.is-more .cot-mode-settings,
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:var(--field-rest,auto);align-content:start;}
 /* beside the screen, an operation launches from its brief's one primary; a phone's rows keep their own */
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-launch{display:none;}
 /* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
@@ -392,6 +397,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-deploy-fiel
 .cot-garage .cot-deploy-tank .chg{--h:40px;align-self:center;flex:none;background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-2);}
 @container deploy-plate (max-width:480px){
   .cot-garage .cot-deploy-tank .cot-card{display:none;}
+  /* a round reads by its glyph and figure here (its name is its tip), so the rounds keep one row in every locale */
+  .cot-garage .cot-deploy-tank .load .cot-c-statchip__label{display:none;}
   .cot-garage .cot-deploy-tank .head b img{display:block;}
 }
 .cot-garage .cot-battle-menu.open [data-battle-launch]{display:flex;align-items:center;justify-content:space-between;width:100%;height:66px;min-height:0;

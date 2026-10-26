@@ -27,7 +27,7 @@
 .cot-c-notice[hidden]{display:none}
 .cot-c-notice--banner{width:100%;border-radius:0}
 /* an inline notice belongs to the row above it: no frame, its glyph and text on the row's glyph and label columns */
-.cot-c-notice--inline{padding:0;background:none;box-shadow:none}
+.cot-c-notice.cot-c-notice--inline{padding:0;background:none;box-shadow:none}
 .cot-c-notice--toast{box-shadow:var(--e3);
   transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter)}
 .cot-c-notice--toast[data-state]{opacity:0;transform:translateY(4px)}

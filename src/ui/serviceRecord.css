@@ -4,7 +4,7 @@
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 .cot-modal-root.cot-service-record{padding:clamp(8px,2vh,24px);place-items:center}
-.cot-modal-root.cot-service-record .cot-modal{width:min(var(--cot-modal-max,1120px),100%);height:min(1080px,96dvh);max-height:calc(100dvh - 16px);border-top-color:var(--line-2);background:var(--surface-page)}
+.cot-modal-root.cot-service-record .cot-modal{width:min(calc(var(--cot-modal-max,1120px) * max(1, var(--cot-type-scale,1))),100%);height:min(1080px,96dvh);max-height:calc(100dvh - 16px);border-top-color:var(--line-2);background:var(--surface-page)}
 .cot-modal-root.cot-service-record .cot-modal::before{display:none}
 .cot-modal-root.cot-service-record .cot-modal:focus{outline:none}
 .cot-modal-root.cot-service-record .cot-modal__body{display:flex;flex:1;flex-direction:column;padding:0;overflow:hidden}
@@ -19,7 +19,7 @@
    the map (the plate's wrappers step aside so their parts take the header's areas) */
 .cot-modal-root.cot-service-record .cot-modal__header{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;
   grid-template-areas:'title tank close' 'line tank close';align-items:end;gap:var(--s2) var(--s4);
-  min-height:min(136px,22vh);padding:var(--s5) var(--s5) var(--s4) var(--s6);border-bottom-color:var(--line-2);
+  min-height:min(136px,22vh);padding:var(--s5) var(--s6) var(--s4) var(--s6);border-bottom-color:var(--line-2);
   background:linear-gradient(90deg,var(--surface-scene) 16%,color-mix(in srgb,var(--surface-scene) 58%,transparent) 58%,color-mix(in srgb,var(--surface-scene) 24%,transparent)),
     var(--record-map,none) center 42%/cover no-repeat var(--surface-raised)}
 /* a record with no battle has no map behind its header: the plate alone, no scrim over nothing */
@@ -176,7 +176,7 @@
 .cot-record-battle[open] .cot-record-expand{rotate:180deg}
 /* an open battle shows its medals once, in its body (surface registry S6); the row keeps their room so nothing moves */
 .cot-record-battle[open] .cot-record-battle-medals{visibility:hidden}
-.cot-record-battle-body{padding:var(--s4) var(--s5);border-top:1px solid var(--line-1);background:var(--surface-scene)}
+.cot-record-battle-body{padding:var(--s4) var(--s5);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .cot-record-battle-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s4)}
 .cot-record-battle-awards{display:flex;flex-wrap:wrap;gap:var(--s1);margin-bottom:var(--s4)}
 .cot-record-battle-awards button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:0;border:0;border-radius:var(--r2);background:none;cursor:help}
@@ -193,7 +193,7 @@
 .cot-record-step,.cot-record-step-time{color:var(--ink-3)}
 .cot-record-step-time,.cot-record-step-gap{font-family:var(--font-data)}
 .cot-record-trace-vehicle{display:flex;align-items:center;gap:var(--s2);color:var(--ink-1);overflow-wrap:anywhere}
-.cot-record-trace-icon{flex:none;width:48px;height:34px;object-fit:contain;object-position:50% 0}
+.cot-record-trace-icon{flex:none;width:48px;height:28px;object-fit:cover;object-position:50% 70%}
 .cot-record-trace small{display:flex;align-items:center;gap:6px;font-size:inherit;color:var(--ink-2)}
 .cot-record-step-gap{min-width:48px;text-align:end;color:var(--ink-2)}
 .cot-record-trace-empty{padding-top:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-13));color:var(--ink-3)}
@@ -254,12 +254,12 @@
 }
 /* a compact screen keeps the header to a band; a short landscape phone to one line with the X beside the title */
 @media(max-height:720px){
-  .cot-modal-root.cot-service-record .cot-modal__header{min-height:0;padding:var(--s4) var(--s4) var(--s3) var(--s6)}
+  .cot-modal-root.cot-service-record .cot-modal__header{min-height:0;padding:var(--s4) var(--s6) var(--s3) var(--s6)}
   .cot-record-plate .cot-record-vehicle{width:160px;height:92px}
 }
 @media(max-height:500px) and (orientation:landscape){
   .cot-modal-root.cot-service-record .cot-modal{height:calc(100dvh - 16px)}
-  .cot-modal-root.cot-service-record .cot-modal__header{align-items:center;min-height:0;padding:var(--s2) var(--s2) var(--s2) var(--s4)}
+  .cot-modal-root.cot-service-record .cot-modal__header{align-items:center;min-height:0;padding:var(--s2) var(--s4)}
   .cot-modal-root.cot-service-record .cot-modal__close{align-self:center}
   .cot-modal-root.cot-service-record .cot-modal__title{font-size:var(--fs-20)}
   .cot-record-plate .cot-record-vehicle{width:72px;height:44px}

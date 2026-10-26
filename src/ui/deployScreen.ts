@@ -126,16 +126,13 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
-    // the mode's own settings open under the pickers and nothing above them moves (deploy.css holds the battlefield at
-    // its resting height); a phone's page scrolls them into view
+    // the mode's own settings open in the battlefield card's room above the pickers (deploy.css), so nothing scrolls
     options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
     // the further options and the battlefield picker take one place: opening one closes the other
     if (open && menu.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
       menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
     }
-    if (open && document.body.dataset.cotPanels === 'overlay') {
-      requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
-    }
+
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
