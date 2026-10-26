@@ -125,6 +125,9 @@ const LONG_SIDE = 10;
 const CARD_MIN_WIDTH = 1680;
 /** A name in Latin letters alone (battleLoad's .lat: Chinese's lifted label sizes are for Chinese text). */
 const LATIN = /^[\x20-\x7e\u00a0-\u024f]+$/;
+/** What a roster row shows, so a fill that names the same seat keeps its element in place. */
+const rowKey = (r: BattleLoadRosterRow, cards: boolean): string =>
+  [r.id, r.kind ?? '', r.tier ?? '', r.name ?? '', r.isPlayer ? 1 : 0, r.callsign ?? '', r.nation ?? '', cards ? 1 : 0].join('|');
 /** The progress's steps (the direction's five). */
 const PROGRESS_STEPS = 5;
 
@@ -178,12 +181,15 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 /* The tip and the battlefield's plan: the wide layouts' upper right (below). */
 .cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
+.cot-bl .teams[hidden]{display:none;}
 .cot-bl .teams{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);
   align-items:stretch;gap:clamp(16px,3vw,42px);}
-.cot-bl .team{--bl-count:1;--bl-row-height:30px;--bl-row-gap:3px;--bl-row-inset:7px;--bl-heading:28px;min-width:0;min-height:0;align-self:center;
-  height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
-  display:grid;grid-template-rows:auto minmax(0,1fr);}
-.cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:var(--s2);padding:0 8px 8px;
+/* (a side as tall as its heading plate and its rows at full height, to the band's height, where its rows give way: a
+   heading estimated at 28 px, against a plate of 36 to 44 with its margins, squeezed every side that fit, seven at 1440 to
+   28 px rows and one beside a long side to 16 px under a scroll cue, owner live 255) */
+.cot-bl .team{--bl-count:1;--bl-row-height:30px;--bl-row-gap:3px;--bl-row-inset:7px;min-width:0;min-height:0;align-self:center;
+  height:auto;max-height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);}
+.cot-bl .thead{display:flex;align-items:center;gap:var(--s2);padding:0 8px 8px;
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}.cot-bl .thead .flags:empty{display:none;}
 .cot-bl .team.ally .thead{color:var(--text-own);}
@@ -356,9 +362,13 @@ ${WIDE} .cot-bl .team.foe:not(.cards) .row .cs{margin-left:0;margin-right:auto;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
 ${WIDE} .cot-bl .foot{position:relative;}
-${WIDE} .cot-bl .team.cards{--bl-row-height:118px;--bl-row-gap:6px;--bl-heading:0px;--bl-row-inset:0px;height:auto;align-self:end;}
+${WIDE} .cot-bl .team.cards{--bl-row-height:118px;--bl-row-gap:6px;--bl-row-inset:0px;align-self:end;}
 ${WIDE} .cot-bl .team.cards .thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
-${WIDE} .cot-bl .team.cards .rows{grid-template-rows:var(--bl-row-height);grid-template-columns:repeat(var(--bl-count),minmax(0,1fr));
+/* (seven columns whatever the side holds, so a card is a card's width: one card alone, or a seat named before the rest,
+   spanned the side as one thin stretched bar, owner on live 255; the enemies fill from the outer edge as the allies do) */
+${WIDE} .cot-bl .team.foe.cards .rows{direction:rtl;}
+${WIDE} .cot-bl .team.foe.cards .row{direction:ltr;}
+${WIDE} .cot-bl .team.cards .rows{grid-template-rows:var(--bl-row-height);grid-template-columns:repeat(${CARD_TEAM_MAX},minmax(0,1fr));
   gap:var(--bl-row-gap);overflow:visible;}
 /* (beside the hero cards the VS stands on their vehicle names' line, the cards' band less the name's 4 px inset and half
    of each line, at every wide size: at a fixed 34 px it stood 9 px under the names and 28 px under the strips' middle at
@@ -371,6 +381,8 @@ ${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;is
 ${WIDE} .cot-bl .team.ally.cards .row.card{border:0;border-bottom:2px solid var(--team-own);}
 ${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(--team-enemy);}
 ${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
+/* (a seat not yet named holds its card's place, the card's frame and the side's foot over an empty ground) */
+${WIDE} .cot-bl .team.cards .row.card.slot{background:var(--fill-faint);}
 /* (the player's card's foot in the ring's accent: the side's blue foot sat inside its gold frame at 1920 and 2560, gauntlet r11) */
 ${WIDE} .cot-bl .team.ally.cards .row.card.me{border-bottom-color:var(--accent);}
 ${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;
@@ -425,7 +437,6 @@ ${PORTRAIT_ROWS} .cot-bl .fpct{margin-left:auto;}
 body[data-cot-height='short'] .cot-bl .teams{container:bl-teams/size;}
 @container bl-teams (max-height:140px){
   .cot-bl .team .thead{display:none;}
-  .cot-bl .team{--bl-heading:0px;}
 }
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .fbar i b{transition-duration:1ms;}}
 `;
@@ -456,6 +467,15 @@ interface BattleLoadInfo {
   readonly enemies: readonly BattleLoadRosterRow[];
   /** Rows each empty team sheet holds open until rosters() fills it (a solo entry: the default split). */
   readonly slots?: number;
+  /** The seats each side will field (the arrangement's or the room's team size, the player's among the allies): a side
+   *  shows its known rows and holds the rest open as placeholders until rosters() names them. */
+  readonly seats?: BattleLoadSeats;
+}
+
+/** The seats each side will field: a side's sheet keeps this many rows from its first frame, known or open. */
+export interface BattleLoadSeats {
+  readonly allies: number;
+  readonly enemies: number;
 }
 
 /**
@@ -496,12 +516,13 @@ export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
   readonly covering: boolean;
-  showPending(map?: string | PendingBattlefield | null): void;
+  showPending(map?: string | PendingBattlefield | null, seats?: BattleLoadSeats | null): void;
   show(info: BattleLoadInfo): void;
   rosters(
     allies: readonly BattleLoadRosterRow[],
     enemies: readonly BattleLoadRosterRow[],
     teams?: BattleLoadTeams | null,
+    seats?: BattleLoadSeats | null,
   ): void;
   progress(fraction: number, label?: string): void;
   countdown(seconds: number): void;
@@ -648,6 +669,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   };
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
   const modeGlyphEl = requiredElement<HTMLSpanElement>(root, '.rules .mode .gi');
+  const teamsEl = requiredElement<HTMLDivElement>(root, '.teams');
   const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
   const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
   const allyRows = requiredElement<HTMLDivElement>(root, '.team.ally .rows');
@@ -680,17 +702,20 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): once per page, null where they
    *  cannot load (a Node receipt, a blocked chunk), and the cards keep their silhouettes. */
   let heroCards: Promise<typeof import('./heroCard.ts') | null> | null = null;
-  let cardsPass = 0;
+  /** Each new card once: a card kept in place keeps its layers, and one a later fill dropped is skipped (a roster's seats
+   *  arriving one by one decorate only the cards they add, never cancelling the ones before them). */
   function decorateCards(host: HTMLElement, cards: readonly (readonly [HTMLElement, string])[]): void {
-    const pass = String(++cardsPass);
-    host.dataset.cardsPass = pass;
     if (!cards.length) return;
     heroCards ??= Promise.all([import('./heroCard.ts'), import('./heroCard.css')]).then(([module]) => module, () => null);
     void heroCards.then(async (hero) => {
       const manifest = hero ? await hero.loadHeroManifest() : null;
-      if (!hero || !manifest || host.dataset.cardsPass !== pass) return; // a later roster took this side
+      if (!hero || !manifest) return;
       host.style.setProperty('--hc-flag-mask', hero.heroCardFlagMask(manifest));
-      for (const [card, id] of cards) hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px' });
+      for (const [card, id] of cards) {
+        if (!card.isConnected || card.dataset.heroFor === id) continue;
+        card.dataset.heroFor = id;
+        hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px' });
+      }
     });
   }
 
@@ -739,84 +764,132 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     if (!rows.some((row) => row.nation)) return;
     void import('./flags.ts').then(({ flagIconHTML }) => {
       if (host.dataset.rowFlagsPass !== pass) return;
-      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+      // (a row kept in place keeps its flag: only the seats a fill added are drawn)
+      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]:empty')) seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
     }, () => { /* the rows keep their silhouettes */ });
   }
 
+  /** One roster row (a sheet row, or a card where `cards`), keyed by what it shows so a fill keeps it in place. */
+  function rosterRow(r: BattleLoadRosterRow, cards: boolean): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'row' + (cards ? ' card' : '') + (r.isPlayer ? ' me' : '');
+    el.dataset.key = rowKey(r, cards);
+    const tier = document.createElement('div');
+    tier.className = 'tier';
+    tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
+    const sil = document.createElement('div');
+    sil.className = 'sil';
+    // (ac130-fx-228) an aircraft row: the AC-130's one identity (its name and icon), as every kill surface shows it
+    const aircraft = r.kind === 'aircraft' ? killSourceIdentity('ac130') : null;
+    if (aircraft) {
+      sil.innerHTML = uiIconSVG(aircraft.icon, 25);
+      sil.style.display = 'grid'; sil.style.placeItems = 'center';
+    } else {
+      // a sheet row shows the vehicle's own side render, a card its silhouette until the hero layers land; only the
+      // one the layout draws is fetched (a box the CSS never paints loads no background)
+      sil.style.setProperty('--side-img', `url(${iconUrl(r.id, 'side')})`);
+      sil.style.setProperty('--sil-img', `url(${iconUrl(r.id, 'side_silhouette')})`);
+    }
+    const nm = document.createElement('div');
+    nm.className = 'nm';
+    nm.textContent = aircraft?.label || r.name || r.id;
+    if (LATIN.test(nm.textContent)) nm.classList.add('lat');
+    // every vehicle with its flag (owner UI rules): a sheet row's beside its render (a wide card's is its hero layer)
+    const flag = document.createElement('span');
+    flag.className = 'fl';
+    if (r.nation && !aircraft) flag.dataset.nation = r.nation;
+    el.append(tier, flag, sil, nm);
+    // who drives it: a card names its driver under the vehicle (the direction's 10-battle-load .cs), a row at its end
+    const callsign = r.isPlayer ? t('hud.feed.you') : r.callsign;
+    if (callsign) {
+      const cs = document.createElement('div');
+      cs.className = 'cs';
+      cs.textContent = callsign;
+      if (LATIN.test(callsign)) cs.classList.add('lat');
+      el.append(cs);
+      if (cards) el.className += ' has-cs';
+    }
+    return el;
+  }
+
+  /**
+   * A side's sheet: its known rows, then an open placeholder for each seat not yet named, `seats` rows in all (owner,
+   * live 255: "fix team lists in loading state": the host's seats unknown when the card drew, the allies read one
+   * stretched card and the enemies an empty bar). The side's form (a card row or a sheet), its row height and its box
+   * follow the seats, never the rows known so far, so a seat arriving fills its placeholder in place: no row grows, no
+   * side moves, and a row already shown keeps its element (its hero layers, its flag).
+   */
   function fillTeam(
     host: HTMLElement,
     countEl2: HTMLElement,
     team: HTMLElement,
     rows: readonly BattleLoadRosterRow[] = [],
-    slots = 0,
+    seats = 0,
+    cards = false,
   ): void {
-    const reserved = rows.length ? 0 : Math.max(0, Math.floor(slots));
+    const total = Math.max(rows.length, Math.floor(seats));
+    const open = total - rows.length;
     // a cover the press already drew (showPending, then the loading owner's first show with the same open slots) keeps
     // its rows: one sheet build in the press's task, not two (click-perf-244)
-    if (!rows.length && reserved && host.dataset.pendingSlots === String(reserved) && host.childElementCount === reserved) return;
-    if (reserved) host.dataset.pendingSlots = String(reserved); else delete host.dataset.pendingSlots;
-    team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
+    if (!rows.length && open && host.dataset.pendingSlots === String(open) && host.childElementCount === open) return;
+    if (!rows.length && open) host.dataset.pendingSlots = String(open); else delete host.dataset.pendingSlots;
+    team.style.setProperty('--bl-count', String(Math.max(1, total)));
+    // (a side of other seats drops the last list's scroll marks, which snap its rows to whole rows of the least height
+    // until the observer's next word: two seats after a scrolling 21 drew two 25 px rows in a 30 px pair)
+    if (team.dataset.seats !== String(total)) { team.dataset.seats = String(total); team.classList.remove('scrolls', 'more'); }
     moreObserver?.unobserve(host);
     moreObserver?.observe(host);
-    // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise; a window under
-    // CARD_MIN_WIDTH sets the wide composition's sheets as a long side does, where a card cut its driver (gauntlet r2 and
-    // r3: about 7 characters at 1280, 10 at 1440)
-    const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX && (typeof innerWidth !== 'number' || innerWidth >= CARD_MIN_WIDTH);
     if (cards) team.classList.add('cards'); else team.classList.remove('cards');
     // (a long side: a short landscape's 15 px rows drop the side render and set a smaller flag, gauntlet r5)
-    if (Math.max(rows.length, reserved) > LONG_SIDE) team.classList.add('long'); else team.classList.remove('long');
+    if (total > LONG_SIDE) team.classList.add('long'); else team.classList.remove('long');
     const decorated: [HTMLElement, string][] = [];
-    host.textContent = '';
-    for (let slot = 0; slot < reserved; slot += 1) {
+    const kept = [...host.children] as HTMLElement[];
+    const next: HTMLElement[] = [];
+    rows.forEach((r, at) => {
+      const old = kept[at];
+      if (old && old.dataset.key === rowKey(r, cards)) { next.push(old); return; }
+      const el = rosterRow(r, cards);
+      next.push(el);
+      if (cards && r.kind !== 'aircraft') decorated.push([el, r.id]);
+    });
+    const slotClass = 'row slot' + (cards ? ' card' : '');
+    for (let slot = 0; slot < open; slot += 1) {
+      const old = kept[rows.length + slot];
+      if (old && old.className === slotClass) { next.push(old); continue; }
       const el = document.createElement('div');
-      el.className = 'row slot';
+      el.className = slotClass;
       el.setAttribute('aria-hidden', 'true');
-      host.appendChild(el);
+      next.push(el);
     }
-    for (const r of rows) {
-      const el = document.createElement('div');
-      el.className = 'row' + (cards ? ' card' : '') + (r.isPlayer ? ' me' : '');
-      const tier = document.createElement('div');
-      tier.className = 'tier';
-      tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
-      const sil = document.createElement('div');
-      sil.className = 'sil';
-      // (ac130-fx-228) an aircraft row: the AC-130's one identity (its name and icon), as every kill surface shows it
-      const aircraft = r.kind === 'aircraft' ? killSourceIdentity('ac130') : null;
-      if (aircraft) {
-        sil.innerHTML = uiIconSVG(aircraft.icon, 25);
-        sil.style.display = 'grid'; sil.style.placeItems = 'center';
-      } else {
-        // a sheet row shows the vehicle's own side render, a card its silhouette until the hero layers land; only the
-        // one the layout draws is fetched (a box the CSS never paints loads no background)
-        sil.style.setProperty('--side-img', `url(${iconUrl(r.id, 'side')})`);
-        sil.style.setProperty('--sil-img', `url(${iconUrl(r.id, 'side_silhouette')})`);
-      }
-      const nm = document.createElement('div');
-      nm.className = 'nm';
-      nm.textContent = aircraft?.label || r.name || r.id;
-      if (LATIN.test(nm.textContent)) nm.classList.add('lat');
-      // every vehicle with its flag (owner UI rules): a sheet row's beside its render (a wide card's is its hero layer)
-      const flag = document.createElement('span');
-      flag.className = 'fl';
-      if (r.nation && !aircraft) flag.dataset.nation = r.nation;
-      el.append(tier, flag, sil, nm);
-      // who drives it: a card names its driver under the vehicle (the direction's 10-battle-load .cs), a row at its end
-      const callsign = r.isPlayer ? t('hud.feed.you') : r.callsign;
-      if (callsign) {
-        const cs = document.createElement('div');
-        cs.className = 'cs';
-        cs.textContent = callsign;
-        if (LATIN.test(callsign)) cs.classList.add('lat');
-        el.append(cs);
-        if (cards) el.className += ' has-cs';
-      }
-      host.appendChild(el);
-      if (cards && !aircraft) decorated.push([el, r.id]);
+    if (next.length !== kept.length || next.some((el, at) => el !== kept[at])) {
+      // (a DOM stub without replaceChildren, the Node receipts', rebuilds the list)
+      if (typeof host.replaceChildren === 'function') host.replaceChildren(...next);
+      else { host.textContent = ''; for (const el of next) host.appendChild(el); }
     }
-    countEl2.textContent = reserved ? '' : String(rows.length);
+    // (the side's count once every seat is named: a partial count read "1" over a side still filling)
+    countEl2.textContent = open ? '' : String(rows.length);
     decorateCards(host, decorated);
     fillRowFlags(host, rows);
+  }
+
+  /** The seats each side fields (BattleLoadSeats; a pending cover's open slots): its known rows and open placeholders up
+   *  to them, the last show() or rosters() setting them. */
+  let allySeats = 0, foeSeats = 0;
+
+  /**
+   * Both sides' form, one for the two: a hero card a tank where each side seats seven or fewer and the layout is wide
+   * (CSS), the rows otherwise (a 2 v 14 room at 1920 read one side's cards at the band's foot beside the other's sheet).
+   * A window under CARD_MIN_WIDTH sets the wide composition's sheets as a long side does, where a card cut its driver
+   * (gauntlet r2 and r3: about 7 characters at 1280, 10 at 1440).
+   */
+  function fillSides(
+    allies: readonly BattleLoadRosterRow[],
+    enemies: readonly BattleLoadRosterRow[],
+  ): void {
+    const most = Math.max(allies.length, allySeats, enemies.length, foeSeats);
+    const cards = most > 0 && most <= CARD_TEAM_MAX && (typeof innerWidth !== 'number' || innerWidth >= CARD_MIN_WIDTH);
+    fillTeam(allyRows, allyN, allyTeam, allies, allySeats, cards);
+    fillTeam(foeRows, foeN, foeTeam, enemies, foeSeats, cards);
   }
 
   /** The sides on the rules row ("7 v 7"), once both are known. */
@@ -833,7 +906,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     /** Own the existing opaque surface before a cold loading-owner import; a chosen battlefield's name, tones,
      * placeholder and art are up from this first frame (2026-10-13: a slow first entry read "BATTLEFIELD" for ~1.8 s
      * while the loading owner downloaded). */
-    showPending(map?: string | PendingBattlefield | null) {
+    showPending(map?: string | PendingBattlefield | null, seats: BattleLoadSeats | null = null) {
       const pending = typeof map === 'string' ? { mapId: map } : map ?? null;
       const chosen: PendingBattlefield | null = pending?.mapId && pending.mapId !== 'random' ? pending : null;
       api.show({
@@ -843,7 +916,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         allies: [],
         enemies: [],
-        slots: PENDING_ROSTER_SLOTS,
+        ...(seats ? { seats } : { slots: PENDING_ROSTER_SLOTS }),
       });
     },
 
@@ -875,10 +948,16 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       else mapImg.removeAttribute('src');
       drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
-      fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
-      fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);
+      // (a battle's side with no rows yet holds the default split's seats open, never an empty bar; an entry with no
+      // roster at all, a notice cover, shows no sheets)
+      const named = info.allies.length + info.enemies.length > 0;
+      allySeats = info.seats?.allies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
+      foeSeats = info.seats?.enemies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
+      teamsEl.hidden = Math.max(info.allies.length, allySeats) + Math.max(info.enemies.length, foeSeats) === 0;
+      fillSides(info.allies, info.enemies);
       markTiers(info.allies, info.enemies);
-      showSides(info.allies.length, info.enemies.length);
+      // (the sides from the seats where the entry knows them, a pending cover's open slots being a guess)
+      showSides(Math.max(info.allies.length, info.seats?.allies ?? 0), Math.max(info.enemies.length, info.seats?.enemies ?? 0));
       seatMark();
       // (no tip: a helper sentence is the less-text rule's first cut, gauntlet r4; the battlefield's plan stands alone)
       countEl.textContent = '';
@@ -898,11 +977,15 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       allies: readonly BattleLoadRosterRow[],
       enemies: readonly BattleLoadRosterRow[],
       teams: BattleLoadTeams | null = null,
+      seats: BattleLoadSeats | null = null,
     ) {
-      fillTeam(allyRows, allyN, allyTeam, allies);
-      fillTeam(foeRows, foeN, foeTeam, enemies);
+      // (rows without seats are the whole side; a side named no rows keeps its open seats: never an empty bar)
+      allySeats = seats ? seats.allies : allies.length || allySeats || PENDING_ROSTER_SLOTS;
+      foeSeats = seats ? seats.enemies : enemies.length || foeSeats || PENDING_ROSTER_SLOTS;
+      teamsEl.hidden = false;
+      fillSides(allies, enemies);
       markTiers(allies, enemies);
-      showSides(allies.length, enemies.length);
+      showSides(Math.max(allies.length, allySeats), Math.max(enemies.length, foeSeats));
       fillFlags(allyFlags, teams?.allied ?? null, teams?.alliedFills ?? []);
       fillFlags(foeFlags, teams?.enemy ?? null, teams?.enemyFills ?? []);
     },

@@ -359,7 +359,7 @@ body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:var(--s1);font-size:
 body[data-cot-panels='overlay'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-fs-11)}
 /* (the side's name centred on its plate: a bottom padding alone set it 6 px high, gauntlet r4) */
 body[data-cot-panels='overlay'] .cot-bl .thead{font-size:var(--battle-fs-11);padding:var(--s1) var(--s2)}
-body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
+body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px}
 body[data-cot-panels='overlay'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
 body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:var(--battle-fs-11)}
 body[data-cot-panels='overlay'] .cot-bl .row .sil{flex-basis:44px;max-height:22px}
@@ -387,7 +387,7 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px;--bl-row-min:14px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:14px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
 body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}

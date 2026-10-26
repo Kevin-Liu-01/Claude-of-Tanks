@@ -28,7 +28,8 @@ import type { MatchSessionOptions, MatchSessionP2pOptions, MatchSessionStats, Se
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
-import { terrainVariantFor } from '../../sim/matchRuleset.ts';
+import { isWaveMode, matchRulesetFor, seatsByRole, terrainVariantFor } from '../../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../../sim/matchModes.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import { MIN_VISIBLE_PRE_BATTLE_S } from '../../game/preBattleCountdown.ts';
@@ -1068,15 +1069,23 @@ export function createBrowserComposition({
     const displayTeam = own?.team === 'spectator' ? 'alpha' : String(own?.team || 'alpha');
     const allies = roster.rows(players, displayTeam, viewerId, gameMode);
     const enemies = roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId, gameMode);
+    // (a room that fills its sides with bots fields its team size a side, planRoomBots' symmetric seating: the sheets hold
+    // those seats from this frame, the seats its players have not named yet open, never a side of one stretched card or
+    // an empty bar, owner on live 255; the role and wave modes size their sides by their rules, their rows the whole side)
+    const settings = latestRoom?.settings;
+    const seatMode = normalizeGameMode(gameMode ?? settings?.gameMode);
+    const sized = !!settings?.botsFill && Number.isFinite(settings.teamSize) && settings.teamSize > 0 && !isWaveMode(seatMode)
+      && !seatsByRole(matchRulesetFor(seatMode, null, settings.arrangement ?? null));
+    const seats = sized && settings ? { allies: settings.teamSize, enemies: settings.teamSize } : null;
     load.battleLoad.show({ mapName: map.name, thumb: map.thumb, biome: mapId ? map.biome : 'none', mode: modeLabelFor(mode, roundNumber),
-      ...(gameMode ? { modeId: gameMode } : {}), allies, enemies });
+      ...(gameMode ? { modeId: gameMode } : {}), allies, enemies, ...(seats ? { seats } : {}) });
     // TEAM NATIONS (round 2, E10): each side's flag and fills read off its seated vehicles under MONO-NATION (the host's
     // plan record stays on the host); RANDOM shows none
     if (latestRoom?.settings?.arrangement?.teamNations !== 'random') {
       const flagsOf = (team: string) => sideFlags(players.filter((player) => String(player.team || 'alpha') === team)
         .map((player) => ({ id: player.specId, nation: getSpec(player.specId)?.nation ?? null })));
       const own = flagsOf(displayTeam), foe = flagsOf(displayTeam === 'alpha' ? 'bravo' : 'alpha');
-      load.battleLoad.rosters(allies, enemies, { allied: own.country, enemy: foe.country, alliedFills: own.fills, enemyFills: foe.fills });
+      load.battleLoad.rosters(allies, enemies, { allied: own.country, enemy: foe.country, alliedFills: own.fills, enemyFills: foe.fills }, seats);
     }
   };
 

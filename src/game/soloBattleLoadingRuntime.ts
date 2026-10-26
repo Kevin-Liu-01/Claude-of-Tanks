@@ -4,7 +4,8 @@ import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { LazyAudio } from '../audio/lazyAudio.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
-import { PENDING_ROSTER_SLOTS, battleLoadModeLabel, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
+import { battleLoadModeLabel, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
+import { soloRosterSeats } from './soloRosterPlan.ts';
 import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
@@ -388,7 +389,9 @@ export function createSoloBattleLoadingRuntime(
         ...(campaignOperationId ? { campaign: true } : {}),
         allies: [],
         enemies: [],
-        slots: PENDING_ROSTER_SLOTS,
+        // (each side's seats from the arrangement, so its sheet holds them from this first frame and the roster fills
+        // them in place: owner on live 255, "fix team lists in loading state")
+        seats: soloRosterSeats(normalizedGameMode, campaignOperationId),
       });
       await audio.startLoadingAfterPaint();
       await ensureBattleVisuals();
