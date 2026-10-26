@@ -7,13 +7,17 @@
 .cot-hud-editor .cot-modal{width:100%;max-width:1720px;height:calc(100dvh - 32px);max-height:calc(100dvh - 32px);background:var(--surface-page)}
 .cot-hud-editor .cot-modal__title{font-size:24px;text-transform:uppercase;letter-spacing:var(--track-label-s)}
 body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction:column;gap:var(--s3);overflow:hidden;min-height:0;flex:1}
+/* one inset on the header, the body and the footer: 16 over and under, 24 a side (a narrow or short window 12 and 16) */
+body .cot-modal-root.cot-hud-editor :is(.cot-modal__header,.cot-modal__body,.cot-modal__footer){padding:var(--s4) var(--s6)}
 .cot-hud-editor .hud-edit-part:focus-visible{outline:2px solid var(--accent-hi);outline-offset:3px}
 .hud-edit-toolbar{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center}
 /* the layouts' plate is as tall as the toolbar's 36 px buttons (touch raises both to the floor) */
 .hud-edit-profiles .cot-c-seg__opt{height:30px}
 .cot-hud-editor .cot-modal__header{align-items:center}.hud-edit-toolbar>button:last-child{margin-left:auto}
 .hud-edit-content{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:var(--s3);flex:1;min-height:0}
-.hud-edit-preview{position:relative;min-height:0;min-width:0;display:grid;place-items:center;overflow:hidden;background:var(--surface-scene);box-shadow:var(--ring-1);border-radius:var(--plate-radius)}
+.hud-edit-preview{position:relative;min-height:0;min-width:0;display:grid;place-items:center;overflow:hidden;background:var(--surface-scene);border-radius:var(--plate-radius)}
+/* the preview's frame line is drawn over the picture, so it shows on all four sides whatever the scale */
+.hud-edit-preview::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:var(--ring-1);pointer-events:none}
 .hud-edit-viewport{position:relative;overflow:hidden}.hud-edit-stage{position:absolute;left:0;top:0;transform-origin:0 0;background-size:cover;background-position:center}
 .hud-edit-scene{position:absolute;inset:0;border:0;pointer-events:none;opacity:0}
 .hud-edit-scene[data-ready]{opacity:1}
@@ -50,6 +54,7 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
  .cot-modal-root.cot-hud-editor{padding:6px}.cot-hud-editor .cot-modal{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)}
  .hud-edit-content{grid-template-columns:minmax(0,1fr) 162px;gap:var(--s2)}
  body .cot-modal-root.cot-hud-editor .cot-modal__body{gap:var(--s2)}
+ body .cot-modal-root.cot-hud-editor :is(.cot-modal__header,.cot-modal__body,.cot-modal__footer){padding:var(--s3) var(--s4)}
  .hud-edit-inspector{padding:var(--s2)}.hud-edit-inspector h3{font-size:var(--battle-fs-13)}
  .hud-edit-status{max-width:45%;font-size:var(--battle-fs-11)}
 }
@@ -63,8 +68,7 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
 }
 @media(max-height:450px){
  /* a short window keeps one inset on the header, the body and the footer, each a little tighter */
- body .cot-modal-root.cot-hud-editor :is(.cot-modal__body,.cot-modal__footer){padding:var(--s2) var(--s4)}
- body .cot-modal-root.cot-hud-editor .cot-modal__header{padding:var(--s3) var(--s4)}
+ body .cot-modal-root.cot-hud-editor :is(.cot-modal__header,.cot-modal__body,.cot-modal__footer){padding:var(--s3) var(--s4)}
  body .cot-modal-root.cot-hud-editor .cot-modal__header{gap:var(--s1);align-items:center}
  .cot-hud-editor .cot-modal__title{font-size:var(--battle-fs-15)}
  body .cot-modal-root.cot-hud-editor .cot-modal__footer{flex-wrap:nowrap}
