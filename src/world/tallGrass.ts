@@ -114,6 +114,9 @@ interface TallGrassState {
 
 export interface TallGrass {
   readonly group: THREE.Group;
+  /** (battle-spikes-253) Cells the near ring still has to build (the covered opening waits for none: the capped cold
+   *  fill leaves the mid and far rings to the first frames, the sward beside the camera complete at reveal). */
+  nearPending(): number;
   readonly near: THREE.InstancedMesh;
   readonly mid: THREE.InstancedMesh;
   readonly far: THREE.InstancedMesh;
@@ -198,6 +201,14 @@ export const TALL_GRASS = Object.freeze({
   // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
   candidatesPerUpdate: 120,
   coldCandidatesPerUpdate: 2400,
+  /**
+   * (battle-spikes-253) A cold update's wall-clock cap (ms), checked every coldChunk candidates; each ring still takes
+   * one chunk an update. Uncapped, a cold update admitted ~5,000 candidates over the three rings in one call: 150-170 ms
+   * under load, inside one task of a room's opening presentation (nav-perf's root-t profile). A cell resumes where it
+   * stopped, so the carpet built is the same; it takes more, shorter updates.
+   */
+  coldUpdateMs: 24,
+  coldChunk: 200,
   progressiveCells: 12,
   /** Quads up a blade before the tip triangle: two (five vertices, three triangles) — a third segment cost 40 % more
    * triangles for a bend no 1–4 px strip can show. */
@@ -1186,12 +1197,18 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     ring.published = false;
   }
 
-  function updateRing(ring: Ring, cameraPosition: { x: number; z: number }, density: number, budget: number): void {
+  function updateRing(
+    ring: Ring, cameraPosition: { x: number; z: number }, density: number, budget: number, deadline = Infinity,
+  ): void {
     const ix = Math.floor(cameraPosition.x / ring.cellM);
     const iz = Math.floor(cameraPosition.z / ring.cellM);
     if (ix !== ring.cellX || iz !== ring.cellZ) recentre(ring, ix, iz);
     let left = budget;
-    while (left > 0) {
+    // a capped (cold) update admits in chunks and stops at its deadline, after one chunk at least
+    const chunk = deadline === Infinity ? budget : TALL_GRASS.coldChunk;
+    let first = true;
+    while (left > 0 && (first || performance.now() < deadline)) {
+      first = false;
       if (!ring.building) {
         // a cell finished while the ring moved is still cached; drop the pending entries the cache now serves
         while (ring.pending.length && cellData(ring, ring.pending[0][0], ring.pending[0][1])) ring.pending.shift();
@@ -1199,7 +1216,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
         const [cx, cz] = ring.pending.shift()!;
         beginCell(ring, cx, cz, density);
       }
-      left -= advanceCell(ring, left);
+      left -= advanceCell(ring, Math.min(left, chunk));
     }
     const complete = !ring.pending.length && !ring.building;
     if ((complete && !ring.published) || (!ring.published && ring.completedSincePublish >= TALL_GRASS.progressiveCells)) {
@@ -1227,9 +1244,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     const density = biome!.density * quality;
     const cold = !near.published || !mid.published || !far.published;
     const budget = options.candidatesPerUpdate ?? (cold ? TALL_GRASS.coldCandidatesPerUpdate : TALL_GRASS.candidatesPerUpdate);
-    updateRing(near, cameraPosition, density, budget);
-    updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)));
-    updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)));
+    // the cold default is capped in time (coldUpdateMs); a caller's own budget is exact
+    const deadline = cold && options.candidatesPerUpdate === undefined ? performance.now() + TALL_GRASS.coldUpdateMs : Infinity;
+    updateRing(near, cameraPosition, density, budget, deadline);
+    updateRing(mid, cameraPosition, density, Math.max(1, Math.round(budget * 0.6)), deadline);
+    updateRing(far, cameraPosition, density, Math.max(1, Math.round(budget * 0.5)), deadline);
     if (pressure) {
       const anchor = focus ?? cameraPosition;
       pressure.step(dt, anchor.x, anchor.z);
@@ -1258,6 +1277,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
 
   return {
     group,
+    nearPending: () => (enabled ? near.pending.length + (near.building ? 1 : 0) : 0),
     near: near.mesh,
     mid: mid.mesh,
     far: far.mesh,

@@ -274,7 +274,8 @@ try {
   if (garageGestureAudioGate) await runGarageAudioGesture();
   // Explicitly choose the ordinary Bots entry using the actual mode picker.
   await page.click('.cot-battle-mode');
-  await page.click('.cot-battle-choice[data-mode="solo"]');
+  await page.waitForSelector('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', { visible: true });
+  await page.click('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]');
   await runAction('battle', '.cot-battle');
   await finishFixtureBattle();
   await runAction('battle-again', '.cot-es [data-es-action="again"]');

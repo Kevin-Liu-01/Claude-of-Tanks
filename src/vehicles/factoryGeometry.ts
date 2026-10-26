@@ -585,6 +585,88 @@ export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.B
 }
 
 /**
+ * A profile's camouflage split on a merged surface, applied after its projection (253: the KF51's coarser turret and
+ * finer hull, profiles/leopard.ts): each UV scaled by `k`, offset by (du, dv), then turned by `th` radians. The surface
+ * records it (`geometry.userData.camoUvRemap`) so a later vertex edit re-projects into the same frame.
+ */
+export type CamoUvRemap = readonly [k: number, du: number, dv: number, th: number];
+
+/** One UV through a camouflage split, in the profile's own arithmetic order (so re-projected values compare exactly). */
+function camoUvRemapped(u: number, v: number, [k, du, dv, th]: CamoUvRemap): [number, number] {
+  const c = Math.cos(th), s = Math.sin(th), U = u * k + du, V = v * k + dv;
+  return [Math.fround(c * U - s * V), Math.fround(s * U + c * V)];
+}
+
+/** Apply a camouflage split to a merged surface's UVs and record it on the geometry (see CamoUvRemap). */
+export function remapCamoUv(geometry: THREE.BufferGeometry, remap: CamoUvRemap): void {
+  const uv = geometry.getAttribute('uv');
+  if (!uv) return;
+  for (let i = 0; i < uv.count; i++) {
+    const [u, v] = camoUvRemapped(uv.getX(i), uv.getY(i), remap);
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+  geometry.userData.camoUvRemap = remap;
+}
+
+/**
+ * 253 (camo sliding on seated turrets): re-project a face-projected surface's UVs where a later edit moved vertices
+ * (the turret seat, turretSeatRace.ts, lifts a merged turret's low corners after faceBoxUV ran, so the camo stayed
+ * where the corner had been). `before` is the geometry as projected, `after` its edited copy (same vertex order,
+ * non-indexed); only triangles with a moved corner change. Each such corner takes the projection its stored UV came
+ * from: the face projection (faceBoxUV) along the edited triangle's own axis; a thin part's whole-part axis
+ * (thinPartBoxUV) along that axis; a shifted part's (shiftPartCamouflage) the new face projection plus its shift. A
+ * surface with a camouflage split (`remap`, CamoUvRemap) compares and writes its projections through it.
+ */
+export function reprojectMovedFaceBoxUV(before: THREE.BufferGeometry, after: THREE.BufferGeometry, scale: number,
+  remap: CamoUvRemap | null = null): number {
+  if (before.index || after.index) return 0;
+  const was = before.getAttribute('position'), now = after.getAttribute('position'), uv = after.getAttribute('uv');
+  if (!was || !now || !uv || was.count !== now.count) return 0;
+  const f = Math.fround;
+  const axisOf = (position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, index: number): number => {
+    const ax = position.getX(index), ay = position.getY(index), az = position.getZ(index);
+    const e1x = position.getX(index + 1) - ax, e1y = position.getY(index + 1) - ay, e1z = position.getZ(index + 1) - az;
+    const e2x = position.getX(index + 2) - ax, e2y = position.getY(index + 2) - ay, e2z = position.getZ(index + 2) - az;
+    const nx = Math.abs(e1y * e2z - e1z * e2y), ny = Math.abs(e1z * e2x - e1x * e2z), nz = Math.abs(e1x * e2y - e1y * e2x);
+    return ny >= nx && ny >= nz ? 1 : nx >= nz ? 0 : 2;
+  };
+  const project = (position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, i: number, axis: number): [number, number] => {
+    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    const u = f((axis === 0 ? z : x) * scale), v = f((axis === 1 ? z : y) * scale);
+    return remap ? camoUvRemapped(u, v, remap) : [u, v];
+  };
+  let moved = 0;
+  for (let index = 0; index + 2 < now.count; index += 3) {
+    let edited = false;
+    for (let i = index; i < index + 3 && !edited; i++) {
+      edited = was.getX(i) !== now.getX(i) || was.getY(i) !== now.getY(i) || was.getZ(i) !== now.getZ(i);
+    }
+    if (!edited) continue;
+    const oldAxis = axisOf(was, index), newAxis = axisOf(now, index);
+    for (let i = index; i < index + 3; i++) {
+      const stored: [number, number] = [uv.getX(i), uv.getY(i)];
+      const same = (p: [number, number]): boolean => p[0] === stored[0] && p[1] === stored[1];
+      const face = project(was, i, oldAxis);
+      let next: [number, number];
+      if (same(face)) next = project(now, i, newAxis);
+      else {
+        const part = [0, 1, 2].find((axis) => axis !== oldAxis && same(project(was, i, axis)));
+        if (part !== undefined) next = project(now, i, part);
+        else {
+          const p = project(now, i, newAxis);
+          next = [f(p[0] + stored[0] - face[0]), f(p[1] + stored[1] - face[1])];
+        }
+      }
+      uv.setXY(i, next[0], next[1]);
+    }
+    moved++;
+  }
+  if (moved) uv.needsUpdate = true;
+  return moved;
+}
+
+/**
  * The camouflage projection of a merged bucket's plate-like parts (2026-10-22, lane 240; critic on the M1A1 HC's
  * three-tone: "camo patches with hard straight edges"). faceBoxUV projects each triangle along its own normal, so the
  * narrow faces of a plate or a cassette (a skirt module's ends and top, a rib's edge, an armour tile's sides) sample

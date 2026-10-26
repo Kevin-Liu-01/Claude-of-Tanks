@@ -87,6 +87,8 @@ interface ShadowDebugOptions {
   noPoseHold?: boolean;
   /** (battle-spikes-253) Every content change re-renders every cascade (the scoped re-renders' A/B). */
   noScopedRebuild?: boolean;
+  /** (battle-spikes-253) A dynamic root's static subtrees (the fx group's settled rubble) stay dynamic (their A/B). */
+  noNestedRoots?: boolean;
 }
 
 declare global {

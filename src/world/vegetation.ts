@@ -576,6 +576,8 @@ export interface VegetationRuntime {
   /** Round 77c: bake the far tier's impostor atlas now (the covered activation warm), so no presented frame pays
    * for it; true when an atlas is baked after the call, false without a library (mobile, the receipts). */
   warmImpostors(): boolean;
+  /** (battle-spikes-253) The same bake with its programs linked first, between tasks (TreeImpostorLibrary.ensureBakedAsync). */
+  warmImpostorsAsync(waitLinks: () => Promise<void>): Promise<boolean>;
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
@@ -9859,5 +9861,6 @@ function* vegetationBuildSteps(
     _nearCull: nearCullState,
     _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
+    warmImpostorsAsync: (waitLinks) => (treeImpostors ? treeImpostors.ensureBakedAsync(waitLinks) : Promise.resolve(false)),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

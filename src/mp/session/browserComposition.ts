@@ -1477,16 +1477,19 @@ export function createBrowserComposition({
       await warm.wrecks?.(view, signal);
       check('wrecks');
       markStage(active, 'wreckWarm');
+      load.battleLoad.progress(0.86, 'Compiling combat shaders');
+      await load.nextFrame();
+      check('compile');
+      await prepareCombatShaders(active, signal, check);
+      // (battle-spikes-253) the player panel after the strict compile: its mask programs, started at the warm's start,
+      // link behind the scene's programs submitted at the WELCOME, and before the compile the panel waited for that whole
+      // queue on its own (nav-perf's root-r rooms: hullCompile 1.9 s of a 2.0-3.2 s panel stage). After it they are linked.
       if (!active.spectator && battlePresentation.ownActor) {
-        load.battleLoad.progress(0.86, 'Preparing player panel');
+        load.battleLoad.progress(0.87, 'Preparing player panel');
         await warm.playerPanel?.(view, active.viewerId);
         check('panel');
       }
       markStage(active, 'panel');
-      load.battleLoad.progress(0.87, 'Compiling combat shaders');
-      await load.nextFrame();
-      check('compile');
-      await prepareCombatShaders(active, signal, check);
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
       await warm.openingEffects?.(fx, view, signal);

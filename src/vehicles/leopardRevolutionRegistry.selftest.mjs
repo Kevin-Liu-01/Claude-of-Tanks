@@ -7,6 +7,7 @@ import { NATIVE_FAMILY_ORDER } from './fleetOrder.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { requiredTankAssetFiles, tankAssetMetadata } from './tankAssets.ts';
 import { matchTierNumeral, tankTier } from './tier.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 import { vehicleMarkingAnchor } from './vehicleMarkings.ts';
 
 const protoId = 'leo2_revolution_proto';
@@ -70,6 +71,7 @@ const revolutionFiles = new Set(Object.values(requiredTankAssetFiles(revolutionI
 assert.ok(protoFiles.every((file) => !revolutionFiles.has(file)),
   'all nine prototype asset paths are distinct from the rebuilt vehicle');
 assert.equal(tankAssetMetadata(proto).name, 'Leopard 2 Revolution Proto');
-assert.equal(tankAssetMetadata(proto).tierNumeral, 'IX');
+// the asset manifest carries the shown tier (the national tree's column), not the matchmaking tier above
+assert.equal(tankAssetMetadata(proto).tierNumeral, tierNumeral(protoId));
 
 console.log('leopardRevolutionRegistry.selftest: separate catalog identities, tiers, mutable specs, and asset paths passed');

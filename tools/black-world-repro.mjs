@@ -341,7 +341,7 @@ async function startStressGame(base) {
   const url = new URL(base); url.searchParams.set('nosplash', '1'); url.searchParams.set('telemetry', 'off');
   await p.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   await p.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
-  await p.evaluate((id) => { const b = document.querySelector(`.cot-map-card .mthumb.${CSS.escape(id)}`)?.closest('.cot-map-card')?.querySelector('.cot-map-select'); b?.click(); }, stressGame);
+  await chooseMap(p, stressGame);
   await p.evaluate(() => document.querySelector('.cot-battle')?.click());
   await p.waitForFunction(() => { const h = document.querySelector('.cot-hud'); return !!h && getComputedStyle(h).display !== 'none' && !document.querySelector('.cot-bl.on'); }, { timeout: 240_000, polling: 500 }).catch(() => {});
   // the load's own player drives in circles so its frames keep changing
@@ -509,16 +509,26 @@ async function boot(page, base) {
 // ---------------------------------------------------------------------------------------------------------------------
 // player actions
 // ---------------------------------------------------------------------------------------------------------------------
+/** Choose a battlefield on Deploy's battlefield picker: its field opens the picker (loaded on first use), one press on a
+ *  card chooses it. True once the card reads as chosen. */
+function chooseMap(page, map) {
+  return page.evaluate(async (id) => {
+    const option = () => document.querySelector(`[data-deploy-bf] .cot-c-picker__opt[data-id="${CSS.escape(id)}"]`);
+    const field = document.querySelector('[data-deploy-field]');
+    if (!field) return false;
+    if (document.querySelector('[data-deploy-field-pop]')?.hidden !== false) field.click();
+    for (let i = 0; i < 150 && !option(); i++) await new Promise((resolve) => setTimeout(resolve, 100));
+    const card = option();
+    if (!card) return false;
+    if (card.getAttribute('aria-selected') !== 'true') card.click();
+    else document.querySelector('[data-deploy-field-close]')?.click();
+    return card.getAttribute('aria-selected') === 'true';
+  }, map);
+}
+
 async function selectMapAndBattle(page, map, dwell = true) {
   if (dwell && garageDwellS > 0) await sleep(garageDwellS * 1000);
-  const picked = await page.evaluate((id) => {
-    const thumb = document.querySelector(`.cot-map-card .mthumb.${CSS.escape(id)}`);
-    const button = thumb?.closest('.cot-map-card')?.querySelector('.cot-map-select');
-    if (!button) return false;
-    const card = button.closest('.cot-map-card');
-    if (!card.classList.contains('sel')) button.click();
-    return card.classList.contains('sel');
-  }, map);
+  const picked = await chooseMap(page, map);
   if (!picked) throw new Error(`map card ${map} not found or not selected`);
   // the real BATTLE control (trusted pointer events); an in-page click as the fallback when it is covered
   try {

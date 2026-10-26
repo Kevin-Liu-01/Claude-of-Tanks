@@ -28,6 +28,7 @@ const CURRENT = Object.freeze({
   'ui-246': 'S12, the post-overhaul interface set (246, captured on f02eb8653a: public/media/ui-246/manifest.json)',
   'showcase-r2/process': 'the review sheets of the filming process',
   maps: 'the battlefields\' art and cards (the S2 re-renders land under the same names)',
+  'maps-r1': 'the battlefield picker\'s card stills (the media lane, 2026-10-26, filmed on 251: public/media/maps-r1/manifest.json)',
   'brand/og': 'the social cards (regenerated from their sources)',
 });
 

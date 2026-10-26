@@ -97,7 +97,7 @@ assert.match(state, /mapId: game\.mapId,\n\s*durationS: game\.timeS,\n\s*campaig
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /installCampaignProgress\(bus\)/, 'main installs the campaign hook next to the battle profile');
 const menu = readFileSync(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
-assert.match(menu, /data-rule-progress/, 'the play menu carries the frontline progress badge');
+assert.match(menu, /rule\.id === 'frontline_assault' \? \[frontlineProgressLabel\(\)/, "the play menu's Frontline Assault card leads with the campaign push");
 assert.match(menu, /frontlineProgressLabel\(\)/, 'the badge refreshes from the record');
 for (const locale of ['en-US', 'zh-CN']) {
   const catalog = JSON.parse(readFileSync(new URL(`../ui/i18nCatalog.${locale}.json`, import.meta.url), 'utf8'));

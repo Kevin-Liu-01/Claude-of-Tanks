@@ -457,7 +457,7 @@ owner.frame(frame());
 await settle(12);
 const warmOrder = calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('activate:') || call === 'primeReveal' || call === 'load.hide' || call === 'blackWatchdog' || call.startsWith('garageLighting') || call.startsWith('waiting')));
 assert.deepEqual(warmOrder, [
-  'garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.terrain:2', 'warm.wrecks:2', 'warm.panel:m1a1_abrams_hc', 'warm.compile',
+  'garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.terrain:2', 'warm.wrecks:2', 'warm.compile', 'warm.panel:m1a1_abrams_hc',
   'warm.fx:function:2', 'warm.shotCards:m1a1_abrams_hc,m1a1_abrams_hc', 'activate:me:m1a1_abrams_hc:alpine:false', 'waiting:false', 'warm.presentation', 'warm.finalShadows',
   'blackWatchdog', 'primeReveal', 'load.hide',
 ], 'v1\'s covered order: warm, activate, opening ground cover, final shadows, the black watchdog, the reveal barrier, the loader fade');

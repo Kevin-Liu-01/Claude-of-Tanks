@@ -565,7 +565,7 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
     'screening positions spread across the field');
 }
 
-// The modes' presentation order (owner 2026-10-25): one list every mode surface reads (Deploy's cards and tiles, the room
+// The modes' presentation order (owner 2026-10-25): one list every mode surface reads (Deploy's mode picker, the room
 // and LAN mode cards); every battle mode once; the wire's order (BATTLE_MODE_IDS) untouched.
 {
   const { BATTLE_MODE_IDS, HEADLINE_MODE_COUNT, MODE_PRESENTATION_ORDER } = await import('./gameModeCatalog.ts');
@@ -578,8 +578,7 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const { readFileSync } = await import('node:fs');
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   const play = readFileSync(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
-  assert.match(garage, /deployCardsHTML\(MODE_PRESENTATION_ORDER\.slice\(1, HEADLINE_MODE_COUNT\), true\)/, 'Deploy\'s cards read the order');
-  assert.match(garage, /deployCardsHTML\(MODE_PRESENTATION_ORDER\.slice\(HEADLINE_MODE_COUNT\), false\)/, 'and its tiles');
+  assert.match(garage, /const cards = \(\): import\('\.\/modePicker\.ts'\)\.ModeCard\[\] => MODE_PRESENTATION_ORDER\.map\(/, 'Deploy\'s mode picker reads the order');
   assert.match(play, /MODE_PRESENTATION_ORDER as readonly string\[\]\)\.indexOf\(id\)/, 'the room mode cards sort by it');
   assert.doesNotMatch(garage + play, /deployCardsHTML\(\['|leadingModes/, 'no surface keeps its own mode list');
 }

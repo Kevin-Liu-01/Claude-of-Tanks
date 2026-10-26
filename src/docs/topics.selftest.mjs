@@ -73,6 +73,16 @@ assert.match(docsCss, /\.dm-side\{[^}]*padding:10px var\(--docs-gutter\) 10px ca
   'the narrow shelf row starts on the page gutter (its start padding gives back the first item\'s own) and scrolls its items to it');
 assert.match(docsCss, /\.dm-side a\.dm-home,\.dm-side a:not\(\.dm-home\)\{[^}]*padding:4px var\(--s3\)/,
   'every item of the narrow shelf row, the index link too, keeps one horizontal padding (equal gaps around the selected plate)');
+// the contents rail's first entry stands on the first heading's baseline: the article and the rail align on their first
+// baselines (no item opts out to the top), and every chapter's article opens on its first section's heading
+assert.match(docsCss, /\.dm-body\{display:grid;grid-template-columns:minmax\(0,1fr\) var\(--docs-toc-w\);align-items:baseline;/,
+  'the article and the contents rail share their first baseline');
+assert.doesNotMatch(docsCss.match(/\.dm-toc\{[^}]*\}/)?.[0] ?? '', /align-self/, 'the contents rail keeps the shared baseline');
+assert.doesNotMatch(docsCss.match(/\.dm-article\{[^}]*\}/)?.[0] ?? '', /align-self/, 'the article keeps the shared baseline');
+for (const slug of TOPIC_ORDER) {
+  assert.match(readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8'), /<article class="dm-article[^"]*"><section class="dm-section" id="[^"]+"><h2>/,
+    `${slug} opens its article on a heading, so the rail's first entry has that heading's baseline to stand on`);
+}
 // a Chinese chapter title breaks only between its phrases (never 构/建): each phrase list spells its catalog title
 const zhCatalog = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
 for (const slug of TOPIC_ORDER) {

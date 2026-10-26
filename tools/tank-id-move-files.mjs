@@ -43,7 +43,7 @@ if (table) {
 
 const FOLDERS = ['public/icons', 'docs/geometry-gate'];
 const VIEWS = ['angle.webp', 'side.webp', 'top.webp', 'side_silhouette.png', 'top_silhouette.png', 'markings.png',
-  'armor_side.png', 'modules_side.png', 'crew_side.png'];
+  'armor_side.webp', 'modules_side.webp', 'crew_side.webp', 'technical.json'];
 const namesFor = (id) => [...VIEWS.map((view) => `public/icons/${id}_${view}`), `public/icons/thumbs/${id}_angle.webp`,
   `docs/geometry-gate/${id}.json`];
 

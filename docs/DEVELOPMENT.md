@@ -140,7 +140,8 @@ The deployment owner releases a gated commit with the versioned tool instead of 
 `deploy-prod-main.sh`; [DEPLOYS.md](DEPLOYS.md) keeps the policy and the ledger.
 
     node tools/release.mjs build <sha>       # worktree of <sha>; npm ci; vercel pull; vercel build --prod; carry-forward; immutable routes
-    node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod, then verify
+    node tools/release.mjs deploy <sha> --title="deploy N: <title>"   # vercel deploy --prebuilt --prod --archive=tgz, verify, record the release
+    node tools/release.mjs record <sha> [--dir=<build worktree>]   # after a deploy run straight with the Vercel CLI: verify, then record
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
     node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
@@ -155,15 +156,19 @@ The deployment owner releases a gated commit with the versioned tool instead of 
   chunks its page named; a deploy used to delete every one the new build did not emit (deploy 163: one
   tab requested a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` therefore
   keeps a release cache outside git (`--asset-cache=<dir>`, `COT_RELEASE_ASSET_CACHE`, default
-  `~/.cache/cot-release`): every build records its own hashed `/assets` files there, and copies the files
-  of the last `--carry=<N>` releases (default 3; `--carry=0` turns it off) that it does not emit itself
+  `~/.cache/cot-release`): every DEPLOYED release records its own hashed `/assets` files there, and a build
+  copies the files of the last `--carry=<N>` releases (default 3; `--carry=0` turns it off) that it does not emit itself
   into `.vercel/output/static/assets`, newest release first and at most `--carry-max-mb=<MB>` (default
   200), before `tools/vercel-output-immutable.mjs` writes the immutable routes — so the carried files are
   immutable too. Hashed names never collide, so nothing the build emits is replaced; a release records only
   its own files, so a carried file leaves with the release that emitted it; the cache keeps the newest
-  N + 1 releases and prunes everything else; a rebuild of the same commit replaces its entry (a build that is
-  never deployed still occupies one slot). The output directory is removed before `vercel build`, so a reused
-  worktree cannot record an earlier run's carried files as its own. A missing cache only means nothing is
+  four releases and prunes everything else; a redeploy of the same commit replaces its entry. **A build
+  never writes the cache (release 255):** it lists its own files in `.vercel/cot-release.json` beside the
+  output (never uploaded), and `deploy` records them after the served stamp names the commit; a deploy
+  run straight with the Vercel CLI is followed by `node tools/release.mjs record <sha>`. Before 255 every
+  build recorded itself, so release 254's five measuring builds pushed the live release out of the carry
+  and its chunks would have 404'd for open tabs. The output directory is removed before `vercel build`, so a reused
+  worktree cannot list an earlier run's carried files as its own. A missing cache only means nothing is
   carried that time. `tools/release.selftest.mjs` drives the carry, the cap, the pruning and the lock on
   temporary directories. Collision manifests (`/mp-collision/`) are not carried: the host reads their index
   before each fetch.
