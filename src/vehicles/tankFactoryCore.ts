@@ -146,7 +146,7 @@ import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel,
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
 import { hangAuthoredMudguards, runningGearTest, type MudguardHangRequest } from './mudguardHangers.ts';
-import { snapFittingsSeated, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
+import { snapFittingsSeatedSteps, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
 
 /** Options for P.snapGroup (fittingSnap.ts). */
 export interface SnapGroupOptions {
@@ -160,7 +160,10 @@ export interface SnapGroupOptions {
   readonly onMove?: (move: readonly [number, number, number]) => void;
 }
 import { spareLinkBlock } from './spareLinkGeometry.ts';
-import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
+import {
+  resetSpareTrackRunSerial, restoreSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunSerial, spareTrackRunTag,
+  type SeatRole,
+} from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -7947,6 +7950,25 @@ function* coreCheckpoint(yielded: { ms: number }): Generator<void, void, void> {
   yielded.ms += performance.now() - pausedAt;
 }
 
+/** A runtime pass written in slices (the fitting snaps, the spare-track seats), each pause a core checkpoint. */
+function* checkpointed<Result>(work: Iterator<void, Result, void>, yielded: { ms: number }): Generator<void, Result, void> {
+  for (;;) {
+    const result = work.next();
+    if (result.done) return result.value;
+    yield* coreCheckpoint(yielded);
+  }
+}
+
+/** A profile's stepped body (tankBuildCooperation.ts withBuildSteps), a stage a slice. Its spare-track run serial is
+ *  the build's own (spareTrackRunTag) and another build may number its runs at the checkpoint, so it is held across. */
+function* stepProfileBuild(build: Iterator<unknown, void, void>, yielded: { ms: number }): Generator<void, void, void> {
+  while (!build.next().done) {
+    const serial = spareTrackRunSerial();
+    yield* coreCheckpoint(yielded);
+    restoreSpareTrackRunSerial(serial);
+  }
+}
+
 function* buildTankCoreSteps(
   specId: string,
   engineContext: RuntimeValue,
@@ -8466,6 +8488,7 @@ function* buildTankCoreSteps(
   };
 
   const builder = resolveBuilder(specId, spec);
+  const buildSteps = (builder as { buildSteps?: (port: TankBuilderPort) => Iterator<unknown, void, void> } | null)?.buildSteps;
   resetSpareTrackRunSerial();
   const coreAuthoredStartedAt = coreClock();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
@@ -8479,10 +8502,12 @@ function* buildTankCoreSteps(
     const sourcePort = new Proxy(P, { get(target, key, receiver) {
       return key === 'spec' ? sourceSpec : Reflect.get(target, key, receiver);
     } });
-    if (builder) Reflect.apply(builder, undefined, [sourcePort]);
+    if (buildSteps) yield* stepProfileBuild(buildSteps(sourcePort), coreYield);
+    else if (builder) Reflect.apply(builder, undefined, [sourcePort]);
     else buildCommunityPlaceholder(sourcePort);
     resizeAuthoredVehicle(P, sizeFactor);
-  } else if (builder) Reflect.apply(builder, undefined, [P]);
+  } else if (buildSteps) yield* stepProfileBuild(buildSteps(P), coreYield);
+  else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
   // The profile's run serial is spent (spareTrackRunTag): another build may start at this checkpoint.
   yield* coreCheckpoint(coreYield);
@@ -8556,7 +8581,8 @@ function* buildTankCoreSteps(
       }
       const rig = rigGroupsForSnap().find(([key]) => key === group)?.[1] ?? null;
       // a fitting whose only neighbour is another seated fitting seats on it (snapFittingsSeated's second pass)
-      snapReceipts.push(...snapFittingsSeated(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig));
+      snapReceipts.push(...yield* checkpointed(
+        snapFittingsSeatedSteps(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig), coreYield));
     }
     root.userData.fittingSnaps = snapReceipts;
   }
@@ -8570,15 +8596,15 @@ function* buildTankCoreSteps(
   const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
     .map(({ part }) => part));
   const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
-  const spareTrackStartedAt = performance.now();
+  const spareTrackStartedAt = coreClock();
   try {
-    const spareTrackSeats = seatAuthoredSpareTracks({
+    const spareTrackSeats = yield* checkpointed(seatAuthoredSpareTracks({
       spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart, markings: decals,
       bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
-    });
+    }), coreYield);
     root.userData.spareTrack = spareTrackSeats.runs;
     root.userData.spareTrackRejected = spareTrackSeats.rejected;
-    root.userData.spareTrackMs = performance.now() - spareTrackStartedAt;
+    root.userData.spareTrackMs = coreClock() - spareTrackStartedAt;
   } catch (error) {
     // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
     root.userData.spareTrackError = error instanceof Error ? error.message : String(error);

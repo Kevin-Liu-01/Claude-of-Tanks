@@ -637,6 +637,33 @@ export interface ObstacleQuery {
   /** The grid's own visitation order (createObstacleGrid), for a ray marched along its own corridor
    * (nearestColliderHitAlongRay): absent on another broad phase, which then answers from one box query. */
   readonly rayOrder?: ObstacleRayOrder;
+  /** The bots' clearance scans in the world kernels (src/world/wasmWorldKernels.ts): absent on a TypeScript grid. */
+  readonly clearance?: ClearanceScan;
+}
+
+/** What a clearance scan passes over (ClearanceScan `skip`): a crushable, a bridge deck. */
+export const CLEARANCE_SKIP_CRUSHABLE = 1;
+export const CLEARANCE_SKIP_BRIDGE = 2;
+
+/**
+ * The bots' clearance loops' broad and narrow phases in the world kernels (game/ai.ts; crates/cot-sim clearance.rs, bit
+ * for bit): a walk over a box's candidates in the grid's order, handing out the next record `skip` keeps whose clearance
+ * meets the point or the lane. Those are the records the TypeScript loops reach past the same tests, in their order, so
+ * a loop stops where it always did. A record's crushed and dead state changes in a match and stays the caller's to read.
+ * One walk at a time: `begin` starts over.
+ */
+export interface ClearanceScan {
+  /** Walk the candidates of the box [minX, maxX] x [minZ, maxZ]. */
+  begin(minX: number, minZ: number, maxX: number, maxZ: number): void;
+  /** The walk's next record whose footprint grown by `margin` holds (x, z) (collisionClearanceContainsPoint), or null. */
+  point(x: number, z: number, margin: number, skip: number): CollisionRecord | null;
+  /**
+   * The walk's next record the lane from (sx, sz) along (dx, dz) enters within `reach` (rayCollisionClearanceEntry2), or
+   * null; its entry in `entry`.
+   */
+  lane(sx: number, sz: number, dx: number, dz: number, reach: number, margin: number, skip: number): CollisionRecord | null;
+  /** The entry of the record `lane` handed out last. */
+  readonly entry: number;
 }
 
 interface ObstacleRayOrder {

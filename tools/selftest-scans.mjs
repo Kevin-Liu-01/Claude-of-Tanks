@@ -72,6 +72,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/room/roomWorkerProgram.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
+  'src/techTree/techTree.selftest.mjs': lists('src/techTree/*.ts', 'src/techTree/nations/*'),
+  'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
@@ -80,9 +83,13 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
   // 228p: mediaLibrary.ts's static CSS import was a red no import-closure selection could find
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
+  // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
+  'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
   // release 230 type package: the shipped faces, every shipped source and document, and no Monument font file anywhere
   'src/ui/typeSystem.selftest.mjs': lists('public/**/*.{woff2,woff,ttf,otf}', 'tools/**/*.{woff2,woff,ttf,otf}',
     'src/**/*.{ts,css,js,mjs}', 'site/**/*.html', 'tools/fixtures/*.html'),
+  // (UI-LOCKDOWN A) every source's canvases and canvas text, and every page's canvases
+  'src/ui/uiCanvasCensus.selftest.mjs': lists('src/**/*.ts', 'site/*.html'),
   'src/ui/vehicleControlOrder.selftest.mjs': lists('src/ui/*.css'),
   'src/vehicles/camouflageRuntime.selftest.mjs': lists('src/sim/*.ts'),
   'src/vehicles/combatAnatomyAudit.test-support.mjs': lists('src/vehicles/**/*.js'),
@@ -135,6 +142,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/media-freshness.selftest.mjs': lists('src/**', 'site/*.html', 'public/media/*'),
   // publicPages: the game, the 404 and every page under site/
   'tools/media-page-scan.mjs': lists('site/*.html'),
+  // lintFiles: the sources, the public sheets and the site documents
+  'tools/motion-lint.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   // censusFiles: the sources, the public sheets and the site documents
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
@@ -177,6 +186,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/changed-only/fingerprint.mjs': caller('computeState({ root }): the fleet steps\' closures and tables under root'),
   'tools/changed-only/rows-child.mjs': caller("the data modules under the root its spawner passes (argv[2])"),
   'tools/changed-only/world.mjs': caller('computeWorldState(ctx): the world steps\' closures under ctx.root'),
+  'tools/frontend-budget.mjs': caller('collect({ nav, click }): the recorded run folders its caller names'),
   'tools/run-selftests.mjs': caller('selftestPlan and selftestReadOf read the closures of the cache their caller passes; ' +
     'the CLI lists the registry over this checkout'),
   'tools/changed-only/globs.mjs': caller('walk(base, dir): the changed-only regeneration globs over the root it is given'),
@@ -188,6 +198,7 @@ export const SELFTEST_SCANS = Object.freeze({
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
   'tools/capture-lock.selftest.mjs': outside('its own queue directories under tmpdir'),
+  'tools/frontend-budget.selftest.mjs': outside('its fixture runs under tmpdir'),
   'tools/run-selftests.selftest.mjs': outside('the fixture repositories its caches and runner children work in, under tmpdir'),
   'tools/changed-only/resolver.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),
   'tools/changed-only/world.selftest.mjs': outside('its declared fixture repository (SELFTEST_DECLARED_INPUTS)'),
@@ -206,6 +217,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/contentSecurityPolicy.selftest.mjs': outside('dist/, a finished build, when this checkout has one'),
   'tools/mode-aggression-harness.mjs': outside('the run directories its report and compare commands name (--dir, --base): ' +
     'its .qa-dev records, or the receipt\'s tmpdir fixtures'),
+  'tools/battle-spike-census.mjs': outside('the census folder its CLI writes (--out, under .qa-dev) and the tmpdir fixtures its receipts judge'),
+  'tools/battle-spike-budget.mjs': outside('the census folder it judges (--out under .qa-dev, or the selftest\'s tmpdir fixture)'),
   'tools/vercel-static-preview.mjs': outside('the build output it serves (dist/, or the fixture dist its caller passes)'),
 
   // ---- source digests for provenance records: no verdict depends on what they list

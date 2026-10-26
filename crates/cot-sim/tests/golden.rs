@@ -556,7 +556,7 @@ fn deformation_matches() {
     let mut reads = g.reads.iter().peekable();
     let mut phase = 0;
     // the script's reads follow the op that ends each phase: replay ops, and after each op the reads that are due
-    let mut read_phase = |overlay: &mut TerrainDeformation, ledger: &mut Ledger, phase: u32, reads: &mut std::iter::Peekable<std::slice::Iter<DeformationRead>>, take: usize| {
+    let read_phase = |overlay: &mut TerrainDeformation, ledger: &mut Ledger, phase: u32, reads: &mut std::iter::Peekable<std::slice::Iter<DeformationRead>>, take: usize| {
         for _ in 0..take {
             let read = reads.next().expect("a read is due");
             assert_eq!(read.phase, phase);
@@ -692,23 +692,29 @@ fn golden_part(part: &GoldenPart) -> cot_sim::records::Part {
     }
 }
 
+fn golden_record(rec: &GoldenRecord) -> cot_sim::records::Record {
+    use cot_sim::records::{Record, Shape};
+    let shape = match &rec.shape {
+        None => Shape::None,
+        Some(GoldenShape::Simple(part)) => Shape::Simple(golden_part(part)),
+        Some(GoldenShape::Compound(parts)) => Shape::Compound(parts.iter().map(|p| p.as_ref().map(golden_part)).collect()),
+    };
+    let mut record = Record::new(rec.min.map(JsNum::f64), rec.max.map(JsNum::f64), shape, rec.crushable, rec.wreck);
+    record.crushed = rec.crushed;
+    record.dead = rec.dead;
+    record
+}
+
 #[test]
 fn structure_support_matches() {
-    use cot_sim::records::{HullFootprint, Record, Shape};
+    use cot_sim::records::{HullFootprint, Record};
     use cot_sim::structure_support::SupportField;
     let g: SupportGolden = serde_json::from_str(&golden("structureSupport")).unwrap();
     // each map's referenced records in one table; the golden ids map to table indices
     let mut tables: BTreeMap<String, (Vec<Record>, BTreeMap<u32, u32>)> = BTreeMap::new();
     for (key, rec) in &g.records {
         let (map, id) = key.split_once(':').unwrap();
-        let shape = match &rec.shape {
-            None => Shape::None,
-            Some(GoldenShape::Simple(part)) => Shape::Simple(golden_part(part)),
-            Some(GoldenShape::Compound(parts)) => Shape::Compound(parts.iter().map(|p| p.as_ref().map(golden_part)).collect()),
-        };
-        let mut record = Record::new(rec.min.map(JsNum::f64), rec.max.map(JsNum::f64), shape, rec.crushable, rec.wreck);
-        record.crushed = rec.crushed;
-        record.dead = rec.dead;
+        let record = golden_record(rec);
         let table = tables.entry(map.to_string()).or_default();
         table.1.insert(id.parse().unwrap(), table.0.len() as u32);
         table.0.push(record);
@@ -736,5 +742,38 @@ fn structure_support_matches() {
         }
     }
     assert!(lifted > 1000, "the structures lift the samples ({lifted})");
+    ledger.finish();
+}
+
+// ------------------------------------------------------------ clearance ------
+
+#[derive(Deserialize)]
+struct ClearanceGolden {
+    records: BTreeMap<String, GoldenRecord>,
+    /// record, x, z, margin, contained
+    points: Vec<(String, JsNum, JsNum, JsNum, bool)>,
+    /// record, sx, sz, dx, dz, reach, margin, entry (null: none)
+    lanes: Vec<(String, JsNum, JsNum, JsNum, JsNum, JsNum, JsNum, Option<JsNum>)>,
+}
+
+#[test]
+fn clearance_matches() {
+    use cot_sim::clearance::{contains_point, ray_entry};
+    let g: ClearanceGolden = serde_json::from_str(&golden("clearance")).unwrap();
+    let records: BTreeMap<&str, cot_sim::records::Record> = g.records.iter().map(|(key, rec)| (key.as_str(), golden_record(rec))).collect();
+    for (i, (key, x, z, margin, inside)) in g.points.iter().enumerate() {
+        assert_eq!(contains_point(&records[key.as_str()], x.f64(), z.f64(), margin.f64()), *inside, "point {i} ({key}) at ({}, {}) margin {}", x.f64(), z.f64(), margin.f64());
+    }
+    let mut ledger = Ledger::new("clearance lanes");
+    let mut entries = 0;
+    for (i, (key, sx, sz, dx, dz, reach, margin, expect)) in g.lanes.iter().enumerate() {
+        let entry = ray_entry(&records[key.as_str()], sx.f64(), sz.f64(), dx.f64(), dz.f64(), reach.f64(), margin.f64());
+        assert_eq!(entry.is_some(), expect.is_some(), "lane {i} ({key}) meets the record");
+        if let (Some(entry), Some(expect)) = (entry, expect) {
+            entries += 1;
+            ledger.check(entry, expect.f64(), || format!("lane {i} ({key}) entry"));
+        }
+    }
+    assert!(entries > 1000, "the lanes enter the records ({entries})");
     ledger.finish();
 }

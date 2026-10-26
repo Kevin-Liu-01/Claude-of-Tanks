@@ -165,7 +165,8 @@ const WATERLINE_RIM = 'rgb(204,234,240)';
   target.ctx.getTransform = () => ({ a: 2 });
   const paintShorelines = hudPainter('paintMinimapShorelines', 'paintMinimapWaterLayers', {
     SHORELINE_SEGMENTS, shorelineRadiusAt, worldToMap,
-    document: { createElement: (tag) => { assert.equal(tag, 'canvas'); return fakeCanvas(); } },
+    // (UI-LOCKDOWN A) the HUD's offscreen layers come from uiCanvas's scratchCanvas
+    scratchCanvas: (width, height) => Object.assign(fakeCanvas(), { width, height }),
     requireCanvasContext: (canvas) => canvas.ctx,
   });
   const disc = [{ x: 10, z: 20, r: 30 }];
@@ -205,7 +206,7 @@ const WATERLINE_RIM = 'rgb(204,234,240)';
   };
   const { paintVisibleWater } = hudPainters('paintMinimapShorelines', 'paintMinimapWaterLayers', ['paintVisibleWater'], {
     SHORELINE_SEGMENTS, shorelineRadiusAt, worldToMap, MINIMAP_WATERLINE_RIM: WATERLINE_RIM,
-    document: { createElement: (tag) => { assert.equal(tag, 'canvas'); return recordingCanvas(); } },
+    scratchCanvas: (width, height) => Object.assign(recordingCanvas(), { width, height }),
     requireCanvasContext: (canvas) => canvas.ctx,
   });
   worldSize = 1024;

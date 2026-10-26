@@ -12,13 +12,28 @@
   "width": 1920,
   "height": 1080
  },
- "count": 25,
+ "count": 26,
+ "featured": [
+  "f6-leo2a6-steinburg-r7",
+  "vs09-alpine-strv122-t80bv-r7",
+  "vs03-reservoir-k2-vt4a1-r8",
+  "vs04-railyard-leclerc-t14-r7",
+  "vs06-coastal-type10-ztz99a2-r7",
+  "vs08-winter-cv90-bmp3-r7",
+  "vs01-desert-abrams-t90m-r6",
+  "vs05-oasis-merkava-t72b3-r6",
+  "vs02-verdant-challenger-t80u-r6",
+  "vs10-steppe-chieftain-t64-r7",
+  "f7-t90m-column-r5",
+  "vs07-autumn-ariete-t62-r6"
+ ],
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
    "round": 6,
    "map": "urban",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Steinburg, day: Leopard 2A6 v T-90M",
     "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
@@ -39,17 +54,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r6.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp",
-   "bytes": 423026,
-   "sha256": "0943756327043b76b73b1fa520dc8d46974666caf1ec4a4a24d766b22007cba1",
+   "bytes": 418898,
+   "sha256": "7917ec537ae46bd7cc150af28e445f22d4134b07c6e10106e19cbf2768ae48b0",
    "width": 1920,
    "height": 1080,
-   "source": "f6-leo2a6-steinburg-r6-1920.webp"
+   "source": "f6-leo2a6-steinburg-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-640.webp",
+     "bytes": 43396
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-1280.webp",
+     "bytes": 147546
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp",
+     "bytes": 418898
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r6-3840.webp",
+     "bytes": 823382
+    }
+   ]
   },
   {
    "id": "f7-t90m-column-r5",
    "round": 5,
    "map": "frontier",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Frontier Basin, day: T-90M v Leopard 2A6",
     "zh": "边疆盆地，白天：T-90M 对 Leopard 2A6"
@@ -94,17 +132,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f7-t90m-column-r5.json",
    "path": "/media/versus-r1/f7-t90m-column-r5.webp",
-   "bytes": 397820,
-   "sha256": "eeb55654174e21de725c6fde21892cfde34c062f38130bcdf566cbc5259b8019",
+   "bytes": 434474,
+   "sha256": "a6dd7e3aac556c50a977d89de2ce3350cd6c2d67e401f5eb2eee2ad32aa585d8",
    "width": 1920,
    "height": 1080,
-   "source": "f7-t90m-column-r5-1920.webp"
+   "source": "f7-t90m-column-r5-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f7-t90m-column-r5-640.webp",
+     "bytes": 40674
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f7-t90m-column-r5-1280.webp",
+     "bytes": 138306
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f7-t90m-column-r5.webp",
+     "bytes": 434474
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f7-t90m-column-r5-3840.webp",
+     "bytes": 854202
+    }
+   ]
   },
   {
    "id": "vs01-desert-abrams-t90m-r6",
    "round": 6,
    "map": "desert",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
     "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M"
@@ -125,17 +186,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs01-desert-abrams-t90m-r6.json",
    "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp",
-   "bytes": 188922,
-   "sha256": "f10dd91a5a7bbc3f2e5a1ad34a9dc91a9758ef1b3c3608526da0634b8e951f98",
+   "bytes": 233834,
+   "sha256": "85f33f2acea203457d2f92a8eac88bae8421e259fa5e97e67f885449732fb2f5",
    "width": 1920,
    "height": 1080,
-   "source": "vs01-desert-abrams-t90m-r6-1920.webp"
+   "source": "vs01-desert-abrams-t90m-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-640.webp",
+     "bytes": 22556
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-1280.webp",
+     "bytes": 75852
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp",
+     "bytes": 233834
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6-3840.webp",
+     "bytes": 452492
+    }
+   ]
   },
   {
    "id": "vs02-verdant-challenger-t80u-r6",
    "round": 6,
    "map": "verdant",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Verdant Fields, day: Challenger 3 v T-80U",
     "zh": "翠野原，白天：Challenger 3 对 T-80U"
@@ -156,17 +240,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs02-verdant-challenger-t80u-r6.json",
    "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
-   "bytes": 230620,
-   "sha256": "e186dbe6c409965a48452d5014a3db9782d75c29ce2e1dbd8106f33b2beb7408",
+   "bytes": 254496,
+   "sha256": "fb4c53e65f74ed80efe1e8d8f498dfbce74ea105bb9b980fa24404c1e289b9fc",
    "width": 1920,
    "height": 1080,
-   "source": "vs02-verdant-challenger-t80u-r6-1920.webp"
+   "source": "vs02-verdant-challenger-t80u-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-640.webp",
+     "bytes": 25808
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-1280.webp",
+     "bytes": 84682
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
+     "bytes": 254496
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6-3840.webp",
+     "bytes": 461870
+    }
+   ]
   },
   {
    "id": "vs03-reservoir-k2-ztz99-r6",
    "round": 6,
    "map": "reservoir",
    "hour": "golden",
+   "view": "side",
    "title": {
     "en": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
     "zh": "高地水库，黄金时刻：K2 Black Panther 对 ZTZ-99 Longwei"
@@ -187,17 +294,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-ztz99-r6.json",
    "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
-   "bytes": 296878,
-   "sha256": "0ae848427c6d8ec49fac283aa61d6a65416d78e8ed40b063d174a97505e3b8f7",
+   "bytes": 285526,
+   "sha256": "e4edc06cede7f85d6d01cff03804256cb5302017bf07290b32c07ca5e1725fe1",
    "width": 1920,
    "height": 1080,
-   "source": "vs03-reservoir-k2-ztz99-r6-1920.webp"
+   "source": "vs03-reservoir-k2-ztz99-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-640.webp",
+     "bytes": 29894
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-1280.webp",
+     "bytes": 93908
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
+     "bytes": 285526
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6-3840.webp",
+     "bytes": 579878
+    }
+   ]
   },
   {
    "id": "vs04-railyard-leclerc-t14-r6",
    "round": 6,
    "map": "railyard",
    "hour": "night",
+   "view": "side",
    "title": {
     "en": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
     "zh": "灰渣枢纽，夜晚：Leclerc SXXI 对 T-14 Armata"
@@ -218,17 +348,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r6.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
-   "bytes": 379282,
-   "sha256": "1bc260738a79ba312d9a83ececa502d4f9479f452026158ae5fbfca102e32c4a",
+   "bytes": 410510,
+   "sha256": "d619adf0176cd258a820159f872f62032c8448d52f259214678138dc70617e1c",
    "width": 1920,
    "height": 1080,
-   "source": "vs04-railyard-leclerc-t14-r6-1920.webp"
+   "source": "vs04-railyard-leclerc-t14-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-640.webp",
+     "bytes": 40424
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-1280.webp",
+     "bytes": 139756
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
+     "bytes": 410510
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6-3840.webp",
+     "bytes": 815316
+    }
+   ]
   },
   {
    "id": "vs05-oasis-merkava-t72b3-r6",
    "round": 6,
    "map": "oasis",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
     "zh": "日痕绿洲，白天：Merkava Mk 4 对 T-72B3"
@@ -255,17 +408,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs05-oasis-merkava-t72b3-r6.json",
    "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
-   "bytes": 260770,
-   "sha256": "d0f04b41c28388b8532b1df3dd65848f448b46d5aab69940dff35a31d06f1e38",
+   "bytes": 257256,
+   "sha256": "c91413a0514a621efd2233ade13ae6ddcb9a429f98476686c6292c6e3fd1bd27",
    "width": 1920,
    "height": 1080,
-   "source": "vs05-oasis-merkava-t72b3-r6-1920.webp"
+   "source": "vs05-oasis-merkava-t72b3-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-640.webp",
+     "bytes": 25268
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-1280.webp",
+     "bytes": 84772
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
+     "bytes": 257256
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6-3840.webp",
+     "bytes": 527422
+    }
+   ]
   },
   {
    "id": "vs06-coastal-type10-ztz99a2-r6",
    "round": 6,
    "map": "coastal",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
     "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
@@ -286,17 +462,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r6.json",
    "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp",
-   "bytes": 215142,
-   "sha256": "b4d0f48766e2fc4f3110257cf0b1917a7bf233c04ce6dfdc23945c199fc61714",
+   "bytes": 220906,
+   "sha256": "0af63e50986536edd9681f90beff28b3b082cccbbee82da01f80bfe7cdf721ac",
    "width": 1920,
    "height": 1080,
-   "source": "vs06-coastal-type10-ztz99a2-r6-1920.webp"
+   "source": "vs06-coastal-type10-ztz99a2-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-640.webp",
+     "bytes": 19400
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-1280.webp",
+     "bytes": 66814
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp",
+     "bytes": 220906
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6-3840.webp",
+     "bytes": 451770
+    }
+   ]
   },
   {
    "id": "vs07-autumn-ariete-t62-r6",
    "round": 6,
    "map": "autumn",
    "hour": "golden",
+   "view": "side",
    "title": {
     "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
     "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
@@ -317,17 +516,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r6.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
-   "bytes": 426296,
-   "sha256": "7df2a115f89a7767edec143002d9cb87f21a4b4fa91654a0df1d51610d750429",
+   "bytes": 439678,
+   "sha256": "a984471fcc8336826101ee38d8026f3e84dbd23e875919e82af16e17af9a4b25",
    "width": 1920,
    "height": 1080,
-   "source": "vs07-autumn-ariete-t62-r6-1920.webp"
+   "source": "vs07-autumn-ariete-t62-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-640.webp",
+     "bytes": 29966
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-1280.webp",
+     "bytes": 117076
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
+     "bytes": 439678
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6-3840.webp",
+     "bytes": 905414
+    }
+   ]
   },
   {
    "id": "vs08-winter-cv90-bmp3-r6",
    "round": 6,
    "map": "winter",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Frosthollow, day: CV90 Mk 4 v BMP-3",
     "zh": "霜谷，白天：CV90 Mk 4 对 BMP-3"
@@ -348,17 +570,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r6.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp",
-   "bytes": 181744,
-   "sha256": "14879cb17d4cdb8b9aaa5b60833c1b7d4c0cda6850325e39a958a2d87bfe0aef",
+   "bytes": 355984,
+   "sha256": "b9c8845240282c06672def42957ceeddd3839b3ab822bcea38f2e1d1a4b16d6a",
    "width": 1920,
    "height": 1080,
-   "source": "vs08-winter-cv90-bmp3-r6-1920.webp"
+   "source": "vs08-winter-cv90-bmp3-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-640.webp",
+     "bytes": 29424
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-1280.webp",
+     "bytes": 101406
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp",
+     "bytes": 355984
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6-3840.webp",
+     "bytes": 702164
+    }
+   ]
   },
   {
    "id": "vs09-alpine-strv122-t80bv-r6",
    "round": 6,
    "map": "alpine",
    "hour": "morning",
+   "view": "side",
    "title": {
     "en": "Glacier Pass, morning: Stridsvagn 122 v T-80BV",
     "zh": "冰川关，上午：Stridsvagn 122 对 T-80BV"
@@ -379,17 +624,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r6.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp",
-   "bytes": 267102,
-   "sha256": "ca44e606fd08ae4a05e77ebf039dd522fd35997daa6bdf00fd781911021fcd1d",
+   "bytes": 317160,
+   "sha256": "865b0476648626d1a56bf0dbbd4ca7592264375680926f088fa24e9cdb8bc1f4",
    "width": 1920,
    "height": 1080,
-   "source": "vs09-alpine-strv122-t80bv-r6-1920.webp"
+   "source": "vs09-alpine-strv122-t80bv-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-640.webp",
+     "bytes": 27756
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-1280.webp",
+     "bytes": 97452
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp",
+     "bytes": 317160
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6-3840.webp",
+     "bytes": 628794
+    }
+   ]
   },
   {
    "id": "vs10-steppe-chieftain-t64-r6",
    "round": 6,
    "map": "steppe",
    "hour": "night",
+   "view": "side",
    "title": {
     "en": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1",
     "zh": "塔尔罕草原，夜晚：Chieftain Mk 10 对 T-64BV1"
@@ -410,17 +678,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r6.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
-   "bytes": 247650,
-   "sha256": "1d1da8987e4b7832e991d2b2ee9bbac9db8519271ed1bc3f1b53426a356863c2",
+   "bytes": 302630,
+   "sha256": "6bd0acc92ecfcae71a31a4cc78267f265b4e87792cb267064101d8c0b49c1aed",
    "width": 1920,
    "height": 1080,
-   "source": "vs10-steppe-chieftain-t64-r6-1920.webp"
+   "source": "vs10-steppe-chieftain-t64-r6-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-640.webp",
+     "bytes": 21486
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-1280.webp",
+     "bytes": 83876
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
+     "bytes": 302630
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6-3840.webp",
+     "bytes": 633454
+    }
+   ]
   },
   {
    "id": "f6-leo2a6-steinburg-r7",
    "round": 7,
    "map": "urban",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Steinburg, day: Leopard 2A6 v T-90M",
     "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
@@ -441,17 +732,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp",
-   "bytes": 335860,
-   "sha256": "260e51ea8e5aa45eb646138bd257d974ae9ae4d205910d70ccd9e75e1823b389",
+   "bytes": 376500,
+   "sha256": "d88003ce8757e73e5aed9ae1be2ccc0302e34da7b3934deef3bd76dbf3f39a5a",
    "width": 1920,
    "height": 1080,
-   "source": "f6-leo2a6-steinburg-r7-1920.webp"
+   "source": "f6-leo2a6-steinburg-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-640.webp",
+     "bytes": 39746
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-1280.webp",
+     "bytes": 131066
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp",
+     "bytes": 376500
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-3840.webp",
+     "bytes": 722502
+    }
+   ]
   },
   {
    "id": "vs04-railyard-leclerc-t14-r7",
    "round": 7,
    "map": "railyard",
    "hour": "golden",
+   "view": "side",
    "title": {
     "en": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
     "zh": "灰渣枢纽，黄金时刻：Leclerc SXXI 对 T-14 Armata"
@@ -472,17 +786,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp",
-   "bytes": 262478,
-   "sha256": "af90a339c6fc9580d13a4c24587fd291ec46ee79c208e9e36ed5f21005ce1003",
+   "bytes": 283468,
+   "sha256": "22b7565f1ee946d3b4b3678afb02e86dff6a4d42ca71f2730efa7da529510250",
    "width": 1920,
    "height": 1080,
-   "source": "vs04-railyard-leclerc-t14-r7-1920.webp"
+   "source": "vs04-railyard-leclerc-t14-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-640.webp",
+     "bytes": 28970
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-1280.webp",
+     "bytes": 92848
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp",
+     "bytes": 283468
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-3840.webp",
+     "bytes": 539916
+    }
+   ]
   },
   {
    "id": "vs06-coastal-type10-ztz99a2-r7",
    "round": 7,
    "map": "coastal",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
     "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
@@ -509,17 +846,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r7.json",
    "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
-   "bytes": 242844,
-   "sha256": "f5484e445176a841ca7261f1a3bbb57feb7afcd968ef4be84d080816d210909b",
+   "bytes": 262148,
+   "sha256": "bfad67405080b9f6510ad335911ccb31a74cccdfc6207847ee3e1e2ee35f2069",
    "width": 1920,
    "height": 1080,
-   "source": "vs06-coastal-type10-ztz99a2-r7-1920.webp"
+   "source": "vs06-coastal-type10-ztz99a2-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-640.webp",
+     "bytes": 24552
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-1280.webp",
+     "bytes": 83236
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
+     "bytes": 262148
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7-3840.webp",
+     "bytes": 548594
+    }
+   ]
   },
   {
    "id": "vs07-autumn-ariete-t62-r7",
    "round": 7,
    "map": "autumn",
    "hour": "golden",
+   "view": "side",
    "title": {
     "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
     "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
@@ -544,13 +904,31 @@
    "sha256": "05f5b214f6d869683541b3f7861a09c541e1f6508ce5c04b1d8b133ef5eff6f7",
    "width": 1920,
    "height": 1080,
-   "source": "vs07-autumn-ariete-t62-r7-1920.webp"
+   "source": "vs07-autumn-ariete-t62-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-640.webp",
+     "bytes": 29164
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-1280.webp",
+     "bytes": 90842
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
+     "bytes": 286084
+    }
+   ]
   },
   {
    "id": "vs08-winter-cv90-bmp3-r7",
    "round": 7,
    "map": "winter",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Frosthollow, day: CV90 Mk 4 v BMP-3",
     "zh": "霜谷，白天：CV90 Mk 4 对 BMP-3"
@@ -571,17 +949,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
-   "bytes": 156424,
-   "sha256": "d2404ff9a8640b794d5959e74693346eb5916ef4fe62617407f0e75821cacf3c",
+   "bytes": 211662,
+   "sha256": "94745f87e4e2af18794a7939b173b01e30c3f50913e1ec47e08255e52107bedd",
    "width": 1920,
    "height": 1080,
-   "source": "vs08-winter-cv90-bmp3-r7-1920.webp"
+   "source": "vs08-winter-cv90-bmp3-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-640.webp",
+     "bytes": 21936
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-1280.webp",
+     "bytes": 68008
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
+     "bytes": 211662
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-3840.webp",
+     "bytes": 393066
+    }
+   ]
   },
   {
    "id": "vs09-alpine-strv122-t80bv-r7",
    "round": 7,
    "map": "alpine",
    "hour": "day",
+   "view": "side",
    "title": {
     "en": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
     "zh": "冰川关，白天：Stridsvagn 122 对 T-80BV"
@@ -602,17 +1003,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp",
-   "bytes": 208816,
-   "sha256": "7ddcf55b7c0c8cead0c3dd19ef4b9edce679bf98d0b1fabb1279e9a477e47f39",
+   "bytes": 234648,
+   "sha256": "f3fbc930144ec3a1afb003dda3465f8135e4d76916392d6252d59517263cdf9f",
    "width": 1920,
    "height": 1080,
-   "source": "vs09-alpine-strv122-t80bv-r7-1920.webp"
+   "source": "vs09-alpine-strv122-t80bv-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-640.webp",
+     "bytes": 26636
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-1280.webp",
+     "bytes": 79206
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp",
+     "bytes": 234648
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-3840.webp",
+     "bytes": 420454
+    }
+   ]
   },
   {
    "id": "vs10-steppe-chieftain-t64-r7",
    "round": 7,
    "map": "steppe",
    "hour": "golden",
+   "view": "side",
    "title": {
     "en": "Tarkhan Steppe, golden hour: Chieftain Mk 10 v T-64BV1",
     "zh": "塔尔罕草原，黄金时刻：Chieftain Mk 10 对 T-64BV1"
@@ -633,17 +1057,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
-   "bytes": 359342,
-   "sha256": "f8bb7fb1d71da972668ff0c5a317559d28fff5e823ed8e3218eeee76e973cf4b",
+   "bytes": 391890,
+   "sha256": "cb677648239b758efcd2c48eff02ea3375846196edde15a84421a22a9b635f6f",
    "width": 1920,
    "height": 1080,
-   "source": "vs10-steppe-chieftain-t64-r7-1920.webp"
+   "source": "vs10-steppe-chieftain-t64-r7-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-640.webp",
+     "bytes": 41966
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-1280.webp",
+     "bytes": 135936
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
+     "bytes": 391890
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-3840.webp",
+     "bytes": 766766
+    }
+   ]
   },
   {
    "id": "vs04-railyard-leclerc-t14-r7-top",
    "round": 4,
    "map": "railyard",
    "hour": "golden",
+   "view": "top",
    "title": {
     "en": "Cinder Junction, golden hour, from above: Leclerc SXXI v T-14 Armata",
     "zh": "灰渣枢纽，黄金时刻，俯瞰：Leclerc SXXI 对 T-14 Armata"
@@ -664,17 +1111,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-   "bytes": 461930,
-   "sha256": "5ace9f39b09a0067947b048abf2890080e3d6c3bfe7f3ea56c26df43544e9081",
+   "bytes": 478472,
+   "sha256": "fb4fe9401dbc178f7cae7a075beb79aef2a5724b0b617b940eec70c3b5588fb4",
    "width": 1920,
    "height": 1080,
-   "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp"
+   "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-640.webp",
+     "bytes": 42292
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-1280.webp",
+     "bytes": 150264
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
+     "bytes": 478472
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top-3840.webp",
+     "bytes": 896256
+    }
+   ]
   },
   {
    "id": "vs10-steppe-chieftain-t64-r7-top",
    "round": 4,
    "map": "steppe",
    "hour": "golden",
+   "view": "top",
    "title": {
     "en": "Tarkhan Steppe, golden hour, from above: Chieftain Mk 10 v T-64BV1",
     "zh": "塔尔罕草原，黄金时刻，俯瞰：Chieftain Mk 10 对 T-64BV1"
@@ -695,17 +1165,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 470798,
-   "sha256": "5535cc26ca8d3d816c218645d816cb144af9d8a783527ef392b6189c713c6d2c",
+   "bytes": 515484,
+   "sha256": "612ffa4ad23c51b05deda64eae81ebf6a51d126d0aeed8d746490d9444aa3f7b",
    "width": 1920,
    "height": 1080,
-   "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
+   "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-640.webp",
+     "bytes": 36900
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-1280.webp",
+     "bytes": 151514
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
+     "bytes": 515484
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top-3840.webp",
+     "bytes": 1227826
+    }
+   ]
   },
   {
    "id": "f6-leo2a6-steinburg-r7-top",
    "round": 3,
    "map": "urban",
    "hour": "day",
+   "view": "top",
    "title": {
     "en": "Steinburg, day, from above: Leopard 2A6 v T-90M",
     "zh": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M"
@@ -726,17 +1219,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
-   "bytes": 349576,
-   "sha256": "444a16904037953af78b4c977ffbb9e4aa930fbcb8b1458e3c1f4255fb74102b",
+   "bytes": 391726,
+   "sha256": "52eb5b0e0883e7d21087853d3148abb5647448d8c7f25a331f06fc126a39fff8",
    "width": 1920,
    "height": 1080,
-   "source": "f6-leo2a6-steinburg-r7-top-1920.webp"
+   "source": "f6-leo2a6-steinburg-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-640.webp",
+     "bytes": 45894
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-1280.webp",
+     "bytes": 138658
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
+     "bytes": 391726
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top-3840.webp",
+     "bytes": 698150
+    }
+   ]
   },
   {
    "id": "vs07-autumn-ariete-t62-r7-top",
    "round": 4,
    "map": "autumn",
    "hour": "golden",
+   "view": "top",
    "title": {
     "en": "Amberford, golden hour, from above: C2 Ariete v T-62MV-1",
     "zh": "安伯福，黄金时刻，俯瞰：C2 Ariete 对 T-62MV-1"
@@ -761,13 +1277,31 @@
    "sha256": "39ffcd2a419b469634ac1b02d4ad84f5f4fe587930c4e10d0a28e47b39fdea71",
    "width": 1920,
    "height": 1080,
-   "source": "vs07-autumn-ariete-t62-r7-top-1920.webp"
+   "source": "vs07-autumn-ariete-t62-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-640.webp",
+     "bytes": 39470
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top-1280.webp",
+     "bytes": 131380
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
+     "bytes": 446346
+    }
+   ]
   },
   {
    "id": "vs08-winter-cv90-bmp3-r7-top",
    "round": 4,
    "map": "winter",
    "hour": "day",
+   "view": "top",
    "title": {
     "en": "Frosthollow, day, from above: CV90 Mk 4 v BMP-3",
     "zh": "霜谷，白天，俯瞰：CV90 Mk 4 对 BMP-3"
@@ -788,17 +1322,40 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-   "bytes": 180572,
-   "sha256": "cef0eb1d7825e14c1daa1193b797034546c600c56c01d27285cd4b910f627f39",
+   "bytes": 232480,
+   "sha256": "84e7536e964f3d906cbd211f1cdade025be6b03254396d85ee5ea170c4bc18f7",
    "width": 1920,
    "height": 1080,
-   "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp"
+   "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-640.webp",
+     "bytes": 23752
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-1280.webp",
+     "bytes": 73600
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
+     "bytes": 232480
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top-3840.webp",
+     "bytes": 429516
+    }
+   ]
   },
   {
    "id": "vs09-alpine-strv122-t80bv-r7-top",
    "round": 4,
    "map": "alpine",
    "hour": "day",
+   "view": "top",
    "title": {
     "en": "Glacier Pass, day, from above: Stridsvagn 122 v T-80BV",
     "zh": "冰川关，白天，俯瞰：Stridsvagn 122 对 T-80BV"
@@ -819,11 +1376,87 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7-top.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
-   "bytes": 255362,
-   "sha256": "22f7a383890174ddab9a70cbfecc1d8a8a80922147c1d79ed347fa043a2cf956",
+   "bytes": 291356,
+   "sha256": "119b6ffe73c6ccfed1050bb087426e9a263f58479df1877d15adf8fd001a4fe3",
    "width": 1920,
    "height": 1080,
-   "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp"
+   "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-640.webp",
+     "bytes": 24232
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-1280.webp",
+     "bytes": 84966
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
+     "bytes": 291356
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top-3840.webp",
+     "bytes": 625690
+    }
+   ]
+  },
+  {
+   "id": "vs03-reservoir-k2-vt4a1-r8",
+   "round": 8,
+   "map": "reservoir",
+   "hour": "golden",
+   "view": "side",
+   "title": {
+    "en": "Highland Reservoir, golden hour: K2 Black Panther v VT-4A1",
+    "zh": "高地水库，黄金时刻：K2 Black Panther 对 VT-4A1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "vt4a1",
+     "displayName": "VT-4A1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-vt4a1-r8.json",
+   "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
+   "bytes": 541178,
+   "sha256": "397d55ba892aeb62917deb24f85bd3d6ef85d7dd8231c1bf227b869bab78b3e9",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs03-reservoir-k2-vt4a1-r8-1920.webp",
+   "rungs": [
+    {
+     "width": 640,
+     "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-640.webp",
+     "bytes": 49720
+    },
+    {
+     "width": 1280,
+     "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-1280.webp",
+     "bytes": 179134
+    },
+    {
+     "width": 1920,
+     "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8.webp",
+     "bytes": 541178
+    },
+    {
+     "width": 3840,
+     "path": "/media/versus-r1/vs03-reservoir-k2-vt4a1-r8-3840.webp",
+     "bytes": 1045890
+    }
+   ]
   }
  ]
 }

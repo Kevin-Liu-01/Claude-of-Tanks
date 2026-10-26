@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
-import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import { TOPIC_ORDER, ZH_TITLE_PHRASES, topicSectionId, topics } from './topics.ts';
 import { richSections } from './chapters/index.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
@@ -67,7 +67,18 @@ const shelved = [...topicsSource.matchAll(/topics: \[([^\]]+)\]/g)].flatMap((m) 
 assert.deepEqual([...shelved].sort(), [...TOPIC_ORDER].sort(), 'every chapter is on the shelf exactly once');
 assert.match(docsCss, /\.dm\{display:grid;grid-template-columns:var\(--docs-side-w\) minmax\(0,1fr\)/, 'wide manuals keep the shelf beside the page');
 assert.match(docsCss, /\.dm-side\{position:static;flex-direction:row;flex-wrap:nowrap;[^}]*overflow-x:auto/, 'narrow manuals fold the shelf into a scrolling row');
-assert.match(topicsSource, /shelf\.scrollLeft = Math\.max\(0, current\.offsetLeft/, 'narrow manuals reveal their current chapter without moving the page');
+assert.match(topicsSource, /shelf\.scrollLeft = Math\.min\(at\(lead\) - start, shelf\.scrollWidth - shelf\.clientWidth\)/,
+  'narrow manuals reveal their current chapter without moving the page, an item\'s start on the gutter (no item cut at the left edge)');
+assert.match(docsCss, /\.dm-side\{[^}]*padding:10px var\(--docs-gutter\) 10px calc\(var\(--docs-gutter\) - var\(--s3\)\);scroll-padding-inline:var\(--docs-gutter\) var\(--dm-fade\)/,
+  'the narrow shelf row starts on the page gutter (its start padding gives back the first item\'s own) and scrolls its items to it');
+assert.match(docsCss, /\.dm-side a\.dm-home,\.dm-side a:not\(\.dm-home\)\{[^}]*padding:4px var\(--s3\)/,
+  'every item of the narrow shelf row, the index link too, keeps one horizontal padding (equal gaps around the selected plate)');
+// a Chinese chapter title breaks only between its phrases (never 构/建): each phrase list spells its catalog title
+const zhCatalog = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
+for (const slug of TOPIC_ORDER) {
+  assert.equal(ZH_TITLE_PHRASES[slug]?.join(''), zhCatalog[`docs.topic.${slug}.title`],
+    `${slug}: topics.ts ZH_TITLE_PHRASES spells the Chinese title (cut it into phrases again after a copy change)`);
+}
 assert.doesNotMatch(topicsSource, / \/\/ \$\{title\}/, 'no "01 // title" index lines (the owner\'s no-separator rule)');
 assert.doesNotMatch(topicsSource, /replace\(\/\[\^a-z0-9\]/, 'translated headings must not determine section anchors');
 

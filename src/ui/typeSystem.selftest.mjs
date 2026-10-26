@@ -190,9 +190,10 @@ for (const c of ACCENT_CHARS) {
 }
 // Every character a catalog string or a tank name prints is drawn by a shipped face on both voice paths: the Plex path
 // (Plex Sans, then the accents face, then the marks face) and the Chakra Petch path (its cmap or its composition, then
-// the marks face). Chinese and emoji use the system faces by design.
+// the marks face). Chinese and emoji use the system faces by design; the zero-width space the Chinese catalog marks its
+// phrase breaks with (equipment descriptions: never 装/备 at a line end) draws nothing, like the joiner.
 const systemFace = (c) => (c >= 0x2e80 && c <= 0x9fff) || (c >= 0x3000 && c <= 0x303f) || (c >= 0xf900 && c <= 0xfaff)
-  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d;
+  || (c >= 0xff00 && c <= 0xffef) || c >= 0x1f000 || c === 0xfe0f || c === 0x200d || c === 0x200b;
 const chakraDraws = (c) => CHAKRA_CHARS.has(c) || SYMBOL_CHARS.has(c)
   || [...String.fromCodePoint(c).normalize('NFD')].every((ch) => CHAKRA_CHARS.has(ch.codePointAt(0)));
 const printed = new Map();
@@ -515,7 +516,7 @@ assert.equal((tokens.match(/tabular-nums/g) ?? []).length, 1, 'the .num rule is 
 const hud = read('src/ui/hud.ts');
 for (const [path, pattern, what] of [
   ['index.html', /class="cot-boot-pct num"/, 'the boot percentage'],
-  ['src/ui/hud.ts', /<span class="tm num">/, 'the battle clock'],
+  ['src/ui/hud.ts', /<span class="tm num"(?:[ >]|\$\{datumAttr\('clock'\)\}>)/, 'the battle clock'],
   ['src/ui/hud.ts', /class="al num"/, 'the alive tallies'],
   ['src/ui/hud.ts', /<span class="kills num" hidden>/, 'the roster kill tallies'],
   ['src/ui/hud.ts', /<strong class="speed num"/, 'the speedometer'],
@@ -528,7 +529,7 @@ for (const [path, pattern, what] of [
 for (const [path, text] of sources) {
   assert.doesNotMatch(text, /class="[^"]*\bnum\b[^"]*"[^>]*>\$\{t\(/, `${path}: .num holds a readout, never a localized string`);
 }
-assert.match(hud, /<span class="mv"><\/span>/, 'the mode status sentence reads in the shell face (no .num)');
+assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 'the mode status sentence reads in the shell face (no .num)');
 // The team scores are the HUD's display numerals (the data voice: Bold lining figures): Chakra Petch Bold, centred
 // in fixed columns. They change on a kill, never per frame, so proportional figures move nothing beside them.
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');

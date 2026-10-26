@@ -18,6 +18,7 @@
 #![warn(missing_docs)]
 
 pub mod ballistics;
+pub mod clearance;
 pub mod contact;
 pub mod deformation;
 pub mod grid;

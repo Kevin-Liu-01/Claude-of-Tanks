@@ -29,6 +29,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
 type Side = -1 | 1;
 type Vec2Tuple = readonly [number, number];
@@ -523,7 +524,7 @@ function merkavaSourceRearFinish(P: TankBuilderPort, c: MerkavaChassisConfig): v
 // c.body: loft stations for the sponson band (nose tip -> tail plate).
 // c.keel: [[z,y]...] lower-glacis/belly line for the center body.
 // ---------------------------------------------------------------------------
-function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
+function* merkavaChassisSteps(P: TankBuilderPort, c: MerkavaChassisConfig): TankProfileBuild {
   const { box, headlight, towCable, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const w = c.width, hw = w / 2;
@@ -572,6 +573,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     loftBand(P, 'hull', c.tailNotch ? c.body.slice(0, -1) : c.body, c.bodyTrackClear);
   };
   merkavaChassisHullStage1();
+  yield 'merkavaChassisHullStage1';
   const merkavaChassisHullStage2 = (): void => {
     if (c.tailNotch) {
       const N = c.body.length;
@@ -598,6 +600,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage2();
+  yield 'merkavaChassisHullStage2';
 
   // Center belly between the tracks + lower glacis wedge along the keel.
   // bellySideY (optional): the warped 3B/3C refs carry an ARCHED belly —
@@ -675,6 +678,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage3();
+  yield 'merkavaChassisHullStage3';
   // rear lower wedge up to the tail plate bottom (with tailNotch it stops
   // at the door plane so the recessed center never pokes out in plan)
   // r12 §B4: rides kihw — the unclamped edge cut through the idler-wrap
@@ -734,6 +738,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage4();
+  yield 'merkavaChassisHullStage4';
 
   // Fender planks: the measured plan keeps a near-full-width footprint all
   // the way to the nose line — the prow narrows only between the planks.
@@ -792,6 +797,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage5();
+  yield 'merkavaChassisHullStage5';
   // sideCurtain (1B visual r2, critic item 2): the ref hangs a PLAIN pale
   // curtain from the fender line down to the upper-wheel line — our open gap
   // showed grey hanger posts + bright wheels where the print is a quiet sand
@@ -868,6 +874,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage6();
+  yield 'merkavaChassisHullStage6';
   // Outer fender lip: the strip that carries the vehicle to its published
   // width. Its OUTER face sits exactly at c.fenderLip.x (WIDTH GUARD: this is
   // the bbox edge — the gate loader normalizes the whole tank to widthM/bbox,
@@ -931,6 +938,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage7();
+  yield 'merkavaChassisHullStage7';
   const merkavaChassisHullStage8 = (): void => {
     if (c.frontBoard) { // low fender board over the sprocket (skirt lead);
       // z0/x1 may be per-side [L,R] — the refs cut the two boards differently.
@@ -944,6 +952,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage8();
+  yield 'merkavaChassisHullStage8';
   // fenderKit (3B/3C visual round): the ref's front fender shelves carry
   // small stowage — cans/boxes on the boards. Everything stays under the
   // deck-peak line (side/front silhouette-neutral: tops <= 1.20 where the
@@ -972,6 +981,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage9();
+  yield 'merkavaChassisHullStage9';
 
   // Tail plate: clamshell door seams, hinge barrels, latch stack, lights.
   // With tailNotch the door furniture sits on the recessed center plane; the
@@ -1002,6 +1012,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage10();
+  yield 'merkavaChassisHullStage10';
 
   // Glacis furniture: driver hatch front-left with periscope, headlight pods
   // with brush guards (the measured plan bulges past the prow at |x|~0.6),
@@ -1029,6 +1040,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     periscope(P, 'hullDetail', -w * 0.20, dhY + 0.055, dhZ - 0.40);
   };
   merkavaChassisHullStage11();
+  yield 'merkavaChassisHullStage11';
   const merkavaChassisHullStage12 = (): void => {
     { // Mk.1-3: intake louvres on the glacis slope right of the driver (the Mk 4M hump mark retired 2026-09-23)
       // paleVents (3B/3C visual round): the ref is monochrome pale sand — the
@@ -1159,6 +1171,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage12();
+  yield 'merkavaChassisHullStage12';
   const podSupportSeats: Array<Readonly<Record<string, RuntimeValue>>> = [];
   const merkavaChassisHullStage13 = (): void => {
     for (const s of [-1, 1]) {
@@ -1289,6 +1302,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage13();
+  yield 'merkavaChassisHullStage13';
   const merkavaChassisReceiptStage1 = (): void => {
     if (podSupportSeats.length) {
       P.hullG.userData[`${tankSeedId(P.spec.id)}HullAttachmentReceipt`] = Object.freeze({
@@ -1299,6 +1313,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisReceiptStage1();
+  yield 'merkavaChassisReceiptStage1';
   const merkavaChassisHullStage14 = (): void => {
     if (c.glacisQuilt) {
       // r13b order 2c (1B, critic r12 driver B): the glacis-top band read
@@ -1347,6 +1362,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage14();
+  yield 'merkavaChassisHullStage14';
   const merkavaChassisHullStage15 = (): void => {
     if (c.sternQuilt) {
       // r13b (the TRUE critic-r12 "glacis-top" window): the banked view-top
@@ -1374,6 +1390,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage15();
+  yield 'merkavaChassisHullStage15';
   const merkavaChassisHullStage16 = (): void => {
     if (c.bowHug) {
       // 3D/1B visual r2 (family ban item 5): the 3-point catenary rendered as
@@ -1442,6 +1459,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage16();
+  yield 'merkavaChassisHullStage16';
 
   // 1B r10 GLACIS KIT (c.glacisKit — front/hero family driver: the ref
   // scatters small fittings across its glacis, ours read as one clean empty
@@ -1493,6 +1511,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
 
   };
   merkavaChassisHullStage17();
+  yield 'merkavaChassisHullStage17';
 
   // Rear deck furniture: extraction grille + fuel fillers + lift eyes.
   // r4 metrology: everything here HUGS the deck — the measured 3-series
@@ -1521,6 +1540,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     liftEye(P, 'hullDetail', w * 0.34, deckY - 0.075, rd + 0.32);
   };
   merkavaChassisHullStage18();
+  yield 'merkavaChassisHullStage18';
 
   // Exhaust louvre bank on the RIGHT sponson face behind the engine bay.
   const exTop = deckY - 0.06;
@@ -1549,6 +1569,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     merkavaSourceRearFinish(P, c);
   };
   merkavaChassisHullStage19();
+  yield 'merkavaChassisHullStage19';
 
   // Running gear: FRONT sprocket (signature), 6 wheels, high rear idler.
   // gearOut pins the OUTER track face (measured front-view track columns sit
@@ -1618,6 +1639,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisRunningGearStage1();
+  yield 'merkavaChassisRunningGearStage1';
 
   const merkavaChassisHullStage20 = (): void => {
     if (P.spec.id === 'merkava4b') {
@@ -1710,6 +1732,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage20();
+  yield 'merkavaChassisHullStage20';
 
   // Deep skirts (Mk.2+) with scalloped hem. WIDTH GUARD: sk.x is the OUTER
   // FACE of the outermost panel — the widest point of the whole vehicle,
@@ -2295,6 +2318,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisRunningGearStage2();
+  yield 'merkavaChassisRunningGearStage2';
 
   // The measured tall rear rack band flanks the clamshell door. Legacy
   // `rearShelf` and `rearBins` branches had no profile owners and are removed.
@@ -2321,6 +2345,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage21();
+  yield 'merkavaChassisHullStage21';
   const merkavaChassisHullStage22 = (): void => {
     if (c.tailRack) {
       // { z0, z1, top, bot, hw, x0?, midShelf?, wings? } — the measured rear
@@ -3116,6 +3141,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage22();
+  yield 'merkavaChassisHullStage22';
   // r2 NOTE: the old `deckPack` defect-mimic (hull-node casting-band crate)
   // is GONE — the batch-4 oracle repair (86d1071) moved every stranded
   // turret fitting back onto rig_turret, so the repaired refs' hull masks
@@ -3162,6 +3188,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage23();
+  yield 'merkavaChassisHullStage23';
   const merkavaChassisHullStage24 = (): void => {
     if (c.tailKit) {
       // r10 keel tail cover (1B): the keel's pale rising rear face (the wedge
@@ -3195,6 +3222,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage24();
+  yield 'merkavaChassisHullStage24';
   const merkavaChassisHullStage25 = (): void => {
     if (c.rearPack) {
       const merkavaChassisHullCourse8 = (): void => {
@@ -3384,6 +3412,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage25();
+  yield 'merkavaChassisHullStage25';
   // Trailing tow-pintle rods: HAIRLINE tail elements (band far below the
   // 12% body rule) that carry overallLengthM's pixel span to the published
   // tail without moving the hull-registration/hullLength body columns.
@@ -3419,6 +3448,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
     }
   };
   merkavaChassisHullStage26();
+  yield 'merkavaChassisHullStage26';
 
   // Family hull-upgrade pass.  These are protective modules and service
   // fittings seated on the already-authored glacis/skirt surfaces; they do
@@ -4051,7 +4081,7 @@ function chainCurtain(
 
 // Open pipe-frame stowage basket + packed cloth kit + chain curtain.
 // top/topRear allow the measured falling rim line at the tail.
-function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
+function* merkavaBasketSteps(P: TankBuilderPort, b: MerkavaBasketConfig): TankProfileBuild {
   const { box, cylZ } = KIT;
   const bx = b.xoff ?? 0; // measured baskets sit slightly left of center
   const mid = (b.z0 + b.z1) / 2, len = b.z0 - b.z1;
@@ -4061,6 +4091,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     P.add('turretDark', box(b.hw * 2 - 0.06, 0.035, len - 0.04), bx, b.bot + 0.02, mid);
   };
   merkavaBasketTurretStage1();
+  yield 'merkavaBasketTurretStage1';
   // top rim rail follows the measured rim slope; mid rail level.
   // b.railTopL (1B structure r3, PAIRED REFUND): the LEFT rim rail rides
   // lower — the 1B workorder front col x -1.098 reads ref 2.373 vs the
@@ -4137,6 +4168,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketAssemblyStage1();
+  yield 'merkavaBasketAssemblyStage1';
   const merkavaBasketTurretStage2 = (): void => {
     if (b.shelf) {
       // center spine tie-beam: THE certified rim-line carrier (max-over-x) —
@@ -4201,6 +4233,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     } else P.add('turretDark', box(b.hw * 2 + 0.045, 0.045, 0.045), bx, topR, b.z1 + 0.02);
   };
   merkavaBasketTurretStage2();
+  yield 'merkavaBasketTurretStage2';
   const merkavaBasketTurretStage3 = (): void => {
     if (b.soft) {
       // r5 (critic r4 "goalpost H-frames"): the full-width mid rail + four
@@ -4223,6 +4256,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage3();
+  yield 'merkavaBasketTurretStage3';
   // packed kit visible through the rails, filling to the rear face
   // (b.pale: monochrome-sand kit — 3B/3C visual round)
   // b.soft (3D/1B structure r3, critic "basket reads empty scaffold"): the
@@ -4270,6 +4304,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage4();
+  yield 'merkavaBasketTurretStage4';
   const merkavaBasketTurretStage5 = (): void => {
     if (b.soft && b.voids && !b.shelf) {
       // r11 1B THROUGH-READ (critic-r10 residual b, MEASURED against the
@@ -4360,6 +4395,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage5();
+  yield 'merkavaBasketTurretStage5';
   const merkavaBasketTurretStage6 = (): void => {
     if (!b.openPack) {
       P.add(b.pale ? 'turretCanvasPale' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
@@ -4367,6 +4403,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage6();
+  yield 'merkavaBasketTurretStage6';
   const merkavaBasketTurretStage7 = (): void => {
     if (b.shelf) {
       const bH2 = b.top - b.bot;
@@ -4404,6 +4441,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage7();
+  yield 'merkavaBasketTurretStage7';
   const merkavaBasketTurretStage8 = (): void => {
     if (b.soft && b.voids && !b.shelf) {
       const bH = b.top - b.bot;
@@ -4480,6 +4518,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage8();
+  yield 'merkavaBasketTurretStage8';
   const merkavaBasketTurretStage9 = (): void => {
     if (b.soft) {
       const merkavaBasketTurretCourse2 = (): void => {
@@ -4509,6 +4548,7 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     }
   };
   merkavaBasketTurretStage9();
+  yield 'merkavaBasketTurretStage9';
   const merkavaBasketTurretStage10 = (): void => {
     if (b.coil) {
       P.add('turretDark', KIT.torus(0.14, 0.045, 18, 8), b.coil, midY + 0.04, b.z1 - 0.04, Math.PI / 2, 0, 0);
@@ -4519,6 +4559,9 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
     chainCurtain(P, b.chainHW ?? b.hw * 0.92, b.z1 - (b.chainGap ?? 0.16), b.bot + 0.10, b.chainDrop ?? 0.32, b.z1 + 0.04, b.fine, b.soft);
   };
   merkavaBasketTurretStage10();
+}
+function merkavaBasket(...args: Parameters<typeof merkavaBasketSteps>): void {
+  drainTankBuild(merkavaBasketSteps(...args));
 }
 
 // Twin/triple whip antennas with spring-can bases anchored to a surface.
@@ -4729,7 +4772,7 @@ function merkavaThirdGenTurretSeat(P: TankBuilderPort, p: MerkavaProfileData): v
   });
 }
 
-function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
+function* merkavaSmallTurretSteps(P: TankBuilderPort, t: MerkavaTurretConfig): TankProfileBuild {
   const { box, cylY, polyTurret, lathe, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const apex = t.apexZ, gy = t.apexY;
@@ -4760,6 +4803,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     P.add('turret', xform(polyTurret(outline, shellH, 1.0, t.roofInset ?? 0.74), 0, base, 0));
   };
   merkavaSmallTurretTurretStage1();
+  yield 'merkavaSmallTurretTurretStage1';
 
   // Cast cheek beak: one continuous plane per side from the gun-notch band
   // to the roof shoulder. Undersides stay at the measured casting-bottom
@@ -4780,6 +4824,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     P.add('turret', box(0.34, 0.12, apex - sf + 0.30), 0, t.bridgeY ?? (gy - 0.18), (apex + sf) / 2 - 0.12);
   };
   merkavaSmallTurretTurretStage2();
+  yield 'merkavaSmallTurretTurretStage2';
   const merkavaSmallTurretTurretStage3 = (): void => {
     for (const cp of (Array.isArray(t.cheekPod) ? t.cheekPod : t.cheekPod ? [t.cheekPod] : [])) {
       P.add('turret', box(Math.abs(cp.x1 - cp.x0), cp.top - cp.bot, cp.z0 - cp.z1),
@@ -4830,6 +4875,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
   };
   merkavaSmallTurretTurretStage3();
+  yield 'merkavaSmallTurretTurretStage3';
 
   // Roof: slabs following the measured rising crest line; per-station
   // widths (third tuple slot) follow the casting's plan taper.
@@ -4874,6 +4920,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     if (t.ringTub) merkavaRingTub(P, t);
   };
   merkavaSmallTurretTurretStage4();
+  yield 'merkavaSmallTurretTurretStage4';
 
   // Casting-ring apron — post-repair, the reference turret masks bottom out
   // at the carved ring plane (side bottoms ~1.5 world at mid-casting, rising
@@ -4893,6 +4940,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
   };
   merkavaSmallTurretTurretStage5();
+  yield 'merkavaSmallTurretTurretStage5';
 
   // Raised commander station: the measured dome band is a long FLAT plateau
   // (the repaired oracles ride it at 2.8-2.9 world) — published heightM is
@@ -5127,6 +5175,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
   };
   merkavaSmallTurretTurretStage6();
+  yield 'merkavaSmallTurretTurretStage6';
   // gunner sight hood (right-front) + loader hatch disc (right-rear); the
   // hood hugs the roofline (the measured plateau IS the roof slabs now)
   const merkavaSmallTurretTurretStage7 = (): void => {
@@ -5236,6 +5285,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     KIT.periscope(P, 'turretDetail', cs.x * 0.4, roofAt(csMid + 0.3) + 0.02, csMid + 0.34);
   };
   merkavaSmallTurretTurretStage7();
+  yield 'merkavaSmallTurretTurretStage7';
 
   // Soft stowage over the rear casting, then the open basket + chains.
   // (clothMat: on the pale marks the olive canvas blocks ride the sand camo
@@ -5295,6 +5345,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
   };
   merkavaSmallTurretTurretStage8();
+  yield 'merkavaSmallTurretTurretStage8';
   const merkavaSmallTurretTurretStage9 = (): void => {
     if (t.stow2) { // aft stowage continuation (narrower: the plan flanks pull in)
       const s2 = t.stow2;
@@ -5316,6 +5367,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     });
   };
   merkavaSmallTurretTurretStage9();
+  yield 'merkavaSmallTurretTurretStage9';
   // trailing stow/chain vane behind the basket (measured falling band).
   // Chains stay SHORT: the repaired refs' turret masks bottom at ~basket
   // floor height across the tail (long drops read as excess volume).
@@ -5524,6 +5576,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
     }
   };
   merkavaSmallTurretTurretStage10();
+  yield 'merkavaSmallTurretTurretStage10';
   // smoke cluster snugged low on the port cheek (the measured plan keeps the
   // casting front inside z~1.2 at cheek width — the rosette must not lead it)
   // r13b order 3b (softGoods=1B only): the cluster's tube tips (~2.74) were
@@ -5545,6 +5598,9 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
   merkavaSmallTurretAssemblyStage1();
 
 }
+function merkavaSmallTurret(...args: Parameters<typeof merkavaSmallTurretSteps>): void {
+  drainTankBuild(merkavaSmallTurretSteps(...args));
+}
 
 // ---------------------------------------------------------------------------
 // Mk.3/Mk.4 modular wedge turret — r3 measured-anatomy re-lay. The repaired
@@ -5556,7 +5612,7 @@ function merkavaSmallTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
 // ASYMMETRIC roof (left sight plinth at the dims cap, LOW right deck); a
 // rear-deck dip then a pot/stowage bump; and a low-riding bustle.
 // ---------------------------------------------------------------------------
-function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void {
+function* merkavaModularTurretSteps(P: TankBuilderPort, t: MerkavaTurretConfig): TankProfileBuild {
   const { box, cylY, polyTurret, frustum, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hwM = t.hwMax;
@@ -5595,6 +5651,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     if (t.ringTub) merkavaRingTub(P, t);
   };
   merkavaModularTurretTurretStage1();
+  yield 'merkavaModularTurretTurretStage1';
 
   // Rotor/crest housing: narrow front face at the apex (the side-view 2.56
   // wall), widening to the crest plateau; bottom rides the mantlet band.
@@ -5794,6 +5851,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage2();
+  yield 'merkavaModularTurretTurretStage2';
   // r11 (defect A/C): the full-width crest rear bar was a lit-turretDark
   // warm line AND a y-222 crown-window run — rackShelf/3D: detail hairline
   // lower on the rear face; siblings byte-identical.
@@ -5821,6 +5879,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage3();
+  yield 'merkavaModularTurretTurretStage3';
 
   // Cheek wedges: swept plan taper (measured plateau -> shoulder), underside
   // rising from the ring plane to the mantlet line at the inner face.
@@ -5850,6 +5909,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage4();
+  yield 'merkavaModularTurretTurretStage4';
   // Converging-V fillet planes between the crest nose and the cheek inner
   // edges (3B/3C wedge-front rebuild): raked trapezoid planes flanking the
   // crest — bottom edge held at the certified zW step line (the warped ref
@@ -5877,6 +5937,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage5();
+  yield 'merkavaModularTurretTurretStage5';
   // Cheek-shoulder washes (r3 "turret second story" flip-item): the cheek
   // planes used to STOP at their raked top edges with a 2.40 shell-top
   // trough behind them — the sawtooth seam at the cheek/roof junction the
@@ -5914,6 +5975,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage6();
+  yield 'merkavaModularTurretTurretStage6';
 
   // Chin wedge: the casting underside between the carved-ring nose and the
   // mantlet line RISES (measured side bottoms 1.53 -> 1.57 -> 1.70 over
@@ -5952,6 +6014,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage7();
+  yield 'merkavaModularTurretTurretStage7';
 
   // Left sight plinth: the capped stand-in for the oracle's 2.7-2.9 sight/
   // pano band — a one-sided raised deck (front view: left tall, right low).
@@ -6041,6 +6104,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage8();
+  yield 'merkavaModularTurretTurretStage8';
 
   // Roof deck: slabs following the measured DECK line (saddle -> rear).
   // rearRoofHW: the LAST slab's width. The old hwM*rw*0.94 flare (1.22 on
@@ -6057,6 +6121,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage9();
+  yield 'merkavaModularTurretTurretStage9';
   const rearRoof = rf[rf.length - 1];
   // measured roof masses (rear pot/stowage bump, cupola ring aprons, ...):
   // generic boxes so front/side bands can be laid exactly where traced.
@@ -6141,6 +6206,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage10();
+  yield 'merkavaModularTurretTurretStage10';
   // Trailing chain-mat vane behind the basket (3-series: the repair moved
   // the ex_armor chain mats onto rig_turret). The measured plan rear is a
   // V: full-rear only across the center (hwRear), corners sweeping forward
@@ -6967,6 +7033,7 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage11();
+  yield 'merkavaModularTurretTurretStage11';
 
   // Roof kit: commander cupola (+ raise), loader hatch on 3-series, pano
   // pod + gunner hood; per-mark kits add MGs/smoke/panels.
@@ -7076,11 +7143,15 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
     }
   };
   merkavaModularTurretTurretStage12();
+  yield 'merkavaModularTurretTurretStage12';
   const merkavaModularTurretTurretStage13 = (): void => {
     P.addEquipment('turret', box(0.32, 0.13, 0.30), t.sightX ?? 0.42, h - 0.045, roofF - 0.14);
     P.add(glassMat, box(0.18, 0.05, 0.02), t.sightX ?? 0.42, h - 0.03, roofF + 0.015);
   };
   merkavaModularTurretTurretStage13();
+}
+function merkavaModularTurret(...args: Parameters<typeof merkavaModularTurretSteps>): void {
+  drainTankBuild(merkavaModularTurretSteps(...args));
 }
 
 // ---------------------------------------------------------------------------
@@ -7291,22 +7362,24 @@ roofSpine: p.roofSpine ? { z0: L(p.roofSpine.z0), zR: L(p.roofSpine.zR), z1: L(p
 // focused family self-tests enforce the corresponding per-mark invariant.
 type MerkavaTurretConfig = DeepDefined<ReturnType<typeof createMerkavaTurretConfig>>;
 
-function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
+function* buildMerkavaMarkSteps(builder: object, p: MerkavaProfileData): TankProfileBuild {
   const P = requireTankBuilderPort(builder);
   // 2026-10-09 (owner): the field net and garnish of the marks that carry one (ghillieFleetSuits.ts: Mk 3C, Mk 4B),
   // laid on the assembled build
   addVehicleGhillieSuit(P);
   const { box, cylZ } = KIT;
-  const buildMerkavaMarkAssemblyStage1 = (): void => {
-    merkavaChassis(P, p);
+  const buildMerkavaMarkAssemblyStage1 = function* (): TankProfileBuild {
+    yield* merkavaChassisSteps(P, p);
   };
-  buildMerkavaMarkAssemblyStage1();
+  yield* buildMerkavaMarkAssemblyStage1();
+  yield 'buildMerkavaMarkAssemblyStage1';
 
   const pivotY = p.deckY + 0.02;
   const buildMerkavaMarkAssemblyStage2 = (): void => {
     P.turretG.position.set(0, pivotY, p.pivotZ);
   };
   buildMerkavaMarkAssemblyStage2();
+  yield 'buildMerkavaMarkAssemblyStage2';
   const L = (z: number) => z - p.pivotZ;
   const V = (y: number) => y - pivotY;
   const gunFrame = {
@@ -7317,7 +7390,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
 
   const t = createMerkavaTurretConfig(p) as MerkavaTurretConfig;
   const sourceOracleTurret = p.sourceOracleTurret && merkavaSourceOracleTurret(P, p, t);
-  const buildMerkavaMarkHullStage1 = (): void => {
+  const buildMerkavaMarkHullStage1 = function* (): TankProfileBuild {
     if (!sourceOracleTurret) {
       if (p.turretStyle === 'small') merkavaSmallTurret(P, t);
       else merkavaModularTurret(P, t);
@@ -7331,7 +7404,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     // repaired references carve at the ring plane (repair 86d1071), so the
     // casting apron above carries the measured turret-mask bottoms instead.
     if (!sourceOracleTurret) applyMerkavaTurretKit(P, p, t);
-    merkavaSourceFinish(P, p, t);
+    yield* merkavaSourceFinishSteps(P, p, t);
 
     // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the owner
     // marks' hand-built commander's and loader's MAGs are working stations now (merkavaMG), so the census MAG once
@@ -7346,7 +7419,8 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
       }
     }
   };
-  buildMerkavaMarkHullStage1();
+  yield* buildMerkavaMarkHullStage1();
+  yield 'buildMerkavaMarkHullStage1';
 
   // Mk.3D rear chain-mat tip past the hull tail (raw-bounds gun metric keys
   // off this measured sliver; mass/height must match the oracle band).
@@ -7495,6 +7569,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkTurretStage1();
+  yield 'buildMerkavaMarkTurretStage1';
 
   // Whip antennas: measured ref trace columns + whip tops (short pots on
   // the Mk.4); potTop caps under published height.
@@ -7502,6 +7577,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     merkavaAntennas(P, p.antennas.map((a: ProfileAntenna) => ({ x: a.x, y: V(a.y), z: L(a.z), h: a.h, stem: a.stem, thin: a.thin, bright: a.bright, potTop: a.potTop !== undefined ? V(a.potTop) : undefined })));
   };
   buildMerkavaMarkAssemblyStage3();
+  yield 'buildMerkavaMarkAssemblyStage3';
   // Free-standing roof pots/cans (measured 1-2 column bumps beside the
   // whips; tops capped under the published-height p95 line).
   const buildMerkavaMarkTurretStage2 = (): void => {
@@ -7655,6 +7731,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkTurretStage2();
+  yield 'buildMerkavaMarkTurretStage2';
 
   // Gun: trunnions behind the cheek apex; external mantlet sleeve laid on
   // the MEASURED band (m.z0 world start when given — the repaired refs read
@@ -7666,6 +7743,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     P.gunG.position.set(gunFrame.x, gunFrame.y, gunZL);
   };
   buildMerkavaMarkAssemblyStage4();
+  yield 'buildMerkavaMarkAssemblyStage4';
   const gLen = p.gunTipZ - p.pivotZ - gunZL + 0.03;
   const apexG = t.apexZ - gunZL;
   const m = p.mantlet; // { r0, r1, len, drop, z0?, legacy? } external cast sleeve
@@ -7837,6 +7915,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkGunStage1();
+  yield 'buildMerkavaMarkGunStage1';
   const buildMerkavaMarkGunStage2 = (): void => {
     if (p.gunBoot && !sourceGunHousing) {
       // §B3.1 GUN-ASSEMBLY ACCURACY (owner 2026-08-06): the 4-series MG253
@@ -7878,6 +7957,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     muzzleBore(P, { len: gLen, r: p.gunR });
   };
   buildMerkavaMarkGunStage2();
+  yield 'buildMerkavaMarkGunStage2';
   const buildMerkavaMarkGunStage3 = (): void => {
     if (p.sleeveTo) { // thermal sleeve continuation: the refs' sleeves hold
       // r ~0.15 far past the mantlet (plan +-0.15 columns read them to z 3.8)
@@ -7904,6 +7984,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkGunStage3();
+  yield 'buildMerkavaMarkGunStage3';
   const buildMerkavaMarkGunStage4 = (): void => {
     if (p.muzzleRing) { // batch-18: sleeve/muzzle end ring — the warped refs
       // read a wide thin ring near the sleeve end (plan ±0.14-0.15 cols reach
@@ -7917,6 +7998,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkGunStage4();
+  yield 'buildMerkavaMarkGunStage4';
   const buildMerkavaMarkGunStage5 = (): void => {
     if (p.tubeShade) {
       // r13b order 2a (1B, critic r12 driver B): the ref tube band reads p5
@@ -7966,6 +8048,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkGunStage5();
+  yield 'buildMerkavaMarkGunStage5';
   const buildMerkavaMarkGunStage6 = (): void => {
     if (p.sleeveClamp) { // r5: fat mid-sleeve junction clamp — the ref side
       // trace bumps to 2.12 at z 2.23-2.27 (a collar the plain sleeve run
@@ -7981,6 +8064,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkGunStage6();
+  yield 'buildMerkavaMarkGunStage6';
 
   // r3 tone pass (3B/3C, sibling-safe: createTankMaterials is per-instance;
   // leopard r3 precedent). GATE-FREE: the geo gate renders self-lit mask
@@ -8214,6 +8298,7 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
     }
   };
   buildMerkavaMarkRunningGearStage1();
+  yield 'buildMerkavaMarkRunningGearStage1';
 
   // p.noDecal (3D structure r3, critic delete item): the turret-side number
   // decal read as a TEXT STICKER ("Militek") at the hero distances — the
@@ -8245,6 +8330,10 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
   };
   buildMerkavaMarkMarkingsStage1();
 }
+function buildMerkavaMark(...args: Parameters<typeof buildMerkavaMarkSteps>): void {
+  drainTankBuild(buildMerkavaMarkSteps(...args));
+}
+withBuildSteps(buildMerkavaMark, buildMerkavaMarkSteps);
 
 // Point ON the modular beak cheek plane (f: 0 notch -> 1 shoulder).
 function merkavaCheekPoint(t: MerkavaTurretConfig, f: number, spread = 0.78): Vec3Point {
@@ -9745,11 +9834,11 @@ function merkavaSourceGunCradle(
 // courses, sight shoes and basket brackets.  Keep this as a final detail pass
 // on the existing authored shell.  It never cuts a hull/skirt/track surface
 // and every added item begins on, or slightly inside, its local roof datum.
-function merkavaSourceFinish(
+function* merkavaSourceFinishSteps(
   P: TankBuilderPort,
   p: MerkavaProfileData,
   _t: MerkavaTurretConfig,
-): void {
+): TankProfileBuild {
   const id = P.spec.id;
   if (!['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b'].includes(id)) return;
   const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -10049,6 +10138,7 @@ function merkavaSourceFinish(
     else if (id === 'merkava4b') addFourthGenRoof();
   };
   merkavaSourceFinishAssemblyStage1();
+  yield 'merkavaSourceFinishAssemblyStage1';
 
   // Source-readable CL-3030 banks and cheek service seams.  These live on
   // the actual sloped casting, use a broad backing shoe, and are mirrored
@@ -10098,6 +10188,7 @@ function merkavaSourceFinish(
     }
   };
   merkavaSourceFinishTurretStage1();
+  yield 'merkavaSourceFinishTurretStage1';
 
   // Mark-specific combat fit.  The owner requested visibly denser equipment
   // and ERA on every Merkava, but the family must not become six copies of
@@ -10481,6 +10572,7 @@ function merkavaSourceFinish(
     merkavaSourceFinishRunningGearStage2();
   };
   merkavaSourceFinishRunningGearStage1();
+  yield 'merkavaSourceFinishRunningGearStage1';
   const merkavaSourceFinishTurretStage2 = (): void => {
     if (id === 'merkava4b') {
       P.turretG.userData.merkava4bEraReceipt = Object.freeze({
@@ -10549,6 +10641,7 @@ function merkavaSourceFinish(
     }
   };
   merkavaSourceFinishTurretStage2();
+  yield 'merkavaSourceFinishTurretStage2';
 
   // Unequal roof lockers, radio cases, spare optics and soft kit.  Every
   // item starts on a broad shoe at roofAt(z), stays under the mark's cap,
@@ -10621,6 +10714,7 @@ function merkavaSourceFinish(
     }
   };
   merkavaSourceFinishTurretStage3();
+  yield 'merkavaSourceFinishTurretStage3';
 
   // Armored MG shield: center plate and canted wings terminate in a low
   // plinth on the same hatch/roof station as the weapon.  Angle and position

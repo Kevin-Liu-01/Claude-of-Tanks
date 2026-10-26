@@ -17,6 +17,7 @@ import { TECH_TREES, rootOf, vehiclesOf } from '../techTree/trees.ts';
 import { esc, scaleCells, statRow } from './components/components.ts';
 import { flag, silhouette } from './components/identity.ts';
 import { decorateHeroTile } from './heroCard.ts';
+import { datumAttr } from './dom.ts';
 import { iconUrl } from './icons.ts';
 import { icon } from './icons/icon.ts';
 import type { IconId } from './icons/spriteIndex.ts';
@@ -186,7 +187,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   root.setAttribute('aria-modal', 'true');
   root.innerHTML =
     `<header class="tt-head">` +
-    `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"></h1></div>` +
+    `<div class="tt-nation"><span class="tt-flag"></span><h1 class="tt-title"${datumAttr('nation')}></h1></div>` +
     `<nav class="tt-rail" aria-label="${t('techTree.nations')}"></nav>` +
     // zoom sits on its own opaque plate in the header, clear of every card
     `<div class="tt-plate tt-zoom" role="group" aria-label="${t('techTree.zoom')}">` +
@@ -207,9 +208,9 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     `<div class="tt-edges" aria-hidden="true"></div></div>` +
     `<section class="tt-detail" aria-live="polite">` +
     `<div class="tt-detail-art"></div>` +
-    `<div class="tt-detail-info"><div class="tt-detail-id"><h2 class="tt-detail-name"></h2>` +
+    `<div class="tt-detail-info"><div class="tt-detail-id"><h2 class="tt-detail-name"${datumAttr('tank-name')}></h2>` +
     // the kit's tags (components.css .cot-c-tag): the tier, and Special for a vehicle outside the lines
-    `<div class="tt-detail-meta"><span class="cot-c-tag cot-c-tag--neutral tt-detail-tier"></span>` +
+    `<div class="tt-detail-meta"><span class="cot-c-tag cot-c-tag--neutral tt-detail-tier"${datumAttr('tier')}></span>` +
     `<span class="cot-c-tag cot-c-tag--neutral tt-detail-special" hidden>${esc(t('techTree.special'))}</span></div>` +
     // a node's twin builds: the kit's segmented control (components.css .cot-c-seg, the slate plate marks the choice)
     `<div class="cot-c-seg tt-builds" role="radiogroup" aria-label="${t('techTree.builds')}"></div></div>` +

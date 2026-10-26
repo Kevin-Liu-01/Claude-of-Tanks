@@ -145,7 +145,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-hero .es-sub{
    a fade over a sliced row was no cue; r5: a capped column broke the level bottoms) */
 body[data-cot-width] .cot-es.cot-es--record .es-more{display:none}
 body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report).more>.es-more{position:sticky;bottom:0;z-index:var(--z-lift);display:flex;
-  align-items:flex-end;justify-content:center;height:var(--es-cue-h,22px);margin-top:calc(-1 * var(--es-cue-h,22px));
+  align-items:flex-end;justify-content:center;height:var(--es-cue-h,18px);margin-top:calc(-1 * var(--es-cue-h,18px));
   padding-bottom:var(--s1);box-sizing:border-box;
   border-top:1px solid var(--line-2);background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--hud-plate-strong);
   color:var(--ink-2);pointer-events:none}
@@ -165,7 +165,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .d{position:absolute;left:-
   background:var(--accent);box-shadow:var(--battle-beat-ring)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .d.loss{background:var(--team-enemy)}
 /* a beat with no room for its label: a minor tick across the line, in its ink (named on hover) */
-body[data-cot-width] .cot-es.cot-es--record .es-beat .minor .d{left:-1px;top:-7px;width:2px;height:14px;transform:none;box-shadow:none}
+/* (no bare tick: a beat the line cannot label keeps out of it, the line one primitive, every mark a chip and a time,
+   gauntlet r7) */
+body[data-cot-width] .cot-es.cot-es--record .es-beat .minor{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .lb{position:absolute;bottom:14px;left:0;transform:translateX(-50%);display:flex;
   align-items:center;gap:6px;max-width:min(280px,calc(var(--room,.12) * 100cqi - 8px));padding:5px var(--s2);white-space:nowrap;border-radius:var(--chip-radius);
   background:var(--battle-tip-plate);box-shadow:var(--e1);font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-1)}
@@ -184,7 +186,15 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:upp
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
 /* (a watched battle's two rosters at a reading width on the widest windows: 1,230 px rows set the callsigns 750 px from
    their figures at 2560, gauntlet r6) */
-body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:1640px;margin-inline:auto;width:100%;box-sizing:border-box}
+body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:2000px;margin-inline:auto;width:100%;box-sizing:border-box}
+/* (the widest windows: the two teams side by side once the teams' column holds two whole rosters, 1,100 px, the record
+   column narrower: stacked, the enemy's ran under the panel's foot beside 570 px of record plate at 2560, gauntlet r7;
+   at 1600 and a narrower column the vehicles' names were cut, r5) */
+@media(min-width:2200px){body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debrief.teams{container-type:inline-size}
+@container (min-width:1100px){body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-rosters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* (a watched battle's ridden tank wears the spectator's glyph by its name: its highlight alone meant nothing, r7) */
+body[data-cot-width] .cot-es.cot-es--record .es-tr .nm .rode{display:inline-flex;vertical-align:-2px;margin-right:5px;color:var(--accent-hi)}
 /* (a Latin callsign keeps the Latin size in Chinese, whose lift is for Chinese labels: endScreen.ts marks it .lat) */
 :lang(zh-CN) .cot-es .es-tr .nm.lat{--battle-fs-12:12px}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}

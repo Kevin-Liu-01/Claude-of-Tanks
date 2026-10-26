@@ -45,10 +45,14 @@ function clippedText(){
   const roots=[...document.querySelectorAll('.cot-hud,.cot-settings,.cot-es,.cot-end,.cot-touch,.cot-dp,.cot-minimap,.cot-si-toasthost,.cot-si-cardhost,.cot-kill-lane')];
   const seen=new Set();const found=[];
   const clips=(style)=>/(hidden|clip)/.test(style.overflowX+' '+style.overflow)||style.textOverflow==='ellipsis';
+  // (copy kept for screen readers alone, a 1 px box clipped to nothing, is not clipped copy: the score's default team
+  // names, the touch chrome's sound and settings labels, a small mouse window's alert words, brand-ui 246)
+  const readerOnly=(el)=>{for(let at=el;at&&at!==document.body;at=at.parentElement){const s=getComputedStyle(at);
+    if(/inset\(50%\)/.test(s.clipPath)&&at.getBoundingClientRect().width<=1)return true;}return false;};
   for(const root of roots)for(const el of root.querySelectorAll('*')){
     if(seen.has(el))continue;seen.add(el);
     const own=[...el.childNodes].filter(node=>node.nodeType===3&&node.nodeValue.trim()).map(node=>node.nodeValue.trim()).join(' ');
-    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})||readerOnly(el))continue;
     const style=getComputedStyle(el);
     if(clips(style)&&el.scrollWidth>el.clientWidth+1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}"`);continue;}
     const range=document.createRange();range.selectNodeContents(el);const r=range.getBoundingClientRect();
@@ -293,6 +297,8 @@ function noticeMeasure(){
   // text outside the element's six-sided frame (corner cut `cut` px at the top and bottom, 0 at mid-height)
   const clipped=(e,host,cut)=>{
     if(!e||!e.getClientRects().length)return 0;
+    // (words kept for screen readers alone: a small mouse window's alert is its glyph, brand-ui 246)
+    if(/inset\(50%\)/.test(getComputedStyle(e).clipPath)&&e.getBoundingClientRect().width<=1)return 0;
     const b=host.getBoundingClientRect(),mid=b.top+b.height/2,half=b.height/2,range=document.createRange();range.selectNodeContents(e);
     let worst=0;
     for(const r of range.getClientRects()){
@@ -347,7 +353,14 @@ function measure(state){
       if(!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
       const r=el.getBoundingClientRect();
       if(r.width<1||r.height<1)continue;
-      rects.push({name:el.className,x:r.x,y:r.y,right:r.right,bottom:r.bottom});
+      // (the settings tabs and header by their own room: on a short window the header and its close button sit in the
+      // end padding the strip keeps for them, responsiveSurfaces.css, the header's own padding over the strip's)
+      // (their style alone is read: the success path reads no other, battleHudLayout.selftest.mjs)
+      const tabs=!!el.classList?.contains('cot-set-tabs'),hdr=!!el.classList?.contains('cot-set-hdr');
+      const style=tabs||hdr?getComputedStyle(el):null;
+      const end=tabs?parseFloat(style.paddingInlineEnd)||0:0;
+      const start=hdr?parseFloat(style.paddingInlineStart)||0:0;
+      rects.push({name:el.className,x:r.x+start,y:r.y,right:r.right-end,bottom:r.bottom});
     }
     return rects;
   }
@@ -474,7 +487,9 @@ try {
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
           // a dropped plan fails: the detection and the alert clear the whole reticle (the plan fell back to main's places,
           // '-', or cleared less), and a shown countdown or revive count has a planned place (not the CSS defaults)
-          if((k==='d'||k==='a')&&t!==2)failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
+          // (a tier 1 place covering no ink of either sight passes: the scope's arms end short of a shown notice,
+          // sightFurniture.ts sightNoticeCuts, where the notices' gap leaves the pair over an arm's tip, 1024x600)
+          if((k==='d'||k==='a')&&t!==2&&!(t===1&&n.union===0))failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
           if((k==='c'||k==='r')&&t<0)failures.push(`the ${what} is shown without a planned place`);
           // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice, and only the pair
           // that never shows together: the countdown and the detection (nothing can spot the player before the roll-out).
@@ -531,15 +546,31 @@ try {
       const result=await page.evaluate(measure,state);
       if(pseudo||locale!=='en-US')result.failures.push(...await page.evaluate(clippedText));
       const score=result.rects.find(r=>r.name==='cot-top');
-      const objective=result.rects.find(r=>r.name==='cot-mode-status show');
+      // (the objective shows 'stacked' in two rows where its progress wraps)
+      const objective=result.rects.find(r=>r.name.startsWith('cot-mode-status show'));
+      const plates=await page.evaluate(()=>({score:getComputedStyle(document.querySelector('.cot-top')).clipPath,
+        objective:document.querySelector('.cot-mode-status')?getComputedStyle(document.querySelector('.cot-mode-status')).clipPath:'',
+        quiet:!!document.querySelector('.cot-mode-status.quiet')}));
       // a short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the compact objective in the map's column
       const map=result.rects.find(r=>r.name.split(' ').includes('cot-minimap'));
       if(objective&&result.seat==='side'){
         if(!map||Math.abs(objective.x-map.x)>.5||Math.abs(objective.y-map.bottom-4)>.5)
           result.failures.push('the side-seated objective must sit 4px under the map, in its column');
+      }else if(objective&&result.seat==='corner'){
+        // the mission plate (owner 2026-10-24: "left objective marker should be another right trapezoid attached to
+        // left"): flush in the window's top-left corner, its left edge upright and its right one slanted, clear of the score
+        if(Math.abs(objective.x)>.5||Math.abs(objective.y)>.5)result.failures.push('the corner objective must sit flush in the top-left corner');
+        if(!/^polygon\(0px 0px, 100% 0px, calc\(100% - [\d.]+px\) 100%, 0px 100%\)$/.test(plates.objective))
+          result.failures.push('the corner objective must be a right trapezoid');
+        if(score&&objective.right+8>score.x)result.failures.push('the corner objective must keep clear of the score plate');
       }else{
-        if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
+        // under the score, the plate's own tab: flush under it, centred, inside its bottom edge (its slant read from the
+        // plate's clip, hud.ts .cot-top)
+        const inset=Number(/,\s*([\d.]+)px 100%\)$/.exec(plates.score)?.[1]);
+        if(score&&objective&&!(objective.x>=score.x+inset-.5&&objective.right<=score.right-inset+.5))
           result.failures.push('objective must fit inside the scoreboard bottom edge');
+        if(score&&objective&&Math.abs((objective.x+objective.right)/2-(score.x+score.right)/2)>.5)
+          result.failures.push('objective must be centred under the scoreboard');
         if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
       }
       const compactNotices=await page.locator('.cot-si-toast').evaluateAll(nodes=>nodes.filter(node=>node.checkVisibility({checkVisibilityCSS:true})).map(node=>({
@@ -551,7 +582,8 @@ try {
         for(const el of document.querySelectorAll('.cot-si-toasthost,.cot-kill-lane')){
           if(!el.checkVisibility({checkVisibilityCSS:true}))continue;
           const r=el.getBoundingClientRect();
-          if(r.width>(el.classList.contains('cot-kill-lane')?400.5:240.5))failures.push('notification feed exceeds its maximum width');
+          // (the hit rows take the left lane's width since gauntlet r5: a lane's 400 px is the bound for both)
+          if(r.width>400.5)failures.push('notification feed exceeds its maximum width');
           if(el.classList.contains('r')?Math.abs(r.right-innerWidth)>.5:Math.abs(r.left)>.5)
             failures.push('notification feed is indented from the screen edge');
         }
@@ -590,25 +622,33 @@ try {
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
-        // (a short landscape's side seat stands the objective under the map, and the detection takes the band under the
-        // score beside it: there it keeps the notice planner's 6 px from the seat, TOUCH_NOTICE_GAP)
+        // (the objective is quiet, shown only as the corner's mission plate, where the score says it all: the Standard
+        // battle and the Horde, hud.ts; the detection keeps the notice planners' 6 px from it wherever it stands, under the
+        // score, beside it in a side seat or in the corner, and may sit under the sight: UI-GAUNTLET's battle row)
         const apart=(a,b)=>Math.max(a.x-b.right,b.x-a.right,a.y-b.bottom,b.y-a.bottom);
-        if(!detected||(state==='mode-standard'?!!objective:!objective||(result.seat==='side'?apart(detected,objective)<6:detected.y<objective.bottom+7)))
-          result.failures.push(result.seat==='side'?'detection must keep 6px from the side-seated objective':'detection must clear the objective by at least 7px');
+        if(plates.quiet&&result.seat!=='corner'?!!objective:!objective)
+          result.failures.push(plates.quiet?'a quiet objective must not show under the score':'objective missing');
+        if(!detected)result.failures.push('detection missing');
+        else if(objective&&apart(detected,objective)<6)result.failures.push('detection must keep 6px from the objective');
       }
       if(state.startsWith('notifications')) {
-        const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
-        if(hexagons.length!==2||hexagons.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)) result.failures.push('status notices must have six-sided outlines');
+        // (each notice's edge and fill are the long hexagon's two layers under the words, owner 2026-10-25: its ::before
+        // and ::after carry --notice-cut, the element itself no clip; hud.ts, hudNotices.selftest.mjs)
+        const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>
+          [getComputedStyle(node,'::before').clipPath,getComputedStyle(node,'::after').clipPath]));
+        if(hexagons.length!==2||hexagons.some(layers=>layers.some(shape=>!shape.startsWith('polygon(')||shape.split(',').length!==6)))
+          result.failures.push('status notices must have six-sided outlines');
       }
       if(state!=='settings'&&state!=='ended'){
         const decoration=await page.evaluate(()=>{
           const notice=document.querySelector('.cot-kill-lane.r .cot-kf');
           const style=notice?getComputedStyle(notice):null;
-          return {left:style?.borderLeftWidth,right:style?.borderRightWidth,
+          return {left:style?.borderLeftWidth,right:style?.borderRightWidth,justify:style?.justifyContent,
             mode:document.querySelector('.cot-mode-status')?.dataset.mode};
         });
-        if(decoration.left&& (parseFloat(decoration.left)!==0||parseFloat(decoration.right)<=0))
-          result.failures.push('enemy kill notice must use the right border');
+        // (one plate ringed all round, never a one-sided coloured border, owner 2026-10-25; the enemy's lane mirrored)
+        if(decoration.left&&(parseFloat(decoration.left)!==parseFloat(decoration.right)||decoration.justify!=='flex-end'))
+          result.failures.push('enemy kill notice must be one plate, mirrored to its lane');
         if(state.startsWith('mode-')&&decoration.mode!==state.slice(5))
           result.failures.push(`expected objective ${state.slice(5)}, saw ${decoration.mode}`);
       }
@@ -658,11 +698,21 @@ try {
       if(state==='idle'){
         // The full Gravity + ATGM kit must remain usable after moving to a side lane. On touch the row is whole 44 px tiles
         // that never scroll, and a row that cannot hold them all pages through the rest behind its More tile (UI-06).
-        await page.evaluate(()=>{
-          window.__controlEvents=[];
-          for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])
-            window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
+        // what the vehicle-action table gives this tank in this mode (src/game/vehicleActions.ts, read as the Garage reads it),
+        // and the event each control raises (hud.ts bindControl)
+        const ACTION_EVENT={jump:'ui:selfRight',suspension:'ui:specialAction',atgm:'ui:shellSelect',reload:'ui:magazineReload',
+          drone:'ui:drone',smoke:'ui:smoke',lights:'ui:lightsToggle',roofGun:'ui:roofGun'};
+        const expectedActions=await page.evaluate(async()=>{
+          const [{vehicleActionsFor},{isJumpMode},{matchRulesetFor},{normalizeGameMode}]=await Promise.all([
+            import('/src/ui/vehicleActionList.ts'),import('/src/ui/vehicleControlOrder.ts'),import('/src/sim/matchRuleset.ts'),
+            import('/src/sim/gameModeCatalog.ts')]);
+          const f=window.__HUD_LAYOUT,mode=normalizeGameMode(f.frame.matchModeState?.id);
+          return vehicleActionsFor(f.frame.player.spec,{jump:isJumpMode(matchRulesetFor(mode)),drone:mode==='drone'}).map(a=>a.id);
         });
+        await page.evaluate(events=>{
+          window.__controlEvents=[];
+          for(const event of events)window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
+        },[...new Set(Object.values(ACTION_EVENT))]);
         const pageCount=await page.evaluate(()=>Number(document.querySelector('.cot-vehicle-controls').dataset.pages)||1);
         let pressed=0;
         for(let index=0;index<pageCount;index++){
@@ -687,11 +737,12 @@ try {
           }
         }
         if(pageCount>1)await page.locator('.cot-systems-more').click();
-        if(pressed!==5)errors.push(`${name}: expected all five vehicle controls (${pressed} reached)`);
+        if(pressed!==expectedActions.length)errors.push(`${name}: expected all ${expectedActions.length} vehicle controls (${pressed} reached)`);
         const events=await page.evaluate(()=>window.__controlEvents);
-        // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
-        if(events.join(',')!=='ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun')
-          errors.push(`${name}: vehicle control activation mismatch: ${events}`);
+        // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in the table's order.
+        const expectedEvents=expectedActions.map(id=>ACTION_EVENT[id]).join(',');
+        if(events.join(',')!==expectedEvents)
+          errors.push(`${name}: vehicle control activation mismatch: ${events} (the table: ${expectedEvents})`);
         await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
       }
       if(state==='settings'){
@@ -804,7 +855,8 @@ try {
             const second=list.children[1].getBoundingClientRect();
             if(first.y!==second.y||first.x===second.x)failures.push('crowded roster did not form columns');
             for(const tile of list.children){
-              if(!tile.title)failures.push('grid loses tank identity');
+              // (each tile names its tank in its hover tip, the kit's hoverTip, and to a screen reader in its .n)
+              if(!(tile.dataset.tip||tile.title)||!tile.querySelector('.n')?.textContent.trim())failures.push('grid loses tank identity');
               if(tile.getBoundingClientRect().height<8)failures.push('grid tank too small');
             }
           }
