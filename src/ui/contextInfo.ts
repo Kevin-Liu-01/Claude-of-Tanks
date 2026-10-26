@@ -70,7 +70,7 @@ const CSS = `
   max-width:20px;max-height:20px;margin:0;padding:0;display:inline-grid;overflow:visible;line-height:1;place-items:center;
   flex:0 0 20px;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--ring-2);
   color:var(--ink-3);cursor:pointer;text-transform:none;letter-spacing:0;vertical-align:middle;
-  transition:color var(--dur-fast),box-shadow var(--dur-fast),background-color var(--dur-fast)}
+  transition:color var(--dur-fast),background-color var(--dur-fast)}
 .cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:var(--control-radius)}.cot-info-trigger__icon{display:block;pointer-events:none}
 .cot-info-trigger:hover,.cot-info-trigger[aria-expanded='true']{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--ring-3);outline:none}
 .cot-info-trigger:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring)}

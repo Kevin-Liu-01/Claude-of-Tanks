@@ -6,6 +6,7 @@
  * from its own controls, so a command does exactly what its button does). Typing filters; the arrows move, Enter runs,
  * Esc closes and never reaches the Studio's own Esc; focus returns to where it was.
  */
+import { keycap } from './components/components.ts';
 import { t } from './i18n.ts';
 
 export interface StudioCommand {
@@ -98,12 +99,7 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
       const label = document.createElement('span');
       label.textContent = command.label;
       row.appendChild(label);
-      if (command.hint) {
-        const kbd = document.createElement('kbd');
-        kbd.className = 'cot-c-kbd';
-        kbd.textContent = command.hint;
-        row.appendChild(kbd);
-      }
+      if (command.hint) row.insertAdjacentHTML('beforeend', keycap(command.hint));
       // a press runs the row without stealing focus from the field first
       row.addEventListener('pointerdown', (event) => event.preventDefault());
       row.addEventListener('click', () => run(command));

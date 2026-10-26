@@ -161,12 +161,12 @@ import {
 } from './game/garageVariants.ts';
 import {
   createGarageEnvironmentPresentationRuntime,
-  GARAGE_CAMERA_LOOK_HEIGHT_M,
   type GarageEnvironmentPresentationRuntime,
 } from './game/garageEnvironmentPresentationRuntime.ts';
 import {
   GARAGE_CAMERA_AZIMUTH_RAD,
   GARAGE_CAMERA_PITCH_RAD,
+  GARAGE_PLATFORM_GEOMETRY,
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
@@ -1200,11 +1200,6 @@ await bootStage('vehicle', async () => {
 // own fullscreen-pass compiles, which compileAsync(scene, camera) does not
 // cover), and compileAsync carries a known disposal race (camo_spotting r5).
 
-// Canonical hero box (half-extents, metres) the showroom frames INSTEAD of
-// each hull's own measured box — sized to the M1A2 reference (≈3.9 × 2.5 ×
-// 9.9 m). Keeping it constant is the whole point: every vehicle is viewed
-// from the same eye.
-const GARAGE_FRAME_BOX = { hw: 1.95, hh: 1.25, hd: 4.95 };
 
 // --- MAP-CONFIG WIRING: map switching --------------------------------------
 function prepareBattleWorldServices(next = currentWorld()) {
@@ -1648,19 +1643,16 @@ const showroom = createGarageShowroomRuntime({
   getSubject: () => pedestal.current?.root || null,
   getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
   // Canonical front-right three-quarter camera: glacis toward the viewer,
-  // bow and gun toward screen-left. All dimensions and camera
-  // math remain owned by the existing engine solver; this root supplies only
-  // scene anchors and the canonical vehicle-independent frame.
+  // bow and gun toward screen-left. All dimensions and camera math remain owned by the existing engine solver, which
+  // frames the hero's own box, centred in the Garage's free stage (owner 10-25 via Main: "closer to center and showing
+  // stuff off better"), easing from one hero to the next; this root supplies the scene anchors and a mode preview's
+  // headroom (the flag, the drone over the tank).
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
-  fixedFrame: () => ({
-    x: GARAGE_POS.x,
-    y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    z: GARAGE_POS.z,
-    hw: GARAGE_FRAME_BOX.hw,
-    hh: GARAGE_FRAME_BOX.hh + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
-    hd: GARAGE_FRAME_BOX.hd,
-  }),
+  frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
+  keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
+    r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
+  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();

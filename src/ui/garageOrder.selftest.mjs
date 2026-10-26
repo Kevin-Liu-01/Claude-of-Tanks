@@ -94,7 +94,7 @@ assert.match(garageSource, /requestAnimationFrame\(\(\) => \{\s*if \(selectedId 
   'the selected card is revealed in the frame, after the dossier rebuild, not before it');
 assert.match(garageSource, /if \(swatchesFor === selectedId\) return;[\s\S]{0,240}if \(openGaragePanel\(\) !== 'appearance'\) return;\s*repaintTankCamoSwatches\(spec\);/,
   'the paint catalog repaints only while every paint is open');
-assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) refreshCamoSel\(\);/, 'opening every paint repaints the catalog it left');
+assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) \{\s*refreshCamoSel\(\);[^}]*requestAnimationFrame\(\(\) => fitCamoRows\(\)\);\s*\}/, 'opening every paint repaints the catalog it left');
 assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
@@ -104,8 +104,11 @@ assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
-assert.match(garageSource, /const floor = docked \? band : sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
-  'the stage ends at the band docked, at the fleet on a phone on its side and at the name held upright');
+assert.match(garageSource, /const floor = sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
+  'a phone\'s stage ends at the fleet on its side and at the name held upright');
+assert.match(garageSource, /const floor = band && band\.height \? band\.top - 10/, 'the docked free stage ends at the band');
+assert.match(garageSource, /const above = head && head\.height \? stageRect\(x0, y0, x1, head\.top - 12\) : null;/,
+  'the docked hero stands above the name (or beside it), never under it');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"/, 'the battle card carries the battlefield picture');
 assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !== 'random' && selected\.thumb \?/,
   'the battle card draws the battlefield\'s 512 px still, never its 4K hero');
@@ -381,9 +384,10 @@ assert.match(garageSource, /\.cot-country-chips::\-webkit-scrollbar\{display:non
 assert.match(garageSource,
   /\.cot-country-chips\{[^}]*justify-content:safe center;[^}]*width:100%;[^}]*overflow-x:auto;/,
   'the complete country list centers when it fits while retaining honest overflow');
-assert.match(garageSource,
-  /\.cot-country-edge\{position:relative;[^}]*align-self:stretch;[^}]*width:26px;height:auto;/,
-  'country overflow arrows use compact gutters as tall as the flags beside them (the gauntlet 10-25)');
+assert.doesNotMatch(garageSource, /cot-country-edge/,
+  'the nations reach every flag without boxed arrows: the track fades at its ends (owner 10-25 via Main)');
+assert.match(garageSource, /\.cot-country-rail\.has-more-right \.cot-country-chips\{-webkit-mask-image:/,
+  'a nation track with more beyond its end fades there');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
 assert.match(garageSource,
