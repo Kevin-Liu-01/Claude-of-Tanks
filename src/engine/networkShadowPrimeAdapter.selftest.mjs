@@ -11,7 +11,7 @@ const body = main.match(/finalShadows: async \(signal\?: AbortSignal\) => \{([\s
 assert.ok(body, 'the native network shadow adapter must remain testable');
 const source = stripTypeScriptTypes(`async function prime(signal?: AbortSignal) {${body}\n}`);
 const create = new Function('renderer', 'lighting', 'mainFrame', 'camera',
-  'SIM_DT', 'nextPaintFrame', 'graphicsContextLost', 'scene', 'post', `${source}; return prime;`);
+  'SIM_DT', 'nextPaintFrame', 'graphicsContextLost', 'scene', 'post', 'game', `${source}; return prime;`);
 
 function fixture({ failure, lost = false, postFailure = null, duringPost = null } = {}) {
   const events = [];
@@ -47,8 +47,11 @@ function fixture({ failure, lost = false, postFailure = null, duringPost = null 
       return [{ label: 'LateFxPass', ms: 2 }];
     },
   };
-  return { events, renderer, options: () => options,
-    prime: create(renderer, lighting, mainFrame, camera, 1 / 60, nextPaintFrame, lost, scene, post) };
+  // (battle-spikes-253) the roster: one actor shown, one held hidden (unspotted), one without a visual
+  const shown = { visible: true }, hidden = { visible: false };
+  const game = { tankById: new Map([['a', { visual: { root: shown } }], ['b', { visual: { root: hidden } }], ['c', {}]]) };
+  return { events, renderer, options: () => options, hidden,
+    prime: create(renderer, lighting, mainFrame, camera, 1 / 60, nextPaintFrame, lost, scene, post, game) };
 }
 
 for (const withSignal of [true, false]) {
@@ -57,6 +60,7 @@ for (const withSignal of [true, false]) {
   const receipt = await f.prime(signal);
   assert.deepEqual(f.events, ['active', 'fov', 'noted', 'fit', 'prime', 'post', 'paint']);
   assert.strictEqual(f.options().signal, signal);
+  assert.deepEqual([...f.options().casterWarmup.hiddenRoots()], [f.hidden], 'the warm-up is offered the hidden actors only');
   assert.deepEqual(receipt, { cascadeCount: 2, totalMs: 11, maxMs: 7,
     casterWarmup: { batches: 2, casterCount: 10, batchMs: [12, 3], totalMs: 15, maxMs: 12 },
     postPasses: [{ label: 'LateFxPass', ms: 2 }] });

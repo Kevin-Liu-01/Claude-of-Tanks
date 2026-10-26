@@ -418,7 +418,7 @@ interface KillcamDom {
   title: HTMLDivElement;
   titleT: HTMLDivElement;
   titleS: HTMLDivElement;
-  skip: HTMLDivElement;
+  skip: HTMLButtonElement;
   hdMeta: HTMLDivElement;
   hdK: HTMLDivElement;
   hdW: HTMLDivElement;
@@ -1218,13 +1218,20 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-title .s{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:var(--track-label-s);color:var(--ink-3);margin-top:3px;text-transform:uppercase;
   }
-.cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;
-  gap:var(--s2);font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
-  color:var(--ink-3);text-transform:uppercase;}
+.cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;min-height:32px;
+  gap:var(--s2);padding:0 var(--s2);border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-1);
+  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
+  color:var(--ink-2);text-transform:uppercase;cursor:pointer;pointer-events:auto;}
+.cot-kc-skip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
+.cot-kc-skip:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
 .cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
-.cot-kc-skip kbd{min-width:58px;padding:3px 6px var(--s1);border:1px solid var(--kc-line);
-  border-bottom-color:oklch(from var(--accent) l c h / .5);background:var(--hud-plate);color:var(--ink-2);
-  font:700 var(--battle-fs-11)/1 ${FONT_COND};letter-spacing:.05em;text-align:center;}
+/* (the kit's key cap, the HUD's: components .cot-c-kbd at the battle's 11 px) */
+.cot-kc-skip .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);
+  background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);
+  display:inline-flex;align-items:center;justify-content:center;}
+/* (touch: the control is 44 px, and a phone has no key) */
+body.cot-touch-layout .cot-kc-skip{min-height:44px;padding:0 var(--s3);}
+body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
 .cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
   background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
@@ -1495,13 +1502,18 @@ export function createKillCam(deps: KillcamDeps) {
     titleIcon.innerHTML = uiIconSVG('autoAim', 13);
     const titleT = el('div', 't', titleLine);
     const titleS = el('div', 's', title);
-    const skip = el('div', 'cot-kc-skip', root);
+    // (INTERACTION-REDESIGN C: the skip is a named control, Esc its key, one press out; Space, Enter or a click on the
+    // scene steps a beat on, to the analysis, then out. "ANY KEY" took Esc too and named nothing, census row 5.)
+    const skip = el('button', 'cot-kc-skip', root);
+    skip.type = 'button';
     const skipIcon = el('span', 'ico', skip);
     skipIcon.innerHTML = uiIconSVG('chevronRight', 10);
-    const skipKey = el('kbd', '', skip);
-    skipKey.textContent = t('killcam.anyKey');
     const skipText = el('span', '', skip);
     skipText.textContent = t('killcam.skipReplay');
+    const skipKey = el('kbd', 'cot-c-kbd', skip);
+    skipKey.setAttribute('aria-hidden', 'true');
+    // (the key's own cap, as input.ts labels Escape: importing input.ts here split a boot chunk into a request of its own)
+    skipKey.textContent = 'ESC';
     const annot = el('div', 'cot-kc-annot', root);
     const hd = el('div', 'hd', annot);
     const hdMeta = el('div', 'm', hd);
@@ -1836,6 +1848,10 @@ export function createKillCam(deps: KillcamDeps) {
         const p = payload as { direction?: number } | null;
         spectate.cycle(p?.direction !== undefined && p.direction < 0 ? -1 : 1);
       });
+      bus.on('spectate:select', (payload) => {
+        const p = payload as { id?: unknown } | null;
+        if (p?.id != null) spectate.select(String(p.id));
+      });
       bus.on('phase:change', (payload) => {
         const p = payload as { phase?: string } | null;
         if (!p || p.phase !== 'battle') {
@@ -2141,6 +2157,31 @@ export function createKillCam(deps: KillcamDeps) {
   // -------------------------------------------------------------------------
   // Playback
   // -------------------------------------------------------------------------
+
+  /** Esc leaves the replay in one press (the finale too); Space and Enter step a beat on (onSkipKey); other keys are the
+   *  battle's again. */
+  function onReplayKey(event: KeyboardEvent) {
+    if (!active || !pb || staged) return;
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pb.finalePending = false;
+      beginExit();
+    } else if (event.code === 'Space' || event.code === 'Enter' || event.code === 'NumpadEnter') {
+      event.preventDefault();
+      onSkipKey();
+    }
+  }
+
+  /** A press on the skip control leaves; a press, click or tap anywhere else steps a beat on (a pointer event, so a tap on
+   *  the touch pads, whose pointerdown prevents the mouse events, skips too). */
+  function onReplayPointer(event: PointerEvent) {
+    if (!active || !pb || staged || event.button > 0) return;
+    if (event.target instanceof Element && event.target.closest('.cot-kc-skip')) {
+      pb.finalePending = false;
+      beginExit();
+    } else onSkipKey();
+  }
 
   function onSkipKey() {
     if (!active || !pb || staged) return;
@@ -2574,8 +2615,8 @@ export function createKillCam(deps: KillcamDeps) {
       d.flash.classList.add('go');
     }
     document.body.classList.add('cot-kc-live');
-    window.addEventListener('keydown', onSkipKey, true);
-    window.addEventListener('mousedown', onSkipKey, true);
+    window.addEventListener('keydown', onReplayKey, true);
+    window.addEventListener('pointerdown', onReplayPointer, true);
   }
 
   function configureReplayFillLight(): void {
@@ -5999,8 +6040,8 @@ export function createKillCam(deps: KillcamDeps) {
 
   function teardown(runCallback: boolean): void {
     if (!active) return;
-    window.removeEventListener('keydown', onSkipKey, true);
-    window.removeEventListener('mousedown', onSkipKey, true);
+    window.removeEventListener('keydown', onReplayKey, true);
+    window.removeEventListener('pointerdown', onReplayPointer, true);
     const replay = pb;
     if (replay) {
       restoreReplayFx();
@@ -6091,6 +6132,8 @@ export function createKillCam(deps: KillcamDeps) {
         count: list.length,
         index: Math.max(1, list.findIndex((candidate) => candidate.id === ent.id) + 1),
         allTeams: observerAllTeams,
+        // (who may be watched, in the stepping order: the bar's picker of allies, spectatorSwitcher.ts)
+        allies: list.map((candidate) => candidate.id),
       });
     }
     function retarget(ent: KillcamEntity, list: KillcamEntity[], first: boolean): void {
@@ -6108,10 +6151,18 @@ export function createKillCam(deps: KillcamDeps) {
       else i = ((i + dir) % list.length + list.length) % list.length;
       retarget(list[i], list, false);
     }
+    /** Watch the ally `id` (the bar's picker of allies); nothing when it has left the living list. */
+    function select(id: string): void {
+      if (!on || isBattleEntryCovered() || id === curId) return;
+      const list = livingAllies();
+      const ent = list.find((t) => t.id === id);
+      if (ent) retarget(ent, list, false);
+    }
     function onKey(e: KeyboardEvent): void {
       if (!on || e.repeat) return;
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') cycle(1);
-      else if (e.code === 'ArrowLeft' || e.code === 'KeyA') cycle(-1);
+      // (Q and E step through the allies as they do in Watch; A and D were this view's alone, INTERACTION-REDESIGN C)
+      if (e.code === 'ArrowRight' || e.code === 'KeyE') cycle(1);
+      else if (e.code === 'ArrowLeft' || e.code === 'KeyQ') cycle(-1);
     }
     // FREE CURSOR ORBIT (killcam r2, owner: "when were spectating be able to
     // look around tanks using cursor"): moving the mouse orbits the camera
@@ -6218,6 +6269,7 @@ export function createKillCam(deps: KillcamDeps) {
       },
       stop,
       cycle,
+      select,
       get active() { return on; },
       get targetId() { return on ? curId : null; },
     };

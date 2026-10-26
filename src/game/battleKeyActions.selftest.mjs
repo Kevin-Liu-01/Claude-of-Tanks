@@ -63,7 +63,8 @@ assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy
 const touch = read('../ui/touchControls.ts');
 assert.match(touch, /<button class="round jump" type="button" aria-label="\$\{t\('touch\.jumpAria'\)\}" hidden>\$\{ROCKET\}/, 'a hidden rocket button waits in the touch layer');
 assert.match(touch, /bus\.on\('ui:jumpAvailable', \(payload\) => \{\n\s*const \{ on \} = payload as \{ on\?: boolean \};\n\s*jumpButton\.hidden = !on;/, 'it appears in rulesets with a jump');
-assert.match(touch, /jumpButton\.addEventListener\('pointerdown', \(e\) => \{\n\s*e\.preventDefault\(\); e\.stopPropagation\(\);\n\s*bus\.emit\('ui:selfRight', \{\}\);/, 'a press is the same edge as the F key: jump upright, flip when overturned');
+assert.match(touch, /const selfRight = \(\): void => \{ bus\.emit\('ui:selfRight', \{\}\);/, 'the jump is the F key\'s edge: jump upright, flip when overturned');
+assert.match(touch, /jumpButton\.addEventListener\('pointerdown', \(e\) => \{\n\s*e\.preventDefault\(\); e\.stopPropagation\(\);\n\s*selfRight\(\);/, 'a press is the same edge as the F key: jump upright, flip when overturned');
 assert.match(touch, /\.cot-touch \.jump\{right:134px;bottom:124px;width:84px;height:84px;/, 'the rocket button is as big as the fire button family, above the scope');
 const sprite = read('../ui/icons/sprite.svg');
 assert.match(sprite, /<symbol id="i-rocket"><path d="M12 2\.5/, 'the shared icon set has a rocket glyph');

@@ -24,8 +24,8 @@ try {
       const testAudio = locale === 'en-US' && name === 'desktop';
       await page.goto(`${arg('url', 'http://127.0.0.1:5173')}/tools/fixtures/crew-voice.html?locale=${locale}${testAudio ? '&audio=1' : ''}`, { waitUntil: 'networkidle' });
       const field = page.locator('[data-setting="crewVoice"]');
-      const trigger = page.locator('.cot-set-crew-field .cot-custom-select-trigger');
-      const popup = page.locator('.cot-custom-select-list:popover-open');
+      const trigger = page.locator('.cot-set-crew-field .cot-c-menu__trigger');
+      const popup = page.locator('.cot-c-menu__pop:popover-open');
       await trigger.waitFor();
       assert.equal(await field.inputValue(), 'national');
       assert.equal(await field.locator('option').count(), 14);
@@ -37,12 +37,12 @@ try {
         await trigger.click();
         const bounds = await popup.boundingBox();
         assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1, `${locale} ${name}: popup fits viewport`);
-        assert.equal(await popup.locator('.cot-flag').count(), 13);
-        const option = popup.locator(`[data-value="${pack}"]`);
+        assert.equal(await popup.locator('.cot-c-picker__chip img').count(), 13);
+        const option = popup.locator(`[role=option][data-id="${pack}"]`);
         if (touch) assert.ok((await option.boundingBox()).height >= 44, 'touch options have a 44 px target');
         await option.click();
         assert.equal(await field.inputValue(), pack);
-        assert.equal(await trigger.locator('.cot-flag').getAttribute('data-country-code'), flagIconCode(nation));
+        assert.match(await trigger.locator('.cot-c-picker__chip img').getAttribute('src'), new RegExp(`/${flagIconCode(nation)}[-.]`));
         const state = await page.evaluate(() => ({
           stored: JSON.parse(localStorage.getItem('cot.settings.v1')).crewVoice,
           live: window.__CREW_VOICE_TEST.volumes.at(-1).crewVoice,

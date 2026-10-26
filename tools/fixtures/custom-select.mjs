@@ -2,6 +2,7 @@ import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
 import '../../src/ui/components/components.css';
+import '../../src/ui/components/pickers.css';
 import '../../src/ui/garage.css';
 import '../../src/ui/deploy.css';
 import '../../src/ui/showroom.css';

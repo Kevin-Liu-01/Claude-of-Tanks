@@ -48,7 +48,7 @@ try {
   assert.equal(part('cause').children.length, 0, 'a plain shot needs no cause chip');
   assert.equal(part('x').hidden, false, 'a second kill in the window is a streak');
   assert.equal(part('n').textContent, '×2');
-  assert.equal(part('x').children[1].textContent, t('hud.ribbon.multi.2'));
+  assert.equal(part('x').children.length, 1, 'the streak is its count alone, no word repeating it');
   assert.equal(stream[0].children[1].textContent, t('hud.ribbon.kills', { count: 2 }));
   assert.equal(stream[1].children[1].textContent, t('hud.ribbon.damage', { amount: formatNumber(760) }));
 

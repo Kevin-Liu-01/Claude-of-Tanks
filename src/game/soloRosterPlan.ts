@@ -62,6 +62,18 @@ export function battleRosterPlan(
   return { nations, slots, formationLead, national };
 }
 
+/**
+ * The seats each side of a solo sortie fields, the player's among the allies (the battle load card's sheets from its first
+ * frame, battleLoad.ts BattleLoadSeats): the arrangement's field where it sizes one, else the default split, the player
+ * and six against seven (pickBattleParticipants' thirteen).
+ */
+export function soloRosterSeats(gameMode: string | null | undefined, campaignOperationId: string | null | undefined): { allies: number; enemies: number } {
+  const mode = normalizeGameMode(gameMode);
+  const ruleset = matchRulesetFor(mode, campaignRulesetInput(campaignOperationId), readTeamArrangement(mode));
+  return ruleset.allies != null && ruleset.enemies != null
+    ? { allies: ruleset.allies + 1, enemies: ruleset.enemies } : { allies: 7, enemies: 7 };
+}
+
 /** The loading plan's view of a sortie (main.ts planRoster / planCamoOverrides), from the stored arrangement. */
 export function soloRosterPlan(gameMode: string | null | undefined, campaignOperationId: string | null | undefined, randomBattle = true) {
   const mode = normalizeGameMode(gameMode);

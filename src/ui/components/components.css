@@ -97,6 +97,8 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-toggle[aria-checked=true] .cot-c-toggle__track{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 .cot-c-toggle[aria-checked=true] .cot-c-toggle__track i{transform:translateX(16px);background:var(--accent)}
 .cot-c-toggle[aria-checked=true]{color:var(--ink-1)}
+.cot-c-toggle:disabled{color:var(--ink-4);cursor:not-allowed}
+.cot-c-toggle:disabled .cot-c-toggle__track i{background:var(--ink-4)}
 /* ---- the 20-cell stat scale (direction .scale; the A graft) ---- */
 .cot-c-scale{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;height:8px}
 .cot-c-scale i{box-sizing:border-box;background:var(--fill-scale)}

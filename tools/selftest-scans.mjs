@@ -108,6 +108,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
+  // 256 (owner: "no more object containns"): every module, sheet and page, for a contain fit or an unfocused cover
+  'tools/image-fit-lint.mjs': lists('src/**/*.{ts,css}', 'site/**/*.html'),
   // 254 (interaction census, part D): every module and static page, for a choose-one built outside the picker
   'tools/interaction-census.mjs': lists('src/**/*.ts', 'site/**/*.html'),
   // 230 (foliage-shadow-sites-228): every virtual: import under src resolves through the probe server's plugins
