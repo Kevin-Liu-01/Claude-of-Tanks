@@ -589,6 +589,8 @@ interface StudioFxPort extends BattleFxPort {
   propCrush(position: Vector3, direction: Vector3, heightM: number): void;
   /** A building's first damage's programs (fx/structureStages.ts warm): laid at `position`, cleared by resetAll. */
   warmStructures?(position: Vector3): number;
+  /** (battle-spikes-253) the world's structure materials patched for the collapse mask before the world compiles */
+  prepareWorldMaterials?(): void;
   /** (EF.04) a missile's body, smoke trail and wire in the covered render (call after update()); cleared by resetAll */
   warmProjectilePresentation?(position: Vector3, direction: Vector3): void;
 }
@@ -1394,6 +1396,9 @@ function* compileHiddenVariantsSteps(
     return undefined;
   };
 
+  // (battle-spikes-253) the world's structure materials take the collapse mask's patch before they compile: patched later
+  // (the opening warm's first fx call), they re-key, and the next real render links every masked variant synchronously
+  try { context.fx.prepareWorldMaterials?.(); } catch (_) { /* the opening warm patches them as before */ }
   for (const entity of game.tanks) {
     assertCurrent();
     if (!entity.visual?.root) continue;

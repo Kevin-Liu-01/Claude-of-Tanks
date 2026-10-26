@@ -581,6 +581,10 @@ export interface FxRuntime {
   propBreak(kind: string, pos: THREE.Vector3, dir: THREE.Vector3, heightM?: number): void;
   /** The combat warm: a building's first damage's programs (structureStages.warm) at `pos`; resetAll clears it. */
   warmStructures(pos: THREE.Vector3): number;
+  /** (battle-spikes-253) The world's structure materials patched for the collapse mask now (attachWorld), so a warm that
+   *  compiles the world after this builds the masked programs the battle draws (the MP entry compiled the unpatched ones
+   *  and its black watchdog linked twelve masked variants synchronously, 1.4 s). Idempotent per world. */
+  prepareWorldMaterials(): void;
   setFrozen(frozen: boolean, atTimeS?: number | null): void;
   resetSeed(seed: number): void;
   /** Pin the shared fx clock to exactly `atTimeS` (every live stamp keeps its age). */
@@ -7311,6 +7315,9 @@ function* createFxSteps(
      * @param {THREE.Vector3} dir tank travel direction (unit-ish, XZ)
      * @param {number} [heightM=6] prop height (scales the splinter throw)
      */
+    prepareWorldMaterials(): void {
+      attachWorld();
+    },
     warmStructures(pos: THREE.Vector3): number {
       attachWorld();
       const laid = stages ? stages.warm(pos, bucketMaterials.keys()) : 0;
