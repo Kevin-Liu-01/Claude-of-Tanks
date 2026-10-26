@@ -77,7 +77,8 @@ const PICTOGRAMS = Object.freeze([
   'tankcrossing', 'nosmoking', 'eyewash', 'firstaid', 'exit', 'speed10',
 ]);
 // the name is the horizontal wordmark, one line everywhere it hangs (owner 10-26: "for all words of 'claude of tanks', it
-// should be horizontal, not the words stacked on top of each other"): a narrow sign scales the line, never stacks it
+// should be horizontal, not the words stacked on top of each other"): a sign wide enough carries the line; a narrow
+// banner carries the crest and no words, never a stacked or turned name
 const BRAND = Object.freeze({
   mark: 'public/brand/logo-mark.svg', markMetal: 'public/brand/logo-mark-metal.svg', markBw: 'public/brand/logo-mark-bw.svg',
   word: 'public/brand/wordmark.svg',
@@ -492,14 +493,19 @@ async function generate() {
       weave(g, r.x, r.y, r.w, r.h, 11);
       pinstripes(g, r.x, r.y, r.w, r.h, 7, 3);
       fit(g, img.mark, r.x + 14, r.y + 22, r.w - 28, r.w - 28);
-      // the wordmark runs up the banner
-      g.save();
-      g.translate(r.x + r.w / 2, r.y + r.w + 8 + (r.h - r.w - 70) / 2);
-      g.rotate(-Math.PI / 2);
-      const len = r.h - r.w - 70, tall = r.w * 0.5;
-      fit(g, word, -len / 2, -tall / 2, len, tall);
-      g.restore();
+      // a regimental pennant under the crest, no words: the name is only ever one horizontal line (owner 10-26), which a
+      // banner this narrow cannot carry legibly, so the wide signs beside it say it
+      const cx = r.x + r.w / 2, top = r.y + r.w + 24, foot = r.y + r.h - 56;
       g.fillStyle = '#e8ad48';
+      for (const dx of [-7, 4]) g.fillRect(cx + dx, top, 3, foot - top);
+      const arm = r.w * 0.3, rise = arm * 0.62, bar = 9;
+      for (let i = 0; i < 3; i += 1) {
+        const y = top + (foot - top) * 0.36 + i * (rise + 12);
+        g.beginPath();
+        g.moveTo(cx - arm, y); g.lineTo(cx, y + rise); g.lineTo(cx + arm, y);
+        g.lineTo(cx + arm, y + bar); g.lineTo(cx, y + rise + bar); g.lineTo(cx - arm, y + bar);
+        g.closePath(); g.fill();
+      }
       for (let i = 0; i < 3; i += 1) g.fillRect(r.x + r.w / 2 - 22 + i * 18, r.y + r.h - 34, 8, 8);
     },
     'brand.banner.h': (g, r) => {

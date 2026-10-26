@@ -52,7 +52,7 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     // perimeter: muralled T-walls on the left, a HESCO line with its mesh banner on the right
     { kind: 'wall', wall: 'twall', points: [[-34, 6], [-26, 14]], params: { mural: 'stencil.crest', muralEvery: 3 } },
     { kind: 'wall', wall: 'twall', points: [[-26, 14.6], [-23.6, 17]], params: { mural: 'stencil.wordmark', muralEvery: 9 } },
-    { kind: 'wall', wall: 'hesco', points: [[28, 34], [37, 25]], params: { mural: 'brand.banner.h', muralEvery: 6 } },
+    { kind: 'wall', wall: 'hesco', points: [[28, 34], [37, 25]], params: { mural: 'brand.crest.color', muralEvery: 6 } },
     { kind: 'display', display: 'pvc', rect: 'brand.banner.h', at: [32.5, 29.5], yaw: Math.PI / 4, y: 1.37, size: [4.2, 0.66], options: { gap: 0.2 } },
   ],
   atmosphere: {
