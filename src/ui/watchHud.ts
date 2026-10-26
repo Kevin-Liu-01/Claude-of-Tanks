@@ -29,6 +29,8 @@ export interface WatchHudState {
   readonly view: WatchHudView;
   readonly tank: WatchHudTank | null;
   readonly canTake: boolean;
+  /** Why the seat is held (watchSeat.ts watchSeatRefusal), its tip and description; null when it can be taken. */
+  readonly takeRefusal?: string | null;
   readonly speedIndex: number;
   readonly speedSteps: number;
   /** The drone's orbit is locked on `tank`. */
@@ -151,6 +153,14 @@ body.cot-touch-layout[data-cot-orientation=portrait] .cot-watch-rail{top:max(50%
 }
 @media(prefers-reduced-motion:reduce){.cot-watch .wb{transition:none}}
 `;
+
+/** A held seat's one reason, watchSeatRefusal's word put as the bar says it. */
+const SEAT_HELD: Readonly<Record<string, string>> = {
+  'no-brain': 'watch.seat.held.player', destroyed: 'watch.seat.held.destroyed', aircraft: 'watch.seat.held.aircraft',
+  'already-driving': 'watch.seat.held.taken', 'no-take-control': 'watch.seat.held.mode', 'not-open': 'watch.seat.held.mode',
+  'no-watch': 'watch.seat.held.mode', 'no-hull': 'watch.seat.held.none', inactive: 'watch.seat.held.none',
+};
+const seatHeld = (refusal: string | null): string => (refusal && SEAT_HELD[refusal] ? t(SEAT_HELD[refusal]) : '');
 
 /** `host` is read when the bar first shows (the battle HUD's root, which loads beside the watch chunk). */
 const keycap = (key: string): string => `<kbd class="cot-c-kbd" aria-hidden="true">${key}</kbd>`;
@@ -276,6 +286,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       lock.setAttribute('aria-pressed', locked ? 'true' : 'false');
       lock.setAttribute('aria-label', t(locked ? 'watch.unlock' : 'watch.lock'));
       seat.disabled = !driving && !state.canTake;
+      // (a held seat says why, as its tip and its description: it dimmed with no reason, INTERACTION-REDESIGN C)
+      const held = seat.disabled ? seatHeld(state.takeRefusal ?? null) : '';
+      if (held) { seat.dataset.tip = held; seat.setAttribute('aria-description', held); }
+      else { delete seat.dataset.tip; seat.removeAttribute('aria-description'); }
       seatLabel.textContent = driving ? t('watch.leave') : t('watch.take');
       seat.setAttribute('aria-label', seatLabel.textContent);
     },

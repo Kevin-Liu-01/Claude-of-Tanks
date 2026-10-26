@@ -101,6 +101,8 @@ export interface WatchController {
   readonly zoom: number;
   readonly speedIndex: number;
   readonly canTake: boolean;
+  /** Why the seat is held, the bar's tip (watchSeatRefusal's word, 'no-hull' with nothing in view), or null. */
+  readonly takeRefusal: string | null;
   /** The tank the drone's orbit is locked on (the bar names it), or null. */
   readonly lockedId: string | null;
   /** Lock the drone on the tank in view, or let go. */
@@ -468,6 +470,10 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     get canTake() {
       const target = rideTarget();
       return watching() && !!target && target === shown && watchSeatRefusal(game, target) === null;
+    },
+    get takeRefusal() {
+      const target = rideTarget();
+      return !watching() || !target || target !== shown ? 'no-hull' : watchSeatRefusal(game, target);
     },
     setClimb(direction) {
       // the rail presses the keyboard's own actions: one hold, one Accessibility choice
