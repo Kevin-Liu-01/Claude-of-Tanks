@@ -37,8 +37,10 @@ export const TANK_TIER = Object.freeze({
   challenger1_mk3: 9,
   t72bu: 8,
   chieftain5: 7,
-  t90: 10,
-  t90a_burlak: 10,
+  // 257: the second-wave T-90 and T-90A Burlak copy their donors' combat metadata (synchronizeSecondWaveXCombatMetadata),
+  // so they matchmake at their donors' tier: t90_1992 and t90a_burlak_proto went to IX with the T-90 lineage (e55cb66959)
+  t90: 9,
+  t90a_burlak: 9,
   t90ms_tagil: 10,
   leo2a7v: 10, leo2a6m: 10, leo2a5m: 10, leo2a5: 10, // owner 2026-09-15 (evening): 2A5M and 2A5 studies tier X
   merkava4: 9, merkava3d: 9,
