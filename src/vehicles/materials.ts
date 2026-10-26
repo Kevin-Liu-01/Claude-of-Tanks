@@ -2304,14 +2304,25 @@ export async function applyCamoPatternsChunked(opts: CamoApplyOptions | null = n
 
 
 /**
+ * The shared entry a tank's own materials hold: its camo selection's key, as createTankMaterials acquires it. (2026-10-26)
+ * A multiplayer tank's selection keys its entry `specId::pattern`; a lookup by the bare spec id missed it and baked a
+ * whole default-pattern set in the kit's task (2.15 s of getImageData in a room entry, the perf lane's root-u profile).
+ * A cold lookup still acquires the entry, as before.
+ */
+function sharedEntryFor(spec: MaterialTankSpec, selection: string | null): SharedTextureEntry {
+  return TEX_CACHE.get(sharedTextureIdentity(spec.id, selection).key) || acquireSharedTextures(spec, 4, 'high', selection);
+}
+
+/**
  * Shared per-spec roughness map for external consumers (community GLB camo
  * hulls take it so big untextured CAD plates get micro roughness variation
  * instead of one waxy constant — r7 "waxy single-color scan" critique).
  * @param {object} spec TankSpec
+ * @param selection the tank's camo selection (createTank's camoPattern)
  * @returns {THREE.Texture}
  */
-export function getSharedRoughnessTexture(spec: MaterialTankSpec): THREE.Texture {
-  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
+export function getSharedRoughnessTexture(spec: MaterialTankSpec, selection: string | null = null): THREE.Texture {
+  const entry = sharedEntryFor(spec, selection);
   if (!entry.roughTex) throw new Error(`vehicle material cache entry ${entry.cacheKey} has no roughness texture`);
   return entry.roughTex;
 }
@@ -2345,8 +2356,8 @@ function paintKitCanvas(canvas: HTMLCanvasElement, vis: MaterialVisual): void {
  * @param {object} spec TankSpec
  * @returns {THREE.Texture}
  */
-export function getKitPaintTexture(spec: MaterialTankSpec): THREE.Texture {
-  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
+export function getKitPaintTexture(spec: MaterialTankSpec, selection: string | null = null): THREE.Texture {
+  const entry = sharedEntryFor(spec, selection);
   if (!entry.kitTex) {
     entry.kitCanvas = makeCanvas(64, 64);
     paintKitCanvas(entry.kitCanvas, patternVisual(spec, entry.patternId));

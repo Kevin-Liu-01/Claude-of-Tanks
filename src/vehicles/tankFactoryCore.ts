@@ -11777,7 +11777,7 @@ export function* createTankRuntimeSteps(
     const tailDecorStartedAt = performance.now();
     yield* prepareTankDecorationSteps({
       root, hullG, turretG, spec, engineCtx, disposables,
-      opts: { proceduralOnly, decor: opts.decor, geometryQuality },
+      opts: { proceduralOnly, decor: opts.decor, geometryQuality, camoPattern: opts.camoPattern ?? null },
       isDestroyed: () => destroyed,
     }, legacyDecoration, opts.decorPlanner);
     const tailDecorFinishedAt = performance.now();
