@@ -4533,8 +4533,6 @@
   "studio.sceneLink.unsupported": "此浏览器无法打开压缩的场景链接。请在最新版浏览器中打开。",
   "studio.sceneLink.loadFailed": "已读取场景链接，但无法布置其中的场景。请刷新页面后重新打开该链接。",
   "studio.sceneLink.replace": "要用此链接中的场景替换当前场景吗？",
-  "studio.sceneLink.dismiss": "关闭",
-  "studio.sceneLink.details": "详情",
   "garage.dossier.testDrive": "试驾",
   "garage.dossier.testDrive.aria": "驾驶 {name} 前往试验场",
   "shotInfo.armorRicochet": "{mm} 毫米 · {angle}° 跳弹",

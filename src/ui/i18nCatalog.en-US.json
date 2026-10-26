@@ -4509,8 +4509,6 @@
   "studio.sceneLink.unsupported": "This browser cannot open compressed scene links. Open the link in a current browser.",
   "studio.sceneLink.loadFailed": "The scene link was read, but its scene could not be staged. Reload and open the link again.",
   "studio.sceneLink.replace": "Replace the current scene with the scene in this link?",
-  "studio.sceneLink.dismiss": "Dismiss",
-  "studio.sceneLink.details": "Details",
   "garage.dossier.testDrive": "Test drive",
   "garage.dossier.testDrive.aria": "Take the {name} to the proving ground",
   "shotInfo.armorRicochet": "{mm} mm · ricochet at {angle}°",

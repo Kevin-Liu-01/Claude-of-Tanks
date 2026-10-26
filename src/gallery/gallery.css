@@ -352,7 +352,6 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .markup-packet[open]>summary{margin-bottom:var(--s3)}
 
 /* a layer's count, read out to assistive technology alone (the visible notices are the kit's, above) */
-.toast{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* the site bar spans the page's own columns (a boxed bar floated over the stage on wide windows) */
 .public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}

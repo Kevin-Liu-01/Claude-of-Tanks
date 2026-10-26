@@ -144,23 +144,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
     transparent calc(66.667% - .5px),var(--line-3) 0,var(--line-3) calc(66.667% + .5px),transparent 0)}
 .studio-frame-guide::after{content:'';position:absolute;inset:5%;border:1px dashed var(--line-3)}
 .studio-frame-guide small{display:none}
-/* busy and scene-link notices: one plate over the top of the picture */
+/* the busy plate over the top of the picture */
 .cot-studio .busy{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;max-width:calc(100% - 32px);padding:var(--s2) var(--s4);
   transform:translateX(-50%);border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent);color:var(--ink-1);
   font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body);text-align:center}
-.cot-studio .notice{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;width:max-content;max-width:min(540px,calc(100% - 32px));
-  grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:var(--s3);padding:var(--s3) var(--s3) var(--s3) var(--s4);transform:translateX(-50%);
-  border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent)}
-.cot-studio .notice[data-open]{display:grid}
-.cot-studio .notice .ng svg{display:block;margin-top:1px;color:var(--accent-hi)}
-.cot-studio .notice .nt{display:grid;gap:var(--s2);min-width:0}
-.cot-studio .notice .nt b{font:500 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-body)}
-.cot-studio .notice .nd summary{width:max-content;cursor:pointer;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body)}
-.cot-studio .notice .nd code{display:block;margin-top:var(--s1);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.4 var(--font-data);overflow-wrap:anywhere}
-.cot-studio .notice .nx{display:grid;place-items:center;width:28px;height:28px;margin:-4px 0;padding:0;border:0;border-radius:var(--r1);
-  background:transparent;color:var(--ink-3);font:500 var(--fs-16)/1 var(--font-body)}
-.cot-studio .notice[data-tone=error]{box-shadow:var(--ring-danger)}
-.cot-studio .notice[data-tone=error] .ng svg{color:var(--text-danger)}
+/* the kit's toast region (components/notices.css), placed by its host: over the picture's top, one at a time */
+.cot-studio .cot-c-notices.st-notices{position:absolute;top:52px;left:50%;z-index:var(--z-lift);width:min(540px,calc(100% - 32px));transform:translateX(-50%)}
 
 /* ------------------------------------------------------------------------------- the inspector (09-studio .insp) */
 .st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:var(--s3) var(--s3) var(--s6);overflow-y:auto;

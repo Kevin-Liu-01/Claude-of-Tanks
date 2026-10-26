@@ -12,6 +12,7 @@ import type {
   CustomCamoBrush,
 } from '../vehicles/camoPolicy.ts';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
+import { notify } from './components/notice.ts';
 import { t } from './i18n.ts';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
 
@@ -288,12 +289,9 @@ export function createCustomCamoStudio({
   transferHeading.innerHTML = `<span>${t('customCamo.transfer.heading')}</span><small>${t('customCamo.transfer.subheading')}</small>`;
   const transfer = document.createElement('div');
   transfer.className = 'cot-custom-transfer';
-  const status = document.createElement('div');
-  status.className = 'cot-custom-status';
-  status.setAttribute('role', 'status');
-  const setStatus = (message: string, kind = '') => {
-    status.textContent = message;
-    status.className = `cot-custom-status${kind ? ` ${kind}` : ''}`;
+  // what a copy, a paste or a save did: the kit's toast, above the editor
+  const setStatus = (message: string, kind: 'ok' | 'error') => {
+    notify({ id: 'cot-custom-camo', severity: kind === 'ok' ? 'success' : 'error', text: message });
   };
   const copyPattern = document.createElement('button');
   copyPattern.type = 'button';
@@ -334,7 +332,7 @@ export function createCustomCamoStudio({
     } catch { setStatus(t('customCamo.status.pasteFailed'), 'error'); }
   });
   transfer.append(copyPattern, pastePattern);
-  transferPanel.append(transferHeading, transfer, status);
+  transferPanel.append(transferHeading, transfer);
   const help = document.createElement('div');
   help.className = 'cot-custom-help';
   help.innerHTML = t('customCamo.localOnlyHelp');

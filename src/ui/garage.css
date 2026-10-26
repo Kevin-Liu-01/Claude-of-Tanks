@@ -843,8 +843,7 @@ body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-custom-repeat-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .cot-custom-check{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase}
 .cot-custom-check input{accent-color:var(--accent)}
-.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cot-custom-status{min-height:18px;color:var(--ink-3);
-  font:700 max(var(--fs-floor-11),var(--fs-11))/1.45 var(--font-ui)}.cot-custom-status.ok{color:var(--text-ok)}.cot-custom-status.error{color:var(--text-danger)}
+.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .cot-custom-help{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);line-height:1.55}.cot-custom-help strong{color:var(--text-accent)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab{grid-template-columns:1fr;min-height:0}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:220px}
@@ -966,56 +965,42 @@ html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wr
   .cot-eqtile.locked:hover{border-color:var(--line-2);}
 }
 
-/* The picker tooltip lives outside the scrolling grid so it never clips.
-   First hover is deliberately delayed in garage.ts; moving between nearby
-   equipment buttons keeps the tooltip primed for instant comparison. */
-.cot-eqtooltip{position:fixed;z-index:90;width:286px;box-sizing:border-box;
-  pointer-events:none;padding:10px 11px 9px;font-family:var(--font-ui);
-  color:var(--ink-1);background:var(--surface-menu);
-  border:0;border-radius:var(--r1);
-  box-shadow:var(--e3);opacity:0;visibility:hidden;
-  transform:translateX(4px) scale(.985);transform-origin:right center;
-  transition:opacity var(--dur-fast) ease-out,transform var(--dur-fast) ease-out,visibility 0s linear var(--dur-fast);}
-/* the kit tip's plate (components.css .cot-c-tip): no coloured edge (owner 10-25, the notification bar) */
-.cot-eqtooltip[data-side="right"]{transform:translateX(-4px) scale(.985);transform-origin:left center;}
-.cot-eqtooltip.show{opacity:1;visibility:visible;transform:translateX(0) scale(1);
-  transition-delay:0s;}
-.cot-eqtooltip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
+/* a tile's projection inside the kit's rich tooltip (richTooltip.css carries the plate, the placement and the layer;
+   garage.ts gives no body on a phone or a coarse pointer) */
+.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtooltip[data-category="recon"] .eyebrow{color:var(--text-own);}
-.cot-eqtooltip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
-.cot-eqtooltip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
-.cot-eqtooltip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
+.cot-eqtip[data-category="recon"] .eyebrow{color:var(--text-own);}
+.cot-eqtip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
+.cot-eqtip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
+.cot-eqtip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtooltip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
+.cot-eqtip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:600;line-height:1.42;letter-spacing:0;}
-.cot-eqtooltip .summary{display:block;margin-top:7px;padding:6px 7px;color:var(--ink-2);
+.cot-eqtip .summary{display:block;margin-top:7px;padding:6px 7px;color:var(--ink-2);
   background:var(--fill-scale);border-left:1px solid var(--line-3);
   font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;line-height:1.4;letter-spacing:0;}
-.cot-eqtooltip .metrics{display:grid;gap:var(--s1);margin-top:var(--s2);}
-.cot-eqtooltip .metrics:empty{display:none;}
-.cot-eqtooltip .metrics-heading{padding-bottom:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
+.cot-eqtip .metrics{display:grid;gap:var(--s1);margin-top:var(--s2);}
+.cot-eqtip .metrics:empty{display:none;}
+.cot-eqtip .metrics-heading{padding-bottom:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;letter-spacing:0;text-transform:uppercase;}
-.cot-eqtooltip .metric{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:1px 6px;
+.cot-eqtip .metric{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:1px 6px;
   align-items:center;
   padding:var(--s1) 6px;background:var(--btn-media-fill);border:1px solid var(--line-1);}
-.cot-eqtooltip .metric-icon{width:12px;height:12px;display:grid;place-items:center;color:var(--ink-3);}
-.cot-eqtooltip .metric-icon svg{display:block;}
-.cot-eqtooltip .metric-label{min-width:0;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
+.cot-eqtip .metric-icon{width:12px;height:12px;display:grid;place-items:center;color:var(--ink-3);}
+.cot-eqtip .metric-icon svg{display:block;}
+.cot-eqtip .metric-label{min-width:0;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
   line-height:1.25;letter-spacing:0;}
-.cot-eqtooltip .metric-values{display:flex;align-items:baseline;justify-content:flex-end;
+.cot-eqtip .metric-values{display:flex;align-items:baseline;justify-content:flex-end;
   gap:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));white-space:nowrap;}
-.cot-eqtooltip .metric-values .arrow{color:var(--ink-4);}
-.cot-eqtooltip .metric-values b{color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;}
-.cot-eqtooltip .metric.improved .metric-icon{color:var(--text-ok);}
-.cot-eqtooltip .metric.degraded .metric-icon{color:var(--text-danger);}
-.cot-eqtooltip .metric.improved .metric-values b{color:var(--text-ok);}
-.cot-eqtooltip .metric.degraded .metric-values b{color:var(--text-danger);}
-.cot-eqtooltip .action{display:block;margin-top:7px;padding-top:6px;
+.cot-eqtip .metric-values .arrow{color:var(--ink-4);}
+.cot-eqtip .metric-values b{color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;}
+.cot-eqtip .metric.improved .metric-icon{color:var(--text-ok);}
+.cot-eqtip .metric.degraded .metric-icon{color:var(--text-danger);}
+.cot-eqtip .metric.improved .metric-values b{color:var(--text-ok);}
+.cot-eqtip .metric.degraded .metric-values b{color:var(--text-danger);}
+.cot-eqtip .action{display:block;margin-top:7px;padding-top:6px;
   border-top:1px solid var(--line-2);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;line-height:1.3;letter-spacing:0;text-transform:uppercase;}
-body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
-@media (hover:none) and (pointer:coarse){.cot-eqtooltip{display:none!important;}}
 
 /* garage_ui: entrance transition — the garage used to hard-cut in (boot and
    battle-exit both flipped display:none→block in one frame). show() re-arms

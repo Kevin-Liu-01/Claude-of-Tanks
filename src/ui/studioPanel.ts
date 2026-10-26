@@ -16,7 +16,8 @@ import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
-import { wireRovingKeys } from './components/components.ts';
+import { keycap, wireRovingKeys } from './components/components.ts';
+import { noticeRegion, notify } from './components/notice.ts';
 import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
@@ -333,8 +334,8 @@ interface StudioPanelRuntime {
   setStage(stage: { readonly mapId: string; readonly name: string } | null): void;
   setStageProgress(fraction: number, label: string): void;
   /**
-   * A scene-link notice: the sentence, and an optional technical detail on its own line. Information fades after a few
-   * seconds; an error stays until dismissed or replaced, and announces assertively.
+   * What an action did, as the kit's toast over the picture: the sentence, and an optional technical detail on its own
+   * line. Information fades after a few seconds; an error stays until dismissed or replaced, and announces as an alert.
    */
   notice(text: string, tone?: 'info' | 'error', detail?: string): void;
   setPlaceArmed(specId: string | null): void;
@@ -542,7 +543,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // Commands (09-studio header): the palette over every action, with its shortcut
   const commandsBtn = chipButton(t('studio.ws.commands'), 'search');
   commandsBtn.classList.add('cmd');
-  commandsBtn.append(el('kbd', 'cot-c-kbd', PALETTE_KEY));
+  commandsBtn.insertAdjacentHTML('beforeend', keycap(PALETTE_KEY));
   commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
@@ -561,7 +562,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'record');
   exportBtn.addEventListener('click', () => startFilmExport());
   const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
-  exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
+  exitBtn.insertAdjacentHTML('beforeend', keycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
   const queueBtn = chipButton(t('studio.ws.queue'), 'media');
@@ -684,29 +685,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const busy = el('div', 'busy');
   vp.appendChild(busy);
-  // Scene-link notices: a glyph (constant markup), the sentence and the detail as text, and a dismiss button.
-  const notice = el('div', 'notice');
-  notice.dataset.studioNotice = '';
-  const noticeGlyph = el('span', 'ng');
-  const noticeText = el('div', 'nt');
-  const noticeMessage = el('b');
-  // the technical reason (a refused field's path) waits behind Details; the sentence says what happened and what to do
-  const noticeMore = el('details', 'nd');
-  const noticeDetail = el('code');
-  noticeMore.append(el('summary', null, t('studio.sceneLink.details')), noticeDetail);
-  noticeText.append(noticeMessage, noticeMore);
-  const noticeClose = el('button', 'nx', '×');
-  noticeClose.type = 'button';
-  noticeClose.setAttribute('aria-label', t('studio.sceneLink.dismiss'));
-  notice.append(noticeGlyph, noticeText, noticeClose);
-  vp.appendChild(notice);
-  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
-  const hideNotice = (): void => {
-    if (noticeTimer !== null) clearTimeout(noticeTimer);
-    noticeTimer = null;
-    delete notice.dataset.open;
-  };
-  noticeClose.addEventListener('click', hideNotice);
+  // What an action did (a scene link, a delivery, a staged take): the kit's toast, one at a time over the picture's top
+  noticeRegion('studio', { host: vp, placement: 'host', limit: 1, className: 'st-notices' });
 
   // --- the outliner (09-studio .out): one group per workspace, its head the workspace's switch ----------------------
   const outlineGroups = new Map<WorkspaceId, HTMLDivElement>();
@@ -1894,8 +1874,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the J/K/L shuttle's rate beside the clock, only while it is not plain play or stop
   const shuttleBadge = el('span', 'rate');
   shuttleBadge.hidden = true;
-  const playKey = el('kbd', 'cot-c-kbd', t('studio.ws.spaceKey'));
-  playKey.setAttribute('aria-hidden', 'true');
   const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
   const ts = sliderRow(t('studioPanel.storyboard.speedLabel'), 0.25, 2, 0.05, (v) => S.setTimeScale(v));
   const transportRight = el('div', 'r');
@@ -1906,7 +1884,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ts.row.dataset.pro = '';
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
   // the playhead reads in the frame chip alone (UI-LOCKDOWN G14)
-  transport.append(restartBtn, pauseBtn, stepBtn, shuttleBadge, playKey, transportRight);
+  transport.append(restartBtn, pauseBtn, stepBtn, shuttleBadge);
+  transport.insertAdjacentHTML('beforeend', keycap(t('studio.ws.spaceKey')));
+  transport.append(transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
@@ -1963,6 +1943,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     takes: shelf,
     toggle: headRight,
     guides: vp,
+    notice: (text, tone, detail) => api.notice(text, tone, detail),
   });
   // the Director's frame select becomes the header's segmented frame (09-studio header .seg)
   const directorFormat = root.querySelector<HTMLSelectElement>('[data-production-format]');
@@ -2733,17 +2714,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (label) stageLabel.textContent = label;
     },
     notice(text, tone = 'info', detail = '') {
-      hideNotice();
-      noticeGlyph.innerHTML = tone === 'error' ? SCENE_LINK_GLYPHS.broken : SCENE_LINK_GLYPHS.done;
-      noticeMessage.textContent = text;
-      noticeDetail.textContent = detail;
-      noticeMore.hidden = !detail;
-      noticeMore.open = false;
-      notice.dataset.tone = tone;
-      notice.setAttribute('role', tone === 'error' ? 'alert' : 'status');
-      notice.setAttribute('aria-live', tone === 'error' ? 'assertive' : 'polite');
-      notice.dataset.open = '';
-      if (tone !== 'error') noticeTimer = setTimeout(hideNotice, 5000);
+      notify({ id: 'studio-notice', region: 'studio', severity: tone, text, detail: detail || undefined });
     },
     setPlaceArmed(specId) {
       press(placeBtn, !!specId);

@@ -26,6 +26,7 @@ import {
 } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
 import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
+import { createRichTooltip } from './richTooltip.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -2277,55 +2278,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   eqpickEl.setAttribute('aria-label', t('garage.dossier.equipment.heading'));
   eqpickEl.tabIndex = -1;
   root.appendChild(eqpickEl);
-  const eqTooltipEl = document.createElement('div');
-  eqTooltipEl.id = 'cot-equipment-tooltip';
-  eqTooltipEl.className = 'cot-eqtooltip';
-  eqTooltipEl.setAttribute('role', 'tooltip');
-  eqTooltipEl.setAttribute('aria-hidden', 'true');
-  root.appendChild(eqTooltipEl);
+  // a tile's projection: the kit's rich tooltip (richTooltip.ts) on hover and focus, never on a phone
+  const eqTip = createRichTooltip(eqpickEl, '.cot-eqtile', equipmentTip);
   let eqOpenSlot = -1;   // -1 = picker closed
   let eqCat = 'all';     // active category chip
-  let eqTooltipTimer: ReturnType<typeof setTimeout> | null = null;
-  let eqTooltipAnchor: HTMLElement | null = null;
-  let eqTooltipWarmUntil = 0;
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
-
-  function hideEqTooltip(primeNext = true): void {
-    if (eqTooltipTimer !== null) {
-      clearTimeout(eqTooltipTimer);
-      eqTooltipTimer = null;
-    }
-    if (eqTooltipAnchor) eqTooltipAnchor.removeAttribute('aria-describedby');
-    if (primeNext && eqTooltipEl.classList.contains('show')) {
-      eqTooltipWarmUntil = performance.now() + 900;
-    }
-    eqTooltipAnchor = null;
-    eqTooltipEl.classList.remove('show');
-    eqTooltipEl.setAttribute('aria-hidden', 'true');
-  }
-
-  function positionEqTooltip(anchor: HTMLElement): void {
-    const anchorRect = anchor.getBoundingClientRect();
-    const pickerRect = eqpickEl.getBoundingClientRect();
-    const tipRect = eqTooltipEl.getBoundingClientRect();
-    const gap = 12;
-    const viewportPad = 10;
-    const fitsLeft = pickerRect.left - tipRect.width - gap >= viewportPad;
-    const fitsRight = pickerRect.right + gap + tipRect.width <= window.innerWidth - viewportPad;
-    // beside the picker where there is room; a picker as wide as the window keeps the tip beside its tile, never over it
-    const toLeft = fitsLeft || (!fitsRight && anchorRect.left + anchorRect.width / 2 > window.innerWidth / 2);
-    let left = fitsLeft ? pickerRect.left - tipRect.width - gap
-      : fitsRight ? pickerRect.right + gap
-        : toLeft ? anchorRect.left - tipRect.width - gap : anchorRect.right + gap;
-    let top = anchorRect.top + anchorRect.height / 2 - tipRect.height / 2;
-    left = Math.max(viewportPad, Math.min(left, window.innerWidth - tipRect.width - viewportPad));
-    top = Math.max(viewportPad, Math.min(top, window.innerHeight - tipRect.height - viewportPad));
-    eqTooltipEl.dataset.side = toLeft ? 'left' : 'right';
-    eqTooltipEl.style.left = `${Math.round(left)}px`;
-    eqTooltipEl.style.top = `${Math.round(top)}px`;
-  }
 
   function populateEquipmentTooltipMetrics(
     metrics: HTMLElement,
@@ -2369,8 +2328,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return t('garage.equipment.action.equipIn', { slot: eqOpenSlot + 1 });
   }
 
-  function showEqTooltip(anchor: HTMLElement): void {
-    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return;
+  function equipmentTip(anchor: HTMLElement): HTMLElement | null {
+    if (!equipmentTooltipAllowed() || !eqpickEl.classList.contains('open') || !anchor.isConnected) return null;
     const itemId = anchor.dataset.eqId || '';
     const item = itemId ? EQUIPMENT_BY_ID.get(itemId) : null;
     const lock = (anchor.dataset.eqLock || null) as EquipmentLock | null;
@@ -2402,33 +2361,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const action = document.createElement('span');
     action.className = 'action';
     action.textContent = state;
-    eqTooltipEl.replaceChildren(eyebrow, name, detail, summary, metrics, action);
-    eqTooltipEl.dataset.category = item?.cat || 'action';
-    eqTooltipEl.setAttribute('aria-hidden', 'false');
-    eqTooltipEl.classList.add('show');
-    eqTooltipAnchor = anchor;
-    anchor.setAttribute('aria-describedby', eqTooltipEl.id);
-    positionEqTooltip(anchor);
+    const body = document.createElement('div');
+    body.className = 'cot-eqtip';
+    body.dataset.category = item?.cat || 'action';
+    body.append(eyebrow, name, detail, summary, metrics, action);
+    return body;
   }
 
   function equipmentTooltipAllowed(): boolean {
     if (document.body.dataset.cotWidth === 'phone') return false;
     return !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  }
-
-  function queueEqTooltip(anchor: HTMLElement, keyboard = false): void {
-    if (!equipmentTooltipAllowed()) {
-      hideEqTooltip(false);
-      return;
-    }
-    if (eqTooltipAnchor === anchor && eqTooltipEl.classList.contains('show')) return;
-    hideEqTooltip(false);
-    eqTooltipAnchor = anchor;
-    const delay = performance.now() < eqTooltipWarmUntil ? 0 : keyboard ? 160 : 360;
-    eqTooltipTimer = setTimeout(() => {
-      eqTooltipTimer = null;
-      if (eqTooltipAnchor === anchor) showEqTooltip(anchor);
-    }, delay);
   }
 
   /** Assign/remove an item in the open slot, persist, refresh the card. */
@@ -2447,7 +2389,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function renderEqPicker() {
     if (!selectedId || eqOpenSlot < 0) return;
-    hideEqTooltip(false);
+    eqTip.hide();
     const spec = specById.get(selectedId);
     const cur = curLoadout();
     const chips = equipmentCategoryButtons(eqCat);
@@ -2479,7 +2421,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function closeEqPicker() {
     if (eqOpenSlot < 0) return;
     const slot = eqOpenSlot;
-    hideEqTooltip(false);
+    eqTip.hide();
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
     root.classList.remove('picker-open', 'picker-over-readout');
@@ -2509,38 +2451,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (target?.closest('.x')) { emit('ui:click', {}); closeEqPicker(); return; }
     const tile = target?.closest<HTMLElement>('.cot-eqtile');
     if (!tile || tile.classList.contains('locked')) return;
-    hideEqTooltip(false);
+    eqTip.hide();
     emit('ui:click', {});
     eqAssign(tile.dataset.eq || null);
   });
 
-  eqpickEl.addEventListener('pointerover', (e) => {
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const from = e.relatedTarget;
-    if (from instanceof Node && tile.contains(from)) return;
-    queueEqTooltip(tile);
-  });
-  eqpickEl.addEventListener('pointerout', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const to = e.relatedTarget;
-    if (to instanceof Node && tile.contains(to)) return;
-    hideEqTooltip();
-  });
-  eqpickEl.addEventListener('focusin', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (tile) queueEqTooltip(tile, true);
-  });
-  eqpickEl.addEventListener('focusout', (e) => {
-    const tile = eventElement(e)?.closest<HTMLElement>('.cot-eqtile');
-    if (!tile) return;
-    const to = e.relatedTarget;
-    if (to instanceof Node && tile.contains(to)) return;
-    hideEqTooltip();
-  });
-  eqpickEl.addEventListener('scroll', () => hideEqTooltip(false), true);
 
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
@@ -3440,7 +3355,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
-    const head = headlineOf(spec, eqM.reload, eqM.turret);
     setHotspotFacts({
       // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
       // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there

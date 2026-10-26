@@ -2,6 +2,7 @@
 import { PRODUCTION_PRESETS, productionAspect, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
+import { notice, type NoticeSeverity } from './components/notice.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
@@ -106,6 +107,8 @@ interface StudioWorkspaceHosts {
   readonly takes?: HTMLElement;
   readonly toggle?: HTMLElement;
   readonly guides?: HTMLElement;
+  /** The Studio's toast (the kit's notices): what an action did, or why it failed. */
+  readonly notice?: (text: string, tone?: 'info' | 'error', detail?: string) => void;
 }
 
 function button(text: string, action: () => void, className = ''): HTMLButtonElement {
@@ -133,11 +136,8 @@ export function mountStudioProductionPanel(
   let format: ProductionFormat = S.productionFormat;
   let staging = false;
   let shotSignature = '';
-  const status = node('div', 'production-status');
-  status.setAttribute('role', 'status');
-  status.setAttribute('aria-live', 'polite');
-  function notify(text: string, error = false): void { status.textContent = text; status.dataset.error = String(error); }
-  function failure(error: unknown): void { notify(error instanceof Error ? error.message : String(error), true); }
+  const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
+  const failure = (error: unknown): void => { say(error instanceof Error ? error.message : String(error), true); };
   const librarySection = node('section');
   librarySection.append(node('h3', '', productionLabel('library')));
   const library = node('div', 'production-library');
@@ -181,14 +181,14 @@ export function mountStudioProductionPanel(
   frameLabel.append(frame); tankLabel.append(tanks); fields.append(frameLabel, tankLabel);
   const stage = button(productionLabel('stage'), () => {
     if (staging || S.recordingStatus().active) return;
-    staging = true; refresh(); notify(productionLabel('staging'));
+    staging = true; refresh(); say(productionLabel('staging'));
     S.directProduction({ presetId: selectedId, format, ...(tanks.value ? { vehicleId: tanks.value } : {}) })
-      .then(() => { notify(productionLabel('ready')); refreshAll(); })
+      .then(() => { say(productionLabel('ready')); refreshAll(); })
       .catch(failure)
       .finally(() => { staging = false; refresh(); });
   }, `${KIT_PRIMARY} production-stage`);
   stage.dataset.productionStage = '';
-  librarySection.append(library, fields, stage, status);
+  librarySection.append(library, fields, stage);
   selectPreset(selectedId);
   director.append(librarySection);
 
@@ -197,16 +197,17 @@ export function mountStudioProductionPanel(
   const takesSection = node('section', 'production-takes');
   if (!hosts.takes) takesSection.append(node('h3', '', productionLabel('takes')));
   const takesLibrary = node('div', 'production-library');
-  const takesStatus = node('div', 'production-status');
-  takesStatus.setAttribute('role', 'status');
-  takesStatus.setAttribute('aria-live', 'polite');
+  // the index's loading and its failure stand in for the cards, as the kit's inline notice
+  const takesStatus = node('div', 'production-takes-status');
   takesSection.append(takesLibrary, takesStatus);
   (hosts.takes ?? director).append(takesSection);
   const takeCards = new Map<string, HTMLButtonElement>();
   let takesRequested = false;
   let loadingTake = false;
   let stagedTake = '';
-  function takeStatus(text: string, error = false): void { takesStatus.textContent = text; takesStatus.dataset.error = String(error); }
+  function takeStatus(text: string, severity: NoticeSeverity = 'progress'): void {
+    takesStatus.innerHTML = text ? notice({ severity, text }) : '';
+  }
   function mapName(id: string): string {
     try { return S.getMapInfo(id).name; } catch (_) { return id; }
   }
@@ -241,7 +242,7 @@ export function mountStudioProductionPanel(
         takeStatus('');
         refresh();
       })
-      .catch(() => { takesRequested = false; fleetSection.hidden = true; takeStatus(productionLabel('takesUnavailable'), true); });
+      .catch(() => { takesRequested = false; fleetSection.hidden = true; takeStatus(productionLabel('takesUnavailable'), 'warning'); });
   }
 
   // Every tank's own take (owner 2026-10-12): the index's fleet entries stay out of the list above and are reached by
@@ -261,7 +262,7 @@ export function mountStudioProductionPanel(
   fleetSearch.disabled = true;
   fleetSearchLabel.append(fleetSearch);
   const fleetLibrary = node('div', 'production-library');
-  const fleetStatus = node('div', 'production-status');
+  const fleetStatus = node('div', 'production-hint');
   fleetStatus.setAttribute('role', 'status');
   fleetStatus.setAttribute('aria-live', 'polite');
   fleetSection.append(node('h3', '', t('studio.director.fleet.heading')), fleetSearchLabel, fleetLibrary, fleetStatus);
@@ -307,7 +308,7 @@ export function mountStudioProductionPanel(
     if (!path || loadingTake || staging || S.recordingStatus().active) return;
     loadingTake = true;
     refresh();
-    takeStatus(productionLabel('takeLoading'));
+    say(productionLabel('takeLoading'));
     fetch(path)
       .then((response) => {
         if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
@@ -317,10 +318,10 @@ export function mountStudioProductionPanel(
       .then(() => {
         stagedTake = take.id;
         for (const [id, card] of takeCards) card.setAttribute('aria-pressed', String(id === take.id));
-        takeStatus(productionLabel('takeLoaded'));
+        say(productionLabel('takeLoaded'));
         refreshAll();
       })
-      .catch((error: unknown) => takeStatus(error instanceof Error ? error.message : String(error), true))
+      .catch(failure)
       .finally(() => { loadingTake = false; refresh(); });
   }
 
@@ -375,30 +376,25 @@ export function mountStudioProductionPanel(
   const photo = button(productionLabel('photo'), () => {
     const [width, height] = format === 'portrait' ? [2160, 3840] : format === 'square' ? [2880, 2880]
       : format === 'card' ? [3840, 2010] : [3840, 2160];
-    Promise.resolve().then(() => S.capture({ width, height, download: true })).then(() => notify(productionLabel('saved'))).catch(failure);
+    Promise.resolve().then(() => S.capture({ width, height, download: true })).then(() => say(productionLabel('saved'))).catch(failure);
   }, KIT_BUTTON);
   const video = button(productionLabel('video'), () => {
     if (S.recordingStatus().active) { S.stopRecording(); return; }
-    S.recordVideo({ fps: 30, download: true }).then(() => notify(productionLabel('saved'))).catch(failure);
+    S.recordVideo({ fps: 30, download: true }).then(() => say(productionLabel('saved'))).catch(failure);
     refresh();
   }, KIT_BUTTON);
   exportButtons.append(photo, video);
   // Copy scene link (studioSceneLinkUi.ts): the staged scene itself rides in the link's #fragment, never a server.
-  const linkStatus = node('div', 'production-status production-link-status');
-  linkStatus.setAttribute('role', 'status');
-  linkStatus.setAttribute('aria-live', 'polite');
   const linkButton = button('', () => {
-    copySceneLink(S.state(), browserSceneLinkEnv()).then((result) => {
-      linkStatus.textContent = result.detail ? `${result.message} (${result.detail})` : result.message;
-      linkStatus.dataset.error = String(!result.ok);
-    });
+    copySceneLink(S.state(), browserSceneLinkEnv())
+      .then((result) => hosts.notice?.(result.message, result.ok ? 'info' : 'error', result.detail));
   }, `${KIT_BUTTON} production-link`);
   linkButton.innerHTML = SCENE_LINK_GLYPHS.link;
   linkButton.append(node('span', '', t('studio.sceneLink.copyButton')));
   linkButton.title = t('studio.sceneLink.copyTitle');
   linkButton.dataset.sceneLinkCopy = '';
-  // the export captions stay under their buttons; the link button and its status follow them
-  exports.append(exportButtons, linkButton, linkStatus);
+  // the export captions stay under their buttons; the link button follows them
+  exports.append(exportButtons, linkButton);
   director.append(exports);
   dock.prepend(director);
 

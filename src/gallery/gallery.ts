@@ -209,7 +209,7 @@ let activeMode: GalleryMode = 'appearance';
 let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
 let dossierShownId = '';
 
 const damageHost = document.createElement('div');
@@ -337,7 +337,7 @@ function anatomyVehicle(): AnatomyVehicle | null {
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   // the loading notice covers a slow build only, and leaves the moment the layer shows (it outlived the render before)
-  let loading: ReturnType<typeof showToast> = null;
+  let loading: GalleryNotice | null = null;
   const slow = setTimeout(() => { loading = showToast(t('gallery.anatomy.loading'), { severity: 'progress' }); }, 250);
   const settle = (): void => { clearTimeout(slow); loading?.dismiss(); loading = null; };
   anatomyReady = loadAnatomy().then(async (module) => {
@@ -357,7 +357,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
-    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
+    if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
     settle();
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
@@ -474,15 +474,14 @@ const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2
 
 /** A notice's handle from the moment it is asked for: a dismissal before the kit has loaded cancels it. */
 interface GalleryNotice { dismiss(): void }
-function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): GalleryNotice | null {
-  if (!visual) {
-    // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
-    const toast = $('#toast');
-    toast.textContent = message;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toast.textContent = ''; }, 1800);
-    return null;
-  }
+/** A layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet). */
+function announceLine(message: string): void {
+  const line = $('#announce');
+  line.textContent = message;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { line.textContent = ''; }, 1800);
+}
+function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}): GalleryNotice {
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
   let dismissed = false;
@@ -1276,7 +1275,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   }
   renderLegend();
   updateUrl();
-  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }), { visual: false });
+  if (announce && activeMode === 'markup') announceLine(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
 }
 
 function disposeTank(): void {
