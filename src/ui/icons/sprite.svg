@@ -2,7 +2,7 @@
 <symbol id="i-play"><path d="M7 4.5 19.5 12 7 19.5Z"/></symbol>
 <symbol id="i-home"><path d="M3.5 10.5 12 3.5l8.5 7v10h-6v-6h-5v6h-6Z"/></symbol>
 <symbol id="i-garage"><path d="M3 20.5v-11L7.5 5h9L21 9.5v11ZM7 20.5V12h10v8.5ZM7 15h10M7 18h10"/></symbol>
-<symbol id="i-deploy"><path d="M3.5 5H7l7 7-7 7H3.5l7-7ZM10.5 5H14l7 7-7 7h-3.5l7-7Z"/></symbol>
+<symbol id="i-deploy"><path d="M3.5 5H7l7 7-7 7H3.5l7-7ZM10.5 5H14l7 7-7 7h-3.5l7-7Z"/></symbol><symbol id="i-deploy-s"><path d="M3 3.5 7.5 8 3 12.5M8.5 3.5 13 8 8.5 12.5"/></symbol>
 <symbol id="i-gallery"><path d="M3 8V3.5h4.5M16.5 3.5H21V8M21 16v4.5h-4.5M7.5 20.5H3V16M6.5 14.5h11l1.5 1.75-1.5 1.75h-11L5 16.25ZM8.5 14.5v-2L10 11h3.5l1.5 1.5v2ZM15 12.25h4"/></symbol>
 <symbol id="i-techTree"><path d="M3 9.5h6v5H3ZM15 3.5h6v5h-6ZM15 15.5h6v5h-6ZM9 12h3M12 6v12M12 6h3M12 18h3"/></symbol>
 <symbol id="i-manual"><path d="M3 5h6.5L11 6.5V20l-1.5-1.5H3ZM21 5h-6.5L13 6.5V20l1.5-1.5H21ZM5.5 9h3M5.5 12h3M15.5 9h3M15.5 12h3"/></symbol>
