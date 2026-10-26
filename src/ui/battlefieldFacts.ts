@@ -1,7 +1,8 @@
 // One battlefield's facts for the battlefield picker (interaction redesign A, owner 2026-10-26: "make map selection much
 // more intituitve"): its name, its landscape, the hours it plays, the modes it hosts, whether Random draws it and its
 // pictures, read from the sources that already own each datum. It imports no map config and no engine runtime, so the
-// picker reads it without loading a battlefield; the placeholders (a data-URL table) load only when asked for.
+// picker reads it without loading a battlefield. (The blurred placeholders, src/ui/mapLqip.ts, stay the loading screen's
+// own chunk: the picker's cards show the stills themselves.)
 //   name: catalog.ts getLocalizedMapName      regions: regionTags.ts mapRegionTags (the camo browser's landscape tags)
 //   hours: battleWeatherPolicy.ts BATTLE_TIMES, Mars and the Moon held to day (battleAtmosphereRuntime.ts prepare)
 //   modes: every battle mode on every map (no mode is tied to a map; gameModeCatalog.ts BATTLE_MODE_IDS)
@@ -82,10 +83,4 @@ export function battlefieldFacts(mapId: string): BattlefieldFacts {
     random: RANDOM.has(id),
     poster: poster(id),
   };
-}
-
-/** A battlefield's 48x27 blurred placeholder (a data URL) for the moment before its poster decodes; '' when it has none. */
-export async function battlefieldPlaceholder(mapId: string): Promise<string> {
-  const { MAP_LQIP } = await import('./mapLqip.ts');
-  return isMapId(mapId) && Object.hasOwn(MAP_LQIP, mapId) ? MAP_LQIP[mapId] : '';
 }
