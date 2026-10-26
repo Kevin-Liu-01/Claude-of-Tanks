@@ -933,6 +933,7 @@
   "garage.dossier.protection.inspect": "Inspect armor overlay",
   "garage.dossier.armament.gun": "Gun",
   "garage.dossier.armament.arc": "Gun arc",
+  "garage.dossier.armament.rearStop": "rear ≥ +{deg}°",
   "garage.dossier.dossier.about": "About the vehicle dossier",
   "garage.dossier.dossier.title": "Vehicle dossier",
   "garage.dossier.dossier.text": "This panel is built from the selected vehicle’s authoritative gameplay specification. Tier, origin, combat values, ammunition, modules, crew, and equipment all update with the selected vehicle.",
