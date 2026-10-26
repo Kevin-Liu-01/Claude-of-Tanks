@@ -51,6 +51,10 @@ export function openHudEditor(trigger:HTMLElement):void {
   const preview=element('div','hud-edit-preview',content);
   const viewport=element('div','hud-edit-viewport',preview);
   const stage=element('div','hud-edit-stage',viewport);
+  // the selection's frame, drawn over the scaled preview at the kit's own size: an accent band between two dark lines (it
+  // holds over sky or smoke), inside the panel's box so the preview's edge never cuts it. The inspector's heading names
+  // it, so the preview carries no tag over the HUD
+  const mark=element('div','hud-edit-mark',viewport);mark.hidden=true;mark.setAttribute('aria-hidden','true');
   stage.setAttribute('aria-label',label('preview'));
   stage.style.backgroundImage=`url('${BACKDROP}')`;
   const backdrop=new Image();backdrop.src=BACKDROP;
@@ -94,6 +98,16 @@ export function openHudEditor(trigger:HTMLElement):void {
     for(const b of nudge.querySelectorAll('button'))b.disabled=absent||!!draft[profile][id]?.hidden||'anchored' in currentPart();
     restore.disabled=absent;
     tip.textContent=label(absent?'unavailable':'anchored' in currentPart()?'anchored':'nudge');
+    placeMark();
+  }
+  function placeMark(){
+    const node=nodes.get(selected);
+    if(!node||node.hidden){mark.hidden=true;return;}
+    const box=node.getBoundingClientRect(),frame=viewport.getBoundingClientRect();
+    const left=Math.max(0,box.left-frame.left),top=Math.max(0,box.top-frame.top);
+    const right=Math.min(frame.width,box.right-frame.left),bottom=Math.min(frame.height,box.bottom-frame.top);
+    mark.hidden=false;
+    Object.assign(mark.style,{left:`${left}px`,top:`${top}px`,width:`${Math.max(0,right-left)}px`,height:`${Math.max(0,bottom-top)}px`});
   }
   visibility.onclick=()=>{const old=draft[profile][selected];draft[profile][selected]={...old,hidden:!old?.hidden};render();};
   restore.onclick=()=>{delete draft[profile][selected];render();};
@@ -112,6 +126,7 @@ export function openHudEditor(trigger:HTMLElement):void {
     }
     node.style.left=`${center[0]}px`;node.style.top=`${center[1]}px`;
     node.hidden=!!entry?.hidden;
+    if(part.id===selected)placeMark();
   }
   function move(id:HudPartId,x:number,y:number){
     const part=HUD_PARTS.find(p=>p.id===id)!;
@@ -143,6 +158,7 @@ export function openHudEditor(trigger:HTMLElement):void {
     preview.classList.toggle('zoomed',zoom>1);
     viewport.style.width=`${vw*scale}px`;viewport.style.height=`${vh*scale}px`;
     stage.style.transform=`scale(${scale})`;
+    placeMark();
   }
   function addPart(part:Part){
     if('touch' in part&&profile==='desktop')return;
@@ -153,7 +169,6 @@ export function openHudEditor(trigger:HTMLElement):void {
       dimensions.set(part.id,[w,h]);defaults.set(part.id,[x,y]);
       const node=element('button','hud-edit-part',stage);node.type='button';node.dataset.part=part.id;
       node.style.width=`${w}px`;node.style.height=`${h}px`;node.setAttribute('aria-label',label(part.id));
-      const tag=element('span','hud-edit-tag',node);tag.textContent=label(part.id);
       nodes.set(part.id,node);bind(part,node);position(part);
     }
   }

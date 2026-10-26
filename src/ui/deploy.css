@@ -261,6 +261,12 @@ body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-fie
   /* a whole row of cards shows under the search: six narrow cards, each its picture and its name */
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));}
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-c-picker__facts{display:none;}
+  /* the head's close steps into the search row's end (its label goes: the picker names itself), so that row of cards
+     clears the dock */
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-pop{position:relative;}
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-head{position:absolute;top:0;right:0;z-index:var(--z-lift);margin:0;}
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-head>:not(.cot-deploy-field-close){display:none;}
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-c-picker__bar{padding-right:calc(var(--cot-control-floor,44px) + var(--s2));}
 }
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */

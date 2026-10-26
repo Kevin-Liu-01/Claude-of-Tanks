@@ -2,7 +2,7 @@ import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
-import { designationHtml } from './designations.ts';
+import { designationHtml, holdNameText } from './designations.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
@@ -168,7 +168,7 @@ export function mountFilming(article: HTMLElement): void {
   let takes: StagePicker | null = null;
   // the take's stages, in the rounds' order, each by its own picture and its number in the run
   const stageItems = (): PickerItem[] => FILMING_STAGES.filter((s) => take.stages.includes(s)).map((s) => ({
-    id: s, name: STAGE_TEXT[s].label, facts: [pad(FILMING_STAGES.indexOf(s) + 1)], media: { poster: filmingPoster(take, s) },
+    id: s, name: holdNameText(STAGE_TEXT[s].label), facts: [pad(FILMING_STAGES.indexOf(s) + 1)], media: { poster: filmingPoster(take, s) },
   }));
   let stage: FilmingStage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
 
@@ -214,7 +214,7 @@ export function mountFilming(article: HTMLElement): void {
       });
       takes = createPicker(field('takes'), {
         id: 'docs-filming-take', label: t('docs.filming.viewer.takesAria'), value: take.id, layout: 'cards', text: pickerText(),
-        items: FILMING_TAKES.map((one): PickerItem => ({ id: one.id, name: one.title, facts: [one.place, one.time], media: { poster: filmingThumb(one) } })),
+        items: FILMING_TAKES.map((one): PickerItem => ({ id: one.id, name: holdNameText(one.title), facts: [one.place, one.time], media: { poster: filmingThumb(one) } })),
         // the take under the pointer or the focus shows on the screen at the stage in view (or its latest render)
         onPreview: (item) => {
           const one = FILMING_TAKES.find((other) => other.id === item?.id) ?? take;

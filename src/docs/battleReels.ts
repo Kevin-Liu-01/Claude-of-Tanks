@@ -1,5 +1,5 @@
 import { onLocaleChange, t } from '../ui/i18n.ts';
-import { designationHtml } from './designations.ts';
+import { designationHtml, holdNameText } from './designations.ts';
 import type { PickerItem } from '../ui/components/picker.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
@@ -83,7 +83,7 @@ export function mountBattleReels(scope: Document = document): void {
   // the takes are the kit's picker (cards), loaded with its sheet when the library nears the screen: each by its poster,
   // its title and its battlefield; one press plays it
   let reels: { setItems(items: readonly PickerItem[], value?: string | null): void; setValue(id: string | null): void } | null = null;
-  const reelItems = (): PickerItem[] => BATTLE_REELS.map((reel) => ({ id: reel.id, name: reel.title, facts: [reel.map], media: { poster: reel.poster } }));
+  const reelItems = (): PickerItem[] => BATTLE_REELS.map((reel) => ({ id: reel.id, name: holdNameText(reel.title), facts: [reel.map], media: { poster: reel.poster } }));
   const mountPicker = (): void => {
     void Promise.all([import('../ui/components/picker.ts'), import('../ui/pickerText.ts'), import('./docsPickers.css')])
       .then(([{ createPicker }, { pickerText }]) => {

@@ -243,7 +243,10 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
   const steps = battle.trace.map((step, index) => {
     const gap = index > 0 ? step.t - battle.trace[index - 1].t : Infinity;
     const linked = gap <= LINK_S;
-    return `<li class="${linked ? 'linked' : ''}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
+    // a step the next one links to carries the rail down to it (a phone's rows differ in height)
+    const next = battle.trace[index + 1];
+    const joins = !!next && next.t - step.t <= LINK_S;
+    return `<li class="${[linked ? 'linked' : '', joins ? 'joins' : ''].filter(Boolean).join(' ')}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
       `<span class="cot-record-step-time">${clock(step.t)}</span>` +
       `<b class="cot-record-trace-vehicle">${vehicleArt(step.specId, 'cot-record-trace-icon')}${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
       `<small>${uiIconSVG(killSourceIdentity(step.source)?.icon ?? killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[

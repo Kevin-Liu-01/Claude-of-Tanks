@@ -70,14 +70,15 @@ async function pictureUrl(collection: LibraryCollection, item: LibraryItem): Pro
   return url;
 }
 
-/** The thumbnails' scale: a row of 16:9 cells (240 px in the sheets, 3 px apart) fills the panel's width exactly. */
+/** The thumbnails' scale: a row of 16:9 cells (240 px in the sheets, 8 px apart: mediaLibrary.css, var(--s2)) fills the
+ *  panel's width. */
 const THUMB_CELL = 240;
-const THUMB_GAP = 3;
+const THUMB_GAP = 8;
 const thumbScale = (width: number): number => {
   if (!(width > 0)) return 1;
   const columns = Math.max(2, Math.ceil((width + THUMB_GAP) / (THUMB_CELL + THUMB_GAP)));
-  // a pixel of slack a cell, so rounded widths never push a full row onto two lines
-  return Math.min(1.25, (width - (columns - 1) * THUMB_GAP - columns) / (columns * THUMB_CELL));
+  // half a pixel of slack a row, so rounded widths never push a full row onto two lines while it ends on the column's edge
+  return Math.min(1.25, (width - (columns - 1) * THUMB_GAP - 0.5) / (columns * THUMB_CELL));
 };
 
 const say = (text: LibraryText | null | undefined): string =>

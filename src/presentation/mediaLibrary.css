@@ -14,7 +14,13 @@
 .media-library-head{display:grid;gap:14px;margin:0 0 22px}
 .media-library-set{margin:0 0 26px;content-visibility:auto;contain-intrinsic-size:auto 420px}
 .media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:var(--fs-11);letter-spacing:var(--track-label);text-transform:uppercase}
-.media-library-grid{display:flex;flex-wrap:wrap;gap:3px}
+.media-library-grid{display:flex;flex-wrap:wrap;gap:var(--s2)}
+/* the collections are one strip at every width, its rule on the column's edges; a strip longer than the column scrolls
+   sideways and fades its cut end */
+.media-library-tabs{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent)}
+.media-library-tabs .cot-c-tabs__tab{flex:none}
+.media-library-tabs::-webkit-scrollbar{display:none}
 .media-library-thumb{flex:none;padding:0;border:0;background-color:var(--surface-scene);background-repeat:no-repeat;cursor:zoom-in;outline-offset:2px}
 .media-library-thumb:focus-visible{outline:2px solid var(--library-amber)}
 .media-library-wait{margin:0;padding:28px 0;color:var(--library-muted);font:500 var(--fs-11)/1.4 var(--font-mono);letter-spacing:var(--track-label-s);text-transform:uppercase}

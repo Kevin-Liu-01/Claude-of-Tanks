@@ -151,7 +151,10 @@
 /* a card keeps one inset on every side: the badge's own width starts the row, and the last line sets no leading under it */
 .cot-record-ach{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--s4);padding:var(--s4);
   background:var(--surface-raised);box-shadow:var(--ring-1)}
+/* the badge's box is its drawing's: the art's own margins (8 a side, 3 over, 7 under at 64 px) come off, so the card's
+   padding is its inset */
 .cot-record-ach-art{display:grid;place-items:center;padding:0;border:0;background:none;cursor:help}
+.cot-record-ach-art svg{display:block;margin:-3px -8px -7px}
 .cot-record-ach-copy{min-width:0;overflow-wrap:anywhere}
 /* a title row holds a NEW tag's height whether or not it carries one, so a row of cards shares its lines */
 .cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2);min-height:20px;margin-bottom:var(--s3)}
@@ -251,7 +254,7 @@
   .cot-record-metrics,.cot-record-campaign-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cot-record-ach-grid{grid-template-columns:minmax(0,1fr)}
   .cot-record-ach{grid-template-columns:48px minmax(0,1fr);gap:var(--s3);padding:var(--s4) var(--s3)}
-  .cot-record-ach-art svg{width:48px;height:auto}
+  .cot-record-ach-art svg{width:48px;height:auto;margin:-2px -6px -5px}
   .cot-record-medal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
   .cot-record-medal{padding:var(--s4) var(--s3) var(--s3)}
   .cot-record-medal-art{min-height:96px}
@@ -273,8 +276,11 @@
   .cot-record-trace li{gap:var(--s2)}
   .cot-record-trace small,.cot-record-step-gap{grid-column:3}
   .cot-record-trace small{padding-left:calc(32px + var(--s2))}
-  .cot-record-trace li::before{top:calc(var(--s2) + .7em)}
-  .cot-record-trace li.linked::after{bottom:calc(100% - var(--s2) - .7em)}
+  /* a phone's steps wrap: each diamond stands on its first line's centre, and the rail runs down from a step to the next
+     linked one (its own height, whatever the next row's) */
+  .cot-record-trace li::before{top:calc(var(--s2) + .5lh)}
+  .cot-record-trace li.linked::after{display:none}
+  .cot-record-trace li.joins::after{content:'';position:absolute;top:calc(var(--s2) + .5lh);left:-18.5px;width:1px;height:100%;background:var(--ink-3)}
   .cot-record-trace-icon{width:32px;height:26px}
 }
 /* a compact screen keeps the header to a band; a short landscape phone to one line with the X beside the title */
