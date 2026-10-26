@@ -236,15 +236,9 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-garage.vehicle-locked .cot-camo-picker .cot-c-picker__opt,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
 .cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:attr(data-locked);
   display:block;margin-top:var(--s2);color:var(--text-ok);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:var(--track-label-s)}
-.cot-battle-sides-custom{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);padding:var(--s3) 0 0;}
-.cot-battle-sides-custom[hidden]{display:none;}
-.cot-battle-sides-custom label,.cot-battle-mars-field{display:grid;gap:6px;color:var(--ink-3);
+.cot-battle-mars-field{display:grid;gap:6px;color:var(--ink-3);
   font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:0;text-transform:uppercase;}
-.cot-battle-sides-custom input{width:100%;box-sizing:border-box;min-height:44px;padding:var(--s2);
-  border:1px solid var(--line-3);background:var(--surface-raised);color:var(--ink-1);
-  font:600 max(var(--fs-floor-12),var(--fs-12)) var(--font-ui);}
-.cot-battle-sides-custom .cot-sides-readout{grid-column:1/-1;color:var(--accent-hi);font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:700;}
-.cot-battle-sides-custom small,.cot-battle-mars small{grid-column:1/-1;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5;}
+.cot-battle-mars small{grid-column:1/-1;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5;}
 .cot-battle-mars{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:-8px;}
 .cot-battle-mars[hidden]{display:none;}
 .cot-battle-menu-label{padding:var(--s2) 0 2px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;

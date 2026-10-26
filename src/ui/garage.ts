@@ -78,7 +78,7 @@ import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts'
 import { MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -733,13 +733,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     segmented({ label: t('garage.battle.sidesAria'), className: 'cot-battle-sides', value: '7v7', options: [
       { value: '7v7', label: t('garage.battle.sides7') }, { value: '14v14', label: t('garage.battle.sides14') },
       { value: 'custom', label: t('garage.battle.sidesCustom') }] }) +
-    `<div class="cot-battle-sides-custom" data-sides-custom hidden>` +
-    `<label><span>${t('garage.battle.sidesAllies')}</span><input type="number" inputmode="numeric" step="1" ` +
-    `min="${TEAM_ARRANGEMENT_LIMITS.allies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.allies.standard[1]}" data-sides-field="allies"></label>` +
-    `<label><span>${t('garage.battle.sidesEnemies')}</span><input type="number" inputmode="numeric" step="1" ` +
-    `min="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[1]}" data-sides-field="enemies"></label>` +
-    `<b class="cot-sides-readout" data-sides-readout></b>` +
-    `</div>` +
     `</div><fieldset class="cot-battle-times" data-time-options aria-describedby="cot-time-hint">` +
     battleTimeChoicesMarkup('cot-time-hint') + `</fieldset>` +
     `<div class="cot-battle-galaxy" data-galaxy-sky hidden>${uiIconSVG('modeMars', 16)}` +
@@ -3908,34 +3901,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
   const sidesGroup = requiredElement<HTMLElement>(battleMenu, '.cot-battle-sides');
-  const sidesCustom = requiredElement<HTMLElement>(battleMenu, '[data-sides-custom]');
-  const sidesField = (name: string) => requiredElement<HTMLInputElement>(sidesCustom, `input[data-sides-field="${name}"]`);
-  const sidesReadout = requiredElement<HTMLElement>(sidesCustom, '[data-sides-readout]');
+  const sidesCustomLabel = requiredElement<HTMLElement>(sidesGroup, '.cot-c-seg__opt[data-value="custom"] > span');
   let sidesCustomOpen = false;
+  const battleSides = () => rulesetSides(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
+  /** Custom sides: picked, or the mode's own split is neither preset (Juggernaut's 1 v 12). */
+  const sidesCustom = (): boolean => sidesCustomOpen || sidesPresetOf(battleSides()) === 'custom';
+  // Custom's counts (Allied bots, Enemies) are the further options' first fields (battleArrangementPanel.ts), which take
+  // the battlefield card's place: a row of their own under the sides ran past the plate's foot (Main 2026-10-26, 1280 x
+  // 800). Picking Custom opens them; while it is on, its option reads the split
   function renderSides(): void {
-    const sides = rulesetSides(matchRulesetFor(battleGameMode, null, readTeamArrangement(battleGameMode)));
-    const preset = sidesPresetOf(sides);
-    const custom = sidesCustomOpen || preset === 'custom';
-    setRoving(sidesGroup, custom ? 'custom' : preset);
-    sidesCustom.hidden = !custom;
-    sidesField('allies').value = String(sides.allies);
-    sidesField('enemies').value = String(sides.enemies);
-    sidesReadout.textContent = t('garage.battle.sidesReadout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
+    const sides = battleSides();
+    const custom = sidesCustom();
+    setRoving(sidesGroup, custom ? 'custom' : sidesPresetOf(sides));
+    sidesCustomLabel.textContent = custom
+      ? t('garage.battle.sidesReadout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) }) : t('garage.battle.sidesCustom');
   }
   wireRoving(sidesGroup, (id) => {
     emit('ui:click', {});
     if (id === 'custom') sidesCustomOpen = true;
     else if (id === '7v7' || id === '14v14') { sidesCustomOpen = false; writeTeamArrangement(battleGameMode, { ...readTeamArrangement(battleGameMode), ...SIDES_PRESETS[id] }); }
     renderBattleOptions();
-  });
-  sidesCustom.addEventListener('change', () => {
-    const allies = Number(sidesField('allies').value), enemies = Number(sidesField('enemies').value);
-    writeTeamArrangement(battleGameMode, {
-      ...readTeamArrangement(battleGameMode),
-      allies: Number.isFinite(allies) ? allies : STANDARD_SIDES.allies,
-      enemies: Number.isFinite(enemies) ? enemies : STANDARD_SIDES.enemies,
-    });
-    renderBattleOptions();
+    if (id === 'custom') deployScreen?.showOptions();
   });
   renderSides();
   // Mars settings: two selects on the mars arrangement (game/teamArrangement.ts), visible while Mars is the rule
@@ -3969,6 +3955,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     arrangementPanelLoad ??= import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
       arrangementPanel = createBattleArrangementPanel(soloOptions, {
         playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
+        customSides: sidesCustom,
       });
       arrangementPanel.render(battleGameMode);
     });

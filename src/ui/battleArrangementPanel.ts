@@ -28,7 +28,11 @@ interface ArrangeField {
 }
 
 /** Mode-specific controls share the exact stored arrangement read by battle creation. */
-export function createBattleArrangementPanel(host: HTMLElement, { playerCountry = () => null }: { playerCountry?: () => CountryId | null } = {}): { render(mode: GameModeId): void; close(): void } {
+export function createBattleArrangementPanel(host: HTMLElement, { playerCountry = () => null, customSides = () => false }: {
+  playerCountry?: () => CountryId | null;
+  /** Deploy's sides are on Custom: the counts show for a symmetric mode too (a wave mode always shows them). */
+  customSides?: () => boolean;
+} = {}): { render(mode: GameModeId): void; close(): void } {
   let mode: GameModeId = 'standard';
   const controls = document.createElement('div'); controls.className = 'cot-mode-settings';
   const readout = document.createElement('div'); readout.className = 'cot-mode-features';
@@ -48,10 +52,12 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
     render(mode);
   };
   const label = (name: Field): string => t(`playMenu.arrange.${name === 'enemyNation' ? 'nation' : name}`);
+  const captions = new Map<Field, HTMLElement>();
   const optionLabel = (name: Field, value: string): string => (name === 'juggernautRole' ? t(`playMenu.arrange.${value}`) : value);
   const fields = new Map<Field, ArrangeField>(FIELDS.map((name): [Field, ArrangeField] => {
     const root = document.createElement('div'); root.className = 'cot-arrange-field'; root.dataset.modeField = name;
     const caption = document.createElement('span'); caption.textContent = label(name);
+    captions.set(name, caption);
     root.append(caption);
     controls.append(root);
     const fixed = SEGMENTED[name];
@@ -91,8 +97,12 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
         : name === 'scoreTarget' || name === 'respawnS' ? !RULESET_SCORE_TARGETS[mode]
         // MONO's enemy country (AUTO first); RANDOM seats any vehicle, so the field is hidden and ignored
         : name === 'enemyNation' ? random
-        : !isWaveMode(mode);
+        : !isWaveMode(mode) && !customSides();
       if (field.root.hidden) continue;
+      // Custom sides in a symmetric mode: its counts are its sides (a wave mode's are its allies and its enemy pool)
+      if (name === 'allies' || name === 'enemies') {
+        captions.get(name)!.textContent = isWaveMode(mode) ? label(name) : t(name === 'allies' ? 'garage.battle.sidesAllies' : 'garage.battle.sidesEnemies');
+      }
       const values: Array<[string, string]> = SEGMENTED[name] ? SEGMENTED[name].map((value) => [value, optionLabel(name, value)])
         : name === 'scoreTarget' ? (SCORE_TARGETS[mode] ?? [250, 500, 750, 1000, 1500, 2000]).map((value) => [String(value), String(value)])
         // the player's own country is never the enemy under MONO

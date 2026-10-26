@@ -99,6 +99,8 @@ export interface DeployScreen {
   brief(id?: string): void;
   /** Set `mode`'s picture behind the plate: the chosen mode, or the one a card previews (on an open screen). */
   showMode(mode: string): void;
+  /** Open the further options (Custom sides: its counts are their first fields). */
+  showOptions(): void;
 }
 
 const TIERS: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
@@ -136,9 +138,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   more.setAttribute('aria-expanded', 'false');
   more.setAttribute('aria-label', t('garage.deploy.moreSettings'));
   more.innerHTML = uiIconSVG('settings', 18);
-  more.addEventListener('click', () => {
-    host.click();
-    const open = more.getAttribute('aria-expanded') !== 'true';
+  const setMore = (open: boolean): void => {
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
     // the mode's own settings open in the battlefield card's room above the pickers (deploy.css), so nothing scrolls
@@ -148,7 +148,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     if (open && menu.querySelector<HTMLElement>('.cot-battle-details [data-deploy-field-pop]')?.hidden === false) {
       menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
     }
-
+  };
+  more.addEventListener('click', () => {
+    host.click();
+    setMore(more.getAttribute('aria-expanded') !== 'true');
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
@@ -330,6 +333,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   return {
     brief,
     showMode(mode) { wanted = mode; settle(); },
+    showOptions: () => setMore(true),
     render() {
       const last = host.lastBattle();
       const offered = last?.gameMode ? host.modeOf(last.gameMode) : null;
