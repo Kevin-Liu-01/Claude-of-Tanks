@@ -46,6 +46,10 @@ try {
     }
     for (const row of rows) {
       assert.deepEqual(row.leader[0], [row.callout.anchor[0] * box.width, row.callout.anchor[1] * box.height], 'the leader starts at its callout');
+      // and stays inside the box, ending on its own rail's side of the elbow (a right leader ran out past the box)
+      for (const [x] of row.leader) assert.ok(x >= 0 && x <= box.width, `a ${row.side} leader stays inside the box (${x.toFixed(1)} of ${box.width})`);
+      const end = row.leader.at(-1)[0], elbow = row.leader[1][0];
+      assert.ok(row.side === 'left' ? end <= elbow && end >= row.edgeX : end >= elbow && end <= row.edgeX, `a ${row.side} leader ends between its elbow and its rail`);
       assert.equal(row.text, technicalLabelText(row.callout, 'armor'));
     }
   }

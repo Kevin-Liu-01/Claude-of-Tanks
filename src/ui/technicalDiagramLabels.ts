@@ -157,7 +157,8 @@ export function layoutTechnicalCallouts(
     picked.forEach((callout, index) => {
       const y = ys[index]!, ax = callout.anchor[0] * width, ay = callout.anchor[1] * height;
       rows.push({ callout, text: technicalLabelText(callout, kind), side, y, edgeX,
-        leader: [[ax, ay], [elbowX, y], [edgeX + (side === 'left' ? 1 : -1) * (elbowX - edgeX) * .9, y]] });
+        // the leader ends toward its chip, inside the box on either rail (the signed span already points inward)
+        leader: [[ax, ay], [elbowX, y], [edgeX + (elbowX - edgeX) * .9, y]] });
     });
   }
   return rows;
@@ -299,8 +300,10 @@ export function mountTechnicalDiagramLabels(
     const svg = doc.createElementNS(SVG, 'svg');
     svg.setAttribute('class', 'cot-tdl-leaders');
     svg.setAttribute('viewBox', `0 0 ${box.width.toFixed(1)} ${box.height.toFixed(1)}`);
+    const lines: SVGPolylineElement[] = [];
     for (const row of rows) {
       const line = doc.createElementNS(SVG, 'polyline');
+      lines.push(line);
       line.setAttribute('class', 'cot-tdl-leader');
       line.setAttribute('points', row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
       setTone(line, row.callout.color);
@@ -313,6 +316,7 @@ export function mountTechnicalDiagramLabels(
       svg.append(line, dot);
     }
     root.prepend(svg);
+    const chips: HTMLElement[] = [];
     for (const row of rows) {
       const chip = doc.createElement('span');
       chip.className = `cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}`;
@@ -320,7 +324,16 @@ export function mountTechnicalDiagramLabels(
       setTone(chip, row.callout.color);
       chip.textContent = row.text;
       root.append(chip);
+      chips.push(chip);
     }
+    // each leader meets its chip's inner edge, measured: a short chip left a gap before the line, a long one hid it
+    rows.forEach((row, index) => {
+      const width = chips[index]!.offsetWidth;
+      if (!width) return;
+      const end = row.side === 'left' ? row.edgeX + width : row.edgeX - width;
+      const points = [...row.leader.slice(0, -1), [end, row.y] as const];
+      lines[index]!.setAttribute('points', points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
+    });
   };
   render();
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => render()) : null;
