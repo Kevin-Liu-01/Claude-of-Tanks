@@ -641,9 +641,12 @@ function vehicleName(specId: string | null | undefined): string {
  *  band over the medals). */
 const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid>*,.es-awards>.ak,.es-awards .aw,.es-best,'
   + '.es-combat-details,.es-blow,.es-stat-secondary,.es-kill-block,.es-rematch';
-const FIT_CUE_H = 18;
+// (the cue's least band: its rule, a 12 px chevron and 2 px under it)
+const FIT_CUE_H = 16;
 /** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
 const LATIN_NAME = /^[\x20-\x7e]+$/;
+/** A run of Chinese in a mixed-script title (the watched headline's "ALPHA 队获胜"): endScreenPresentation.css .cjk. */
+const CJK_RUN = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]+/g;
 
 function dotLine(text: string): string {
   return text.split(' · ').map((part, index) => `<span class="seg">${index ? '<span class="sep">·\u00a0</span>' : ''}${escapeHtml(part)}</span>`).join(' ');
@@ -696,7 +699,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     moreObserver?.disconnect();
     for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
       const cue = el('div', 'es-more', panel);
-      cue.innerHTML = uiIconSVG('chevronDown', 14);
+      cue.innerHTML = uiIconSVG('chevronDown', 12);
       cue.setAttribute('aria-hidden', 'true');
       panel.addEventListener('scroll', () => markMore(panel), { passive: true });
       moreObserver?.observe(panel);
@@ -1109,7 +1112,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const banner = el('div', `es-ban w ${winner ?? 'n'}`, headline);
     const word = winner ? t('endScreen.watch.wins', { side: sideName(winner) })
       : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
-    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word)}</span>`;
+    // (its Chinese runs marked, set a step under the Latin capitals beside them: at one size 队获胜 ran a third taller than
+    // ALPHA, 15 px over its cap line and 12 under its baseline, gauntlet r12)
+    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word).replace(CJK_RUN, (run) => `<span class="cjk">${run}</span>`)}</span>`;
     host.dataset.banner = word;
     host.dataset.winner = winner ?? 'none';
     const score = el('div', 'es-score', headline);

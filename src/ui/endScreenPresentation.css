@@ -70,8 +70,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{display:flex;flex-dir
 body[data-cot-width] .cot-es.cot-es--record .es-awards .aw.signature{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 body[data-cot-width] .cot-es.cot-es--record .es-awards .aw:hover{background:var(--fill-scale);box-shadow:var(--ring-accent)}
 body[data-cot-width] .cot-es.cot-es--record .es-awards .aw b{white-space:normal;font-size:var(--battle-fs-12);text-transform:none;letter-spacing:0;text-align:center;line-height:1.4}
-body[data-cot-width] .cot-es.cot-es--record .es-best{margin:18px 20px;border:0;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--battle-edge-own)}
-.cot-es--record .es-combat-details{padding:0 20px 18px}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--line-1);color:var(--ink-2);font:600 var(--battle-fs-13)/1 var(--font-ui)}.cot-es--record .es-combat-details>summary::before{content:'+';color:var(--accent);font-size:var(--battle-fs-20)}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
+/* (the best shot and the breakdown's foot on the record's 12 px block gap: at 18 the best shot ran 1 px past the 1280x720
+   column's fold in en and 7 in zh, behind a 96 px empty band, and zh lost the breakdown row at 1024x600, gauntlet r12) */
+body[data-cot-width] .cot-es.cot-es--record .es-best{margin:var(--s3) 20px;border:0;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--battle-edge-own)}
+.cot-es--record .es-combat-details{padding:0 20px var(--s3)}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--line-1);color:var(--ink-2);font:600 var(--battle-fs-13)/1 var(--font-ui)}.cot-es--record .es-combat-details>summary::before{content:'+';color:var(--accent);font-size:var(--battle-fs-20)}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{border:0;background:transparent;margin:var(--s4) 20px;gap:10px}.cot-es--record .es-combat-details .es-mini{padding:14px}.cot-es--record .es-combat-details .es-blow{font-size:var(--battle-fs-12);margin:10px 0;color:var(--ink-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0;background:transparent;border:0;border-bottom:1px solid var(--line-1)}
@@ -145,8 +147,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-hero .es-sub{
    a fade over a sliced row was no cue; r5: a capped column broke the level bottoms) */
 body[data-cot-width] .cot-es.cot-es--record .es-more{display:none}
 body[data-cot-width] .cot-es.cot-es--record :is(.es-debrief,.es-report).more>.es-more{position:sticky;bottom:0;z-index:var(--z-lift);display:flex;
-  align-items:flex-end;justify-content:center;height:var(--es-cue-h,18px);margin-top:calc(-1 * var(--es-cue-h,18px));
-  padding-bottom:var(--s1);box-sizing:border-box;
+  align-items:flex-end;justify-content:center;height:var(--es-cue-h,16px);margin-top:calc(-1 * var(--es-cue-h,16px));
+  padding-bottom:2px;box-sizing:border-box;
   border-top:1px solid var(--line-2);background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--hud-plate-strong);
   color:var(--ink-2);pointer-events:none}
 /* (the wide windows' report is the two columns' grid, each column with its own cue) */
@@ -205,6 +207,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--ac
    Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
    ink (a kill's silhouette the victim's), and the line ends on the winner's flag. */
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w{display:inline-flex;align-items:center;gap:.16em;text-transform:uppercase}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w .cjk{font-size:.8em}
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w.alpha{color:var(--team-own)}
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w.bravo{color:var(--team-enemy)}
 .cot-es--record .fg{display:inline-flex;flex:0 0 auto}
@@ -231,6 +234,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tal .k>span{min-width:0;overflow
 .cot-es--record .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 64px 18px;--es-areas:"fl si id kc dg st"}
 .cot-es--record[data-revives='1'] .es-rosters{--es-cols:18px 40px minmax(0,1fr) 30px 30px 64px 18px;--es-areas:"fl si id kc dc dg st"}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{display:none}
+/* (no caption over the names at any width: the rows are the combatants, and the word over them read as an eyebrow on the
+   narrow sheets, gauntlet r12) */
+body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .word{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch:is(.kc,.dc,.st){display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .ch{display:flex;justify-content:flex-end;color:var(--ink-3)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr :is(.kc,.dc){display:none}
@@ -340,8 +346,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   /* (the medals' strip 4 px nearer its tiles: one px over the column, they stood under the cue at 844x390, r9) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:var(--s1) var(--s3)}
   /* (and the best shot beside them on the strip's own 4 px, as tall as its 48 px tiles: at 18 px its foot crossed the fold,
-     r10) */
-  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-block:var(--s1);--es-medal-h:48px}
+     r10; its right edge on the tiles' 12 px line: at 20 it stopped 8 px short of them at 844x390, gauntlet r12) */
+  body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-block:var(--s1);margin-right:var(--s3);--es-medal-h:48px}
   /* (smaller medals, so a short landscape holds them whole under its tiles, gauntlet r4) */
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{width:48px;height:48px;padding:4px}
   body[data-cot-width] .cot-es.cot-es--record .es-awards .aw svg{width:40px;height:40px}

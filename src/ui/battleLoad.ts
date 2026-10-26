@@ -360,8 +360,10 @@ ${WIDE} .cot-bl .team.cards{--bl-row-height:118px;--bl-row-gap:6px;--bl-heading:
 ${WIDE} .cot-bl .team.cards .thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 ${WIDE} .cot-bl .team.cards .rows{grid-template-rows:var(--bl-row-height);grid-template-columns:repeat(var(--bl-count),minmax(0,1fr));
   gap:var(--bl-row-gap);overflow:visible;}
-/* (beside the hero cards the VS stands level with their bands; beside the sheets of a long side it centres between them) */
-${WIDE} .cot-bl .teams:has(>.team.cards) .vs{align-self:end;padding-bottom:34px;}
+/* (beside the hero cards the VS stands on their vehicle names' line, the cards' band less the name's 4 px inset and half
+   of each line, at every wide size: at a fixed 34 px it stood 9 px under the names and 28 px under the strips' middle at
+   2560x1440, where the band is 68 px, gauntlet r12; beside the sheets of a long side it centres between them) */
+${WIDE} .cot-bl .teams:has(>.team.cards) .vs{align-self:end;padding-bottom:calc(var(--bl-card-band) - 25px);}
 /* A hero card (the live hero card's layers, heroCard.ts): the nation's flag and the vehicle over the card's ground, the
    vehicle's name in the band under it, the side's ink along the floor, the player's card ringed in the accent. */
 ${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;isolation:isolate;container-type:size;background:var(--surface-raised);
@@ -401,7 +403,8 @@ ${WIDE} .cot-bl .briefing{grid-template-columns:minmax(0,1fr) minmax(0,clamp(360
   padding-inline:clamp(64px,3.4vw,88px);}
 ${WIDE} .cot-bl .map{width:clamp(250px,13vw,330px);}${WIDE} .cot-bl .map img{width:clamp(234px,12.2vw,314px);height:clamp(234px,12.2vw,314px);}
 ${WIDE} .cot-bl .team.cards{--bl-row-height:clamp(118px,6.15vw,156px);}
-${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:clamp(54px,2.82vw,68px);}
+${WIDE} .cot-bl .teams{--bl-card-band:clamp(54px,2.82vw,68px);}
+${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:var(--bl-card-band);}
 ${WIDE} .cot-bl .team.cards .row.card :is(.nm,.cs){font-size:max(var(--fs-floor-11),var(--fs-11),clamp(11px,.55vw,14px));}
 ${WIDE} .cot-bl .team:not(.cards){--bl-row-height:clamp(30px,1.56vw,40px);}
 ${WIDE} .cot-bl .row:not(.card) .nm{font-size:max(var(--battle-fs-13),var(--fs-13),clamp(13px,.66vw,16px));}
