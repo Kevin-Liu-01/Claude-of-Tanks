@@ -107,7 +107,7 @@ await settle();
 assert.equal(garagePanel.imports, 1, 'the fleet-takes code loads on screen');
 assert.deepEqual(dom.state.fetches, ['/media/site50-r14/fleet/index.json'], 'with the index');
 assert.ok(garagePanel.element.classList.contains('vehicle'), 'the panel shows the tank\'s own take');
-assert.equal(garagePanel.caption.textContent, take.short.en, 'captioned with its short title');
+assert.equal(garagePanel.caption.textContent, '', 'no second name: the band names the tank (UI-LOCKDOWN G1)');
 assert.equal(garagePanel.shot.dataset.tip, take.title.en, 'its full title in the hover tip');
 const video = garagePanel.video();
 assert.ok(video, 'a video joins the shot');

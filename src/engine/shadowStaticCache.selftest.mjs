@@ -325,6 +325,68 @@ const copies = (log) => log.filter((e) => e.kind === 'copy').map((e) => `${e.fro
   assert.equal(frame(f, cache).handled, false);
 }
 
+// ---------------------------------------------------------------------------------------------- scoped re-renders
+// (battle-spikes-253) a bounded content change re-renders only the cascades whose box its bounds meet
+{
+  const scene = new THREE.Scene();
+  const world = new THREE.Group(); world.name = 'world-scoped'; world.userData.matrixTraversalFrozen = true;
+  const pool = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial(), 4);
+  pool.castShadow = true; pool.name = 'pool';
+  const place = (i, x) => { pool.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, 0, 0)); pool.instanceMatrix.needsUpdate = true; };
+  place(0, 0); place(1, 2); place(2, 500); place(3, 502);
+  const plank = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  plank.castShadow = true; plank.name = 'plank'; plank.position.set(500, 0, 3);
+  world.add(pool, plank);
+  scene.add(world);
+  // two cascades 500 m apart, each a 40 m box seen from up-sun (cascade 0 over x = 0, cascade 1 over x = 500)
+  const lights = [0, 500].map((x) => {
+    const light = new THREE.DirectionalLight();
+    light.castShadow = true; light.position.set(x + 30, 60, 20); light.target.position.set(x, 0, 0);
+    Object.assign(light.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 1, far: 200 });
+    light.shadow.mapSize.set(64, 64); light.shadow.autoUpdate = false;
+    light.shadow.map = new THREE.WebGLRenderTarget(64, 64, { depthTexture: new THREE.DepthTexture(64, 64) });
+    scene.add(light, light.target);
+    return light;
+  });
+  const renderer = { clear() {}, copyTextureToTexture() {}, initRenderTarget() {} };
+  const cache = createShadowStaticCache();
+  // (a change and a still frame: two changed frames in a row promote the caster to the dynamic layer)
+  const step = (mutate) => {
+    if (mutate) { step(); mutate(); }
+    world.updateMatrixWorld(true);
+    cache.beginFrame({ scene, lights, forced: false, enabled: true });
+    lights.forEach((light, i) => {
+      light.shadow.needsUpdate = true;
+      cache.renderCascade(renderer, () => { light.shadow.needsUpdate = false; }, [light], light, i, scene, new THREE.Camera());
+    });
+    const r = cache.frameRecord;
+    return { rebuilt: r.rebuildMask, reused: r.reuseMask, kept: r.keptMask, content: r.content };
+  };
+  for (let i = 0; i < STATIC_SHADOW_SETTLE_FRAMES; i++) step();
+  assert.equal(step().rebuilt, 3, 'both copies taken');
+  assert.equal(step().reused, 3);
+  let r = step(() => place(0, 0.5));
+  assert.deepEqual([r.rebuilt, r.kept], [3, 0], 'an instanced caster\'s first change re-renders every cascade (its snapshot taken)');
+  r = step(() => place(1, 2.5));
+  assert.deepEqual([r.rebuilt, r.reused, r.kept, r.content], [1, 2, 2, 'instances'], 'an instance moved by cascade 0: cascade 0 alone');
+  r = step(() => place(2, 499.5));
+  assert.deepEqual([r.rebuilt, r.reused, r.kept], [2, 1, 1], 'one by cascade 1: cascade 1 alone');
+  r = step(() => { pool.count = 3; });
+  assert.deepEqual([r.rebuilt, r.kept], [2, 1], 'an instance hidden by the count: where it stood');
+  r = step(() => { pool.instanceMatrix.needsUpdate = true; });
+  assert.deepEqual([r.rebuilt, r.reused, r.kept], [0, 3, 3], 'a version bumped with no matrix changed re-renders nothing');
+  r = step(() => { plank.layers.enable(3); });
+  assert.deepEqual([r.rebuilt, r.kept, r.content], [2, 1, 'flags'], 'a caster\'s flags (its matrix held): where it stands');
+  r = step(() => { plank.castShadow = false; });
+  assert.deepEqual([r.rebuilt, r.kept], [3, 0], 'a cast flag turned off is structure: every cascade');
+  plank.castShadow = true; step();
+  r = step(() => { plank.geometry = new THREE.BoxGeometry(2, 2, 2); });
+  assert.deepEqual([r.rebuilt, r.kept, r.content], [3, 0, 'geometry'], 'a geometry change cannot be bounded: every cascade');
+  r = step(() => { pool.visible = false; });
+  assert.deepEqual([r.rebuilt, r.kept], [3, 0], 'a visibility flip: every cascade');
+  assert.ok(cache.telemetry().scopedKept >= 6, 'the kept cascades counted');
+}
+
 // ---------------------------------------------------------------------------------------------- the router
 
 {

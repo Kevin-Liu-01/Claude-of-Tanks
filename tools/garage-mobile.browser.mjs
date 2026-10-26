@@ -78,10 +78,10 @@ try{
    await page.screenshot({path:resolve(out,`${name}-custom-camo.png`)});await closeModal();await tap('.cot-drawer-close');
    step='dossier';await details();await box('.cot-garage .stats');
    for(const section of await page.locator('.stats>.cot-stat-section').all())assert.ok(await section.isVisible(),'every dossier section is available');
-   for(const tab of await page.locator('.cot-technical-tab').all()){await tap(tab);assert.equal(await tab.getAttribute('aria-selected'),'true');}
+   assert.equal(await page.evaluate(()=>[...document.querySelectorAll('.cot-technical-tab')].filter((tab)=>tab.getClientRects().length).length),0,'the sheet leaves the drawing choice to the viewer');
    await tap('[data-technical-expand]');
    assert.ok((await page.locator('.cot-technical-viewer-figure img').boundingBox()).height>=80,'expanded diagram remains readable on short screens');
-   for(const tab of await page.locator('.cot-technical-viewer-tab').all())await tap(tab);
+   for(const tab of await page.locator('.cot-technical-viewer-tab').all()){await tap(tab);assert.equal(await tab.getAttribute('aria-selected'),'true');}
    await closeModal();
    assert.equal(await page.locator('.cot-garage').getAttribute('data-garage-panel'),'equipment','expanded schematic returns to the dossier');
    assert.ok(await page.locator('.stats .cot-info-trigger:visible').count()>=9,'all dossier chapters are available');

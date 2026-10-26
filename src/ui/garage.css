@@ -77,13 +77,13 @@
   color:var(--ink-2);background:var(--surface-page);border:1px solid var(--line-2);
   box-shadow:var(--e1);
   font-family:var(--font-ui);
-  transition:color var(--dur-fast),border-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast);}
+  transition:color var(--dur-fast),border-color var(--dur-fast),transform var(--dur-fast);}
 .cot-garage-variant-trigger::before{content:'';position:absolute;z-index:1;inset:0;
   background:linear-gradient(90deg,var(--surface-scene) 0%,var(--scrim) 52%,var(--fill-faint) 100%),
     linear-gradient(0deg,var(--surface-plate),transparent 70%);pointer-events:none;}
 .cot-garage-variant-trigger-thumb{position:absolute;z-index:0;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center;
   background:var(--surface-menu);filter:saturate(.9) brightness(.66) contrast(1.07);transform:scale(1.01);
-  transition:filter var(--dur-fast) ease,transform var(--dur-base) ease;}
+  transition:transform var(--dur-base) ease;}
 .cot-garage-variant-trigger-copy{position:relative;z-index:2;min-width:0;display:flex;flex-direction:column;gap:6px;
   text-shadow:var(--stage-halo);}
 .cot-garage-variant-trigger-copy small{display:flex;align-items:center;gap:5px;color:var(--text-accent);
@@ -204,7 +204,7 @@
 .cot-battle-control{position:absolute;top:26px;left:50%;transform:translateX(-50%);
   pointer-events:auto;width:252px;height:46px;display:flex;z-index:20;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 252 46'%3E%3Cpath d='M11.2 .5H240.8L251.5 23 240.8 45.5H11.2L.5 23Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.4 24.8 11.8 45.1h228.4l10.4-20.3' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
-  transition:filter var(--dur-fast),transform var(--dur-instant);}
+  transition:transform var(--dur-instant);}
 
 .cot-battle,.cot-battle-mode{height:100%;cursor:pointer;border:0;outline:0;color:var(--ink-1);
   background:transparent;font-family:var(--font-ui);font-weight:700;text-shadow:none;}
@@ -403,17 +403,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellmetric b{display:inline;margin:0 2px 0 0;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-data);
   letter-spacing:0;text-transform:none;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-.cot-garage .armorline{position:relative;min-width:0;min-height:54px;padding:9px var(--s2) var(--s2) 38px;color:var(--ink-3);
-  text-transform:none;background:var(--scrim);border:1px solid var(--line-1);}
-.cot-garage .armorline svg{position:absolute;left:9px;top:11px;width:19px;height:19px;color:var(--accent-lo);}
-.cot-garage .armorline span{display:block;font:600 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;}
-.cot-garage .armorline b{display:block;margin-top:5px;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
-  text-transform:none;}
-.cot-layer-link{width:100%;height:36px;margin-top:var(--s2);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
-  color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);cursor:pointer;
-  font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
-.cot-layer-link svg{width:13px;height:13px;color:var(--accent-lo);}
-.cot-layer-link:hover,.cot-layer-link:focus-visible{color:var(--accent-hi);border-color:var(--accent-lo);outline:none;}
+/* a layer link (armour, modules) is the dossier's link row (.cot-gallery-link): glyph, label, chevron (the r16 critic read
+   the outlined button beside the chevron rows as a second style) */
 .cot-technical-section{padding:0 var(--s3) var(--s3);overflow:hidden;}
 .cot-technical-section .cot-dossier-head{margin:0 -12px var(--s2);padding:14px 15px 13px;
   border:0;border-bottom:1px solid var(--line-2);box-shadow:none;}
@@ -452,7 +443,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   padding:0 var(--s3);background:var(--btn-secondary-fill);border-color:var(--btn-secondary-edge);box-shadow:none;
   text-transform:none;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);}
 /* the drawing's row reads as the links under it: glyph, name, and the chevron at its end */
-.cot-garage .stats .cot-technical-expand-label svg{width:16px;height:16px;}
+.cot-garage .stats .cot-technical-expand-label svg{width:16px;height:16px;color:var(--ink-2);}
 .cot-garage .stats .cot-technical-expand-label::after{content:'\203A';margin-left:auto;color:var(--ink-3);
   font-size:max(var(--fs-floor-11),var(--fs-14));line-height:1;}
 .cot-technical-expand-label>span{display:none;}
@@ -506,42 +497,40 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-rail{--country-edge:34px;position:absolute;z-index:5;
   left:50%;bottom:186px;transform:translateX(-50%);
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
-  grid-template-columns:var(--country-edge) auto minmax(0,1fr) var(--country-edge);
+  grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
-.cot-country-chip.is-sliver{visibility:hidden;}
+/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows */
 .cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px calc(3px + var(--rail-end,0px)) var(--s1) 3px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-inline:0;touch-action:pan-x;
   scrollbar-width:none;-ms-overflow-style:none;}
 .cot-country-chips::-webkit-scrollbar{display:none;}
+.cot-country-rail.has-more-right .cot-country-chips{-webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);
+  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);}
+.cot-country-rail.has-more-left .cot-country-chips{-webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px);
+  mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px);}
+.cot-country-rail.has-more-left.has-more-right .cot-country-chips{
+  -webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);
+  mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);}
 /* (a flag not wholly in the track hides, so the rail ends on whole flags; its edge arrow says it continues) */
-.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;justify-self:center;align-self:stretch;
-  width:26px;height:auto;margin:2px 0 var(--s1);
-  color:var(--ink-3);background:var(--surface-raised);
-  border:1px solid var(--line-3);cursor:pointer;opacity:.68;outline:none;
-  box-shadow:var(--e1);
-  transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast),
-    box-shadow var(--dur-fast),transform var(--dur-fast) ease-out;}
-.cot-country-edge.prev{grid-column:1;}
-.cot-country-edge.next{grid-column:4;}
-.cot-country-edge:hover,.cot-country-edge:focus-visible{color:var(--accent-hi);border-color:var(--accent);
-  background:linear-gradient(180deg,var(--accent-wash),var(--surface-nav));opacity:1;
-  box-shadow:var(--e1);}
-.cot-country-edge:active{transform:scale(.96);}
-.cot-country-edge.is-unavailable{opacity:.3;pointer-events:none;}
-.cot-country-chip{cursor:pointer;border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-plate);
-  color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-mono);padding:var(--s1) var(--s2);
+/* the roster row (owner 10-25 via Main: "completely fix and redesign this row"): every nation a quiet chip of the row's
+   one height and frame, a small rounded flag and its count in the data face; the chosen one on the kit's slate plate (the
+   segmented control's), never a gold edge */
+.cot-country-chip{cursor:pointer;border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);
+  color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);padding:0 var(--s2);height:var(--btn-h-s);
   display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;flex:0 0 auto;scroll-snap-align:start;
-  transition:color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);
+  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);
   outline:none;}
-.cot-country-chip .cot-flag{width:28px;height:21px;display:block;border-radius:var(--control-radius);}
-.cot-country-chip:hover{color:var(--ink-1);border-color:var(--line-3);}
-.cot-country-chip.sel{color:var(--ink-1);border-color:var(--accent);background:var(--accent-wash);}
+.cot-country-chip .cot-flag{width:20px;height:15px;display:block;border-radius:2px;box-shadow:var(--flag-ring);}
+.cot-country-chip .lbl{font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);}
+.cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
+.cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
+.cot-country-chip.sel{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--seg-on-shadow);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
-.cot-facet-toggle{grid-column:2;position:relative;z-index:3;align-self:stretch;margin:2px 0 var(--s1) 3px;
+.cot-facet-toggle{grid-column:2;position:relative;z-index:3;align-self:stretch;margin:2px var(--s2) var(--s1) 3px;
   display:inline-flex;align-items:center;justify-content:center;
   min-width:42px;cursor:pointer;padding:6px 10px 5px;outline:none;color:var(--ink-3);background:var(--surface-page);
   border:1px solid var(--line-3);border-bottom:2px solid var(--line-3);}
@@ -604,7 +593,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid var(--line-3);
-  transition:border-color var(--dur-fast),transform var(--dur-fast),box-shadow var(--dur-fast);}
+  transition:border-color var(--dur-fast),transform var(--dur-fast);}
 .cot-card::after{content:"";position:absolute;z-index:2;left:0;right:0;bottom:0;pointer-events:none;
   height:calc(var(--hc-band) + var(--hc-n2,0px) + 6px);
   background:linear-gradient(180deg,transparent 0%,var(--scrim) 50%,var(--scrim) 100%);}
@@ -676,11 +665,14 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   text-transform:uppercase;margin-bottom:5px;}
 .cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
 .cot-camos .ctitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
-.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 var(--s2);border:1px solid var(--accent-lo);
-  background:var(--accent-wash);color:var(--accent-hi);cursor:pointer;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
-  letter-spacing:0;text-transform:uppercase;white-space:nowrap}
+/* Create is an action, not a choice: a quiet bordered button in sentence case, its brush in the accent (it wore a chosen
+   chip's orange edge and wash, so an action nobody had pressed read as switched on) */
+.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 var(--s2);border:1px solid var(--line-control);
+  background:var(--surface-plate);color:var(--ink-1);cursor:pointer;font:500 max(var(--fs-floor-11),var(--fs-12)) var(--font-ui);
+  letter-spacing:0;white-space:nowrap}
+.cot-custom-open svg{color:var(--accent)}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
-  border-color:var(--accent);background:var(--accent-wash);outline:none}
+  border-color:var(--line-3);background:var(--surface-hover);outline:none}
 .cot-camo-tags{display:flex;flex:0 0 auto;gap:var(--s1);margin:0 0 var(--s1);min-width:0;overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;
   -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
@@ -714,13 +706,13 @@ body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;flex:1 1 auto;
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
 .cot-camos .cgrid.camo.can-scroll{
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
-  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - var(--peek,16px)),rgb(0 0 0 / .25) 100%);}
 .cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
 .cot-camo-card{cursor:pointer;text-align:center;padding:5px var(--s1) var(--s1);min-width:0;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background var(--dur-fast),box-shadow var(--dur-fast);}
+  transition:border-color var(--dur-fast),background var(--dur-fast);}
 .cot-camo-card:hover{border-color:var(--line-control);}
 .cot-camo-card.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));
@@ -774,8 +766,7 @@ body[data-cot-panels='overlay'] .cot-camos .ctitle>:is(svg,span){display:none;}
 .cot-custom-repeat-grid{display:grid;grid-template-columns:1fr;gap:9px}
 .cot-custom-check{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase}
 .cot-custom-check input{accent-color:var(--accent)}
-.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cot-custom-status{min-height:18px;color:var(--ink-3);
-  font:700 max(var(--fs-floor-11),var(--fs-11))/1.45 var(--font-ui)}.cot-custom-status.ok{color:var(--text-ok)}.cot-custom-status.error{color:var(--text-danger)}
+.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .cot-custom-help{color:var(--ink-3);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);line-height:1.55}.cot-custom-help strong{color:var(--text-accent)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab{grid-template-columns:1fr;min-height:0}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:220px}
@@ -840,8 +831,9 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick.open{display:block;}
 .cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
   margin-bottom:9px;}
-.cot-eqpick .ph .t{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);
-  color:var(--ink-2);text-transform:uppercase;}
+/* the picker's head reads as the paint sheet's does: a sentence-case title and the kit's bare close (the gauntlet 10-25:
+   three heads and three closes across the sibling panels) */
+.cot-eqpick .ph .t{color:var(--ink-1);font:600 var(--fs-16)/1 var(--font-display);}
 .cot-eqpick .ph .t i{font-style:normal;color:var(--text-accent);}
 .cot-eqpick .chips{display:flex;gap:var(--s1);margin-bottom:9px;flex-wrap:wrap;}
 /* the kit's chip and icon button (components.css); the Garage's element reset takes their padding */
@@ -850,11 +842,12 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   max-height:min(46vh,430px);overflow-y:auto;overscroll-behavior:contain;
   padding-right:3px;scrollbar-width:thin;
   scrollbar-color:var(--line-3) var(--scrim);}
-/* a scrolling grid keeps a foot pad: the fade covers the next row's peek in it, never the last whole row */
-:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:16px;}
+/* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
+   the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
+:is(.cot-eqpick .pgrid,.cot-camos .cgrid.camo){padding-bottom:var(--peek,16px);}
 .cot-eqpick .pgrid.can-scroll{
-  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);
-  mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - 16px),transparent 100%);}
+  -webkit-mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);
+  mask-image:linear-gradient(180deg,var(--surface-page) 0,var(--surface-page) calc(100% - var(--peek,16px)),color-mix(in srgb,var(--surface-page) 25%,transparent) 100%);}
 .cot-eqpick .pgrid::-webkit-scrollbar{width:5px;}
 .cot-eqpick .pgrid::-webkit-scrollbar-track{background:var(--scrim);}
 .cot-eqpick .pgrid::-webkit-scrollbar-thumb{background:var(--line-control);}
@@ -864,7 +857,7 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   width:100%;min-width:0;padding:var(--s2) 5px 7px;font:inherit;color:inherit;
   background:linear-gradient(180deg,var(--scrim),var(--side-plate));
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
-  transition:border-color var(--dur-fast),background-color var(--dur-fast),box-shadow var(--dur-fast),transform var(--dur-fast);}
+  transition:border-color var(--dur-fast),background-color var(--dur-fast),transform var(--dur-fast);}
 .cot-eqtile.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(180deg,var(--accent-wash),var(--side-plate));}
 .cot-eqtile svg{display:block;width:38px;height:38px;margin:0 auto 5px;
@@ -885,6 +878,8 @@ html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wr
 /* a locked tile reads as unavailable by its tag and its quiet plate, its words still legible (opacity took them to 2.9:1) */
 .cot-eqtile.locked{cursor:default;opacity:.8;}
 .cot-eqtile.locked :is(.n,.e){color:var(--ink-3);}
+/* its glyph quiets with its words, on every layout (the phone kept a full-colour frame on a locked tile) */
+.cot-eqtile.locked svg{opacity:.5;filter:grayscale(1) var(--sil-shadow);}
 .cot-eqtile.remove .n{color:var(--ink-3);}
 .cot-eqtile.remove svg{opacity:.55;}
 .cot-eqtile:focus-visible{outline:2px solid var(--accent);outline-offset:-3px;
@@ -897,56 +892,42 @@ html[lang^='zh'] .cot-eqtile .e{word-break:keep-all;text-wrap:pretty;overflow-wr
   .cot-eqtile.locked:hover{border-color:var(--line-2);}
 }
 
-/* The picker tooltip lives outside the scrolling grid so it never clips.
-   First hover is deliberately delayed in garage.ts; moving between nearby
-   equipment buttons keeps the tooltip primed for instant comparison. */
-.cot-eqtooltip{position:fixed;z-index:90;width:286px;box-sizing:border-box;
-  pointer-events:none;padding:10px 11px 9px;font-family:var(--font-ui);
-  color:var(--ink-1);background:var(--surface-menu);
-  border:0;border-radius:var(--r1);
-  box-shadow:var(--e3);opacity:0;visibility:hidden;
-  transform:translateX(4px) scale(.985);transform-origin:right center;
-  transition:opacity var(--dur-fast) ease-out,transform var(--dur-fast) ease-out,visibility 0s linear var(--dur-fast);}
-/* the kit tip's plate (components.css .cot-c-tip): no coloured edge (owner 10-25, the notification bar) */
-.cot-eqtooltip[data-side="right"]{transform:translateX(-4px) scale(.985);transform-origin:left center;}
-.cot-eqtooltip.show{opacity:1;visibility:visible;transform:translateX(0) scale(1);
-  transition-delay:0s;}
-.cot-eqtooltip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
+/* a tile's projection inside the kit's rich tooltip (richTooltip.css carries the plate, the placement and the layer;
+   garage.ts gives no body on a phone or a coarse pointer) */
+.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtooltip[data-category="recon"] .eyebrow{color:var(--text-own);}
-.cot-eqtooltip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
-.cot-eqtooltip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
-.cot-eqtooltip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
+.cot-eqtip[data-category="recon"] .eyebrow{color:var(--text-own);}
+.cot-eqtip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
+.cot-eqtip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
+.cot-eqtip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtooltip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
+.cot-eqtip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:600;line-height:1.42;letter-spacing:0;}
-.cot-eqtooltip .summary{display:block;margin-top:7px;padding:6px 7px;color:var(--ink-2);
+.cot-eqtip .summary{display:block;margin-top:7px;padding:6px 7px;color:var(--ink-2);
   background:var(--fill-scale);border-left:1px solid var(--line-3);
   font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;line-height:1.4;letter-spacing:0;}
-.cot-eqtooltip .metrics{display:grid;gap:var(--s1);margin-top:var(--s2);}
-.cot-eqtooltip .metrics:empty{display:none;}
-.cot-eqtooltip .metrics-heading{padding-bottom:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
+.cot-eqtip .metrics{display:grid;gap:var(--s1);margin-top:var(--s2);}
+.cot-eqtip .metrics:empty{display:none;}
+.cot-eqtip .metrics-heading{padding-bottom:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;letter-spacing:0;text-transform:uppercase;}
-.cot-eqtooltip .metric{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:1px 6px;
+.cot-eqtip .metric{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:1px 6px;
   align-items:center;
   padding:var(--s1) 6px;background:var(--btn-media-fill);border:1px solid var(--line-1);}
-.cot-eqtooltip .metric-icon{width:12px;height:12px;display:grid;place-items:center;color:var(--ink-3);}
-.cot-eqtooltip .metric-icon svg{display:block;}
-.cot-eqtooltip .metric-label{min-width:0;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
+.cot-eqtip .metric-icon{width:12px;height:12px;display:grid;place-items:center;color:var(--ink-3);}
+.cot-eqtip .metric-icon svg{display:block;}
+.cot-eqtip .metric-label{min-width:0;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
   line-height:1.25;letter-spacing:0;}
-.cot-eqtooltip .metric-values{display:flex;align-items:baseline;justify-content:flex-end;
+.cot-eqtip .metric-values{display:flex;align-items:baseline;justify-content:flex-end;
   gap:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));white-space:nowrap;}
-.cot-eqtooltip .metric-values .arrow{color:var(--ink-4);}
-.cot-eqtooltip .metric-values b{color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;}
-.cot-eqtooltip .metric.improved .metric-icon{color:var(--text-ok);}
-.cot-eqtooltip .metric.degraded .metric-icon{color:var(--text-danger);}
-.cot-eqtooltip .metric.improved .metric-values b{color:var(--text-ok);}
-.cot-eqtooltip .metric.degraded .metric-values b{color:var(--text-danger);}
-.cot-eqtooltip .action{display:block;margin-top:7px;padding-top:6px;
+.cot-eqtip .metric-values .arrow{color:var(--ink-4);}
+.cot-eqtip .metric-values b{color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;}
+.cot-eqtip .metric.improved .metric-icon{color:var(--text-ok);}
+.cot-eqtip .metric.degraded .metric-icon{color:var(--text-danger);}
+.cot-eqtip .metric.improved .metric-values b{color:var(--text-ok);}
+.cot-eqtip .metric.degraded .metric-values b{color:var(--text-danger);}
+.cot-eqtip .action{display:block;margin-top:7px;padding-top:6px;
   border-top:1px solid var(--line-2);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
   font-weight:700;line-height:1.3;letter-spacing:0;text-transform:uppercase;}
-body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
-@media (hover:none) and (pointer:coarse){.cot-eqtooltip{display:none!important;}}
 
 /* garage_ui: entrance transition — the garage used to hard-cut in (boot and
    battle-exit both flipped display:none→block in one frame). show() re-arms
@@ -990,9 +971,9 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
   box-shadow:var(--e2);transition:border-color var(--dur-fast);}
 .cot-featured .fshot:hover{border-color:var(--accent);}
 .cot-featured .fly{position:absolute;inset:0;background-size:cover;background-position:center 40%;
-  opacity:0;transform:scale(1.025);transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
-.cot-featured .fly.on{opacity:1;transform:scale(1);
-  transition:opacity var(--cot-motion-scene) var(--cot-ease-out),transform 7s linear;}
+  opacity:0;transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
+/* a take crossfades in; its slow 7 s settle from a 1.025 scale was a moving picture with no token (motion lint) */
+.cot-featured .fly.on{opacity:1;}
 .cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px var(--s7) 5px var(--s2);
   font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-1);
   background:linear-gradient(0deg,var(--side-plate),transparent);white-space:nowrap;
@@ -1001,6 +982,7 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
    muted loop cover the stills, which keep their rotation for a tank without one. */
 .cot-featured.vehicle .fdots,.cot-featured.vehicle .fnav{display:none;}
 .cot-featured .fcap{z-index:2;}
+.cot-featured .fcap:empty{display:none;}
 .cot-featured .fleet-take-video{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;
   object-fit:cover;background:transparent;}
 .cot-featured .fleet-take-toggle{position:absolute;right:4px;top:4px;z-index:3;display:grid;place-items:center;
@@ -1250,12 +1232,16 @@ body[data-cot-panels='overlay'] .cot-country-rail{
 }
 body[data-cot-panels='overlay'] .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise}
 body[data-cot-panels='overlay'] .cot-country-chips{height:var(--cot-country-height);gap:var(--s1);padding:2px calc(3px + var(--rail-end,0px)) 2px 3px}
-body[data-cot-panels='overlay'] .cot-country-edge{width:30px;height:42px}
-body[data-cot-panels='overlay'] .cot-country-chip{
-  min-height:42px;padding:var(--s1) 9px 3px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:0;gap:5px;
-}
-body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
-body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:var(--s1) 9px 3px;margin-block:2px}
+/* a phone's row: the filter and the nations, the track running to the row's end (its boxed arrows are gone) */
+body[data-cot-panels='overlay'] .cot-country-rail{--country-edge:0px;grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-country-rail .cot-facet-toggle{grid-column:1;}
+body[data-cot-panels='overlay'] .cot-country-rail .cot-country-chips{grid-column:2;justify-content:flex-start;padding-inline:0;}
+body[data-cot-panels='overlay'] .cot-country-chip{height:auto;min-height:40px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-11));
+  letter-spacing:0;gap:6px;}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:40px;min-width:44px;padding:0 10px;margin:0;align-self:center;
+  border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);}
+body[data-cot-panels='overlay'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);box-shadow:var(--ring-accent);}
+body[data-cot-input='coarse'] :is(.cot-country-chip,.cot-facet-toggle){min-height:44px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1426,7 +1412,6 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats .sub>span{
   position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay']:not([data-cot-input='coarse']) .cot-facet-toggle{min-height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
   min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:102px;padding:0;
@@ -1506,14 +1491,9 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry:hover,.cot-multiplayer-entry:focus-visible{background:var(--accent);color:var(--accent-hi);}
 
-/* each mode's colour: the selected rule's (the Deploy plate) and every Deploy choice's own, from the mode tokens */
-.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-standard);}
-.cot-battle-menu[data-rule='capture_the_flag'],.cot-garage [data-mode-tone='capture_the_flag']{--mode-color:var(--mode-capture-the-flag);}
-.cot-battle-menu[data-rule='zone_control'],.cot-garage [data-mode-tone='zone_control']{--mode-color:var(--mode-zone-control);}
-.cot-battle-menu[data-rule='turbo_ball'],.cot-garage [data-mode-tone='turbo_ball']{--mode-color:var(--mode-turbo-ball);}
-.cot-battle-menu[data-rule='endless_horde'],.cot-garage [data-mode-tone='endless_horde']{--mode-color:var(--mode-endless-horde);}
-.cot-battle-menu[data-rule='frontline_assault'],.cot-garage [data-mode-tone='frontline_assault']{--mode-color:var(--mode-frontline-assault);}
-.cot-battle-menu[data-rule='mars'],.cot-garage [data-mode-tone='mars']{--mode-color:var(--mode-mars);}
+/* every mode wears its own hue (owner 2026-10-25): the kit maps data-mode-tone=<mode id> to --mode-ink (components.css),
+   the menu carries its selected mode's tone and every choice its own; a mode the kit does not name falls back to standard */
+.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}
 .cot-battle-preview-icon,.cot-battle-preview h3{color:var(--mode-color);}
 .cot-battle-galaxy{border-color:#9977d8!important;background:radial-gradient(ellipse at 15% 10%,#6e40904a,transparent),#151127!important;color:#d7baff!important;}
 .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
@@ -1581,7 +1561,9 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.srow .lr){font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{min-height:44px;padding:var(--s2)}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:max(13px,var(--fs-13))}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* the sheet's drawing row opens the viewer, whose own tabs pick the drawing: the sheet shows no tabs of its own (they read
+   as the sheet's sections) */
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:none}
 /* the Gallery and proving-ground links keep their row (glyph, label, chevron at the end) over the sheet's block reset */
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-gallery-link{display:flex}
 body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
@@ -1595,8 +1577,10 @@ body[data-cot-input='coarse'] .cot-eqpick .chips{flex-wrap:nowrap;overflow-x:aut
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 32px),transparent 100%)}
 body[data-cot-input='coarse'] .cot-eqpick .chip{flex:0 0 auto}
-/* a portrait phone wraps its picker and paint chip rows: every chip whole (an edge fade over a cut chip read as clipped) */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-eqpick .chips,.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;
+/* a portrait phone wraps its picker's chips (every chip whole); its paint sheet keeps the nations and the kinds on one
+   strip each under the edge fade, so the sheet's room goes to paint (the gauntlet 10-25: seven rows of chips filled half
+   the sheet before the first swatch) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpick .chips{flex-wrap:wrap;
   overflow:visible;padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 /* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
@@ -1611,8 +1595,7 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
    picker is never a sheet half over another with two close buttons */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage.picker-open[data-garage-panel='equipment'] .stats{visibility:hidden;}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-garage{--cot-country-height:48px}
-body[data-cot-input='coarse'][data-cot-panels='overlay'] :is(.cot-country-chip,.cot-country-edge){min-height:44px;min-width:44px}
-body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-rail{--country-edge:44px}
+body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-country-chip{min-height:44px;min-width:44px}
 body[data-cot-input='coarse'][data-cot-panels='overlay'] .cot-car-arrow{min-width:44px;flex-basis:44px}
 
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{display:block;overflow-y:auto;overscroll-behavior:contain}
@@ -1629,9 +1612,9 @@ body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:none}
 /* The expanded dossier is a complete reading view, not the compact preview. */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:var(--s6)}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .srow .lr{white-space:normal}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link){min-height:44px;height:auto;padding:10px;font-size:max(var(--fs-floor-11),var(--fs-11));white-space:normal}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.armorline span,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.eqslot .sl){font-size:max(var(--fs-floor-11),var(--fs-11))}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b,.armorline b){font-size:max(13px,var(--fs-13))}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link,.stats .cot-technical-expand-label){min-height:44px;height:auto;padding:10px;font-size:max(var(--fs-floor-11),var(--fs-11));white-space:normal}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.eqslot .sl){font-size:max(var(--fs-floor-11),var(--fs-11))}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b){font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 54px 48px;gap:5px;padding-inline:5px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellrow .nm small){white-space:normal;overflow-wrap:anywhere}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;align-items:center;justify-content:center;

@@ -22,10 +22,143 @@ const v = (p: V3): THREE.Vector3 => new THREE.Vector3(...p);
 // ---------------------------------------------------------------------------------------------------------------------
 // Seating (moved unchanged from polandDonorTurretKit.ts)
 
+// UI-LOCKDOWN E (2026-10-25; Hetman II's prow cast every seat ray against its whole casting: 1.1 s of one build's main
+// thread): a level ray reaches only the triangles spanning its height and a vertical one only those over its plan point.
+// Each stock mesh answers such a ray through a proxy of one band's triangles, copied in their order, sharing the mesh's
+// bounding sphere, bounding box and world matrix, so three's own raycast culls, intersects, orders and breaks ties
+// exactly as over the whole mesh. A band takes every triangle within BAND_PAD of it (no triangle three would hit is
+// left out); a mesh with morph targets or an interleaved or normalized position, and any other ray, cast whole.
+const BAND_PAD = 1e-6;
+const LEVEL_BANDS = 64;
+const PLAN_CELLS = 16;
+
+class StockBands {
+  private key = '';
+  private tris = new Int32Array(0);
+  private bounds = new Float64Array(0);
+  private box = [0, 0, 0, 0, 0, 0];
+  private readonly level = new Map<number, THREE.Mesh | null>();
+  private readonly plan = new Map<number, THREE.Mesh | null>();
+  private readonly mesh: THREE.Mesh;
+  constructor(mesh: THREE.Mesh) { this.mesh = mesh; }
+
+  /** Whether this mesh can answer through bands at all. */
+  private usable(): boolean {
+    const g = this.mesh.geometry, position = g.attributes.position as THREE.BufferAttribute;
+    return !!position && !(position as unknown as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute
+      && !position.normalized && !Object.keys(g.morphAttributes).length && !Array.isArray(this.mesh.material)
+      && this.mesh.matrixWorld.equals(IDENTITY);
+  }
+
+  /** The triangles in three's order (drawRange, index) and their bounds, rebuilt when the geometry changed. */
+  private prepare(): boolean {
+    const g = this.mesh.geometry, position = g.attributes.position as THREE.BufferAttribute, index = g.index;
+    const key = `${position.version}:${index?.version ?? -1}:${g.drawRange.start}:${g.drawRange.count}`;
+    if (key === this.key) return true;
+    if (!this.usable()) return false;
+    this.key = key;
+    this.level.clear();
+    this.plan.clear();
+    const start = Math.max(0, g.drawRange.start);
+    const end = index ? Math.min(index.count, g.drawRange.start + g.drawRange.count)
+      : Math.min(position.count, g.drawRange.start + g.drawRange.count);
+    const count = Math.max(0, Math.floor((end - start + 2) / 3));
+    const tris = new Int32Array(count * 3), bounds = new Float64Array(count * 6);
+    const box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    let n = 0;
+    for (let i = start; i < end; i += 3, n++) {
+      for (let k = 0; k < 3; k++) tris[n * 3 + k] = index ? index.getX(i + k) : i + k;
+      const o = n * 6;
+      bounds[o] = bounds[o + 1] = bounds[o + 2] = Infinity;
+      bounds[o + 3] = bounds[o + 4] = bounds[o + 5] = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        const v = tris[n * 3 + k];
+        const xyz = [position.getX(v), position.getY(v), position.getZ(v)];
+        for (let a = 0; a < 3; a++) {
+          bounds[o + a] = Math.min(bounds[o + a], xyz[a]);
+          bounds[o + 3 + a] = Math.max(bounds[o + 3 + a], xyz[a]);
+          box[a] = Math.min(box[a], xyz[a]);
+          box[3 + a] = Math.max(box[3 + a], xyz[a]);
+        }
+      }
+    }
+    this.tris = tris.subarray(0, n * 3);
+    this.bounds = bounds.subarray(0, n * 6);
+    this.box = box;
+    return true;
+  }
+
+  /** A proxy of the triangles that pass `keep` (padded bounds), in three's order; null when none does. */
+  private proxy(keep: (o: number) => boolean): THREE.Mesh | null {
+    const position = this.mesh.geometry.attributes.position as THREE.BufferAttribute;
+    const picked: number[] = [];
+    for (let t = 0; t * 6 < this.bounds.length; t++) if (keep(t * 6)) picked.push(t);
+    if (!picked.length) return null;
+    const ArrayType = position.array.constructor as new (length: number) => THREE.TypedArray;
+    const array = new ArrayType(picked.length * 9);
+    picked.forEach((t, j) => {
+      for (let k = 0; k < 3; k++) {
+        const v = this.tris[t * 3 + k], o = j * 9 + k * 3;
+        array[o] = position.getX(v);
+        array[o + 1] = position.getY(v);
+        array[o + 2] = position.getZ(v);
+      }
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(array, 3));
+    const proxy = new THREE.Mesh(geometry, this.mesh.material);
+    proxy.matrixWorld.copy(this.mesh.matrixWorld);
+    return proxy;
+  }
+
+  /** The proxy that answers a level ray at height y or a vertical one at (x, z); undefined: cast the whole mesh. */
+  candidates(origin: THREE.Vector3, dir: THREE.Vector3): THREE.Mesh | null | undefined {
+    const levelRay = dir.y === 0, verticalRay = dir.x === 0 && dir.z === 0;
+    if (!(levelRay || verticalRay) || !this.prepare()) return undefined;
+    const [x0, y0, z0, x1, y1, z1] = this.box, b = this.bounds;
+    let proxy: THREE.Mesh | null | undefined;
+    if (levelRay) {
+      if (!(origin.y >= y0 - BAND_PAD && origin.y <= y1 + BAND_PAD)) return null;
+      const size = Math.max((y1 - y0) / LEVEL_BANDS, 1e-9);
+      const k = Math.min(LEVEL_BANDS - 1, Math.max(0, Math.floor((origin.y - y0) / size)));
+      proxy = this.level.get(k);
+      if (proxy === undefined) {
+        const lo = y0 + k * size - BAND_PAD, hi = (k === LEVEL_BANDS - 1 ? y1 : y0 + (k + 1) * size) + BAND_PAD;
+        this.level.set(k, proxy = this.proxy((o) => b[o + 1] <= hi && b[o + 4] >= lo));
+      }
+    } else {
+      if (!(origin.x >= x0 - BAND_PAD && origin.x <= x1 + BAND_PAD && origin.z >= z0 - BAND_PAD && origin.z <= z1 + BAND_PAD)) return null;
+      const sx = Math.max((x1 - x0) / PLAN_CELLS, 1e-9), sz = Math.max((z1 - z0) / PLAN_CELLS, 1e-9);
+      const i = Math.min(PLAN_CELLS - 1, Math.max(0, Math.floor((origin.x - x0) / sx)));
+      const j = Math.min(PLAN_CELLS - 1, Math.max(0, Math.floor((origin.z - z0) / sz)));
+      proxy = this.plan.get(i * PLAN_CELLS + j);
+      if (proxy === undefined) {
+        const ax = x0 + i * sx - BAND_PAD, bx = (i === PLAN_CELLS - 1 ? x1 : x0 + (i + 1) * sx) + BAND_PAD;
+        const az = z0 + j * sz - BAND_PAD, bz = (j === PLAN_CELLS - 1 ? z1 : z0 + (j + 1) * sz) + BAND_PAD;
+        this.plan.set(i * PLAN_CELLS + j, proxy = this.proxy((o) => b[o] <= bx && b[o + 3] >= ax && b[o + 2] <= bz && b[o + 5] >= az));
+      }
+    }
+    if (proxy) {
+      // three culls the whole mesh by its own bounds: the proxy carries them as they stand now
+      const g = this.mesh.geometry;
+      if (g.boundingSphere === null) g.computeBoundingSphere();
+      proxy.geometry.boundingSphere = g.boundingSphere;
+      proxy.geometry.boundingBox = g.boundingBox;
+    }
+    return proxy;
+  }
+
+  dispose(): void {
+    for (const proxy of [...this.level.values(), ...this.plan.values()]) proxy?.geometry.dispose();
+  }
+}
+const IDENTITY = new THREE.Matrix4();
+
 /** Raycast seats on permanent stock only: the donor casting plus the kit's own welded housings, never removable ERA,
  * stowage boxes or other fittings. */
 export class Stock {
   private readonly meshes: THREE.Mesh[] = [];
+  private readonly bands: StockBands[] = [];
   private readonly material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
   private readonly ray = new THREE.Raycaster();
   private readonly id: string;
@@ -36,12 +169,23 @@ export class Stock {
     for (const g of geometries) this.add(g);
   }
   add(g: THREE.BufferGeometry): THREE.BufferGeometry {
-    const mesh = new THREE.Mesh(g, this.material); mesh.updateMatrixWorld(true); this.meshes.push(mesh); return g;
+    const mesh = new THREE.Mesh(g, this.material); mesh.updateMatrixWorld(true); this.meshes.push(mesh);
+    this.bands.push(new StockBands(mesh)); return g;
+  }
+  /** The first hit along the ray just set, as `intersectObjects(meshes)[0]` finds it (StockBands). */
+  private first(): THREE.Intersection | undefined {
+    const {origin, direction} = this.ray.ray, targets: THREE.Mesh[] = [];
+    for (let i = 0; i < this.meshes.length; i++) {
+      const proxy = this.bands[i].candidates(origin, direction);
+      if (proxy === undefined) targets.push(this.meshes[i]);
+      else if (proxy) targets.push(proxy);
+    }
+    return targets.length ? this.ray.intersectObjects(targets, false)[0] : undefined;
   }
   /** The highest permanent surface under a plan point. */
   top(x: number, z: number): number {
     this.ray.set(new THREE.Vector3(x, 4, z), new THREE.Vector3(0, -1, 0));
-    const hit = this.ray.intersectObjects(this.meshes, false)[0];
+    const hit = this.first();
     if (!hit) throw new Error(`${this.id}: no permanent turret seat at ${x.toFixed(3)},${z.toFixed(3)}`);
     return hit.point.y;
   }
@@ -49,7 +193,7 @@ export class Stock {
   face(origin: V3, direction: V3): {point: THREE.Vector3; normal: THREE.Vector3} {
     const dir = new THREE.Vector3(...direction).normalize();
     this.ray.set(new THREE.Vector3(...origin), dir);
-    const hit = this.ray.intersectObjects(this.meshes, false)[0];
+    const hit = this.first();
     if (!hit?.face) throw new Error(`${this.id}: no permanent turret face from ${origin.map(v => v.toFixed(3))}`);
     const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
     if (normal.dot(dir) > 0) normal.negate();
@@ -59,7 +203,7 @@ export class Stock {
   tryFace(origin: V3, direction: V3): {point: THREE.Vector3; normal: THREE.Vector3} | null {
     try { return this.face(origin, direction); } catch { return null; }
   }
-  dispose(): void { this.material.dispose(); }
+  dispose(): void { this.material.dispose(); for (const bands of this.bands) bands.dispose(); }
 }
 
 /** Round 7 (2026-10-18; the critic's UAPL-R5C-7: permanent plates seated at a few heights sank 9-23 mm into the cast

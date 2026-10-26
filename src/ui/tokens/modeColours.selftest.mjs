@@ -82,9 +82,9 @@ assert.deepEqual(leaks.map((path) => relative(ROOT, join(ROOT, path))), [], 'mod
 // 5. the registered call sites paint the mode's hue
 const SITES = [
   ['src/ui/playMenu.ts', 'glyph: rule.icon as IconId, tone: rule.id,', "Rooms' mode cards carry their mode"],
-  ['src/ui/components/components.css', '.cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "a picker card's glyph paints its mode"],
+  ['src/ui/components/pickers.css', '.cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "a picker card's glyph paints its mode"],
   ['src/ui/modePicker.ts', 'if (next?.tone) glyph.dataset.modeTone = next.tone;', "the mode picker's rules card carries its mode"],
-  ['src/ui/components/components.css', '.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}', "the rules card's glyph paints the mode"],
+  ['src/ui/components/pickers.css', '.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}', "the rules card's glyph paints the mode"],
   ['src/ui/playMenu.ts', 'modeGlyph.dataset.modeTone = selectedGameMode;', "Rooms' Mode trigger carries its mode"],
   ['src/ui/playMenu.ts', '.cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "Rooms' Mode trigger glyph paints the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
@@ -106,11 +106,12 @@ const SITES = [
   ['src/ui/battleLoad.ts', '.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}', "the battle load's mode glyph paints the mode"],
   ['src/ui/endScreen.ts', '<span class="mode" data-mode-tone="${mode.id}"', "the end report's mode chip carries its mode"],
   ['src/ui/endScreen.ts', '.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}', "the end report's mode glyph paints the mode"],
+  ['src/ui/garage.ts', 'battleMenu.dataset.modeTone = battleGameMode;', "the Garage battle menu carries its selected mode"],
+  ['src/ui/garage.css', '.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}',
+    "the Garage battle menu and its choices read every mode's tone (the plate's glyph and title, the features, the chosen edge)"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
-const garage = read('src/ui/garage.css');
-for (const id of Object.keys(ORIGINAL)) {
-  assert.ok(garage.includes(`--mode-color:var(--mode-${tokenName(id)})`), `garage.css's battle menu reads --mode-${tokenName(id)}`);
-}
+// the Garage's battle menu names no mode by hand: every mode reaches it through the kit's data-mode-tone mapping
+assert.doesNotMatch(read('src/ui/garage.css'), /\[data-rule='[a-z_]+'\][^{]*\{--mode-color/, 'garage.css maps no mode by hand');
 
-console.log(`modeColours.selftest: ${GAME_MODE_IDS.length} modes, one token each, contrast and separation held, ${SITES.length + Object.keys(ORIGINAL).length} call sites on the tokens`);
+console.log(`modeColours.selftest: ${GAME_MODE_IDS.length} modes, one token each, contrast and separation held, ${SITES.length} call sites on the tokens`);

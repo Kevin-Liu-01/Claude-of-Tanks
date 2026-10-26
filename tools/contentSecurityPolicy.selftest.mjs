@@ -13,6 +13,8 @@ assert.equal(configuredPolicy(config), policy,
 
 const directives = Object.fromEntries(policy.split(';').map((part) => part.trim().split(/\s+/)).map(([name, ...values]) => [name, values]));
 assert.ok(directives['script-src'].includes("'self'"));
+// the world kernels compile WebAssembly: the narrow directive, never 'unsafe-eval' (below)
+assert.ok(directives['script-src'].includes("'wasm-unsafe-eval'"), "script-src allows WebAssembly compiles ('wasm-unsafe-eval')");
 for (const keyword of ["'unsafe-inline'", "'unsafe-eval'", "'strict-dynamic'", 'data:', 'blob:', '*']) {
   assert.ok(!directives['script-src'].includes(keyword), `script-src never allows ${keyword}`);
 }

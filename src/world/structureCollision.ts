@@ -1427,6 +1427,17 @@ function deriveShellBands<T extends StructureCollisionRuntimeBand>(
   solids: LocalSolid[],
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): T[] {
+  const steps = deriveShellBandsSteps(solids, createBand);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** The shell bands a band a step (battle-spikes-253): the one derivation, drained by deriveShellBands. */
+function* deriveShellBandsSteps<T extends StructureCollisionRuntimeBand>(
+  solids: LocalSolid[],
+  createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
+): Generator<void, T[], void> {
   const minY = Math.min(...solids.map((solid) => solid.minY));
   const maxY = Math.max(...solids.map((solid) => solid.maxY));
   const shell: T[] = [];
@@ -1437,6 +1448,7 @@ function deriveShellBands<T extends StructureCollisionRuntimeBand>(
       solid.maxY > bandMin + 1e-4 && solid.minY < bandMax - 1e-4);
     if (!active.length) continue;
     const band = createBand(active, bandMin, bandMax, false);
+    yield;
     if (!band.parts.length) continue;
     const previous = shell[shell.length - 1];
     if (previous && sameFootprint(previous.parts, band.parts) && previous.maxY >= bandMin - 1e-6) {
@@ -1524,6 +1536,36 @@ export function deriveRuntimeStructureShellBands(buckets: StructureGeometryBucke
   if (!solids.length) return [];
   const projectedCache = new Map<LocalSolid, number[][]>();
   return deriveShellBands(solids, (active, minY, maxY, ground) => makeRuntimeBand(active, minY, maxY, ground, projectedCache));
+}
+
+/**
+ * (battle-spikes-253) The runtime profile and the shell bands in steps — a yield after the solids, the contact band and
+ * each shell band — for a page's paced build (a Verdant set piece's collision was one 444 ms slice of its props build in
+ * Node). The same derivation as deriveRuntimeStructureCollisionProfile / deriveRuntimeStructureShellBands, drained.
+ */
+export function* deriveRuntimeStructureCollisionProfileSteps(
+  buckets: StructureGeometryBuckets,
+): Generator<void, StructureCollisionRuntimeProfile, void> {
+  const solids = collectSolids(buckets);
+  yield;
+  const projectedCache = new Map<LocalSolid, number[][]>();
+  const createBand = (active: LocalSolid[], minY: number, maxY: number, ground: boolean) =>
+    makeRuntimeBand(active, minY, maxY, ground, projectedCache);
+  const contact = deriveContactBand(solids, createBand);
+  yield;
+  const shell = yield* deriveShellBandsSteps(solids, createBand);
+  addDecks(contact, solids);
+  return { contact, shell };
+}
+
+export function* deriveRuntimeStructureShellBandsSteps(
+  buckets: StructureGeometryBuckets,
+): Generator<void, StructureCollisionRuntimeBand[], void> {
+  const solids = collectSolids(buckets);
+  if (!solids.length) return [];
+  yield;
+  const projectedCache = new Map<LocalSolid, number[][]>();
+  return yield* deriveShellBandsSteps(solids, (active, minY, maxY, ground) => makeRuntimeBand(active, minY, maxY, ground, projectedCache));
 }
 
 /** Exact full-profile contact result for consumers that do not use shell bands. */

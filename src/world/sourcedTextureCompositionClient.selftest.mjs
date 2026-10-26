@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 import { createSourcedCompositionClient } from './sourcedTextureCompositionClient.ts';
 import { SOURCED_TEXTURE_COMPOSITION_PROTOCOL as protocol } from './sourcedTextureCompositionProtocol.ts';
 
@@ -339,5 +341,30 @@ for (const create of [() => null, () => { throw new Error('CSP'); }]) {
   assert.equal(h.workers.length, 0); assert.equal(h.timers.size, 0);
   assert.equal(await h.client.compose(input({ images: null })), null);
   h.client.dispose();
+}
+{
+  // the browser port decodes a source image's bitmap from its cached file (a Blob decodes off the main thread; an <img>
+  // decodes in createImageBitmap's native front half), and takes the element on any failure
+  const source = await readFile(new URL('./sourcedTextureCompositionClient.ts', import.meta.url), 'utf8');
+  const begin = source.indexOf('async function sourceFileBitmap(');
+  const end = source.indexOf('\nexport function canComposeSourcedTextureInWorker(', begin);
+  assert.ok(begin >= 0 && end > begin, 'the browser bitmap port remains discoverable');
+  assert.match(source, /createBitmap: sourceFileBitmap,/, 'the shared client uses the file bitmap port');
+  const fetches = [], decoded = [];
+  let reply = null;
+  const sourceFileBitmap = new Function('fetch', 'createImageBitmap', `${stripTypeScriptTypes(source.slice(begin, end))}\nreturn sourceFileBitmap;`)(
+    async (url, init) => { fetches.push([url, init]); return reply(url); },
+    async (from) => { decoded.push(from); return { from }; });
+  const image = { currentSrc: '/textures/terrain/a.jpg?v=2', src: '/textures/terrain/a.jpg' };
+  const blob = { blob: true };
+  reply = () => ({ ok: true, blob: async () => blob });
+  assert.deepEqual(await sourceFileBitmap(image), { from: blob }, 'the bitmap decodes from the file\'s Blob');
+  assert.deepEqual(fetches[0], ['/textures/terrain/a.jpg?v=2', { cache: 'force-cache' }], 'the element\'s current file, from the cache');
+  reply = () => ({ ok: false, blob: async () => assert.fail('a failed response is not decoded') });
+  assert.deepEqual(await sourceFileBitmap(image), { from: image }, 'a failed response takes the element');
+  reply = () => { throw new TypeError('offline'); };
+  assert.deepEqual(await sourceFileBitmap({ currentSrc: '', src: '/b.jpg' }), { from: { currentSrc: '', src: '/b.jpg' } },
+    'a failed fetch takes the element');
+  assert.equal(fetches.at(-1)[0], '/b.jpg', 'an element without a current source fetches its src');
 }
 console.log('sourcedTextureCompositionClient.selftest: serial persistent ownership, full identity, cancellation, deadlines, fallback, and cleanup passed');

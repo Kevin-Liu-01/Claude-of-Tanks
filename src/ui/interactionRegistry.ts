@@ -93,7 +93,7 @@ const BATTLEFIELDS = 34;
 export const INTERACTION_SITES = Object.freeze({
   // ---- the Garage (premiere-gallery-studio)
   'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
-  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById'], lane: 'premiere-gallery-studio' },
+  'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
   'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
@@ -145,8 +145,8 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.room-size'], lane: 'lead' },
   'rooms-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-mode'], lane: 'lead' },
   'rooms-rules-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-rules-mode'], lane: 'lead' },
-  'rooms-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'lead' },
-  'rooms-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent'], lane: 'lead' },
+  'rooms-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.sides-seg'], lane: 'lead' },
+  'rooms-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.brain-seg'], lane: 'lead' },
   'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-arrange]', 'custom-select:select'], lane: 'lead' },
 
   // ---- the battle (premiere-battle)

@@ -8,8 +8,9 @@ import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import {
-  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, type CreateTankOptions,
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, offThreadDecorPlanner, type CreateTankOptions,
 } from '../vehicles/fleetFactory.ts';
+import type { TankBuildStep } from '../vehicles/tankFactoryCore.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -227,7 +228,7 @@ export function* ensureStagedVisualsSteps<Entity extends RosterEntity>(
   game: RosterGameState<Entity>,
   limit = Infinity,
   predicate: RosterPredicate<Entity> | null = null,
-): Generator<void, boolean, void> {
+): Generator<TankBuildStep, boolean, void> {
   let built = 0;
   for (const ent of game.tanks) {
     if (ent.visual || (predicate && !predicate(ent))) continue;
@@ -275,7 +276,7 @@ export function ensureTankVisual(game: RosterGameState, ent: RosterEntity): Batt
 export function* ensureTankVisualSteps(
   game: RosterGameState,
   ent: RosterEntity,
-): Generator<void, BattleVisual, void> {
+): Generator<TankBuildStep, BattleVisual, void> {
   return yield* buildRosterVisual(game, ent, true);
 }
 
@@ -283,7 +284,7 @@ function* buildRosterVisual(
   game: RosterGameState,
   ent: RosterEntity,
   cooperative: boolean,
-): Generator<void, BattleVisual, void> {
+): Generator<TankBuildStep, BattleVisual, void> {
   if (game.ruleset?.aerial === 'gunship' && ent === game.tanks[0]) {
     if (ent.visual?.root.userData.aircraftOnly) return ent.visual;
     ent.visual?.dispose();
@@ -323,7 +324,7 @@ function* buildRosterVisual(
   // for-of supplies IteratorClose on cancellation, including when a caller's
   // awaited frame gate rejects. The factory still owns its unfinished graph;
   // only its completed return transfers that ownership to this transaction.
-  const construct = function* (): Generator<void, void, void> {
+  const construct = function* (): Generator<TankBuildStep, void, void> {
     // Exact existing battle policy: preview player paint, authored bot detail,
     // articulation-local static batches. No quality tier is reduced here.
     const options: CreateTankOptions = {
@@ -335,6 +336,8 @@ function* buildRosterVisual(
       // Battles use the checked anatomy and live ERA clusters, not a fresh
       // geometric audit. Keep the detailed fitted-surface report in authoring.
       eraVisualBindingReceipt: false,
+      // stage 2b: a stepped build plans its decoration in the decor worker (the streamer awaits the wait)
+      ...(cooperative ? { decorPlanner: offThreadDecorPlanner() ?? undefined } : {}),
     };
     // One bad build never aborts the battle: the other geometry tier, the variant's donor, then the first participant's
     // own tank (rosterVisualFallback.ts). A superseded build is closed through return(), never caught here.

@@ -72,7 +72,7 @@ assert.doesNotMatch(source, /createModal|<dialog|showModal/, 'choosing never ope
 assert.match(source, /try \{ storage\.setItem/, 'storage writes are guarded');
 
 // 6. The sheet: the kit's tokens, the chosen tile's accent wash and edge, 44 px touch targets.
-const sheet = read('./components.css');
+const sheet = read('./pickers.css');
 assert.match(sheet, /\.cot-c-picker__opt\[aria-selected=true\]\{background:var\(--chip-fill-on\);box-shadow:var\(--ring-accent\)\}/);
 assert.match(sheet, /@media \(pointer:coarse\)\{\n  \.cot-c-picker__fav\{width:44px;height:44px\}/, 'the star is a 44 px target on touch');
 assert.match(sheet, /\.cot-c-picker__fav\{[^}]*border-radius:var\(--control-radius\)/, 'the star is the kit\'s square icon button, not a media disc');

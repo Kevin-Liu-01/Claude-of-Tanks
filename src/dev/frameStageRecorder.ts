@@ -15,6 +15,9 @@ const COLUMNS = Object.freeze([
   // first draws (with `gl`): a program drawn into a framebuffer it never drew into before, in the frame and in the gap
   // (the GPU process builds its pipeline for the pair then: ANGLE on Metal at the draw, not at the link)
   'firstDraws', 'gapFirstDraws',
+  // (battle-spikes-253, the draw-count lever) the frame's draw calls, its program switches (gl.useProgram: three binds a
+  // program only when it changes) and the distinct programs it drew with
+  'draws', 'programSwitches', 'programsUsed',
 ] as const);
 const STAGE_BASE = COLUMNS.length;
 const WIDTH = STAGE_BASE + FRAME_STAGE_NAMES.length;
@@ -161,6 +164,9 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
   const links: FrameStageReadout['links'] = [];
   const firstDraws: FrameStageReadout['firstDraws'] = [];
   const drawAcc = new Float64Array(2); // first draws in the frame, in the gap
+  const drawCount = new Float64Array(3); // the frame's draws, program switches, distinct programs
+  const programFrame = new WeakMap<WebGLProgram, number>(); // a program's last frame (distinct without a set a frame)
+  let frameSerial = 0;
   if (gl) {
     // the bound program and draw framebuffer (their own calls tracked: a getParameter would wait on the GPU process)
     const target = gl as unknown as Record<string, (...args: unknown[]) => unknown>;
@@ -170,6 +176,10 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
     const names = new WeakMap<WebGLProgram, string>();
     const useProgram = target.useProgram, bindFramebuffer = target.bindFramebuffer;
     target.useProgram = function trackedUseProgram(this: unknown, next: unknown): unknown {
+      if (open && next) {
+        drawCount[1]++;
+        if (programFrame.get(next as WebGLProgram) !== frameSerial) { programFrame.set(next as WebGLProgram, frameSerial); drawCount[2]++; }
+      }
       program = next as WebGLProgram | null;
       return useProgram.call(this, next);
     };
@@ -189,6 +199,11 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
       const original = target[name];
       if (typeof original !== 'function') continue;
       target[name] = function trackedDraw(this: unknown): unknown {
+        if (open) {
+          drawCount[0]++;
+          // a program bound before the frame (no switch in it) is still one the frame drew with
+          if (program && programFrame.get(program) !== frameSerial) { programFrame.set(program, frameSerial); drawCount[2]++; }
+        }
         if (program) {
           let into = drawnInto.get(program);
           if (!into) { into = new Set(); drawnInto.set(program, into); }
@@ -314,8 +329,13 @@ export function installFrameStageRecorder(options: FrameStageRecorderOptions): F
       rows[base + 27] = glAcc[6];
       rows[base + 28] = drawAcc[0];
       rows[base + 29] = drawAcc[1];
+      rows[base + 30] = drawCount[0];
+      rows[base + 31] = drawCount[1];
+      rows[base + 32] = drawCount[2];
       glAcc.fill(0);
       drawAcc.fill(0);
+      drawCount.fill(0);
+      frameSerial++;
       for (let s = 0; s < stageMs.length; s++) rows[base + STAGE_BASE + s] = stageMs[s];
       next = (next + 1) % capacity;
       if (size === capacity) dropped++; else size++;

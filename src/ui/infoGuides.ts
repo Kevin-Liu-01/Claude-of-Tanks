@@ -12,7 +12,7 @@ const CSS = `
 .cot-guide__figure svg{display:block;width:100%;height:auto;max-height:300px;color:#8ca6b2}
 .cot-guide__legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 12px 16px;color:#b7cbd5;font-size:12px;line-height:1.4;text-align:center}
 .cot-guide__figure figcaption{padding:9px 14px;border-top:1px solid #28363d;color:#8ea3ae;font-size:11px;letter-spacing:.04em}
-.cot-guide__figure [data-part]{opacity:.36;transition:opacity .15s}.cot-guide__figure [data-part].active{opacity:1}
+.cot-guide__figure [data-part]{opacity:.36;transition:opacity var(--dur-fast)}.cot-guide__figure [data-part].active{opacity:1}
 .cot-guide__steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .cot-guide__step{display:flex;align-items:center;gap:10px;text-align:left;min-width:0;padding:12px;color:#b5c5cd;background:#101a20;border:1px solid #34434a;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;line-height:1.4}
 .cot-guide__step b{display:grid;place-items:center;flex:none;width:25px;height:25px;border:1px solid currentColor;border-radius:50%;font-size:12px}

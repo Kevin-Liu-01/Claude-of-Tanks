@@ -273,9 +273,17 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const elGate = $('cot-boot-gate');
   const elRetry = $('cot-boot-retry');
   // 2026-09-14 (outside QA): phone players read keyboard-only copy on their first screen; a
-  // coarse pointer gets the touch prompt.
+  // coarse pointer gets the touch prompt. A keyboard's prompt names its key as a key cap, as every control label does
+  // (INTERACTION-REDESIGN line 6): the boot sheet draws the kit's cap without loading the kit.
   const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
-  if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
+  if (elGate && coarsePointer) elGate.textContent = t('boot.gate.promptTouch');
+  else if (elGate) {
+    const [before, after = ''] = t('boot.gate.prompt', { key: '\u0001' }).split('\u0001');
+    const cap = document.createElement('kbd');
+    cap.className = 'cot-boot-key';
+    cap.textContent = t('boot.gate.anyKey');
+    elGate.replaceChildren(before, cap, after);
+  }
   const tips = coarsePointer ? TIP_KEYS.filter(([, fine]) => !fine) : TIP_KEYS;
   if (elRetry) elRetry.textContent = t('boot.retry');
   mountGitHubStars(document);
@@ -311,22 +319,37 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * tips.length);
 
+  // UI-LOCKDOWN D (2026-10-25): the fill moves on the compositor. It spans the bar and a paused animation of its scaleX,
+  // on a unit timeline, is scrubbed to the eased value; a width written every frame laid the boot card out every frame.
+  // Under reduced motion (the player's choice on :root, else the OS: accessibilityPreferences.ts, inlined as modal.ts
+  // does on the boot path) the fill steps to each value instead of easing. Element.animate is in every browser the game
+  // runs in (WebGL2's); without it the bar stays empty and the percentage still counts.
+  const motionChoice = document.documentElement?.dataset.motion;
+  const reducedMotion = motionChoice === 'reduce' || (motionChoice !== 'full' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const fillScrub = elFill && typeof elFill.animate === 'function'
+    ? elFill.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1, fill: 'both' }) : null;
+  if (fillScrub && elFill) {
+    fillScrub.pause();
+    fillScrub.currentTime = 0;
+    elFill.style.transformOrigin = '0 50%';
+    elFill.style.width = '100%';
+  }
   let lastPaint = 0;
   function paint(now: number) {
     const dt = lastPaint ? Math.min(100, now - lastPaint) : 16;
     lastPaint = now;
     // Inside a stage the fill keeps creeping toward (never onto) the stage's end, so a long stage
-    // still reads as one continuous load; end() and the next begin() carry it on from there.
-    const sp = !finished && curKey ? span.get(curKey) : undefined;
+    // still reads as one continuous load; end() and the next begin() carry it on from there. Not under reduced motion.
+    const sp = !finished && curKey && !reducedMotion ? span.get(curKey) : undefined;
     if (sp) {
       const cap = sp[0] + (sp[1] - sp[0]) * CRAWL_CAP;
       if (target < cap) target += (cap - target) * (1 - Math.exp(-dt / CRAWL_MS));
     }
     // Ease toward the target so a stage that lands 20 points of progress in one blocking call
     // still reads as motion rather than a jump (by time, so a slow frame does not slow the fill).
-    shown += (target - shown) * (1 - Math.exp(-dt / EASE_MS));
+    shown = reducedMotion ? target : shown + (target - shown) * (1 - Math.exp(-dt / EASE_MS));
     if (target - shown < 0.0015) shown = target;
-    if (elFill) elFill.style.width = `${(shown * 100).toFixed(1)}%`;
+    if (fillScrub) fillScrub.currentTime = shown;
     if (elPct) elPct.textContent = `${Math.round(shown * 100)}%`;
     raf = 0;
     if (shown !== target || sp) schedule();

@@ -31,6 +31,8 @@ const label = option('label', 'build');
 const out = resolve(option('out', 'mp-room-census'));
 const useLock = argv.includes('--lock');
 const budgetMin = Number(option('budget-min', '20'));
+// --map=<id>: the room's battlefield (the lobby's map control, set by the host); without it the room keeps its default
+const mapId = option('map', '');
 const root = new URL('..', import.meta.url).pathname;
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 // the deployment's own headers on a plain-http host
@@ -53,9 +55,16 @@ function portFree(port) {
 
 /** Each page's console since the last stage: errors (with page errors and failed requests) and warnings. */
 function observe(page, name, log) {
-  page.on('console', (m) => {
+  page.on('console', async (m) => {
     if (IGNORED.test(m.text())) return;
-    if (m.type() === 'error') log.errors.push(`${name}: ${m.text().slice(0, 240)}`);
+    // an Error logged with the message travels as an argument: its stack names where the entry failed
+    if (m.type() === 'error') {
+      log.errors.push(`${name}: ${m.text().slice(0, 240)}`);
+      for (const arg of m.args()) {
+        const stack = await arg.evaluate((value) => (value instanceof Error ? value.stack : null)).catch(() => null);
+        if (stack) log.errors.push(`${name}:   stack ${stack.split('\n').slice(0, 9).join(' | ').slice(0, 900)}`);
+      }
+    }
     else if (m.type() === 'warn') log.warnings.push(`${name}: ${m.text().slice(0, 240)}`);
   });
   page.on('pageerror', (e) => log.errors.push(`${name}: pageerror ${String(e?.message || e).split('\n')[0]}`));
@@ -74,7 +83,7 @@ const stage = (name, startedAt) => {
 };
 
 const lock = useLock ? createCaptureLock() : null;
-let rooms = null, server = null, browser = null;
+let rooms = null, server = null, browser = null, pages = [];
 try {
   if (lock) {
     await lock.acquire(150 * 60 * 1000, { place: `mp-room-census-${label}` });
@@ -93,6 +102,7 @@ try {
       '--use-gl=angle', '--enable-webgl', '--js-flags=--max-old-space-size=3072', '--window-size=1100,720'] });
   // two first-time machines: separate contexts share no storage, cache or player identity
   const [pageA, pageB] = await Promise.all([1, 2].map(async () => (await browser.createBrowserContext()).newPage()));
+  pages = [pageA, pageB];
   for (const page of [pageA, pageB]) await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
   observe(pageA, 'A', log);
   observe(pageB, 'B', log);
@@ -145,6 +155,13 @@ try {
     team.value = 'alpha';
     team.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  if (mapId) {
+    await pageA.evaluate((id) => {
+      const map = document.querySelector('.cot-play [data-control="map"]');
+      map.value = id;
+      map.dispatchEvent(new Event('change', { bubbles: true }));
+    }, mapId);
+  }
   await new Promise((r) => setTimeout(r, 1000));
   await pageB.click('.cot-play [data-action="ready"]');
   await pageA.click('.cot-play [data-action="ready"]');
@@ -165,8 +182,19 @@ try {
   await new Promise((r) => setTimeout(r, 2000));
   stage('leave', at);
 } catch (error) {
-  samples.push({ kind: `lobby-${['boot', 'create', 'join', 'ready', 'battle', 'leave'][samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0] });
+  // where each page stood when the stage gave up, and the stage's console so far
+  const state = await Promise.all(pages.map((page) => page.evaluate(() => {
+    const cover = document.querySelector('.cot-bl');
+    return { inMatch: window.__MULTIPLAYER_V2?.stats?.().inMatch ?? null, phase: window.__DEBUG?.game?.phase ?? null,
+      cover: cover ? getComputedStyle(cover).display : null, coverText: cover?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 160) ?? null,
+      // the network entry's own record of a failed round (main.ts recordEntryFailure) and its stage trace
+      entryFailure: window.__NETWORK_ENTRY_FAILURE ?? null, entryTrace: window.__NETWORK_LOAD?.stages ?? null };
+  }).catch((e) => ({ unreadable: String(e?.message || e).split('\n')[0] }))));
+  samples.push({ kind: `lobby-${['boot', 'create', 'join', 'ready', 'battle', 'leave'][samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0],
+    pages: state, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length, consoleWarningTexts: log.warnings.splice(0) } });
   console.error(`mp-room-census: ${samples.at(-1).error}`);
+  for (const [i, s] of state.entries()) console.error(`  page ${'AB'[i]}: ${JSON.stringify(s)}`);
+  for (const line of [...samples.at(-1).census.consoleErrors, ...samples.at(-1).census.consoleWarningTexts]) console.error(`  ${String(line).slice(0, 240)}`);
   process.exitCode = 2;
 } finally {
   await browser?.close().catch(() => {});

@@ -385,7 +385,7 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px;--bl-row-min:14px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
 body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
@@ -640,6 +640,10 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   /* (as tall as the toolbar's corner plate beside it, the top row's plates on one foot: 36 against 48, gauntlet r7) */
   min-height:48px;box-sizing:border-box;
 }
+/* (the Horde's plate there drops its two hidden gauges for a wider gap: their held places ran WAVE and LEFT into the
+   plate's slants at 568x256, gauntlet r8) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top:has(.fg.wave){column-gap:14px}
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top:has(.fg.wave) .sc .bar{display:none}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
   top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));
 }

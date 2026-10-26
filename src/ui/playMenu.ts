@@ -237,7 +237,7 @@ const CSS = `
   padding:var(--s5) var(--play-head-end) var(--s4) var(--s5);background:var(--play-plate);border-bottom:1px solid var(--line-1)}
 /* the close and the title share one row: the close's size (44 px under a coarse pointer) is the title's height */
 .cot-play{--play-close:36px;--play-gutter:var(--s5);--play-head-end:calc(var(--play-close) + var(--play-gutter) + var(--s3));--icon-ink-y:.646;
-  --rules-col:320px}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
+  --rules-col:max(320px, calc(320px * var(--cot-type-scale, 1)))}body[data-cot-input='coarse'] .cot-play{--play-close:44px}
 .cot-play .close{--h:var(--play-close);position:absolute;right:var(--play-gutter);top:var(--s5);box-shadow:var(--btn-secondary-ring)}
 /* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
 .cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -294,10 +294,6 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play :is(.arrange-sides,.brain-row){display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
 .cot-play .arrange-sides{margin-bottom:var(--s2)}
 .cot-play .arrange-sides-label{margin-right:var(--s1)}
-.cot-play :is(.arrange-sides,.brain-row) button{height:32px;padding:0 var(--s3);border:0;border-radius:var(--chip-radius);
-  background:var(--chip-fill);box-shadow:var(--chip-edge);color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.cot-play :is(.arrange-sides,.brain-row) button[aria-pressed='true']{background:var(--chip-fill-on);box-shadow:var(--chip-edge-on);color:var(--ink-1)}
-.cot-play :is(.arrange-sides,.brain-row) button:disabled{opacity:.55;cursor:default}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
 .cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
@@ -381,7 +377,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .menu-select-thumb.is-random{background:var(--surface-page)}
 .cot-play .menu-select--vehicle .menu-select-thumb{--w:56px;--h:36px;width:var(--w);height:var(--h);flex-basis:var(--w);background-color:var(--surface-page);
   background-size:cover;background-position:50% calc(var(--h) / 2 - var(--w) * var(--icon-ink-y));box-shadow:none}
-.cot-play :is(.menu-select-trigger,.mode,.op-launch,:is(.arrange-sides,.brain-row) button):focus-visible{
+.cot-play :is(.menu-select-trigger,.mode,.op-launch):focus-visible{
   outline:none;box-shadow:var(--focus-ring)}
 /* the vehicle picker opens in the foot above its trigger: the fleet's cards, each tank's own angle render centred on its
    ink (the render's ink sits --icon-ink-y of its width down a square), two to a phone's row, a short screen's sized to
@@ -389,7 +385,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
   padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .vehicle-pick[hidden]{display:none}
-.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.cot-play .vehicle-pick{container-type:inline-size}
+.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+@container (width < 420px){.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
 .cot-play .vehicle-pick .cot-c-picker__media{container-type:inline-size;background:var(--surface-page)}
 .cot-play .vehicle-pick .cot-c-picker__media>img{object-position:50% calc(100cqw * (9 / 32 - var(--icon-ink-y)))}
 
@@ -435,7 +433,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .mode-pick[hidden]{display:none}
 .cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
 .cot-play .menu-select--mode .menu-select-trigger{gap:var(--s3)}
-.cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
+.cot-play .battlefield-copy{grid-column:2 / -1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
 .cot-play .player{--foot-track:var(--rules-col);display:grid;
@@ -476,6 +474,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* the five formats are mono numbers: they need little air to fit the rules column */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt{padding-inline:var(--s1)}
 .cot-play .room-team .cot-c-seg__opt[hidden]{display:none}
+/* the arrangement's sides and the opponent brain fill their row as the room's other settings do */
+.cot-play :is(.sides-seg,.brain-seg){display:flex;flex:1 1 auto}
+.cot-play :is(.sides-seg,.brain-seg) .cot-c-seg__opt{flex:1 1 0;min-width:0}
+.cot-play .arrange-readout[hidden]{display:none}
 .cot-play .start-count{margin-left:var(--s2);font-family:var(--font-data);letter-spacing:normal}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
@@ -484,7 +486,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* Ready is a toggle: pressed, it wears the selection */
 .cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
-.cot-play :is(.note,[data-arrange-note]){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-play :is(.note,[data-arrange-note],.arrange-cap){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
@@ -815,11 +817,11 @@ export function createPlayMenu({
     <div class="teams-host" data-teams-host></div>
     <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
       <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note></span></div>
-      <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
+      <div class="arrange-sides" data-arrange-sides hidden>
         <span class="arrange-sides-label">${t('playMenu.arrange.sides')}</span>
-        <button type="button" data-sides="7v7" aria-pressed="true">${t('playMenu.arrange.sides7')}</button>
-        <button type="button" data-sides="14v14" aria-pressed="false">${t('playMenu.arrange.sides14')}</button>
-        <button type="button" data-sides="custom" aria-pressed="false">${t('playMenu.arrange.sidesCustom')}</button>
+        ${segmented({ label: t('playMenu.arrange.sides'), value: '7v7', className: 'sides-seg', options: [
+          { value: '7v7', label: t('playMenu.arrange.sides7') }, { value: '14v14', label: t('playMenu.arrange.sides14') },
+          { value: 'custom', label: t('playMenu.arrange.sidesCustom') }] })}
         <b class="arrange-readout" data-sides-readout></b>
       </div>
       <div class="arrange-fields">
@@ -838,9 +840,9 @@ export function createPlayMenu({
     </section>
     <section class="brain" data-brain aria-label="${t('playMenu.brain.heading')}">
       <div class="arrange-head"><b>${t('playMenu.brain.heading')}</b></div>
-      <div class="brain-row" role="group" aria-label="${t('playMenu.brain.heading')}">
-        <button type="button" data-brain-opponent="classic" aria-pressed="true">${t('playMenu.brain.classic')}</button>
-        <button type="button" data-brain-opponent="jev" aria-pressed="false">${t('playMenu.brain.jev')}</button>
+      <div class="brain-row">
+        ${segmented({ label: t('playMenu.brain.heading'), value: 'classic', className: 'brain-seg', options: [
+          { value: 'classic', label: t('playMenu.brain.classic') }, { value: 'jev', label: t('playMenu.brain.jev') }] })}
         <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
       </div>
       <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
@@ -1219,7 +1221,8 @@ export function createPlayMenu({
   }
   // ---- sides (owner 2026-09-18): 7v7 / 14v14 / custom for the symmetric modes ---------------------------
   const sidesGroup = arrangeSection.querySelector<HTMLElement>('[data-arrange-sides]')!;
-  const sidesButtons = [...sidesGroup.querySelectorAll<HTMLButtonElement>('button[data-sides]')];
+  const sidesSeg = requiredElement<HTMLElement>(sidesGroup, '.sides-seg');
+  const sidesButtons = [...sidesSeg.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
   const sidesReadout = sidesGroup.querySelector<HTMLElement>('[data-sides-readout]')!;
   const capNote = arrangeSection.querySelector<HTMLElement>('[data-arrange-cap]')!;
   const arrangeField = (name: string): HTMLElement => arrangeSection.querySelector<HTMLElement>(`[data-arrange-field="${name}"]`)!;
@@ -1255,7 +1258,7 @@ export function createPlayMenu({
       const sides = rulesetSides({ allies: arranged?.allies ?? null, enemies: arranged?.enemies ?? null });
       const preset = sidesPresetOf(sides);
       const custom = sidesCustomOpen || preset === 'custom';
-      for (const button of sidesButtons) button.setAttribute('aria-pressed', String(button.dataset.sides === (custom ? 'custom' : preset)));
+      setRoving(sidesSeg, custom ? 'custom' : preset);
       arrangeField('alliesCount').hidden = asymmetric ? defaults.allies === 0 : !custom;
       arrangeField('enemiesCount').hidden = asymmetric ? defaults.enemies === 1 : !custom;
       const allies = arrangeInput('alliesCount'), enemies = arrangeInput('enemiesCount');
@@ -1263,6 +1266,8 @@ export function createPlayMenu({
       enemies.min = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]); enemies.max = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]);
       allies.value = String(asymmetric ? defaults.allies ?? sides.allies : sides.allies);
       enemies.value = String(asymmetric ? defaults.enemies ?? sides.enemies : sides.enemies);
+      // the readout adds what the counts do not show, the sides with the player counted: a preset already names them
+      sidesReadout.hidden = !custom;
       sidesReadout.textContent = t('playMenu.arrange.readout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
     }
     const waveLabel = arrangeSection.querySelector<HTMLElement>('[data-arrange-wave]')!;
@@ -1331,8 +1336,7 @@ export function createPlayMenu({
       ? normalizeTeamArrangement(selectedGameMode, { teamNations: 'random' }) : null;
     applyArrangement(teams);
   });
-  for (const button of sidesButtons) button.addEventListener('click', () => {
-    const id = button.dataset.sides;
+  wireRoving(sidesSeg, (id) => {
     if (id === 'custom') { sidesCustomOpen = true; renderArrangement(selectedGameMode, !!state); return; }
     if (id !== '7v7' && id !== '14v14') return;
     sidesCustomOpen = false;
@@ -1342,20 +1346,20 @@ export function createPlayMenu({
 
   // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
   const brainSection = root.querySelector<HTMLElement>('[data-brain]')!;
-  const brainButtons = [...brainSection.querySelectorAll<HTMLButtonElement>('button[data-brain-opponent]')];
+  const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
   const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
     // rooms keep the classic brain on the host for now (docs/JEV-COMMANDER.md): the setting is solo-only
     brainSection.hidden = fromLobby;
     const settings = readBrainSettings();
-    for (const button of brainButtons) button.setAttribute('aria-pressed', String(button.dataset.brainOpponent === settings.opponent));
+    setRoving(brainSeg, settings.opponent);
     brainAllies.checked = settings.opponent === 'jev' && settings.allies;
     brainAllies.disabled = settings.opponent !== 'jev';
     brainNote.hidden = settings.opponent !== 'jev';
   }
-  for (const button of brainButtons) button.addEventListener('click', () => {
-    writeBrainSettings({ opponent: button.dataset.brainOpponent });
+  wireRoving(brainSeg, (opponent) => {
+    writeBrainSettings({ opponent });
     renderBrain(!!state);
   });
   brainAllies.addEventListener('change', () => {

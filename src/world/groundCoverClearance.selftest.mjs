@@ -257,7 +257,7 @@ assert.match(map, /for \(const lift of \(props\.group\.userData\.fortBankLifts a
   'the banks\' grass is lifted onto them, not cleared');
 assert.match(map, /const groundCoverClearance = \(\) => withGroundCoverHoles\(createGroundCoverClearance\(queryGroundCover\), groundCoverHoles\)/,
   'share actual accepted movement-solid grid, including crates absent from shell colliders');
-assert.match(map, /setGroundCoverClearance\(groundCoverClearance\(\)\)/, 'the grass carpet takes the composed admission');
+assert.match(map, /groundCoverSealSteps\(groundCoverClearance\(\)\)/, 'the grass carpet takes the composed admission');
 const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.match(props, /DESTRUCTIBLE_BUILDING_TYPES\[kind\]\s*\? deriveRuntimeStructureCollisionWithSolids/,
   'ordinary crates, walls and moving props do not acquire cosmetic detail');

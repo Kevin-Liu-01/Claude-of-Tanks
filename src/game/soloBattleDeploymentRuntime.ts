@@ -190,6 +190,8 @@ export interface SoloBattleDeploymentRuntimeOptions {
   getDeploymentShadowWarm(): DeploymentShadowWarmOwner;
   getEntryLifecycle(): BattleEntryLifecycle;
   prepareRevealCamera(): void;
+  /** (battle-spikes-253) Start linking the player panel's programs (no wait); the panel's stage follows the camo. */
+  kickPlayerPanel?(): void;
   preparePlayerPanel(): Promise<void>;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
@@ -635,6 +637,7 @@ export function createSoloBattleDeploymentRuntime(
       };
 
       try {
+        try { options.kickPlayerPanel?.(); } catch { /* the panel's stage compiles them */ }
         await camoSweep;
         requireCurrent(generation);
         mark('camo');
