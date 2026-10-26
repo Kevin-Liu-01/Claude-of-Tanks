@@ -58,19 +58,18 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
 .cot-ribbon .cot-c-chip[data-cause='fire']{color:var(--danger);box-shadow:var(--ring-danger)}
 .cot-ribbon .x{flex:none;margin-left:auto;align-self:stretch;min-width:58px;padding:0 14px;display:flex;flex-direction:column;
   justify-content:center;align-items:center;gap:2px;background:var(--accent);color:var(--ink-on-accent);font:700 var(--battle-fs-20)/1 var(--hud-font)}
-.cot-ribbon .x small{font:600 var(--battle-fs-11)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-ribbon .x[hidden]{display:none}
-/* (a ribbon in a narrow gap keeps the callsign: the cause chip and the streak's word give way, battleHudLayout.ts
+/* (a ribbon in a narrow gap keeps the callsign: the cause chip gives way, battleHudLayout.ts
    RIBBON_TIGHT; at 1024x600 the callsign read "Command…" beside them, gauntlet r4; the silhouette too, the flag naming
    the side: at 900x700 it read "Commander…", r5) */
-.cot-ribbon.tight .cause,.cot-ribbon.tight .x small,.cot-ribbon.tight .sil{display:none}
+.cot-ribbon.tight .cause,.cot-ribbon.tight .sil{display:none}
 .cot-ribbon.tight .x{min-width:44px;padding:0 10px}
 .cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}
 .cot-ribbon .stream>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .cot-ribbon .stream>span[hidden],.cot-ribbon .stream[hidden]{display:none}
 /* Chinese labels keep the 13 px floor (the type rules) */
-:lang(zh-CN) .cot-ribbon :is(.x small,.cot-c-chip){font-size:var(--battle-fs-13)}
+:lang(zh-CN) .cot-ribbon .cot-c-chip{font-size:var(--battle-fs-13)}
 .cot-ribbon .stream svg{width:14px;height:14px;flex:none}
 .cot-ribbon .gi{display:flex}
 `;
@@ -121,8 +120,8 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   const vehicle = el('span', 'vn', top);
   const causeHost = el('span', 'cause', top);
   const multi = el('span', 'x', top);
+  // (the streak is its count alone: a word under "×3" said "TRIPLE" again, gauntlet r12)
   const multiCount = el('span', 'n', multi);
-  const multiWord = el('small', '', multi);
   const stream = el('div', 'stream', root);
   const killsItem = el('span', 'k', stream);
   el('span', 'gi', killsItem).innerHTML = uiIconSVG('skull', 14);
@@ -190,7 +189,6 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       }
       multi.hidden = streak < 2;
       multiCount.textContent = `×${streak}`;
-      multiWord.textContent = t(`hud.ribbon.multi.${Math.min(streak, 4)}`);
       paintStream();
       root.classList.add('on');
       if (hideTimer) clearTimeout(hideTimer);

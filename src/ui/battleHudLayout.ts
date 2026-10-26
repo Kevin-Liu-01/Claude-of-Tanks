@@ -83,6 +83,7 @@ export const REPORT_MAP_GAP = 12;
 /** The network strip's corner row (multiplayerStatus.ts: `top:8px`, level with the fps/ping plate) and its edge gap. */
 const NETWORK_CORNER_TOP = 8;
 const NETWORK_CORNER_RIGHT = 10;
+const NETWORK_PLATE_TUCK = 12;
 /** A bottom-anchored report budget; notification counts never enter this policy. */
 /** The shortest dock the shot report is moved down to (a tight card: its rows hidden, its plans scaled to the dock). */
 const REPORT_DOCK_MIN = 140;
@@ -205,7 +206,7 @@ const SLOT_GAP = 7;
 const SLOT_ROW_GAP = 4;
 /** The kill ribbon's width (hudKillRibbon.ts), where its place holds it. */
 const RIBBON_W = 520;
-/** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
+/** Under this width the ribbon drops its cause chip and its silhouette; under the least it does not show. */
 const RIBBON_TIGHT = 480, RIBBON_LEAST = 300;
 /** How far past its gap's edge a rack may stand and still lend a strip or a ribbon its edges. */
 const RACK_SNAP_INSET = 4;
@@ -530,8 +531,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const folded = network.hasAttribute('data-compact');
     if (!folded) networkFullWidth = cells.width;
     let right = NETWORK_CORNER_RIGHT;
+    // (beside the corner plate the strip is the band's next plate, its slanted right edge 4 px off the plate's slanted left
+    // one (multiplayerStatus.ts), so its box reaches 12 px under that slant: bare text 16 px off the plate, it was the top
+    // row's one datum on no plate, gauntlet r12)
     if (telemetry && telemetry.top < NETWORK_CORNER_TOP + cells.height && telemetry.bottom > NETWORK_CORNER_TOP
-      && telemetry.right > width - right - networkFullWidth - 8) right = Math.ceil(width - telemetry.left) + 16;
+      && telemetry.right > width - right - networkFullWidth - 8) right = Math.floor(width - telemetry.left) - NETWORK_PLATE_TUCK;
     const fold = width - right - networkFullWidth < (score?.right ?? width / 2) + 8;
     if (fold !== folded) network.toggleAttribute('data-compact', fold);
     return right;
@@ -1149,7 +1153,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     const hints = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - 8), Infinity);
     // (the kill ribbon in the same gap, at most its 520 px: on a 900 px window it would cross the speedometer; under
-    // RIBBON_TIGHT it drops its cause chip, the streak's word and the silhouette, under RIBBON_LEAST it does not show)
+    // RIBBON_TIGHT it drops its cause chip and the silhouette, under RIBBON_LEAST it does not show)
     const ribbonGap = onRack(hintsPlace(width, height, lowerCorners, rackCentre, systemsTop - RIBBON_LIFT), RIBBON_W);
     // (over a flight's console where that stands higher, centred on it and as wide: gauntlet r4 at 900x700 set it 57 px
     // off the drone's console under it; r5 found it narrower than the gunship's console from 1440 and the drone's at 900)
@@ -1531,7 +1535,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
       'aim-warning-top': chipTop, 'aim-warning-left': chipLeft,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
-      'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
+      // (a touch landscape's signal tile level with the map beside it: under the score it floated 44 px down the map's
+      // side, on neither edge, gauntlet r12 at 844x390)
+      'network-top': width > height ? (touch && map ? map.top : scoreBottom + 4) : (chrome?.top ?? top + 8),
       'network-corner-right': networkRight,
       // the two rosters keep one height while both show, so their rows share one pitch (gauntlet r2: 22 px allies beside
       // 18 px enemies at 1280x720)

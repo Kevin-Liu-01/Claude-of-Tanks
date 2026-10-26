@@ -12,7 +12,8 @@
  linear-gradient(currentColor,currentColor) right bottom/12px 1px,
  linear-gradient(currentColor,currentColor) right bottom/1px 12px;background-repeat:no-repeat}
 .flight-sight::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor}
-.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
+/* (on the map's 16 px floor: at 18 the console's tiles ended 2 px over the map's foot, gauntlet r12) */
+.cot-flight-hud .flight-console{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
 .flight-heading{display:flex;align-items:center;gap:10px;min-height:38px}
 .flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:var(--accent-hi);background:oklch(from var(--accent-lo) l c h / .169);clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
 .flight-emblem svg{width:23px;height:23px}
@@ -153,7 +154,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-designation .flight-icon{color:inherit}.flight-designation svg{width:19px;height:19px}
 .cot-flight-hud[data-kind=drone] .flight-telemetry{
  grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
- width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,var(--battle-chip-plate) 20% 80%,transparent);
+ width:100%;margin:0;padding:5px 0;background:var(--battle-chip-plate);
 }
 .cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:var(--battle-fs-15);line-height:22px;font-weight:700;letter-spacing:.01em}
 .cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid var(--line-3)}
@@ -176,11 +177,11 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{
  content:'';position:absolute;inset:0;z-index:-1;clip-path:var(--flight-cut);pointer-events:none;
 }
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:var(--ink-3)}
+/* (the tank kit's tile edge, its 2 px foot: a light 1 px outline set the flight's tiles apart from the tank's, gauntlet r12) */
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:var(--line-2)}
 /* (the strong plate itself: a warm gradient made the return the HUD's one gradient tile, gauntlet r6) */
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px;background:var(--hud-plate-strong)}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px 1px 2px;background:var(--hud-plate-strong)}
 .cot-flight-hud[data-kind=drone] .flight-view-switch{grid-column:1;grid-row:4;display:grid;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:9px;row-gap:5px;align-content:center}
-.cot-flight-hud[data-kind=drone] .flight-view-switch::before{background:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-optic-icon{grid-column:1;grid-row:1/3;display:flex;color:var(--flight-accent)}
 .flight-optic-icon svg{width:22px;height:22px}
 .cot-flight-hud[data-kind=drone] .flight-feed{grid-column:2;grid-row:1;min-width:0;width:100%;color:inherit;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.02em}
@@ -255,14 +256,15 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:var(--s2) var(--s3);
  border:0;border-radius:0;background:none;box-shadow:none;color:var(--ink-1);pointer-events:auto;
  font:inherit;font-size:var(--battle-fs-11);line-height:1.2;filter:drop-shadow(0 2px 3px oklch(from var(--surface-scene) l c h / .6));cursor:pointer;
- --control-edge:oklch(from var(--ink-4) .58 c h);--control-fill:var(--hud-plate);
+ --control-edge:var(--line-2);--control-fill:var(--hud-plate);
 }
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before,
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{
  content:'';position:absolute;inset:0;z-index:-1;clip-path:var(--flight-cut);pointer-events:none;
 }
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before{background:var(--control-edge)}
-.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{inset:1px;background:var(--control-fill)}
+/* (the tank kit's tile: its edge, its 2 px foot; a light 1 px outline set the flight's tiles apart, gauntlet r12) */
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{inset:1px 1px 2px;background:var(--control-fill)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon{display:grid;grid-template-columns:26px minmax(0,1fr);gap:9px;min-height:66px;text-align:left;align-items:center}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-icon{display:flex;color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:26px;height:30px}
@@ -280,7 +282,7 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:var(--battle-fs-11)}
 /* (every tile of the console set from its left edge, its key cap in its top-right corner, as the weapons are: gauntlet r4
    read the weapons set left over a centred second row) */
-.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
 .cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
@@ -291,7 +293,6 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
 .cot-flight-hud[data-kind=gunship] .flight-supply small{font:inherit;font-weight:700}
 .cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:absolute;top:5px;right:14px;font-size:var(--battle-fs-11)}
-.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal] .flight-icon{color:var(--ok)}
 .cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
 .cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:var(--battle-fs-11);color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:oklch(from var(--surface-hover) .38 c h / .933)}
@@ -304,6 +305,12 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
    "Infrared", "Ammo" and a lowercase "30 mm cannon" over the sight mixed three casings in one console, gauntlet r8) */
 :is(.cot-drone-return>span,.flight-view-switch .flight-feed>span:first-child,.flight-supply small,.gunship-solution-label){
  text-transform:uppercase;letter-spacing:var(--track-label-s)}
+/* (on touch the return's word keeps one line, at the controls' tracking in the tile's 8 px inset: at 13 px and the label
+   tracking "RETURN TO / TANK" broke in two at 320x568 and 568x256, the kit's one two-line label, gauntlet r12) */
+@media(pointer:coarse){
+ html[data-flight=drone] .cot-flight-hud[data-kind=drone] .cot-drone-return{padding-inline:var(--s2);white-space:nowrap}
+ html[data-flight=drone] .cot-flight-hud[data-kind=drone] .cot-drone-return>span{letter-spacing:var(--battle-track-control)}
+}
 .gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
 .gunship-solution .flight-instrument{font-size:var(--battle-fs-11);gap:var(--s1)}
 .gunship-solution .flight-icon{color:inherit}
