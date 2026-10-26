@@ -35,10 +35,29 @@ export function webpSize(buffer) {
 }
 
 const sha = (buffer) => createHash('sha256').update(buffer).digest('hex').slice(0, 16);
+
+/** Known hit-volume misfits: combat armour where the model draws nothing (the overlay-agreement check found them,
+ * 2026-10-26). The vehicles item vehicles-hit-volume-fit-258 fits these plates to their hulls. Each entry is the most
+ * frame px its outline may stand off the plate, for that drawing, view and armour key. The list only shrinks: an entry
+ * that grows fails, and one that no longer stands off fails until it is removed. */
+const KNOWN_OFF_PLATE = new Map(Object.entries({
+  // M551 Sheridan: the hull roof and upper sides are 9 cm wider than the vehicle each side
+  'm551_sheridan front H46': 40, 'm551_sheridan front H47': 39, 'm551_sheridan front H48': 30,
+  'm551_sheridan front H50': 43, 'm551_sheridan front H51': 41,
+  'm551_sheridan top H45': 15, 'm551_sheridan top H46': 21, 'm551_sheridan top H47': 16, 'm551_sheridan top H50': 23,
+  'm551_sheridan top H51': 22,
+  // Namer: the roof and glacis 8 cm wider
+  'namer_ifv front H06': 23, 'namer_ifv front H07': 31, 'namer_ifv front H08': 25, 'namer_ifv front H09': 31,
+  'namer_ifv front H11': 17, 'namer_ifv front H12': 31, 'namer_ifv top H07': 16, 'namer_ifv top H12': 16,
+  // M60A3: a left spaced skirt 20 cm outside the model, 27 cm past the hull's rear
+  'm60a3 side H02': 35,
+  // Leo 2A4M CAN: its left skirt 7 cm past the hull's rear
+  'leo2a4m_can side H02': 12,
+}));
 const pathPoints = (d) => [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
 
 /** Every problem with one drawing (data parsed, plates read through `plate(name)`), as sentences. */
-export function drawingProblems(data, plate, labels = () => 'label') {
+export function drawingProblems(data, plate, labels = () => 'label', known = new Map()) {
   const problems = [];
   for (const [view, v] of Object.entries(data.views)) {
     const [w, h] = v.size, at = `${data.id} ${view}`;
@@ -61,8 +80,17 @@ export function drawingProblems(data, plate, labels = () => 'label') {
       const layer = v.layers[kind];
       if (layer.some((element, i) => i > 0 && element.area > layer[i - 1].area)) problems.push(`${at} ${kind}: not in area order (the viewer numbers the first)`);
       for (const element of layer) {
-        const off = pathPoints(element.d).find(([x, y]) => x < x0 - EDGE_SLACK_PX || x > x1 + EDGE_SLACK_PX || y < y0 - EDGE_SLACK_PX || y > y1 + EDGE_SLACK_PX);
-        if (off) problems.push(`${at} ${kind} ${element.key}: outline at ${off.join(', ')} is off the plate`);
+        const points = pathPoints(element.d);
+        const standOff = Math.max(...points.map(([x, y]) => Math.max(x0 - x, x - x1, y0 - y, y - y1)));
+        const allowed = kind === 'armor' ? known.get(`${data.id} ${view} ${element.key}`) : undefined;
+        if (allowed !== undefined) {
+          known.delete(`${data.id} ${view} ${element.key}`);
+          if (standOff > allowed) problems.push(`${at} ${kind} ${element.key}: a known misfit grew to ${standOff.toFixed(1)} px off the plate (at most ${allowed})`);
+          else if (standOff <= EDGE_SLACK_PX) problems.push(`${at} ${kind} ${element.key}: fits now; take it off KNOWN_OFF_PLATE`);
+        } else if (standOff > EDGE_SLACK_PX) {
+          const off = points.find(([x, y]) => Math.max(x0 - x, x - x1, y0 - y, y - y1) === standOff);
+          problems.push(`${at} ${kind} ${element.key}: outline at ${off.join(', ')} is off the plate`);
+        }
         if (kind === 'armor') for (const [x] of pathPoints(element.d)) { armorX0 = Math.min(armorX0, x); armorX1 = Math.max(armorX1, x); }
       }
       for (const element of numberedElements(v, kind)) {
@@ -84,15 +112,18 @@ assert.doesNotMatch(studio, /fillText|strokeText|\.font\s*=|TextGeometry|FontLoa
 const files = existsSync(DIR) ? readdirSync(DIR).filter((name) => name.endsWith('_drawing.json')).sort() : [];
 const labelsIn = async (locale) => { await setLocale(locale); return (element, kind) => technicalLabelText({ ...element, anchor: [0, 0], weight: 0, color: '' }, kind).trim(); };
 const en = await labelsIn('en-US'), enLabels = new Map();
-const problems = [], drawings = [];
+const problems = [], drawings = [], known = new Map(KNOWN_OFF_PLATE);
 for (const file of files) {
   const id = file.slice(0, -'_drawing.json'.length);
   const data = parseTechnicalDrawing(JSON.parse(readFileSync(join(DIR, file), 'utf8')), id);
   drawings.push(data);
   problems.push(...drawingProblems(data, (name) => existsSync(join(DIR, name)) ? readFileSync(join(DIR, name)) : null, (element, kind) => {
     const text = en(element, kind); enLabels.set(`${id}|${kind}|${element.key}`, text); return text;
-  }));
+  }, known));
 }
+// a known misfit whose drawing is published but whose outline no longer exists is stale too
+const published = new Set(drawings.map((d) => d.id));
+for (const entry of known.keys()) if (published.has(entry.split(' ')[0])) problems.push(`${entry}: no longer drawn; take it off KNOWN_OFF_PLATE`);
 const zh = await labelsIn('zh-CN');
 for (const data of drawings) for (const v of Object.values(data.views)) for (const kind of TECHNICAL_KINDS) {
   for (const element of numberedElements(v, kind)) {

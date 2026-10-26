@@ -80,21 +80,16 @@ function meshBounds(meshes: readonly THREE.Mesh[]): THREE.Box3 {
 
 interface Frame { camera: THREE.OrthographicCamera; pxPerM: number; width: number; height: number; target: THREE.Vector3 }
 
-/** The view's camera: orthographic, the vehicle's bounds centred and filling DRAWING_FILL of the width (or
- * DRAWING_FILL_HEIGHT of the height, whichever binds). `upMax` caps the bounds along the frame's up (the body's top: the
- * masts and whips above it run off the frame's top edge). */
-function frameView(view: View, box: THREE.Box3, upMax = Infinity): Frame {
+/** The view's camera: orthographic, looking along the view's direction at the extents' centre (across and along the
+ * frame, m), the extents filling DRAWING_FILL of the width (or DRAWING_FILL_HEIGHT of the height, whichever binds). */
+function frameFrom(view: View, across: readonly [number, number], along: readonly [number, number], box: THREE.Box3): Frame {
   const { size: [width, height], from, up } = VIEWS[view];
   const dir = new THREE.Vector3(...from), upV = new THREE.Vector3(...up);
   const right = new THREE.Vector3().crossVectors(dir.clone().negate(), upV).normalize();
-  const corners: THREE.Vector3[] = [];
-  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
-  const across = corners.map((c) => c.dot(right)), along = corners.map((c) => Math.min(c.dot(upV), upMax));
-  const spanX = Math.max(...across) - Math.min(...across), spanY = Math.max(...along) - Math.min(...along);
-  const pxPerM = Math.min(DRAWING_FILL * width / spanX, DRAWING_FILL_HEIGHT * height / spanY);
+  const pxPerM = Math.min(DRAWING_FILL * width / (across[1] - across[0]), DRAWING_FILL_HEIGHT * height / (along[1] - along[0]));
   const center = box.getCenter(new THREE.Vector3());
-  const midX = (Math.max(...across) + Math.min(...across)) / 2, midY = (Math.max(...along) + Math.min(...along)) / 2;
-  const target = center.clone().addScaledVector(right, midX - center.dot(right)).addScaledVector(upV, midY - center.dot(upV));
+  const target = center.clone().addScaledVector(right, (across[0] + across[1]) / 2 - center.dot(right))
+    .addScaledVector(upV, (along[0] + along[1]) / 2 - center.dot(upV));
   const halfW = width / 2 / pxPerM, halfH = height / 2 / pxPerM, depth = box.getSize(new THREE.Vector3()).length() * 2 + 10;
   const camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.05, depth * 2);
   camera.position.copy(target).addScaledVector(dir, depth);
@@ -105,14 +100,28 @@ function frameView(view: View, box: THREE.Box3, upMax = Infinity): Frame {
   return { camera, pxPerM, width, height, target };
 }
 
+/** The bounds' frame: every corner of the vehicle's box, across and along the view. */
+function frameView(view: View, box: THREE.Box3): Frame {
+  const { from, up } = VIEWS[view];
+  const dir = new THREE.Vector3(...from), upV = new THREE.Vector3(...up);
+  const right = new THREE.Vector3().crossVectors(dir.clone().negate(), upV).normalize();
+  const corners: THREE.Vector3[] = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+  const across = corners.map((c) => c.dot(right)), along = corners.map((c) => c.dot(upV));
+  return frameFrom(view, [Math.min(...across), Math.max(...across)], [Math.min(...along), Math.max(...along)], box);
+}
+
 /** A row of the silhouette at least this wide (m) is the body; thinner rows above it are masts and whip antennas. */
 const BODY_ROW_M = 0.3;
 const coverageMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
 
-/** The body's top along the frame's up (m, the up axis's coordinate): the highest row of a quarter-size coverage pass
- * at least BODY_ROW_M wide. Whips and masts are merged into their material buckets, so no mesh name can leave them out. */
-function bodyTop(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Frame): number {
-  const w = Math.round(frame.width / 4), h = Math.round(frame.height / 4), pxPerM = frame.pxPerM / 4;
+/** What `frame` draws, measured on a quarter-size coverage pass: its extent across and along the frame (m, the axes'
+ * coordinates), along to the body's top in an upright view (the highest row at least BODY_ROW_M wide: whips and masts
+ * are merged into their material buckets, so no mesh name can leave them out). Fitting the frame to it, not to the
+ * bounds, keeps parts the bounds count but the view never draws (a lattice panel edge-on from above) from shrinking the
+ * drawing. */
+function measureDrawn(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Frame, upright: boolean): { across: [number, number]; along: [number, number] } | null {
+  const w = Math.round(frame.width / 4), h = Math.round(frame.height / 4);
   const target = new THREE.WebGLRenderTarget(w, h);
   const scene = new THREE.Scene();
   try {
@@ -121,12 +130,29 @@ function bodyTop(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Fra
     scene.remove(root);
     renderer.setRenderTarget(null);
     const pixels = readTarget(target, w, h);
-    for (let row = h - 1; row >= 0; row--) {
+    // rows from the top (GL rows count up from the bottom)
+    let x0 = w, x1 = -1, top = -1, body = -1, bottom = -1;
+    for (let r = 0; r < h; r++) {
+      const row = h - 1 - r;
       let covered = 0;
-      for (let x = 0; x < w; x++) if (pixels[(row * w + x) * 4 + 3]! > 0) covered++;
-      if (covered / pxPerM >= BODY_ROW_M) return frame.target.dot(frame.camera.up) + frame.camera.bottom + (row + 1) / h * (frame.camera.top - frame.camera.bottom);
+      for (let x = 0; x < w; x++) {
+        if (pixels[(row * w + x) * 4 + 3]! === 0) continue;
+        covered++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+      }
+      if (!covered) continue;
+      if (top < 0) top = r;
+      if (body < 0 && (!upright || covered / (frame.pxPerM / 4) >= BODY_ROW_M)) body = r;
+      bottom = r;
     }
-    return Infinity;
+    if (x1 < 0 || body < 0) return null;
+    const cam = frame.camera, metresPerPx = (cam.right - cam.left) / w;
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion), up = cam.up;
+    const cx = frame.target.dot(right), cy = frame.target.dot(up);
+    return {
+      across: [cx + cam.left + x0 * metresPerPx, cx + cam.left + (x1 + 1) * metresPerPx],
+      along: [cy + cam.top - (bottom + 1) * metresPerPx, cy + cam.top - body * metresPerPx],
+    };
   } finally { target.dispose(); }
 }
 
@@ -160,7 +186,7 @@ function readTarget(target: THREE.WebGLRenderTarget, width: number, height: numb
 }
 
 /** The plate at the frame's size and half of it, as WebP data URLs (rows flipped to image order, downsampled from SS). */
-function renderPlate(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Frame, view: View): { full: string; half: string; box: [number, number, number, number]; body: [number, number, number, number] } {
+function renderPlate(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame: Frame, view: View, bodyTopAlong: number): { full: string; half: string; box: [number, number, number, number]; body: [number, number, number, number] } {
   const w = frame.width * SS, h = frame.height * SS;
   const coverTarget = new THREE.WebGLRenderTarget(w, h, { samples: 4 });
   const normalTarget = new THREE.WebGLRenderTarget(w, h, { depthTexture: new THREE.DepthTexture(w, h) });
@@ -201,20 +227,16 @@ function renderPlate(root: THREE.Object3D, meshes: readonly THREE.Mesh[], frame:
       }
     }
     big.getContext('2d')!.putImageData(image, 0, 0);
-    // the drawing's extent in the frame's pixels (every texel with alpha over 8) and the body's (from the first row at
-    // least BODY_ROW_M wide: the frame is fitted to it, the whips above it may run off the top)
-    let x0 = w, y0 = h, x1 = -1, y1 = -1, bodyY0 = -1;
-    for (let y = 0; y < h; y++) {
-      let covered = 0;
-      for (let x = 0; x < w; x++) {
-        if (image.data[(y * w + x) * 4 + 3]! <= 8) continue;
-        covered++;
-        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-      }
-      if (bodyY0 < 0 && covered >= BODY_ROW_M * frame.pxPerM * SS) bodyY0 = y;
+    // the drawing's extent in the frame's pixels (every texel with alpha over 8), and the body's: its top is the top of
+    // the extent the frame was fitted to (measureDrawn: whips above it may run off the frame's top)
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (image.data[(y * w + x) * 4 + 3]! <= 8) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
     }
     const box: [number, number, number, number] = [x0 / SS, y0 / SS, (x1 + 1) / SS, (y1 + 1) / SS];
-    const body: [number, number, number, number] = [x0 / SS, Math.max(bodyY0, y0) / SS, (x1 + 1) / SS, (y1 + 1) / SS];
+    const fittedTop = Math.round((frame.camera.top - bodyTopAlong + frame.target.dot(frame.camera.up)) * frame.pxPerM * 10) / 10;
+    const body: [number, number, number, number] = [x0 / SS, Math.min(Math.max(fittedTop, y0 / SS), (y1 + 1) / SS - 1), (x1 + 1) / SS, (y1 + 1) / SS];
     const scaled = (width: number, height: number): string => {
       const out = document.createElement('canvas');
       out.width = width; out.height = height;
@@ -402,9 +424,9 @@ async function drawTank(id: string, views: readonly View[] = ['side', 'top', 'fr
   const data: { schema: 2; id: string; views: Partial<Record<View, DrawingView>> } = { schema: 2, id, views: {} };
   try {
     for (const view of views) {
-      let frame = frameView(view, box);
-      if (VIEWS[view].up[1] === 1) frame = frameView(view, box, bodyTop(root, meshes, frame));
-      const plate = renderPlate(root, meshes, frame, view);
+      const bounds = frameView(view, box), drawn = measureDrawn(root, meshes, bounds, VIEWS[view].up[1] === 1);
+      const frame = drawn ? frameFrom(view, drawn.across, drawn.along, box) : bounds;
+      const plate = renderPlate(root, meshes, frame, view, drawn ? drawn.along[1] : frame.target.dot(frame.camera.up) + frame.camera.top);
       files[`${id}_drawing_${view}.webp`] = plate.full;
       files[`${id}_drawing_${view}_1x.webp`] = plate.half;
       const layers = {} as Record<Kind, DrawingElement[]>;
