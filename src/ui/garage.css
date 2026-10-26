@@ -820,6 +820,8 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview .cot-eqtip :is(.metrics-heading,.summary){display:none}
 .cot-eqpreview .cot-eqtip:not([data-shut]) .action{display:none}
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
+/* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
+html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
 .cot-eqpreview .cot-eqtip[data-shut] .action{border-top:0;padding-top:0;color:var(--ink-2);text-transform:none}
 /* a wide readout in a sheet sets the values beside the item's words, so one fixed height holds them */
 @container (width >= 560px){
