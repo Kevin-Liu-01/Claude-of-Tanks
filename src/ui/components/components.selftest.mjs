@@ -254,7 +254,8 @@ assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
   const { readdirSync } = await import('node:fs');
   const sheets = (dir) => readdirSync(new URL(dir, import.meta.url), { withFileTypes: true }).flatMap((entry) => entry.isDirectory()
     ? sheets(`${dir}${entry.name}/`) : /\.(css|ts)$/.test(entry.name) && !/\.selftest\./.test(entry.name) ? [new URL(`${dir}${entry.name}`, import.meta.url)] : []);
-  for (const file of [...sheets('../'), ...sheets('../../presentation/')]) {
+  // (the Gallery's stage plates too: its layer dock, camera rail and tools follow the one state, 99f2f7344c)
+  for (const file of [...sheets('../'), ...sheets('../../presentation/'), ...sheets('../../gallery/')]) {
     for (const [, selector, body] of readFileSync(file, 'utf8').matchAll(/([^{}]*\[aria-(?:pressed|checked|selected)=['"]?true['"]?\][^{}]*)\{([^}]*)\}/g)) {
       assert.doesNotMatch(body, /background:var\(--surface-hover\)/, `${file.pathname.split('/src/')[1]}: ${selector.trim().slice(0, 80)} draws a selection on the grey hover plate`);
     }
