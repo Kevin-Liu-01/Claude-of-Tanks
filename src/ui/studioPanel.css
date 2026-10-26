@@ -60,11 +60,15 @@ body[data-studio-settling] #app{visibility:hidden}
 .st-head .cot-c-seg__opt{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12))}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
-/* under 1680 px the header's secondary chips (commands, the scene link, the Gallery) keep their glyphs and give up their
-   words to the screen (the words stay their names), so Export film, Exit and Hide controls stay on screen at 1440 */
+/* the header's secondary chips give their words to the screen as it narrows (the words stay their names): under 1680 px
+   the two whose glyphs say it (commands' search, the scene link), under 1440 px the queue and the Gallery as well (at 1440
+   all four went to glyphs over 230 px of empty header) */
 @media (width < 1680px){
-  .st-head .r :is(.cmd,[data-scene-link-copy],.gal,.que) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .st-head .r :is(.cmd,[data-scene-link-copy]) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .st-head .r .cmd .cot-c-kbd{display:none}
+}
+@media (width < 1440px){
+  .st-head .r :is(.gal,.que) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 .st-head .cmd .cot-c-kbd{margin-left:2px}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
@@ -306,8 +310,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* each effect group stands apart from the one above it, so its heading reads with its own buttons */
 .cot-studio .fxg+.fxg{margin-top:var(--s3)}
 .cot-studio .sec>.fxg:first-of-type{margin-top:var(--s2)}
-/* the library's cards end their section: the next heading stands clear of the last caption */
-.cot-studio .director .production-library{margin-bottom:var(--s3)}
 .cot-studio .fxg .gh{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display)}
 /* the shots: one card per camera key */
 .cot-studio .shotboard{display:grid;gap:var(--s1);max-height:210px;overflow-y:auto;scrollbar-width:thin}
@@ -332,7 +334,8 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio .filmSummary{display:flex;flex-wrap:wrap;column-gap:var(--s3)}
 .cot-studio .filmSummary>span{white-space:nowrap}
 /* the Director (studioProductionPanel.ts): curated sequences, a featured tank, the shot list, rigs and exports */
-.cot-studio .director{display:flex;flex-direction:column;gap:var(--s5)}
+/* one step between the Director's sections, whatever ends them (a library's cards took an extra margin: 27 to 52 px) */
+.cot-studio .director{display:flex;flex-direction:column;gap:var(--s6)}
 .cot-studio .director-head{display:none}
 .cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
 /* a card is its still and, on a line under it, its name and length: no text sits on a tank (the owner's rule) */
@@ -450,7 +453,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-queue:has(.qf:not([hidden])){padding-bottom:var(--s3)}
 .st-queue:has(.qf:not([hidden]))::after{display:none}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
-.st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
+.st-queue .ql:not(:empty),.st-queue .qe:not([hidden]){padding-bottom:var(--s3);border-bottom:1px solid var(--line-1)}
 /* a delivery's name over its cost, the add or remove control beside both: the whole preset name always reads */
 .st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px var(--s3);min-height:34px;padding:var(--s1) var(--s1) var(--s1) var(--s2);
   border-radius:var(--r1);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.2 var(--font-body)}

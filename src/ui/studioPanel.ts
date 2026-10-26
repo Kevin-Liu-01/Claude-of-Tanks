@@ -561,7 +561,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'film');
   exportBtn.addEventListener('click', () => startFilmExport());
-  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
+  // Exit is a chip as its neighbours are (a ghost button set it in unbordered capitals among them)
+  const exitBtn = chipButton(t('studio.ws.exit'), 'close');
   exitBtn.insertAdjacentHTML('beforeend', keycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
@@ -920,7 +921,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     dial.setAttribute('aria-valuetext', t('studioPanel.light.bearingValue', { deg: Math.round(az) }));
     bearingRead.replaceChildren(`${t('studioPanel.light.bearing')} `, el('b', null, `${Math.round(az)}°`));
     elevationRead.replaceChildren(`${t(light.time === 'night' ? 'studioPanel.light.moon' : 'studioPanel.light.sun')} `,
-      el('b', null, `${elev.toFixed(1)}°`));
+      // whole degrees as the bearing and the outliner write them; a half step keeps its decimal
+      el('b', null, `${Number.isInteger(elev) ? elev : elev.toFixed(1)}°`));
     elevation.setRange(light.band.min, light.band.max);
     elevation.set(elev);
     press(elevationReset, light.override?.sunElevationDeg === undefined);
@@ -1799,10 +1801,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     copySceneLink(S.state(), browserSceneLinkEnv())
       .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
   });
-  // localStorage slots
+  // localStorage slots: the kit's buttons, as Save, Load and Copy above them (a chip row stood 6 px shorter)
   const slotRow = el('div', 'grid3');
   for (let i = 1; i <= 3; i++) {
-    const b = chipButton(t('studio.slot', { n: i }), null);
+    const b = kitButton(t('studio.slot', { n: i }));
     b.dataset.tip = t('studio.slotTitle');
     b.addEventListener('click', (e) => {
       const key = `cot.studio.slot${i}.v1`;
@@ -2065,7 +2067,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const queueHead = el('h3', 'qh', t('studio.ws.queueTitle'));
   queueHead.id = 'st-queue-title';
   queuePop.setAttribute('aria-labelledby', queueHead.id);
-  queuePop.append(queueHead, queuePresets, queueList, queueEmpty, queueFoot);
+  // the queue's state (its jobs, or that it is empty) under its name, the deliveries to add after it: a phone's short
+  // popover cut the state off below the presets
+  queuePop.append(queueHead, queueList, queueEmpty, queuePresets, queueFoot);
   head.appendChild(queuePop);
   queuePop.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
