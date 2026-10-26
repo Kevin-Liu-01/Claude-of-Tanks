@@ -745,7 +745,8 @@ const networkCompileBody = mainSource.match(
   /compile: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n\s{10}\},/,
 )?.[1];
 assert.ok(networkCompileBody, 'network entry retains its scoped async compile adapter');
-const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame', 'battlePresentation', 'STRICT_DRAIN_STALL_MS',
+// (255) battle-spikes' 584055e2a6: the adapter patches the world's structure materials (the collapse mask) first
+const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame', 'battlePresentation', 'STRICT_DRAIN_STALL_MS', 'fxRuntimeAccess',
   `return async (signal) => {${networkCompileBody.replace(': ForwardProgramCompileTiming', '')}};`);
 for (const composited of [false, true]) {
   const camera = new THREE.PerspectiveCamera();
@@ -763,9 +764,11 @@ for (const composited of [false, true]) {
   let finalized = false;
   let receivedTiming;
   let modeVisualsPrepared = 0;
+  let worldMaterialsPrepared = 0;
   const compile = networkCompileFactory(post, camera, LATE_FX_LAYER, {
     *prepareSceneSteps(options) {
       assert.equal(modeVisualsPrepared, 1, 'mode effects are present before program preparation');
+      assert.equal(worldMaterialsPrepared, 1, 'the world\'s structure materials take the collapse mask before program preparation');
       assert.equal(options.signal, signal);
       assert.equal(options.strict, true, 'network adapter opts into completion-enforced bounded admission');
       // 2026-10-14: the covered network entry alone opts into the 2 s stall cutoff (the Garage hero never does)
@@ -787,7 +790,8 @@ for (const composited of [false, true]) {
         return { status: 'complete', pending: 0 };
       } finally { finalized = true; }
     },
-  }, async () => { paints++; }, { prepareModeVisuals() { modeVisualsPrepared++; } }, STRICT_DRAIN_STALL_MS);
+  }, async () => { paints++; }, { prepareModeVisuals() { modeVisualsPrepared++; } }, STRICT_DRAIN_STALL_MS,
+  { current: { prepareWorldMaterials() { worldMaterialsPrepared++; } } });
   const receipt = await compile(signal);
   assert.deepEqual(receipt, { programsAfter: 3, preparation: { status: 'complete', pending: 0 } });
   assert.notEqual(receipt, receivedTiming, 'the adapter returns its completed diagnostic copy');
@@ -966,7 +970,7 @@ for (const terminal of ['abort', 'return', 'throw', 'epoch', 'info', 'context', 
       try { yield; assert.fail('rejected caller must not resume preparation'); }
       finally { finalized = true; }
     },
-  }, async () => { throw reason; }, { prepareModeVisuals() {} });
+  }, async () => { throw reason; }, { prepareModeVisuals() {} }, STRICT_DRAIN_STALL_MS, { current: null });
   await assert.rejects(compile(), (error) => error === reason);
   assert.equal(finalized, true, 'adapter closes strict owner when nextPaintFrame rejects');
   passed++;
