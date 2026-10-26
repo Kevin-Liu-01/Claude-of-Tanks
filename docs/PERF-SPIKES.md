@@ -581,7 +581,10 @@ held by the settings pause, every cascade rendered each frame.
   with a detail mesh it covers.
 - Depth: each hull's shadow depth rendered from cascades 0 and 1 as the policy casts it, into a float target the size
   of the map, with each caster's own shadow side. Crops of 192 texels about each hull matched merged against mesh by
-  mesh texel for texel: 0 of 3,236-15,175 covered texels differ, max delta 0. Final frames cannot show it: the held
+  mesh texel for texel: 0 of 3,236-15,175 covered texels differ, max delta 0. The control pair: the merged casters
+  alone (2-4 a hull) against the 8-14 detail meshes they cover alone also match texel for texel (0 of 1,144-13,716),
+  and the merged casters alone against the whole detail differ on 16-45 % of the covered texels, so the comparison
+  sees a caster missing. Final frames cannot show it: the held
   scene still animates (clouds, wind, temporal post), and two frames with the merge off already differed on about as
   many crop pixels as off against on.
 
