@@ -11,7 +11,7 @@ import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
-import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from '../game/equipment.ts';
+import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
 
 /** A mode's refused equipment (MatchRuleset.equipmentBan). */
 interface EquipmentBan {
