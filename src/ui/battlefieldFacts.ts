@@ -47,11 +47,9 @@ const STILLS: ReadonlySet<MapId> = new Set<MapId>([
   'reservoir', 'mars', 'moon', 'cliffbridge',
 ]);
 const STILL_WIDTHS = [640, 1280, 1920] as const;
-/** The maps the maps-r1 manifest holds a hover loop for (23 of 33 on 2026-10-26; the selftest holds the list to it). */
-const LOOPS: ReadonlySet<MapId> = new Set<MapId>([
-  'verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard', 'frontier', 'fjord', 'delta', 'badlands',
-  'monsoon', 'alpine', 'caldera', 'foundry', 'blackglass', 'copper_mesa', 'airfield', 'longleaf', 'mangrove', 'mars', 'cliffbridge',
-]);
+/** The one still map the maps-r1 manifest holds no hover loop for yet (32 of 33 filmed on 2026-10-26; Ruinspires is being
+ *  re-filmed). The selftest holds every map's loop to the manifest. */
+const NO_LOOP: ReadonlySet<MapId> = new Set<MapId>(['ruinspires']);
 
 function poster(id: MapId): BattlefieldFacts['poster'] {
   const thumb = `/maps/thumbs/${id}.webp`;
@@ -61,7 +59,7 @@ function poster(id: MapId): BattlefieldFacts['poster'] {
   const still = (width: number): string => `/media/maps-r1/${id}-${width}.webp`;
   return {
     src: still(STILL_WIDTHS[0]), srcset: STILL_WIDTHS.map((width) => `${still(width)} ${width}w`).join(', '), hero: still(1920), thumb,
-    ...(LOOPS.has(id) ? { loop: `/media/maps-r1/${id}-loop-960.mp4` } : {}),
+    ...(NO_LOOP.has(id) ? {} : { loop: `/media/maps-r1/${id}-loop-960.mp4` }),
   };
 }
 const RANDOM: ReadonlySet<MapId> = new Set(RANDOM_BATTLE_MAP_IDS);
