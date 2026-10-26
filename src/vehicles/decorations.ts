@@ -4537,7 +4537,7 @@ function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFold
 export const DECORATION_INDEX_BATCH_LIMIT = 256;
 const DECORATION_WORK_BUDGET_MS = 2;
 interface DecorationWorkSlice {
-  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'cargo-route' | 'material-bucket' | 'publish';
+  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'cargo-route' | 'material-bucket' | 'suit-pass' | 'publish';
   completed: number;
   total: number;
 }
@@ -6860,11 +6860,15 @@ export function* attachTankDecorationsSteps(
     }
     // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
     // them, never laid through them (ghillieDrape.ts)
+    // (UI-LOCKDOWN E) each of the four suit passes in a slice of its own
     drapeGhillieOverLoads(hullG, seatedLoads.hull);
+    yield { stage: 'suit-pass', completed: 1, total: 4 };
     drapeGhillieOverLoads(turretG, seatedLoads.turret);
+    yield { stage: 'suit-pass', completed: 2, total: 4 };
     // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
     // after the suit): its cloth and garnish in their lines of fire are cut away
     clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
+    yield { stage: 'suit-pass', completed: 3, total: 4 };
     clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
